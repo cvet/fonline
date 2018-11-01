@@ -1,0 +1,26 @@
+/**
+ * @defgroup Elevators Elevators
+ * @ingroup Defines
+ *
+ * \~russian Интерфейсы лифтов.
+ *
+ * \~english Elevator graphical interfaces.
+ *
+ * \~
+ * @see      #SCREEN_ELEVATOR
+ */
+/*@{*/
+
+
+#define ELEVATOR_X #(elevator,current_level)       ((uint((current_level)&0xFFFF)<<16)|(elevator)&0xFFFF)
+#define ELEVATOR_BOS_1234 #(current_level)         (ELEVATOR_X(0,current_level))
+#define ELEVATOR_BOS_01 #(current_level)           (ELEVATOR_X(1,current_level))
+#define ELEVATOR_MASTER_123 #(current_level)       (ELEVATOR_X(2,current_level))
+#define ELEVATOR_MASTER_34 #(current_level)        (ELEVATOR_X(3,current_level))
+#define ELEVATOR_MILITARY_123 #(current_level)     (ELEVATOR_X(4,current_level))
+#define ELEVATOR_MILITARY_34 #(current_level)      (ELEVATOR_X(5,current_level))
+#define ELEVATOR_MILITARY_346 #(current_level)     (ELEVATOR_X(6,current_level)) // Use 6 level as 5
+#define ELEVATOR_MILITARY_456 #(current_level)     (ELEVATOR_X(7,current_level))
+#define ELEVATOR_VAULT_123 #(current_level)        (ELEVATOR_X(8,current_level))
+
+/*@}*/

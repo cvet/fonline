@@ -1,0 +1,295 @@
+/** \~russian Функционально ограниченный эквивалент класса Critter, доступный при скриптинге клиента.
+ *
+ * Обладает меньшим функционалом по сравнению с серверным: почти все статы, навыки,
+ * перки и т.п. можно просмотреть только у самого игрока, про что не следует забывать.
+ *
+ ** \~english Limited-functionality equivalent of Critter class.
+ *
+ * All stats, skills, perks etc. can be read from the chosen only (player).
+ *
+ * \~ @ingroup Client
+ */
+class CritterCl
+{
+public:
+    /** \~russian Позволяет проверить, является ли криттер тем игроком, для которого запущен клиент. */
+    bool IsChosen();
+
+    /** \~russian Позволяет проверить, является ли криттер игроком.
+     *
+     * @return @c true – если криттер является игроком; @c false – в противном случае.
+     */
+    bool IsPlayer();
+
+    /** \~russian Позволяет проверить, является ли криттер NPC.
+     *
+     * @return @c true – если криттер является NPC; @c false – в противном случае.
+     */
+    bool IsNpc();
+
+    /** \~russian Проверяет, жив ли криттер.
+     *
+     * @return @c true – если криттер жив; @c false – в противном случае.
+     *
+     * @see    IsDead
+     * @see    IsKnockout
+     */
+    bool IsLife();
+
+    /** \~russian Проверяет, находится ли криттер в нокдауне.
+     *
+     * @return @c true – если криттер в нокдауне; @c false – в противном случае.
+     *
+     * @see    IsDead
+     * @see    IsLife
+     */
+    bool IsKnockout();
+
+    /** \~russian Проверяет, мёртв ли криттер.
+     *
+     * @return @c true – если криттер мёртв; @c false – в противном случае.
+     *
+     * @see    IsKnockout
+     * @see    IsLife
+     */
+    bool IsDead();
+
+    /** \~russian Проверяет, свободен ли криттер или нет.
+     *
+     * @return @c true – если криттер свободен; @c false – в противном случае.
+     *
+     * @see    IsBusy
+     */
+    bool IsFree();
+
+    /** \~russian Проверяет, занят ли криттер или нет.
+     *
+     * @return @c true – если криттер занят; @c false – в противном случае.
+     *
+     * @see    IsFree
+     */
+    bool IsBusy();
+	
+	/** \~russian Проверяет, ход криттера ли в данный момент в пошаговом бою.
+     *
+     * @return @c true – если ход данного криттера; @c false – в противном случае.
+     */
+	bool IsTurnBasedTurn();
+	
+	/** \~russian Возвращает время до окончания хода.
+     *
+     * @return время в миллисекундах.
+     */
+	uint GetTurnBasedTime();
+
+    /** \~russian Возвращает количество всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Количество всех предметов.
+     */
+    uint ItemsCount();
+
+    /** \~russian Возвращает общий вес всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Общий вес предметов в инвентаре.
+     */
+    uint ItemsWeight();
+
+    /** \~russian Возвращает общий объем всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Общий объем предметов в инвентаре.
+     */
+    uint ItemsVolume();
+
+    /** \~russian Возвращает количество указанных предметов, находящихся в инвентаре криттера.
+     *
+     * @param protoId ID прототипа предмета (см. файл @b ITEMPID.H).
+     *
+     * @return Количество предметов с указанным прототипом, находящихся в инвентаре.
+     */
+    uint CountItem(uint16 protoId);
+
+    /** \~russian Возвращает указатель на объект предмета, который находится в инвентаре криттера.
+     *
+     * @param  protoId  ID прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  slot     Слот, в котором находится предмет (см. @link Slots@endlink).
+     *                  Если установлено значение: -1, то слот учитываться не будет.
+     *
+     * @return Указатель на экземпляр класса ItemCl. В случае провала – @c null.
+     */
+    ItemCl@+ GetItem(uint16 protoId, int slot);
+
+    /** \~russian Находит все предметы, которые находятся в инвентаре.
+     *
+     * @param  items  Массив указателей на предметы, которые находятся в инвентаре.
+     *                Массив не очищается, а дописывается с конца нужными предметами.
+     * @param  slot   Слот, в котором находятся предметы (см. @link Slots@endlink).
+     *                Если установлено значение: -1, то слот учитываться не будет.
+     *
+     * @return Количество найденных предметов.
+     */
+    uint GetItems(int slot, ItemCl@[]@+ items);
+
+    /** \~russian Позволяет получить все предметы указанного типа, находящиеся в инвентаре криттера.
+     *
+     * @param   type   Тип предмета (см. @link ItemsTypes Items types@endlink).
+     * @param   items  Массив, в конец которого будут записаны найденные предметы.
+     *
+     * @return  Количество предметов указанного типа.
+     */
+    uint GetItemsByType(int type, Item@[]@+ items);
+
+    /** \~russian Позволяет получить прототип предмета, который находится в указанном слоте.
+     *
+     * @param  slot  Слот (см. @link Slots@endlink).
+	 * @param  mode  В аргументе возвращается текущий режим атаки, если объект в слоте является оружием
+	 * старшие четыре бита - прицел (см. @link HitLocations Hit Locations@endlink),
+	 * младшие четыре бита - тип использования (0 – primary, 1 – secondary, 2 – third).
+     *
+     * @return Указатель на экземпляр класса ProtoItem. Если слот пуст, то возвращается @c null.
+     */
+    ProtoItem@+ GetSlotProto(int slot, uint8& mode);
+
+    /** \~russian Проверяет, есть ли у криттера ключ от указанного замка.
+     *
+     * @param  doorId  Уникальный номер замка.
+     *                 Так же учитывается сетчатка криттера и отпечатки пальцев.
+     *                 Эти номера уникальны для каждого криттера.
+     *
+     * @return @c true – если у криттера есть такой ключ; @c false – если такого ключа нет.
+     */
+    bool CheckKey(uint doorId);
+	
+    /** \~russian Позволяет включить/отключить видимость криттера в клиенте в совокупности с его освещением и яйцом прозрачности.
+     *
+     * @param  visible  Устанавливаемое значение.
+     *
+     * @see    GetVisible
+     */
+    void SetVisible(bool visible);
+
+    /** \~russian Позволяет проверить видим ли криттер в клиенте.
+     *
+     * @return  @c true – если криттер виден; @c false – в противном случае.
+     *
+     * @see     SetVisible
+     */
+    bool GetVisible();
+
+    /** \~russian Возвращает прототип предмета, находящегося в указанном слоте криттера.
+     *
+     * @param  slot  См. @link Slots@endlink.
+     *
+     * @return Указатель на экземпляр класса ProtoItem. Если в слоте ничего нет – @c null.
+     */
+    ProtoItem@+ GetSlotProto(int slot);
+	
+	/** \~russian Возвращает значение мултигексовости для персонажа */
+	uint GetMultihex();
+
+    /**
+     * \~russian @name Анимация
+     * \~english @name Animation
+     */
+    //@{
+
+    /** \~russian Позволяет проверить, существует ли указанная анимация для криттера.
+     *
+     * @param  anim1  Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+     * @param  anim2  Второй индекс анимации (см. @b ANIM2_* в @b _animation.fos).
+     *
+     * @return @c true, если существует; @c false – в противном случае.
+     */
+    bool IsAnimAviable(uint anim1, uint anim2);
+
+    /** \~russian Позволяет проверить, проигрывается ли в данный момент какая-либо анимация. */
+    bool IsAnimPlaying();
+
+    /** \~russian Возвращает индекс текущей анимации Anim1.
+     *
+     * @return Cм. @b ANIM1_* в @b _animation.fos.
+     *
+     */
+    uint GetAnim1();
+
+    /** \~russian Ставит указанную анимацию в очередь проигрываемых анимаций криттера.
+     *
+     * @param  anim1  Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+     * @param  anim2  Второй индекс анимации (см. @b ANIM2_* в @b _animation.fos).
+     *
+     ** \~ @see #animation2d_process
+     *     @see #animation3d_process
+     */
+    void Animate(uint anim1, uint anim2);
+
+    /** \~russian Ставит указанную анимацию в очередь проигрываемых анимаций криттера.
+     *
+     * @param  anim1  Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+     * @param  anim2  Второй индекс анимации (см. @b ANIM2_* в @b _animation.fos).
+     * @param  item   Указатель на предмет, используемый в анимации.
+     *
+     ** \~ @see #animation2d_process
+     *     @see #animation3d_process
+     */
+    void Animate(uint anim1, uint anim2, ItemCl@+ item);
+
+    /** \~russian Очищает очередь анимаций и прекращает проигрывание текущей. */
+    void ClearAnim();
+
+    //@}
+
+    /** \~russian Уникальный идентификатор криттера. */
+    const uint Id;
+
+    /** \~russian Номер прототипа криттера. */
+    const uint16 Pid;
+
+    /** \~russian Базовый тип анимации криттера. */
+    const uint8 CrType;
+
+    /** \~russian Дополнительный базовый тип. */
+    const uint8 CrTypeAlias;
+
+    /** \~russian Координата, по оси X, расположения криттера на карте. */
+    const uint16 HexX;
+
+    /** \~russian Координата, по оси Y, расположения криттера на карте. */
+    const uint16 HexY;
+
+    /** \~russian Направление, в которое повернут криттер. */
+    const uint8 Dir;
+
+    /** \~russian Флаги криттера, предназначенные только для чтения.
+     *
+     *  См. @link CritterExtraFlags Critter extra flags@endlink.
+     */
+    const uint16 FlagsExt;
+
+    /** \~russian Массив значений параметров криттера. */
+    DataVal Param;
+	
+	/**	\~russian Если данная строка не пустая, то выводится над головой криттера, в противном случае выводится имя криттера.
+	 *
+	 * См @link __ShowNpcNames@endlink.
+	 *
+	 */
+	string NameOnHead;
+    
+	/** \~russian Цвет имени над головой криттера */
+    uint NameColor;
+
+    /** \~russian Цвет обводки криттера */
+    uint ContourColor;
+
+    /** \~russian Значения слоев 3D-модели криттера. Значения смотрите в @b _animations.fos, <b>3d models layers</b>. */
+    int[]@ Anim3dLayer;
+	
+	/** \~russian Уточняет состояние криттера. Используется для анимаций. */
+	const uint Life;
+	
+	/** \~russian Уточняет состояние криттера. Используется для анимаций. */
+	const uint Knockout;
+	
+	/** \~russian Уточняет состояние криттера. Используется для анимаций. */
+	const uint Dead;
+}
+

@@ -1,0 +1,14 @@
+/**
+ * @defgroup GenericDescriptionsTypes Generic descriptions types
+ * @ingroup Defines
+ *
+ * @see     #generic_description
+ */
+/*@{*/
+
+#define DESC_INVENTORY_MAIN    (0)
+#define DESC_INVENTORY_SPECIAL (1)
+#define DESC_INVENTORY_STATS   (2)
+#define DESC_INVENTORY_RESIST  (3)
+
+/*@}*/

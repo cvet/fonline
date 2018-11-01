@@ -1,0 +1,30 @@
+/**
+ * @defgroup RadioFlags Radio flags
+ * @ingroup Defines
+ *
+ * \~russian Флаги рации.
+ * \~english Radio flags.
+ *
+ * \~
+ * @see      Item
+ *           ItemCl
+ *           ProtoItem
+ *
+ */
+/*@{*/
+
+#define RADIO_DISABLE_SEND          (0x0001)
+#define RADIO_DISABLE_RECV          (0x0002)
+#define RADIO_DISABLE_SHIFT_SEND    (0x0100)
+#define RADIO_DISABLE_SHIFT_RECV    (0x0200)
+#define RADIO_DISABLE_SHIFT_BC_SEND (0x0400)
+#define RADIO_DISABLE_SHIFT_BC_RECV (0x0800)
+#define RADIO_DISABLE_SHIFT_CHANNEL (0x1000)
+#define RADIO_BROADCAST_WORLD       (0)
+#define RADIO_BROADCAST_MAP         (20)
+#define RADIO_BROADCAST_LOCATION    (40)
+#define RADIO_BROADCAST_ZONE #(x)   (100+(x))
+#define RADIO_BROADCAST_FORCE_ALL   (250)
+
+
+/*@}*/

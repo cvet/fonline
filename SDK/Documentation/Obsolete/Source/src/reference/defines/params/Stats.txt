@@ -1,0 +1,271 @@
+/**
+ * \~russian @defgroup Stats Статы
+ * \~english @defgroup Stats Stats
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+/** \~russian Сила. */
+/** \~english Strength.*/
+#define ST_STRENGTH                 (0) // Used in engine +++
+
+/** \~russian Восприятие. */
+/** \~english Perception. */
+#define ST_PERCEPTION               (1)
+
+/** \~russian Выносливость. */
+/** \~english Endurance. */
+#define ST_ENDURANCE                (2)
+
+/** \~russian Харизма. */
+/** \~english Charisma. */
+#define ST_CHARISMA                 (3)
+
+/** \~russian Интеллект. */
+/** \~english Intelligence. */
+#define ST_INTELLECT                (4)
+
+/** \~russian Ловкость. */
+/** \~english Agility. */
+#define ST_AGILITY                  (5)
+
+/** \~russian Удача. */
+/** \~english Luck. */
+#define ST_LUCK                     (6)
+
+/** \~russian Максимальное количество очков здоровья. */
+/** \~english Maximum number of hit points. */
+#define ST_MAX_LIFE                 (7)
+
+/** \~russian Количество очков действия. */
+/** \~english Number of action points. */
+#define ST_ACTION_POINTS            (8)
+
+/** \~russian Класс брони. */
+/** \~english Armor class. */
+#define ST_ARMOR_CLASS              (9)
+
+#define ST_MELEE_DAMAGE             (10)
+
+/** \~russian Максимальный переносимый вес. */
+/** \~english Maximum weight critter can carry. */
+#define ST_CARRY_WEIGHT             (11)
+
+#define ST_SEQUENCE                 (12)
+
+/** \~russian Количество очков здоровья, восстанавливаемых при лечении (во время отдыха). */
+/** \~english Number of hit points that are renewed periodically. */
+#define ST_HEALING_RATE             (13)
+
+/** \~russian Шанс на критическое попадание. */
+/** \~english Chance to cause critical-hit. */
+#define ST_CRITICAL_CHANCE          (14)
+
+#define ST_MAX_CRITICAL             (15)
+
+#define ST_NORMAL_ABSORB            (16)
+
+#define ST_LASER_ABSORB             (17)
+
+#define ST_FIRE_ABSORB              (18)
+
+#define ST_PLASMA_ABSORB            (19)
+
+#define ST_ELECTRO_ABSORB           (20)
+
+#define ST_EMP_ABSORB               (21)
+
+#define ST_EXPLODE_ABSORB           (22)
+
+#define ST_NORMAL_RESIST            (23)
+
+#define ST_LASER_RESIST             (24)
+
+#define ST_FIRE_RESIST              (25)
+
+#define ST_PLASMA_RESIST            (26)
+
+#define ST_ELECTRO_RESIST           (27)
+
+#define ST_EMP_RESIST               (28)
+
+#define ST_EXPLODE_RESIST           (29)
+
+#define ST_RADIATION_RESISTANCE     (30)
+
+#define ST_POISON_RESISTANCE        (31)
+
+#define ST_STRENGTH_EXT             (32)
+#define ST_PERCEPTION_EXT           (33)
+#define ST_ENDURANCE_EXT            (34)
+#define ST_CHARISMA_EXT             (35)
+#define ST_INTELLECT_EXT            (36)
+#define ST_AGILITY_EXT              (37)
+#define ST_LUCK_EXT                 (38)
+#define ST_MAX_LIFE_EXT             (39)
+#define ST_ACTION_POINTS_EXT        (40)
+#define ST_ARMOR_CLASS_EXT          (41)
+#define ST_MELEE_DAMAGE_EXT         (42)
+#define ST_CARRY_WEIGHT_EXT         (43)
+#define ST_SEQUENCE_EXT             (44)
+#define ST_HEALING_RATE_EXT         (45)
+#define ST_CRITICAL_CHANCE_EXT      (46)
+#define ST_MAX_CRITICAL_EXT         (47)
+#define ST_NORMAL_ABSORB_EXT        (48)
+#define ST_LASER_ABSORB_EXT         (49)
+#define ST_FIRE_ABSORB_EXT          (50)
+#define ST_PLASMA_ABSORB_EXT        (51)
+#define ST_ELECTRO_ABSORB_EXT       (52)
+#define ST_EMP_ABSORB_EXT           (53)
+#define ST_EXPLODE_ABSORB_EXT       (54)
+#define ST_NORMAL_RESIST_EXT        (55)
+#define ST_LASER_RESIST_EXT         (56)
+#define ST_FIRE_RESIST_EXT          (57)
+#define ST_PLASMA_RESIST_EXT        (58)
+#define ST_ELECTRO_RESIST_EXT       (59)
+#define ST_EMP_RESIST_EXT           (60)
+#define ST_EXPLODE_RESIST_EXT       (61)
+#define ST_RADIATION_RESISTANCE_EXT (62)
+#define ST_POISON_RESISTANCE_EXT    (63) // Used in engine ---
+#define ST_TOXIC                    (64)
+#define ST_RADIOACTIVE              (65)
+#define ST_KILL_EXPERIENCE          (66)
+
+/** \~russian Тип тела криттера.
+ *
+ * См. @link BodyTypes Body types@endlink.
+ *
+ */
+#define ST_BODY_TYPE                (67)
+
+#define ST_LOCOMOTION_TYPE          (68)
+#define ST_DAMAGE_TYPE              (69)
+#define ST_AGE                      (70) // Used in engine
+#define ST_GENDER                   (71) // Used in engine
+#define ST_CURRENT_HP               (72) // Used in engine
+#define ST_POISONING_LEVEL          (73) // Used in engine
+#define ST_RADIATION_LEVEL          (74) // Used in engine
+#define ST_CURRENT_AP               (75) // Used in engine
+#define ST_EXPERIENCE               (76) // Used in engine
+#define ST_LEVEL                    (77) // Used in engine
+#define ST_UNSPENT_SKILL_POINTS     (78) // Used in engine
+#define ST_UNSPENT_PERKS            (79) // Used in engine
+#define ST_KARMA                    (80) // Used in engine
+#define ST_FOLLOW_CRIT              (81) // Used in engine
+#define ST_REPLICATION_MONEY        (82) // Used in engine
+#define ST_REPLICATION_COUNT        (83) // Used in engine
+#define ST_REPLICATION_TIME         (84) // Used in engine
+#define ST_REPLICATION_COST         (85) // Used in engine
+#define ST_TURN_BASED_AC            (86) // Used in engine
+#define ST_MAX_MOVE_AP              (87) // Used in engine
+#define ST_MOVE_AP                  (88) // Used in engine
+#define ST_NPC_ROLE                 (89) // Used in engine
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR0                     (90)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR1                     (91)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR2                     (92)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR3                     (93)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR4                     (94)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR5                     (95)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR6                     (96)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR7                     (97)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR8                     (98)
+
+/** \~russian Вспомогательный стат, который может быть использован для сохранения какой-либо информации. */
+/** \~english Additional stat that can be used to store any kind of info. */
+#define ST_VAR9                     (99)
+
+#define ST_PLAYER_KARMA             (100)
+#define ST_BONUS_LOOK               (101) // Used in engine
+#define ST_RATE_OBJECT              (102) // Used in engine
+#define ST_FREE_BARTER_PLAYER       (103) // Used in engine
+
+/** \~russian Номер диалога, привязанного к криттеру.
+ *
+ * Cм. @b _dialogs.fos, @b dialogs.lst.
+ *
+ * \~english Returns the id number of critter's dialog.
+ *
+ * See: @b _dialogs.fos, @b dialogs.lst.
+ */
+#define ST_DIALOG_ID                (104) // Used in engine
+
+#define ST_AI_ID                    (105) // Used in engine
+
+/** \~russian Номера команды криттера.
+ *
+ * Cм. @b _teams.fos, @b TEAMS.TXT.
+ *
+ * @return  Номер команды криттера.
+ *
+ ** \~english Returns the id number of critter's AI team.
+ *
+ * See: @b _teams.fos, @b TEAMS.TXT.
+ */
+#define ST_TEAM_ID                  (106) // Used in engine
+
+/** \~russian Номер сумки криттера.
+ *
+ * Cм. @b _bags.fos, @b BAGS.TXT.
+ *
+ * @return Номер сумки.
+ *
+ * @see    ::GetBagItems
+ *         Critter::SetBagRefreshTime
+ */
+#define ST_BAG_ID                   (107) // Used in engine
+
+#define ST_LAST_STEAL_CR_ID         (108)
+#define ST_STEAL_COUNT              (109)
+#define ST_LAST_WEAPON_ID           (110)
+#define ST_LAST_WEAPON_USE          (111)
+#define ST_BASE_CRTYPE              (112) // Used in engine
+#define ST_DEAD_BLOCKER_ID          (113)
+#define ST_CURRENT_ARMOR_PERK       (114)
+
+/** \~russian Определяет максимальную дистанцию, с которой можно инициировать диалог с NPC.
+ *
+ * @remarks Если значение стата равно @c 0, то тогда используется значение из глобальной переменной #__TalkDistance.
+ *
+ ** \~ @see __TalkDistance
+ */
+#define ST_TALK_DISTANCE            (115)
+
+#define ST_SCALE_FACTOR             (116) // Used in engine
+
+/** \~russian Максимальное количество одновременно запущенных диалогов.
+ *
+ * ST_MAX_TALKERS < 0 - диалог не может быть начат;
+ * ST_MAX_TALKERS == 0 - значение берется из глобальной переменной __NpcMaxTalkers;
+ * ST_MAX_TALKERS > 0 - берется данное значение.
+ * @see    __NpcMaxTalkers
+ */
+#define ST_MAX_TALKERS              (119) // Used in engine
+
+/*@}*/

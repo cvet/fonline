@@ -1,0 +1,818 @@
+/** \~russian Карта.
+ *
+ ** \~english Represents map.
+ *
+ ** \~ @ingroup Server
+ */
+
+class Map
+{
+public:
+    /** \~russian Идентификатор карты. */
+    const uint Id;
+
+    /** \~russian Позволяет определить валидность объекта. */
+    /** \~english Allows to check whether underlying object is valid. */
+    const bool IsNotValid;
+
+    /**
+     * \~russian @name Скрипты и события
+     * \~english @name Scripts and events
+     * \~ @weight 300
+     */
+    //@{
+
+    /**
+     * \~russian Устанавливает новый скрипт и вызывает в нем
+     *           функцию инициализации с параметром @a firstTime равным @c true.
+     *
+     * @param   script  Имя скрипта.
+     *
+     * @return  @c true в случае успешной операции, @c false в случае провала.
+     *
+     * @remarks Если скрипт или функция не найдена, то установки значения скрипта не произойдет.
+     */
+    bool SetScript(string@+ script);
+
+    /** \~russian Возвращает ID текущего скрипта, связанного с данной картой.
+     *
+     * @return ID текущего скрипта. 0, если скрипт не назначен.
+     */
+    uint GetScriptId();
+
+    /** \~russian Биндит функцию-обработчика определенного события.
+     *
+     * @param  eventType  Тип события (см. @link MapEvents Map events@endlink).
+     * @param  funcName   Имя функции-обработчика.
+     *
+     */
+    void SetEvent(int eventType, string& funcName);
+
+    //@} // Scripts and events
+
+    /**
+     * \~russian @name Ручной вызов событий
+     * \~english @name Invoking events
+     * \~ @weight 295
+     */
+    //@{
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_FINISH. */
+    /** \~english Invokes #MAP_EVENT_FINISH event. */
+    void EventFinish(bool deleted);
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_LOOP_0. */
+    /** \~english Invokes #MAP_EVENT_LOOP_0 event. */
+    void EventLoop0();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_LOOP_1. */
+    /** \~english Invokes #MAP_EVENT_LOOP_1 event. */
+    void EventLoop1();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_LOOP_2. */
+    /** \~english Invokes #MAP_EVENT_LOOP_2 event. */
+    void EventLoop2();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_LOOP_3. */
+    /** \~english Invokes #MAP_EVENT_LOOP_3 event. */
+    void EventLoop3();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_LOOP_4. */
+    /** \~english Invokes #MAP_EVENT_LOOP_4 event. */
+    void EventLoop4();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_IN_CRITTER. */
+    /** \~english Invokes #MAP_EVENT_IN_CRITTER event. */
+    void EventInCritter(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_OUT_CRITTER. */
+    /** \~english Invokes #MAP_EVENT_OUT_CRITTER event. */
+    void EventOutCritter(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_CRITTER_DEAD. */
+    /** \~english Invokes #MAP_EVENT_CRITTER_DEAD event. */
+    void EventCritterDead(Critter& cr, Critter@ killer);
+    
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_TURN_BASED_BEGIN. */
+    /** \~english Invokes #MAP_EVENT_TURN_BASED_BEGIN event. */
+    void EventTurnBasedBegin();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_TURN_BASED_END. */
+    /** \~english Invokes #MAP_EVENT_TURN_BASED_END event. */
+    void EventTurnBasedEnd();
+
+    /** \~russian Принудительно вызывает событие #MAP_EVENT_TURN_BASED_PROCESS. */
+    /** \~english Invokes #MAP_EVENT_TURN_BASED_PROCESS event. */
+    void EventTurnBasedProcess(Critter& cr, bool beginTurn);
+
+    //@} // Ручной вызов событий
+
+    /**
+     * \~russian @name Общие
+     * \~english @name General
+     * \~ @weight 200
+     */
+    //@{
+
+    /** \~russian Возвращает ID прототипа карты.
+     *
+     * @return ID прототипа карты. В случае провала - 0.
+     */
+    uint16 GetProtoId();
+
+    /** \~russian Позволяет получить локацию, в которой находится карта.
+     *
+     * @return Указатель на локацию.
+     */
+    Location@+ GetLocation();
+
+    /** \~russian Возвращает текущее время суток на карте.
+     *
+     * @see SetTime
+     */
+    int GetTime();
+
+    /** \~russian Позволяет изменить время суток на карте.
+     *
+     * Начальное значение берется из @b MAPS.TXT, где оно определяется
+     * параметром @a map_time, управляющим освещенностью карты.
+     * Если его там нет, то значение по умолчанию равно -1.
+     * При отрицательном значении освещенность зависит от времени в игре, а
+     * при >=0 освещенность будет анологична времени суток, начиная с 00.00, в минутах.
+     *
+     * @param  time  Устанавливаемое время суток (в минутах).
+     *
+     * @see    GetTime
+     */
+    void SetTime(int time);
+
+    /** \~russian Возвращает значение из массива для работы с собственной информацией.
+     *
+     * @param  index  Индекс ячейки массива (<code>0<=index<=63</code>).
+     *
+     * @see    SetData
+     */
+    int GetData(uint index);
+
+    /** \~russian Позволяет записать значение в массив для работы с собственной информацией.
+     *
+     * Массив для работы с собственной информацией имеет размер в 63 элемента и позволяет
+     * хранить произвольные данные для карты.
+     *
+     * @param  index  Индекс ячейки массива (<code>0<=index<=63</code>).
+     * @param  value  Записываемое значение.
+     *
+     * @see    GetData
+     */
+    void SetData(uint index, int value);
+
+    /** \~russian Позволяет проверить, возможен ли на данной карте пошаговый режим боя.
+     *
+     * @return Если @c true, то на карте возможен пошаговый режим. Если @c false, то нет.
+     *
+     * @see    BeginTurnBased
+     * @see    IsTurnBased
+     * @see    SetTurnBasedAvailability
+     */
+    bool IsTurnBasedAvailability();
+
+    /** \~russian Позволяет включить или отключить возможность пошагового режима боя на данной карте.
+     *
+     * @param value Устанавливаемое значение.
+     *
+     * @see   BeginTurnBased
+     * @see   IsTurnBased
+     * @see   IsTurnBasedAvailability
+     */
+    void SetTurnBasedAvailability(bool value);
+
+    /** \~russian Включает пошаговый режим на карте.
+     *
+     * @param  firstTurnCrit  Указатель на криттера, который ходит первым.
+     *
+     * @see    IsTurnBased
+     * @see    IsTurnBasedAvailability
+     * @see    SetTurnBasedAvailability
+     */
+    void BeginTurnBased(Critter@+ firstTurnCrit);
+    
+    /** \~russian Завершает пошаговый режим на карте.
+     *
+     * @see    IsTurnBased
+     * @see    IsTurnBasedAvailability
+     * @see    SetTurnBasedAvailability
+     */
+    void EndTurnBased();
+
+    /** \~russian Позволяет проверить, включен ли сейчас на карте пошаговый режим.
+     *
+     * @return Если @c true, то на карте включен пошаговый режим. Если @c false, то нет.
+     *
+     * @see    BeginTurnBased
+     * @see    IsTurnBasedAvailability
+     * @see    SetTurnBasedAvailability
+     */
+    bool IsTurnBased();
+
+    /** \~russian Переинициализирует карту.
+     *
+     * @return @c true – в случае успеха, @c false – в случае провала.
+     */
+    bool Reload();
+
+    /** \~russian Устанавливает период вызова loop-функций.
+     *
+     * Всего этих функций может быть 5 (@c loop_0, @c loop_1, @c loop_2 и т.д.).
+     *
+     * @param  loop  Номер loop-функции.
+     * @param  ms    Период вызова
+     *               (в миллисекундах; 1 секунда = 1000 миллисекунд.
+     *
+     * @see    MAP_EVENT_LOOP_0
+     * @see    MAP_EVENT_LOOP_1
+     * @see    MAP_EVENT_LOOP_2
+     * @see    MAP_EVENT_LOOP_3
+     * @see    MAP_EVENT_LOOP_4
+     */
+    void SetLoopTime(uint8 loop, uint16 ms);
+
+    /** \~russian Возвращает ширину карты. */
+    /** \~english Returns map width. */
+    uint16 GetWidth();
+
+    /** \~russian Возвращает высоту карты. */
+    /** \~english Returns map height. */
+    uint16 GetHeight();
+
+    //@}
+
+    /**
+     * \~russian @name Визуальные и аудио эффекты
+     * \~english @name Visual and audio effects
+     * \~ @weight 190
+     */
+    //@{
+
+    /** \~russian Проигрывает анимацию указанного эффекта (например, анимацию взрыва).
+     *
+     * @param  protoId       ID прототипа эффекта (см. @b Effects в файле @b ITEMPID.H).
+     * @param  hexX, hexY    Координаты гексагона, на котором необходимо проиграть анимацию.
+     * @param  effectRadius  Радиус эффекта.
+     */
+    void RunEffect(uint16 protoId, uint16 hexX, uint16 hexY, uint effectRadius);
+
+    /** \~russian Проигрывает летящую анимацию указанного эффекта (например, анимацию летящего снаряда).
+     *
+     * Приоритетным является указание криттера. Если передается @c null,
+     * то берутся координаты гексагонов.
+     *
+     * @param  protoId       ID прототипа эффекта (см. @b Effects в файле @b ITEMPID.H).
+     * @param  fromCr        Криттер, от которого должен лететь снаряд.
+     * @param  toCr          Криттер, к которому должен лететь снаряд.
+     * @param  fromX, fromY  Координаты гексагона, из которого должен вылететь снаряд.
+     * @param  toX, toY      Координаты гексагона, в который должен прилететь снаряд.
+     */
+    void RunFlyEffect(uint16 protoId,
+        Critter@+ fromCr, Critter@+ toCr,
+        uint16 fromX, uint16 fromY, uint16 toX, uint16 toY);
+
+    /** \~russian Возвращает плотность дождя.
+     *
+     * @return Плотность дождя.
+     *
+     * @see    SetRain
+     */
+    uint8 GetRain();
+
+    /** \~russian Включает/выключает дождь.
+     *
+     * @param  capacity  Плотность дождя.
+     *                   Если плотность дождя == 0, то это значит, что дождь отключен.
+     *                   Максимальное значение – 255.
+     *
+     * @see    GetRain
+     */
+    void SetRain(uint8 capacity);
+
+    /** \~russian Выводит надпись в указанном гексагоне карты.
+     *
+     * Если на этом гексагоне находится предмет или криттер, то надпись будет показана над ними.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     * @param  color       Цвет шрифта.
+     *                     Для задания цвета шрифта пользуйтесь специальным макросом
+     *                     (см. @b Other в файле @b _macros.fos).
+     * @param  text        Выводимый текст.
+     */
+    void SetText(uint16 hexX, uint16 hexY, uint color, string text);
+
+    /** \~russian Выводит надпись в указанном гексагоне карты.
+     *
+     * Если на этом гексагоне находится предмет или криттер, то надпись будет показана над ними.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     * @param  color       Цвет шрифта.
+     *                     Для задания цвета шрифта пользуйтесь специальным макросом
+     *                     (см. @b Other в файле @b _macros.fos).
+     * @param  textMsg     Номер MSG файла (см. @link MsgNums Msg nums@endlink).
+     * @param  strNum      Номер строки.
+     *
+     * @see    SetTextMsg(uint16, uint16, uint, uint16, uint, string&)
+     */
+    void SetTextMsg(uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum);
+
+    /** \~russian Выводит надпись в указанном гексагоне карты.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     * @param  color       Цвет шрифта.
+     *                     Для задания цвета шрифта пользуйтесь специальным макросом
+     *                     (см. @b Other в файле @b _macros.fos).
+     * @param  textMsg     Номер MSG файла (см. @link MsgNums Msg nums@endlink).
+     * @param  strNum      Номер строки.
+     * @param  lexems      Строка значений лексем
+     *                     (см. <a href="http://fonline.ru/fowork/wiki/index.php/Скрипты: Работа с диалогом#@lex name@">описание тэга \@lex\@</a>,
+     *                     где описан формат строки).
+     *
+     * @see    SetTextMsg(uint16, uint16, uint, uint16, uint)
+     */
+    void SetTextMsg(uint16 hexX, uint16 hexY, uint color, uint16 textMsg, uint strNum, string& lexems);
+
+    /** \~russian Проигрывает звук на стороне клиента.
+     *
+     * @param soundName Имя звука в клиенте.
+     */
+    void PlaySound(string& soundName);
+
+    /** \~russian Проигрывает звук с эпицентром в указанном гексагоне на стороне клиента.
+     *
+     * @param  soundName   Имя звука в клиенте.
+     * @param  hexX, hexY  Координаты гексагона, в котором находится эпицентр звука.
+     * @param  radius      В радиусе скольких клеток будет слышен звук;
+     *                     если указан 0, то услышат те, у кого радиус видимости достигает эпицентра.
+     */
+    void PlaySound(string& soundName, uint16 hexX, uint16 hexY, uint radius);
+
+    //@}
+
+    /**
+     * \~russian @name Для криттеров
+     * \~english @name For critters
+     * \~ @weight 180
+     */
+    //@{
+
+    /** \~russian Возвращает указатель на криттера, который находится в указанном гексагоне.
+     *
+     * @param  hexX, hexY  Координаты гексагона, на котором находится криттер.
+     *
+     * @return Указатель на экземпляр класса Critter. В случае провала – @c null.
+     */
+    Critter@+ GetCritter(uint16 hexX, uint16 hexY);
+
+    /** \~russian Возвращает указатель на криттера, с указанным ID.
+     *
+     * @param  critterId  Уникальный ID криттера.
+     *
+     * @return Указатель на экземпляр класса Critter. В случае провала – @c null.
+     */
+    Critter@+ GetCritter(uint critterId);
+
+    /** \~russian Находит криттеров, находящихся в указанной области.
+     *
+     * @param   hexX, hexY  Координаты гексагона, относительно которого будет проведен поиск криттеров.
+     * @param   radius      Радиус поиска, в гексагонах.
+     * @param   findType    Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters    Массив указателей на криттеров, которые были найдены.
+     *                      Этот массив будет дописан с конца найденными криттерами.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     *
+     * @remarks Найденные криттеры будут отсортированы по отдалению от базовой точки.
+     */
+    uint GetCrittersHex(uint16 hexX, uint16 hexY, uint radius, int findType, Critter@[]@+ critters);
+
+    /** \~russian Проводит трассировку с указанными параметрами и находит всех криттеров, под неё попавших.
+     *
+     * @param   fromHx, fromHy  Координаты стартового гексагона.
+     * @param   toHx, toHy      Координаты гексагона назначения.
+     * @param   angle           Угол отклонения луча, в градусах.
+     * @param   dist            Максимальная дистанция трассировки.
+     * @param   findType        Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters        Массив указателей на криттеров, которые были найдены.
+     *                          Этот массив будет дописан с конца найденными криттерами.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     */
+    uint GetCrittersPath(
+        uint16 fromHx, uint16 fromHy,
+        uint16 toHx, uint16 toHy,
+        float angle, uint dist, int findType, Critter@[]@+ critters);
+
+    /** \~russian Проводит трассировку с указанными параметрами и находит всех криттеров, под неё попавших.
+     *
+     * @param          fromHx, fromHy          Координаты стартового гексагона.
+     * @param          toHx, toHy              Координаты гексагона назначения.
+     * @param          angle                   Угол отклонения луча, в градусах.
+     * @param          dist                    Максимальная дистанция трассировки.
+     * @param          findType                Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param          critters                Массив указателей на криттеров, которые были найдены.
+     *                                         Этот массив будет дописан с конца найденными криттерами.
+     * @param   [out]  preBlockHx, preBlockHy  Позиция гекса перед препятствием.
+     * @param   [out]  blockHx, blockHy        Позиция гекса препятствия.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Если координаты @a preBlock* равны @a block*, то значит препятствия не было.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     */
+    uint GetCrittersPath(
+        uint16 fromHx, uint16 fromHy,
+        uint16 toHx, uint16 toHy,
+        float angle, uint dist, int findType, Critter@[]@+ critters,
+        uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy);
+
+    /** \~russian Находит на карте всех криттеров, имеющих указанный прототип.
+     *
+     * @param   pid       Прототип NPC (см. @b _npc_pids.fos).
+     *                    При @a pid, равном -1, выбираются игроки, при -2 - NPC, при 0 - все криттеры (и игроки, и NPC) (?).
+     * @param   findType  Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters  Массив указателей на криттеров. Этот массив будет дописан с конца найденными криттерами.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     */
+    uint GetCritters(uint16 pid, int findType, Critter@[]@+ critters);
+
+    /** \~russian Собирает всех криттеров, которые видят указанный путь.
+     *
+     * @param   fromHx, fromHy  Координаты стартового гексагона пути.
+     * @param   toHx, toHy      Координаты целевого гексагона пути.
+     * @param   findType        Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters        Массив указателей на криттеров, которые были найдены.
+     *                          Этот массив будет дописан с конца найденными криттерами.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Если вызывать метод несколько раз, в разных отрезках,
+     *          но с одним массивом криттеров, то будут дописываться лишь те криттеры,
+     *          которых нет в массиве.
+     */
+    uint GetCrittersWhoViewPath(
+        uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy,
+        int findType, Critter@[]@+ critters);
+
+    /** \~russian Позволяет получить всех криттеров, которые видят криттера из группы или которых видят криттеры из группы.
+     *
+     * @param   critters        Исходная группа криттеров. В результирующий массив будет записана в первую очередь.
+     * @param   lookOnThem      Указывает, найти тех, кто видит этих криттеров (@c true) или
+     *                          тех, кого видят криттеры (@c false).
+     * @param   findType        Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   crittersResult  Результирующий массив, в который будут дописаны найденные криттеры.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Если при добавлении криттера, он уже присутствует в результирующем массиве,
+     *          то повторно он туда не добавится.
+     */
+    uint GetCrittersSeeing(Critter@[]& critters, bool lookOnThem, int findType, Critter@[]@+ crittersResult);
+
+    /** \~russian Добавляет криттера в указанный гексагон на карте.
+     *
+     * @param  protoId     Номер прототипа NPC (см. файл @b _npc_pids.fos).
+     * @param  hexX, hexY  Координаты гексагона.
+     * @param  dir         Направление.
+     *
+     * @return Указатель на экземпляр класса Critter, если криттер создан.
+     *         В противном случае – @c null.
+     */
+    Critter@+ AddNpc(uint16 protoId, uint16 hexX, uint16 hexY, uint8 dir);
+
+    /** \~russian Возвращает количество NPC на карте, имеющих указанное значение параметра #ST_NPC_ROLE.
+     *
+     * @param  npcRole   Роль NPC.
+     * @param  findType  Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     *
+     * @return Количество NPC на карте, имеющих указанное значение параметра #ST_NPC_ROLE.
+     *
+     * @see GetNpc
+     */
+    uint GetNpcCount(int npcRole, int findType);
+
+    /** \~russian Выбор NPC по его роли.
+     *
+     * @param  npcRole    Роль NPC.
+     * @param  findType   Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param  skipCount  Количество пропусков. Необходимо использовать этот параметр
+     *                    в том случае, если на карте есть несколько NPC с одной ролью.
+     *
+     * @return Указатель на экземпляр класса Critter, если NPC найде.
+     *         @c null – в противном случае.
+     *
+     * @see    GetNpcCount
+     */
+    Critter@+ GetNpc(int npcRole, int findType, uint skipCount);
+
+    //@}
+
+    /**
+     * \~russian @name Для предметов
+     * \~english @name For items
+     * \~ @weight 170
+     */
+    //@{
+
+    /** \~russian Добавляет предмет в указанный гексагон на карте.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     * @param  protoId ID  Прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  count       Количество предметов.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ AddItem(uint16 hexX, uint16 hexY, uint16 protoId, uint count);
+
+    /** \~russian Возвращает указатель на объект предмета, который находится на карте.
+     *
+     * @param  itemId  Уникальный ID предмета.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ GetItem(uint itemId);
+
+    /** \~russian Возвращает указатель на объект предмета, который находится на карте.
+     *
+     * @param  hexX, hexY  Координаты гексагона, на котором находится предмет.
+     * @param  protoId     ID прототипа предмета (см. файл @b ITEMPID.H).
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ GetItem(uint16 hexX, uint16 hexY, uint16 protoId);
+
+    /** \~russian Находит все предметы, находящиеся на указанном гексагоне.
+     *
+     * @param  hexX, hexY  Координаты гексагона, на котором ищутся предметы.
+     * @param  items       Массив указателей на предметы, в который будут записаны найденные предметы.
+     *
+     * @return Количество найденных предметов.
+     */
+    uint GetItems(uint16 hexX, uint16 hexY, Item@[]@+ items);
+
+    /** \~russian Находит на карте все предметы с указанным номером прототипа.
+     *
+     * @param  protoId  ID прототипа (см. файл @b ITEMPID.H).
+     * @param  items    Массив, в который будут записаны указатели на найденные предметы.
+     *
+     * @return Количество найденных предметов.
+     */
+    uint GetItems(uint16 protoId, Item@[]@+ items);
+
+    /** \~russian Находит на карте все предметы указанного типа.
+     *
+     * @param  type   Тип предмета (см. @link ItemsTypes Items types@endlink).
+     * @param  items  Массив, в конец которого будут записаны найденные предметы.
+     *
+     * @return Количество найденных на карте предметов указанного типа.
+     */
+    uint GetItemsByType(int type, Item@[]@+ items);
+
+    /** \~russian Возвращает указатель на объект двери, находящейся в указанном гексагоне.
+     *
+     * @warning Помните, что двери относятся к классу Item.
+     *
+     * @param   hexX, hexY  Координаты гексагона, на котором находится объект.
+     *
+     * @return  Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ GetDoor(uint16 hexX, uint16 hexY);
+
+    /** \~russian Открывает дверь или контейнер.
+     *
+     * @param  door  Дверь или контейнер, который необходимо открыть.
+     *
+     * @return В случае успешного открытия - @c true. В случае провала – @c false.
+     *
+     * @see    CloseDoor
+     */
+    bool OpenDoor(Item& door);
+
+    /** \~russian Закрывает дверь или контейнер.
+     *
+     * @param  door  Дверь или контейнер, который необходимо закрыть.
+     *
+     * @return В случае успешного закрытия - @c true. В случае провала – @c false.
+     *
+     * @see    OpenDoor
+     */
+    bool CloseDoor(Item& door);
+
+    /** \~russian Возвращает указатель на объект машины, которая находится в указанном гексагоне.
+     *
+     * @param  hexX, hexY  Координаты гексагона, на котором находится объект.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ GetCar(uint16 hexX, uint16 hexY);
+
+    //@}
+
+    /**
+     * \~russian @name Для гексагонов
+     * \~english @name For hexagons
+     * \~ @weight 160
+     */
+    //@{
+
+    /** \~russian Проверяет, можно ли поставить на данный гексагон карты указанный предмет.
+     *
+     * @param  hexX, hexY  Предполагаемые координаты машины.
+     * @param  protoCar    Номер прототипа предмета.
+     *
+     * @return @c true – если место подходит для установки предмета;
+     *         @c false – если место не подходит.
+     */
+    bool CheckPlaceForItem(uint16 hexX, uint16 hexY, uint16 protoCar);
+
+    /** \~russian Возвращает количество специально обозначенных гексагонов.
+     *
+     * Гексагоны обозначаются в редакторе карт.
+     *
+     * @param  entire  Идентификатор группы гексагонов. Устанавливается по усмотрению разработчика карты.
+     *
+     * @return Количество найденных гексагонов с указанным значением идентификатора <code>EntireNum</code>.
+     *
+     * @see    GetEntireCoords
+     */
+    uint CountEntire(uint8 entire);
+
+    /** \~russian Возвращает координаты специально обозначенного гексагона.
+     *
+     * Гексагоны обозначаются в редакторе карт и несколько гексагонов могут входить в одну группу,
+     * которая имеет свой идентификатор.
+     *
+     * @param  [in]   entire      Идентификатор группы гексагонов.
+     *                            Устанавливается по усмотрению разработчика карты.
+     * @param  [in]   num         Порядковый номер гексагона в группе.
+     * @param  [out]  hexX, hexY  Переменные, в которые функция запишет координаты гексагона.
+     *
+     * @return @c true – при удачном выполнении функции;
+     *         @c false – при провале.
+     *
+     * @see    CountEntire
+     */
+    bool GetEntireCoords(uint8 entire, uint8 num, uint16& hexX, uint16& hexY);
+    
+    /** \~russian Расширенная версия функции @ref GetEntireCoords, возвращающая направление (Dir) */
+    bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY, uint8& dir);
+    
+    /** \~russian Для поиска ближайшего гекса.
+    *
+    * @param entire  Номер энтайра, если -1, то будет то будет возвращен ближайший валидный номер.
+    * @param hexX, hexY Координаты в области которых нужно производить поиск
+    *
+    * @return @a true, в случае успеха.
+    *
+    */
+    bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY);
+    
+    /** \~russian Расширенная версия функции @ref GetNearEntireCoords, возвращающая направление (Dir) */
+    bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY, uint8& dir);
+
+    /** \~russian Позволяет получить координаты гексагона, достигнутого при трассировке по указанной траектории.
+     *
+     * С помощью этой функции можно реализовывать, например, промахи метательного
+     * оружия и выстрела из базуки.
+     *
+     * @param   [in]   fromHx, fromHy  Cтартовые гексы.
+     * @param   [out]  toHx, toHy      Переменные, в которые будут записаны итоговые координаты.
+     * @param   [in]   angle           Угол отклонения луча (в градусах).
+     * @param   [in]   dist            Дистанция до нужного гекса.
+     *
+     * @remarks Если на пути попадется не простреливаемый (#IsHexRaked) гекс,
+     *          то итоговые координаты будут указывать на гекс перед препятствием.
+     *
+     * @remarks При <code>(dist == 0)</code> берется дистанция от гекса до гекса.
+     */
+    void GetHexCoord(uint16 fromHx, uint16  fromHy,
+        uint16& toHx, uint16& toHy, float angle, uint dist);
+
+    /** \~russian Позволяет получить координаты гексагона, достигнутого при трассировке по указанной траектории.
+     *
+     * Позволяет определить последний гекс перед стеной, т.к. криттеры и простреливаемые
+     * предметы игрнорируются при трассировке с помощью данного метода.
+     *
+     * @param  [in]   fromHx, fromHy  Cтартовые гексы.
+     * @param  [out]  toHx, toHy      Переменные, в которые будут записаны итоговые координаты.
+     * @param  [in]   angle           Угол отклонения луча (в градусах).
+     * @param  [in]   dist            Дистанция до нужного гекса.
+     *
+     * @remarks Если на пути попадется непроходимый (#IsHexPassed) гекс,
+     *          то итоговые координаты будут указывать на гекс перед препятствием.
+     *
+     * @see     GetHexCoord
+     */
+    void GetHexCoordWall(uint16 fromHx, uint16 fromHy,
+        uint16& toHx, uint16& toHy, float angle, uint dist);
+
+    /** \~russian Проверяет, проходим ли гексагон или нет.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     *
+     * @return @c true – если гексагон проходим;
+     *         @c false – если гексагон непроходим.
+     */
+    bool IsHexPassed(uint16 hexX, uint16 hexY);
+
+    /** \~russian Проверяет, простреливается ли гексагон.
+     *
+     * @param  hexX, hexY  Координаты гексагона.
+     *
+     * @return @c true – если гексагон простреливаем;
+     *         @c false – если гексагон непростреливаем.
+     */
+    bool IsHexRaked(uint16 hexX, uint16 hexY);
+
+    /** \~russian Определяет длину пути между гексагонами.
+     *
+     * @param  fromHx, fromHy  Координаты исходного гексагона.
+     * @param  toHx, toHy      Координаты целевого гексагона.
+     * @param  cut             Указывает, на сколько гексагонов необходимо обрезать путь с конца.
+     *
+     * @return Длина пути между гексагонами. Если путь заблокирован, то возвращается 0.
+     */
+    uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut);
+
+    /** \~russian Определяет длину пути от персонажа до указанного гекса учитывая мултигексовость персонажа.
+     *
+     * @param  cr              Персонаж, от которого ищется путь.
+     * @param  toHx, toHy      Координаты целевого гексагона.
+     * @param  cut             Указывает, на сколько гексагонов необходимо обрезать путь с конца.
+     *
+     * @return Длина пути. Если путь заблокирован, то возвращается 0.
+     */
+    uint GetPathLength(Critter& cr, uint16 toHx, uint16 toHy, uint cut);
+
+    /** \~russian Двигает гексы @a hx, @a hy в направлении @a dir на @a steps шагов.
+     *
+     * Т.к. хексагональная сетка имеет своеобразную систему координат,
+     * эта функция будет хорошим помощником для точной подстройки позиции.
+     *
+     * @param   [out]  hexX, hexY  Подстраиваемые координаты.
+     * @param   [in]   dir         Направление смещения.
+     * @param   [in]   steps       Количество шагов смещения.
+     *
+     * @remarks В методе проводятся проверки на выходы из границ карты.
+     */
+    void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps);
+
+    //@}
+
+    /**
+     * \~russian @name Для сценери
+     * \~english @name For scenery
+     * \~ @weight 180
+     */
+    //@{
+
+    /** \~russian Позовляет получить объект сценери нужного прототипа в указанном гексагоне карты.
+     *
+     * @param   hexX, hexY  Координаты гексагона карты, на котором находится объект сценери.
+     * @param   protoId     Номер прототипа сценери.
+     *
+     * @return  Указатель на экземпляр класса Scenery.
+     *          @c null – если в указанном месте сценери с указанным прототипом нет.
+     *
+     */
+    Scenery@+ GetScenery(uint16 hexX, uint16 hexY, uint16 protoId);
+
+    /** \~russian Позволяет получить все объекты сценери в указанном гексагоне карты.
+     *
+     * @param   hexX, hexY  Координаты гексагона карты.
+     * @param   sceneries   Массив, в конец которого будут записаны все найденные объекты сценери.
+     *
+     * @return  Количество объектов сценери в указанном гексагоне карты.
+     *
+     */
+    uint GetSceneries(uint16 hexX, uint16 hexY, Scenery@[]@+ sceneries);
+
+    /** \~russian Позволяет получить все имеющиеся на карте объекты сценери с указанными прототипом.
+     *
+     * @param   protoId    Номер прототипа сценери.
+     * @param   sceneries  Массив, в конец которого будут записаны все найденные объекты сценери.
+     *
+     * @return  Количество найденных объектов сценери.
+     *
+     */
+    uint GetSceneries(uint16 protoId, Scenery@[]@+ sceneries);
+
+    //@}
+}

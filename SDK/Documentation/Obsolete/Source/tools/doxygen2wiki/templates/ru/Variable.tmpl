@@ -1,0 +1,13 @@
+ |<code as short>$v.type</code>#if $anchor: {{anchor|$anchor}}
+ |<code as short>$v.name</code>#
+#if len($brief_description) > 0 or len($detailed_description) > 0
+
+ |#
+#if len($brief_description) > 0:
+ $brief_description#
+#end if
+#if len($detailed_description) > 0:
+ $detailed_description#
+#end if
+#end if
+ 

@@ -1,0 +1,5821 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<NotepadPlus>
+
+<!--
+ language doesnt really mean anything, its more of a comment 
+-->
+
+	<AutoComplete language="FO">
+
+<!--
+
+		Environment specifies how the language should be interpreted. ignoreCase makes autocomplete
+		ignore any casing, start and stopFunc specify what chars a function starts and stops with.
+		param specifies parameter separator and terminal can be used to specify a character that stops
+		any function. Using the same character for different functions results in undefined behaviour.
+		
+-->
+		<Environment ignoreCase="yes" startFunc="(" stopFunc=")" paramSeparator="," terminal=";" />
+
+<!--
+
+		The following items should be alphabetically ordered.
+		func="yes" means the keyword should be treated as a fuction, and thus can be used in the parameter
+		calltip system. If this is the case, the retVal attribute specifies the return value/type. Any
+		following Param tag specifies a parameter, they must be in order. The name attributes specifies
+		the parameter name.
+		
+-->
+		<KeyWord name="#define" />
+		<KeyWord name="#include" />
+		<KeyWord name="Accessory" />
+		<KeyWord name="ACCESSORY_CONT" />
+		<KeyWord name="ACCESSORY_CRIT" />
+		<KeyWord name="ACCESSORY_HEX" />
+		<KeyWord name="ACCESS_ADMIN" />
+		<KeyWord name="ACCESS_CLIENT" />
+		<KeyWord name="ACCESS_MODER" />
+		<KeyWord name="ACCESS_TESTER" />
+		<KeyWord name="Action" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="int action" />
+				<Param name="int actionExt" />
+				<Param name="Item@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ACTION_BARTER" />
+		<KeyWord name="ACTION_CONNECT" />
+		<KeyWord name="ACTION_DAMAGE" />
+		<KeyWord name="ACTION_DAMAGE_FORCE" />
+		<KeyWord name="ACTION_DEAD" />
+		<KeyWord name="ACTION_DISCONNECT" />
+		<KeyWord name="ACTION_DODGE" />
+		<KeyWord name="ACTION_DROP_ITEM" />
+		<KeyWord name="ACTION_FIDGET" />
+		<KeyWord name="ACTION_KNOCKOUT" />
+		<KeyWord name="ACTION_MOVE" />
+		<KeyWord name="ACTION_MOVE_ITEM" />
+		<KeyWord name="ACTION_OPERATE_CONTAINER" />
+		<KeyWord name="ACTION_PICK_CRITTER" />
+		<KeyWord name="ACTION_PICK_ITEM" />
+		<KeyWord name="ACTION_REFRESH" />
+		<KeyWord name="ACTION_RELOAD_WEAPON" />
+		<KeyWord name="ACTION_RESPAWN" />
+		<KeyWord name="ACTION_RUN" />
+		<KeyWord name="ACTION_STANDUP" />
+		<KeyWord name="ACTION_USE_ITEM" />
+		<KeyWord name="ACTION_USE_SKILL" />
+		<KeyWord name="ACTION_USE_WEAPON" />
+		<KeyWord name="ACT_ACTIVATE_OBJ" />
+		<KeyWord name="ACT_CHANGE_ARM" />
+		<KeyWord name="ACT_CR_DEAD" />
+		<KeyWord name="ACT_DACTIVATE_OBJ" />
+		<KeyWord name="ACT_DEAD" />
+		<KeyWord name="ACT_DEFEAT" />
+		<KeyWord name="ACT_DEFEAT_FRONT" />
+		<KeyWord name="ACT_DEFEAT_KO_FRONT" />
+		<KeyWord name="ACT_DEFEAT_KO_REAR" />
+		<KeyWord name="ACT_DEFEAT_MISS" />
+		<KeyWord name="ACT_DEFEAT_REAR" />
+		<KeyWord name="ACT_DISCONNECT" />
+		<KeyWord name="ACT_DROP_OBJ" />
+		<KeyWord name="ACT_HIDE_OBJ" />
+		<KeyWord name="ACT_NULL" />
+		<KeyWord name="ACT_PICK_OBJ_DOWN" />
+		<KeyWord name="ACT_PICK_OBJ_UP" />
+		<KeyWord name="ACT_REFRESH" />
+		<KeyWord name="ACT_SHOW_OBJ" />
+		<KeyWord name="ACT_USE_OBJ" />
+		<KeyWord name="AddAttackPlane" func="yes">
+			<Overload retVal="bool" descr="SDK script function.&#x0a;See npc_planes.fos">
+				<Param name="Critter@ who" />
+				<Param name="uint minHp" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddConstant" func="yes">
+			<Overload retVal="void" descr="Server, Client, Mapper">
+				<Param name="int constCollection" />
+				<Param name="string@+ name" />
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddEnemyInStack" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddHolodiskInfo" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint holodiskNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddItem" func="yes">
+			<Overload retVal="Item@" descr="Critter::, Item:: (containers), Map::">
+				<Param name="uint16 protoId" />
+				<Param name="uint count" />
+				<Param name="uint specialId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddNpc" func="yes">
+			<Overload retVal="Critter@" descr="Map::">
+				<Param name="uint16 protoId" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+				<Param name="int[]@ params" />
+				<Param name="int[]@ items" />
+				<Param name="string@ script" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddPickPlane" func="yes">
+			<Overload retVal="bool" descr="SDK script function.&#x0a;See npc_planes.fos">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddPlane" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="NpcPlane@ plane" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddScore" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint score" />
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddTile" func="yes">
+			<Overload retVal="void" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="int offsX" />
+				<Param name="int offsY" />
+				<Param name="int layer" />
+				<Param name="bool roof" />
+				<Param name="uint picHash" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddTileName" func="yes">
+			<Overload retVal="void" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="int offsX" />
+				<Param name="int offsY" />
+				<Param name="int layer" />
+				<Param name="bool roof" />
+				<Param name="string@+ picName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddTextListener" func="yes">
+			<Overload retVal="bool" descr="Server">
+				<Param name="int sayType" />
+				<Param name="string&amp; firstStr" />
+				<Param name="uint16 parameter" />
+				<Param name="string&amp; scriptName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddTimeEvent" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="string&amp; funcName" />
+				<Param name="uint duration" />
+				<Param name="int identifier" />
+			</Overload>
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="string&amp; funcName" />
+				<Param name="uint duration" />
+				<Param name="int identifier" />
+				<Param name="uint rate" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AddWalkPlane" func="yes">
+			<Overload retVal="bool" descr="SDK script function.&#x0a;See npc_planes.fos">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+				<Param name="bool run" />
+				<Param name="uint8 cut" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AI_PLANE_ATTACK_PRIORY" />
+		<KeyWord name="AI_PLANE_COURIER_PRIORY" />
+		<KeyWord name="AI_PLANE_PATROL_PRIORY" />
+		<KeyWord name="AI_PLANE_PICK_PRIORY" />
+		<KeyWord name="AI_PLANE_MISC_PRIORY" />
+		<KeyWord name="AI_PLANE_WALK_PRIOR" />
+		<KeyWord name="AllowSlot" func="yes">
+			<Overload retVal="void" descr="Server, Client, Mapper">
+				<Param name="uint8 index" />
+				<Param name="string&amp; iniOption" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AmmoCount" />
+		<KeyWord name="AmmoPid" />
+		<KeyWord name="Ammo_Caliber" />
+		<KeyWord name="and" />
+		<KeyWord name="ANIM1_COLOR_ARMOR" func="yes">
+			<Overload retVal="color" descr="Macros">
+				<Param name="index (0 - 15)" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ANIM1_COLOR_HAIR" func="yes">
+			<Overload retVal="color" descr="Macros">
+				<Param name="index (0 - 15)" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ANIM1_COLOR_SKIN" func="yes">
+			<Overload retVal="color" descr="Macros">
+				<Param name="index (0 - 15)" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Anim3dLayer" />
+		<KeyWord name="Animate" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint8 crType" />
+				<Param name="uint8 anim1" />
+				<Param name="uint8 anim2" />
+				<Param name="Item@ item" />
+				<Param name="bool clearSequence" />
+				<Param name="bool delayPlay" />
+				<Param name="bool sendSelf" />
+			</Overload>
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint8 crType" />
+				<Param name="uint8 anim1" />
+				<Param name="uint8 anim2" />
+				<Param name="Item@ item" />
+				<Param name="bool clearSequence" />
+				<Param name="bool delayPlay" />
+			</Overload>
+			<Overload retVal="void" descr="ItemCl::">
+				<Param name="uint8 fromFrame" />
+				<Param name="uint8 toFrame" />
+			</Overload>
+			<Overload retVal="void" descr="CritterCl::">
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+			</Overload>
+			<Overload retVal="void" descr="CritterCl::">
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="ItemCl@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="animation2d_process" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="bool animateStay" />
+				<Param name="CritterCl&amp; cr" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="ItemCl@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="animation3d_process" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="bool animateStay" />
+				<Param name="CritterCl&amp; cr" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="ItemCl@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AnimHide_0" />
+		<KeyWord name="AnimHide_1" />
+		<KeyWord name="AnimHideBegin" />
+		<KeyWord name="AnimHideEnd" />
+		<KeyWord name="AnimShow_0" />
+		<KeyWord name="AnimShow_1" />
+		<KeyWord name="AnimShowBegin" />
+		<KeyWord name="AnimShowEnd" />
+		<KeyWord name="AnimStay_0" />
+		<KeyWord name="AnimStay_1" />
+		<KeyWord name="AnimStayBegin" />
+		<KeyWord name="AnimStayEnd" />
+		<KeyWord name="AnimWaitBase" />
+		<KeyWord name="AnimWaitRndMax" />
+		<KeyWord name="AnimWaitRndMin" />
+		<KeyWord name="AppendIfaceIni" func="yes">
+			<Overload retVal="bool" descr="Client&#x0a;Если iniName имеет слеши, то поиск производится из корня data, если нет, то в data/art/intrface/">
+				<Param name="string&amp; iniName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ArrayErase" func="yes">
+			<Overload retVal="void">
+				<Param name="int[]" />
+				<Param name="uint" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Critter[]" />
+				<Param name="uint" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ArrayPushBack" func="yes">
+			<Overload retVal="void">
+				<Param name="int[]" />
+				<Param name="int" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Critter[]" />
+				<Param name="Critter" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="AS_ALLOW_IMPLICIT_HANDLE_TYPES" />
+		<KeyWord name="AS_ALLOW_MULTILINE_STRINGS" />
+		<KeyWord name="AS_ALLOW_UNSAFE_REFERENCES" />
+		<KeyWord name="AS_BUILD_WITHOUT_LINE_CUES" />
+		<KeyWord name="AS_COPY_SCRIPT_SECTIONS" />
+		<KeyWord name="AS_INCLUDE_JIT_INSTRUCTIONS" />
+		<KeyWord name="AS_INIT_GLOBAL_VARS_AFTER_BUILD" />
+		<KeyWord name="AS_MAX_STACK_SIZE" />
+		<KeyWord name="AS_OPTIMIZE_BYTECODE" />
+		<KeyWord name="AS_REQUIRE_ENUM_SCOPE" />
+		<KeyWord name="AS_SCRIPT_SCANNER" />
+		<KeyWord name="AS_STRING_ENCODING" />
+		<KeyWord name="AS_USE_CHARACTER_LITERALS" />
+		<KeyWord name="Attack_GagHexX" />
+		<KeyWord name="Attack_GagHexY" />
+		<KeyWord name="Attack_IsGag" />
+		<KeyWord name="Attack_LastHexX" />
+		<KeyWord name="Attack_LastHexY" />
+		<KeyWord name="Attack_MinHp" />
+		<KeyWord name="Attack_Run" />
+		<KeyWord name="Attack_TargId" />
+		<KeyWord name="BeginTurnBased" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="Critter@ firstTurnCritr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="BigGun" />
+		<KeyWord name="bits" />
+		<KeyWord name="bits16" />
+		<KeyWord name="bits32" />
+		<KeyWord name="bits8" />
+		<KeyWord name="BlockLines" />
+		<KeyWord name="bool" />
+		<KeyWord name="break" />
+		<KeyWord name="BrokenCount" />
+		<KeyWord name="BrokenFlags" />
+		<KeyWord name="BrokenInfo" />
+		<KeyWord name="CallSceneryFunction" func="yes">
+			<Overload retVal="bool" descr="Scenery::">
+				<Param name="Critter&amp; cr" />
+				<Param name="int skill" />
+				<Param name="Item@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Car_CrittersCapacity" />
+		<KeyWord name="Car_DeteriorationRate" />
+		<KeyWord name="Car_Entrance" />
+		<KeyWord name="Car_FuelConsumption" />
+		<KeyWord name="Car_TankVolume" />
+		<KeyWord name="Car_MaxDeterioration" />
+		<KeyWord name="Car_MovementType" />
+		<KeyWord name="Car_Negotiability" />
+		<KeyWord name="Car_Passability" />
+		<KeyWord name="Car_RunToBreak" />
+		<KeyWord name="Car_Speed" />
+		<KeyWord name="Car_WalkType" />
+		<KeyWord name="Car_Wear" />
+		<KeyWord name="ChangeCrType" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="uint newType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ChangeCursor" func="yes">
+			<Overload retVal="void" descr="Client">
+				<Param name="int cursor" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ChangeEnemyStackSize" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint newSize" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ChangeProto" func="yes">
+			<Overload retVal="bool" descr="Item::">
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ChangeTimeEvent" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint index" />
+				<Param name="uint newDuration" />
+				<Param name="uint newRate" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Charge" />
+		<KeyWord name="CheckEnemyInStack" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="uint critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CheckPlaceForItem" func="yes">
+			<Overload retVal="bool" descr="Map::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 protoCar" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="check_look" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Map&amp; map" />
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter&amp; opponent" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="check_trap_look" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Map&amp; map" />
+				<Param name="Critter&amp; cr" />
+				<Param name="Item&amp; trapItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Child" />
+		<KeyWord name="ChildLines_0" />
+		<KeyWord name="ChildLines_1" />
+		<KeyWord name="ChildLines_2" />
+		<KeyWord name="ChildLines_3" />
+		<KeyWord name="ChildLines_4" />
+		<KeyWord name="ChildPid_0" />
+		<KeyWord name="ChildPid_1" />
+		<KeyWord name="ChildPid_2" />
+		<KeyWord name="ChildPid_3" />
+		<KeyWord name="ChildPid_4" />
+		<KeyWord name="CLAMP" />
+		<KeyWord name="class" />
+		<KeyWord name="ClearAnim" func="yes">
+			<Overload retVal="void" descr="CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ClearEnemyStack" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CLIENT_SCREEN_AIM" />
+		<KeyWord name="CLIENT_SCREEN_BARTER" />
+		<KeyWord name="CLIENT_SCREEN_CHARACTER" />
+		<KeyWord name="CLIENT_SCREEN_CHA_AGE" />
+		<KeyWord name="CLIENT_SCREEN_CHA_NAME" />
+		<KeyWord name="CLIENT_SCREEN_CHA_SEX" />
+		<KeyWord name="CLIENT_SCREEN_DIALOG" />
+		<KeyWord name="CLIENT_SCREEN_DIALOGBOX" />
+		<KeyWord name="CLIENT_SCREEN_ELEVATOR" />
+		<KeyWord name="CLIENT_SCREEN_FIX_BOY" />
+		<KeyWord name="CLIENT_SCREEN_GM_TOWN" />
+		<KeyWord name="CLIENT_SCREEN_INVENTORY" />
+		<KeyWord name="CLIENT_SCREEN_INPUT_BOX" />
+		<KeyWord name="CLIENT_SCREEN_MENU" />
+		<KeyWord name="CLIENT_SCREEN_MINIMAP" />
+		<KeyWord name="CLIENT_SCREEN_PERK" />
+		<KeyWord name="CLIENT_SCREEN_PICKUP" />
+		<KeyWord name="CLIENT_SCREEN_PIP_BOY" />
+		<KeyWord name="CLIENT_SCREEN_SAY" />
+		<KeyWord name="CLIENT_SCREEN_SKILLBOX" />
+		<KeyWord name="CLIENT_SCREEN_SPLIT" />
+		<KeyWord name="CLIENT_SCREEN_TIMER" />
+		<KeyWord name="CLIENT_SCREEN_TOWN_VIEW" />
+		<KeyWord name="CLIENT_SCREEN_USE" />
+		<KeyWord name="CloseDoor" func="yes">
+			<Overload retVal="bool" descr="Map::">
+				<Param name="Item@ door" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Color" />
+		<KeyWord name="COLOR_TEXT" />
+		<KeyWord name="combat_result" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="uint[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="COMBAT_TEXT_ATTACK" />
+		<KeyWord name="COMBAT_TEXT_HIT_EYES" />
+		<KeyWord name="COMBAT_TEXT_HIT_GROIN" />
+		<KeyWord name="COMBAT_TEXT_HIT_HEAD" />
+		<KeyWord name="COMBAT_TEXT_HIT_LEFT_ARM" />
+		<KeyWord name="COMBAT_TEXT_HIT_LEFT_LEG" />
+		<KeyWord name="COMBAT_TEXT_HIT_RIGHT_ARM" />
+		<KeyWord name="COMBAT_TEXT_HIT_RIGHT_LEG" />
+		<KeyWord name="COMBAT_TEXT_HIT_TORSO" />
+		<KeyWord name="COMBAT_TEXT_MISS" />
+		<KeyWord name="COMBAT_TEXT_MOVE" />
+		<KeyWord name="COMBAT_TEXT_RUN_AWAY" />
+		<KeyWord name="Cond" />
+		<KeyWord name="const" />
+		<KeyWord name="ContainerId" />
+		<KeyWord name="ContainerUID" />
+		<KeyWord name="Container_CannotPickUp" />
+		<KeyWord name="Container_Changeble" />
+		<KeyWord name="Container_MagicHandsGrnd" />
+		<KeyWord name="Container_Volume" />
+		<KeyWord name="continue" />
+		<KeyWord name="ContourColor" />
+		<KeyWord name="Corner" />
+		<KeyWord name="Cost" />
+		<KeyWord name="CountEntire" func="yes">
+			<Overload retVal="uint" descr="Map::">
+				<Param name="int num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CountItem" func="yes">
+			<Overload retVal="uint" descr="Critter::, CritterCl::">
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="crdata" />
+		<KeyWord name="CreateAnyData" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint[]@ data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CreateLocation" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint16 protoId" />
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+				<Param name="Critter@[]@ critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CreatePlane" func="yes">
+			<Overload retVal="NpcPlane@" descr="Server">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CreateTimeEvent" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint beginSecond" />
+				<Param name="string&amp; funcName" />
+				<Param name="bool save" />
+			</Overload>
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint beginSecond" />
+				<Param name="string&amp; funcName" />
+				<Param name="int value" />
+				<Param name="bool save" />
+			</Overload>
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint beginSecond" />
+				<Param name="string&amp; funcName" />
+				<Param name="uint value" />
+				<Param name="bool save" />
+			</Overload>
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint beginSecond" />
+				<Param name="string&amp; funcName" />
+				<Param name="uint[]&amp; values" />
+				<Param name="bool save" />
+			</Overload>
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint beginSecond" />
+				<Param name="string&amp; funcName" />
+				<Param name="int[]&amp; values" />
+				<Param name="bool save" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CritId" />
+		<KeyWord name="CritSlot" />
+		<KeyWord name="Critter" />
+		<KeyWord name="critter_action" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="bool localCall" />
+				<Param name="CritterCl&amp; cr" />
+				<Param name="int action" />
+				<Param name="int actionExt" />
+				<Param name="ItemCl@ item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_animation" func="yes">
+			<Overload retVal="string@" descr="Client, Mapper reserved&#x0a;Вызывается в момент загрузки нужной анимации&#x0a;возвращает путь и имя файла">
+				<Param name="int animType" />
+				<Param name="uint crType" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="uint&amp; pass" />
+				<Param name="uint&amp; flags" />
+				<Param name="int&amp; ox" />
+				<Param name="int&amp; oy" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_animation_fallout" func="yes">
+			<Overload retVal="bool" descr="Client, Mapper reserved&#x0a;Т.к. анимации фаллаута все еще загружаются движком (требуется дополнительный расчет смещений, склейка двух анимаций), то для определения соответствий анимаций вызывается данная функция, т.е. вместо critter_animation для анимаций фаллаута вызывается данная функция.">
+				<Param name="uint crType" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="uint&amp; anim1ex" />
+				<Param name="uint&amp; anim2ex" />
+				<Param name="uint&amp; flags" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_animation_substitute" func="yes">
+			<Overload retVal="bool" descr="Client, Mapper reserved&#x0a;Если не удалось загрузить анимацию (и uint&amp; pass не изменился), то вызывается данная функция для определения замены анимации (например, удар левой рукой можно заменить на удар правой)&#x0a;Возвращается true, если замена нашлась (движок еще дополнительно проверяет изменились ли на самом деле crType, anim1, anim2), false - нет замены, анимация не будет загружена и проиграна.">
+				<Param name="int animType" />
+				<Param name="uint crTypeBase" />
+				<Param name="uint anim1Base" />
+				<Param name="uint anim2Base" />
+				<Param name="uint&amp; crType" />
+				<Param name="uint&amp; anim1" />
+				<Param name="uint&amp; anim2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_attack" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter&amp; target" />
+				<Param name="ProtoItem&amp; weapon" />
+				<Param name="uint8 weaponMode" />
+				<Param name="ProtoItem@ ammo" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_attacked" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter&amp; killer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_CAN_BARTER" />
+		<KeyWord name="critter_check_move_item" func="yes">
+			<Overload retVal="bool" descr="Server, Client reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Item&amp; item" />
+				<Param name="uint8 toSlot" />
+				<Param name="Item@ itemSwap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_CHOSEN" />
+		<KeyWord name="critter_dead" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter@ killer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_DEAD_AGES" />
+		<KeyWord name="critter_description" func="yes">
+			<Overload retVal="string" descr="Client reserved">
+				<Param name="CritterCl&amp; cr" />
+				<Param name="int lookType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_DISCONNECT" />
+		<KeyWord name="CRITTER_EVENT_ATTACK" />
+		<KeyWord name="CRITTER_EVENT_ATTACKED" />
+		<KeyWord name="CRITTER_EVENT_BARTER" />
+		<KeyWord name="CRITTER_EVENT_CHANGE_ITEM_ON_MAP" />
+		<KeyWord name="CRITTER_EVENT_DEAD" />
+		<KeyWord name="CRITTER_EVENT_DROP_ITEM" />
+		<KeyWord name="CRITTER_EVENT_FINISH" />
+		<KeyWord name="CRITTER_EVENT_GLOBAL_INVITE" />
+		<KeyWord name="CRITTER_EVENT_GLOBAL_PROCESS" />
+		<KeyWord name="CRITTER_EVENT_HIDE_CRITTER" />
+		<KeyWord name="CRITTER_EVENT_HIDE_CRITTER_1" />
+		<KeyWord name="CRITTER_EVENT_HIDE_CRITTER_2" />
+		<KeyWord name="CRITTER_EVENT_HIDE_CRITTER_3" />
+		<KeyWord name="CRITTER_EVENT_HIDE_ITEM_ON_MAP" />
+		<KeyWord name="CRITTER_EVENT_IDLE" />
+		<KeyWord name="CRITTER_EVENT_KNOCKOUT" />
+		<KeyWord name="CRITTER_EVENT_MAX" />
+		<KeyWord name="CRITTER_EVENT_MESSAGE" />
+		<KeyWord name="CRITTER_EVENT_MOVE_ITEM" />
+		<KeyWord name="CRITTER_EVENT_PICK_ITEM" />
+		<KeyWord name="CRITTER_EVENT_PLANE_BEGIN" />
+		<KeyWord name="CRITTER_EVENT_PLANE_END" />
+		<KeyWord name="CRITTER_EVENT_PLANE_RUN" />
+		<KeyWord name="CRITTER_EVENT_RESPAWN" />
+		<KeyWord name="CRITTER_EVENT_SHOW_CRITTER" />
+		<KeyWord name="CRITTER_EVENT_SHOW_CRITTER_1" />
+		<KeyWord name="CRITTER_EVENT_SHOW_CRITTER_2" />
+		<KeyWord name="CRITTER_EVENT_SHOW_CRITTER_3" />
+		<KeyWord name="CRITTER_EVENT_SHOW_ITEM_ON_MAP" />
+		<KeyWord name="CRITTER_EVENT_SMTH_ATTACK" />
+		<KeyWord name="CRITTER_EVENT_SMTH_DEAD" />
+		<KeyWord name="CRITTER_EVENT_SMTH_DROP_ITEM" />
+		<KeyWord name="CRITTER_EVENT_SMTH_KNOCKOUT" />
+		<KeyWord name="CRITTER_EVENT_SMTH_MOVE_ITEM" />
+		<KeyWord name="CRITTER_EVENT_SMTH_PICK_ITEM" />
+		<KeyWord name="CRITTER_EVENT_SMTH_STEALING" />
+		<KeyWord name="CRITTER_EVENT_SMTH_USE_ITEM" />
+		<KeyWord name="CRITTER_EVENT_SMTH_USE_SKILL" />
+		<KeyWord name="CRITTER_EVENT_STEALING" />
+		<KeyWord name="CRITTER_EVENT_TALK" />
+		<KeyWord name="CRITTER_EVENT_USE_ITEM" />
+		<KeyWord name="CRITTER_EVENT_USE_ITEM_ON_ME" />
+		<KeyWord name="CRITTER_EVENT_USE_SKILL" />
+		<KeyWord name="CRITTER_EVENT_USE_SKILL_ON_ME" />
+		<KeyWord name="critter_idle" func="yes">
+			<Overload retVal="uint" descr="Client reserved">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_in" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="CritterCl&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_init" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; crit" />
+				<Param name="bool firstTime" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_INVULNERABLE" />
+		<KeyWord name="critter_move_item" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Item&amp; item" />
+				<Param name="uint8 fromSlot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_NO_DROP" />
+		<KeyWord name="CRITTER_NO_FLATTEN" />
+		<KeyWord name="CRITTER_NO_HEAL" />
+		<KeyWord name="CRITTER_NO_KNOCK" />
+		<KeyWord name="CRITTER_NO_LOOSE_LIMBS" />
+		<KeyWord name="CRITTER_NO_STEAL" />
+		<KeyWord name="CRITTER_NPC" />
+		<KeyWord name="CRITTER_ONLY_NAME" />
+		<KeyWord name="critter_out" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="CritterCl&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Critter_ParamIndex0..39" />
+		<KeyWord name="Critter_ParamValue0..39" />
+		<KeyWord name="CRITTER_PLAYER" />
+		<KeyWord name="CRITTER_RANGE_HTH" />
+		<KeyWord name="critter_respawn" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CRITTER_RULEGROUP" />
+		<KeyWord name="CRITTER_SPECIAL_DEAD" />
+		<KeyWord name="critter_stealing" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter&amp; thief" />
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_use_item" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="Item&amp; item" />
+				<Param name="Critter@ targetCr" />
+				<Param name="Item@ targetItem" />
+				<Param name="Scenery@ targetScen" />
+				<Param name="uint param" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="critter_use_skill" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="int skill" />
+				<Param name="Critter@ targetCr" />
+				<Param name="Item@ targetItem" />
+				<Param name="Scenery@ targetScen" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="CrTypeAlias" />
+		<KeyWord name="CrTypeFemale" />
+		<KeyWord name="CrTypeMale" />
+		<KeyWord name="CURSOR_DEFAULT" />
+		<KeyWord name="CURSOR_HAND" />
+		<KeyWord name="CURSOR_MOVE" />
+		<KeyWord name="CURSOR_USE_OBJECT" />
+		<KeyWord name="CURSOR_USE_SKILL" />
+		<KeyWord name="CURSOR_USE_WEAPON" />
+		<KeyWord name="CURSOR_WAIT" />
+		<KeyWord name="DAMAGE_ELECTR" />
+		<KeyWord name="DAMAGE_EMP" />
+		<KeyWord name="DAMAGE_EXPLODE" />
+		<KeyWord name="DAMAGE_FIRE" />
+		<KeyWord name="DAMAGE_LASER" />
+		<KeyWord name="DAMAGE_NORMAL" />
+		<KeyWord name="DAMAGE_PLASMA" />
+		<KeyWord name="DAMAGE_UNCALLED" />
+		<KeyWord name="Data" />
+		<KeyWord name="DecodeUTF8" func="yes">
+			<Overload retVal="uint" descr="Server, Client, Mapper">
+				<Param name="const string&amp; text" />
+				<Param name="uint&amp; length" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="default" />
+		<KeyWord name="DeleteItem" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="uint16 protoId" />
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DeleteItems" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Item@[]&amp; items" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DeleteLocation" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="uint16 locationId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DeleteNpc" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Critter@ npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DeleteTile" func="yes">
+			<Overload retVal="void" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="bool roof" />
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Deteriorable" />
+		<KeyWord name="Deterioration" />
+		<KeyWord name="DIALOG_ATTACK" />
+		<KeyWord name="DIALOG_BACK" />
+		<KeyWord name="DIALOG_BARTER" />
+		<KeyWord name="DIALOG_END" />
+		<KeyWord name="Dir" />
+		<KeyWord name="DisableEgg" />
+		<KeyWord name="Disconnect" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DLGSTR" func="yes">
+			<Overload retVal="dlgstr" descr="Macros">
+				<Param name="dialogId" />
+				<Param name="strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="do" />
+		<KeyWord name="Door_NoBlockLight" />
+		<KeyWord name="Door_NoBlockMove" />
+		<KeyWord name="Door_NoBlockShoot" />
+		<KeyWord name="double" />
+		<KeyWord name="DrawCritter2d" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint crType" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="uint8 dir" />
+				<Param name="int l" />
+				<Param name="int t" />
+				<Param name="int r" />
+				<Param name="int b" />
+				<Param name="bool scratch" />
+				<Param name="bool center" />
+				<Param name="uint color" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawCritter3d" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint instance" />
+				<Param name="uint crType" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+				<Param name="int[]@ layers" />
+				<Param name="float[]@ position" />
+				<Param name="uint color" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawHardcodedScreen" func="yes">
+			<Overload retVal="void" descr="Client">
+				<Param name="int screen" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawMapSprite" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint16 hx" />
+				<Param name="uint16 hy" />
+				<Param name="uint16 effectPid" />
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int offsX" />
+				<Param name="int offsY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawOrderOffsetHexY" />
+		<KeyWord name="DrawPrimitive" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="int primitiveType" />
+				<Param name="int[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawSprite" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="uint color" />
+			</Overload>
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="int w" />
+				<Param name="int h" />
+				<Param name="bool scratch" />
+				<Param name="bool center" />
+				<Param name="uint color" />
+			</Overload>
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="uint color" />
+				<Param name="bool applyOffsets" />
+			</Overload>
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="int w" />
+				<Param name="int h" />
+				<Param name="bool scratch" />
+				<Param name="bool center" />
+				<Param name="uint color" />
+				<Param name="bool applyOffsets" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawSpritePattern" func="yes">
+			<Overload retVal="void" descr="Client">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="int w" />
+				<Param name="int h" />
+				<Param name="int sprWidth" />
+				<Param name="int sprHeight" />
+				<Param name="uint color" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DrawText" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="string&amp; text" />
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="int w" />
+				<Param name="int h" />
+				<Param name="uint color" />
+				<Param name="int font" />
+				<Param name="int flags" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DRAW_PRIMITIVE_LINELIST" />
+		<KeyWord name="DRAW_PRIMITIVE_LINESTRIP" />
+		<KeyWord name="DRAW_PRIMITIVE_POINTLIST" />
+		<KeyWord name="DRAW_PRIMITIVE_TRIANGLEFAN" />
+		<KeyWord name="DRAW_PRIMITIVE_TRIANGLELIST" />
+		<KeyWord name="DRAW_PRIMITIVE_TRIANGLESTRIP" />
+		<KeyWord name="DropPlanes" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="DropTimers" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_BOS_01" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_BOS_1234" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MASTER_123" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MASTER_34" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MILITARY_123" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MILITARY_34" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MILITARY_346" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_MILITARY_456" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_VAULT_123" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ELEVATOR_X" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="elevator" />
+				<Param name="levels_count" />
+				<Param name="start_level" />
+				<Param name="current_level" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="else" />
+		<KeyWord name="EncodeUTF8" func="yes">
+			<Overload retVal="string@" descr="Server, Client, Mapper">
+				<Param name="uint ucs" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EndTurnBased" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="enum" />
+		<KeyWord name="EraseAnyData" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EraseEnemyFromStack" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EraseHolodiskInfo" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint holodiskNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ErasePlane" func="yes">
+			<Overload retVal="uint" descr="Critter::">
+				<Param name="int planeType" />
+				<Param name="bool all" />
+			</Overload>
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EraseTextListener" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="int sayType" />
+				<Param name="string&amp; firstStr" />
+				<Param name="uint16 parameter" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EraseTimeEvent" func="yes">
+			<Overload retVal="bool" descr="Server, Critter::">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EraseTimeEvents" func="yes">
+			<Overload retVal="uint" descr="Critter::">
+				<Param name="int identifier" />
+			</Overload>
+			<Overload retVal="uint" descr="Critter::">
+				<Param name="int[]&amp; identifiers" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventAttack" func="yes">
+			<Overload retVal="bool" descr="Item::">
+				<Param name="Critter&amp; attacker" />
+				<Param name="Critter&amp; targed" />
+			</Overload>
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="Critter&amp; target" />
+				<Param name="Item@ weapon" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventAttacked" func="yes">
+			<Overload retVal="int" descr="Critter::">
+				<Param name="Critter&amp; attacker" />
+				<Param name="Item@ weapon" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventBarter" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="Critter&amp; cr" />
+				<Param name="bool attach" />
+				<Param name="uint barterCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventChangeItemOnMap" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Item&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventCritterDead" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter@ killer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventDead" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter@ killer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventDrop" func="yes">
+			<Overload retVal="void" descr="Item::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventDropItem" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Item&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventFinish" func="yes">
+			<Overload retVal="void" descr="Critter::, Item::, Map::">
+				<Param name="bool deleted" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventGlobalInvite" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="Critter&amp; leader" />
+				<Param name="Item@ car" />
+				<Param name="uint encounterDescriptor" />
+				<Param name="int combatMode" />
+				<Param name="uint&amp; mapId" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint8&amp; dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventGlobalProcess" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="int type" />
+				<Param name="Critter&amp; cr" />
+				<Param name="Item@ car" />
+				<Param name="uint&amp; x" />
+				<Param name="uint&amp; y" />
+				<Param name="uint&amp; toX" />
+				<Param name="uint&amp; toY" />
+				<Param name="uint&amp; speed" />
+				<Param name="uint&amp; encounterDescriptor" />
+				<Param name="bool&amp; waitForAnswer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventHideCritter" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventHideCritter1" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventHideCritter2" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventHideCritter3" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventHideItemOnMap" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Item&amp; hideItem" />
+				<Param name="bool removed" />
+				<Param name="Critter@ picker" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventIdle" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventInCritter" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventKnockout" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint anim2begin" />
+				<Param name="uint anim2idle" />
+				<Param name="uint anim2end" />
+				<Param name="uint lostAp" />
+				<Param name="uint knockDist" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventLoop0" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventLoop1" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventLoop2" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventLoop3" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventLoop4" func="yes">
+			<Overload retVal="void" descr="Map::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventMessage" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="int message" />
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventMove" func="yes">
+			<Overload retVal="void" descr="Item::">
+				<Param name="Critter&amp; cr" />
+				<Param name="uint8 fromSlot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventMoveItem" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="Item&amp; item" />
+				<Param name="uint8 fromSlot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventOutCritter" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventPlaneBegin" func="yes">
+			<Overload retVal="bool">
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+				<Param name="Critter@ someCr" />
+				<Param name="Item@ someItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventPlaneEnd" func="yes">
+			<Overload retVal="bool">
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+				<Param name="Critter@ someCr" />
+				<Param name="Item@ someItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventPlaneRun" func="yes">
+			<Overload retVal="bool">
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+				<Param name="uint&amp; p0" />
+				<Param name="uint&amp; p1" />
+				<Param name="uint&amp; p2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventRespawn" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventShowCritter" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventShowCritter1" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventShowCritter2" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventShowCritter3" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventShowItemOnMap" func="yes">
+			<Overload retVal="void">
+				<Param name="Item&amp; showItem" />
+				<Param name="bool added" />
+				<Param name="Critter@ dropper" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSkill" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+				<Param name="int skill" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthAttack" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="Critter&amp; target" />
+				<Param name="Item@ weapon" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthDropItem" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="Item&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthKnockout" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="uint anim2begin" />
+				<Param name="uint anim2idle" />
+				<Param name="uint anim2end" />
+				<Param name="uint lostAp" />
+				<Param name="uint knockDist" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthMoveItem" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="Item&amp; item" />
+				<Param name="uint8 fromSlot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthStealing" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="Critter&amp; thief" />
+				<Param name="bool success" />
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthTurnBasedProcessg" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCr" />
+				<Param name="Map&amp; map" />
+				<Param name="bool beginTurn" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthUseItem" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="Item&amp; item" />
+				<Param name="Critter@ onCritter" />
+				<Param name="Item@ onItem" />
+				<Param name="Scenery@ onScenery" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventSmthUseSkill" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; fromCrit" />
+				<Param name="int skill" />
+				<Param name="Critter@ onCritter" />
+				<Param name="Item@ onItem" />
+				<Param name="Scenery@ onScenery" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventStealing" func="yes">
+			<Overload retVal="int">
+				<Param name="Critter&amp; thief" />
+				<Param name="bool success" />
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventTalk" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+				<Param name="bool attach, uint talkCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventTurnBasedBegin" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventTurnBasedEnd" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventTurnBasedProcess" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+				<Param name="bool beginTurn" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="bool beginTurn" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventUse" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter@ onCritter" />
+				<Param name="Item@ onItem" />
+				<Param name="Scenery@ onScenery" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventUseItem" func="yes">
+			<Overload retVal="bool">
+				<Param name="Item&amp; item" />
+				<Param name="Critter@ onCritter" />
+				<Param name="Item@ onItem" />
+				<Param name="Scenery@ onScenery" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventUseOnMe" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+				<Param name="Item@ usedItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventUseSkill" func="yes">
+			<Overload retVal="bool">
+				<Param name="int skill" />
+				<Param name="Critter@ onCritter" />
+				<Param name="Item@ onItem" />
+				<Param name="Scenery@ onScenery" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="EventWalk" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter&amp; cr" />
+				<Param name="bool entered" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="false" />
+		<KeyWord name="find" func="yes">
+			<Overload retVal="int" descr="array::">
+				<Param name="const T&amp;in" />
+			</Overload>
+			<Overload retVal="int" descr="array::">
+				<Param name="uint index" />
+				<Param name="const T&amp;in" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="FIND_ALL" />
+		<KeyWord name="FIND_DEAD" />
+		<KeyWord name="FIND_KO" />
+		<KeyWord name="FIND_KO_AND_DEAD" />
+		<KeyWord name="FIND_LIFE" />
+		<KeyWord name="FIND_LIFE_AND_DEAD" />
+		<KeyWord name="FIND_LIFE_AND_KO" />
+		<KeyWord name="FIND_ONLY_NPC" />
+		<KeyWord name="FIND_ONLY_PLAYERS" />
+		<KeyWord name="filename_logfile" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="string&amp; filename" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="filename_screenshot" func="yes">
+			<Overload retVal="void" descr="Client reserved">
+				<Param name="string&amp; filename" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Fill" func="yes">
+			<Overload retVal="Serializator@">
+				<Param name="uint8 value" />
+				<Param name="uint length" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="FIXBOY_ADD_CRAFT_ITEMS" />
+		<KeyWord name="FIXBOY_ADD_EXPERIENCE" />
+		<KeyWord name="FIXBOY_ALLOW_CRAFT" />
+		<KeyWord name="FIXBOY_BUTTON" />
+		<KeyWord name="FIXBOY_CHECK_MATERIALS" />
+		<KeyWord name="FIXBOY_CHECK_PARAMS" />
+		<KeyWord name="FIXBOY_CHECK_TIMEOUT" />
+		<KeyWord name="FIXBOY_CHECK_TOOLS" />
+		<KeyWord name="FIXBOY_CRAFT" />
+		<KeyWord name="FIXBOY_DEFAULT" />
+		<KeyWord name="FIXBOY_LIST" />
+		<KeyWord name="FIXBOY_SEND_FAIL_MESSAGE" />
+		<KeyWord name="FIXBOY_SEND_SUCC_MESSAGE" />
+		<KeyWord name="FIXBOY_SET_TIMEOUT" />
+		<KeyWord name="FIXBOY_SUB_MATERIALS" />
+		<KeyWord name="FLAG" func="yes">
+			<Overload retVal="void">
+				<Param name="x" />
+				<Param name="flag" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Flags" />
+		<KeyWord name="float" />
+		<KeyWord name="FlushScreen" func="yes">
+			<Overload retVal="void">
+				<Param name="uint fromColor" />
+				<Param name="uint toColor" />
+				<Param name="uint timeMs" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="FOG_FULL" />
+		<KeyWord name="FOG_NONE" />
+		<KeyWord name="FOG_SELF" />
+		<KeyWord name="FOG_SELF2" />
+		<KeyWord name="FOMB_COMBAT_RESULT" />
+		<KeyWord name="FOMB_GAME" />
+		<KeyWord name="FOMB_TALK" />
+		<KeyWord name="FOMB_VIEW" />
+		<KeyWord name="FONT_COURIER_NEW_SMALL" />
+		<KeyWord name="FONT_FALLOUT" />
+		<KeyWord name="FormatTags" func="yes">
+			<Overload retVal="string@">
+				<Param name="const string&amp; text" />
+				<Param name="const string@ lexems" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="from" />
+		<KeyWord name="FT_NO_COLORIZE" />
+		<KeyWord name="GameDay" />
+		<KeyWord name="GeckCount" />
+		<KeyWord name="GeckVisible" />
+		<KeyWord name="generic_descriptions" func="yes">
+			<Overload retVal="string">
+				<Param name="int descType" />
+				<Param name="int&amp; offsX" />
+				<Param name="int&amp; offsY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GENDER_FEMALE" />
+		<KeyWord name="GENDER_MALE" />
+		<KeyWord name="Get" func="yes">
+			<Overload retVal="Serializator@">
+				<Param name="int64&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int32&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int16&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int8&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint64&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint32&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint16&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint8&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int64[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int32[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int16[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="int8[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint64[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint32[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint16[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="uint8[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="bool&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="string&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="Critter@&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="Item@&amp; value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAllItems" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 pid" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAllLocations" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 pid" />
+				<Param name="Location@[]@ locations" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAllMaps" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 pid" />
+				<Param name="Map@[]@ maps" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAllNpc" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 pid" />
+				<Param name="Critter@[]@ npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAllPlayers" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="Critter@[]@ players" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAnim1" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetAnyData" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint64[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint32[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint16[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint8[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int64[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int32[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int16[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int8[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetBagId" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetBagItems" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint bagId" />
+				<Param name="uint16[]@ pids" />
+				<Param name="uint[]@ minCounts" />
+				<Param name="uint[]@ maxCounts" />
+				<Param name="int[]@ slots" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetBagRefreshTime" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetBaseStat" func="yes">
+			<Overload retVal="int">
+				<Param name="int num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCar" func="yes">
+			<Overload retVal="Item@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetChild" func="yes">
+			<Overload retVal="Item@+" descr="Item::">
+				<Param name="uint childIndex" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetChosen" func="yes">
+			<Overload retVal="CritterCl@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetChosenActions" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint[]@+ actions" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetConstantName" func="yes">
+			<Overload retVal="string@" descr="Server, Client, Mapper">
+				<Param name="int constCollection" />
+				<Param name="int values" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetConstantValue" func="yes">
+			<Overload retVal="int" descr="Server, Client, Mapper">
+				<Param name="int constCollection" />
+				<Param name="string@+ name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCopy" func="yes">
+			<Overload retVal="NpcPlane@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCost" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCraftItem" func="yes">
+			<Overload retVal="CraftItem@" descr="Server">
+				<Param name="uint num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritter" func="yes">
+			<Overload retVal="Critter@">
+				<Param name="uint critterId" />
+			</Overload>
+			<Overload retVal="Critter@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritterAlias" func="yes">
+			<Overload retVal="uint" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritterAnimType" func="yes">
+			<Overload retVal="int" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritterHex" func="yes">
+			<Overload retVal="Critter@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritters" func="yes">
+			<Overload retVal="uint">
+				<Param name="int pid" />
+				<Param name="int findType" />
+				<Param name="Critter@[]@; critters" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int pid" />
+				<Param name="int findType" />
+				<Param name="CritterCl@[]@; critters" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="bool lookOnMe" />
+				<Param name="int findType" />
+				<Param name="Critter@[]@ critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCrittersDistantion" func="yes">
+			<Overload retVal="uint">
+				<Param name="Critter&amp; cr1" />
+				<Param name="Critter&amp; cr2" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="CritterCl&amp; cr1" />
+				<Param name="CritterCl&amp; cr2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCrittersHex" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 radius" />
+				<Param name="int findType" />
+				<Param name="Critter@[]@; critters" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 radius" />
+				<Param name="int findType" />
+				<Param name="CritterCl@[]@; critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritterSoundName" func="yes">
+			<Overload retVal="string@" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCrittersPath" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16&amp; toHx" />
+				<Param name="uint16&amp; toHy" />
+				<Param name="float angle" />
+				<Param name="uint dist" />
+				<Param name="findType" />
+				<Param name="Critter@[]@ critters" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16&amp; toHx" />
+				<Param name="uint16&amp; toHy" />
+				<Param name="float angle" />
+				<Param name="uint dist" />
+				<Param name="findType" />
+				<Param name="Critter@[]@ critters" />
+				<Param name="uint16&amp; preBlockHx" />
+				<Param name="uint16&amp; preBlockHy" />
+				<Param name="uint16&amp; blockHx" />
+				<Param name="uint16&amp; blockHy" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16&amp; toHx" />
+				<Param name="uint16&amp; toHy" />
+				<Param name="float angle" />
+				<Param name="uint dist" />
+				<Param name="findType" />
+				<Param name="CritterCl@[]@ critters" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16&amp; toHx" />
+				<Param name="uint16&amp; toHy" />
+				<Param name="float angle" />
+				<Param name="uint dist" />
+				<Param name="findType" />
+				<Param name="CritterCl@[]@ critters" />
+				<Param name="uint16&amp; preBlockHx" />
+				<Param name="uint16&amp; preBlockHy" />
+				<Param name="uint16&amp; blockHx" />
+				<Param name="uint16&amp; blockHy" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCrittersSeeing" func="yes">
+			<Overload retVal="uint">
+				<Param name="Critter@[]&amp; critters" />
+				<Param name="bool lookOnThem" />
+				<Param name="int find_type" />
+				<Param name="Critter@[]@ critters_result" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCrittersWhoViewPath" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+				<Param name="int findType" />
+				<Param name="Critter@[]@ critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCritterTypeName" func="yes">
+			<Overload retVal="string@" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCurPlane" func="yes">
+			<Overload retVal="NpcPlane@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCurrentCursor" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetCurrentMapPid" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetData" func="yes">
+			<Overload retVal="int">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDayColor" func="yes">
+			<Overload retVal="void">
+				<Param name="uint dayPart" />
+				<Param name="uint8&amp; r" />
+				<Param name="uint8&amp; g" />
+				<Param name="uint8&amp; b" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDayTime" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint dayPart" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDialogId" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDirection" func="yes">
+			<Overload retVal="uint8">
+				<Param name="uint16 hexX1" />
+				<Param name="uint16 hexY1" />
+				<Param name="uint16 hexX2" />
+				<Param name="uint16 hexY2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDistantion" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 hexX1" />
+				<Param name="uint16 hexY1" />
+				<Param name="uint16 hexX2" />
+				<Param name="uint16 hexY2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetDoor" func="yes">
+			<Overload retVal="Item@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetEnemyStack" func="yes">
+			<Overload retVal="void">
+				<Param name="uint[]&amp; enemyStack" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetEntireCoords" func="yes">
+			<Overload retVal="bool" descr="Map::">
+				<Param name="int entire" />
+				<Param name="uint skip" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+			</Overload>
+			<Overload retVal="bool" descr="Map::">
+				<Param name="int entire" />
+				<Param name="uint skip" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint8&amp; dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetEntires" func="yes">
+			<Overload retVal="uint">
+				<Param name="int entire" />
+				<Param name="uint[]@ entires" />
+				<Param name="uint16[]@ hexX" />
+				<Param name="uint16[]@ hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetFavoriteItem" func="yes">
+			<Overload retVal="uint16">
+				<Param name="int slot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetFog" func="yes">
+			<Overload retVal="int">
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetFollowGroup" func="yes">
+			<Overload retVal="uint">
+				<Param name="int findType" />
+				<Param name="Critter@[]@ critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetFollowLeader" func="yes">
+			<Overload retVal="Critter@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetFullSecond" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 year" />
+				<Param name="uint8 month" />
+				<Param name="uint8 day" />
+				<Param name="uint8 hour" />
+				<Param name="uint8 minute" />
+				<Param name="uint8 second" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetGameTime" func="yes">
+			<Overload retVal="void">
+				<Param name="uint fullSecond" />
+				<Param name="uint16&amp; year" />
+				<Param name="uint16&amp; month" />
+				<Param name="uint16&amp; day" />
+				<Param name="uint16&amp; dayOfWeek" />
+				<Param name="uint16&amp; hour" />
+				<Param name="uint16&amp; minute" />
+				<Param name="uint16&amp; second" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetGlobalGroup" func="yes">
+			<Overload retVal="Critter@[]@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetGlobalMapCritters" func="yes">
+			<Overload retVal="uint" descr="Server">
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+				<Param name="uint radius" />
+				<Param name="int findType" />
+				<Param name="Critter@[]@+ critters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetGlobalMapRelief" func="yes">
+			<Overload retVal="int">
+				<Param name="uint x" />
+				<Param name="uint y" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetGlobalVar" func="yes">
+			<Overload retVal="GameVar@">
+				<Param name="uint16 varId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetHardcodedScreenPos" func="yes">
+			<Overload retVal="void">
+				<Param name="int screen" />
+				<Param name="int&amp; x" />
+				<Param name="int&amp; y" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetHeight" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetHexCoord" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+				<Param name="float angle" />
+				<Param name="uint Dist" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetHexCoordWall" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16&amp; toHx" />
+				<Param name="uint16&amp; toHy" />
+				<Param name="float angle" />
+				<Param name="uint dist" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetHexPos" func="yes">
+			<Overload retVal="void">
+				<Param name="uint&amp; mapId" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint8&amp; dir" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint16 hx" />
+				<Param name="uint16 hy" />
+				<Param name="int&amp; x" />
+				<Param name="int&amp; y" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetIfaceIniStr" func="yes">
+			<Overload retVal="string@">
+				<Param name="string&amp; key" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetInternalBag" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16[]@ pids" />
+				<Param name="uint[]@ minCounts" />
+				<Param name="uint[]@ maxCounts" />
+				<Param name="int[]@ slots" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetItem" func="yes">
+			<Overload retVal="Item@">
+				<Param name="uint itemId" />
+			</Overload>
+			<Overload retVal="ItemCl@">
+				<Param name="uint itemId" />
+			</Overload>
+			<Overload retVal="Item@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 protoId" />
+			</Overload>
+			<Overload retVal="Item@">
+				<Param name="uint16 protoId" />
+				<Param name="int slot" />
+			</Overload>
+			<Overload retVal="Item@">
+				<Param name="uint16 protoId" />
+				<Param name="uint specialId" />
+			</Overload>
+			<Overload retVal="ItemCl@">
+				<Param name="uint16 protoId" />
+				<Param name="int slot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetItemById" func="yes">
+			<Overload retVal="Item@">
+				<Param name="uint itemId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetItemDataMask" func="yes">
+			<Overload retVal="int8[]@">
+				<Param name="int maskType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetItems" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint radius" />
+				<Param name="uint16 protoId" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int slot" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint specialId" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int slot" />
+				<Param name="ItemCl@[]@ items" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int slot" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetItemsByType" func="yes">
+			<Overload retVal="uint">
+				<Param name="int type" />
+				<Param name="Item@[]@ items" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int type" />
+				<Param name="ItemCl@[]@ items" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLastCursor" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLastError" func="yes">
+			<Overload retVal="string&amp; text">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLocalVar" func="yes">
+			<Overload retVal="GameVar@">
+				<Param name="uint16 varId" />
+				<Param name="uint masterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLocation" func="yes">
+			<Overload retVal="Location@">
+				<Param name="uint locId" />
+			</Overload>
+			<Overload retVal="Location@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLocationByPid" func="yes">
+			<Overload retVal="Location@">
+				<Param name="uint16 locPid" />
+				<Param name="uint skipCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetLocations" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+				<Param name="uint radius" />
+				<Param name="Location@[]@ locations" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMainScreen" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMap" func="yes">
+			<Overload retVal="Map@">
+				<Param name="void" />
+			</Overload>
+			<Overload retVal="Map@">
+				<Param name="uint16 mapPid" />
+			</Overload>
+			<Overload retVal="Map@">
+				<Param name="uint mapId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapByIndex" func="yes">
+			<Overload retVal="Map@">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapByPid" func="yes">
+			<Overload retVal="Map@">
+				<Param name="uint16 mapPid" />
+				<Param name="uint skipCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapFileNames" func="yes">
+			<Overload retVal="uint">
+				<Param name="string@ dir" />
+				<Param name="string@[]@ names" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapHeight" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapInLocation" func="yes">
+			<Overload retVal="Map@">
+				<Param name="uint locId" />
+				<Param name="int mapNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapPosition" func="yes">
+			<Overload retVal="Map@">
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMaps" func="yes">
+			<Overload retVal="uint">
+				<Param name="Map@[]@ maps" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMapWidth" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMax" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMessageFiltersx" func="yes">
+			<Overload retVal="uint">
+				<Param name="int[]@ filters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMin" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMonitorCritter" func="yes">
+			<Overload retVal="CritterCl@">
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="bool ignoreInterface = false" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMonitorHex" func="yes">
+			<Overload retVal="bool">
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="uint16&amp; hx" />
+				<Param name="uint16&amp; hy" />
+				<Param name="bool ignoreInterface = false" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMonitorItem" func="yes">
+			<Overload retVal="ItemCl@">
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="bool ignoreInterface = false" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMonitorObject" func="yes">
+			<Overload retVal="MapperObject@" descr="Mapper">
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="bool ignoreInterface = false" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMsgStr" func="yes">
+			<Overload retVal="string@">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+			<Overload retVal="string@">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+				<Param name="uint skipCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMsgStrCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMsgStrNumLower" func="yes">
+			<Overload retVal="uint">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMsgStrNumUpper" func="yes">
+			<Overload retVal="uint">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetMultihex" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetNearEntireCoords" func="yes">
+			<Overload retVal="bool" descr="Map::">
+				<Param name="int&amp; entire" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+			</Overload>
+			<Overload retVal="bool" descr="Map::">
+				<Param name="int&amp; entire" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint8&amp; dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetNearFullSecond" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 year" />
+				<Param name="uint8 month" />
+				<Param name="uint8 day" />
+				<Param name="uint8 hour" />
+				<Param name="uint8 minute" />
+				<Param name="uint8 second" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetNpc" func="yes">
+			<Overload retVal="Critter@">
+				<Param name="int npcRole" />
+				<Param name="int findType" />
+				<Param name="uint skipCount" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetNpcCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="int npcRole" />
+				<Param name="int findType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetOffsetDir" func="yes">
+			<Overload retVal="uint8">
+				<Param name="uint16 hx" />
+				<Param name="uint16 hy" />
+				<Param name="uint16 tx" />
+				<Param name="uint16 ty" />
+				<Param name="float offset" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPathLength" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 fromHx" />
+				<Param name="uint16 fromHy" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+				<Param name="uint cut" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="Critter&amp; cr" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+				<Param name="uint cut" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="CritterCl&amp; cr" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+				<Param name="uint cut" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPlanes" func="yes">
+			<Overload retVal="uint">
+				<Param name="NpcPlane@[]@ planes" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int identifier" />
+				<Param name="NpcPlane@[]@ planes" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int identifier" />
+				<Param name="uint identifierExt" />
+				<Param name="NpcPlane@[]@ planes" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPlanesByExt" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint identifierExt" />
+				<Param name="NpcPlane@[]@ planes" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPlayer" func="yes">
+			<Overload retVal="Critter@">
+				<Param name="string&amp; playerName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPlayerId" func="yes">
+			<Overload retVal="uint">
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetPlayerName" func="yes">
+			<Overload retVal="string@">
+				<Param name="uint playerId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetProtoItem" func="yes">
+			<Overload retVal="ProtoItem@">
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetQuestStr" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetRain" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetRegisteredPlayers" func="yes">
+			<Overload retVal="uint">
+				<Param name="array&lt;uint&gt;&amp; ids" />
+				<Param name="array&lt;string&gt;&amp; names" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScenery" func="yes">
+			<Overload retVal="Scenery@">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSceneries" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint radius" />
+				<Param name="uint16 protoId" />
+				<Param name="Scenery@[]@ sceneries" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint16 protoId" />
+				<Param name="Scenery@[]@ sceneries" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScore" func="yes">
+			<Overload retVal="int" descr="Critter::">
+				<Param name="uint score" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScreen" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScreenExt" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScreenPos" func="yes">
+			<Overload retVal="void">
+				<Param name="int screen" />
+				<Param name="int&amp; x" />
+				<Param name="int&amp; y" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScriptId" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="string&amp; scriptName" />
+				<Param name="string&amp; funcDeclaration" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScriptName" func="yes">
+			<Overload retVal="string@" descr="Server">
+				<Param name="uint scriptId" />
+			</Overload>
+			<Overload retVal="string@" descr="ProtoItem::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetScroll" func="yes">
+			<Overload retVal="int">
+				<Param name="int scrollElement" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSelectedObject" func="yes">
+			<Overload retVal="MapperObject@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSelectedObjects" func="yes">
+			<Overload retVal="uint">
+				<Param name="MapperObject@[]@ objects" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="getSize" func="yes">
+			<Overload retVal="uint" descr="dictionary">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSlotProto" func="yes">
+			<Overload retVal="ProtoItem@">
+				<Param name="int slot" />
+				<Param name="uint8&amp; mode" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSpriteCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint sprId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSpriteHeight" func="yes">
+			<Overload retVal="int">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetSpriteWidth" func="yes">
+			<Overload retVal="int">
+				<Param name="uint sprId" />
+				<Param name="int sprIndex" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetStrHash" func="yes">
+			<Overload retVal="uint">
+				<Param name="string@ str" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTalkedPlayers" func="yes">
+			<Overload retVal="uint">
+				<Param name="Critter@[]@ players" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTeamId" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTextInfo" func="yes">
+			<Overload retVal="void" descr="Client, Mapper&#x0a;Вычислеет размеры рисуемого текста&#x0a;text – текст;&#x0a;w, h, font, flags – высота, ширина, шрифт, флаги;&#x0a;tw, th, lines – итоговые ширина, высота и количество строк данного текста.">
+				<Param name="string&amp; text" />
+				<Param name="int w" />
+				<Param name="int h" />
+				<Param name="int font" />
+				<Param name="int flags" />
+				<Param name="int&amp; tw" />
+				<Param name="int&amp; th" />
+				<Param name="int&amp; lines" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTick" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<keyword name="GetTile" func="yes">
+			<Overload retVal="uint" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="bool roof" />
+				<Param name="uint index" />
+			</Overload>
+		</keyword>
+		<KeyWord name="GetTileName" func="yes">
+			<Overload retVal="string@" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="bool roof" />
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTilesCount" func="yes">
+			<Overload retVal="string@" descr="MapperMap::">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="bool roof" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTime" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="uint16&amp; year" />
+				<Param name="uint16&amp; month" />
+				<Param name="uint16&amp; day" />
+				<Param name="uint16&amp; day_of_week" />
+				<Param name="uint16&amp; hour" />
+				<Param name="uint16&amp; minute" />
+				<Param name="uint16&amp; second" />
+				<Param name="uint16&amp; milliseconds" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTimeEvents" func="yes">
+			<Overload retVal="uint">
+				<Param name="int identifier" />
+				<Param name="uint[]@ indexes" />
+				<Param name="uint[]@ durations" />
+				<Param name="uint[]@ rates" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="int[]&amp; findIdentifiers" />
+				<Param name="int[]@ identifiers" />
+				<Param name="uint[]@ indexes" />
+				<Param name="uint[]@ durations" />
+				<Param name="uint[]@ rates" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint num" />
+				<Param name="uint&amp; duration" />
+				<Param name="uint[]@ values" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint num" />
+				<Param name="uint&amp; duration" />
+				<Param name="int[]@ values" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTurnBased" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTurnBasedSequence" func="yes">
+			<Overload retVal="int">
+				<Param name="uint[]&amp; crittersIds" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetTurnBasedTime" func="yes">
+			<Overload retVal="uint" descr="Client">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetUnicumVar" func="yes">
+			<Overload retVal="GameVar@">
+				<Param name="uint16 varId" />
+				<Param name="uint masterId" />
+				<Param name="uint slaveId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetValue" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetVisible" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetVisibleLocations" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+				<Param name="uint radius" />
+				<Param name="Critter@+ visibleBy" />
+				<Param name="Location@[]@+ locations" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetWidth" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GetZoneLocationIds" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint16 zoneX" />
+				<Param name="uint16 zoneY" />
+				<Param name="uint zoneRadius" />
+				<Param name="uint[]@+ locationIds" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="get_active_screens" func="yes">
+			<Overload retVal="void">
+				<Param name="int[]&amp; result" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="get_elevator" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint type" />
+				<Param name="uint[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="get_start_time" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8&amp; multiplier" />
+				<Param name="uint16&amp; year" />
+				<Param name="uint8&amp; month" />
+				<Param name="uint8&amp; day" />
+				<Param name="uint8&amp; hour" />
+				<Param name="uint8&amp; minute" />
+				<Param name="uint8&amp; second" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GiveGlobalGroupLead" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="global_process" func="yes">
+			<Overload retVal="void">
+				<Param name="int processType" />
+				<Param name="Critter&amp; cr" />
+				<Param name="Item@ car" />
+				<Param name="float&amp; curX" />
+				<Param name="float&amp; curY" />
+				<Param name="float&amp; toX" />
+				<Param name="float&amp; toY" />
+				<Param name="float&amp; speed" />
+				<Param name="uint&amp; encounterDescriptor" />
+				<Param name="bool&amp; waitForAnswer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="GLOBAL_PROCESS_ENTER" />
+		<KeyWord name="GLOBAL_PROCESS_KICK" />
+		<KeyWord name="GLOBAL_PROCESS_MOVE" />
+		<KeyWord name="GLOBAL_PROCESS_SET_MOVE" />
+		<KeyWord name="GLOBAL_PROCESS_START" />
+		<KeyWord name="GLOBAL_PROCESS_START_FAST" />
+		<KeyWord name="GLOBAL_PROCESS_STOPPED" />
+		<KeyWord name="GM_RELIEF_WATER" />
+		<KeyWord name="GM_WALK_FLY" />
+		<KeyWord name="GM_WALK_GROUND" />
+		<KeyWord name="GM_WALK_WATER" />
+		<KeyWord name="Grid_Type" />
+		<KeyWord name="GroundLevel" />
+		<KeyWord name="GrowBuffer" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="uint length" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Height" />
+		<KeyWord name="HexX" />
+		<KeyWord name="HexY" />
+		<KeyWord name="HideScreen" func="yes">
+			<Overload retVal="void">
+				<Param name="int screen" />
+				<Param name="int p0" />
+				<Param name="int p1" />
+				<Param name="int p2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="hit_aim" func="yes">
+			<Overload retVal="void" descr="Client reserved&#x0a;Значение aim можно переопределить (см. Hit locations в _defines.fos)">
+				<Param name="uint8&amp; aim" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="HolodiskNum" />
+		<KeyWord name="HolodiskNumber" />
+		<KeyWord name="Id" />
+		<KeyWord name="Identifier" />
+		<KeyWord name="IdentifierExt" />
+		<KeyWord name="Indicator" />
+		<KeyWord name="IndicatorMax" />
+		<KeyWord name="IndicatorStart" />
+		<KeyWord name="Info" />
+		<KeyWord name="init" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="InjureCritter" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter@ cr" />
+				<Param name="uint16 damage" />
+				<Param name="uint8 damageType" />
+				<Param name="uint8 dir" />
+				<Param name="uint ownerId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="inout" />
+		<KeyWord name="int" />
+		<KeyWord name="int16" />
+		<KeyWord name="int32" />
+		<KeyWord name="int8" />
+		<KeyWord name="interface" />
+		<KeyWord name="in_message" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; message" />
+				<Param name="int&amp; sayType" />
+				<Param name="uint&amp; critterId" />
+				<Param name="uint&amp; delay" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsAddicted" func="yes">
+			<Overload retVal="bool" desc="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsAnim1" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsAnimAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsAnimPlaying" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsAnyData" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsBusy" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCanAim" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCanRotate" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCanRun" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCanWalk" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsChosen" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterAnim1" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterCanAim" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterCanArmor" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterCanRotate" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterCanRun" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsCritterCanWalk" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="uint crType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDead" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDeteriorable" func="yes">
+			<Overload retVal="bool" descr="Item::, ItemCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDmgArm" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDmgEye" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDmgLeg" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDmgTwoArm" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsDmgTwoLeg" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="isEmpty" func="yes">
+			<Overload retVal="bool" descr="array::, dictionary::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsFree" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsGlobalGroupLeader" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsHexPassed" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsHexRaked" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsHolodiskInfo" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint holodiskNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsInjured" func="yes">
+		<Overload retVal="bool" descr="Critter::, CritterCl">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsKnockout" func="yes">
+		<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsKnownLoc" func="yes">
+			<Overload retVal="bool">
+				<Param name="bool byId" />
+				<Param name="uint locNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsLife" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsMsgStr" func="yes">
+			<Overload retVal="bool">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsNoPlanes" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsNotValid" />
+		<KeyWord name="IsNpc" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsOverweight" func="yes">
+			<Overload retVal="bool" descr="Critter::, CritterCl">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsPlayer" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsQuest" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsRuning" />
+		<KeyWord name="IsSee" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="Item&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsSeenBy" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsStackable" func="yes">
+			<Overload retVal="bool" descr="Item::, ItemCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsTurnBased" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsTurnBasedAvailability" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="IsTurnBasedTurn" func="yes">
+			<Overload retVal="bool" descr="CritterCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Item" />
+		<KeyWord name="ItemsCount" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ItemsSize" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ItemsVolume" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ItemsWeight" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="items_barter" func="yes">
+			<Overload retVal="bool">
+				<Param name="Item@[]&amp; saleItems" />
+				<Param name="uint[]&amp; saleItemsCount" />
+				<Param name="Item@[]&amp; buyItems" />
+				<Param name="uint[]&amp; buyItemsCount" />
+				<Param name="Critter&amp; player" />
+				<Param name="Critter&amp; npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="items_collection" func="yes">
+			<Overload retVal="void">
+				<Param name="int collection" />
+				<Param name="ItemCl@[]&amp; items" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="items_crafted" func="yes">
+			<Overload retVal="void">
+				<Param name="Item@[]&amp; items" />
+				<Param name="uint[]&amp; itemsCount" />
+				<Param name="Item@[]&amp; resources" />
+				<Param name="Critter&amp; crafter" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ITEMS_BARTER" />
+		<KeyWord name="ITEMS_BARTER_OFFER" />
+		<KeyWord name="ITEMS_BARTER_OPPONENT" />
+		<KeyWord name="ITEMS_BARTER_OPPONENT_OFFER" />
+		<KeyWord name="ITEMS_INVENTORY" />
+		<KeyWord name="ITEMS_PICKUP" />
+		<KeyWord name="ITEMS_PICKUP_FROM" />
+		<KeyWord name="ITEMS_USE" />
+		<KeyWord name="ITEM_ALWAYS_VIEW" />
+		<KeyWord name="ITEM_BAD_ITEM" />
+		<KeyWord name="ITEM_BIG_GUN" />
+		<KeyWord name="Item_BrokenCount" />
+		<KeyWord name="Item_BrokenFlags" />
+		<KeyWord name="ITEM_CAN_LOOK" />
+		<KeyWord name="ITEM_CAN_PICKUP" />
+		<KeyWord name="ITEM_CAN_TALK" />
+		<KeyWord name="ITEM_CAN_USE" />
+		<KeyWord name="ITEM_CAN_USE_ON_SMTH" />
+		<KeyWord name="ITEM_COLORIZE" />
+		<KeyWord name="ITEM_COLORIZE_INV" />
+		<KeyWord name="item_cost" func="yes">
+			<Overload retVal="uint">
+				<Param name="Item&amp; item" />
+				<Param name="Critter&amp; cr" />
+				<Param name="Critter&amp; npc" />
+				<Param name="bool sell" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ITEM_DATA_MASK_CHOSEN" />
+		<KeyWord name="ITEM_DATA_MASK_CONTAINER" />
+		<KeyWord name="ITEM_DATA_MASK_CRITTERS" />
+		<KeyWord name="ITEM_DATA_MASK_CRITTERS_EXT" />
+		<KeyWord name="ITEM_DATA_MASK_MAP" />
+		<KeyWord name="item_description" func="yes">
+			<Overload retVal="string">
+				<Param name="ItemCl&amp; item" />
+				<Param name="int lookType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Item_Deterioration" />
+		<KeyWord name="ITEM_EVENT_ATTACK" />
+		<KeyWord name="ITEM_EVENT_DROP" />
+		<KeyWord name="ITEM_EVENT_MAX" />
+		<KeyWord name="ITEM_EVENT_MOVE" />
+		<KeyWord name="ITEM_EVENT_PICK" />
+		<KeyWord name="ITEM_EVENT_REPAIR" />
+		<KeyWord name="ITEM_EVENT_SKILL" />
+		<KeyWord name="ITEM_EVENT_USE" />
+		<KeyWord name="ITEM_EVENT_USE_ON_ME" />
+		<KeyWord name="ITEM_EVENT_WALK" />
+		<KeyWord name="ITEM_FLAT" />
+		<KeyWord name="ITEM_GAG" />
+		<KeyWord name="ITEM_GECK" />
+		<KeyWord name="ITEM_HAS_TIMER" />
+		<KeyWord name="ITEM_HIDDEN" />
+		<KeyWord name="item_init" func="yes">
+			<Overload retVal="void">
+				<Param name="Item&amp; item" />
+				<Param name="bool firstTime" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="item_inv_in" func="yes">
+			<Overload retVal="void">
+				<Param name="ItemCl&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="item_inv_out" func="yes">
+			<Overload retVal="void">
+				<Param name="ItemCl&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ITEM_LIGHT" />
+		<KeyWord name="ITEM_LIGHT_THRU" />
+		<KeyWord name="item_map_changed" func="yes">
+			<Overload retVal="void">
+				<Param name="ItemCl&amp; itemNow" />
+				<Param name="ItemCl&amp; itemBefore" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="item_map_in" func="yes">
+			<Overload retVal="void">
+				<Param name="ItemCl&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="item_map_out" func="yes">
+			<Overload retVal="void">
+				<Param name="ItemCl&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ITEM_MODE_PRIMARY" />
+		<KeyWord name="ITEM_MODE_RELOAD" />
+		<KeyWord name="ITEM_MODE_SECONDARY" />
+		<KeyWord name="ITEM_MODE_THIRD" />
+		<KeyWord name="ITEM_MODE_USE" />
+		<KeyWord name="ITEM_MULTI_HEX" />
+		<KeyWord name="ITEM_NO_BLOCK" />
+		<KeyWord name="ITEM_NO_HIGHLIGHT" />
+		<KeyWord name="ITEM_NO_LIGHT_INFLUENCE" />
+		<KeyWord name="ITEM_NO_LOOT" />
+		<KeyWord name="ITEM_NO_STEAL" />
+		<KeyWord name="ITEM_SHOOT_THRU" />
+		<KeyWord name="ITEM_SHOW_ANIM" />
+		<KeyWord name="ITEM_SHOW_ANIM_EXT" />
+		<KeyWord name="ITEM_TRAP" />
+		<KeyWord name="ITEM_TYPE_AMMO" />
+		<KeyWord name="ITEM_TYPE_ARMOR" />
+		<KeyWord name="ITEM_TYPE_CAR" />
+		<KeyWord name="ITEM_TYPE_CONTAINER" />
+		<KeyWord name="ITEM_TYPE_DOOR" />
+		<KeyWord name="ITEM_TYPE_DRUG" />
+		<KeyWord name="ITEM_TYPE_GENERIC" />
+		<KeyWord name="ITEM_TYPE_GRID" />
+		<KeyWord name="ITEM_TYPE_KEY" />
+		<KeyWord name="ITEM_TYPE_MAGIC" />
+		<KeyWord name="ITEM_TYPE_MISC" />
+		<KeyWord name="ITEM_TYPE_NONE" />
+		<KeyWord name="ITEM_TYPE_WALL" />
+		<KeyWord name="ITEM_TYPE_WEAPON" />
+		<KeyWord name="ITEM_TWO_HANDS" />
+		<KeyWord name="ITEM_WALL_TRANS_END" />
+		<KeyWord name="KeyboardPress" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="uint8 key1" />
+				<Param name="uint8 key2" />
+				<Param name="string@+ key1Text = null" />
+				<Param name="string@+ key2Text = null" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="keys" func="yes">
+			<Overload retVal="uint" descr="dictionary::">
+				<Param name="string@[]@ keys" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="key_down" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint8 key" />
+				<Param name="string&amp; keyText" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="key_up" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint8 key" />
+				<Param name="string&amp; keyText" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LeaveGlobalGroup" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="length" func="yes">
+			<Overload retVal="uint" descr="string::, array::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Lexems" />
+		<KeyWord name="LightColor" />
+		<KeyWord name="LightDirOff" />
+		<KeyWord name="LightDistance" />
+		<KeyWord name="LightFlags" />
+		<KeyWord name="LightIntensity" />
+		<KeyWord name="LightRadius" />
+		<KeyWord name="Load" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LoadConstants" func="yes">
+			<Overload retVal="bool">
+				<Param name="int constCollection" />
+				<Param name="string@+ fileName" />
+				<Param name="int pathType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LoadDataFile" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper">
+				<Param name="string&amp; dataFileName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LoadFont" func="yes">
+			<Overload retVal="bool" descr="Client, Mapper">
+				<Param name="int font" />
+				<Param name="string&amp; fontFileName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LoadImage" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint index" />
+				<Param name="string@+ imageName" />
+				<Param name="uint imageDepth" />
+				<Param name="int pathType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LoadSprite" func="yes">
+			<Overload retVal="uint">
+				<Param name="string&amp; name" />
+				<Param name="int pathIndex" />
+			</Overload>
+			<Overload retVal="uint">
+				<Param name="uint nameHash" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LockerComplexity" />
+		<KeyWord name="LockerCondition" />
+		<KeyWord name="LockerId" />
+		<KeyWord name="Locker_Condition" />
+		<KeyWord name="LockScreenScroll" func="yes">
+			<Overload retVal="void">
+				<Param name="CritterCl@ cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Log" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; text" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="LOOK_CHECK_DIR" />
+		<KeyWord name="LOOK_CHECK_ITEM_SCRIPT" />
+		<KeyWord name="LOOK_CHECK_SCRIPT" />
+		<KeyWord name="LOOK_CHECK_TRACE" />
+		<KeyWord name="LOOK_CHECK_WEIGHT" />
+		<KeyWord name="loop" func="yes">
+			<Overload retVal="uint">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="lost_input" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="m2_Val1" />
+		<KeyWord name="m2_Val2" />
+		<KeyWord name="m2_Val3" />
+		<KeyWord name="m2_Val4" />
+		<KeyWord name="Map" />
+		<KeyWord name="MapId" />
+		<KeyWord name="map_critter_in" func="yes">
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="map_critter_out" func="yes">
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="Critter&amp; cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MAP_EVENT_CRITTER_DEAD" />
+		<KeyWord name="MAP_EVENT_FINISH" />
+		<KeyWord name="MAP_EVENT_IN_CRITTER" />
+		<KeyWord name="MAP_EVENT_LOOP_0" />
+		<KeyWord name="MAP_EVENT_LOOP_1" />
+		<KeyWord name="MAP_EVENT_LOOP_2" />
+		<KeyWord name="MAP_EVENT_LOOP_3" />
+		<KeyWord name="MAP_EVENT_LOOP_4" />
+		<KeyWord name="MAP_EVENT_MAX" />
+		<KeyWord name="MAP_EVENT_OUT_CRITTER" />
+		<KeyWord name="map_init" func="yes">
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="bool firstTime" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="map_message" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; message" />
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint&amp; color" />
+				<Param name="uint&amp; delay" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Material" />
+		<KeyWord name="MAX" />
+		<KeyWord name="Message" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; msg" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="string&amp; msg" />
+				<Param name="int type" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="int textMsg" />
+				<Param name="uint strNum" />
+				<Param name="int type" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MESSAGE_TO_ALL_ON_MAP" />
+		<KeyWord name="MESSAGE_TO_IAM_VISIBLE" />
+		<KeyWord name="MESSAGE_TO_VISIBLE_ME" />
+		<KeyWord name="MIN" />
+		<KeyWord name="Misc_SetScript" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Misc_ScriptId" />
+		<KeyWord name="Misc_WaitSecond" />
+		<KeyWord name="Mode" />
+		<KeyWord name="MODE_BARTER_ONLY_CASH" />
+		<KeyWord name="MODE_DEAD_AGES" />
+		<KeyWord name="MODE_DEFAULT_COMBAT" />
+		<KeyWord name="MODE_DLG_SCRIPT_BARTER" />
+		<KeyWord name="MODE_END_COMBAT" />
+		<KeyWord name="MODE_GECK" />
+		<KeyWord name="MODE_HIDE" />
+		<KeyWord name="MODE_INVULNERABLE" />
+		<KeyWord name="MODE_NO_BARTER" />
+		<KeyWord name="MODE_NO_DROP" />
+		<KeyWord name="MODE_NO_ENEMY_STACK" />
+		<KeyWord name="MODE_NO_FAVORITE_ITEM" />
+		<KeyWord name="MODE_NO_FLATTEN" />
+		<KeyWord name="MODE_NO_HEAL" />
+		<KeyWord name="MODE_NO_HOME" />
+		<KeyWord name="MODE_NO_ITEM_GARBAGER" />
+		<KeyWord name="MODE_NO_KARMA_ON_KILL" />
+		<KeyWord name="MODE_NO_KNOCK" />
+		<KeyWord name="MODE_NO_LOOSE_LIMBS" />
+		<KeyWord name="MODE_NO_LOOT" />
+		<KeyWord name="MODE_NO_PUSH" />
+		<KeyWord name="MODE_NO_PVP" />
+		<KeyWord name="MODE_NO_RUN" />
+		<KeyWord name="MODE_NO_STEAL" />
+		<KeyWord name="MODE_NO_SUPPLY" />
+		<KeyWord name="MODE_NO_TALK" />
+		<KeyWord name="MODE_NO_UNARMED" />
+		<KeyWord name="MODE_NO_WALK" />
+		<KeyWord name="MODE_RANGE_HTH" />
+		<KeyWord name="MODE_SPECIAL_DEAD" />
+		<KeyWord name="MODE_UNLIMITED_AMMO" />
+		<KeyWord name="MODULE_NAME" />
+		<KeyWord name="MouseClick" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="int x" />
+				<Param name="int y" />
+				<Param name="int button" />
+				<Param name="int cursor" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MOUSE_CLICK_EXT0" />
+		<KeyWord name="MOUSE_CLICK_EXT1" />
+		<KeyWord name="MOUSE_CLICK_EXT2" />
+		<KeyWord name="MOUSE_CLICK_EXT3" />
+		<KeyWord name="MOUSE_CLICK_EXT4" />
+		<KeyWord name="MOUSE_CLICK_LEFT" />
+		<KeyWord name="MOUSE_CLICK_MIDDLE" />
+		<KeyWord name="MOUSE_CLICK_RIGHT" />
+		<KeyWord name="MOUSE_CLICK_WHEEL_DOWN" />
+		<KeyWord name="MOUSE_CLICK_WHEEL_UP" />
+		<KeyWord name="mouse_down" func="yes">
+			<Overload retVal="bool">
+				<Param name="int click" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="mouse_move" func="yes">
+			<Overload retVal="void">
+				<Param name="int x" />
+				<Param name="int y" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="mouse_up" func="yes">
+			<Overload retVal="bool">
+				<Param name="int click" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveHexByDir" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16&amp; hexX" />
+				<Param name="uint16&amp; hexY" />
+				<Param name="uint8 dir" />
+				<Param name="uint steps" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveItem" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint objId" />
+				<Param name="uint count" />
+				<Param name="uint8 toSlot" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+				<Param name="Critter&amp; toCr" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+				<Param name="Item&amp; toCont" />
+				<Param name="uint stackId" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Item&amp; item" />
+				<Param name="uint count" />
+				<Param name="Map&amp; toMap" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveItems" func="yes">
+			<Overload retVal="void">
+				<Param name="Item@[]&amp; items" />
+				<Param name="Critter&amp; toCr" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Item@[]&amp; items" />
+				<Param name="Item&amp; toCont" />
+				<Param name="uint stackId" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Item@[]&amp; items" />
+				<Param name="Map&amp; toMap" />
+				<Param name="uint16 toHx" />
+				<Param name="uint16 toHy" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveRandom" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveScreen" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint speed" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MoveToDir" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="MyParam" />
+		<KeyWord name="MyParamBase" />
+		<KeyWord name="NameColor" />
+		<KeyWord name="NameOnHead" />
+		<KeyWord name="NoLogOut" />
+		<KeyWord name="not" />
+		<KeyWord name="npc_plane_begin" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; npc" />
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="npc_plane_end" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; npc" />
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="npc_plane_run" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; npc" />
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="Critter&amp; npc" />
+				<Param name="NpcPlane&amp; plane" />
+				<Param name="uint childIndex" />
+				<Param name="int reason" />
+				<Param name="uint&amp; r0" />
+				<Param name="uint&amp; r1" />
+				<Param name="uint&amp; r2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="null" />
+		<KeyWord name="OffsetX" />
+		<KeyWord name="OffsetY" />
+		<KeyWord name="ON_STEAL_SUCC_CONTINUE" />
+		<KeyWord name="OpenDoor" func="yes">
+			<Overload retVal="bool">
+				<Param name="Item@ door" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="or" />
+		<KeyWord name="Ori" />
+		<KeyWord name="out" />
+		<KeyWord name="out_message" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; message" />
+				<Param name="int&amp; sayType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Param" />
+		<KeyWord name="ParamBase" />
+		<KeyWord name="ParentChildIndex" />
+		<KeyWord name="ParentUID" />
+		<KeyWord name="PE_DEAD_AGES_MODE" />
+		<KeyWord name="PE_DLG_SCRIPT_BARTER_MODE" />
+		<KeyWord name="PE_GECK_MODE" />
+		<KeyWord name="PE_INVULNERABLE_MODE" />
+		<KeyWord name="PE_NOBARTER_MODE" />
+		<KeyWord name="PE_NOSTEAL_MODE" />
+		<KeyWord name="PE_NO_DROP_MODE" />
+		<KeyWord name="PE_NO_FAVORITE_ITEM_MODE" />
+		<KeyWord name="PE_NO_FLATTEN_MODE" />
+		<KeyWord name="PE_NO_HEAL_MODE" />
+		<KeyWord name="PE_NO_HOME_MODE" />
+		<KeyWord name="PE_NO_ITEM_GARBAGER_MODE" />
+		<KeyWord name="PE_NO_KNOCK_MODE" />
+		<KeyWord name="PE_NO_LOOSE_LIMBS_MODE" />
+		<KeyWord name="PE_RANGE_HTH_MODE" />
+		<KeyWord name="PE_SPECIAL_DEAD_MODE" />
+		<KeyWord name="PE_UNLIMITED_AMMO_MODE" />
+		<KeyWord name="PicInv" />
+		<KeyWord name="PickItem" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Pick_HexX" />
+		<KeyWord name="Pick_HexY" />
+		<KeyWord name="Pick_Pid" />
+		<KeyWord name="Pick_ToOpen" />
+		<KeyWord name="Pick_UseItemId" />
+		<KeyWord name="PicMap" />
+		<KeyWord name="Pid" />
+		<KeyWord name="PLANE_DISCARD" />
+		<KeyWord name="PLANE_KEEP" />
+		<KeyWord name="PLANE_RUN_GLOBAL" />
+		<KeyWord name="player_allowcommand" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="Critter@ cr" />
+				<Param name="string@ adminPanel" />
+				<Param name="uint8 command" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="player_data_check" func="yes">
+			<Overload retVal="bool" descr="Server reserved">
+				<Param name="string&amp; name" />
+				<Param name="int[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="player_init" func="yes">
+			<Overload retVal="void" descr="Server reserved">
+				<Param name="Critter&amp; cr" />
+				<Param name="bool registration" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="player_login" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint ip" />
+				<Param name="string&amp; name" />
+				<Param name="string&amp; password" />
+				<Param name="uint id" />
+				<Param name="uint&amp; textMsg" />
+				<Param name="uint&amp; strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="player_registration" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint ip" />
+				<Param name="string&amp; name" />
+				<Param name="string&amp; password" />
+				<Param name="uint&amp; textMsg" />
+				<Param name="uint&amp; strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="PlayMusic" func="yes">
+			<Overload retVal="bool" descr="Client">
+				<Param name="string&amp; musicName" />
+				<Param name="uint pos" />
+				<Param name="uint repeat" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="PlaySound" func="yes">
+			<Overload retVal="bool" descr="Client">
+				<Param name="string&amp; soundName" />
+				<Param name="bool sendSelf" />
+			</Overload>
+			<Overload retVal="bool" descr="Client">
+				<Param name="uint8 soundType" />
+				<Param name="uint8 soundTypeExt" />
+				<Param name="uint8 soundId" />
+				<Param name="uint8 soundIdExt" />
+				<Param name="bool sendSelf" />
+			</Overload>
+			<Overload retVal="bool" descr="Client">
+				<Param name="uint8 soundType" />
+				<Param name="uint8 soundTypeExt" />
+				<Param name="uint8 soundId" />
+				<Param name="uint8 soundIdExt" />
+			</Overload>
+			<Overload retVal="bool" descr="Client">
+				<Param name="string&amp; soundName" />
+			</Overload>
+			<Overload retVal="bool" descr="Client">
+				<Param name="string&amp; soundName" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint radius" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="PlayVideo" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; videoName" />
+				<Param name="bool canStop" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="PoisonResistance" />
+		<KeyWord name="POW2" />
+		<KeyWord name="POW3" />
+		<KeyWord name="Priory" />
+		<KeyWord name="Proto" />
+		<KeyWord name="ProtoId" />
+		<KeyWord name="ProtoItem" />
+		<KeyWord name="QuakeScreen" func="yes">
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="uint8 noise" />
+				<Param name="uint ms" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="Critter&amp; player" />
+				<Param name="uint8 noise" />
+				<Param name="uint ms" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RadioBroadcastRecv" />
+		<KeyWord name="RadioBroadcastSend" />
+		<KeyWord name="RadioChannel" />
+		<KeyWord name="RadioFlags" />
+		<KeyWord name="RadioMessageMsg" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="uint16 channel" />
+				<Param name="uint16 textMsg" />
+				<Param name="uint strNum" />
+				<Param name="string@+ lexems" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RADIO_BROADCAST_FORCE_ALL" />
+		<KeyWord name="RADIO_BROADCAST_LOCATION" />
+		<KeyWord name="RADIO_BROADCAST_MAP" />
+		<KeyWord name="RADIO_BROADCAST_WORLD" />
+		<KeyWord name="RADIO_BROADCAST_ZONE" func="yes">
+			<Overload retVal="uint" descr="Macros">
+				<Param name="Radius" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RADIO_DISABLE_RECV" />
+		<KeyWord name="RADIO_DISABLE_SEND" />
+		<KeyWord name="RADIO_DISABLE_SHIFT_BC_RECV" />
+		<KeyWord name="RADIO_DISABLE_SHIFT_BC_SEND" />
+		<KeyWord name="RADIO_DISABLE_SHIFT_CHANNEL" />
+		<KeyWord name="RADIO_DISABLE_SHIFT_RECV" />
+		<KeyWord name="RADIO_DISABLE_SHIFT_SEND" />
+		<KeyWord name="Radius" />
+		<KeyWord name="Random" func="yes">
+			<Overload retVal="void">
+				<Param name="int minimum" />
+				<Param name="int maximum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readData" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint count" />
+				<Param name="uint8[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readNumber" func="yes">
+			<Overload retVal="int">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readUint8" func="yes">
+			<Overload retVal="uint8">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readUint16" func="yes">
+			<Overload retVal="uint16">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readUint32" func="yes">
+			<Overload retVal="uint32">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readUint64" func="yes">
+			<Overload retVal="uint64">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="readWord" func="yes">
+			<Overload retVal="string@">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_DAY" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_HOUR" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_MINUTE" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_MONTH" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_MS" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_SECOND" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REAL_YEAR" func="yes">
+			<Overload retVal="int">
+				<Param name="x" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="REASON_ATTACKED" />
+		<KeyWord name="REASON_ATTACK_POSITION" />
+		<KeyWord name="REASON_ATTACK_WEAPON" />
+		<KeyWord name="REASON_CALL_ALIAS" />
+		<KeyWord name="REASON_CANT_OPEN_DOORS" />
+		<KeyWord name="REASON_CANT_WALK" />
+		<KeyWord name="REASON_DAMAGE_TWO_ARMS" />
+		<KeyWord name="REASON_DEADLOCK" />
+		<KeyWord name="REASON_FIND_PATH_ERROR" />
+		<KeyWord name="REASON_FOUND_IN_ENEMY_STACK" />
+		<KeyWord name="REASON_FROM_DIALOG" />
+		<KeyWord name="REASON_GAG_CRITTER" />
+		<KeyWord name="REASON_GAG_ITEM" />
+		<KeyWord name="REASON_GO_HOME" />
+		<KeyWord name="REASON_HEX_BUSY" />
+		<KeyWord name="REASON_HEX_BUSY_RING" />
+		<KeyWord name="REASON_HEX_TOO_FAR" />
+		<KeyWord name="REASON_MAP_NOT_FOUND" />
+		<KeyWord name="REASON_NO_UNARMED" />
+		<KeyWord name="REASON_PROTO_ITEM_NOT_FOUND" />
+		<KeyWord name="REASON_SET_FAVORITE_ITEM" />
+		<KeyWord name="REASON_STEALING" />
+		<KeyWord name="REASON_SUCCESS" />
+		<KeyWord name="REASON_TARGET_DISAPPEARED" />
+		<KeyWord name="REASON_TRACE_FAIL" />
+		<KeyWord name="REASON_USE_ITEM_NOT_FOUND" />
+		<KeyWord name="Refresh" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RefreshItemsCollection" func="yes">
+			<Overload retVal="void">
+				<Param name="int collection" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RefreshMap" func="yes">
+			<Overload retVal="void">
+				<Param name="bool onlyTiles" />
+				<Param name="bool onlyRoof" />
+				<Param name="bool onlyLight" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RefreshVisib" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Reload" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="remove_from_array" func="yes">
+			<Overload retVal="void">
+				<Param name="array" />
+				<Param name="idx" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="render_iface" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="render_map" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ReplaceText" func="yes">
+			<Overload retVal="string@">
+				<Param name="const string&amp; text" />
+				<Param name="const string&amp; replace" />
+				<Param name="const string&amp; str" />
+			</Overload>
+			<Overload retVal="string@">
+				<Param name="const string&amp; text" />
+				<Param name="const string&amp; replace" />
+				<Param name="int i" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="reserve" func="yes">
+			<Overload retVal="void" descr="array::">
+				<Param name="uint" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="resize" func="yes">
+			<Overload retVal="void" descr="array::">
+				<Param name="uint length" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="rawGet" func="yes">
+			<Overload retVal="uint8" descr="string::">
+				<Param name="uint index" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="rawLength" func="yes">
+			<Overload retVal="uint" descr="string::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="rawResize" func="yes">
+			<Overload retVal="void" descr="string::">
+				<Param name="uint length" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="rawSet" func="yes">
+			<Overload retVal="void" descr="string::">
+				<Param name="uint index" />
+				<Param name="uint8 value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="return" />
+		<KeyWord name="reverse" func="yes">
+			<Overload retVal="void" descr="array::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Run" />
+		<KeyWord name="RunClientScript" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; funcName" />
+				<Param name="int p0" />
+				<Param name="int p1" />
+				<Param name="int p2" />
+				<Param name="string@ p3" />
+				<Param name="int[]@ p4" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RunDialog" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter@ player" />
+				<Param name="Critter@ npc" />
+				<Param name="bool ignoreDistance" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="Critter@ player" />
+				<Param name="Critter@ npc" />
+				<Param name="uint dialogPack" />
+				<Param name="bool ignoreDistance" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="Critter@ player" />
+				<Param name="uint dialogPack" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="bool ignoreDistance" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RunEffect" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 ProtoId" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint effectRadius" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RunFlyEffect" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 ProtoId" />
+				<Param name="Critter@ fromCr" />
+				<Param name="Critter@ toCr" />
+				<Param name="uint16 fromX" />
+				<Param name="uint16 fromY" />
+				<Param name="uint16 toX" />
+				<Param name="uint16 toY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="RunServerScript" func="yes">
+			<Overload retVal="void">
+				<Param name="string&amp; funcName" />
+				<Param name="int p0" />
+				<Param name="int p1" />
+				<Param name="int p2" />
+				<Param name="string@ p3" />
+				<Param name="int[]@ p4" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Save" func="yes">
+			<Overload retVal="void">
+				<Param name="bool withMaps" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SaveMap" func="yes">
+			<Overload retVal="bool" descr="Mapper">
+				<Param name="MapperMap@+ map" />
+				<Param name="string&amp; fileName" />
+				<Param name="int pathType" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Slot" />
+		<KeyWord name="Width" />
+		<KeyWord name="WorkHexX" />
+		<KeyWord name="WorkHexY" />
+		<KeyWord name="world_save" func="yes">
+			<Overload retVal="void">
+				<Param name="uint currentIndex" />
+				<Param name="uint[]&amp; deleteIndexes" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Say" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 howSay" />
+				<Param name="string&amp; text" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SayMsg" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 howSay" />
+				<Param name="uint16 textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SAY_DIALOGBOX_BUTTON" func="yes">
+			<Overload retVal="void">
+				<Param name="b" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SAY_DIALOGBOX_TEXT" />
+		<KeyWord name="SAY_EMOTE" />
+		<KeyWord name="SAY_EMOTE_ON_HEAD" />
+		<KeyWord name="SAY_ENCOUNTER_ANY" />
+		<KeyWord name="SAY_ENCOUNTER_RT" />
+		<KeyWord name="SAY_ENCOUNTER_TB" />
+		<KeyWord name="SAY_FIX_RESULT" />
+		<KeyWord name="SAY_FLASH_WINDOW" />
+		<KeyWord name="SAY_NORM" />
+		<KeyWord name="SAY_NORM_ON_HEAD" />
+		<KeyWord name="SAY_RADIO" />
+		<KeyWord name="SAY_SAY_TEXT" />
+		<KeyWord name="SAY_SAY_TITLE" />
+		<KeyWord name="SAY_SHOUT" />
+		<KeyWord name="SAY_SHOUT_ON_HEAD" />
+		<KeyWord name="SAY_SOCIAL" />
+		<KeyWord name="SAY_WHISP" />
+		<KeyWord name="SAY_WHISP_ON_HEAD" />
+		<KeyWord name="Scenery" />
+		<KeyWord name="SCREEN_BAG" />
+		<KeyWord name="screen_change" func="yes">
+			<Overload retVal="void">
+				<Param name="bool show" />
+				<Param name="int screen" />
+				<Param name="int p0" />
+				<Param name="int p1" />
+				<Param name="int p2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SCREEN_CHARACTER" />
+		<KeyWord name="SCREEN_CLOSE" />
+		<KeyWord name="SCREEN_DIALOGBOX" />
+		<KeyWord name="SCREEN_ELEVATOR" />
+		<KeyWord name="SCREEN_FIXBOY" />
+		<KeyWord name="SCREEN_INVENTORY" />
+		<KeyWord name="SCREEN_MINIMAP" />
+		<KeyWord name="SCREEN_PIPBOY" />
+		<KeyWord name="SCREEN_SAY" />
+		<KeyWord name="SCREEN_SKILLBOX" />
+		<KeyWord name="SCREEN_TIMER" />
+		<KeyWord name="ScriptFunc" />
+		<KeyWord name="ScriptModule" />
+		<KeyWord name="SCROLL_BARTER" />
+		<KeyWord name="SCROLL_BARTER_OFFER" />
+		<KeyWord name="SCROLL_BARTER_OPPONENT" />
+		<KeyWord name="SCROLL_BARTER_OPPONENT_OFFER" />
+		<KeyWord name="SCROLL_CHARACTER_KARMA" />
+		<KeyWord name="SCROLL_CHARACTER_KILLS" />
+		<KeyWord name="SCROLL_CHARACTER_PERKS" />
+		<KeyWord name="SCROLL_DIALOG_TEXT" />
+		<KeyWord name="SCROLL_GLOBAL_MAP_CITIES_X" />
+		<KeyWord name="SCROLL_GLOBAL_MAP_CITIES_Y" />
+		<KeyWord name="SCROLL_INVENTORY" />
+		<KeyWord name="SCROLL_INVENTORY_ITEM_INFO" />
+		<KeyWord name="SCROLL_MAP_ZOOM_VALUE" />
+		<KeyWord name="SCROLL_MESSBOX" />
+		<KeyWord name="SCROLL_PERK" />
+		<KeyWord name="SCROLL_PICKUP" />
+		<KeyWord name="SCROLL_PICKUP_FROM" />
+		<KeyWord name="SCROLL_PIPBOY_ARCHIVES" />
+		<KeyWord name="SCROLL_PIPBOY_ARCHIVES_INFO" />
+		<KeyWord name="SCROLL_PIPBOY_AUTOMAPS" />
+		<KeyWord name="SCROLL_PIPBOY_STATUS" />
+		<KeyWord name="SCROLL_PIPBOY_STATUS_QUESTS" />
+		<KeyWord name="SCROLL_PIPBOY_STATUS_SCORES" />
+		<KeyWord name="SCROLL_SPLIT_VALUE" />
+		<KeyWord name="SCROLL_TIMER_VALUE" />
+		<KeyWord name="SCROLL_USE" />
+		<KeyWord name="SendCombatResult" func="yes">
+			<Overload retVal="void">
+				<Param name="uint[]&amp; combatResult" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SendMessage" func="yes">
+			<Overload retVal="void">
+				<Param name="int num" />
+				<Param name="int val" />
+				<Param name="int to" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SendPerk" func="yes">
+			<Overload retVal="void">
+				<Param name="uint num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SendSkill" func="yes">
+			<Overload retVal="void">
+				<Param name="uint num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SendStat" func="yes">
+			<Overload retVal="void">
+				<Param name="uint num" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Set" func="yes">
+			<Overload retVal="Serializator@">
+				<Param name="const int64&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int32&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int16&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int8&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint64&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint32&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint16&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint8&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int64[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int32[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int16[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const int8[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint64[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint32[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint16[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const uint8[]&amp; values" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const bool&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const string&amp; value" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const Critter&amp; cr" />
+			</Overload>
+			<Overload retVal="Serializator@">
+				<Param name="const Item&amp; item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetAnims" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="int cond" />
+				<Param name="uint anim1" />
+				<Param name="uint anim2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetAnyData" func="yes">
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint64[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint32[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint16[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="uint8[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int64[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int32[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int16[]&amp; data" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="string&amp; name" />
+				<Param name="int8[]&amp; data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetBagRefreshTime" func="yes">
+			<Overload retVal="void">
+				<Param name="uint realMinutes" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetBestScore" func="yes">
+			<Overload retVal="void">
+				<Param name="int score" />
+				<Param name="Critter@ player" />
+				<Param name="string&amp; name" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetChild" func="yes">
+			<Overload retVal="NpcPlane@">
+				<Param name="NpcPlane&amp; child" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetChosenActions" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="uint[]@+ actions" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetChosenSendParameter" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="int index" />
+				<Param name="bool enabled" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetCount" func="yes">
+			<Overload retVal="void">
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetCurPos" func="yes">
+			<Overload retVal="void">
+				<Param name="uint pos" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetData" func="yes">
+			<Overload retVal="void">
+				<Param name="uint index" />
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDayColor" func="yes">
+			<Overload retVal="void">
+				<Param name="uint dayPart" />
+				<Param name="uint8 r" />
+				<Param name="uint8 g" />
+				<Param name="uint8 b" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDayTime" func="yes">
+			<Overload retVal="void">
+				<Param name="uint dayPart" />
+				<Param name="uint time" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDefaultCritterParam" func="yes">
+			<Overload retVal="void">
+				<Param name="uint index" />
+				<Param name="int param" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDefaultFont" func="yes">
+			<Overload retVal="void" descr="Client, Mapper">
+				<Param name="int font" />
+				<Param name="uint color" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDialogId" func="yes">
+			<Overload retVal="void">
+				<Param name="uint dialogId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetDir" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetEffect" func="yes">
+			<Overload retVal="void">
+				<Param name="int effectType" />
+				<Param name="int effectSubtype" />
+				<Param name="string@+ effectName" />
+				<Param name="string@+ effectDefines = null" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetEvent" func="yes">
+			<Overload retVal="void">
+				<Param name="int eventType" />
+				<Param name="string@ funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetFavoriteItem" func="yes">
+			<Overload retVal="void">
+				<Param name="int slot" />
+				<Param name="uint16 pid" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SETFLAG" func="yes">
+			<Overload retVal="void">
+				<Param name="x" />
+				<Param name="flag" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetFog" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 worldX" />
+				<Param name="uint16 worldY" />
+				<Param name="int fog" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetHomePos" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetInternalBag" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16[]&amp; pids" />
+				<Param name="uint[]@ minCounts" />
+				<Param name="uint[]@ maxCounts" />
+				<Param name="int[]@ slots" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetItemDataMask" func="yes">
+			<Overload retVal="bool">
+				<Param name="int maskType" />
+				<Param name="int8[]&amp; mask" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetKnownLoc" func="yes">
+			<Overload retVal="void">
+				<Param name="bool byId" />
+				<Param name="uint locNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetLexems" func="yes">
+			<Overload retVal="void">
+				<Param name="string@ lexems" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetLoopTime" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 loop" />
+				<Param name="uint16 ms" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetMessageFilters" func="yes">
+			<Overload retVal="void">
+				<Param name="int[]@ filters" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetMultihex" func="yes">
+			<Overload retVal="void">
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetParameterChangeBehaviour" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint index" />
+				<Param name="string&amp; funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetParameterDialogGetBehaviour" func="yes">
+			<Overload retVal="bool" descr="Server">
+				<Param name="uint index" />
+				<Param name="string&amp; funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetParameterGetBehaviour" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint index" />
+				<Param name="string&amp; funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetPerk" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint index" />
+				<Param name="uint range" />
+				<Param name="uint level" />
+				<Param name="string&amp; funcName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetRain" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 capacity" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetRainAnimation" func="yes">
+			<Overload retVal="void">
+				<Param name="string@ fallAnimName" />
+				<Param name="string@ dropAnimName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetRegistrationParameter" func="yes">
+			<Overload retVal="void">
+				<Param name="uint index" />
+				<Param name="bool enabled" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetScript" func="yes">
+			<Overload retVal="bool">
+				<Param name="string@ script" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetScroll" func="yes">
+			<Overload retVal="void">
+				<Param name="int scrollElement" />
+				<Param name="int value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetSendParameter" func="yes">
+			<Overload retVal="void">
+				<Param name="uint index" />
+				<Param name="bool enabled" />
+				<Param name="string@ allowFunc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetStartLocation" func="yes">
+			<Overload retVal="void">
+				<Param name="uint index" />
+				<Param name="uint16 locPid" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTeamId" func="yes">
+			<Overload retVal="void">
+				<Param name="uint teamId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetText" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint color" />
+				<Param name="string&amp; text" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTextMsg" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint color" />
+				<Param name="uint16 textMsg" />
+				<Param name="uint strNum" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint color" />
+				<Param name="uint16 textMsg" />
+				<Param name="uint strNum" />
+				<Param name="string&amp; lexems" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTextStr" func="yes">
+			<Overload retVal="void">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint color" />
+				<Param name="uint16 textMsg" />
+				<Param name="uint textStr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTime" func="yes">
+			<Overload retVal="void">
+				<Param name="int time" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTimeEvent" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint num" />
+				<Param name="uint duration" />
+				<Param name="uint[]@ values" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint num" />
+				<Param name="uint duration" />
+				<Param name="int[]@ values" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetTurnBasedAvailability" func="yes">
+			<Overload retVal="void">
+				<Param name="bool value" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SetVisible" func="yes">
+			<Overload retVal="void">
+				<Param name="bool visible" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ShowContainer" func="yes">
+			<Overload retVal="void">
+				<Param name="Critter targetCr" />
+				<Param name="Item targetItem" />
+				<Param name="uint hexCont" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ShowScreen" func="yes">
+			<Overload retVal="void">
+				<Param name="int screenType" />
+				<Param name="uint param" />
+				<Param name="string@+ funcName" />
+			</Overload>
+			<Overload retVal="void">
+				<Param name="int screen" />
+				<Param name="int p0" />
+				<Param name="int p1" />
+				<Param name="int p2" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Size" />
+		<KeyWord name="SKILL_LOOT_CRITTER" />
+		<KeyWord name="SKILL_PICK_ON_GROUND" />
+		<KeyWord name="SKILL_PUSH_CRITTER" />
+		<KeyWord name="SKILL_PUT_CONT" />
+		<KeyWord name="SKILL_TAKE_ALL_CONT" />
+		<KeyWord name="SKILL_TAKE_CONT" />
+		<KeyWord name="SK_BARTER" />
+		<KeyWord name="SK_BIG_GUNS" />
+		<KeyWord name="SK_DOCTOR" />
+		<KeyWord name="SK_ENERGY_WEAPONS" />
+		<KeyWord name="SK_FIRST_AID" />
+		<KeyWord name="SK_GAMBLING" />
+		<KeyWord name="SK_LOCKPICK" />
+		<KeyWord name="SK_MELEE_WEAPONS" />
+		<KeyWord name="SK_OUTDOORSMAN" />
+		<KeyWord name="SK_REPAIR" />
+		<KeyWord name="SK_SCIENCE" />
+		<KeyWord name="SK_SMALL_GUNS" />
+		<KeyWord name="SK_SNEAK" />
+		<KeyWord name="SK_SPEECH" />
+		<KeyWord name="SK_STEAL" />
+		<KeyWord name="SK_THROWING" />
+		<KeyWord name="SK_TRAPS" />
+		<KeyWord name="SK_UNARMED" />
+		<KeyWord name="sortAsc" func="yes">
+			<Overload retVal="void" descr="array::">
+				<Param name="void"/>
+			</Overload>
+			<Overload retVal="void" descr="array::">
+				<Param name="uint index" />
+				<Param name="uint count"/>
+			</Overload>
+		</KeyWord>
+		<KeyWord name="sortDesc" func="yes">
+			<Overload retVal="void" descr="array::">
+				<Param name="void"/>
+			</Overload>
+			<Overload retVal="void" descr="array::">
+				<Param name="uint index" />
+				<Param name="uint count"/>
+			</Overload>
+		</KeyWord>
+		<KeyWord name="SortValue" />
+		<KeyWord name="SoundId" />
+		<KeyWord name="SOUND_DOOR" />
+		<KeyWord name="SOUND_DOOR_CLOSE" />
+		<KeyWord name="SOUND_DOOR_LOCK" />
+		<KeyWord name="SOUND_DOOR_NOT_OPEN" />
+		<KeyWord name="SOUND_DOOR_OPEN" />
+		<KeyWord name="SOUND_WEAPON" />
+		<KeyWord name="SOUND_WEAPON_EMPTY" />
+		<KeyWord name="SOUND_WEAPON_FLY" />
+		<KeyWord name="SOUND_WEAPON_MISS" />
+		<KeyWord name="SOUND_WEAPON_RELOAD" />
+		<KeyWord name="SOUND_WEAPON_USE" />
+		<KeyWord name="SpecialId" />
+		<KeyWord name="SpriteCut" />
+		<KeyWord name="Stackable" />
+		<KeyWord name="start" func="yes">
+			<Overload retVal="bool" descr="Server, Client, Mapper reserved">
+				<Param name="void"/>
+			</Overload>
+		</KeyWord>
+		<KeyWord name="StartCount" />
+		<KeyWord name="StartValue_0" />
+		<KeyWord name="StartValue_1" />
+		<KeyWord name="StartValue_2" />
+		<KeyWord name="StartValue_3" />
+		<KeyWord name="StartValue_4" />
+		<KeyWord name="StartValue_5" />
+		<KeyWord name="StartValue_6" />
+		<KeyWord name="StartValue_7" />
+		<KeyWord name="StartValue_8" />
+		<KeyWord name="StartValue_9" />
+		<KeyWord name="State" />
+		<KeyWord name="string" />
+		<KeyWord name="strlwr" func="yes">
+			<Overload retVal="string@">
+				<Param name="string&amp; in" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="StrToFloat" func="yes">
+			<Overload retVal="bool">
+				<Param name="string@+ text" />
+				<Param name="float&amp; result" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="StrToInt" func="yes">
+			<Overload retVal="bool">
+				<Param name="string@+ text" />
+				<Param name="int&amp; result" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="struct" />
+		<KeyWord name="strupr" func="yes">
+			<Overload retVal="string@">
+				<Param name="string&amp; in" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ST_ACTION_POINTS" />
+		<KeyWord name="ST_ACTION_POINTS_EXT" />
+		<KeyWord name="ST_AGE" />
+		<KeyWord name="ST_AGILITY" />
+		<KeyWord name="ST_AGILITY_EXT" />
+		<KeyWord name="ST_AI_ID" />
+		<KeyWord name="ST_ARMOR_CLASS" />
+		<KeyWord name="ST_ARMOR_CLASS_EXT" />
+		<KeyWord name="ST_BAG_ID" />
+		<KeyWord name="ST_BASE_CRTYPE" />
+		<KeyWord name="ST_BODY_TYPE" />
+		<KeyWord name="ST_BONUS_LOOK" />
+		<KeyWord name="ST_CARRY_WEIGHT" />
+		<KeyWord name="ST_CARRY_WEIGHT_EXT" />
+		<KeyWord name="ST_CHARISMA" />
+		<KeyWord name="ST_CHARISMA_EXT" />
+		<KeyWord name="ST_CRITICAL_CHANCE" />
+		<KeyWord name="ST_CRITICAL_CHANCE_EXT" />
+		<KeyWord name="ST_CURRENT_AP" />
+		<KeyWord name="ST_CURRENT_ARMOR_PERK" />
+		<KeyWord name="ST_CURRENT_HP" />
+		<KeyWord name="ST_DAMAGE_TYPE" />
+		<KeyWord name="ST_DEAD_BLOCKER_ID" />
+		<KeyWord name="ST_DIALOG_ID" />
+		<KeyWord name="ST_ELECTRO_ABSORB" />
+		<KeyWord name="ST_ELECTRO_ABSORB_EXT" />
+		<KeyWord name="ST_ELECTRO_RESIST" />
+		<KeyWord name="ST_ELECTRO_RESIST_EXT" />
+		<KeyWord name="ST_EMP_ABSORB" />
+		<KeyWord name="ST_EMP_ABSORB_EXT" />
+		<KeyWord name="ST_EMP_RESIST" />
+		<KeyWord name="ST_EMP_RESIST_EXT" />
+		<KeyWord name="ST_ENDURANCE" />
+		<KeyWord name="ST_ENDURANCE_EXT" />
+		<KeyWord name="ST_EXPERIENCE" />
+		<KeyWord name="ST_EXPLODE_ABSORB" />
+		<KeyWord name="ST_EXPLODE_ABSORB_EXT" />
+		<KeyWord name="ST_EXPLODE_RESIST" />
+		<KeyWord name="ST_EXPLODE_RESIST_EXT" />
+		<KeyWord name="ST_FIRE_ABSORB" />
+		<KeyWord name="ST_FIRE_ABSORB_EXT" />
+		<KeyWord name="ST_FIRE_RESIST" />
+		<KeyWord name="ST_FIRE_RESIST_EXT" />
+		<KeyWord name="ST_FOLLOW_CRIT" />
+		<KeyWord name="ST_FREE_BARTER_PLAYER" />
+		<KeyWord name="ST_GENDER" />
+		<KeyWord name="ST_HANDS_ITEM_AND_MODE" />
+		<KeyWord name="ST_HEALING_RATE" />
+		<KeyWord name="ST_HEALING_RATE_EXT" />
+		<KeyWord name="ST_INTELLECT" />
+		<KeyWord name="ST_INTELLECT_EXT" />
+		<KeyWord name="ST_KARMA" />
+		<KeyWord name="ST_KILL_EXPERIENCE" />
+		<KeyWord name="ST_LASER_ABSORB" />
+		<KeyWord name="ST_LASER_ABSORB_EXT" />
+		<KeyWord name="ST_LASER_RESIST" />
+		<KeyWord name="ST_LASER_RESIST_EXT" />
+		<KeyWord name="ST_LAST_STEAL_CR_ID" />
+		<KeyWord name="ST_LAST_WEAPON_ID" />
+		<KeyWord name="ST_LAST_WEAPON_USE" />
+		<KeyWord name="ST_LEVEL" />
+		<KeyWord name="ST_LOCOMOTION_TYPE" />
+		<KeyWord name="ST_LUCK" />
+		<KeyWord name="ST_LUCK_EXT" />
+		<KeyWord name="ST_MAX_CRITICAL" />
+		<KeyWord name="ST_MAX_CRITICAL_EXT" />
+		<KeyWord name="ST_MAX_LIFE" />
+		<KeyWord name="ST_MAX_LIFE_EXT" />
+		<KeyWord name="ST_MAX_MOVE_AP" />
+		<KeyWord name="ST_MAX_TALKERS" />
+		<KeyWord name="ST_MELEE_DAMAGE" />
+		<KeyWord name="ST_MELEE_DAMAGE_EXT" />
+		<KeyWord name="ST_MOVE_AP" />
+		<KeyWord name="ST_NORMAL_ABSORB" />
+		<KeyWord name="ST_NORMAL_ABSORB_EXT" />
+		<KeyWord name="ST_NORMAL_RESIST" />
+		<KeyWord name="ST_NORMAL_RESIST_EXT" />
+		<KeyWord name="ST_NPC_ROLE" />
+		<KeyWord name="ST_PERCEPTION" />
+		<KeyWord name="ST_PERCEPTION_EXT" />
+		<KeyWord name="ST_PLASMA_ABSORB" />
+		<KeyWord name="ST_PLASMA_ABSORB_EXT" />
+		<KeyWord name="ST_PLASMA_RESIST" />
+		<KeyWord name="ST_PLASMA_RESIST_EXT" />
+		<KeyWord name="ST_PLAYER_KARMA" />
+		<KeyWord name="ST_POISONING_LEVEL" />
+		<KeyWord name="ST_POISON_RESISTANCE" />
+		<KeyWord name="ST_POISON_RESISTANCE_EXT" />
+		<KeyWord name="ST_RADIATION_LEVEL" />
+		<KeyWord name="ST_RADIATION_RESISTANCE" />
+		<KeyWord name="ST_RADIATION_RESISTANCE_EXT" />
+		<KeyWord name="ST_RADIOACTIVE" />
+		<KeyWord name="ST_REPLICATION_COST" />
+		<KeyWord name="ST_REPLICATION_COUNT" />
+		<KeyWord name="ST_REPLICATION_MONEY" />
+		<KeyWord name="ST_REPLICATION_TIME" />
+		<KeyWord name="ST_RUN_TIME" />
+		<KeyWord name="ST_SCALE_FACTOR" />
+		<KeyWord name="ST_SEQUENCE" />
+		<KeyWord name="ST_SEQUENCE_EXT" />
+		<KeyWord name="ST_STEAL_COUNT" />
+		<KeyWord name="ST_STRENGTH" />
+		<KeyWord name="ST_STRENGTH_EXT" />
+		<KeyWord name="ST_TALK_DISTANCE" />
+		<KeyWord name="ST_TEAM_ID" />
+		<KeyWord name="ST_TOXIC" />
+		<KeyWord name="ST_TURN_BASED_AC" />
+		<KeyWord name="ST_UNSPENT_PERKS" />
+		<KeyWord name="ST_UNSPENT_SKILL_POINTS" />
+		<KeyWord name="ST_VAR0" />
+		<KeyWord name="ST_VAR1" />
+		<KeyWord name="ST_VAR2" />
+		<KeyWord name="ST_VAR3" />
+		<KeyWord name="ST_VAR4" />
+		<KeyWord name="ST_VAR5" />
+		<KeyWord name="ST_VAR6" />
+		<KeyWord name="ST_VAR7" />
+		<KeyWord name="ST_VAR8" />
+		<KeyWord name="ST_VAR9" />
+		<KeyWord name="ST_WALK_TIME" />
+		<KeyWord name="SwapCritters" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr1" />
+				<Param name="Critter&amp; cr2" />
+				<Param name="bool withInventory" />
+				<Param name="bool withVars" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="switch" />
+		<KeyWord name="TabDelete" func="yes">
+			<Overload retVal="void" descr="Mapper">
+				<Param name="int tab" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabGetCritterPids" func="yes">
+			<Overload retVal="uint" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ subTab" />
+				<Param name="uint16[]@+ critterPids" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabGetItemPids" func="yes">
+			<Overload retVal="uint" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ subTab" />
+				<Param name="uint16[]@+ itemPids" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabGetTileDirs" func="yes">
+			<Overload retVal="uint" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@[]@+ dirNames" />
+				<Param name="bool[]@+ includeSubdirs" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabSelect" func="yes">
+			<Overload retVal="void" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ subTab" />
+				<Param name="bool show = false" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabSetCritterPids" func="yes">
+			<Overload retVal="void" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ subTab" />
+				<Param name="uint16[]@+ critterPids" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabSetItemPids" func="yes">
+			<Overload retVal="void" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ subTab" />
+				<Param name="uint16[]@+ itemPids" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabSetName" func="yes">
+			<Overload retVal="void" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@+ tabName" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TabSetTileDirs" func="yes">
+			<Overload retVal="uint" descr="Mapper">
+				<Param name="int tab" />
+				<Param name="string@[]@+ dirNames" />
+				<Param name="bool[]@+ includeSubdirs" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TARGET_CRITTER" />
+		<KeyWord name="TARGET_ITEM" />
+		<KeyWord name="TARGET_SCENERY" />
+		<KeyWord name="TARGET_SELF" />
+		<KeyWord name="TARGET_SELF_ITEM" />
+		<KeyWord name="Time" />
+		<KeyWord name="ToDead" func="yes">
+			<Overload retVal="void" descr="Critter::">
+				<Param name="uint anim2" />
+				<Param name="Critter@ killer" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ToKnockout" func="yes">
+			<Overload retVal="bool" descr="Critter::">
+				<Param name="uint anim2begin" />
+				<Param name="uint anim2idle" />
+				<Param name="uint anim2end" />
+				<Param name="uint lostAp" />
+				<Param name="uint16 knockHx" />
+				<Param name="uint16 knockHy" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ToLife" func="yes">
+			<Overload retVal="bool">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TRANSFER_FAR_CONT" />
+		<KeyWord name="TRANSFER_FAR_CRIT" />
+		<KeyWord name="TransitToGlobal" func="yes">
+			<Overload retVal="bool">
+				<Param name="bool requestGroup" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="Critter@[]&amp; group" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TransitToGlobalGroup" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TransitToHex" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TransitToMap" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint mapId" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint mapId" />
+				<Param name="uint8 entireNum" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint mapId" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+				<Param name="bool withGroup" />
+			</Overload>
+			<Overload retVal="bool">
+				<Param name="uint mapId" />
+				<Param name="uint8 entireNum" />
+				<Param name="bool withGroup" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TrapValue" />
+		<KeyWord name="true" />
+		<KeyWord name="TurnBasedRound" />
+		<KeyWord name="TurnBasedTurn" />
+		<KeyWord name="TurnBasedWholeTurn" />
+		<KeyWord name="turn_based_begin" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Map&amp; map" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="turn_based_end" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Map&amp; map" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="turn_based_process" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Map&amp; map" />
+				<Param name="Critter&amp; cr" />
+				<Param name="bool beginTurn" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="turn_based_sequence" func="yes">
+			<Overload retVal="void" descr="Server">
+				<Param name="Map&amp; map" />
+				<Param name="Critter@[]&amp; critters" />
+				<Param name="Critter@ firstTurnCrit" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="TwoHands" />
+		<KeyWord name="Type" />
+		<KeyWord name="typedef" />
+		<KeyWord name="UID" />
+		<KeyWord name="uint" />
+		<KeyWord name="uint16" />
+		<KeyWord name="uint32" />
+		<KeyWord name="uint8" />
+		<KeyWord name="union" />
+		<KeyWord name="UNSETFLAG" func="yes">
+			<Overload retVal="void">
+				<Param name="x" />
+				<Param name="flag" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="UnsetKnownLoc" func="yes">
+			<Overload retVal="bool">
+				<Param name="bool byId" />
+				<Param name="uint locNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="until" />
+		<KeyWord name="Update" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="UpdateAnyData" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint id" />
+				<Param name="uint[]@ data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Val0" />
+		<KeyWord name="Val1" />
+		<KeyWord name="Val2" />
+		<KeyWord name="Val3" />
+		<KeyWord name="Val4" />
+		<KeyWord name="Val5" />
+		<KeyWord name="Val6" />
+		<KeyWord name="Val7" />
+		<KeyWord name="Val8" />
+		<KeyWord name="Val9" />
+		<KeyWord name="valid" func="yes">
+			<Overload retVal="bool">
+				<Param name="ptr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="VerifyTrigger" func="yes">
+			<Overload retVal="bool">
+				<Param name="Critter&amp; cr" />
+				<Param name="uint16 hexX" />
+				<Param name="uint16 hexY" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="ViewMap" func="yes">
+			<Overload retVal="void">
+				<Param name="Map&amp; map" />
+				<Param name="uint look" />
+				<Param name="uint16 hx" />
+				<Param name="uint16 hy" />
+				<Param name="uint8 dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Visible" />
+		<KeyWord name="void" />
+		<KeyWord name="Volume" />
+		<KeyWord name="Wait" func="yes">
+			<Overload retVal="void">
+				<Param name="uint ms" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="WaitPing" func="yes">
+			<Overload retVal="void">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Walk_Cut" />
+		<KeyWord name="Walk_Dir" />
+		<KeyWord name="Walk_HexX" />
+		<KeyWord name="Walk_HexY" />
+		<KeyWord name="Walk_Run" />
+		<KeyWord name="WeaponDamage" />
+		<KeyWord name="Weapon_ActiveUses" />
+		<KeyWord name="Weapon_Aim_F" />
+		<KeyWord name="Weapon_Aim_S" />
+		<KeyWord name="Weapon_Aim_T" />
+		<KeyWord name="Weapon_Aim_0" />
+		<KeyWord name="Weapon_Aim_1" />
+		<KeyWord name="Weapon_Aim_2" />
+		<KeyWord name="Weapon_AmmoCount" />
+		<KeyWord name="Weapon_AmmoPid" />
+		<KeyWord name="Weapon_Anim1" />
+		<KeyWord name="Weapon_Anim2_F" />
+		<KeyWord name="Weapon_Anim2_S" />
+		<KeyWord name="Weapon_Anim2_T" />
+		<KeyWord name="Weapon_ApCost_F" />
+		<KeyWord name="Weapon_ApCost_S" />
+		<KeyWord name="Weapon_ApCost_T" />
+		<KeyWord name="Weapon_ApCost_0" />
+		<KeyWord name="Weapon_ApCost_1" />
+		<KeyWord name="Weapon_ApCost_2" />
+		<KeyWord name="Weapon_Caliber" />
+		<KeyWord name="Weapon_CurrentUse_F" />
+		<KeyWord name="Weapon_CurrentUse_S" />
+		<KeyWord name="Weapon_CurrentUse_T" />
+		<KeyWord name="Weapon_DefaultAmmoPid" />
+		<KeyWord name="Weapon_DmgMax_F" />
+		<KeyWord name="Weapon_DmgMax_S" />
+		<KeyWord name="Weapon_DmgMax_T" />
+		<KeyWord name="Weapon_DmgMin_F" />
+		<KeyWord name="Weapon_DmgMin_S" />
+		<KeyWord name="Weapon_DmgMin_T" />
+		<KeyWord name="Weapon_DmgType_F" />
+		<KeyWord name="Weapon_DmgType_S" />
+		<KeyWord name="Weapon_DmgType_T" />
+		<KeyWord name="Weapon_Effect_F" />
+		<KeyWord name="Weapon_Effect_S" />
+		<KeyWord name="Weapon_Effect_T" />
+		<KeyWord name="Weapon_IsGunAttack" func="yes">
+			<Overload retVal="bool" descr="Item::, ItemCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Weapon_IsHtHAttack" func="yes">
+			<Overload retVal="bool" descr="Item::, ItemCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Weapon_IsRangedAttack" func="yes">
+			<Overload retVal="bool" descr="Item::, ItemCl::">
+				<Param name="void" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Weapon_IsUnarmed" />
+		<KeyWord name="Weapon_MaxAmmoCount" />
+		<KeyWord name="Weapon_MaxDist_F" />
+		<KeyWord name="Weapon_MaxDist_S" />
+		<KeyWord name="Weapon_MaxDist_T" />
+		<KeyWord name="Weapon_MaxDist_0" />
+		<KeyWord name="Weapon_MaxDist_1" />
+		<KeyWord name="Weapon_MaxDist_2" />
+		<KeyWord name="Weapon_MinStrength" />
+		<KeyWord name="Weapon_Perk" />
+		<KeyWord name="Weapon_PicUse_0" />
+		<KeyWord name="Weapon_PicUse_1" />
+		<KeyWord name="Weapon_PicUse_2" />
+		<KeyWord name="Weapon_Remove_F" />
+		<KeyWord name="Weapon_Remove_S" />
+		<KeyWord name="Weapon_Remove_T" />
+		<KeyWord name="Weapon_Round_F" />
+		<KeyWord name="Weapon_Round_S" />
+		<KeyWord name="Weapon_Round_T" />
+		<KeyWord name="Weapon_Round_0" />
+		<KeyWord name="Weapon_Round_1" />
+		<KeyWord name="Weapon_Round_2" />
+		<KeyWord name="Weapon_SetUse" func="yes">
+			<Overload retVal="void">
+				<Param name="uint8 use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="Weapon_Skill" />
+		<KeyWord name="Weapon_Skill_0" />
+		<KeyWord name="Weapon_Skill_1" />
+		<KeyWord name="Weapon_Skill_2" />
+		<KeyWord name="Weapon_SoundId" />
+		<KeyWord name="Weapon_SoundId_0" />
+		<KeyWord name="Weapon_SoundId_1" />
+		<KeyWord name="Weapon_SoundId_2" />
+		<KeyWord name="Weapon_UnarmedMinAgility" />
+		<KeyWord name="Weapon_UnarmedMinLevel" />
+		<KeyWord name="Weapon_UnarmedMinUnarmed" />
+		<KeyWord name="Weapon_UnarmedPriority" />
+		<KeyWord name="Weapon_UnarmedTree" />
+		<KeyWord name="Weather" />
+		<KeyWord name="Weight" />
+		<KeyWord name="while" />
+		<KeyWord name="WorldItemCount" func="yes">
+			<Overload retVal="int64">
+				<Param name="uint16 protoId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="WorldX" />
+		<KeyWord name="WorldY" />
+		<KeyWord name="writeData" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint8[]&amp; data" />
+				<Param name="uint count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="writeUint8" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint8 data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="writeUint16" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint16 data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="writeUint32" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint32 data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="writeUint64" func="yes">
+			<Overload retVal="bool">
+				<Param name="uint64 data" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="xor" />
+		<KeyWord name="_CarGetCritCapacity" func="yes">
+			<Overload retVal="int">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarGetFuelTank" func="yes">
+			<Overload retVal="int">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarGetRunToBreak" func="yes">
+			<Overload retVal="int">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarIsBioEngine" func="yes">
+			<Overload retVal="bool">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarIsNoLockpick" func="yes">
+			<Overload retVal="bool">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarSetBioEngine" func="yes">
+			<Overload retVal="void">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CarSetNoLockpick" func="yes">
+			<Overload retVal="void">
+				<Param name="car" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritAddItem" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+				<Param name="pid" />
+				<Param name="count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritCanDropItemsOnDead" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritChangeHand" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritCountItem" func="yes">
+			<Overload retVal="int">
+				<Param name="cr" />
+				<Param name="pid" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritDeleteItem" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+				<Param name="pid" />
+				<Param name="count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritDropItem" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+				<Param name="item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritDropItemCount" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+				<Param name="item" />
+				<Param name="count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritEyesDoorId" func="yes">
+			<Overload retVal="int">
+				<Param name="critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritFingersDoorId" func="yes">
+			<Overload retVal="int">
+				<Param name="critterId" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritGetItem" func="yes">
+			<Overload retVal="Item@">
+				<Param name="cr" />
+				<Param name="pid" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritGetItemHand" func="yes">
+			<Overload retVal="Item@">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritGetItemHandExt" func="yes">
+			<Overload retVal="Item@">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritGetItemArmor" func="yes">
+			<Overload retVal="Item@">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritGetItemInv" func="yes">
+			<Overload retVal="Item@">
+				<Param name="cr" />
+				<Param name="pid" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritMoveItem" func="yes">
+			<Overload retVal="void">
+				<Param name="cr" />
+				<Param name="item" />
+				<Param name="toSlot" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_IncItem" func="yes">
+			<Overload retVal="void">
+				<Param name="item" />
+				<Param name="count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_ItemIsBroken" func="yes">
+			<Overload retVal="bool">
+				<Param name="item" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritIsInjured" func="yes">
+			<Overload retVal="bool">
+				<Param name="cr" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_CritIsTagSkill" func="yes">
+			<Overload retVal="bool">
+				<Param name="cr" />
+				<Param name="skillNum" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightIsGlobal" func="yes">
+			<Overload retVal="bool">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightIsIgnoreDir" func="yes">
+			<Overload retVal="bool">
+				<Param name="lightItem" />
+				<Param name="dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightIsInverse" func="yes">
+			<Overload retVal="bool">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightSetGlobal" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightSetIgnoreDir" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+				<Param name="dir" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightSetInverse" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightUnsetGlobal" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightUnsetIgnoreDir" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LightUnsetInverse" func="yes">
+			<Overload retVal="void">
+				<Param name="lightItem" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LockerIsClose" func="yes">
+			<Overload retVal="bool">
+				<Param name="door" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_LockerIsOpen" func="yes">
+			<Overload retVal="bool">
+				<Param name="door" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseAllPlanes" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseAllPlanesAttack" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseAllPlanesPick" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseAllPlanesWalk" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseFirstPlane" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseFirstPlaneAttack" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseFirstPlanePick" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcEraseFirstPlaneWalk" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcRun" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+				<Param name="hexX" />
+				<Param name="hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_NpcWalk" func="yes">
+			<Overload retVal="void">
+				<Param name="npc" />
+				<Param name="hexX" />
+				<Param name="hexY" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_SubItem" func="yes">
+			<Overload retVal="void">
+				<Param name="item" />
+				<Param name="count" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsGunAttack" func="yes">
+			<Overload retVal="bool">
+				<Param name="weap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsHtHAttack" func="yes">
+			<Overload retVal="bool">
+				<Param name="weap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsPrimaryAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="protoWeap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsRangedAttack" func="yes">
+			<Overload retVal="bool">
+				<Param name="weap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsSecondaryAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="protoWeap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeapIsThirdAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="protoWeap" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponAim" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponAnim2" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponApCost" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponDmgMax" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponDmgMin" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponDmgType" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponEffect" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponIsPrimaryAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="proto" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponIsSecondaryAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="proto" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponIsThirdAviable" func="yes">
+			<Overload retVal="bool">
+				<Param name="proto" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponMaxDist" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponModeAim" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint8 mode" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponModeMake" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint8 mode" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponModeUse" func="yes">
+			<Overload retVal="uint">
+				<Param name="uint8 mode" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponRemove" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponRound" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponSkill" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="_WeaponSoundId" func="yes">
+			<Overload retVal="uint">
+				<Param name="proto" />
+				<Param name="use" />
+			</Overload>
+		</KeyWord>
+		<KeyWord name="__AbsoluteOffsets" />
+		<KeyWord name="__AccountPlayTime" />
+		<KeyWord name="__AddictionBegin" />
+		<KeyWord name="__AddictionEnd" />
+		<KeyWord name="__Anim2CombatBegin" />
+		<KeyWord name="__Anim2CombatEnd" />
+		<KeyWord name="__Anim2CombatIdle" />
+		<KeyWord name="__AlwaysRun" />
+		<KeyWord name="__AlwaysRunMoveDist" />
+		<KeyWord name="__AlwaysRunUseDist" />
+		<KeyWord name="__ApRegeneration" />
+		<KeyWord name="__ApCostAimArms" />
+		<KeyWord name="__ApCostAimEyes" />
+		<KeyWord name="__ApCostAimGroin" />
+		<KeyWord name="__ApCostAimHead" />
+		<KeyWord name="__ApCostAimLegs" />
+		<KeyWord name="__ApCostAimTorso" />
+		<KeyWord name="__AssimpLogging" />
+		<KeyWord name="__BagRefreshTime" />
+		<KeyWord name="__Breaktime" />
+		<KeyWord name="__ClientPath" />
+		<KeyWord name="__ConsoleActive" />
+		<KeyWord name="__CritterFidgetTime" />
+		<KeyWord name="__CritterIdleTick" />
+		<KeyWord name="__CustomItemCost" />
+		<KeyWord name="__DamageBegin" />
+		<KeyWord name="__DamageEnd" />
+		<KeyWord name="__DisableKeyboardEvents" />
+		<KeyWord name="__DisableLMenu" />
+		<KeyWord name="__DisableMouseEvents" />
+		<KeyWord name="__DeadHitPoints" />
+		<KeyWord name="__DisableTcpNagle" />
+		<KeyWord name="__DisableZlibCompression" />
+		<KeyWord name="__DlgBarterMinTime" />
+		<KeyWord name="__DlgTalkMinTime" />
+		<KeyWord name="__EncounterTime" />
+		<KeyWord name="__FixBoyDefaultExperience" />
+		<KeyWord name="__FloodSize" />
+		<KeyWord name="__FPS" />
+		<KeyWord name="__GeometryType" />
+		<KeyWord name="__GlobalMapHeight" />
+		<KeyWord name="__GlobalMapMaxGroupCount" />
+		<KeyWord name="__GlobalMapMoveTime" />
+		<KeyWord name="__GlobalMapWidth" />
+		<KeyWord name="__GlobalMapZoneLength" />
+		<KeyWord name="__GmapActive" />
+		<KeyWord name="__GmapGroupCurX" />
+		<KeyWord name="__GmapGroupCurY" />
+		<KeyWord name="__GmapGroupSpead" />
+		<KeyWord name="__GmapMoveToX" />
+		<KeyWord name="__GmapMoveToY" />
+		<KeyWord name="__GmapOffsetX" />
+		<KeyWord name="__GmapOffsetY" />
+		<KeyWord name="__GmapWait" />
+		<KeyWord name="__GmapZoom" />
+		<KeyWord name="__HideCursor" />
+		<KeyWord name="__HidePassword" />
+		<KeyWord name="__HitAimArms" />
+		<KeyWord name="__HitAimEyes" />
+		<KeyWord name="__HitAimGroin" />
+		<KeyWord name="__HitAimHead" />
+		<KeyWord name="__HitAimLegs" />
+		<KeyWord name="__HitAimTorso" />
+		<KeyWord name="__KarmaBegin" />
+		<KeyWord name="__KarmaEnd" />
+		<KeyWord name="__KillBegin" />
+		<KeyWord name="__KillEnd" />
+		<KeyWord name="__LevelCap" />
+		<KeyWord name="__LevelCapAddExperience" />
+		<KeyWord name="__LoggingVars" />
+		<KeyWord name="__LookChecks" />
+		<KeyWord name="__LookDir0" />
+		<KeyWord name="__LookDir1" />
+		<KeyWord name="__LookDir2" />
+		<KeyWord name="__LookDir3" />
+		<KeyWord name="__LookDir4" />
+		<KeyWord name="__LookMinimum" />
+		<KeyWord name="__LookNormal" />
+		<KeyWord name="__LookSneakDir0" />
+		<KeyWord name="__LookSneakDir1" />
+		<KeyWord name="__LookSneakDir2" />
+		<KeyWord name="__LookSneakDir3" />
+		<KeyWord name="__LookSneakDir4" />
+		<KeyWord name="__LookWeight" />
+		<KeyWord name="__MapCameraAngle" />
+		<KeyWord name="__MapDataPrefix" />
+		<KeyWord name="__MapHexagonal" />
+		<KeyWord name="__MapHexHeight" />
+		<KeyWord name="__MapHexLineHeight" />
+		<KeyWord name="__MapHexWidth" />
+		<KeyWord name="__MapRoofOffsX" />
+		<KeyWord name="__MapRoofOffsY" />
+		<KeyWord name="__MapRoofSkipSize" />
+		<KeyWord name="__MapSmoothPath" />
+		<KeyWord name="__MapTileOffsX" />
+		<KeyWord name="__MapTileOffsY" />
+		<KeyWord name="__MapZooming" />
+		<KeyWord name="__MaxNameLength" />
+		<KeyWord name="__MinimumOfflineTime" />
+		<KeyWord name="__MinNameLength" />
+		<KeyWord name="__MouseX" />
+		<KeyWord name="__MouseY" />
+		<KeyWord name="__NoAnswerShuffle" />
+		<KeyWord name="__NpcMaxTalkers" />
+		<KeyWord name="__PerkBegin" />
+		<KeyWord name="__PerkEnd" />
+		<KeyWord name="__PermanentDeath" />
+		<KeyWord name="__Ping" />
+		<KeyWord name="__PingPeriod" />
+		<KeyWord name="__PlayerOffAppendix" />
+		<KeyWord name="__Quit" />
+		<KeyWord name="__RegistrationTimeout" />
+		<KeyWord name="__ReputationAccepted" />
+		<KeyWord name="__ReputationAntipathy" />
+		<KeyWord name="__ReputationBegin" />
+		<KeyWord name="__ReputationEnd" />
+		<KeyWord name="__ReputationHated" />
+		<KeyWord name="__ReputationLiked" />
+		<KeyWord name="__ReputationLoved" />
+		<KeyWord name="__ReputationNeutral" />
+		<KeyWord name="__ReputationHated" />
+		<KeyWord name="__ReputationLoved" />
+		<KeyWord name="__ReputationLiked" />
+		<KeyWord name="__ReputationNeutral" />
+		<KeyWord name="__RoofAlpha" />
+		<KeyWord name="__RtAlwaysRun" />
+		<KeyWord name="__RtApCostCritterRun" />
+		<KeyWord name="__RtApCostCritterWalk" />
+		<KeyWord name="__RtApCostDropItem" />
+		<KeyWord name="__RtApCostMoveItemContainer" />
+		<KeyWord name="__RtApCostMoveItemInventory" />
+		<KeyWord name="__RtApCostPickCritter" />
+		<KeyWord name="__RtApCostPickItem" />
+		<KeyWord name="__RtApCostReloadWeapon" />
+		<KeyWord name="__RtApCostUseItem" />
+		<KeyWord name="__RtApCostUseSkill" />
+		<KeyWord name="__RunOnCombat" />
+		<KeyWord name="__RunOnTransfer" />
+		<KeyWord name="__ScriptRunMessageTimeout" />
+		<KeyWord name="__ScriptRunSuspendTimeout" />
+		<KeyWord name="__ServerPath" />
+		<KeyWord name="__ShoutDist" />
+		<KeyWord name="__ShowCrit" />
+		<KeyWord name="__ShowCritId" />
+		<KeyWord name="__ShowFast" />
+		<KeyWord name="__ShowItem" />
+		<KeyWord name="__ShowNpcNames" />
+		<KeyWord name="__ShowPlayerNames" />
+		<KeyWord name="__ShowRoof" />
+		<KeyWord name="__ShowScen" />
+		<KeyWord name="__ShowTile" />
+		<KeyWord name="__ShowWall" />
+		<KeyWord name="__SkillBegin" />
+		<KeyWord name="__SkillEnd" />
+		<KeyWord name="__SkillMaxValue" />
+		<KeyWord name="__SkillModAdd2" />
+		<KeyWord name="__SkillModAdd3" />
+		<KeyWord name="__SkillModAdd4" />
+		<KeyWord name="__SkillModAdd5" />
+		<KeyWord name="__SkillModAdd6" />
+		<KeyWord name="__SneakDivider" />
+		<KeyWord name="__SplitTilesCollection" />
+		<KeyWord name="__SpritesZoomMax" />
+		<KeyWord name="__SpritesZoomMin" />
+		<KeyWord name="__StartSpecialPoints" />
+		<KeyWord name="__StartTagSkillPoints" />
+		<KeyWord name="__TalkDistance" />
+		<KeyWord name="__TbAlwaysRun" />
+		<KeyWord name="__TbApCostCritterMove" />
+		<KeyWord name="__TbApCostDropItem" />
+		<KeyWord name="__TbApCostMoveItemContainer" />
+		<KeyWord name="__TbApCostMoveItemInventory" />
+		<KeyWord name="__TbApCostPickCritter" />
+		<KeyWord name="__TbApCostPickItem" />
+		<KeyWord name="__TbApCostReloadWeapon" />
+		<KeyWord name="__TbApCostUseItem" />
+		<KeyWord name="__TbApCostUseSkill" />
+		<KeyWord name="__TimeoutBattle" />
+		<KeyWord name="__TimeoutBegin" />
+		<KeyWord name="__TimeoutEnd" />
+		<KeyWord name="__TimeoutTransfer" />
+		<KeyWord name="__TraitBegin" />
+		<KeyWord name="__TraitEnd" />
+		<KeyWord name="__TurnBasedTick" />
+		<KeyWord name="__WisperDist" />
+	</AutoComplete>
+</NotepadPlus>

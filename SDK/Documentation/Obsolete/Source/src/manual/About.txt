@@ -1,0 +1,16 @@
+/**
+
+\~russian @page about Описание
+
+\todo Дать более развернутое описание.
+
+FOnline - игровой движок, предназначенный для разработки как многопользовательских, так и одиночных игр.
+
+При разработке использованы следующие библиотеки и технологии:
+- AngelScript (AngelCode Scripting Library);
+- WinSock;
+- Zlib, Minizip;
+- OggVorbis;
+- DirectX components (3D, Sound, Input).
+
+ */

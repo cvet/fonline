@@ -1,0 +1,427 @@
+/** \~russian Прототип предметов.
+ *
+ * Все возможности класса доступны как при скриптинге сервера, так и при скриптинге
+ * клиента.
+ *
+ * @note Все поля доступны только для чтения.
+ *
+ ** \~english Represents item prototype.
+ *
+ * @note All fields are read-only.
+ *
+ ** \~
+ * Добавлена возможность добавления своих полей в класс прототипа, для этого используется новая прагма 'bindfield', пример:
+ * #pragma bindfield "const int ProtoItem::MyValue -> 400"
+ * что означает создание поля MyValue типа int на смещении 400 (с учетом размера int 4 байта оно будет занимать байты 400, 401, 402, 403). Всего под пользовательские поля отведено 500 байт.
+ * По-умолчанию поле равно нулю, но значение можно изменить прописав в файле прототипа (.fopro) значение (в данном случае MyValue=111 или MyValue=SkillBigGuns). Значение может быть константой (ищется в DefineNames.lst), числом (если содержит только числа) или путем к файлу (определяется по наличию символов '/' или '\').
+ * Сейчас поля, которые не используются движком, вынесены в скрипты, смотрите _defines.fos Item prototypes fields.
+ * @ingroup Server
+ * @ingroup Client
+ */
+class ProtoItem
+{
+public:
+    /**
+     * \~russian @name Общие поля
+     * \~english @name General fields
+     * \~ @weight 300
+     */
+    //@{
+
+    /** \~russian Флаги прототипа.
+     *
+     * См. @link ItemFlags Item flags@endlink.
+     */
+    const uint Flags;
+	
+	uint HolodiskNum;
+	
+	uint16 RadioChannel;
+	
+	/** \~russian Флаги рации (См. @link RadioFlags Radio flags@endlink) */
+	uint16 RadioFlags;
+	
+	uint8 RadioBroadcastSend;
+	
+	uint8 RadioBroadcastRecv;
+
+    const uint8 LightFlags;
+
+    const uint8 LightDistance;
+
+    const int8 LightIntensity;
+
+    const uint LightColor;
+
+    /** \~russian Вес */
+    const uint Weight;
+    
+    /** \~russian Объем. */
+    const uint Volume;
+	
+	/** \~russian Стартовое значение параметра заряда */
+	uint8 IndicatorStart;
+	
+	/** \~russian Максимальное значение индикатора заряда */
+	uint8 IndicatorMax;
+
+    /** \~russian Изображение на карте (хэш пути) */
+    const uint PicMap;
+
+    /** \~russian Изображение в инвентаре (хэш пути) */
+    const uint PicInv;
+
+    /** (?) */
+    const uint8 Sound;
+
+    /** \~russian Базовая стоимость */
+    const uint Cost;
+
+    /** (?) */
+    const uint8 Material;
+
+    /** \~russian Слот, которому принадлежит предмет.
+     *
+     * См. @ref Slots.
+     *
+     */
+    uint8 Slot;
+
+    //@}
+
+    /**
+     * \~russian @name Броня
+     * \~english @name Armor
+     * \~ @weight 290
+     */
+    //@{
+
+    /** (?) */
+    const uint8 Armor_CrTypeMale;
+
+    /** (?) */
+    const uint8 Armor_CrTypeFemale;
+
+    //@}
+
+    /**
+     * \~russian @name Контейнер
+     * \~english @name Container
+     * \~ @weight 280
+     */
+    //@{
+    const uint Container_Volume;
+    const bool Container_Changeble;
+    const bool Container_CannotPickUp;
+    const bool Container_MagicHandsGrnd;
+    const uint16 Locker_Condition;
+    //@}
+
+    /**
+     * \~russian @name Наркотик
+     * \~english @name Drugs
+     * \~ @weight 270
+     */
+    //@{
+    //@}
+
+    /**
+     * \~russian @name Двери
+     * \~english @name Doors
+     * \~ @weight 265
+     */
+    //@{
+    const bool Door_NoBlockMove;
+    const bool Door_NoBlockShoot;
+    const bool Door_NoBlockLight;
+    //@}
+
+    /**
+     * \~russian @name Оружие
+     * \~english @name Weapons
+     * \~ @weight 260
+     */
+    //@{
+
+    /** \~russian Безоружная атака. */
+    const bool Weapon_IsUnarmed;
+
+    const int Weapon_UnarmedTree;
+
+    const int Weapon_UnarmedPriority;
+
+    const int Weapon_UnarmedMinAgility;
+
+    const int Weapon_UnarmedMinUnarmed;
+
+    const int Weapon_UnarmedMinLevel;
+
+    /** \~russian Минимальная сила для использования без штрафов. */
+    const uint8 Weapon_MinStrength;
+    
+    const uint Weapon_ActiveUses;
+
+    /** \~russian Перк на оружии. */
+    const uint8 Weapon_Perk;
+
+    /** \~russian Первичный индекс анимации. */
+    const uint8 Weapon_Anim1;
+
+    /** \~russian Емкость обоймы. */
+    const uint16 Weapon_VolumeHolder;
+
+    /** \~russian Калибр зарядов. */
+    const uint Weapon_Caliber;
+
+    /** \~russian Критическая неудача. */
+    const uint8 Weapon_CriticalFailture;
+
+    /** \~russian PID амуниции по-умолчанию. */
+    const uint16 Weapon_DefaultAmmoPid;
+    
+    /** \~russian Максимальное количество патронов. */
+    const uint Weapon_MaxAmmoCount;
+
+    /** \~russian Навык, влияющий на использование. */
+    const uint8 Weapon_Skill_0;
+
+    /** \~russian Навык, влияющий на использование. */
+    const uint8 Weapon_Skill_1;
+
+    /** \~russian Навык, влияющий на использование. */
+    const uint8 Weapon_Skill_2;
+
+    /** \~russian Тип повреждений. */
+    const uint8 Weapon_DmgType_F;
+
+    /** \~russian Тип повреждений. */
+    const uint8 Weapon_DmgType_S;
+
+    /** \~russian Тип повреждений. */
+    const uint8 Weapon_DmgType_T;
+
+    /** \~russian Вторичный индекс анимации. */
+    const uint8 Weapon_Anim2_F;
+
+    /** \~russian Вторичный индекс анимации. */
+    const uint8 Weapon_Anim2_S;
+
+    /** \~russian Вторичный индекс анимации. */
+    const uint8 Weapon_Anim2_T;
+
+    /** \~russian Минимальное повреждение. */
+    const uint16 Weapon_DmgMin_F;
+
+    /** \~russian Минимальное повреждение. */
+    const uint16 Weapon_DmgMin_S;
+
+    /** \~russian Минимальное повреждение. */
+    const uint16 Weapon_DmgMin_T;
+
+    /** \~russian Максимальное повреждение. */
+    const uint16 Weapon_DmgMax_F;
+
+    /** \~russian Максимальное повреждение. */
+    const uint16 Weapon_DmgMax_S;
+
+    /** \~russian Максимальное повреждение. */
+    const uint16 Weapon_DmgMax_T;
+
+    /** \~russian Максимальная дистанция. */
+    const uint16 Weapon_MaxDist_0;
+
+    /** \~russian Максимальная дистанция. */
+    const uint16 Weapon_MaxDist_1;
+
+    /** \~russian Максимальная дистанция. */
+    const uint16 Weapon_MaxDist_2;
+
+    /** \~russian Расход обоймы за выстрел. */
+    const uint Weapon_Round_0;
+
+    /** \~russian Расход обоймы за выстрел. */
+    const uint Weapon_Round_1;
+
+    /** \~russian Расход обоймы за выстрел. */
+    const uint Weapon_Round_2;
+
+    /** \~russian Базовая стоимость очков действий. */
+    const uint8 Weapon_ApCost_0;
+
+    /** \~russian Базовая стоимость очков действий. */
+    const uint8 Weapon_ApCost_1;
+
+    /** \~russian Базовая стоимость очков действий. */
+    const uint8 Weapon_ApCost_2;
+
+    /** \~russian Индекс звука на оружии. */
+    const uint8 Weapon_SoundId_0;
+
+    /** \~russian Индекс звука на оружии. */
+    const uint8 Weapon_SoundId_1;
+
+    /** \~russian Индекс звука на оружии. */
+    const uint8 Weapon_SoundId_2;
+
+    /** \~russian Удаляется ли оружие после использования (например, метательное). */
+    const bool Weapon_Remove_F;
+
+    /** \~russian Удаляется ли оружие после использования (например, метательное). */
+    const bool Weapon_Remove_S;
+
+    /** \~russian Удаляется ли оружие после использования (например, метательное). */
+    const bool Weapon_Remove_T;
+
+    /** \~russin Есть ли возможность прицельной стрельбы. */
+    const bool Weapon_Aim_F;
+
+    /** \~russin Есть ли возможность прицельной стрельбы. */
+    const bool Weapon_Aim_S;
+
+    /** \~russin Есть ли возможность прицельной стрельбы. */
+    const bool Weapon_Aim_T;
+    
+    const uint Weapon_PicUse_0;
+    const uint Weapon_PicUse_1;
+    const uint Weapon_PicUse_2;
+
+   /** \~russian Позволяет установить текущее значение типа использования оружия.
+     *
+     * @param  use  Устанавливаемый тип использования. Может принимать следующие значения:
+     *              - Primary use – 0;
+     *              - Secondary use – 1;
+     *              - Third use – 2.
+     */
+    void Weapon_SetUse(uint8 use);
+
+    //@}
+
+    /**
+     * \~russian @name Боеприпасы
+     * \~english @name Ammunition
+     * \~ @weight 250
+     */
+    //@{
+
+    /** \~russian Калибр амуниции. */
+    const uint Ammo_Caliber;
+
+    /** \~russian Модификатор Armor Class. */
+    const int Ammo_AcMod;
+
+    /** \~russian Модификатор Damage Resistance. */
+    const int Ammo_DrMod;
+
+    /** \~russian Модификатор Damage Multiplier. */
+    const uint Ammo_DmgMult;
+
+    /** \~russian Модификатор Damage Divider. */
+    const uint Ammo_DmgDiv;
+
+    //@}
+
+    /** @name Misc2 */
+    //@{
+
+
+    /** \~russian Начальное значение поля Item::Val0 для предмета, получаемого из прототипа. */
+    const int StartValue_0;
+
+    /** \~russian Начальное значение поля Item::Val1 для предмета, получаемого из прототипа. */
+    const int StartValue_1;
+
+    /** \~russian Начальное значение поля Item::Val9 для предмета, получаемого из прототипа. */
+    const int StartValue_9;
+
+    //@}
+    
+    /** \~russian ID прототипа предмета. */
+    const uint16 ProtoId;
+    
+    /** \~russian Тип предмета. */
+    const int Type;
+    
+    /** \~russian Возможность стековатья (складываться вместе) */
+    const bool Stackable;
+    
+    /** \~russian Возможность износа предмета */
+    const bool Deteriorable;
+    
+    /** \~russian Находится ли доступ к предмету визуально на уровне земли. */
+    const bool GroundLevel;
+    
+    const int Corner;
+    
+    const int Dir;
+    
+    /** \~russian Cтартовое количество при создании предмета. */
+    const uint StartCount;
+    
+    const uint8 SoundId;
+    
+    const bool DisableEgg;
+    
+    const uint16 AnimWaitBase;
+
+    const uint16 AnimWaitRndMin;
+
+    const uint16 AnimWaitRndMax;
+
+    const uint8 AnimStay_0;
+    const uint8 AnimStay_1;
+
+    const uint8 AnimShow_0;
+    const uint8 AnimShow_1;
+
+    const uint8 AnimHide_0;
+    const uint8 AnimHide_1;
+    
+    const int16 OffsetX;
+
+    const int16 OffsetY;
+    
+    const int8 DrawOrderOffsetHexY;
+
+    /** \~russian Позволяет предмету блокировать сразу несколько гексов
+     *
+     * Формат записи для Child/BlockLines - XYXYXY..., где X номер направления (0..5/7), а Y количество шагов (1..9) в данном направлении (для багажников раньше была другая форма записи XXXX...).
+     *
+     * Максимальное количество шагов для BlockLines - 50.
+     */
+    const uint8 BlockLines;
+    
+    /** \~russian Механизм дочерних итемов
+     *
+     * Один предмет может иметь до пяти производных.
+     * Номера производных предметов задаются в uint16 ProtoItem::ChildPid_0..4.
+     * При создании базового предмета производные создаются автоматически.
+     *
+     * Максимальное количество шагов для ChildLines - 6.
+     */
+    const uint16 ChildPid_0;
+    const uint16 ChildPid_1;
+    const uint16 ChildPid_2;
+    const uint16 ChildPid_3;
+    const uint16 ChildPid_4;
+
+    const uint8 ChildLines_0;
+    const uint8 ChildLines_1;
+    const uint8 ChildLines_2;
+    const uint8 ChildLines_3;
+    const uint8 ChildLines_4;
+    
+    const int Grid_Type;
+
+    const uint Car_Speed;
+    const uint Car_Passability;
+    const uint Car_DeteriorationRate;
+    const uint Car_CrittersCapacity;
+    const uint Car_TankVolume;
+    const uint Car_MaxDeterioration;
+    const uint Car_FuelConsumption;
+    const uint Car_Entrance;
+    const uint Car_MovementType;
+    
+    /** \~russian Возвращает имя скрипта указанного в прототипе. */
+    string@ GetScriptName();
+}

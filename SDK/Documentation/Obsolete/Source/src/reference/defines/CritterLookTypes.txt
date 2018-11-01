@@ -1,0 +1,19 @@
+/**
+ * @defgroup CritterLookTypes Critter look types
+ * @ingroup Defines
+ *
+ * \~
+ * @see     #critter_description
+ */
+/*@{*/
+
+/** \~russian Формирование имени криттера. */
+#define CRITTER_ONLY_NAME      (0)
+
+/** \~russian Формирование короткого описания. */
+#define CRITTER_LOOK_SHORT     (1)
+
+/** \~russian Формирование подробного описания. */
+#define CRITTER_LOOK_FULL      (2)
+
+/*@}*/

@@ -1,0 +1,22 @@
+/**
+ * @defgroup ItemLookTypes Item look types
+ * @ingroup Defines
+ *
+ * \~russian Типы описаний предметов.
+ *
+ * \~
+ * @see      #item_description
+ *
+ */
+/*@{*/
+
+#define ITEM_LOOK_DEFAULT      (0)
+#define ITEM_LOOK_ONLY_NAME    (1)
+#define ITEM_LOOK_MAP          (2)
+#define ITEM_LOOK_BARTER       (3)
+#define ITEM_LOOK_INVENTORY    (4)
+
+/** \~russian Описание машины на глобальной карте мира. */
+#define ITEM_LOOK_WM_CAR       (5)
+
+/*@}*/

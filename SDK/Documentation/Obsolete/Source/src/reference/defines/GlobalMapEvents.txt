@@ -1,0 +1,38 @@
+/**
+ * @defgroup GlobalMapEvents Global map events
+ * @ingroup Defines
+ *
+ * \~russian Типы событий возникающих на глобальной карте
+ * \~english Global map events types.
+ *
+ * \~
+ * @see      CRITTER_EVENT_GLOBAL_PROCESS
+ *
+ */
+/*@{*/
+
+/** \~russian Вызывается при передвижении по глобальной карте, каждые 5 секунд */
+#define GLOBAL_PROCESS_MOVE         (0)
+
+/** \~russian Вызывается при попытке входа на пустую карту */
+#define GLOBAL_PROCESS_ENTER        (1)
+
+/** \~russian Вызывается сразу при выходе на глобал или отсоединении от группы */
+#define GLOBAL_PROCESS_START_FAST   (2)
+
+/** \~russian Вызывается при прошествии 20 секунд от выхода на глобал или при первой попытке передвижения */
+#define GLOBAL_PROCESS_START        (3)
+
+/** \~russian Вызывается при изменении направления движения */
+#define GLOBAL_PROCESS_SET_MOVE     (4)
+
+/** \~russian Вызывается при остановке движения группы */
+#define GLOBAL_PROCESS_STOPPED      (5)
+
+/** \~russian Вызывается при при простое Нпц на глобале */
+#define GLOBAL_PROCESS_NPC_IDLE     (6)
+
+/** \~russian Указывает на то, что лидер группы или сам игрок хочет отсоединиться от группы */
+GLOBAL_PROCESS_KICK                 (7)
+
+/*@}*/

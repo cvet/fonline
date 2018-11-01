@@ -1,0 +1,25 @@
+/**
+ * \~russian @defgroup Karma Карма
+ * \~english @defgroup Karma Karma
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define KARMA_BERSERKER             (480)
+#define KARMA_CHAMPION              (481)
+#define KARMA_CHILDKILLER           (482)
+#define KARMA_SEXPERT               (483)
+#define KARMA_PRIZEFIGHTER          (484)
+#define KARMA_GIGOLO                (485)
+#define KARMA_GRAVE_DIGGER          (486)
+#define KARMA_MARRIED               (487)
+#define KARMA_PORN_STAR             (488)
+#define KARMA_SLAVER                (489)
+#define KARMA_VIRGIN_WASTES         (490)
+#define KARMA_MAN_SALVATORE         (491)
+#define KARMA_MAN_BISHOP            (492)
+#define KARMA_MAN_MORDINO           (493)
+#define KARMA_MAN_WRIGHT            (494)
+#define KARMA_SEPARATED             (495)
+
+/*@}*/

@@ -1,0 +1,284 @@
+/** \~russian Функционально ограниченный эквивалент класса Item, доступный при скриптинге клиента.
+ *
+ ** \~english Limited-functionality equivalent of Item class.
+ *
+ * \~ @ingroup Client
+ */
+class ItemCl
+{
+public:
+    /** \~russian Позволяет проверить, группируется ли предмет. */
+    bool IsGrouped();
+
+    /** \~russian Позволяет проверить, изнашивается ли предмет. */
+    bool IsWeared();
+
+    /** \~russian Возвращает ID скрипта, связанного с данным предметом.
+     *
+     * @return ID скрипта. 0, если скрипт не назначен.
+     */
+    uint GetScriptId();
+
+    /** \~russian Возвращает тип предмета.
+     *
+     * @return Тип предмета (см. @link ItemsTypes Items types@endlink).
+     *         В случае провала – 0.
+     */
+    uint8 GetType();
+
+    /** \~russian Возвращает ID прототипа предмета.
+     *
+     * См. @b ITEMPID.H.
+     *
+     * @return ID прототипа предмета. В случае провала – 0.
+     */
+    uint16 GetProtoId();
+
+    /** \~russian Возвращает количество предметов в данном экземпляре. */
+    uint GetCount();
+
+    /** \~russian Позволяет получить координаты предмета на карте.
+     *
+     * В параметрах возвращается месторасположение предмета на карте, независимо от того,
+     * где находится предмет (в предмете-контейнере, в инвентаре криттера или просто на карте).
+     *
+     * @param  hexX, hexY  В эти переменные функция передаст координаты предмета.
+     *
+     * @return @c true – если координаты получены успешно; @c false – в противном случае.
+     */
+    bool GetMapPosition(uint16& hexX, uint16& hexY);
+
+    /** \~russian Проигрывает анимацию предмета.
+     *
+     * @param   fromFrame  Начальный кадр анимации.
+     * @param   toFrame    Конечный кадр анимации.
+     *
+     * @remarks Направление может быть любым (например,
+     *          <code>Animate(1,7)</code> или <code>Animate(7,1)</code>).
+     */
+    void Animate(uint8 fromFrame, uint8 toFrame);
+
+    /** \~russian Проверяет, является ли предмет машиной.
+     *
+     * @return @c true – если машина; @c false – в протвном случае.
+     */
+    bool IsCar();
+
+    /** \~russian Возвращает указатель на предмет-контейнер, представляющий багажник авто.
+     *
+     * @param  numBag  Номер предмета-контейнера. Обычно 0. Всего машина может иметь 3 багажника.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    ItemCl@+ CarGetBag(int numBag);
+
+    /**
+     * \~russian @name Общие поля
+     * \~english @name General fields
+     * \~ @weight 200
+     */
+    //@{
+
+    /** \~russian Уникальный идентификатор предмета. */
+    const uint Id;
+
+    /** \~russian Указатель на прототип предмета. */
+    const ProtoItem@ Proto;
+
+    /** \~russian Поле, в котором может храниться произвольная информация. */
+    const uint Data;
+
+    /** \~russian Сортировочное число.
+     *
+     * Используется для сортировки предметов при отображении в инвентаре/контейнере/карте/etc.
+     * Сортировка производится по возрастанию (от меньших значений к большим).
+     */
+    const uint16 SortValue;
+
+    /** \~russian Изображение в инвентаре.
+     *
+     * Номер вычисляется с помощью функции @ref GetStrHash.
+     * При нулевом значении данные берутся из прототипа.
+     */
+    const uint PicInv;
+
+    /** \~russian Изображение на карте.
+     *
+     * Номер вычисляется с помощью функции @ref GetStrHash.
+     * При нулевом значении данные берутся из прототипа.
+     */
+    const uint PicMap;
+
+    /** \~russian Используется в формуле для определения номера строки с описанием предмета.
+     *
+     * @par Формула следующая:
+     * <code>GetProtoId()*100 + Info</code> (+1 для полного описания).
+     */
+    const uint8 Info;
+
+    /** \~russian Флаги предмета.
+     *
+     * Cм. @link ItemFlags Item flags@endlink.
+     * @see Item#Flags
+     */
+    const uint Flags;
+	
+	/** \~russian Флаги рации (См. @link RadioFlags Radio flags@endlink) */
+	uint16 RadioFlags;
+	
+	/** \~russian Значение индикатора заряда */
+	uint8 Indicator
+
+    /** \~russian Строка значений лексем предмета. */
+    const string Lexems;
+
+    //@}
+
+    /**
+     * \~russian @name Доступ
+     * \~english @name Access
+     */
+    //@{
+
+    /** \~russian Определяет, где находится предмет.
+     *
+     * Cм. @link ItemsAccessory Items accessory@endlink.
+     */
+    const uint8 Accessory;
+
+    /** \~russian Уникальный идентификатор карты, на которой находится предмет. */
+    const uint MapId;
+
+    /** \~russian Координата месторасположения предмета по оси X. */
+    const uint16 HexX;
+
+    /** \~russian Координата месторасположения предмета по оси Y. */
+    const uint16 HexY;
+
+    /** \~russian Уникальный идентификатор криттера, в инвентаре которого находится предмет. */
+    const uint CritId;
+
+    /** \~russian Слот в инвентаре криттера, в котором находится предмет.
+     *
+     * См. @link Slots@endlink.
+     */
+    const uint8 CritSlot;
+
+    /** \~russian Уникальный идентификатор контейнера, в котором находится предмет. */
+    const uint ContainerId;
+
+    /** \~russian Специальный ID предмета.
+     *
+     * Подробности см. в Item#SpecialId.
+     */
+    const uint SpecialId;
+
+    //@}
+
+    /**
+     * \~russian @name Для анимаций
+     * \~english @name For animations
+     */
+    //@{
+
+    /** (?) */
+    const uint16 AnimWaitBase;
+
+    /** (?) */
+    const uint8 AnimStayBegin;
+
+    /** (?) */
+    const uint8 AnimStayEnd;
+
+    /** (?) */
+    const uint8 AnimShowBegin;
+
+    /** (?) */
+    const uint8 AnimShowEnd;
+
+    /** (?) */
+    const uint8 AnimHideBegin;
+
+    /** (?) */
+    const uint8 AnimHideEnd;
+
+    //@}
+
+    /**
+     * \~russian @name Для изнашивающихся предметов (оружие, броня)
+     * \~english @name For the wearing items (weapon, armor)
+     */
+    //@{
+
+    /** (?) */
+    const uint8 BrokenFlags;
+
+    /** (?) */
+    const uint8 BrokenCount;
+
+    /** (?) */
+    const uint16 BrokenWear;
+
+    //@}
+
+    /**
+     * \~russian @name Для  замков (ключи, контейнеры, двери)
+     * \~english @name For locks (keys, containers, doors)
+     */
+    //@{
+
+    /** \~russian Номер замка. */
+    const uint LockerId;
+
+    /** \~russian Состояние замка.
+     * См. @link Locker@endlink. Только для контейнеров и дверей.
+     */
+    const uint16 LockerCondition;
+
+    /** \~russian Сложность замка (штраф к навыку Взлом).
+     * Только для контейнеров и дверей.
+     */
+    const uint16 LockerComplexity;
+
+    //@}
+
+    /**
+     * \~russian @name Для оружия
+     * \~english @name Weapons
+     */
+    //@{
+
+    /** \~russian Текущий PID заряженных патронов. */
+    const uint16 Weapon_AmmoPid;
+
+    /** \~russian Текущее количество патронов. */
+    const uint16 Weapon_AmmoCount;
+	
+	/** \~russian Активный режим атаки.
+	 * старшие четыре бита - прицел (см. @link HitLocations Hit Locations@endlink),
+	 * младшие четыре бита - тип использования (0 – primary, 1 – secondary, 2 – third).
+	 */
+	uint8 Mode;
+
+    //@}
+
+    /**
+     * \~russian @name Разное (Misc2)
+     * \~english @name Various (Misc2)
+     */
+    //@{
+
+    /** \~russian Используется для хранения произвольной информации. */
+    const uint m2_Val1;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    const uint m2_Val2;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    const uint m2_Val3;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    const uint m2_Val4;
+
+    //@}
+}

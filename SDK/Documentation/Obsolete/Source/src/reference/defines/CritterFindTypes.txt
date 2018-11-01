@@ -1,0 +1,35 @@
+/**
+ * @defgroup CritterFindTypes Critter find types
+ * @ingroup Defines
+ *
+ * \~russian Флаги поиска криттеров.
+ *
+ * Комбинируйте флаги разных групп с помощью оператора '|'.
+ *
+ * \~english Critters search flags.
+ *
+ * Combine groups with | operator.
+ *
+ * \~ @todo Написать пример.
+ *
+ */
+/*@{*/
+
+/** @name First group */
+//@{
+#define FIND_LIFE                   (0x01)
+#define FIND_KO                     (0x02)
+#define FIND_DEAD                   (0x04)
+#define FIND_LIFE_AND_KO             (0x03)
+#define FIND_LIFE_AND_DEAD           (0x05)
+#define FIND_KO_AND_DEAD             (0x06)
+#define FIND_ALL                     (0x0F)
+//@}
+
+/** @name Second group */
+//@{
+#define FIND_ONLY_PLAYERS           (0x10)
+#define FIND_ONLY_NPC               (0x20)
+//@}
+
+/*@}*/

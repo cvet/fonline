@@ -1,0 +1,147 @@
+/** \~russian Локация.
+ * Локации – это кружки на глобальной карте мире, отмечающие определенные места. Каждая локация
+ * может содержать множество @ref Map "карт". Информация о локациях содержится в файле @b CITY.TXT.
+ *
+ ** \~english Location.
+ * This is the circles on a global map of the world have witnessed a definite place.
+ * Each location may contain a lot of maps. Information on the locations contained in a file @b CITY.TXT.
+ *
+ * \~ @ingroup Server
+ * @see Map
+ */
+class Location
+{
+public:
+	/** \~russian Идентификатор локации. */
+	const uint Id;
+
+	/** \~russian Задает цвет локации.
+	 *
+	 * По-умолчанию равно @c 0, клиент берет значение - @c 0x3C00FF00.
+	 *
+	 * @note Функции и макросы для работы с цветом определены в @b _colors.fos.
+	 *
+	 */
+	uint Color;
+
+    /** \~russian Позволяет определить валидность объекта. */
+    /** \~english Allows to check whether underlying object is valid. */
+    const bool IsNotValid;
+
+    /** \~russian Позиция X на глобальной карте. */
+    /** \~english X coordinate on worldmap. */
+    uint16 WorldX;
+
+    /** \~russian Позиция Y на глобальной карте. */
+    /** \~english Y coordinate on worldmap. */
+    uint16 WorldY;
+
+    /** \~russian Видна ли локация на глобальной карте мира. */
+    /** \~english Visible/invisible on worldmap. */
+    bool Visible;
+
+    /** \~russian Влияют ли на видимость локации расположенные в ней предметы с флагом #ITEM_GECK.
+    *
+    * При значении @c true, в случае, если количество таких предметов
+    * больше нуля, локация приобретает свойство, аналогичное #Visible.
+    */
+    bool GeckEnabled;
+
+    /** \~russian Количество предеметов с флагом #ITEM_GECK в локации. */
+    /** \~english Number of "GECK" items in location. */
+    int GeckCount;
+
+    /** \~russian Радиус локации. */
+    /** \~english Radius of the location green circle. */
+    uint8 Radius;
+
+    /** Удалять ли карту, когда на ней не осталось ни одного игрока, местного NPC или предмета с флагом #ITEM_GECK.
+     *
+     * Актуально при <code>geck_visible == 1</code>.
+     */
+    bool AutoGarbage;
+
+
+    /** \~russian Позволяет получить номер прототипа локации.
+     *
+     * @return Номер прототипа локации.
+     *
+     ** \~english Returns location prototype number.
+     */
+    uint16 GetProtoId();
+
+
+    /** \~russian Позволяет узнать число карт в локации.
+     * @return Число карт в локации.
+     *
+     ** \~english Returns number of maps in location.
+     */
+    uint GetMapCount();
+
+
+    /** \~russian Позволяет получить по прототипу карту, находящуюся в локации.
+     *
+     * @param  mapPid  Номер прототипа карты.
+     *
+     * @return Указатель на карту.
+     *
+     ** \~english Returns map given its prototype number.
+     *
+     * @param  mapPid  Prototype number.
+     *
+     * @return Pointer to map instance.
+     */
+    Map@+ GetMap(uint16 mapPid);
+
+
+    /** \~russian Позволяет получить карту в локации по индексу.
+     *
+     * Порядок карт прописывается в @b CITY.TXT с помощью параметра map_(X).
+     *
+     * @param  index  Индекс карты.
+     *
+     * @return Указатель на карту.
+     *
+     ** \~english Returns map from location that is stored at given index (specified in @b CITY.TXT)
+     */
+    Map@+ GetMapByIndex(uint index);
+
+
+    /** \~russian Позволяет получить все карты в локации.
+     *
+     * @param  maps  Массив карт, к которому будут добавлены все найденные карты.
+     *
+     * @return Количество карт в локации.
+     *
+     * \~english Gets all maps from location.
+     *
+     * @return Number of maps.
+     */
+    uint GetMaps(Map@[]@+ maps);
+
+
+    /** \~russian Переинициализирует все карты в локации.
+     *
+     * @return @c true – в случае успеха, @c false – в случае неудачи.
+     *
+     ** \~english Reloads all maps from within a location.
+     */
+    bool Reload();
+
+
+    /** \~russian Сохраняет данные локации и, опционально, всех её карт.
+     *
+     * @param  withMaps  Указывает, нужно ли сохранять данные карт локации (@c true) или нет (@c false).
+     *
+     ** \~english Saves location info (and maps info if withMaps == true).
+     */
+    void Save(bool withMaps);
+
+    /** \~russian Обновляет информацию о локации на стороне клиентов.
+     *
+     * Если функция не будет вызвана, то информация о локации обновится
+     * при релогине или повторном выходе на глобальную карту клиента.
+     *
+     */
+    void Update();
+}

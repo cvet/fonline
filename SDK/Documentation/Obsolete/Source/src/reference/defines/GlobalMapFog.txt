@@ -1,0 +1,28 @@
+/**
+ * @defgroup GlobalMapFog Global map fog
+ * @ingroup Defines
+ *
+ * \~russian Состояния тумана на клетках глобальной карты.
+ * \~english Global map fog states.
+ *
+ * \~
+ * @see      Critter::GetFog
+ *           Critter::SetFog
+ *           ::GetFog
+ *
+ */
+/*@{*/
+
+/** \~russian Клетка полностью невидима */
+#define FOG_FULL                    (0)
+
+/** (?) */
+#define FOG_SELF                    (1)
+
+/** (?) */
+#define FOG_SELF2                   (2)
+
+/** \~russian Клетка видима */
+#define FOG_NONE                    (3)
+
+/*@}*/

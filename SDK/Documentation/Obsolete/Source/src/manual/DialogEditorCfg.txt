@@ -1,0 +1,12 @@
+/** \~russian @page page_dialogeditorcfg DialogEditor.cfg
+
+Настройки редактора диалогов.
+\b Ключи:
+
+<table>
+<tr><td>Language</td><td>Язык редактора (0 - русский, 1 - английский)</td></tr>
+<tr><td>Names</td><td>Путь к папке, содержашей файл ItemNames.lst (данный файл находится в папке Data в директории сервера)</td></tr>
+<tr><td>Vars</td><td>Путь к директории, содержащей файл _vars.fos (находится в папке скриптов сервера)</td></tr>
+</table>
+
+*/

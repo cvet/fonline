@@ -1,0 +1,512 @@
+/** \~russian Предмет.
+ *
+ * \~ @ingroup Server
+ */
+class Item
+{
+public:
+    /**
+     * \~russian @name Общие поля
+     * \~english @name General fields
+     * \~ @weight 300
+     */
+    //@{
+
+    /** \~russian Уникальный идентификатор предмета. */
+    const uint Id;
+
+    /** \~russian Позволяет определить валидность объекта. */
+    /** \~english Allows to check whether underlying object is valid. */
+    const bool IsNotValid;
+
+    /** \~russian Указатель на прототип предмета. */
+    const ProtoItem@ Proto;
+
+    /** \~russian Цена.
+     *
+     * При нулевом значении данные берутся из прототипа.
+     */
+    uint Cost;
+
+    /** \~russian Изменяемые флаги предмета.
+     *
+     * Cм. @link ItemFlags Item flags@endlink.
+     *
+     * Для удобства пользуйтесь макросами:
+     * - @c FLAG (позволяет проверить, установлен ли определенный флаг),
+     * - @c SETFLAG (позволяет поставить флаг),
+     * - @c UNSETFLAG (позволяет убрать флаг).
+     * Их определения см. @b Flags в @b _macros.fos.
+     */
+    uint Flags;
+	
+	/** \~russian Флаги рации (См. @link RadioFlags Radio flags@endlink) */
+	uint16 RadioFlags;
+
+    /** \~russian Используется в формуле для определения номера строки с описанием предмета.
+     *
+     * @par Формула следующая:
+     * <code>Item::GetProtoId()*100 + Item::Info</code> (+1 для полного описания).
+     */
+    uint16 Info;
+
+    /** \~russian Изображение в инвентаре.
+     *
+     * Номер вычисляется с помощью функции @ref GetStrHash.
+     * При нулевом значении данные берутся из прототипа.
+     */
+    uint PicInv;
+
+    /** \~russian Изображение на карте.
+     *
+     * Номер вычисляется с помощью функции @ref GetStrHash.
+     * При нулевом значении данные берутся из прототипа.
+     */
+    uint PicMap;
+
+    /** \~russian Сортировочное число.
+     *
+     * Используется для сортировки предметов при отображении в инвентаре/контейнере/карте/etc.
+     * Сортировка производится по возрастанию (от меньших значений к большим).
+     */
+    uint16 SortValue;
+
+    //@}
+
+    /**
+     * \~russian @name Доступ
+     * \~english @name Access
+     * \~ @weight 290
+     */
+    //@{
+
+    /** \~russian Определяет, где находится предмет.
+     *
+     * Cм. @link ItemsAccessory Items accessory@endlink.
+     */
+    const uint8 Accessory;
+
+    /** \~russian Уникальный идентификатор карты, на которой находится предмет. */
+    const uint MapId;
+
+    /** \~russian Координата месторасположения предмета по оси X. */
+    const uint16 HexX;
+
+    /** \~russian Координата месторасположения предмета по оси Y. */
+    const uint16 HexY;
+
+    /** \~russian Уникальный идентификатор криттера, в инвентаре которого находится предмет. */
+    const uint CritId;
+
+    /** \~russian Слот в инвентаре криттера, в котором находится предмет.
+     *
+     * См. @link Slots@endlink.
+     */
+    const uint8 CritSlot;
+
+    /** \~russian Уникальный идентификатор контейнера, в котором находится предмет. */
+    const uint ContainerId;
+
+    /** (?) */
+    const uint StackId;
+
+    /** \~russian Специальный ID предмета.
+     *
+     * Используется для идентификации группы предметов внутри контейнеров.
+     * Обычно это уникальный ID криттера, которому принадлежит предмет.
+     * Изначально специальный ID предмета равен 0.
+     *
+     * @see AddItem
+     * @see GetItem
+     * @see GetItems
+     * @see MoveItem
+     * @see MoveItems
+     */
+    uint SpecialId;
+
+    //@}
+
+    /**
+     * \~russian @name Разное (Misc2)
+     * \~english @name Various (Misc2)
+     * \~ @weight 280
+     */
+    //@{
+
+    /** \~russian Используется для хранения произвольной информации. */
+    uint Val1;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    uint Val2;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    uint Val3;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    uint Val4;
+
+    /** \~russian Используется для хранения произвольной информации. */
+    uint Val5;
+
+    //@}
+
+    /**
+     * \~russian @name Для изнашивающихся предметов (оружие, броня)
+     * \~english @name For the wearing items (weapon, armor)
+     * \~ @weight 270
+     */
+    //@{
+
+    /** (?) */
+    uint8 BrokenFlags;
+
+    /** (?) */
+    uint8 BrokenCount;
+
+    /** Степень износа */
+    uint16 Deterioration;
+
+    //@}
+
+    /**
+     * \~russian @name Для  замков (ключи, контейнеры, двери)
+     * \~english @name For locks (keys, containers, doors)
+     * \~ @weight 280
+     */
+    //@{
+
+    /** \~russian Номер замка. */
+    uint LockerId;
+
+    /** \~russian Состояние замка.
+     *
+     * См. @link Locker@endlink. Только для контейнеров и дверей.
+     */
+    uint16 LockerCondition;
+
+    /** \~russian Сложность замка (штраф к навыку Взлом).
+     *
+     * Только для контейнеров и дверей.
+     */
+    uint16 LockerComplexity;
+
+    //@}
+
+    /**
+     * \~russian @name Для анимаций
+     *
+     * Значения инициализируются по данным прототипа. Используются для проигрывания анимации.
+     *
+     * \~english @name For animations
+     *
+     * \~ @weight 270
+     */
+    //@{
+
+    /** (?) */
+    uint16 AnimWaitBase;
+
+    /** (?) */
+    uint8 AnimStayBegin;
+
+    /** (?) */
+    uint8 AnimStayEnd;
+
+    /** (?) */
+    uint8 AnimShowBegin;
+
+    /** (?) */
+    uint8 AnimShowEnd;
+
+    /** (?) */
+    uint8 AnimHideBegin;
+
+    /** (?) */
+    uint8 AnimHideEnd;
+
+    //@}
+
+    /**
+     * \~russian @name Для оружия
+     * \~english @name Weapons
+     * \~ @weight 260
+     */
+    //@{
+
+    /** \~russian Текущий PID заряженных патронов. */
+    uint16 Weapon_AmmoPid;
+
+    /** \~russian Текущее количество патронов. */
+    uint16 Weapon_AmmoCount;
+	
+	/** \~russian Активный режим атаки.
+	 * старшие четыре бита - прицел (см. @link HitLocations Hit Locations@endlink),
+	 * младшие четыре бита - тип использования (0 – primary, 1 – secondary, 2 – third).
+	 */
+	uint8 Mode;
+
+    //@}
+
+    /**
+     * \~russian @name Освещенность
+     * \~english @name Lightness
+     * \~ @weight 250
+     */
+    //@{
+
+    /** (?) */
+    int8 LightIntensity;
+
+    /** (?) */
+    uint8 LightRadius;
+
+    /** (?) */
+    uint8 LightFlags;
+
+    /** (?) */
+    uint LightColor;
+
+    //@}
+
+    /**
+     * \~russian @name Скрипты и события
+     * \~english @name Scripts and events
+     * \~ @weight 300
+     */
+    //@{
+
+    /** \~russian Устанавливает новый скрипт и вызывает в нем функцию инициализации с параметром @a firstTime равным @c true.
+     *
+     * @param   script  Имя скрипта.
+     *
+     * @return  @c true в случае успешной операции; @c false – в случае провала.
+     *
+     * @remarks Если скрипт или функция не найдена, то установки значения скрипта не произойдет.
+     */
+    bool SetScript(string@+ script);
+
+    /** \~russian Возвращает ID скрипта, связанного с данным предметом.
+     *
+     * @return ID скрипта. 0, если скрипт не назначен.
+     */
+    uint GetScriptId();
+
+    /** \~russian Биндит функцию-обработчика определенного события.
+     *
+     * @param  eventType  Тип события (см. @link ItemEvents Item events@endlink).
+     * @param  funcName   Имя функции-обработчика.
+     */
+    void SetEvent(int eventType, string& funcName);
+
+    //@}
+
+    /**
+     * \~russian @name Вызов событий
+     * \~english @name Invoking events
+     * \~ @weight 295
+     */
+    //@{
+
+	/** \~russian Принудительно вызывает событие #ITEM_EVENT_FINISH. */
+    /** \~english Invokes #ITEM_EVENT_FINISH event. */
+	bool EventFinish(bool toDelete);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_ATTACK. */
+    /** \~english Invokes #ITEM_EVENT_ATTACK event. */
+    bool EventAttack(Critter& attacker, Critter& target);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_USE. */
+    /** \~english Invokes #ITEM_EVENT_USE event. */
+    bool EventUse(Critter& cr, Critter@ onCritter, Item@ onItem, Scenery@ onScenery);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_USE_ON_ME. */
+    /** \~english Invokes #ITEM_EVENT_USE_ON_ME event. */
+    bool EventUseOnMe(Critter& cr, Item@ usedItem);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_SKILL. */
+    /** \~english Invokes #ITEM_EVENT_SKILL event. */
+    bool EventSkill(Critter& cr, int skill);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_DROP. */
+    /** \~english Invokes #ITEM_EVENT_DROP event. */
+    void EventDrop(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_MOVE. */
+    /** \~english Invokes #ITEM_EVENT_MOVE event. */
+    void EventMove(Critter& cr, uint8 fromSlot);
+
+    /** \~russian Принудительно вызывает событие #ITEM_EVENT_WALK. */
+    /** \~english Invokes #ITEM_EVENT_WALK event. */
+    void EventWalk(Critter& cr, bool entered, uint8 dir);
+
+    //@}
+
+    /**
+     * \~russian @name Общие
+     * \~english @name General
+     * \~ @weight 290
+     */
+    //@{
+
+   /** \~russian Проигрывает анимацию предмета.
+     * @param fromFrame Начальный кадр анимации.
+     * @param toFrame Конечный кадр анимации.
+     * @remarks Направление может быть любым (например,
+     *   <code>Animate(1,7)</code> или <code>Animate(7,1)</code>).
+     */
+    void Animate(uint8 fromFrame, uint8 toFrame);
+
+    /** \~russian Меняет прототип у предмета.
+     *
+     * Новый прототип должен иметь такой же тип, что и сам предмет.
+     *
+     * @param  protoId  Номер нового прототипа (см. @b ITEMPID.H).
+     *
+     * @return В случае успеха – @c true. В случае провала – @c false.
+     */
+    bool ChangeProto(uint16 protoId);
+
+    /** \~russian Возвращает тип предмета.
+     *
+     * @return Тип предмета (см. @link ItemsTypes Items types@endlink).
+     *         В случае провала – 0.
+     */
+    uint8 GetType();
+
+    /** \~russian Возвращает ID прототипа предмета.
+     *
+     * См. @b ITEMPID.H.
+     *
+     * @return ID прототипа предмета. В случае провала – 0.
+     */
+    uint16 GetProtoId();
+
+    /** \~russian Автоматически расчитывает стоимость предмета, учитывая стоимость в предмете и прототипе, износ, заряженную аммуницию.
+     *
+     * @return Стоимость предмета.
+     */
+    uint GetCost();
+
+    /** \~russian Возвращает количество предметов в данном экземпляре.
+     *
+     * @return Количество предметов.
+     *
+     * @see    SetCount
+     */
+    uint GetCount();
+
+    /** \~russian Устанавливает количество предметов в данном экземпляре.
+     *
+     * @param count новое количество предметов.
+     *
+     * @see   GetCount
+     */
+    void SetCount(uint count);
+
+    /** \~russian Возвращает указатель на карту и координаты расположения предмета на ней.
+     *
+     * В параметрах возвращается месторасположение предмета на карте, независимо от того,
+     * где находится предмет (в предмете-контейнере, в инвентаре криттера или просто на карте).
+     *
+     * @param  hexX, hexY  В эти переменные функция передаст координаты предмета.
+     *
+     * @return Указатель на экземпляр класса Map. В случае провала – @c null.
+     */
+    Map@+ GetMapPosition(uint16& hexX, uint16& hexY);
+
+    /** \~russian Группируются ли предметы.
+     *
+     * @see ProtoItem::Stackable
+     *
+     */
+    bool IsStackable();
+
+    /** \~russian Изнашиваются ли предметы.
+     *
+     * @see ProtoItem::Deteriorable
+     *
+     */
+    bool IsDeteriorable();
+
+    /** \~russian Обновление инфы об предмете у игроков.
+     *
+     * При изменении полей обязательно вызовите этот метод для отправки данных
+     * клиентам.
+     */
+    void Update();
+
+    /** \~russian Позволяет установить (или сбросить) значения лексем, используемых в названии и описании предмета.
+     *
+     * @param lexems Строка значений лексем
+     *               (см. <a href="http://fonline.ru/fowork/wiki/index.php/Скрипты:_Работа_с_диалогом#@lex name@">описание тэга \@lex\@</a>, где описан формат строки).
+     *               Если значение параметра будет @c null, то это приведёт к удалению лексем.
+     */
+    void SetLexems(string@+ lexems);
+
+    //@}
+
+    /**
+     * \~russian @name Для машин
+     * \~english @name For the cars
+     * \~ @weight 280
+     */
+    //@{
+
+    /** \~russian Возвращает указатель на дочерний предмет.
+     *
+     * @param  childIndex  Номер предмета. Обычно 0. Максимум - 4.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ GetChild(uint childIndex);
+
+    //@}
+
+    /**
+     * \~russian @name Для предметов-контейнеров
+     * \~english @name For containers
+     * \~ @weight 270
+     */
+    //@{
+
+    /** \~russian Создание предмета в контейнере.
+     *
+     * @param  protoId    Номер прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  count      Количество предметов.
+     * @param  specialId  Специальный ID предмета.
+     *                    Используется для идентификации криттера, которому принадлежит предмет.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     *
+     * @see    #SpecialId
+     */
+    Item@+ AddItem(uint16 protoId, uint count, uint specialId);
+
+    /** \~russian Возвращает указатель на предмет, который находится в предмете-контейнере.
+     *
+     * @param  protoId    Номер прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  specialId  Специальный ID предмета.
+     *                    Используется для идентификации криттера, которому принадлежит предмет.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     *
+     * @see    #SpecialId
+     */
+    Item@+ GetItem(uint16 protoId, uint specialId);
+
+    /** \~russian Ищет все предметы с указанным специальным ID, которые находятся в предмете-контейнере.
+     *
+     * @param  specialId  Специальный ID.
+     *                    Используется для идентификации криттера, которому принадлежат предметы.
+     *                    Если установлено значение: -1, то этот параметр учитываться не будет.
+     * @param  items      Массив указателей на предметы, которые находятся в контейнере.
+     *                    Массив не очищается, а дописывается с конца нужными предметами.
+     *
+     * @return Количество найденных предметов.
+     *
+     * @see    #SpecialId
+     */
+    uint GetItems(uint specialId, Item@[]@+ items);
+
+    //@}
+}

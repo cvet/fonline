@@ -1,0 +1,385 @@
+/**
+ * \~russian @defgroup ClientReserved Зарезервированные скриптовые функции (Клиент)
+ * \~english @defgroup ClientReserved Reserved script functions for client
+ * \~ @ingroup Client
+ */
+/*@{*/
+
+/** \~russian Вызывается при запуске клиента или в случае, если придет обновленный скрипт client_main.fos.
+ *
+ * @return При возвращении @c false игра не запустится.
+ */
+bool start();
+
+/** \~russian Функция, вызываемая движком с задаваемой периодичностью.
+ *
+ * Период задается с помощью возвращаемого значения.
+ *
+ * @return Время в миллисекундах, через которое функцию следует вызвать снова.
+ *         Если будет возвращен ноль, то функция больше не будет вызываться.
+ */
+uint loop();
+
+/** \~russian Вызывается клиентом при отрисовке интерфейса.
+ *
+ * Функции @c Draw* можно использовать только здесь.
+ *
+ ** \~english Render interface function.
+ *
+ * You can use @c Draw* functions only there.
+ *
+ */
+void render_iface();
+
+/** \~russian Вызывается при отрисовке графики на карте с учетом очереди вывода спрайтов.
+ *
+ * Функция вызывается перед отрисовкой первого слоя интерфейса.
+ * Функции @c DrawMap* можно использовать только здесь.
+ *
+ ** \~english Render map function.
+ *
+ * You can use @c DrawMap* functions only there.
+ * This drawing occurs before first interface layer.
+ *
+ ** \~ @see render_iface
+ *
+ */
+void render_map();
+
+/** \~russian Обрабатывает исходящие от игрока сообщения.
+ *
+ * @param  [in, out]  message  Текст сообщения.
+ * @param  [in, out]  sayType  Тип текста (см. @link SayTypes Say types@endlink).
+ *
+ * @return При возвращении @c false сообщение не отправляется.
+ */
+bool out_message(string& message, int& sayType);
+
+/** \~russian Обрабатывает входящие сообщения.
+ *
+ * @param   [in, out]  message    Текст входящего сообщения. Текст может быть раскрашены посредством тега "|" (0xAARRGGBB, если AA равно нулю, то прозрачность не учитывается).
+ * @param   [in, out]  sayType    Тип текста (см. @link SayTypes Say types@endlink).
+ * @param   [in, out]  critterId  Идентификатор криттера, от которого пришло сообщение.
+ * @param   [in, out]  delay      Время задержки сообщения.
+ *
+ * @return
+ *
+ * @remarks Радиосообщения анонимны.
+ * @remarks По-умолчанию время задержки равно <code>TextDelay + длина сообщения * 100</code> миллисекунд.
+ */
+bool in_message(string& message, int& sayType, uint& critterId, uint& delay);
+
+/** \~russian Вызывается при получении сообщения на карте.
+ *
+ * @param   [in, out]  message     Текст сообщения.
+ * @param   [in, out]  hexX, hexY  Координаты источника сообщения.
+ * @param   [in, out]  color       Цвет сообщения.
+ * @param   [in, out]  delay       Время задержки сообщения.
+ *
+ * @return
+ *
+ * @remarks По умолчанию, время задержки равно <code>TextDelay + длина сообщения * 100</code> миллисекунд.
+ */
+bool map_message(string& message, uint16& hexX, uint16& hexY, uint& color, uint& delay);
+
+/** \~russian Вызываются тогда, когда необходимо сформировать описание для предмета.
+ *
+ * @param  item      Предмет, для которого формируется описание.
+ * @param  lookType  См. @link ItemLookTypes Item look types@endlink.
+ *
+ * @return Строка с описанием предмета.
+ */
+string item_description(ItemCl& item, int lookType);
+
+/** \~russian Вызываются тогда, когда необходимо сформировать описание криттера.
+ *
+ * @param  cr        Криттер, для которого формируется описание.
+ * @param  lookType  См. @link CritterLookTypes Critter look types@endlink.
+ *
+ * @return Строка с описанием криттера.
+ */
+string critter_description(CritterCl& cr, int lookType);
+
+/** \~russian Вызывается тогда, когда необходимо сформировать какое-либо описание в игре.
+ *
+ * @param        descType      Тип описания
+ *                             (см. @link GenericDescriptionsTypes Generic descriptions types@endlink).
+ * @param  [out] offsX, offsY  Смещение описания от базовой точки.
+ *
+ * @return Описание.
+ */
+string generic_description(int descType, int& offsX, int& offsY);
+
+/** \~russian Вызывается тогда, когда клиенту необходимо сформировать интерфейс для лифта.
+ *
+ * @param         type  Тип лифта (см. @link Elevators@endlink).
+ * @param  [out]  data  Данные, необходимые для формирования интерфейса.
+ *
+ * @return @c true – в случае, если интерфейс создать можно;
+ *         @c false – в противном случае.
+ */
+bool get_elevator(uint type, uint[]& data);
+
+/** \~russian Вызывается при появлении какого-либо криттера в игре.
+ *
+ * @param  cr  Входящий криттер.
+ *
+ */
+void critter_in(CritterCl& cr);
+
+/** \~russian Вызывается при изчезании какого-либо криттера в игре.
+ *
+ * @param  cr  Выходящий криттер.
+ *
+ */
+void critter_out(CritterCl& cr);
+
+/** \~russian Вызывается при появлении предмета на карте.
+ *
+ * @param  item  Появившийся предмет.
+ *
+ */
+void item_map_in(ItemCl& item);
+
+/** \~russian Вызывается при смене предмета на карте.
+ *
+ * @param  itemNow     Новый предмет.
+ * @param  itemBefore  Сменившийся предмет.
+ *
+ */
+void item_map_changed(ItemCl& itemNow, ItemCl& itemBefore);
+
+/** \~russian Вызывается при исчезновении предмета с карты.
+ *
+ * @param  item  Исчезнувший предмет.
+ *
+ */
+void item_map_out(ItemCl& item);
+
+/** \~russian Вызывается при появлении предмета в инвентаре.
+ *
+ * @param  item  Появившийся в инвентаре предмет.
+ *
+ */
+void item_inv_in(ItemCl& item);
+
+/** \~russian Вызывается при исчезновении предмета из инвентаря.
+ *
+ * @param  item  Исчезнувшийся из инвентаря предмет.
+ *
+ */
+void item_inv_out(ItemCl& item);
+
+/** \~russian Вызывается при выкидывании предмета криттером.
+ *
+ * @param  item  Выкидываемый предмет.
+ *
+ */
+void item_drop(ItemCl& item);
+
+/** \~russian Вызывается перед проигрыванием 2D анимации.
+ *
+ * @param  animateStay  Указывает воспроизводится сейчас какое-либо действие (@a false) или анимация стойки (@a true).
+ * @param  cr           Криттер, для которого проигрывается анимация.
+ * @param  anim1        Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+ * @param  anim2        Второй индекс анимации (см. @b ANIM2_2D_* в @b _animation.fos).
+ * @param  item         Указатель на предмет, используемый в анимации.
+ */
+void animation2d_process(bool animateStay, CritterCl& cr, uint anim1, uint anim2, ItemCl@ item);
+
+/** \~russian Вызывается перед проигрыванием 3D анимации.
+ *
+ * @param  animateStay  Указывает воспроизводится сейчас какое-либо действие (@a false) или анимация стойки (@a true).
+ * @param  cr           Криттер, для которого проигрывается анимация.
+ * @param  anim1        Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+ * @param  anim2        Второй индекс анимации (см. @b ANIM2_3D_* в @b _animation.fos).
+ * @param  item         Указатель на предмет, используемый в анимации.
+ */
+void animation3d_process(bool animateStay, CritterCl& cr, uint anim1, uint anim2, ItemCl@ item);
+
+/** (?) */
+uint item_cost(ItemCl& item, CritterCl& chosen, CritterCl& npc, bool sell);
+
+/** (?) */
+bool check_perk(CritterCl& cr, uint perk);
+
+/** (?) */
+void player_data_generate(int[]& data);
+
+/** (?) */
+bool player_data_check(int[]& data);
+
+/** \~russian Вызывается, когда криттер производит какое-либо действие.
+ *
+ * В этой функции можно делать реализацию своих действий: проигрывание звуков,
+ * анимации, вывод текста и т.п., которые будут производиться без задержек,
+ * связанных с передачей данных по сети.
+ *
+ * @param   localCall  Вызывана ли функция движком локально (@c true) или с сервера (@c false).
+ * @param   cr         Криттер, который производит действие.
+ * @param   action     Действие (см. @link CritterActions Действия криттеров@endlink).
+ * @param   actionExt  Параметр с дополнительной информацией о действии.
+ * @param   item       Указатель на предмет, который участвует в совершении действия.
+ *
+ * @remarks Движок при некоторых действиях игрока вызывает эту же функцию
+ *          с параметром @a localCall, равным @c true, а после отправляет
+ *          информацию на сервер, где идет последующая обработка.
+ *
+ ** \~ @see #Critter::Action
+ */
+void critter_action(bool localCall, CritterCl& cr, int action, int actionExt, ItemCl@ item);
+
+/** \~russian Позволяет изменить имя файла лога. Если filename окажется пустым, файл не сохранится */
+void filename_logfile( string& filename );
+
+/** \~russian Позволяет изменить имя файла скриншота. Если filename окажется пустым, файл не сохранится */
+void filename_screenshot( string& filename );
+
+/** \~russian Регулирует доступ к командам сервера
+ *
+ * @param  cr          Проверяемый криттер
+ * @param  adminPanel  (?)
+ * @param  command     Проверяемая команда (см. Internal server commands в _defines.fos)
+ *
+ * @return @c true – в случае, если команда разрешена;
+ *         @c false – в противном случае.
+ */
+bool player_allowcommand( Critter@ cr, string@ adminPanel, uint8 command );
+
+/** \~russian Вызызывается перед каждым перемещением предмета у криттера.
+ *
+ * @param  cr        Криттер, который меняет предмет;
+ * @param  item      Предмет, который перемещается;
+ * @param  toSlot    Слот, из которого берется предмет;
+ * @param  itemSwap  предмет, который уже находится в слоте назначения и который переместится в слот перемещаемого предмета при успешной транзакции.
+ *
+ * @return Если возвратить @c false, то предмет не переместится; если @c true, то переместится.
+ */
+bool critter_check_move_item(Critter& cr, Item& item, uint8 toSlot, Item@ itemSwap);
+
+/**
+ * @name GUI
+ */
+//@{
+
+/** \~russian Вызывается движком, чтобы получить активное окно.
+ *
+ * @return Индекс активного окна. См. @link Client screen types ClientScreenTypes@endlink.
+ *
+ */
+int get_active_screen();
+
+/** \~russian Позволяет определить поведение при смене окон.
+ *
+ * @param  show        Должно ли окно показываться (@c true) или закрыться (@c false).
+ * @param  screen      Тип окна.
+ * @param  p0, p1, p2  Параметры окна.
+ *
+ */
+void screen_change(bool show, int screen, int p0, int p1, int p2);
+
+/** \~russian Вызывается при нажатии кнопки мыши.
+ *
+ * @param  click  См. @link MouseClickStates Mouse click states@endlink.
+ *
+ * @return Если @c true, то движок не будет обрабатывать событие; если @c false, то будет.
+ */
+bool mouse_down(int click);
+
+/** \~russian Вызывается при отжатии кнопки мыши.
+ *
+ * @param  click См. @link MouseClickStates Mouse click states@endlink.
+ *
+ * @return Если @c true, то движок не будет обрабатывать событие; если @c false, то будет.
+ */
+bool mouse_up(int click);
+
+/** \~russian Вызывается при перемещении курсора.
+ *
+ * @param  x, y  Новые позиции курсора.
+ */
+void mouse_move(int x, int y);
+
+/** \~russian Вызывается при нажатии клавиши.
+ *
+ * @param  key  См. @link DirectInputKeyboardScanCodes DirectInput keyboard scan codes@endlink.
+ *
+ * @return Если @c true, то движок не будет обрабатывать событие; если @c false, то будет.
+ */
+bool key_down(uint8 key);
+
+/** \~russian Вызывается при отжатии клавиши.
+ *
+ * @param  key  См. @link DirectInputKeyboardScanCodes DirectInput keyboard scan codes@endlink.
+ *
+ * @return Если @c true, то движок не будет обрабатывать событие; если @c false, то будет.
+ */
+bool key_up(uint8 key);
+
+/** \~russian Вызывается при потере устройства: мыши или клавиатуры.
+ *
+ * Это может произойти при:
+ * - переключении по Alt-Tab,
+ * - сворачивании окна клиента,
+ * - потере фокуса.
+ */
+void input_lost();
+
+//@}
+
+/**
+ * \~russian @name Боевка
+ * \~english @name Combat
+ */
+//@{
+
+/** \~russian Принимает данные, посланные в Critter#SendCombatResult. */
+void combat_result(uint[]& data);
+
+/** \~russian Вызывается движком для расчета отображаемого в клиенте шанса попадания.
+ *
+ * @param  chosen       Игрок.
+ * @param  target       Цель.
+ * @param  weapon       Используемое игроком оружие.
+ * @param  weaponMode   Режим атаки оружия.
+ * старшие четыре бита  Прицел (см. @link HitLocations Hit Locations@endlink),
+ * младшие четыре бита  Тип использования (0 – primary, 1 – secondary, 2 – third).
+ *
+ */
+int to_hit(CritterCl& chosen, CritterCl& target, ProtoItem& weapon, uint8 weaponMode);
+
+/** \~russian Функция вызываемая в момент загрузки нужной анимации.
+ * 
+ * @param  animType      Тип анимации криттера (новый параметр, указывается в CritterTypes.cfg);
+ * @param  crType        Тип криттера;
+ * @param  anim1, anim2  Индексы анимации;
+ * @param  pass          Номер вызова функции, изменяется пользователем, если не удалось загрузить анимацию и данный параметр был изменен, то функция вызовется вновь (в некоторых случаях нужно пробовать загрузить разные файлы для одной анимации);
+ * @param  flags         Флаги, на данный момент два - взять первый или последний кадр из анимации (см. Anim loading flags в _animation.fos);
+ * @param  ox, &oy       Смещения для анимации, в пикселях.
+ *
+ * @return  путь и имя файла
+ *
+ */
+string@ critter_animation(int animType, uint crType, uint anim1, uint anim2, uint& pass, uint& flags, int& ox, int& oy);
+
+/** \~russian Если не удалось загрузить анимацию (и uint& pass не изменился), то вызывается данная функция для определения замены анимации (например, удар левой рукой можно заменить на удар правой).
+ *
+ * animTypeТип                            Тип анимации криттера (новый параметр, указывается в CritterTypes.cfg);
+ * uint crTypeBase, anim1Base, anim2Base  Базовый тип криттера и анимации, с которых все начиналось;
+ * uint& crType, &anim1, &anim2           Тип криттера и текущие анимации для замены.
+ *
+ * @return  @a true, если замена нашлась (движок еще дополнительно проверяет изменились ли на самом деле crType, anim1, anim2), @a false - нет замены, анимация не будет загружена и проиграна.
+ *
+ */
+bool critter_animation_substitute(int animType, uint crTypeBase, uint anim1Base, uint anim2Base, uint& crType, uint& anim1, uint& anim2);
+
+/** \~russian Т.к. анимации фаллаута все еще загружаются движком (требуется дополнительный расчет смещений, склейка двух анимаций), то для определения соответствий анимаций вызывается данная функция, т.е. вместо critter_animation для анимаций фаллаута вызывается данная функция.
+ *
+ * @return @a true, если анимация присутствует, @a false - нет.
+ *
+ */
+bool critter_animation_fallout(uint crType, uint& anim1, uint& anim2, uint& anim1ex, uint& anim2ex, uint& flags);
+
+//@}
+
+/*@}*/

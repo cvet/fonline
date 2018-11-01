@@ -1,0 +1,213 @@
+/**
+
+\~russian @page dialogs_scripts Работа с диалогом
+\~english @page dialogs_scripts Working with dialogs
+\~
+
+\~russian @section dialogs_scripts_info Общая информация
+\~english @section dialogs_scripts_info Main information
+\~
+Функции скриптов могут вызываться на различных этапах работы диалога.\n
+Различают 3 типа диалоговых функций
+
+\~russian @section d_funcs Функции-условия
+\~english @section d_funcs Dialog demand
+\~
+
+Данные функции применяются как условия для появления реплик, доступных игроку.\n
+Если функция возвращает true, значит реплика доступна игроку и наоборот.\n
+Для установки скриптового условия выберите в редакторе диалогов реплику, на которую необходимо поставить условие, перейдите на вкладку "Условия", выберите пункт "Скрипт (модуль@функция)", установите количество параметров, которые необходимо передать в функцию и заполните их, нажмите кнопку "добавить".\n
+\n
+Возможные варианты функций
+@code
+bool d_FuncName(Critter& master, Critter@ slave)
+bool d_FuncName(Critter& master, Critter@ slave, int val)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+@endcode
+\n
+Количество параметров типа int в функции выбирается в зависимости от количества параметров указанных при добавлении условия в редакторе диалогов.\n
+По умолчанию функция вызывается 2 раза, в первый раз перед показом диалога, а второй раз при выборе игроком реплики с заданным в условиях скриптом.\n
+Сделано это для защиты, например, на случай, если кто-то украдет у игрока все деньги после того, как ему высветился вариант ответа, но до того, как он на него нажал.\n
+По этим причинам желательно избегать выполнения каких-либо действий, кроме проверки рвзличных условий, внутри функции проверки условия.\n
+Однако, для тех случаев, когда внутри функции-условия необходимо единожды выполнить какое-либо действие, повторную проверку можно отключить (установка флага на условие производится в редакторе диалогов).\n
+Так же, можно воспользоваться глобальной переменной bool __DialogDemandRecheck, при повторной проверке, значение переменной будет равно true.
+
+\~russian @section r_funcs Функции-результаты
+\~english @section r_funcs Dialog result
+\~
+
+Данные функции выполняются один раз, после выбора игроком реплики, для которой в результате указана данная функция.\n
+Добавление происходит по тому же принципу, что добавление функций для проверки условий.\n
+\n
+Возможные варианты функций\n
+@code
+void r_FuncName(Critter& master, Critter@ slave)
+uint r_FuncName(Critter& master, Critter@ slave)
+void r_FuncName(Critter& master, Critter@ slave, int val)
+uint r_FuncName(Critter& master, Critter@ slave, int val)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+@endcode
+
+Количество параметров типа int в функции так же выбирается в зависимости от количества параметров, указанных при добавлении функции в редакторе диалогов.
+Функции, возвращающие числовое значение, должны возвращать номер ветки диалога, на которую нужно перейти после выполнения функции или одно из специальных значений, приводящих к закрытию диалога, открытию бартера, началу атаки или возращению к предыдущему диалогу (@ref DialogLinks).
+
+\~russian @section dlg_funcs Функции диалога
+\~english @section dlg_funcs Dialog functions
+\~
+
+Данные функции вызываются в трех случаях:\n
+1. При формировании ветки диалога, к которой привязан скрипт\n
+2. При уходе из ветки диалога, к которой привязан скрипт\n
+3. При использовании функции "Сказать о" в ветке диалога, к которой привязан скрипт.\n
+\n
+Спецификация функции\n
+@code
+void dlg_FuncName(Critter& player, Critter@ npc, string@ text)
+uint dlg_FuncName(Critter& player, Critter@ npc, string@ text)
+@endcode
+
+Для проверки в каком из случаев запущена данная функция, существует 3 макроса
+@code
+#define IS_DIALOG_END #(str)        (not valid(str))
+#define IS_DIALOG_GENERATED #(str)  (valid(str) && str.length()==0)
+#define IS_DIALOG_SAY_MODE #(str)   (valid(str) && str.length()>0)
+@endcode
+
+Если была использована функция "Сказать о", то строка text будет содержать текст, сказанный игроком.\n
+В случае, если функция вызвана при генерации диалога, в строку text можно будет поместить текст для определения @ref term_lexem "лексем", использованых в текущем диалоге (как для самого диалога, так и для реплик игрока)
+
+@b Примечание:
+При использовани функции, возращающей числовое значение, можно перенаправить игрока на другую ветку диалога в случае использования функции "Сказать о", возращаемое значение должно содержать номер ветки диалога или одно из специальных значений, приводящих к закрытию диалога, открытию бартера, началу атаки или возращению к предыдущему диалогу (@ref DialogLinks)
+
+
+\~russian @section dialogfuncs_sample Пример
+\~english @section dialogfuncs_sample Sample
+\~
+
+Для примера рассмотрим несколько диалоговых веток диалога nr_t-ray.fodlg
+
+T-Ray: "Могу предложить: Хаммер за @lex hummer@, Багги за @lex buggy@, Скаут за @lex scout@, Хайвемен за @lex highwayman@." (на ветку "повешена" функция nr_t-ray@@dlg_PrepareBuy)\n
+Игрок: "Покупаю Хайвеймен." (В результате выбора данной реплики запускается функция  nr_t-ray@@r_BuyHighwayman)
+
+@code
+.....
+.....
+
+void dlg_PrepareBuy(Critter& player, Critter@ tray, string@ lexems)
+{
+	if(not IS_DIALOG_GENERATED(lexems)) return; 
+	// Функция запускается в трех случаях, так как мы хотим получить в тексте диалога цены за машины разных типов, то нам интересен только тот случай, когда функция запускается до генерации текста диалога
+	// Во всех остальных случаях прекращаем выполнение функции
+
+	lexems+="$hummer"+GetCarCost(PID_HUMMER);
+	lexems+="$buggy"+GetCarCost(PID_BUGGY);
+	lexems+="$scout"+GetCarCost(PID_SCOUT);
+	lexems+="$highwayman"+GetCarCost(PID_HIGHWAYMAN);
+	// Функциия GetCarCost расчитывает стоимость машины по номеру ее прототипа, саму функцию можете посмотреть в файле car.fos
+	// В результате 4ех запусков функции, строка lexems будет выглядеть примерно так: "$hummer50000$buggy15000$scout20000$highwayman120000"
+	// Данная строка будет использована при генерации текста диалога "Могу предложить: Хаммер за @lex hummer@, Багги за @lex buggy@, Скаут за @lex scout@, Хайвемен за @lex highwayman@."
+}
+
+uint r_BuyHighwayman(Critter& player, Critter@ tray, int val) // Данная функция вызывается каждый раз, когда игрок жмет на строку "Покупаю Хайвеймен."
+{	
+	return TryCreateCar(player,PID_HIGHWAYMAN);
+	// Вызываем функцию TryCreateCar, которая должна вернуть номер ветки диалога, на которую нужно будет перейти после завершения ее выполнения.
+}
+
+uint TryCreateCar(Critter& player, uint16 protoCar)
+{
+	if(protoCar!=PID_HUMMER && protoCar!=PID_BUGGY && protoCar!=PID_SCOUT && protoCar!=PID_HIGHWAYMAN) return FD_GENERIC_ERROR;
+	// Проверяем номер прототипа машины, если прототип неверный, перенаправляем игрока на ветку с номером FD_GENERIC_ERROR
+	// FD_GENERIC_ERROR задается в начале скрипта и имеет номер 100, то есть игрок будет перенаправлен на ветку "Извини, у меня срочные дела, подойди позже."
+
+	uint cost=GetCarCost(protoCar); // Получаем стоимость машины по прототипу
+	if(_CritCountItem(player,PID_BOTTLE_CAPS)<cost) return FD_NO_MONEY; // Проверяем, хватает ли игроку денег и, если не хватает, перенаправляем его на ветку FD_NO_MONEY
+	// то есть на ветку с номером 5: "Нет денег - нет машины. Приходи как найдешь нужную сумму."
+
+	// Если денег достаточно, пытаемся добавить машину
+	Map@ map=player.GetMap();
+	if(not valid(map)) return FD_GENERIC_ERROR; // В случае ошибки получения указателя на карту, перебрасываем игрока на ветку диалога с номером 100
+
+	Entire[] entires;
+	ParseEntires(map,entires,ENTIRE_WORKSHOP);
+	ParseEntires(map,entires,ENTIRE_CAR);
+
+	uint16 hx,hy,entNum;
+	for(int i=0,j=entires.length();i<=j;i++)
+	{
+		if(i==j) return FD_NO_PLACES; // Если не удалось найти свободного места для машины, перенаправляем игрока на ветку с номером FD_NO_PLACES
+		// то есть на диалог с номером 6: "Сейчас вся мастерская и стоянка забита машинами, некуда подогнать, подойди, когда будут свободные места.".
+
+		Entire@ ent=entires[i];
+		if(map.CheckPlaceForCar(ent.HexX,ent.HexY,protoCar))
+		{
+			hx=ent.HexX;
+			hy=ent.HexY;
+			entNum=ent.Number;
+			break;
+		}
+	}
+
+	uint keyId=Random(10000,50000); // Генерация номера замка
+
+	Item@ car=map.AddItem(hx,hy,protoCar,1); // Добавляем машину на карту
+	if(not valid(car)) return FD_GENERIC_ERROR; // если создание автомобиля все-таки не вышло, перенаправляем игрока на ветку диалога с номером  100
+	
+	// Настраиваем параметры автомобиля
+	car.LockerId=keyId;
+	car.Charge=car.Proto.Car_FuelTank;
+	car.Deterioration=0;
+	car.Update();
+
+	Item@ bag=car.CarGetBag(0);
+	if(valid(bag))
+	{
+		bag.LockerId=keyId;
+		bag.LockerComplexity=Random(50,100);
+		bag.Update();
+	}
+
+	Item@ key=player.AddItem(PID_KEY,1); // Добавляем ключ от машины игроку в инвентарь
+	if(valid(key))
+	{
+		key.LockerId=keyId;
+		key.Update();
+	}
+
+	player.DeleteItem(PID_BOTTLE_CAPS,cost); // Удаляем деньги игрока
+	if(entNum==ENTIRE_WORKSHOP) return FD_BUY_SUCCESS_WORKSHOP; // Если машина установлена в магазине, перенаправляем игрока на ветку диалога с номером FD_BUY_SUCCESS_WORKSHOP (7)
+	// то есть на ветку "Держи ключ, машина ждет тебя в мастерской. Если потребуется ремонт или модификация, то обращайся."
+
+	// В противном случае перенаправляем игрока на ветку FD_BUY_SUCCESS_CARSTOP (8): "Держи ключ, машина ждет тебя снаружи, на стоянке. Если потребуется ремонт или модификация, то обращайся."
+	return FD_BUY_SUCCESS_CARSTOP;
+}
+
+.....
+.....
+@endcode
+
+В данном примере на реплике "Покупаю Хайвеймен." не стоит никаких условий, то есть игрок всегда может на нее нажать, проверка наличия денег происходит в функции TryCreateCar. Однако эту же проверку можно было провести и в скриптовой функции-условии.
+@code
+bool d_CheckMoneyForCar(Critter& player, Critter@ tray, int protoCar)
+{
+	uint cost=GetCarCost(protoCar);
+	if(_CritCountItem(player,PID_BOTTLE_CAPS)<cost)
+		return false;
+	else
+		return true;
+}
+@endcode
+
+Если мы добавим эту функцию (с параметром, равным номеру прототипа машины) в условие реплики игрока "Покупаю Хайвеймен.", то при недостаточном количестве денег игрок не увидит данной реплики и не сможет по ней перейти.
+
+*/

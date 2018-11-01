@@ -1,0 +1,50 @@
+/**
+ * @defgroup CritterActions Critter actions
+ * @ingroup Defines
+ *
+ * \~russian Действия криттера.
+ *
+ * Позволяют описывать действия криттера на более высоком уровне.
+ *
+ * Вы можете добавлять свои действия, реализуя их в функции #critter_action клиента.
+ *
+ * \~english Critter actions.
+ *
+ * \~
+ * @see #Critter::Action
+ * @see #critter_action
+ */
+/*@{*/
+
+// Critter actions
+// Flags for chosen:
+// l - hardcoded local call
+// s - hardcoded server call
+// for all others critters actions call only server
+//                                          flags    actionExt                                                      item
+#define ACTION_MOVE                 (0)  // l
+#define ACTION_RUN                  (1)  // l
+#define ACTION_MOVE_ITEM            (2)  // l s      from slot                                                      +
+#define ACTION_MOVE_ITEM_SWAP       (3)  // l s      from slot                                                      +
+#define ACTION_MOVE_ITEM            (4)  // l s      prev slot                                                      +
+#define ACTION_USE_ITEM             (5)  // l s                                                                     +
+#define ACTION_DROP_ITEM            (6)  // l s      prev slot                                                      +
+#define ACTION_USE_WEAPON           (7)  // l        fail attack 8 bit, use index (0-2) 4-7 bits, aim 0-3 bits      +
+#define ACTION_RELOAD_WEAPON        (8)  // l s                                                                     +
+#define ACTION_USE_SKILL            (9)  // l s      skill index (see SK_*)
+#define ACTION_PICK_ITEM            (10) // l s                                                                     +
+#define ACTION_PICK_CRITTER         (11) // l        0 - loot, 1 - steal, 2 - push
+#define ACTION_OPERATE_CONTAINER    (12) // l s      transfer type * 10 + [0 - get, 1 - get all, 2 - put]           + (exclude get all)
+#define ACTION_BARTER               (13) //   s      0 - item taken, 1 - item given                                 +
+#define ACTION_DODGE                (14) //          0 - front, 1 - back
+#define ACTION_DAMAGE               (15) //          0 - front, 1 - back
+#define ACTION_KNOCKOUT             (16) //   s      0 - front, 1 - back
+#define ACTION_STANDUP              (17) //   s
+#define ACTION_FIDGET               (18) // l
+#define ACTION_DEAD                 (19) //   s      dead type (see COND_DEAD_*)
+#define ACTION_CONNECT              (20) //
+#define ACTION_DISCONNECT           (21) //
+#define ACTION_RESPAWN              (22) //   s
+#define ACTION_REFRESH              (23) //   s
+
+/*@}*/

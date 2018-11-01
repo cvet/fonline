@@ -1,0 +1,184 @@
+Version  2
+Image    BigNumbers.png
+YAdvance 0
+
+Letter ' '
+  PositionX 1
+  PositionY 1
+  XAdvance  14
+
+Letter '0'
+  PositionX 1
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '1'
+  PositionX 17
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '2'
+  PositionX 33
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '3'
+  PositionX 49
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '4'
+  PositionX 65
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '5'
+  PositionX 81
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '6'
+  PositionX 97
+  PositionY 1
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '7'
+  PositionX 1
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '8'
+  PositionX 17
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '9'
+  PositionX 33
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter ':'
+  PositionX 49
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter ';'
+  PositionX 65
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '<'
+  PositionX 81
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter '@'
+  PositionX 97
+  PositionY 27
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'A'
+  PositionX 1
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'B'
+  PositionX 17
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'C'
+  PositionX 33
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'D'
+  PositionX 49
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'E'
+  PositionX 65
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'F'
+  PositionX 81
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'G'
+  PositionX 97
+  PositionY 53
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'H'
+  PositionX 1
+  PositionY 79
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'I'
+  PositionX 17
+  PositionY 79
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'J'
+  PositionX 33
+  PositionY 79
+  Width     14
+  Height    24
+  XAdvance  14
+
+Letter 'K'
+  PositionX 49
+  PositionY 79
+  Width     14
+  Height    24
+  XAdvance  14
+

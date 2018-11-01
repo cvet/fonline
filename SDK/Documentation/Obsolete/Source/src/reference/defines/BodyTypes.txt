@@ -1,0 +1,36 @@
+/**
+ * @defgroup BodyTypes Body types
+ * @ingroup Defines
+ *
+ * \~russian Виды существ.
+ * \~english Body types.
+ *
+ * \~
+ * @see #ST_BODY_TYPE
+ *
+ */
+/*@{*/
+
+#define BT_MEN                      (0)
+#define BT_WOMEN                    (1)
+#define BT_CHILDREN                 (2)
+#define BT_SUPER_MUTANT             (3)
+#define BT_GHOUL                    (4)
+#define BT_BRAHMIN                  (5)
+#define BT_RADSCORPION              (6)
+#define BT_RAT                      (7)
+#define BT_FLOATER                  (8)
+#define BT_CENTAUR                  (9)
+#define BT_ROBOT                    (10)
+#define BT_DOG                      (11)
+#define BT_MANTI                    (12)
+#define BT_DEADCLAW                 (13)
+#define BT_PLANT                    (14)
+#define BT_GECKO                    (15)
+#define BT_ALIEN                    (16)
+#define BT_GIANT_ANT                (17)
+#define BT_BIG_BAD_BOSS             (18)
+#define BT_GIANT_BEETLE             (19)
+#define BT_GIANT_WASP               (20)
+
+/*@}*/

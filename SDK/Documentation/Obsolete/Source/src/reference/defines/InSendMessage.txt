@@ -1,0 +1,21 @@
+/**
+ * @defgroup InSendMessage In SendMessage
+ * @ingroup Defines
+ *
+ * \~russian Круг получателей сообщения, отсылаемого методом Critter::SendMessage.
+ *
+ * \~
+ * @see      Critter::SendMessage
+ */
+/*@{*/
+
+/** \~russian Отослать сообщения всем, кто видит криттера. */
+#define MESSAGE_TO_WHO_SEES_ME      (0)
+
+/** \~russian Отослать сообщения всем, кого видит криттер. */
+#define MESSAGE_TO_I_SEE            (1)
+
+/** \~russian Отослать всем на карте. */
+#define MESSAGE_TO_ALL_ON_MAP       (2)
+
+/*@}*/

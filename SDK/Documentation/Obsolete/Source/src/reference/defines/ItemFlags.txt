@@ -1,0 +1,68 @@
+/**
+ * @defgroup ItemFlags Item flags
+ * @ingroup Defines
+ *
+ * \~russian Флаги предметов.
+ * \~english Item flags.
+ *
+ * \~
+ * @see      Item::Flags
+ *           ItemCl::Flags
+ *           ProtoItem::Flags
+ *
+ */
+/*@{*/
+
+#define ITEM_HIDDEN                 (0x00000001)
+#define ITEM_FLAT                   (0x00000002)
+#define ITEM_NO_BLOCK               (0x00000004)
+#define ITEM_SHOOT_THRU             (0x00000008)
+#define ITEM_LIGHT_THRU             (0x00000010)
+#define ITEM_MULTI_HEX              (0x00000020)
+#define ITEM_WALL_TRANS_END         (0x00000040)
+#define ITEM_TWO_HANDS              (0x00000080)
+#define ITEM_BIG_GUN                (0x00000100)
+#define ITEM_ALWAYS_VIEW            (0x00000200)
+#define ITEM_HAS_TIMER              (0x00000400)
+#define ITEM_BAD_ITEM               (0x00000800)
+#define ITEM_NO_HIGHLIGHT           (0x00001000)
+#define ITEM_SHOW_ANIM              (0x00002000)
+#define ITEM_SHOW_ANIM_EXT          (0x00004000)
+#define ITEM_LIGHT                  (0x00008000)
+
+/** \~russian Если в локации присутствует предмет с этим флагом, то локация не будет удаляться,
+ *            а её местоположение будет записано в пип-бой при выходе игрока из нее.
+ *
+ * Применительно к машинам, ГЕКК'у.
+ *
+ */
+#define ITEM_GECK                   (0x00010000)
+
+/**
+ * \~russian Добавляет значение Item::Val3 к дистанции при расчете видимости предмета.
+ */
+#define ITEM_TRAP                   (0x00020000)
+
+/**
+ * \~russian Отключает влияние света.
+ * \~englsih Disables reaction to any kind of light.
+ */
+#define ITEM_NO_LIGHT_INFLUENCE     (0x00040000)
+
+/**
+ * \~russian Запрещает лутание предмета.
+ */
+#define ITEM_NO_LOOT                (0x00080000)
+
+/**
+ * \~russian Запрещает воровство предмета.
+ */
+#define ITEM_NO_STEAL               (0x00100000)
+
+#define ITEM_CAN_USE_ON_SMTH        (0x01000000)
+#define ITEM_CAN_LOOK               (0x02000000)
+#define ITEM_CAN_TALK               (0x04000000)
+#define ITEM_CAN_PICKUP             (0x08000000)
+#define ITEM_CAN_USE                (0x10000000)
+
+/*@}*/

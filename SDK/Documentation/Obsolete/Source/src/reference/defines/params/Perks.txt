@@ -1,0 +1,109 @@
+/**
+ * \~russian @defgroup Perks Перки
+ * \~english @defgroup Perks Perks
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define PE_BOOKWORM                 (300) // Todo
+#define PE_AWARENESS                (301)
+#define PE_BONUS_HTH_ATTACKS        (302) // Used in engine
+#define PE_BONUS_HTH_DAMAGE         (303)
+#define PE_BONUS_MOVE               (304)
+#define PE_BONUS_RANGED_DAMAGE      (305)
+#define PE_BONUS_RATE_OF_FIRE       (306) // Used in engine
+#define PE_EARLIER_SEQUENCE         (307)
+#define PE_FASTER_HEALING           (308)
+#define PE_MORE_CRITICALS           (309)
+#define PE_NIGHT_VISION             (310) // Todo
+#define PE_PRESENCE                 (311) // Todo
+#define PE_RAD_RESISTANCE           (312)
+#define PE_TOUGHNESS                (313)
+#define PE_STRONG_BACK              (314)
+#define PE_SHARPSHOOTER             (315)
+#define PE_SILENT_RUNNING           (316) // Used in engine
+#define PE_SURVIVALIST              (317)
+#define PE_MASTER_TRADER            (318) // Used in engine
+#define PE_EDUCATED                 (319)
+#define PE_HEALER                   (320)
+#define PE_FORTUNE_FINDER           (321)
+#define PE_BETTER_CRITICALS         (322)
+#define PE_EMPATHY                  (323) // Todo
+#define PE_SLAYER                   (324)
+#define PE_SNIPER                   (325)
+#define PE_SILENT_DEATH             (326)
+#define PE_ACTION_BOY               (327)
+#define PE_MENTAL_BLOCK             (328) // Todo
+#define PE_LIFEGIVER                (329)
+#define PE_DODGER                   (330)
+#define PE_SNAKEATER                (331)
+#define PE_MR_FIXIT                 (332)
+#define PE_MEDIC                    (333)
+#define PE_MASTER_THIEF             (334)
+#define PE_SPEAKER                  (335)
+#define PE_HEAVE_HO                 (336) // Used in engine
+#define PE_FRIENDLY_FOE             (337) // Todo
+#define PE_PICKPOCKET               (338)
+#define PE_GHOST                    (339)
+#define PE_CULT_OF_PERSONALITY      (340) // Todo
+#define PE_SCROUNGER                (341) // Todo
+#define PE_EXPLORER                 (342)
+#define PE_FLOWER_CHILD             (343) // Todo
+#define PE_PATHFINDER               (344) // Used in engine
+#define PE_ANIMAL_FRIEND            (345) // Todo
+#define PE_SCOUT                    (346) // Used in engine
+#define PE_MYSTERIOUS_STRANGER      (347) // Todo
+#define PE_RANGER                   (348)
+#define PE_QUICK_POCKETS            (349) // Used in engine
+#define PE_SMOOTH_TALKER            (350) // Used in engine
+#define PE_SWIFT_LEARNER            (351)
+#define PE_TAG                      (352) // Todo
+#define PE_MUTATE                   (353) // Todo
+#define PE_ADRENALINE_RUSH          (380) // Used in engine
+#define PE_CAUTIOUS_NATURE          (381)
+#define PE_COMPREHENSION            (382)
+#define PE_DEMOLITION_EXPERT        (383)
+#define PE_GAMBLER                  (384)
+#define PE_GAIN_STRENGTH            (385)
+#define PE_GAIN_PERCEPTION          (386)
+#define PE_GAIN_ENDURANCE           (387)
+#define PE_GAIN_CHARISMA            (388)
+#define PE_GAIN_INTELLIGENCE        (389)
+#define PE_GAIN_AGILITY             (390)
+#define PE_GAIN_LUCK                (391)
+#define PE_HARMLESS                 (392)
+#define PE_HERE_AND_NOW             (393)
+#define PE_HTH_EVADE                (394) // Used in engine
+#define PE_KAMA_SUTRA_MASTER        (395)
+#define PE_KARMA_BEACON             (396)
+#define PE_LIGHT_STEP               (397)
+#define PE_LIVING_ANATOMY           (398)
+#define PE_MAGNETIC_PERSONALITY     (399)
+#define PE_NEGOTIATOR               (400)
+#define PE_PACK_RAT                 (401)
+#define PE_PYROMANIAC               (402)
+#define PE_QUICK_RECOVERY           (403)
+#define PE_SALESMAN                 (404)
+#define PE_STONEWALL                (405)
+#define PE_THIEF                    (406)
+#define PE_WEAPON_HANDLING          (407)
+#define PE_VAULT_CITY_TRAINING      (408)
+#define PE_ALCOHOL_RAISED_HP        (409)
+#define PE_ALCOHOL_RAISED_HP_II     (410)
+#define PE_ALCOHOL_LOWERED_HP       (411)
+#define PE_ALCOHOL_LOWERED_HP_II    (412)
+#define PE_AUTODOC_RAISED_HP        (413)
+#define PE_AUTODOC_RAISED_HP_II     (414)
+#define PE_AUTODOC_LOWERED_HP       (415)
+#define PE_AUTODOC_LOWERED_HP_II    (416)
+#define PE_EXPERT_EXCREMENT         (417)
+#define PE_JINXED_II                (419)
+#define PE_TERMINATOR               (420)
+#define PE_GECKO_SKINNING           (430)
+#define PE_VAULT_CITY_INOCULATIONS  (431)
+#define PE_DERMAL_IMPACT            (432)
+#define PE_DERMAL_IMPACT_ENH        (433)
+#define PE_PHOENIX_IMPLANTS         (434)
+#define PE_PHOENIX_IMPLANTS_ENH     (435)
+
+/*@}*/

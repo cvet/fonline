@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<!DOCTYPE CodeBlocks_lexer_properties>
+<CodeBlocks_lexer_properties>
+		<Lexer name="AngelScript"
+				index="3"
+				filemasks="*.as,*.fos">
+				<Style name="Default"
+						index="0"
+						fg="0,0,0"
+						bg="255,255,255"
+						bold="0"
+						italics="0"
+						underlined="0"/>
+				<Style name="Comment (normal)"
+						index="1,2"
+						fg="0,128,0"/>
+				<Style name="Comment (documentation)"
+						index="3,15"
+						fg="128,128,255"
+						bold="1"/>
+				<Style name="Comment keyword (documentation)"
+						index="17"
+						fg="0,128,128"/>
+				<Style name="Comment keyword error (documentation)"
+						index="18"
+						fg="128,0,0"/>
+				<Style name="Number"
+						index="4"
+						fg="0,0,0"/>
+				<Style name="Keyword"
+						index="5"
+						fg="0,0,255"/>
+				<Style name="User keyword"
+						index="16"
+						fg="0,0,128"/>
+				<Style name="String"
+						index="6,12"
+						fg="162,30,39"/>
+				<Style name="Character"
+						index="7"
+						fg="224,160,0"/>
+				<Style name="UUID"
+						index="8"
+						fg="0,0,0"/>
+				<Style name="Preprocessor"
+						index="9"
+						fg="0,0,160"/>
+				<Style name="Operator"
+						index="10"
+						fg="0,0,0"/>
+				<Style name="Selection"
+						index="-99"
+						bg="192,192,192"/>
+				<Style name="Active line"
+						index="-98"
+						bg="255,255,160"/>
+				<Style name="Matching brace highlight"
+						index="34"
+						fg="0,0,0"
+						bold="1"/>
+				<Style name="No matching brace highlight"
+						index="35"
+						bg="255,0,0"/>
+				<Style name="Vars"
+						index="19"
+						fg="170,170,0"/>
+				<Style name="Macro"
+						index="20"
+						fg="170,0,0"/>
+				<Style name="Global Vars"
+						index="21"
+						fg="0,122,122"/>
+				<Keywords>
+						<Language index="0"
+								value="and bits bits8 bits16 bits32 bool break case const continue default
+								do double else false float for if import in inout int int8 int16 int32 not
+								null or out return struct switch true uint uint8 uint16 uint32 void while xor
+								cast from interface valid string GameVar Critter Item Scenery ProtoItem Map"/>
+						<User index="1"
+								value="Log Random GetMap GetProtoMap GetStat GetPerk SetPerk IsFree IsBusy Wait
+								ItemsCount ItemsWeight ItemsSize CountItem CountItemByType GetItem CheckKey
+								CreateTimeEvent EraseTimeEvent TimeEventGetCritter TimeEventGetItem GetLastError
+								SendStat SendSkill SendPerk SendMessage SendQuestVar MoveRandom MoveToDir AddItem
+								DeleteItem Say SayMsg SetDir IsKnownLoc SetKnownLoc SendParam GetType GetProtoId
+								IsKnownLoc SetKnownLoc CarGetBag Animate MoveItem GetGlobalVar GetLocalVar GetUnicumVar
+								GetValue GetMin GetMax IsQuest GetQuestStr MoveItemCrit MoveItemToCont MoveItemFromCont
+								MoveItemsContainers MoveItemsContToCritter GetCrittersDistantion GetDistantion
+								GetDirection GetProtoItem GetItem GetItemById GetDoor GetCar GetCritterHex GetPlayer
+								GetCritter GetCritters IsHexPassed IsHexRaked IsNoPlanes GetCount SetCount PickItem
+								SetLoopTime SetTime GetTime SetRain GetRain SetData GetData AddPlane ErasePlane IsPlayer IsNpc
+								CountEntire GetEntireCoords AddWalkPlane AddAttackPlane AddPickPlane GetItems SetText
+								SetTextStr SetTextMsg GetFullMinute GetNearFullMinute CreateLocation DeleteLocation
+								RunEffect RunFlyEffect InjureCritter GetMapPosition GetTimeout SetTimeout CreateAnyData
+								UpdateAnyData EraseAnyData GetAnyData ArrayPushBack ArrayErase AddExperience
+								SetStartLocation GetMapInLocation FlushScreen OpenDoor CloseDoor CheckPlaceForCar
+								ChangeProto ShowContainer GetFollowGroup StrToInt RunDialog AddScore IsCar WorldItemCount
+								SetBestScore AddNpc GetNpc GetScriptId GetBagId GetTeamId GetDialogId BlockHex UnblockHex
+								Update Save DeleteNpc AddTextListener EraseTextListener"/>
+						<Documentation index="2"
+								value="a addindex addtogroup anchor arg attention
+								author b brief bug c class code date def defgroup deprecated dontinclude
+								e em endcode endhtmlonly endif endlatexonly endlink endverbatim enum example exception
+								f$ f[ f] file fn hideinitializer htmlinclude htmlonly
+								if image include ingroup internal invariant interface latexonly li line link
+								mainpage name namespace nosubgrouping note overload
+								p page par param post pre ref relates remarks return retval
+								sa section see showinitializer since skip skipline struct subsection
+								test throw todo typedef union until
+								var verbatim verbinclude version warning weakgroup $ @ \ & < > # { }"/>
+						<User index="3"
+								value="Id BaseType HexX HexY WorldX WorldY Ori Cond CondExt Flags Strenght Perception Endurance
+								Charisma Intellect Agility Luck MaxHp ActionPoints ArmorClass MeleeDamage WeaponDamage
+								CarryWeight Sequence HealingRrate CriticalChance MaxCritical IngureAbsorb LaserAbsorb
+								FireAbsorb PlasmaAbsorb ElectroAbsorb EmpAbsorb BlastAbsorb IngureResist LaserResist
+								FireResist PlasmaResist ElectroResist EmpResist BlastResist RadiationResistance
+								PoisonResistance Age Gender Hp PoisoningLevel RadiationLevel Experience Level
+								UnspentSkillPoints UnspentPerks Karma FollowCrit ReplicationMoney ReplicationCount
+								ReplicationTime NpcRole Var0 Var1 Var2 Var3 Var4 Var5 Var6 Var7 Var8 Var9 ContainerId
+								SpecialId SmallGuns BigGuns EnergyWeapons Unarmed MeleeWeapons Throwing FirstAid Doctor
+								Sneak Lockpick Steal Traps Science Repair Speech Barter Gambling Outdoorsman TwoHands
+								BigGun Weight Size Cost Material Accessory MapId HexX HexY CritId CritSlot ContainerId
+								SpecialId BrokenInfo LockerId LockerCondition LockerComplexity m2_Val1 m2_Val2 m2_Val3
+								Weather State Proto Car_Speed Car_Negotiability Car_Wear Car_CritCapacity Car_FuelTank
+								Car_RunToBreak Car_WalkType Car_FuelConsumption"/>
+						<User index="4"
+								value="SAY_NORM SAY_NORM_ON_HEAD SAY_SHOUT SAY_SHOUT_ON_HEAD SAY_EMOTE SAY_EMOTE_ON_HEAD
+								SAY_WHISP SAY_WHISP_ON_HEAD SAY_SOCIAL SAY_RADIO ACT_NULL ACT_SHOW_OBJ ACT_HIDE_OBJ
+								ACT_ACTIVATE_OBJ ACT_DACTIVATE_OBJ ACT_USE_OBJ ACT_CHANGE_ARM ACT_DEFEAT ACT_DEFEAT_MISS
+								ACT_DEFEAT_FRONT ACT_DEFEAT_REAR ACT_DEFEAT_KO_FRONT ACT_DEFEAT_KO_REAR ACT_REFRESH
+								ACT_DEAD ACT_CR_DEAD ACT_DISCONNECT ACT_DROP_OBJ ACT_PICK_OBJ_UP ACT_PICK_OBJ_DOWN
+								COND_LIFE COND_LIFE_NONE COND_LIFE_ACTWEAP COND_LIFE_USEOBJ COND_LIFE_OFFLINE
+								COND_KNOCK_OUT COND_KO_UP COND_KO_DOWN COND_DEAD COND_DEAD_NORMAL_UP COND_DEAD_NORMAL_DOWN
+								COND_DEAD_CR_NORMAL_UP COND_DEAD_BRUST COND_DEAD_CR_BRUST COND_DEAD_LASER COND_DEAD_FIRE
+								COND_DEAD_PLASMA COND_DEAD_ELECTR COND_DEAD_EMP COND_DEAD_EXPLODE COND_NOT_IN_GAME
+								GENDER_MALE GENDER_FEMALE ITEM_ARMOR ITEM_CONTAINER ITEM_DRUG ITEM_WEAPON ITEM_AMMO
+								ITEM_MISC ITEM_KEY ITEM_DOOR ITEM_GRID ACCESSORY_CRIT ACCESSORY_HEX ACCESSORY_CONT
+								DAMAGE_NORMAL DAMAGE_LASER DAMAGE_FIRE DAMAGE_PLASMA DAMAGE_ELECTR DAMAGE_EMP DAMAGE_EXPLODE
+								MESSAGE_TO_VISIBLE_ME MESSAGE_TO_IAM_VISIBLE MESSAGE_TO_ALL_ON_MAP MODULE_NAME MIN MAX POW2
+								POW3 CLAMP"/>
+						<User index="5"
+								value="GameYear GameMonth GameDay GameHour GameMinute GameFullMinute GameTimeMultiplier
+								GameForceDialog GameMainLoopTick"/>
+
+				</Keywords>
+				<SampleCode value="lexer_angelscript.sample"/>
+		</Lexer>
+</CodeBlocks_lexer_properties>

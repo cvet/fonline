@@ -1,0 +1,31 @@
+/**
+ * @defgroup CritterExtraFlags Critter extra flags
+ * @ingroup Defines
+ *
+ * \~russian Дополнительные флаги для криттеров.
+ * \~english Additional critter flags.
+ * \~
+ * @see Critter::FlagsExt
+ */
+/*@{*/
+
+/** \~russian Криттер является игроком */
+#define CRITTER_PLAYER              (0x0001)
+
+/** \~russian Криттер является NPC */
+#define CRITTER_NPC                 (0x0002)
+
+/** \~russian Криттер в оффлайне */
+#define CRITTER_DISCONNECT          (0x0008)
+
+/** \~russian Криттер игрока.
+ *
+ * Используется только при отправке сообщения клиенту для идентификации его персонажа.
+ *
+ */
+#define CRITTER_CHOSEN              (0x0010)
+
+/** \~russian Криттер является рулевым в группе на глобале */
+#define CRITTER_RULEGROUP           (0x0020)
+
+/*@}*/

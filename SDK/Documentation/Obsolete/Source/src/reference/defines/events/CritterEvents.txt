@@ -1,0 +1,844 @@
+/**
+ * @defgroup CritterEvents Critter events
+ * @ingroup Events
+ *
+ * \~russian События для криттеров.
+ *
+ * @remarks Первым параметром любого обработчика является ссылка на криттера,
+ *          для которого вызвано событие.
+ *
+ * @remarks События можно вешать не только на NPC, но и на игроков.
+ *
+ * \~english Event list for Critter class
+ *
+ * \~ @see Critter
+ *         Critter::SetEvent
+ */
+/*@{*/
+
+/** \~russian @name Общие
+ *
+ * События, связанные с изменением состояния криттера.
+ *
+ ** \~english @name General
+ *
+ ** \~ @weight 300
+ */
+//@{
+
+/** \~russian Вызывается каждые 20 секунд простоя криттера.
+ *
+ * Для изменения времени вызова события используйте метод Critter::Wait в обработчике.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr)
+ * @endcode
+ *
+ * \~ @see Critter::EventIdle
+ */
+#define CRITTER_EVENT_IDLE                   (0)
+
+/** \~russian Вызывается при удалении криттера из игры.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, bool deleted)
+ * @endcode
+ *
+ * @param  deleted @с true - функция вызвана перед полным удалением криттера, @с false - функция вызвана остановкой сервера.
+ *
+ * \~ @see Critter::EventFinish
+ */
+#define CRITTER_EVENT_FINISH                 (1)
+
+/** \~russian Вызывается при смерти криттера перед глобальным обработчиком смертей #critter_dead.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter@ killer)
+ * @endcode
+ *
+ * @param  killer  Если криттер был убит другим криттером,
+ *                 то аргумент содержит указатель на убившего криттера.
+ *
+ * \~ @see Critter::ToDead
+ *         Critter::EventDead
+ *         #critter_dead
+ */
+#define CRITTER_EVENT_DEAD                   (2)
+
+/** \~russian Вызывается при оживлении криттера после смерти (респауне).
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr)
+ * @endcode
+ *
+ * \~ @see Critter::ToLife
+ *         Critter::EventRespawn
+ *         #critter_respawn
+ */
+#define CRITTER_EVENT_RESPAWN                (3)
+
+/** \~russian Вызывается при уходе криттера в нокаут.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, bool faceUp, uint lostAp, uint knockDist)
+ * @endcode
+ *
+ * @param  faceUp     Показывает, упал ли криттер лицом вверх (@c true) или вниз (@c false).
+ * @param  lostAp     Количество очков действия, необходимых для поднятия с земли.
+ * @param  knockDist  Количество гексов, на которое "отлетел" криттер.
+ *
+ * \~ @see Critter::ToKnockout
+ *         Critter::EventKnockout
+ */
+#define CRITTER_EVENT_KNOCKOUT               (23)
+
+//@}
+
+/** \~russian @name Действия
+ *
+ * События, связанные с действиями самого криттера, либо действиями,
+ * которые касаются его напрямую.
+ */
+//@{
+
+/** \~russian Вызывается при атаке криттером кого-либо.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, Critter& target);
+ * @endcode
+ *
+ * @param  target  Атакуемый криттер.
+ *
+ * @return При возвращенном значении @c true глобальный обработчик #critter_attack
+ *         не вызывается.
+ *
+ * \~ @see Critter::EventAttack
+ *         #CRITTER_EVENT_SMTH_ATTACK
+ *         #ITEM_EVENT_ATTACK
+ *         #critter_attack
+ */
+#define CRITTER_EVENT_ATTACK                 (15)
+
+/** \~russian Вызывается когда данного криттера атаковали.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, Critter& attacker);
+ * @endcode
+ *
+ * @param  attacker  Атакующий криттер.
+ *
+ * @return При возвращенном значении @c true глобальный обработчик #critter_attacked
+ *         не вызывается.
+ *
+ * \~ @see Critter::EventAttacked
+ *         #CRITTER_EVENT_SMTH_ATTACKED
+ *         #critter_attacked
+ */
+#define CRITTER_EVENT_ATTACKED               (16)
+
+/** \~russian Вызываетcя при попытке воровства у данного криттера.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& thief, bool success, Item& item, uint count)
+ * @endcode
+ *
+ * @param  thief    Вор.
+ * @param  success  Успешно ли произошло воровство, расчитанное в #critter_stealing.
+ * @param  item     Воруемый предмет.
+ * @param  count    Количество воруемых предметов.
+ *
+ * \~ @see Critter::EventStealing
+ *         #CRITTER_EVENT_SMTH_STEALING
+ *         #critter_stealing
+ */
+#define CRITTER_EVENT_STEALING               (17)
+
+/** \~russian Вызывается когда с NPC начинается или заканчивается бартер.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, Critter& player, bool attach, uint barterCount)
+ * @endcode
+ *
+ * @param  player       Игрок, начинающий или заканчивающий бартер.
+ * @param  attach       Показывает, начинается (@c true) или заканчивается (@c false) бартер.
+ * @param  barterCount  Всего торгующих, включая новое присоединение/отсоединение.
+ *
+ * @return При возвращении @c true – бартер начинается; @c false – бартер не начинается.
+ *         Актуально при <code>attach == true</code>.
+ *
+ * \~ @see Critter::EventBarter
+ */
+#define CRITTER_EVENT_BARTER                 (36)
+
+/** \~russian Вызывается, когда с NPC начинают или заканчивают разговор.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, Critter& player, bool attach, uint talkCount)
+ * @endcode
+ *
+ * @param  player     Игрок, начинающий или заканчивающий разговор.
+ * @param  attach     Показывает, начинается (@c true) или заканчивается (@c false) разговор.
+ * @param  talkCount  Всего разговаривающих, включая новое присоединение/отсоединение.
+ *
+ * @return При возвращении @c true – диалог начинается; @c false – не начинается.
+ *         Актуально при <code>attach == true</code>.
+ *
+ * \~ @see Critter::EventTalk
+ */
+#define CRITTER_EVENT_TALK                   (37)
+
+/** \~russian Вызывается при использовании навыка на что-либо.
+ *
+ * @code
+ * bool _FuncName(Critter& cr, int skill, Critter@ onCritter, Item@ onItem, Scenery@ onScenery)
+ * @endcode
+ *
+ * @param  skill      Используемый скилл
+ *                    (см. @link Skills Навыки@endlink и @link SpecialSkillValues Special Skill Values@endlink).
+ * @param  onCritter  Если предмет используется на криттере, то аргумент содержит указатель на этого криттера.
+ * @param  onItem     Если предмет используется на другом предмете,
+ *                    то аргумент содержит указатель на этот (другой) предмет.
+ * @param  onScenery  Если предмет используется на сценери, то аргумент содержит указатель на это сценери.
+ *
+ * @return При @c false вызывается глобальный обработчик #critter_use_skill
+ *         При @c true – выход.
+ *
+ * \~ @see Critter::EventUseSkill
+ *         #ITEM_EVENT_SKILL
+ */
+#define CRITTER_EVENT_USE_SKILL              (21)
+
+/** \~russian Вызывается при использовании кем-то навыка на данном криттере.
+ *
+ * @code
+ * bool _FuncName(Critter& whoUse, int skill)
+ * @endcode
+ *
+ * @param  whoUse  Криттер использующий скилл
+ * @param  skill   Используемый скилл
+ *                  (см. @link Skills Навыки@endlink и @link SpecialSkillValues Special Skill Values@endlink).
+ *
+ * @return При @c false вызывается глобальный обработчик #critter_use_skill
+ *         При @c true – выход.
+ *
+ */
+#define CRITTER_EVENT_USE_SKILL_ON_ME         (22)
+
+//@}
+
+/** \~russian @name Предметы
+ * События, связанные с предметами
+ */
+//@{
+
+/** \~russian Вызывается при использовании данными криттером какого-либо предмета.
+ *
+ * @code
+ * bool _FuncName(Critter& cr, Item& item, Critter@ onCritter, Item@ onItem, Scenery@ onScenery)
+ * @endcode
+ *
+ * @param  item       Используемый предмет.
+ * @param  onCritter  Если предмет используется на криттере, то аргумент содержит указатель на этого криттера.
+ * @param  onItem     Если предмет используется на другом предмете,
+ *                    то аргумент содержит указатель на этот (другой) предмет.
+ * @param  onScenery  Если предмет используется на сценери, то аргумент содержит указатель на это сценери.
+ *
+ * @return При @c false вызывается глобальный обработчик #critter_use_item.
+ *         При @c true – выход.
+ *
+ * \~ @see  Critter::EventUseItem
+ *          ITEM_EVENT_USE
+ *          #critter_use_item
+ */
+#define CRITTER_EVENT_USE_ITEM               (19)
+
+/** \~russian Вызывается при использовании какого-либо предмета на данном криттере.
+ *
+ * @code
+ * bool _FuncName(Critter& whoUse, Item& item)
+ * @endcode
+ *
+ * @param  whoUse  Криттер использовавший предмет.
+ * @param  Item&   Используемый предмет.
+ *
+ * @return При @c false вызывается глобальный обработчик #critter_use_item.
+ *         При @c true – выход.
+ *
+ */
+#define CRITTER_EVENT_USE_ITEM_ON_ME          (20)
+
+/** \~russian Вызывается при появлении предмета в поле зрения.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Item& showItem, bool added, Critter@ dropper)
+ * @endcode
+ *
+ * @param  showItem  Появившийся предмет.
+ * @param  added     @c true, если предмет появился при смене радиуса обзора криттера;
+ *                   @c false, если предмет появился в ином случае (например, если был выкинут другим криттером).
+ * @param  dropper   Если предмет был выкинут из инвентаря какого-либо криттера,
+ *                   то аргумент будет содержать указатель на этого криттера.
+ *                   В противном случае, @c null.
+ *
+ * \~ @see Critter::EventShowItemOnMap
+ *
+ */
+#define CRITTER_EVENT_SHOW_ITEM_ON_MAP       (12)
+
+/** \~russian Вызывается в том случае, если поменялся предмет в поле зрения.
+ *
+ * Например, открылась или закрылась дверь (или контейнер).
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Item& item)
+ * @endcode
+ *
+ * @param  item  Изменившийся предмет.
+ *
+ * \~ @see Critter::EventChangeItemOnMap
+ */
+#define CRITTER_EVENT_CHANGE_ITEM_ON_MAP     (13)
+
+/** \~russian Вызывается при исчезновении предмета из поля зрения.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Item& hidedItem, bool removed, Critter@ picker)
+ * @endcode
+ *
+ * @param  hidedItem  Исчезнувший предмет.
+ * @param  removed    @c true, если предмет исчез при смене радиуса обзора криттера;
+ *                    @c false, если предмет исчез в рамках радиуса обзора (например, если был подобран другим криттером).
+ * @param  picker     Если предмет был подобран каким-либо криттером,
+ *                    то аргумент будет содержать указатель на этого криттера.
+ *                    В противном случае, @c null.
+ *
+ * \~ @see Critter::EventHideItemOnMap
+ */
+#define CRITTER_EVENT_HIDE_ITEM_ON_MAP       (14)
+
+/** \~russian Вызывается при выкидывании криттером предмета из своего инвентаря.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Item& item)
+ * @endcode
+ *
+ * @param  item  Выкидиваемый предмет.
+ *
+ * \~ @see Critter::EventDropItem
+ *         #ITEM_EVENT_DROP
+ */
+#define CRITTER_EVENT_DROP_ITEM              (21)
+
+/** \~russian Вызывается при перемещении какого-либо предмета в инвентаре данного криттера.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Item& item, uint8 fromSlot)
+ * @endcode
+ *
+ * @param  item      Перемещаемый предмет.
+ * @param  fromSlot  Слот, в котором предмет находился до перемещения
+ *                   (см. @link Slots Слоты инвентаря@endlink).
+ *
+ * \~ @see Critter::EventMoveItem
+ *         #ITEM_EVENT_MOVE
+ */
+#define CRITTER_EVENT_MOVE_ITEM              (24)
+
+//@}
+
+/** \~russian @name Другие криттеры
+ *
+ * События, позволяющие организовать взаимодействие с другими криттерами.
+ */
+//@{
+
+/** \~russian Вызывается при появлении нового криттера в поле зрения.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& showCr)
+ * @endcode
+ *
+ * @param  showCr  Появившийся в поле зрения криттер.
+ *
+ * \~ @see Critter::EventShowCritter
+ */
+#define CRITTER_EVENT_SHOW_CRITTER           (4)
+
+/** \~russian Вызывается при появлении нового криттера в поле зрения.
+ *
+ * Радиус обнаружения регулируется с помощью поля Critter::ShowCritterDist1.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& showCr)
+ * @endcode
+ *
+ * @param  showCr  Появившийся в поле зрения криттер.
+ *
+ * \~ @see Critter::EventShowCritter1
+ *         Critter::ShowCritterDist1
+ */
+#define CRITTER_EVENT_SHOW_CRITTER_1         (5)
+
+/** \~russian Вызывается при появлении нового криттера в поле зрения.
+ *
+ * Радиус обнаружения регулируется с помощью поля Critter#ShowCritterDist2.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& showCr)
+ * @endcode
+ *
+ * @param  showCr  Появившийся в поле зрения криттер.
+ *
+ * \~ @see Critter::EventShowCritter2
+ *         Critter::ShowCritterDist2
+ */
+#define CRITTER_EVENT_SHOW_CRITTER_2         (6)
+
+/** \~russian Вызывается при появлении нового криттера в поле зрения.
+ *
+ *  Радиус обнаружения регулируется с помощью поля Critter#ShowCritterDist3.
+ *
+ *  @par Сигнатура обработчика:
+ *  @code
+ *  void _FuncName(Critter& cr, Critter& showCr)
+ *  @endcode
+ *
+ * @param  showCr  Появившийся в поле зрения криттер.
+ *
+ * \~ @see Critter::EventShowCritter3
+ *         Critter::ShowCritterDist3
+ */
+#define CRITTER_EVENT_SHOW_CRITTER_3         (7)
+
+/** \~russian Вызывается при пропаже криттера из поля зрения.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& hideCr)
+ * @endcode
+ *
+ * @param  hideCr  Исчезнувший из поля зрения криттера.
+ *
+ * \~ @see Critter::EventHideCritter
+ */
+#define CRITTER_EVENT_HIDE_CRITTER           (8)
+
+/** \~russian Вызывается при пропаже криттера из поля зрения.
+ *
+ * Радиус поля зрения определяется полем Critter#ShowCritterDist1.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& hideCr)
+ * @endcode
+ *
+ * @param  hideCr  Исчезнувший из поля зрения криттера.
+ *
+ * \~ @see Critter::EventHideCritter1
+ *         Critter::ShowCritterDist1
+ */
+#define CRITTER_EVENT_HIDE_CRITTER_1         (9)
+
+/** \~russian Вызывается при пропаже криттера из поля зрения.
+ *
+ * Радиус поля зрения определяется полем Critter#ShowCritterDist2.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& hideCr)
+ * @endcode
+ *
+ * @param  hideCr  Исчезнувший из поля зрения криттера.
+ *
+ * \~ @see Critter::EventHideCritter2
+ *         Critter::ShowCritterDist2
+
+ */
+#define CRITTER_EVENT_HIDE_CRITTER_2         (10)
+
+/** \~russian Вызывается при пропаже криттера из поля зрения.
+ *
+ * Радиус поля зрения определяется полем Critter#ShowCritterDist1.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& hideCr)
+ * @endcode
+ *
+ * @param  hideCr  Исчезнувший из поля зрения криттера.
+ *
+ * \~ @see Critter::EventHideCritter3
+ *         Critter::ShowCritterDist3
+ */
+#define CRITTER_EVENT_HIDE_CRITTER_3         (11)
+
+/** \~russian Вызывается, когда приходит сообщение, отправленное с помощью метода Critter::SendMessage.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, int message, int value)
+ * @endcode
+ *
+ * @param  fromCr   Криттер, отправивший сообщение.
+ * @param  message  Номер сообщения.
+ * @param  value    Переданное значение.
+ *
+ * \~ @see Critter::SendMessage
+ *         Critter::EventMessage
+ */
+#define CRITTER_EVENT_MESSAGE                (18)
+
+/** \~russian Вызывается, когда криттер в области видимости умирает.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Critter@ killer)
+ * @endcode
+ *
+ * @param  fromCr  Умерший криттер.
+ * @param  killer  Если криттер был убит другим криттером,
+ *                 то аргумент содержит указатель на убившего криттера.
+ *
+ * \~ @see Critter::EventSmthDead
+ *         #CRITTER_EVENT_DEAD
+ */
+#define CRITTER_EVENT_SMTH_DEAD              (24)
+
+/** \~russian Вызывается, когда какой-либо криттер в области видимости подвергся краже.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Critter& thief, bool success, Item& item, uint count)
+ * @endcode
+ *
+ * @param  fromCr   Криттер, подвергшийся воровству.
+ * @param  thief    Криттер, совершивший воровство.
+ * @param  success  Успешно ли произошло воровство.
+ * @param  item     Сворованный предмет.
+ * @param  count    Количество сворованных предметов.
+ *
+ * \~ @see Critter::EventSmthStealing
+ *         #CRITTER_EVENT_STEALING
+ */
+#define CRITTER_EVENT_SMTH_STEALING          (25)
+
+/** \~russian Вызывается, когда какой-либо криттер в области видимости атакует кого-либо.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Critter& target)
+ * @endcode
+ *
+ * @param  fromCr  Атаковавший криттер.
+ * @param  target  Атакованный криттер.
+ *
+ * \~ @see Critter::EventSmthAttack
+ *         #CRITTER_EVENT_ATTACK
+ */
+#define CRITTER_EVENT_SMTH_ATTACK            (26)
+
+/** \~russian Вызывается, когда какой-либо криттер в области видимости атакован.
+ *
+ * См. @ref CRITTER_EVENT_ATTACKED.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Critter& attacker)
+ * @endcode
+ *
+ * @param  fromCr    Атакованный криттер.
+ * @param  attacker  Атаковаший криттер.
+ *
+ * \~ @see Critter::EventSmthAttacked
+ *         #CRITTER_EVENT_ATTACKED
+ */
+#define CRITTER_EVENT_SMTH_ATTACKED          (27)
+
+/** \~russian Вызывается, когда криттер в области видимости использует предмет на чем-либо.
+ *
+ * См. @ref CRITTER_EVENT_USE_ITEM.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Item& item, Critter@ onCritter, Item@ onItem, Scenery@ onScenery)
+ * @endcode
+ *
+ * @param  fromCr     Криттер использующий предмет.
+ * @param  item       Используемый предмет.
+ * @param  onCritter  Если предмет используется на криттере, то аргумент содержит указатель на этого криттера.
+ * @param  onItem     Если предмет используется на другом предмете,
+ *                    то аргумент содержит указатель на этот (другой) предмет.
+ * @param  onScenery  Если предмет используется на сценери, то аргумент содержит указатель на это сценери.
+ */
+#define CRITTER_EVENT_SMTH_USE_ITEM          (28)
+
+/** \~russian Вызывается, когда криттер в области видимости использует навык на чем-либо.
+ *
+ * См. @ref CRITTER_EVENT_USE_SKILL.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, int skill, Critter@ onCritter, Item@ onItem, Scenery@ onScenery)
+ * @endcode
+ *
+ * @param  fromCr     Криттер использующий навык.
+ * @param  skill      Используемый скил.
+ *                    (см. @link Skills Навыки@endlink и @link SpecialSkillValues Special Skill Values@endlink).
+ * @param  onCritter  Если предмет используется на криттере, то аргумент содержит указатель на этого криттера.
+ * @param  onItem     Если предмет используется на другом предмете,
+ *                    то аргумент содержит указатель на этот (другой) предмет.
+ * @param  onScenery  Если предмет используется на сценери, то аргумент содержит указатель на это сценери.
+ */
+#define CRITTER_EVENT_SMTH_USE_SKILL         (29)
+
+/** \~russian Вызывается, когда криттер в области видимости выкидывает предмет.
+ *
+ * См. @ref CRITTER_EVENT_DROP_ITEM.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Item& item)
+ * @endcode
+ *
+ * @param  fromCr  Криттер выкинувший итем
+ * @param  item    Выкидиваемый предмет.
+ */
+#define CRITTER_EVENT_SMTH_DROP_ITEM         (30)
+
+/** \~russian Вызывается, когда криттер в области видимости меняет местоположение предмета.
+ *
+ * См. @ref CRITTER_EVENT_MOVE_ITEM.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Item& item, uint8 fromSlot)
+ * @endcode
+ *
+ * @param  fromCr    Криттер поменявший у итема место
+ * @param  item      Перемещаемый предмет.
+ * @param  fromSlot  Слот, в котором предмет находился до перемещения
+ *                   (см. @link Slots Слоты инвентаря@endlink).
+ */
+#define CRITTER_EVENT_SMTH_MOVE_ITEM         (31)
+
+/** \~russian Вызывается, когда криттер в области видимости уходит в нокаут.
+ *
+ * См. @ref CRITTER_EVENT_KNOCKOUT.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, bool faceUp, uint lostAp, uint knockDist)
+ * @endcode
+ *
+ * @param  fromCr     Ушедший в нокаут криттер.
+ * @param  faceUp     Показывает, упал ли криттер лицом вверх (@c true) или вниз (@c false).
+ * @param  lostAp     Количество очков действия, необходимых для поднятия с земли.
+ * @param  knockDist  Количество гексов, на которое "отлетел" криттер.
+ */
+#define CRITTER_EVENT_SMTH_KNOCKOUT          (32)
+
+//@}
+
+/** \~russian @name Планы
+ *
+ * События для планов NPC. Срабатывают и для дочерних планов:
+ * @a childIndex указывает на их номер (если 0, то это базовый план).
+ */
+//@{
+
+/** \~russian Вызывается перед добавлением плана (которого еще нет в списках у NPC).
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * int _FuncName(Critter& cr, NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem)
+ * @endcode
+ *
+ * @param  plane       План.
+ * @param  childIndex  Номер плана в качестве наследника, если 0, значит план базовый.
+ * @param  reason      Указывает причину начала плана
+ *                     (см. @link PlanesReasons Plane begin reasons@endlink).
+ * @param  someCr      В некоторых случаях хранит указатель на персонажа (см. @link NpcPlane Работа с планами @endlink).
+ * @param  someItem    В некоторых случаях хранит указатель на предмет (см. @link NpcPlane Работа с планами @endlink).
+ *
+ * @return PLANE_RUN_GLOBAL - вызвать глобальный обработчик, который определит сохранить или удалить план;
+ * PLANE_KEEP - сохранить план, без вызова глобального обработчика;
+ * PLANE_DISCARD - удалить план, без вызова глобального обработчика.
+ */
+#define CRITTER_EVENT_PLANE_BEGIN            (33)
+
+/** \~russian Вызывается перед удалением плана (который ещё присутствует в списках планов).
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * int _FuncName(Critter& cr, NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem)
+ * @endcode
+ *
+ * @param  plane       План.
+ * @param  childIndex  Номер плана в качестве наследника, если 0, значит план базовый.
+ * @param  reason      Указывает причину завершения плана
+ *                     (см. @link PlanesReasons Plane end reasons@endlink).
+ * @param  someCr      В некоторых случаях хранит указатель на персонажа (см. @link NpcPlane Работа с планами @endlink).
+ * @param  someItem    В некоторых случаях хранит указатель на предмет (см. @link NpcPlane Работа с планами @endlink).
+ *
+ * @return PLANE_RUN_GLOBAL - вызвать глобальный обработчик, который определит сохранить или удалить план;
+ * PLANE_KEEP - сохранить план, без вызова глобального обработчика;
+ * PLANE_DISCARD - удалить план, без вызова глобального обработчика.
+ */
+#define CRITTER_EVENT_PLANE_END              (34)
+
+/** \~russian Вызывается во время выполнения некоторых планов.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * int _FuncName(Critter& cr, NpcPlane& plane, uint childIndex, int reason, uint& r0, uint& r1, uint& r2)
+ * @endcode
+ *
+ * @param  plane       План, для которого вызвано событие.
+ * @param  childIndex  Номер плана в цепочке наследников.
+ * @param  reason      Причина, по которой было вызвано событие.
+ *                     От неё зависит интерпретация остальных аргументов.
+ *
+ * @return PLANE_RUN_GLOBAL - вызвать глобальный обработчик, который определит сохранить или удалить план;
+ * PLANE_KEEP - сохранить план, без вызова глобального обработчика;
+ * PLANE_DISCARD - удалить план, без вызова глобального обработчика.
+ *
+ * На данный момент событие вызываются для обработки следующих действий:
+ *
+ * - REASON_ATTACK_WEAPON. Выбор оружия атакующим криттером.
+ *     @param [in]  r0      Идентификатор криттера-цели.
+ *     @param [in]  r1, r2  Не используются.
+ *     @param [out] r0      Идентификатор выбранного для атаки предмета-оружия.
+ *     @param [out] r1      Номер, обозначающий способ использования оружия (см. ProtoItem::Weapon_SetUse).
+ *     @param [out] r2      Идентификатор тмпа рукопашной атаки (учитывается, если <code>r0 == 0</code>) (?).
+ *
+ * - REASON_ATTACK_DISTANTION. Выбор дистанции атаки. (?)
+ *     @param [in]  r0      Идентификатор криттера-цели.
+ *     @param [in]  r1      NPC не может двигаться при <code>r1 != 0</code>.
+ *     @param [in]  r2      Минимальное количество HP (из @b AI.TXT).
+ *     @param [out] r0      Лучшая дистанция.
+ *     @param [out] r1      Минимальная дистанция.
+ *     @param [out] r2      Максимальная дистанция.
+ *                          Если <code>r2 == 0</code>, то это означает, что нужно убегать.
+ *
+ * - REASON_ATTACK_USE_AIM. Прицеливание.
+ *     @param [in]  r0      Идентификатор криттера-цели..
+ *     @param [in]  r1      Не используется.
+ *     @param [in]  r2      Не используется.
+ *     @param [out] r0      Номер, обозначающий способ использования оружия (см. ProtoItem::Weapon_SetUse).
+ *     @param [out] r1      Цель (см. @link HitLocations Hit Locations@endlink).
+ *     @param [out] r2      Время (в мс), на которое нужно сделать паузу при атаке.
+ */
+#define CRITTER_EVENT_PLANE_RUN              (35)
+
+//@}
+
+/** \~russian @name Глобальная карта
+ *
+ * События возникающие при перемещении на глобальной карте
+ */
+//@{
+
+/** \~russian Вызывается при событиях на глобальной карте.
+ *
+ * Позволяет обрабатывать события от глобальной карты индивидуально для любого криттера.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, int type, Critter@[]& group, Item@ car, uint& x, uint& y, uint& toX, uint& toY, uint& speed, uint& encounterDescriptor, bool& waitForAnswer)
+ * @endcode
+ *
+ * @param  type                 Тип события (см. @link GlobalMapEvents Global Map Events@endlink);
+ * @param  group                Указатели на криттеров в группе, если она сформирована;
+ * @param  car                  Указатель на машину, если она имеется;
+ * @param  x                    Текущая координата X группы на глобальной карте;
+ * @param  y                    Текущая координата Y группы на глобальной карте;
+ * @param  toX                  Координата X конечной точки движения;
+ * @param  toY                  Координата Y конечной точки движения;
+ * @param  speed                Скорость движения в данной точке (зависит от маски глобальной карты);
+ * @param  encounterDescriptor  Уникальный идентификатор энкаунтера;
+ * @param  waitForAnswer        Ожидание ответа лидера группы.
+ * 
+ * @remarks Аргументы передающиеся по ссылке (кроме cr и group) можно переназначать.
+ * 
+ * @return @c true - глобальный обработчик #global_process не запускается; @c false - запуск глобального обработчика.
+ *
+ * @see global_process
+ *
+ */
+#define CRITTER_EVENT_GLOBAL_PROCESS         (38)
+
+/** \~russian Вызывается при переходе на карту на глобальной карте мира.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Critter& cr, Critter@[]& group, Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir)
+ * @endcode
+ * 
+ * @param  group                указатели на криттеров в группе, если она сформирована;
+ * @param  car                  указатель на машину, если она имеется;
+ * @param  encounterDescriptor  уникальный идентификатор энкаунтера;
+ * @param  combatMode           режим боя (COMBAT_MODE_ANY, COMBAT_MODE_REAL_TIME или COMBAT_MODE_TURN_BASED);
+ * @param  mapId                идентификатор карты;
+ * @param  hexX                 начальные координата X для появления группы;
+ * @param  hexY                 начальные координата Y для появления группы;
+ * @param  dir                  направление криттера по умолчанию.
+ *
+ * @return @c true - глобальный обработчик #global_invite не запускается; @c false - запуск глобального обработчика.
+ *
+ * @see global_invite
+ */
+#define CRITTER_EVENT_GLOBAL_INVITE          (39)
+
+//@}
+
+/** \~russian @name Пошаговый бой
+ *
+ * События связанные с пошаговым боем
+ */
+//@{
+
+/** \~russian Вызывается в начале и в конце хода криттера.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Map& map, bool beginTurn)
+ * @endcode
+ *
+ * @param  map        карта на которой зафиксировано событие;
+ * @param  beginTurn  @c true - функция вызвана в начале хода, @c false - функция вызвана в конце хода.
+ */
+#define CRITTER_EVENT_TURN_BASED_PROCESS     (40)
+
+/** \~russian Вызывается в начале и конце хода какого-либо криттера в области видимости.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Critter& cr, Critter& fromCr, Map& map, bool beginTurn)
+ * @endcode
+ *
+ * @param  map        карта на которой зафиксировано событие;
+ * @param  beginTurn  @c true - функция вызвана в начале хода, @c false - функция вызвана в конце хода.
+ */
+#define CRITTER_EVENT_SMTH_TURN_BASED_PROCESS (41)
+
+//@}
+
+/*@}*/

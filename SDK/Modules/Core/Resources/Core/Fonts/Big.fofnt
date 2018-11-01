@@ -1,0 +1,1049 @@
+Version  2
+Image    Big.png
+YAdvance 4
+
+Letter ' '
+  PositionX 65
+  PositionY 1
+  Width     6
+  OffsetY   -22
+  XAdvance  6
+
+Letter '!'
+  PositionX 73
+  PositionY 1
+  Width     6
+  Height    22
+  XAdvance  8
+
+Letter '"'
+  PositionX 81
+  PositionY 1
+  Width     9
+  Height    22
+  XAdvance  11
+
+Letter '#'
+  PositionX 92
+  PositionY 1
+  Width     17
+  Height    19
+  OffsetY   -3
+  XAdvance  19
+
+Letter '%'
+  PositionX 113
+  PositionY 1
+  Width     18
+  Height    22
+  XAdvance  20
+
+Letter '&'
+  PositionX 133
+  PositionY 1
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter '''
+  PositionX 149
+  PositionY 1
+  Width     5
+  Height    22
+  XAdvance  7
+
+Letter '('
+  PositionX 156
+  PositionY 1
+  Width     8
+  Height    22
+  XAdvance  10
+
+Letter ')'
+  PositionX 166
+  PositionY 1
+  Width     8
+  Height    22
+  XAdvance  10
+
+Letter '+'
+  PositionX 178
+  PositionY 1
+  Width     13
+  Height    17
+  OffsetY   -5
+  XAdvance  15
+
+Letter ','
+  PositionX 193
+  PositionY 1
+  Width     5
+  Height    7
+  OffsetY   -15
+  XAdvance  7
+
+Letter '-'
+  PositionX 200
+  PositionY 1
+  Width     8
+  Height    13
+  OffsetY   -9
+  XAdvance  10
+
+Letter '.'
+  PositionX 210
+  PositionY 1
+  Width     5
+  Height    4
+  OffsetY   -18
+  XAdvance  7
+
+Letter '/'
+  PositionX 217
+  PositionY 1
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter '0'
+  PositionX 230
+  PositionY 1
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '1'
+  PositionX 1
+  PositionY 25
+  Width     10
+  Height    22
+  XAdvance  12
+
+Letter '2'
+  PositionX 13
+  PositionY 25
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter '3'
+  PositionX 27
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '4'
+  PositionX 42
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '5'
+  PositionX 57
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '6'
+  PositionX 72
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '7'
+  PositionX 87
+  PositionY 25
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter '8'
+  PositionX 101
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter '9'
+  PositionX 116
+  PositionY 25
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter ':'
+  PositionX 130
+  PositionY 25
+  Width     4
+  Height    17
+  OffsetY   -5
+  XAdvance  6
+
+Letter ';'
+  PositionX 136
+  PositionY 25
+  Width     5
+  Height    17
+  OffsetY   -5
+  XAdvance  7
+
+Letter '='
+  PositionX 145
+  PositionY 25
+  Width     13
+  Height    15
+  OffsetY   -7
+  XAdvance  15
+
+Letter '?'
+  PositionX 162
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'A'
+  PositionX 179
+  PositionY 25
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'B'
+  PositionX 196
+  PositionY 25
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'C'
+  PositionX 210
+  PositionY 25
+  Width     10
+  Height    22
+  XAdvance  12
+
+Letter 'D'
+  PositionX 222
+  PositionY 25
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'E'
+  PositionX 237
+  PositionY 25
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'F'
+  PositionX 1
+  PositionY 49
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'G'
+  PositionX 14
+  PositionY 49
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'H'
+  PositionX 29
+  PositionY 49
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'I'
+  PositionX 43
+  PositionY 49
+  Width     5
+  Height    22
+  XAdvance  7
+
+Letter 'J'
+  PositionX 50
+  PositionY 49
+  Width     7
+  Height    22
+  XAdvance  9
+
+Letter 'K'
+  PositionX 59
+  PositionY 49
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'L'
+  PositionX 74
+  PositionY 49
+  Width     9
+  Height    22
+  XAdvance  11
+
+Letter 'M'
+  PositionX 85
+  PositionY 49
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'N'
+  PositionX 103
+  PositionY 49
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'O'
+  PositionX 119
+  PositionY 49
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'P'
+  PositionX 136
+  PositionY 49
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'Q'
+  PositionX 151
+  PositionY 49
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'R'
+  PositionX 169
+  PositionY 49
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'S'
+  PositionX 185
+  PositionY 49
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'T'
+  PositionX 199
+  PositionY 49
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'U'
+  PositionX 212
+  PositionY 49
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'V'
+  PositionX 228
+  PositionY 49
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'W'
+  PositionX 1
+  PositionY 73
+  Width     21
+  Height    22
+  XAdvance  23
+
+Letter 'X'
+  PositionX 24
+  PositionY 73
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'Y'
+  PositionX 40
+  PositionY 73
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'Z'
+  PositionX 55
+  PositionY 73
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter '\'
+  PositionX 71
+  PositionY 73
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter '_'
+  PositionX 88
+  PositionY 73
+  Width     16
+  Height    19
+  OffsetY   -3
+  XAdvance  18
+
+Letter 'a'
+  PositionX 108
+  PositionY 73
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'b'
+  PositionX 125
+  PositionY 73
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'c'
+  PositionX 139
+  PositionY 73
+  Width     10
+  Height    22
+  XAdvance  12
+
+Letter 'd'
+  PositionX 151
+  PositionY 73
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'e'
+  PositionX 166
+  PositionY 73
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'f'
+  PositionX 179
+  PositionY 73
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'g'
+  PositionX 192
+  PositionY 73
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'h'
+  PositionX 207
+  PositionY 73
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'i'
+  PositionX 221
+  PositionY 73
+  Width     5
+  Height    22
+  XAdvance  7
+
+Letter 'j'
+  PositionX 228
+  PositionY 73
+  Width     7
+  Height    22
+  XAdvance  9
+
+Letter 'k'
+  PositionX 237
+  PositionY 73
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'l'
+  PositionX 1
+  PositionY 97
+  Width     9
+  Height    22
+  XAdvance  11
+
+Letter 'm'
+  PositionX 12
+  PositionY 97
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'n'
+  PositionX 30
+  PositionY 97
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'o'
+  PositionX 46
+  PositionY 97
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'p'
+  PositionX 63
+  PositionY 97
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'q'
+  PositionX 78
+  PositionY 97
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'r'
+  PositionX 96
+  PositionY 97
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 's'
+  PositionX 112
+  PositionY 97
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 't'
+  PositionX 126
+  PositionY 97
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'u'
+  PositionX 139
+  PositionY 97
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'v'
+  PositionX 155
+  PositionY 97
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'w'
+  PositionX 171
+  PositionY 97
+  Width     21
+  Height    22
+  XAdvance  23
+
+Letter 'x'
+  PositionX 194
+  PositionY 97
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'y'
+  PositionX 210
+  PositionY 97
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'z'
+  PositionX 225
+  PositionY 97
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'Њ'
+  PositionX 19
+  PositionY 121
+  Width     21
+  Height    22
+  XAdvance  23
+
+Letter 'њ'
+  PositionX 72
+  PositionY 121
+  Width     21
+  Height    22
+  XAdvance  23
+
+Letter 'А'
+  PositionX 165
+  PositionY 121
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'Б'
+  PositionX 182
+  PositionY 121
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'В'
+  PositionX 196
+  PositionY 121
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'Г'
+  PositionX 210
+  PositionY 121
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'Д'
+  PositionX 223
+  PositionY 121
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'Е'
+  PositionX 1
+  PositionY 145
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'Ж'
+  PositionX 14
+  PositionY 145
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'З'
+  PositionX 36
+  PositionY 145
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'И'
+  PositionX 51
+  PositionY 145
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'Й'
+  PositionX 67
+  PositionY 145
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'К'
+  PositionX 83
+  PositionY 145
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'Л'
+  PositionX 98
+  PositionY 145
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'М'
+  PositionX 115
+  PositionY 145
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'Н'
+  PositionX 133
+  PositionY 145
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'О'
+  PositionX 147
+  PositionY 145
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'П'
+  PositionX 164
+  PositionY 145
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'Р'
+  PositionX 178
+  PositionY 145
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'С'
+  PositionX 193
+  PositionY 145
+  Width     10
+  Height    22
+  XAdvance  12
+
+Letter 'Т'
+  PositionX 205
+  PositionY 145
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'У'
+  PositionX 218
+  PositionY 145
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'Ф'
+  PositionX 234
+  PositionY 145
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'Х'
+  PositionX 1
+  PositionY 169
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'Ц'
+  PositionX 17
+  PositionY 169
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'Ч'
+  PositionX 35
+  PositionY 169
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'Ш'
+  PositionX 51
+  PositionY 169
+  Width     19
+  Height    22
+  XAdvance  21
+
+Letter 'Щ'
+  PositionX 72
+  PositionY 169
+  Width     23
+  Height    22
+  XAdvance  25
+
+Letter 'Ъ'
+  PositionX 97
+  PositionY 169
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'Ы'
+  PositionX 115
+  PositionY 169
+  Width     19
+  Height    22
+  XAdvance  21
+
+Letter 'Ь'
+  PositionX 136
+  PositionY 169
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'Э'
+  PositionX 150
+  PositionY 169
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'Ю'
+  PositionX 165
+  PositionY 169
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'Я'
+  PositionX 187
+  PositionY 169
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'а'
+  PositionX 203
+  PositionY 169
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'б'
+  PositionX 220
+  PositionY 169
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'в'
+  PositionX 234
+  PositionY 169
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'г'
+  PositionX 1
+  PositionY 193
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'д'
+  PositionX 14
+  PositionY 193
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'е'
+  PositionX 36
+  PositionY 193
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'ж'
+  PositionX 49
+  PositionY 193
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'з'
+  PositionX 71
+  PositionY 193
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'и'
+  PositionX 86
+  PositionY 193
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'й'
+  PositionX 102
+  PositionY 193
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'к'
+  PositionX 118
+  PositionY 193
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'л'
+  PositionX 133
+  PositionY 193
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'м'
+  PositionX 150
+  PositionY 193
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'н'
+  PositionX 168
+  PositionY 193
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'о'
+  PositionX 182
+  PositionY 193
+  Width     15
+  Height    22
+  XAdvance  17
+
+Letter 'п'
+  PositionX 199
+  PositionY 193
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'р'
+  PositionX 213
+  PositionY 193
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'с'
+  PositionX 228
+  PositionY 193
+  Width     10
+  Height    22
+  XAdvance  12
+
+Letter 'т'
+  PositionX 240
+  PositionY 193
+  Width     11
+  Height    22
+  XAdvance  13
+
+Letter 'у'
+  PositionX 1
+  PositionY 217
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'ф'
+  PositionX 17
+  PositionY 217
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'х'
+  PositionX 39
+  PositionY 217
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'ц'
+  PositionX 55
+  PositionY 217
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'ч'
+  PositionX 73
+  PositionY 217
+  Width     14
+  Height    22
+  XAdvance  16
+
+Letter 'ш'
+  PositionX 89
+  PositionY 217
+  Width     19
+  Height    22
+  XAdvance  21
+
+Letter 'щ'
+  PositionX 110
+  PositionY 217
+  Width     23
+  Height    22
+  XAdvance  25
+
+Letter 'ъ'
+  PositionX 135
+  PositionY 217
+  Width     16
+  Height    22
+  XAdvance  18
+
+Letter 'ы'
+  PositionX 153
+  PositionY 217
+  Width     19
+  Height    22
+  XAdvance  21
+
+Letter 'ь'
+  PositionX 174
+  PositionY 217
+  Width     12
+  Height    22
+  XAdvance  14
+
+Letter 'э'
+  PositionX 188
+  PositionY 217
+  Width     13
+  Height    22
+  XAdvance  15
+
+Letter 'ю'
+  PositionX 203
+  PositionY 217
+  Width     20
+  Height    22
+  XAdvance  22
+
+Letter 'я'
+  PositionX 225
+  PositionY 217
+  Width     14
+  Height    22
+  XAdvance  16
+

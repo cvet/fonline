@@ -1,0 +1,137 @@
+/** \~russian Класс, представляющий собой ассоциативный контейнер,
+ *            отображающий множество строковых ключей в множество значений любого типа.
+ *
+ * @par Пример:
+ * @include dictionary.fos
+ *
+ ** \~english The dictionary objects map string values to values or objects of other types.
+ *
+ * @par Example:
+ * @include dictionary.fos
+ *
+ ** \~ @ingroup std
+ */
+class dictionary
+{
+	/** \~russian Ассоциирует значение произвольного типа с указанным ключом.
+	 *
+	 * @param  key    Ключ.
+	 * @param  value  Ассоциируемое значение.
+	 *
+	 ** \~english Sets a variable type value for a key.
+	 *
+	 * @param  key    The key of the value to set.
+	 * @param  value  Value to associate with the specified key.
+	 *
+     */
+	void set(const string &in key, ? &in value);
+
+	/** \~russian Позволяет получить значение произвольного типа для указанного ключа.
+	 *
+	 * @param         key    Ключ.
+	 * @param  [out]  value  Переменная, которая после работы метода будет содержать значение,
+	 *                       ассоциируемое с указанные ключом, если ключ найден.
+	 * @return @c true, если указанный ключ найден; @c false – в противном случае.
+	 *
+	 ** \~english Gets a variable type value for a key.
+	 *
+	 * @param         key    The key of the value to get.
+	 * @param  [out]  value  When this method returns, contains the value associated with the specified key, if the key is found.
+	 * @return @c true if the the specified key is set; otherwise, @c false.
+	 *
+     */
+	bool get(const string &in key, ? &out value) const;
+
+	/** \~russian Ассоциирует значение типа @c int64 с указанным ключом.
+	 *
+	 * @param  key    Ключ.
+	 * @param  value  Ассоциируемое значение.
+	 *
+	 ** \~english Sets an integer number value for a key.
+	 *
+	 * @param  key    The key of the value to set.
+	 * @param  value  Value to associate with the specified key.
+	 *
+     */
+	void set(const string &in key, int64 &in value);
+
+	/** \~russian Позволяет получить значение типа @c int64 для указанного ключа.
+	 *
+	 * @param         key    Ключ.
+	 * @param  [out]  value  Переменная, которая после работы метода будет содержать значение,
+	 *                       ассоциируемое с указанные ключом, если ключ найден.
+	 * @return @c true, если указанный ключ найден; @c false – в противном случае.
+	 *
+	 ** \~english Gets an integer number value for a key.
+	 *
+	 * @param         key    The key of the value to get.
+	 * @param  [out]  value  When this method returns, contains the value associated with the specified key, if the key is found.
+	 * @return @c true if the the specified key is set; otherwise, @c false.
+	 *
+     */
+	bool get(const string &in key, int64 &out value) const;
+
+	/** \~russian Ассоциирует значение типа @c double с указанным ключом.
+	 *
+	 * @param  key    Ключ.
+	 * @param  value  Ассоциируемое значение.
+	 *
+	 ** \~english Sets a real number value for a key.
+	 *
+	 * @param  key    The key of the value to set.
+	 * @param  value  Value to associate with the specified key.
+	 *
+     */
+	void set(const string &in key, double &in value);
+
+	/** \~russian Позволяет получить значение типа @c double для указанного ключа.
+	 *
+	 * @param         key    Ключ.
+	 * @param  [out]  value  Переменная, которая после работы метода будет содержать значение,
+	 *                       ассоциируемое с указанные ключом, если ключ найден.
+	 * @return @c true, если указанный ключ найден; @c false – в противном случае.
+	 *
+	 ** \~english Gets a real number value for a key.
+	 *
+	 * @param         key    The key of the value to get.
+	 * @param  [out]  value  When this method returns, contains the value associated with the specified key, if the key is found.
+	 * @return @c true if the the specified key is set; otherwise, @c false.
+	 *
+     */
+	bool get(const string &in key, double &out value) const;
+
+	/** \~russian Проверяет, установлено ли значение для указанного ключа.
+	 *
+	 * @param  key  Проверяемый ключ.
+	 * @return @c true, если установлено; @c false – в противном случае.
+	 *
+	 ** \~english Returns true if the key is set.
+	 *
+	 * @param  key  Key to check.
+	 * @return Returns @c true if the key is set; otherwise, @c false.
+	 *
+	 */
+	bool exists(const string &in key) const;
+
+	/** \~russian Удаляет указанный ключ из словаря.
+	 *
+	 * @param  key  Удаляемый ключ.
+	 *
+	 ** \~english Deletes specified key.
+	 *
+	 * @param  key  Key to delete.
+	 *
+	 */
+	void delete(const string &in key);
+
+	/** \~russian Удаляет все ключи из словаря. */
+	/** \~english Deletes all keys. */
+	void deleteAll();
+    
+    /** \~russian Возвращает все ключи и их количество. */
+	/** \~english Return all keys and their number. */
+    uint keys(string@[]@ keys) const;
+    
+    bool isEmpty() const;
+    uint getSize() const;
+}

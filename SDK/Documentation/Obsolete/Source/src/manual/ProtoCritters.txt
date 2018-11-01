@@ -1,0 +1,66 @@
+/** \~russian @page page_protocritters Прототипы персонажей
+
+Прототипы персонажей хранятся в текстовом виде в файлах в директории Server/Proto/Critters/.
+Редактируются вручную.
+
+Файл critters.lst содержит список файлов, содержащих данные о прототипах существ.
+В составе SDK это всего один файл: all.fopro.
+
+\b Формат:
+@code
+[Critter proto]
+Pid=<Номер прототипа>
+<Имя стата 1>=<Значение стата>
+<Имя стата 2>=<Значение стата>
+@endcode
+
+\b Пример:<br />
+@code
+[Critter proto]
+Pid=72
+ST_BASE_CRTYPE=5
+ST_AI_ID=12
+ST_STRENGTH=5
+ST_PERCEPTION=6
+ST_ENDURANCE=5
+ST_CHARISMA=5
+ST_INTELLECT=4
+ST_AGILITY=6
+ST_LUCK=5
+ST_MAX_LIFE=16
+ST_ARMOR_CLASS=15
+ST_NORMAL_ABSORB=2
+ST_NORMAL_RESIST=25
+ST_LASER_RESIST=20
+ST_FIRE_RESIST=20
+ST_PLASMA_RESIST=10
+ST_ELECTRO_RESIST=30
+ST_EMP_RESIST=500
+ST_EXPLODE_RESIST=20
+ST_AGE=25
+ST_GENDER=1
+SK_SMALL_GUNS=27
+SK_BIG_GUNS=13
+SK_ENERGY_WEAPONS=5
+SK_MELEE_WEAPONS=8
+ST_KILL_EXPERIENCE=75
+ST_BODY_TYPE=1
+ST_DAMAGE_TYPE=1
+MODE_NO_BARTER=1
+@endcode
+
+<strong>Основные статы</strong>:<br />
+<table>
+<tr><td>@ref ST_BASE_CRTYPE</td><td>хранит номер анимации (смотрите @ref page_crittertypes "CritterTypes.cfg")</td></tr>
+<tr><td>@ref ST_STRENGTH<br /> @ref ST_PERCEPTION<br /> @ref ST_ENDURANCE<br /> @ref ST_CHARISMA<br /> @ref ST_INTELLECT<br /> @ref ST_AGILITY<br /> @ref ST_LUCK</td><td>Параметры SPECIAL</td></tr>
+<tr><td>@ref ST_EMP_RESIST</td><td>Сопротивление урону от электромагнитного оружия. У всех, кроме роботов, параметр должен быть очень высоким, чаще всего это значение 500</td></tr>
+<tr><td>@ref ST_MAX_LIFE</td><td>Максимальное количество очков здоровья</td></tr>
+<tr><td>@ref ST_AGE</td><td>Возраст</td></tr>
+<tr><td>@ref ST_GENDER</td><td>Пол (0-муж, 1-жен)</td></tr>
+<tr><td>@ref ST_KILL_EXPERIENCE</td><td>Опыт за убийство</td></tr>
+<tr><td>@ref ST_BODY_TYPE</td><td>Тип тела криттера. Смотрите @ref BodyTypes "Body types".</td></tr>
+<tr><td>@ref ST_DAMAGE_TYPE</td><td>Тип повреждений при безоружной атаке</td></tr>
+</table><br /><br />
+В прототипах можно указывать только параметры, имеющиеся в файле Server/Data/ParamNames.lst<br />
+Значение любого стата можно изменять динамически с помощью скриптов.
+*/

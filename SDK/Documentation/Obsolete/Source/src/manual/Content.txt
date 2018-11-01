@@ -1,0 +1,21 @@
+/** \~russian @page page_content Контент
+
+@subpage page_cfgformat
+
+@subpage page_formats
+
+@subpage page_clientcache
+
+@subpage page_crittertypes
+
+@subpage page_locationscfg
+
+@subpage page_generateworldcfg
+
+@subpage page_bags
+
+@subpage page_msg_files
+
+@subpage page_proto
+
+*/

@@ -1,0 +1,57 @@
+/**
+ * @defgroup ClientScreenTypes Client screen types
+ * @ingroup Defines
+ *
+ * \~
+ * @see     ::ShowScreen
+ *          ::HideScreen
+ *          ::GetHardcodedScreenPos
+ *          ::DrawHardcodedScreen
+ */
+/*@{*/
+
+#define CLIENT_SCREEN_NONE               (0) // Used in primary, secondary and additional screen types
+
+/** @name Primary screens */
+//@{
+#define CLIENT_MAIN_SCREEN_LOGIN         (1)
+#define CLIENT_MAIN_SCREEN_REGISTRATION  (2)
+#define CLIENT_MAIN_SCREEN_OPTIONS       (3)
+#define CLIENT_MAIN_SCREEN_CREDITS       (4)
+#define CLIENT_MAIN_SCREEN_GAME          (5)
+#define CLIENT_MAIN_SCREEN_GLOBAL_MAP    (6)
+#define CLIENT_MAIN_SCREEN_WAIT          (7)
+//@}
+
+/** @name Secondary screens */
+//@{
+
+#define CLIENT_SCREEN_INVENTORY          (10)
+#define CLIENT_SCREEN_PICKUP             (11)
+#define CLIENT_SCREEN_MINIMAP            (12)
+#define CLIENT_SCREEN_CHARACTER          (13)
+#define CLIENT_SCREEN_DIALOG             (14)
+#define CLIENT_SCREEN_BARTER             (15)
+#define CLIENT_SCREEN_PIP_BOY            (16)
+#define CLIENT_SCREEN_FIX_BOY            (17)
+#define CLIENT_SCREEN_MENU               (18)
+#define CLIENT_SCREEN_AIM                (19)
+#define CLIENT_SCREEN_SPLIT              (20)
+#define CLIENT_SCREEN_TIMER              (21)
+#define CLIENT_SCREEN_DIALOGBOX          (22)
+#define CLIENT_SCREEN_ELEVATOR           (23)
+#define CLIENT_SCREEN_SAY                (24)
+#define CLIENT_SCREEN_CHA_NAME           (25)
+#define CLIENT_SCREEN_CHA_AGE            (26)
+#define CLIENT_SCREEN_CHA_SEX            (27)
+#define CLIENT_SCREEN_GM_TOWN            (28)
+#define CLIENT_SCREEN_INPUT_BOX          (29)
+#define CLIENT_SCREEN_SKILLBOX           (30)
+#define CLIENT_SCREEN_USE                (31)
+#define CLIENT_SCREEN_PERK               (32)
+#define CLIENT_SCREEN_TOWN_VIEW          (33)
+#define CLIENT_SCREEN_SAVE_LOAD          (34)
+
+//@}
+
+/*@}*/

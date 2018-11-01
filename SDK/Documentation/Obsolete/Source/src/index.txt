@@ -1,0 +1,29 @@
+/** \~english \mainpage FOnline SDK Documentation
+ *
+ * \image html logo.jpg
+ *
+ * \section manual_sec Manual
+ *
+ * \section reference_sec Reference
+ *
+ * \section other_formats Other help formats:
+ * - <a href="./FOnline.chm.zip">Microsoft Compiled HTML Help (.chm)</a>
+ *
+ */
+
+/** \~russian \mainpage FOnline SDK Documentation
+ *
+ * \image html logo.jpg
+ *
+ * \section manual_sec Учебник
+ *
+ * \section reference_sec Справочник
+ *
+ * Актуальность документации: ревизия №<a href="https://xp-dev.com/sc/change/76003/396" target="_blank">396</a> SDK.<br />
+ * Об ошибках в документации сообщайте в этой теме: <a href="http://www.fonline.ru/forum/threads/2991/" target="_blank">http://www.fonline.ru/forum/threads/2991/</a><br />
+ *
+ * \section other_formats Другие форматы:
+ * - <a href="./FOnline.chm.zip">Microsoft Compiled HTML Help (.chm)</a>
+ *
+ */
+

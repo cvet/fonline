@@ -1,0 +1,22 @@
+/**
+ * @defgroup CombatModes Combat modes
+ * @ingroup Defines
+ *
+ * \~russian Режимы боя.
+ * \~english Combat modes.
+ *
+ * \~
+ * @see #global_invite
+ */
+/*@{*/
+
+/** \~russian Любой. */
+#define COMBAT_MODE_ANY             (0)
+
+/** \~russian Бой в реальном времени. */
+#define COMBAT_MODE_REAL_TIME       (1)
+
+/** \~russian Пошаговый бой. */
+#define COMBAT_MODE_TURN_BASED      (2)
+
+/*@}*/

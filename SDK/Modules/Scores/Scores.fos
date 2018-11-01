@@ -1,0 +1,62 @@
+// FOS Server
+
+#pragma property Global Public string[] BestScores
+#pragma property Global PrivateServer uint[] BestScoreCritterIds
+#pragma property Global PrivateServer int[] BestScoreValues
+#pragma property Critter PrivateServer dict< uint, int > Scores
+
+/*EXPORT*/ void SetBestScore( uint score, string name )
+{
+    SetBestSocresValue( score, 0, 0, name );
+}
+
+/*EXPORT*/ void AddScore( Critter cr, uint score, int value )
+{
+    auto scores = dict< uint, int >( cr.Scores );
+    int  resultValue = scores.get( score, 0 ) + value;
+    scores[ score ] = resultValue;
+    cr.Scores = scores;
+
+    ControlGlobalBufferSize( score + 1 );
+    if( Globals.BestScoreCritterIds[ score ] == cr.Id )
+        return;
+    if( Globals.BestScoreValues[ score ] >= resultValue )
+        return;
+
+    SetBestSocresValue( score, cr.Id, resultValue, cr.Name );
+}
+
+/*EXPORT*/ int GetScore( Critter cr, uint score )
+{
+    return cr.Scores.get( score, 0 );
+}
+
+void SetBestSocresValue( uint score, uint crId, int value, string name )
+{
+    ControlGlobalBufferSize( score + 1 );
+    auto bestScoreCritterIds = array< uint >( Globals.BestScoreCritterIds );
+    bestScoreCritterIds[ score ] = crId;
+    Globals.BestScoreCritterIds = bestScoreCritterIds;
+    auto bestScoreValues = array< int >( Globals.BestScoreValues );
+    bestScoreValues[ score ] = value;
+    Globals.BestScoreValues = bestScoreValues;
+    auto bestScores = array< string >( Globals.BestScores );
+    bestScores[ score ] = name;
+    Globals.BestScores = bestScores;
+}
+
+void ControlGlobalBufferSize( uint size )
+{
+    auto bestScores = array< string >( Globals.BestScores );
+    if( bestScores.length() < size )
+    {
+        auto bestScoreCritterIds = array< uint >( Globals.BestScoreCritterIds );
+        bestScoreCritterIds.resize( size );
+        Globals.BestScoreCritterIds = bestScoreCritterIds;
+        auto bestScoreValues = array< int >( Globals.BestScoreValues );
+        bestScoreValues.resize( size );
+        Globals.BestScoreValues = bestScoreValues;
+        bestScores.resize( size );
+        Globals.BestScores = bestScores;
+    }
+}

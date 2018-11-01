@@ -1,0 +1,1367 @@
+/** @addtogroup Client */
+/*@{*/
+
+/** \~russian Отображается ли курсор в клиенте. */
+bool __HideCursor = false;
+
+/** \~russian Степень прозрачности крыш.
+ * @par Возможные значения
+ * 0..255 – полная прозрачность..полная непрозрачность, соответственно.
+ */
+uint8 __RoofAlpha;
+
+/** \~russian Отключено ли всплывающее меню. */
+bool __DisableLMenu;
+
+/** \~russian Отключена ли реакция движка на события от мышки. */
+bool __DisableMouseEvents;
+
+/** \~russian Отключена ли реакция движка на события от клавиатуры. */
+bool __DisableKeyboardEvents;
+
+/** \~russian Хранит строку, которая будет отображаться в нике клиента при его дисконнекте. */
+string __PlayerOffAppendix;
+
+/** \~russian Индикация количества хитов и её время. */
+uint __DamageHitDelay;
+
+int __RunModMul = 1;
+int __RunModDiv = 1;
+int __RunModAdd = 0;
+
+bool __DiLeft;
+bool __DiRight;
+bool __DiUp;
+bool __DiDown;
+bool __DiMleft;
+bool __DiMright;
+bool __DiMup;
+bool __DiMdown;
+bool __ShowGroups;
+bool __DebugInfo;
+int __FlushVal;
+int __BaseTex;
+int __ScreenClear;
+int __Light;
+uint __ScrollDelay;
+int __ScrollStep;
+bool __MouseScroll;
+bool __ScrollCheck;
+int __MouseSpeed;
+bool __GlobalSound;
+
+string __FoPatchPath;
+
+string __FoDataPath;
+
+string __Name;
+
+string __Pass;
+
+uint __TextDelay;
+bool __MsgboxInvert;
+int __ChangeLang;
+uint8 __DefaultCombatMode;
+bool __MessNotify;
+bool __SoundNotify;
+int __IndicatorType;
+uint __DoubleClickTime;
+/** \~russian Отображение @ref term_tile "тайлов". */
+/** \~english @ref term_tile "Tiles" visibility. */
+bool __ShowTile;
+
+/** \~russian Отображение @ref term_tile "крыши". */
+/** \~english @ref term_tile "Roofs" visibility. */
+bool __ShowRoof;
+
+/** \~russian Отображение @ref term_item "предметов". */
+/** \~english @ref term_item "Items" visibility. */
+bool __ShowItem;
+
+/** \~russian Отображение @ref term_scenery "Сценери". */
+/** \~english @ref term_scenery "Scenery" visibility. */
+bool __ShowScen;
+
+/** \~russian Отображение @ref term_wall "стен". */
+/** \~english @ref term_wall "Walls" visibility. */
+bool __ShowWall;
+
+/** \~russian Отображение @ref term_critter "персонажей". */
+/** \~english @ref term_critter "Critters" visibility. */
+bool __ShowCrit;
+
+/** \~russian Отображение объектов из группы Fast. */
+/** \~english Fast-objects visibility. */
+bool __ShowFast;
+
+/** \~russian Отображение имен @ref term_player "игроков". */
+/** \~english @ref term_player "Players" names visibility. */
+bool __ShowPlayerNames;
+
+/** \~russian Отображение имен @ref term_npc "НПЦ". */
+/** \~english @ref term_npc "NPCs" names visibility. */
+bool __ShowNpcNames;
+
+/** \~russian Отображение идентификаторов @ref term_critter "персонажей". */
+/** \~english @ref term_critter "Critters" names visibility. */
+bool __ShowCritId;
+
+/** \~russian Скрывать ли пароль в окне логина */
+bool __HidePassword;
+
+/** \~russian активна ли глобальная карта и все ли следующие нижеприведенные переменные корректны. */
+bool __GmapActive;
+
+/** \~russian включен режим ожидания ответа о подтверждении энкаунтера. */
+bool __GmapWait;
+
+/** \~russian текущий масштаб, не забывайте учитывать его при рисовании на карте. */
+float __GmapZoom;
+
+/** \~russian смещение карты от нулевой координаты (верхний-левый угол). */
+int __GmapOffsetX;
+int __GmapOffsetY;
+
+/** \~russian координаты группы игрока. */
+int __GmapGroupCurX;
+int __GmapGroupCurXY;
+
+/** \~russian координаты точки назначения. */
+int __GmapGroupToXX;
+int __GmapGroupToXY;
+
+/** \~russian Путь к папке клиента. */
+/** \~english Path to client folder. */
+string __ClientPath;
+
+/** \~russian Путь к папке сервера. */
+/** \~english Path to server folder. */
+string __ServerPath;
+
+/** \~russian индикация открытой консоли. */
+bool __ConsoleActive;
+
+/** \~russian максимальное количество одновременно запущенных для нпц диалогов по-умолчанию */
+uint __NpcMaxTalkers;
+
+/** \~russian Боевые сообщения
+ *
+ * - @c 0 – короткие;
+ * - @c 1 – подробные.
+ *
+ ** \~englsih Combat messages
+ *
+ * - @c 0 – brief;
+ * - @c 1 – verbose.
+ */
+int __CombatMessagesType;
+
+/** \~russian Для определения анимаций боевого режима. */
+uint __Anim2CombatBegin;
+
+/** \~russian Для определения анимаций боевого режима. */
+uint __Anim2CombatIdle;
+
+/** \~russian Для определения анимаций боевого режима. */
+uint __Anim2CombatEnd;
+
+/** \~russian частота вызова анимации "дурачества".
+ *
+ * Определяется по формуле Random(__CritterFidgetTime, __CritterFidgetTime * 2)
+ *
+ */
+uint __CritterFidgetTime;
+
+/**
+ * \~russian @name Геомертия игровой сетки
+ * \~english @name Grid geometry
+ * \~
+ * В скрипте config.fos, в функции InitializeGeometry(), добавлены необходимые настройки для трех игр: Fallout1/2, Fallout Tactics и Arcanum. Данная функция вызывается в скриптах сервера, клиента и маппера, т.к. информация о геометрии нужна всем трем.
+ * Четырехугольная изометрия использует восемь направлений, гексогональная шесть.\n
+ * Рабочие спрайты для геометрии находятся в art/geometry/.\n
+ */
+//@{
+
+/** \~russian Тип изометрии 
+ *
+ * - @c true - гексогональная;
+ * - @c false - четырехугольная.
+ */
+bool __MapHexagonal;
+
+/** \~russian Ширина гекса */
+int __MapHexWidth;
+
+/** \~russian Высота гекса */
+int __MapHexHeight;
+
+/** \~russian Высота линии гексов */
+int __MapHexLineHeight;
+
+/** \~russian Смещение тайлов земли по горизонтали */
+int __MapTileOffsX;
+
+/** \~russian Смещение тайлов земли по вертикали */
+int __MapTileOffsY;
+
+/** \~russian Смещение тайлов крыши по горизонтали */
+int __MapRoofOffsX;
+
+/** \~russian Смещение тайлов крыши по вертикали */
+int __MapRoofOffsY;
+
+/** \~russian Кол-во гексов на один тайл крыши (нужно для его корректного скрывания) */
+int __MapRoofSkipSize;
+
+/** \~russian Угол для рендеринга трехмерных моделей */
+float __MapCameraAngle;
+
+/** \~russian Сглаживание пути при перемещениях */
+bool __MapSmoothPath;
+
+/** \~russian Путь и префикс для файлов геометрии */
+string __MapDataPrefix;
+
+//@}
+
+/**
+ * \~russian @name Настройки сети
+ * \~english @name Network settings
+ */
+//@{
+
+/** \~russian Хост игрового сервера. */
+/** \~english Game server hostname. */
+string __Host;
+
+/** \~russian Порт игрового сервера. */
+/** \~english Game server port number. */
+uint __Port;
+
+/** \~russian Тип прокси сервера. */
+/** \~english Proxy type. */
+uint __ProxyType;
+
+/** \~russian Хост прокси сервера. */
+/** \~english Proxy hostname. */
+string __ProxyHost;
+
+/** \~russian Порт прокси сервера. */
+/** \~english Proxy port number. */
+uint __ProxyPort;
+
+/** \~russian Логин к прокси серверу. */
+/** \~english Proxy login. */
+string __ProxyUser;
+
+/** \~russian Пароль к прокси серверу. */
+/** \~english Proxy password. */
+string __ProxyPass;
+
+//@}
+
+/**
+ * \~russian @name Настройки видео
+ * \~english @name Video settings
+ */
+//@{
+
+/** \~russian Ширина экрана. */
+/** \~english Screen width. */
+const int __ScreenWidth;
+
+/** \~russian Высота экрана. */
+/** \~english Screen height. */
+const int __ScreenHeight;
+
+/** \~russian Полноэкранный режим. */
+/** \~english Full screen. */
+bool __FullScr;
+
+/** \~russian Вертикальная синхронизация. */
+/** \~english VSync. */
+bool __VSync;
+
+/** \~russian Поверх всех окон. */
+/** \~english Always on top. */
+bool __AlwaysOnTop;
+
+/** \~russian Установка фиксированного FPS. При отрицательных значениях играет роль sleep */
+/** \~english Fixed FPS setting. Negative values work as "sleep" */
+uint __FixedFPS;
+
+/** \~ true - OpenGL, false - DirectX. */
+bool __OpenGLRendering;
+
+/** \~russian Текущий FPS. */
+/** \~english Curent FPS. */
+uint __FPS;
+
+/** \~russian Период пинга (по-умолчанию 2000 мс). */
+/** \~english Ping period (default - 2000ms). */
+uint __PingPeriod;
+
+/** \~russian Текущий пинг. */
+/** \~english Curent ping. */
+uint __Ping;
+
+/** \~russian Включает механизи зуминга карты. */
+bool __MapZooming;
+
+/** \~russian Необходима для отладки загрузки трехмерной графики.
+ *            При включении и загрузке модели будет создан файл Assimp.log,
+ *            куда библиотека Assimp будет писать необходимую информацию.
+ */
+bool __AssimpLogging;
+
+/** \~russian При установке переменной в true, клиент закрывается */
+bool __Quit;
+
+//@}
+
+/**
+ * \~russian @name Общие функции
+ * \~english @name General
+ * \~ @weight 300
+ */
+//@{
+
+/** \~russian Позволяет получить указатель на криттера-игрока, для которого запущен клиент.
+ *
+ * @return Указатель на экземпляр класса CritterCl, представляющий игрока.
+ */
+CritterCl@ GetChosen();
+
+/** (?) */
+bool IsTurnBased();
+
+/** (?) */
+uint16 GetCurrentMapPid();
+
+/** \~russian Для взятия действий чузена
+ *
+ * @param actions  Массив состоит из блоков по семь переменных, первая это тип, остальные шесть это параметры. Значение типов и параметров смотрите в _client_defines.fos Chosen actions
+ * 
+ * @return (?)
+ *
+ */
+uint GetChosenActions(uint[]@ actions);
+
+/** \~russian Для установки действий чузена
+ *
+ * @param actions  Массив состоит из блоков по семь переменных, первая это тип, остальные шесть это параметры. Значение типов и параметров смотрите в _client_defines.fos Chosen actions
+ *
+ */
+void SetChosenActions(uint[]@ actions);
+
+/** \~russian Возвращает описание последней ошибки.
+ *
+ * Строка не очищается, так что будьте внимательны: возможно вы увидите ошибку,
+ * которая произошла ранее. Все ошибки записываются в лог-файл, с указанием имени контекста,
+ * функции, ошибки.
+ *
+ * @return Описание ошибки.
+ */
+string@ GetLastError();
+
+/** \~russian Заносит запись в лог-файл клиента.
+ *
+ * @param text Текст записи.
+ */
+void Log(string& text);
+
+/** \~russian Конвертирует текст в число.
+ *
+ * Понимает отрицательные значения. Пробелы, стоящие впереди, игнорируются.
+ * Данные после числа, после первого пробела, игнорируются.
+ *
+ * @param  text    Строка, содержащая число.
+ * @param  result  Переменная, в которую записывается результат преобразования.
+ *
+ * @return @c true – в случае удачного преобразования;
+ *         @c false – в противном случае.
+ */
+bool StrToInt(string@+ text, int& result);
+
+/** \~russian Конвертирует текст в вещественное число.
+ *
+ * Понимает отрицательные значения. Пробелы, стоящие впереди, игнорируются.
+ * Данные после числа, после первого пробела, игнорируются.
+ *
+ * @param  text    Строка, содержащая число.
+ * @param  result  Переменная, в которую записывается результат преобразования.
+ *
+ * @return @c true – в случае удачного преобразования;
+ *         @c false – в противном случае.
+ */
+bool StrToFloat(string@+ text, float& result);
+
+/** \~russian Возвращает рандомное значение.
+ *
+ * @param  minimum  Минимальное значение.
+ * @param  maximum  Максимальное значение.
+ *
+ * @return Случайное значение в пределах @a minimum и @a maximum, включительно.
+ */
+int Random(int minimum, int maximum);
+
+/** \~russian Ищет предмет с указанным уникальным идентификатором.
+ *
+ * @param  itemId  Уникальный идентификатор, по которому осуществляется поиск.
+ *
+ * @return Указатель на экземпляр класса ItemCl с указанным идентификатором.
+ *         В случае провала – @c null.
+ */
+ItemCl@+ GetItem(uint itemId);
+
+/** \~russian Ищет прототип предмета, имеющий указанный идентификатор.
+ *
+ * @param  protoId  Идентификатор прототипа предмета (см. файл @b ITEMPID.H).
+ *
+ * @return Указатель на экземпляр класса ProtoItem. При провале – @c null.
+ */
+ProtoItem@+ GetProtoItem(uint16 protoId);
+
+/** \~russian Выводит текст в окно сообщений клиента.
+ *
+ * @param   msg  Выводимый текст.
+ *
+ * @remarks Для вывода текста используется тип @c FOMB_GAME.
+ *
+ * @see     Message(string, int)
+ */
+void Message(string& msg);
+
+/** \~russian Выводит текст из файла в окно сообщений клиента.
+ *
+ * @param   textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param   strNum   Номер строки в файле.
+ *
+ * @remarks Для вывода текста используется тип @c FOMB_GAME.
+ *
+ * @see     Message(int, uint, int)
+ */
+void Message(int textMsg, uint strNum);
+
+/** \~russian Выводит текст в окно сообщений клиента.
+ *
+ * @param  msg   Выводимый текст.
+ * @param  type  Тип сообщения
+ *               (см. @link MessageBoxMessageTypes MessageBox message types@endlink).
+ *
+ */
+void Message(string& msg, int type);
+
+/** \~russian Выводит текст из файла в окно сообщений клиента.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки в файле.
+ * @param  type     Тип сообщения
+ *                  (см. @link MessageBoxMessageTypes MessageBox message types@endlink).
+ *
+ */
+void Message(int textMsg, uint strNum, int type);
+
+/** \~russian Загружает dat-файл.
+ *
+ * Приоритет проверки файлов распределяется по порядку загрузки. Весь цикл загрузки:
+ * -# Распакованные файлы в папке data
+ * -# Загруженные с помощью LoadDat dat-файлы. В обратном порядке загрузки
+ * -# fonline.dat
+ * -# critter.dat
+ * -# master.dat
+ *
+ * @param  datName  Имя dat-файла.
+ */
+bool LoadDat(string& datName);
+
+/** \~russian Возвращает текущее время работы компьютера в миллисекундах. */
+uint GetTick();
+
+/** \~russian Запускает скрипт на сервере.
+ *
+ * Сигнатура вызываемой функции:
+ * @code
+ * void _FuncName(Critter& player, int param0, int param1, int param2, string@ param3, int[]@ param4)
+ * @endcode
+ * @arg @a player Игрок, который вызвал функцию.
+ *
+ * @param   funcName            Полное имя функции (с модулем).
+ * @param   p0, p1, p2, p3, p4  Значения для передаваемых в функцию параметров.
+ *
+ * @remarks Для вызова функции игроку необходимы права модератора или адинистратора.
+ *
+ * @see Critter::RunClientScript
+ */
+void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4);
+
+/** \~russian Запускает скрипт на сервере без проверок прав доступа в движке.
+ *
+ * Сигнатура вызываемой функции:
+ * @code
+ * void unsafe_FuncName(Critter& player, int param0, int param1, int param2, string@ param3, int[]@ param4)
+ * @endcode
+ * @arg @a player Игрок, который вызвал функцию.
+ *
+ * Префикс "unsafe_" в имени функции обязателен.
+ *
+ * @attention Помните, что при взломе клиента хакер сможет вызывать данные функции
+ *            в любое время в любом количестве и с любыми передаваемыми параметрами.
+ *
+ * @param  funcName            Полное имя функции (с модулем).
+ * @param  p0, p1, p2, p3, p4  Значения для передаваемых в функцию параметров.
+ *
+ * @see    RunServerScript
+ */
+void RunServerScriptUnsafe(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4);
+
+/** \~russian Позволяет получить состояние видимости указанной зоны глобальной карты мира для игрока.
+ *
+ * @param   zoneX, zoneY  Координаты зоны глобальной карты мира.
+ *
+ * @return  Состояние видимости. См. @link GlobalMapFog Global map fog@endlink.
+ *
+ ** \~english Gets fog of the player's worldmap, at given coordinates.
+ *
+ * @param   zoneX, zoneY  Coordinates.
+ *
+ * @return  Fog type, see @link GlobalMapFog Global map fog@endlink.
+ */
+int GetFog(uint16 zoneX, uint16 zoneY);
+
+/** \~russian Возвращает значение для указанного ключа в ini-файле интерфейса.
+ *
+ * @param  key  Ключ.
+ *
+ * @return Значение, соответствующее ключу.
+ */
+string@ GetIfaceIniStr(string& key);
+
+/** \~russian Для включения часов ожидания на время сигнала серверу и его ответа (т.е. пинг). */
+void WaitPing();
+
+//@}
+
+/**
+ * \~russian @name Функции для работы со строками
+ * \~english @name String manipulation
+ */
+//@{
+
+/** \~russian Позволяет получить строку из указанного MSG файла.
+ *
+ * Т.к. клиент точно знает какой язык выбран у игрока,
+ * то есть возможность оперировать напрямую со строками.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки в файле.
+ *
+ * @return Указатель на строку. В случае провала – @c null.
+ *
+ * @see    #GetMsgStr(int, uint, uint)
+ */
+string@ GetMsgStr(int textMsg, uint strNum);
+
+/** \~russian Позволяет получить строку из указанного MSG файла.
+ *
+ * Данная перегрузка используется для строк с одинаковыми номерами.
+ *
+ * @param  textMsg    Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum     Номер строки в файле.
+ * @param  skipCount  Указывает, сколько строк необходимо пропустить.
+ *
+ * @return Указатель на строку. В случае провала – @c null.
+ *
+ * @see    GetMsgStrCount
+ */
+string@ GetMsgStr(int textMsg, uint strNum, uint skipCount);
+
+/** \~russian Ищет первый номер валидной строки выше заданного номера.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Базовый номер.
+ *
+ * @return Первый номер строки, значение которого выше заданного.
+ */
+uint GetMsgStrNumUpper(int textMsg, uint strNum);
+
+/** \~russian Ищет первый номер валидной строки ниже заданного номера.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Базовый номер.
+ *
+ * @return Первый номер строки, значение которого ниже заданного.
+ */
+uint GetMsgStrNumLower(int textMsg, uint strNum);
+
+/** \~russian Возвращает количество строк в файле, имеющих заданный номер.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки в файле.
+ *
+ * @return Количество строк с одинаковым номером.
+ *
+ * @see    #GetMsgStr(int, uint, uint)
+ */
+uint GetMsgStrCount(int textMsg, uint strNum);
+
+/** \~russian Проверяет, существует ли хотя бы одна строка с заданным номером.
+ *
+ * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки в файле.
+ *
+ * @return @c true – если строка существует; @c false – в противном случае.
+ */
+bool IsMsgStr(int textMsg, uint strNum);
+
+/** \~russian Заменяет в @a text первую подстроку @a replace на строку @a str.
+ *
+ * @param  text     Исходная строка.
+ * @param  replace  Заменяемая подстрока.
+ * @param  str      Строка-замена.
+ *
+ * @return Получаемая в результате замены строка.
+ */
+string@ ReplaceText(const string& text, const string& replace, const string& str);
+
+/** \~russian Заменяет в @a text первую подстроку @a replace на целое @a i.
+ *
+ * @param  text     Исходная строка.
+ * @param  replace  Заменяемая подстрока.
+ * @param  i        Число-замена.
+ *
+ * @return Получаемая в результате замены строка.
+ */
+string@ ReplaceText(const string& text, const string& replace, int i);
+
+/** \~russian Форматирует тэги.
+ *
+ * @param  text    Исходная строка.
+ * @param  lexems  Указатель на строку, содержащую значения лексем.
+ *
+ * @return Отформатированная строка.
+ *
+ * @see    CritterCl#Lexems
+ * @see    ItemCl#Lexems
+ */
+string@ FormatTags(const string& text, const string@+ lexems);
+
+/** \~russian Загружает шрифт.
+ *
+ * @param  font  Номер шрифта.
+ * @param  fontFileName  Имя файла шрифта.
+ *
+ * @return Возвращает true в случае успеха.
+ *
+ */
+bool LoadFont(int font, string& fontFileName);
+
+/** \~russian Устанавливает шрифт по-умолчанию и его цвет.
+ *
+ * @param  font  Номер шрифта.
+ * @param  color  Цвет шрифта.
+ *
+ */
+void SetDefaultFont(int font, uint color);
+
+//@}
+
+/**
+ * \~russian @name Функции для гексагонов
+ * \~english @name Coordinates system
+ */
+//@{
+
+/** \~russian Определяет направление, в котором находится гексагон №2 относительно гексагона №1.
+ *
+ * @param  fromX, fromY  Координаты 1-го гексагона.
+ * @param  toX, toY      Координаты 2-го гексагона.
+ *
+ * @return Направление. Возможные значения: 0 – верх-право, 1 – право, 2 – низ-право, 3 – низ-лево и т.д.
+ */
+uint8 GetDirection(uint16 fromX, uint16 fromY, uint16 toX, uint16 toY);
+
+/** \~russian Определяет дистанцию между двумя гексагонами.
+ *
+ * @param  hexX1, hexY1  Координаты 1-го гексагона.
+ * @param  hexX2, hexY2  Координаты 2-го гексагона.
+ *
+ * @return Дистанция между гексагонами в гексагонах.
+ */
+uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2);
+
+/** \~russian Определяет дистанцию между двумя криттерами.
+ *
+ * @param  cr1  Первый криттер.
+ * @param  cr2  Второй криттер.
+ *
+ * @return Дистанция между криттерами в гексагонах.
+ */
+uint GetCrittersDistantion(CritterCl& cr1, CritterCl& cr2);
+
+/** \~russian Двигает гексы @a hx, @a hy в направлении @a dir на @a steps шагов.
+ *
+ * Т.к. хексагональная сетка имеет своеобразную систему координат,
+ * эта функция будет хорошим помощником для точной подстройки позиции.
+ *
+ * @param [out]  hexX, hexY  Подстраиваемые координаты.
+ * @param [in]   dir         Направление смещения.
+ * @param [in]   steps       Количество шагов смещения.
+ */
+void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps);
+
+/** \~russian Позволяет получить координаты гексагона, достигнутого при трассировке по указанной траектории.
+ *
+ * С помощью этой функции можно реализовывать, например, промахи метательного
+ * оружия и выстрела из базуки.
+ *
+ * @param   [in]   fromHx, fromHy  Cтартовые гексы.
+ * @param   [out]  toHx, toHy      Переменные, в которые будут записаны итоговые координаты.
+ * @param   [in]   angle           Угол отклонения луча (в градусах).
+ * @param   [in]   dist            Дистанция до нужного гекса.
+ *
+ * @remarks Если на пути попадется не простреливаемый гекс,
+ *          то итоговые координаты будут указывать на гекс перед препятствием.
+ *
+ * @remarks При <code>(dist == 0)</code> берется дистанция от гекса до гекса.
+ */
+void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist);
+
+/** \~russian Определяет длину пути между гексагонами.
+ *
+ * @param  fromHx, fromHy  Координаты исходного гексагона.
+ * @param  toHx, toHy      Координаты целевого гексагона.
+ * @param  cut             Указывает, на сколько гексагонов обрезать путь с конца.
+ *
+ * @return Длина пути между гексагонами. Если путь заблокирован, то возвращается 0.
+ */
+uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut);
+
+/** \~russian Определяет длину пути от персонажа до указанного гекса учитывая мултигексовость персонажа.
+ *
+ * @param  cr              Персонаж, от которого ищется путь.
+ * @param  toHx, toHy      Координаты целевого гексагона.
+ * @param  cut             Указывает, на сколько гексагонов обрезать путь с конца.
+ *
+ * @return Длина пути. Если путь заблокирован, то возвращается 0.
+ */
+uint GetPathLength(CritterCl& cr, uint16 toHx, uint16 toHy, uint cut);
+
+/** (?) */
+uint8 GetOffsetDir(uint16 hx, uint16 hy, uint16 tx, uint16 ty, float offset);
+
+//@}
+
+/**
+ * \~russian @name Функции для визуальных и прочих эффектов
+ * \~english @name For visual and audio effects
+ */
+//@{
+
+/** \~russian Создает переход цветов на экране игрока.
+ *
+ * @param  fromColor  Начальный цвет.
+ * @param  toColor    Конечный цвет.
+ * @param  timeMs         Время в миллисекундах.
+ */
+void FlushScreen(uint fromColor, uint toColor, uint timeMs);
+
+/** \~russian Проигрывает в клиенте звук с указанным именем.
+ *
+ * @param  soundName  Имя звука.
+ */
+void PlaySound(string& soundName);
+
+/** \~russian Проигрывает в клиенте звук с указанными составляющими.
+ *
+ * @param  soundType, soundTypeExt, soundId, soundIdExt  Составляющие звука.
+ *   Формула составления имени для некоторых soundType различается
+ *   (см. @link SoundTypes Sound types@endlink).
+ */
+void PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt);
+
+/** \~russian Активизирует эффект землетрясения.
+ *
+ * @param  noise   Мощность (рекомендуемые значения от 1 до 50).
+ * @param  ms      Продолжительность в миллисекундах.
+ *
+ */
+void QuakeScreen(uint noise, uint ms);
+
+/** \~russian Проигрывает музыку в клиенте.
+ *
+ * @param  musicName  Имя файла с музыкой.
+ * @param  pos        (?)
+ * @param  repeat     Количество миллисекунд, через которые трек будет воспроизведен вновь.
+ *
+ * @remarks Файлы с музыкой ищутся в папке <i>data/sound/music</i> клиента.
+ * @remarks При repeat == 1, музыка повторяется без перерывов.
+ */
+void PlayMusic(string& musicName, uint pos, uint repeat);
+
+/** \~russian Проигрывает видео в клиенте.
+ *
+ * @param  videoName  Название файла видео в формате "video_name.ext|video_sound_name.ext"
+ *                    сначала указывается имя файла видео, потом, опционально, '|' и далее имя файла звука.
+ *                    Кодеки http://wiki.xiph.org/index.php/TheoraSoftwareEncoders
+ *                    Аудио формат может быть любой, который поддерживается движком, на данный момент это WAV, ACM и OGG.
+ * @param  canStop    Можно ли остановить видео во время проигрывания.
+ *
+ * @remarks Если в имени нет слешей ('/'), то поиск производится в папке Client/data/video, если есть, то относительно папки Client/data.
+ * @remarks Воспроизведение видео добавлено только для OGL версии движка..
+ */
+void PlayVideo(string& videoName, bool canStop);
+
+//@}
+
+/**
+ * \~russian @name Функции для работы со временем
+ * \~english @name Time
+ */
+//@{
+
+/** \~russian Возвращает значение года, месяца, дня, часа, минуты и секунды в полных секундах.
+ *
+ * @param   year                      Год.
+ * @param   month, day, hour, minute, second Месяц, день, час, минута и секунда соответственно.
+ *
+ * @return  Полная минута.
+ *
+ * @remarks При некорректных значениях берутся текущие значения.
+ *
+ * @see     GetGameTime
+ */
+uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second);
+
+/** \~russian Позволяет получить текущее локальное время.
+ *
+ * @param  [out]  year           Год
+ * @param  [out]  month          Месяц
+ * @param  [out]  day_of_week    День недели
+ * @param  [out]  day            День
+ * @param  [out]  hour           Час
+ * @param  [out]  minute         Минута
+ * @param  [out]  second         Секунда
+ * @param  [out]  milliseconds   Миллисекунда
+ *
+ */
+void GetTime(uint16& year, uint16& month, uint16& day_of_week, uint16& day,
+             uint16& hour, uint16& minute, uint16& second, uint16& milliseconds);
+
+/** \~russian Вычисляет игровое время по указанной полной секунде.
+ *
+ * @param  [in]   fullSecond  Игровое время в полных секундах.
+ * @param  [out]  year        Год, полученный по полной секунде.
+ * @param  [out]  month       Месяц, полученный по полной секунде.
+ * @param  [out]  dayOfWeek   День недели, полученный по полной секунде.
+ * @param  [out]  day         День месяца, полученный по полной секунде.
+ * @param  [out]  hour        Час, полученный по полной секунде.
+ * @param  [out]  minute      Минута, полученная по полной секунде.
+ * @param  [out]  second      Секунда, полученная по полной секунде.
+ *
+ * @see    GetFullSecond
+ */
+void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& dayOfWeek, uint16& day, uint16& hour, uint16& minute, uint16& second);
+
+//@}
+
+/**
+ * \~russian @name Для работы с графикой
+ * \~english @name Graphics
+ */
+//@{
+
+/** \~russian Загружает один спрайт или анимацию из файла.
+ *
+ * @param  name       Имя файла.
+ * @param  pathIndex  Номер папки, где находится файл (см. @link Paths@endlink).
+ *
+ * @return Номер загруженного спрайта или анимации.
+ *
+ * @see    DrawSprite
+ */
+uint LoadSprite(string& name, int pathIndex);
+
+/** \~russian Загружает один спрайт или анимацию из файла.
+ *
+ * @param  nameHash   Хеш строки имени файла.
+ * @param  dir        Направление анимации. Если направления не поддерживаются, передавайте 0.
+ *
+ * @return Идентификатор загруженного спрайта или анимации.
+ *
+ * @see    DrawSprite
+ */
+uint LoadSprite(uint nameHash, uint8 dir);
+
+/** \~russian Возвращает ширину указанного спрайта.
+ *
+ * @param  sprId     Идентификатор анимации.
+ * @param  sprIndex  Номер спрайта в анимации.
+ */
+int GetSpriteWidth(uint sprId, int sprIndex);
+
+/** \~russian Возвращает высоту указанного спрайта.
+ *
+ * @param  sprId     Идентификатор анимации.
+ * @param  sprIndex  Номер спрайта в анимации.
+ */
+int GetSpriteHeight(uint sprId, int sprIndex);
+
+/** \~russian Возвращает количество спрайтов в указанной анимации.
+ *
+ * @param  sprId  Идентификатор анимации.
+ */
+uint GetSpriteCount(uint sprId);
+
+/** \~russian Отрисовывает спрайт в указанной позиции.
+ *
+ * @param  sprId    Идентификатор анимации.
+ * @param  sprIndex Номер спрайта в анимации.
+ *                  При отрицательном значении выводится текущий спрайт анимации.
+ *                  При этом учитывается скорость воспроизведения анимации.
+ * @param  x, y     Позиция верхнего левого угла.
+ * @param  color    Оттенок спрайта. При 0 берется значение по-умолчанию.
+ *
+ * @see    #render_iface
+ */
+void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color);
+
+/** \~russian Отрисовывает спрайт в указанной прямоугольной области.
+ *
+ * @param  sprId     Идентификатор анимации.
+ * @param  sprIndex  Номер спрайта в анимации.
+ *                   При отрицательном значении выводится текущий спрайт анимации.
+ *                   При этом учитывается скорость воспроизведения анимации.
+ * @param  x, y      Позиция верхнего левого угла
+ * @param  w, h      Ширина и высота области отрисовки.
+ * @param  scratch   Указывает, растягивать ли под размер @a w, @a h (@c true)
+ *                   или растягивать пропорционально оригинальному размеру (@c false).
+ * @param  center    Указывает, центровать ли изображение.
+ * @param  color     Оттенок спрайта. При 0 берется значение по-умолчанию.
+ *
+ * @see    #render_iface
+ */
+void DrawSprite(uint sprId, int sprIndex,
+    int x, int y, int w, int h,
+    bool scratch, bool center, uint color);
+    
+/** \~russian Отрисовывает спрайт в указанной прямоугольной области c полным ее заполнением, своими копиями.
+ *
+ * @param  sprId     Идентификатор анимации.
+ * @param  sprIndex  Номер спрайта в анимации.
+ *                   При отрицательном значении выводится текущий спрайт анимации.
+ *                   При этом учитывается скорость воспроизведения анимации.
+ * @param  x, y      Позиция верхнего левого угла
+ * @param  w, h      Ширина и высота области отрисовки.
+ * @param  sprWidth  Ширина спрайта (при нуле берется исходная).
+ * @param  sprHeight Высота спрайта (при нуле берется исходная).
+ * @param  color     Оттенок спрайта. При 0 берется значение по-умолчанию.
+ *
+ * @see    #render_iface
+ */
+void DrawSpritePattern(uint sprId, int sprIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color);
+
+/** \~russian Выводит текст.
+ *
+ * @param  text   Выводимый текст.
+ * @param  x, y   Позиция верхнего левого угла области вывода.
+ * @param  w, h   Ширина и высота области вывода.
+ * @param  color  Цвет сообщения. При 0 берется цвет по-умолчанию.
+ * @param  font   Шрифт (см. @link Fonts@endlink).
+ * @param  flags  Флаги форматирования (см. @link FontFlags Font flags@endlink).
+ *
+ * @see #render_iface
+ */
+void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags);
+
+/** \~russian Рисует примитив.
+ *
+ * Спецификация размещения точек в массиве @a data: (X, Y, Color), где:
+ * - @a X, @a Y – координаты точки,
+ * - @a Color – цвет.
+ *
+ * @param  primitiveType  Тип примитива
+ *                        (см. @link DrawPrimitiveTypes Draw primitive types@endlink).
+ * @param  data           Массив точек примитива.
+ *
+ * @see    #render_iface
+ */
+void DrawPrimitive(int primitiveType, int[]& data);
+
+/** \~russian Выводит спрайт в определенной позиции на карте.
+ *
+ * @param    hx, hy        Координаты гексагона, где выводится спрайт.
+ * @param    effectPid     Номер прототипа, из которого берутся параметры реакции
+ *                         на яйцо прозрачности, эффекты. Может быть равен 0.
+ * @param    sprId         Идентификатор анимации.
+ * @param    sprIndex      Номер спрайта в анимации.
+ *                         При отрицательном значении выводится текущий спрайт анимации.
+ *                         При этом учитывается скорость воспроизведения анимации.
+ * @param    offsX, offsY  Смещения относительно гексагона вывода.
+ *
+ * @remarks  Доступна только в #render_map
+ */
+void DrawMapSprite(uint16 hx, uint16 hy,
+    uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY);
+
+/** \~russian Функция для отрисовки как элемента интерфейса произвольных криттеров, имеющих двухмерную анимацию.
+ *
+ * @param  crType      Тип криттера (см. таблицу криттеров).
+ * @param  anim1       Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+ * @param  anim2       Второй индекс анимации (см. @b ANIM2_2D_* в @b _animation.fos).
+ * @param  dir         Направление.
+ * @param  l, t, r, b  Границы региона для отрисовки.
+ * @param  scratch     Растягивать ли картинку.
+ * @param  center      Центрировать ли картинку.
+ * @param  color       Оттенок спрайта (при нуле берется значение по-умолчанию).
+ */
+void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color);
+
+/** \~russian Функция для отрисовки как элемента интерфейса произвольных криттеров, имеющих трехмерную анимацию.
+ *
+ * @param instance  Индивидуальный номер воспроизводимой анимации.
+ *                  Необходим для корректного воспроизведения анимации у одновременно рисующихся криттеров.
+ * @param crType    Тип криттера (см. таблицу криттеров).
+ * @param anim1     Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+ * @param anim2     Второй индекс анимации (см. @b ANIM2_3D_* в @b _animation.fos).
+ * @param layers    Cлои 3D анимаций.
+ * @param color     Оттенок спрайта (при нуле берется значение по-умолчанию).
+ * @param position  Параметры для позиционирования (по номерам индексов в массиве):
+ *                  - @a pos      (<c>0..1</c>)   – координаты @a x, @a y;
+ *                  - @a rotate   (<c>2..4</c>)   – поворот по 3-м осям @a y, @a x, @a z (в порядке применения);
+ *                  - @a scale    (<c>5..7</c>)   – масштабирование по 3-м осям @a x, @a y, @a z;
+ *                  - @a speed    (<c>8</c>)      – скорость анимации (единица – нормальная скорость);
+ *                  - @a reserved (<c>9</c>)      – зарезервировано;
+ *                  - @a stencil  (<c>10..13</c>) – регион под трафарет (лево, верх, право, низ),
+ *                                                  модель будет рисоваться только в нем,
+ *                                                  вылезающие части будут отрезаться;
+ *                                                  трафарет используется, если лево меньше право и верх меньше низ.
+ *
+ * @remarks Значения по-умолчанию для всех индексов массива @a position,
+ *          которые движок будет использовать в случае их отсутствия:
+ *          @arg @a pos      = 0 0
+ *          @arg @a rotate   = 0 0 0
+ *          @arg @a scale    = 1 1 1
+ *          @arg @a speed    = 1
+ *          @arg @a reserved = 0
+ *          @arg @a stencil  = 0 0 0 0
+ */
+void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2,
+                   int[]@+ layers, float[]@+ position, uint color);
+
+//@}
+
+/**
+ * \~russian @name Для работы с экраном
+ * \~english @name Screen
+ */
+//@{
+
+/** \~russian Позволяет получить экранные координаты центра указанного гексагона.
+ *
+ * @param        hx, hy  Координаты гексагона.
+ * @param [out]  x, y    Переменные, в которые будут записаны координаты центра гексагона.
+ *
+ * @see   GetMonitorHex
+ */
+bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y);
+
+/** \~russian Позволяет получить координаты гексагона, находящегося в указанных экранных координатах.
+ *
+ * @param        x, y    Экранные координаты.
+ * @param [out]  hx, hy  Переменные, в которые будут записаны координаты гексагона.
+ *
+ * @see   GetHexPos
+ */
+bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy);
+
+/** \~russian Возвращает игрока под указанными координатами на экране.
+ *
+ * @param  x, y  Экранные координаты.
+ *
+ * @return Указатель на экземпляр класса CritterCl.
+ *         @c null – в случае, если криттер не найден.
+ */
+CritterCl@+ GetMonitorCritter(int x, int y);
+
+/** \~russian Возвращает предмет под указанными координатами на экране.
+ *
+ * @param  x, y  Экранные координаты.
+ *
+ * @return Указатель на экземпляр класса ItemCl. @c null – в случае, если предмет не найден.
+ */
+ItemCl@+ GetMonitorItem(int x, int y);
+
+/** \~russian Фиксирует прокрутку на указанном криттере.
+ *
+ * Поведение аналогично включенному Scroll Lock у игрока.
+ *
+ * @param  cr  Криттер, на котором фиксируется прокрутка.
+ */
+void LockScreenScroll(CritterCl@+ cr);
+
+/** \~russian Прокручивает экран клиента в нужную позицию.
+ *
+ * @param  hexX, hexY  Координаты гексагона, к которому необходимо прокручивать.
+ * @param  speed       Скорость.
+ *                     При 0 происходит мгновенная прокрутка.
+ *                     Средние значения для скорости прокрутки: 50-100.
+ */
+ void MoveScreen(uint16 hexX, uint16 hexY, uint speed);
+
+/** \~russian Показать окно.
+ *
+ * @param  screen      Тип окна (см. @link ClientScreenTypes Client screen types@endlink).
+ * @param  p0, p1, p2  Параметры окна.
+ *
+ */
+void ShowScreen(int screen, int p0, int p1, int p2);
+
+/** \~russian Скрыть окно.
+ *
+ * @param  screen      Тип окна (см. @link ClientScreenTypes Client screen types@endlink).
+ * @param  p0, p1, p2  Параметры окна.
+ *
+ */
+void HideScreen(int screen, int p0, int p1, int p2);
+
+/** \~russian Возвращает позицию движковых окон.
+ *
+ * @param         screen  Тип окна (см. @link ClientScreenTypes Client screen types@endlink).
+ * @param  [out]  x, y    Переменные, в которые будет записана позиция окна.
+ *
+ */
+void GetHardcodedScreenPos(int screen, int& x, int& y);
+
+/** \~russian Рисует движковое окно.
+ *
+ * @param  screen  Тип окна (см. @link ClientScreenTypes Client screen types@endlink).
+ *
+ */
+void DrawHardcodedScreen(int screen);
+
+/** \~russian Возвращает текущую раскладку клавиатуры.
+ *
+ * @return Текущий язык (0 - русский, 1 - английский).
+ *
+ */
+int GetKeybLang();
+
+/** \~russian Обработка нажатия одной или двух клавиш.
+ *
+ * @param key1, key2 - код клавиши (см. Keyboard key codes в _client_defines.fos).
+ *
+ */
+void KeyboardPress(uint8 key1, uint8 key2);
+
+/** \~russian Возывается при клике мышью.
+ *
+ * @param x, y - координаты мыши;
+ * @param button - клавиша мыши (см. Mouse click states в _client_defines.fos);
+ * @param cursor - курсор при клике (см. Cursors в _client_defines.fos или _mapper_defines.fos).
+ *
+ */
+void MouseClick(int x, int y, int button, int cursor);
+//@}
+
+/**
+ * \~russian @name Для работы с курсором мыши
+ * \~english @name For mouse cursors
+ */
+//@{
+
+/** \~russian Возвращает текущий курсор.
+ *
+ * @return См. @link Cursors@endlink.
+ *
+ */
+int GetCurrentCursor();
+
+/** \~russian (?)
+ *
+ * @return См. @link Cursors@endlink.
+ *
+ */
+int GetLastCursor();
+
+/** \~russian Меняет курсор.
+ *
+ * @param  cursor  Новый курсор (см. @link Cursors@endlink).
+ *
+ */
+void ChangeCursor(int cursor);
+
+//@}
+
+/**
+ * \~russian @name Для криттеров
+ * \~english @name For critters
+ */
+//@{
+
+/** \~russian Ищет криттера с указанным уникальным идентификатором.
+ *
+ * @param  critterId  Уникальный идентификатор, по которому осуществляется поиск.
+ *
+ * @return Указатель на экземпляр класса CritterCl с указанным идентификатором.
+ *         В случае провала – @c null.
+ */
+CritterCl@+ GetCritter(uint critterId);
+
+/** \~russian Находит криттеров, находящихся в указанной области.
+ *
+ * @param   hexX, hexY  Координаты гексагона, относительно которого будет проведен поиск криттеров.
+ * @param   radius      Радиус поиска, в гексагонах.
+ * @param   findType    Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+ * @param   critters    Массив указателей на криттеров, которые были найдены.
+ *                      Этот массив будет дописан с конца найденными криттерами.
+ *
+ * @return  Количество найденных криттеров.
+ *
+ * @remarks Чтобы просто узнать количество найденных криттеров,
+ *          в параметре @a critters можно передать значение @c null вместо списка.
+ *
+ * @remarks Найденные криттеры будут отсортированы по отдалению от базовой точки.
+ */
+uint GetCrittersHex(uint16 hexX, uint16 hexY, uint radius, int findType, CritterCl@[]@+ critters);
+
+/** \~russian Находит всех криттеров, имеющих указанный прототип.
+ *
+ * @param   pid       Прототип NPC (см. @b _npc_pids.fos).
+ *                    При @a pid, равном -1, выбираются игроки, при -2 - NPC, при 0 - все криттеры (и игроки, и NPC) (?).
+ * @param   findType  Тип поиска
+ *                    (см. @link CritterFindTypes Critter find types@endlink).
+ * @param   critters  Массив указателей на криттеров.
+ *                    Этот массив будет дописан с конца найденными криттерами.
+ *
+ * @return  Количество найденных криттеров.
+ *
+ * @remarks Чтобы просто узнать количество найденных криттеров,
+ *          в параметре @a critters можно передать значение @c null вместо списка.
+ */
+uint GetCritters(uint16 pid, int findType, CritterCl@[]@+ critters);
+
+/** \~russian Проводит трассировку с указанными параметрами и находит всех криттеров, под неё попавших.
+ *
+ * @param   fromHx, fromHy  Координаты стартового гексагона.
+ * @param   toHx, toHy      Координаты гексагона назначения.
+ * @param   angle           Угол отклонения луча, в градусах.
+ * @param   dist            Максимальная дистанция трассировки.
+ * @param   findType        Тип поиска
+ *                          (см. @link CritterFindTypes Critter find types@endlink).
+ * @param   critters        Массив указателей на криттеров, которые были найдены.
+ *                          Этот массив будет дописан с конца найденными криттерами.
+ *
+ * @return  Количество найденных криттеров.
+ *
+ * @remarks Чтобы просто узнать количество найденных криттеров,
+ *          в параметре @a critters можно передать значение @c null вместо списка.
+ */
+uint GetCrittersPath(uint16 fromHx, uint16 fromHy,
+    uint16 toHx, uint16 toHy,
+    float angle, uint dist, int findType, CritterCl@[]@+ critters);
+
+/** \~russian Проводит трассировку с указанными параметрами и находит всех криттеров, под неё попавших.
+ *
+ * @param          fromHx, fromHy          Координаты стартового гексагона.
+ * @param          toHx, toHy              Координаты гексагона назначения.
+ * @param          angle                   Угол отклонения луча, в градусах.
+ * @param          dist                    Максимальная дистанция трассировки.
+ * @param          findType                Тип поиска
+ *                                         (см. @link CritterFindTypes Critter find types@endlink).
+ * @param          critters                Массив указателей на криттеров, которые были найдены.
+ *                                         Этот массив будет дописан с конца найденными криттерами.
+ * @param   [out]  preBlockHx, preBlockHy  Позиция гекса перед препятствием.
+ * @param   [out]  blockHx, blockHy        Позиция гекса препятствия.
+ *
+ * @return  Количество найденных криттеров.
+ *
+ * @remarks Если координаты @a preBlock равны @a block, то значит препятствия не было.
+ *
+ * @remarks Чтобы просто узнать количество найденных криттеров,
+ *          в параметре @a critters можно передать значение @c null вместо списка.
+ */
+uint GetCrittersPath(uint16 fromHx, uint16 fromHy,
+    uint16 toHx, uint16 toHy,
+    float angle, uint dist, int findType, CritterCl@[]@+ critters,
+    uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy);
+    
+/** \~russian Устанавливает имена анимаций для падающей и упавшей капли
+ *            по-умолчанию значения равны "art/misc/rain_fall.fofrm" и "art/misc/rain_drop.fofrm".
+ */
+void SetRainAnimation(string@ fallAnimName, string@ dropAnimName);
+
+//@}
+
+/**
+ * \~russian @name Функции для работы с константами (*Names.lst)
+ * \~english @name For constants (*Names.lst)
+ */
+//@{
+
+/** \~russian Определение значения константы по имени.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ *
+ * @return Значение константы.
+ */
+int GetConstantValue(int constCollection, string@+ name);
+
+/** \~russian Определение имени константы по значению.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  value            Значение константы.
+ *
+ * @return Имя константы.
+ */
+string@ GetConstantName(int constCollection, int value);
+
+/** \~russian Добавление отдельной константы в коллекцию.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ * @param  value            Значение константы.
+ *
+ */
+void AddConstant(int constCollection, string@+ name, int value);
+
+/** \~russian Загрузка/перезагрузка коллекции.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  fileName         Имя файла.
+ * @param  pathType         Путь.
+ *
+ */
+bool LoadConstants(int constCollection, string@+ fileName, int pathType);
+//@}
+
+/**
+ * \~russian @name Прочие функции
+ */
+//@{
+
+/** \~russian Подключает дополнительные ini файлы.
+ *
+ * @param  iniName  Путь к ini файлу. Если имя имеет слеши, то поиск производится из корня data, если нет, то в папке data/art/intrface/.
+Движком автоматически добавляется default.ini.
+ * @return true в случае успеха.
+ *
+ */
+bool AppendIfaceIni(string& iniName);
+
+/** \~russian Устанавливет шейдерный эффект.
+ *
+ * @param  effectType       тип эффекта (см. _client_defines.fos).
+ * @param  effectSubtype    подтип эффекта (используется с шрифтами).
+ * @param  effectName       имя файла эффекта (вместе с расширением) в папке data/effects.
+ * @param  effectDefines    директивы препрцессора для эффекта (null по умолчанию).
+ *
+ * @return Указывает на успешность загрузки и компиляции эффекта.
+ *
+ */
+bool SetEffect(int effectType, int effectSubtype, string@+ effectName, string@+ effectDefines = null);
+
+//@}
+
+/*@}*/

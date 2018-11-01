@@ -1,0 +1,27 @@
+/**
+ * @defgroup ItemsAccessory Items accessory
+ * @ingroup Defines
+ *
+ * \~russian Местонахождения предметов.
+ * \~english Items accessory.
+ *
+ * \~
+ * @see      Item::Accessory
+ *           ItemCl::Accessory
+ *
+ */
+/*@{*/
+
+/** \~russian Предмет находится в "ничто". */
+#define ACCESSORY_NONE              (0)
+
+/** \~russian Предмет находится в инвентаре у криттера. */
+#define ACCESSORY_CRITTER           (1)
+
+/** \~russian Предмет находится на карте. */
+#define ACCESSORY_HEX               (2)
+
+/** \~russian Предмет находится в контейнере. */
+#define ACCESSORY_CONTAINER         (3)
+
+/*@}*/
