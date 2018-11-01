@@ -1,39 +1,25 @@
-windows - gocd:fgt43trfcvq23
-ftp - fonline:hn45tgfvwq
-web - cvet:h3efrvewq532
-svn - gocd:fgt43trfcvq23
+You must specify following environment variables before start build scripts: 
 
-FO_BUILD_DEST=FOnlineBuild
-FO_SOURCE=FOnlineSource
-FO_FTP_DEST=109.167.147.160 (optional)
-FO_FTP_USER=lf:qwerty (optional)
-FO_COPY_DEST=D:\_COPY (optional)
+FO_BUILD_DEST=FOnlineBuild # Path to build output
+FO_SOURCE=FOnlineSource # Path to fonline sources
+FO_FTP_DEST=127.0.0.1 (optional) # Upload binaries to this ftp after build
+FO_FTP_USER=user:password (optional)
+FO_COPY_DEST=D:\_COPY (optional) # Copy binaries to this dir after build
 
-Setup Windows:
-Download and install gocd
-Download and install cmake
-Create user go/password (admin), assign to Go services.
+Helping tips for setup agents for GoCD continuous delivery server.
+You can find it here: https://www.gocd.org/
 
-Setup Linux:
-sudo apt-get update
-sudo apt-get -y install subversion -> later allow certificate
-sudo apt-get -y install openjdk-8-jdk
-*sudo update-alternatives --config java -> choose java8
-echo "deb https://download.gocd.io /" | sudo tee /etc/apt/sources.list.d/gocd.list
-curl https://download.gocd.io/GOCD-GPG-KEY.asc | sudo apt-key add -
-sudo apt-get -y update
-sudo apt-get -y install go-agent
-sudo gedit /etc/default/go-agent GO_SERVER=...
-sudo adduser go sudo
-sudo -i
-echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-exit
-sudo su go
-svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnlineSource
-sudo /etc/init.d/go-agent start [start|stop|status|restart]
+Setup on Windows:
+Install gocd
+Install cmake
+Create user go/password (admin), assign to Go services. Need more permissions.
 
-Setup Mac:
+Setup on Linux:
+Install gocd
+
+Setup on Mac:
 Install gocd
 Install cmake
 Install xcode
-Install svn
+
+After this you just run needed build script, for example look at 'gocd_example.png'.
