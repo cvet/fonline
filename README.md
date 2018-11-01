@@ -4,4 +4,4 @@
 ## And don't use drugs!
 
 ## Help and support
-- [https://fonline.ru/](Official FOnline forum).
+- [Official FOnline forum](https://fonline.ru/).
