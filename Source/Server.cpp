@@ -1915,7 +1915,9 @@ bool FOServer::InitReal()
 
     if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
         return false;
-    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, FOServer::OnNewConnection ) ) )
+
+    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
+    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, wss_credentials, FOServer::OnNewConnection ) ) )
         return false;
 
     // Script timeouts

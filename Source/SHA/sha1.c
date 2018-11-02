@@ -86,7 +86,7 @@ A million repetitions of "a"
 #include <string.h>
 #include "sha1.h"
 
-void SHA1_Transform(unsigned state[5], const unsigned char buffer[64]);
+void _SHA1_Transform(unsigned state[5], const unsigned char buffer[64]);
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
@@ -111,7 +111,7 @@ void SHA1_Transform(unsigned state[5], const unsigned char buffer[64]);
 
 
 #ifdef VERBOSE  /* SAK */
-void SHAPrintContext(SHA1_CTX *context, char *msg){
+void _SHAPrintContext(SHA1_CTX *context, char *msg){
   printf("%s (%d,%d) %x %x %x %x %x\n",
 	 msg,
 	 context->count[0], context->count[1],
@@ -124,7 +124,7 @@ void SHAPrintContext(SHA1_CTX *context, char *msg){
 #endif /* VERBOSE */
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
-void SHA1_Transform(unsigned state[5], const unsigned char buffer[64])
+void _SHA1_Transform(unsigned state[5], const unsigned char buffer[64])
 {
     unsigned a, b, c, d, e;
     typedef union {
@@ -183,7 +183,7 @@ void SHA1_Transform(unsigned state[5], const unsigned char buffer[64])
 
 
 /* SHA1Init - Initialize new context */
-void SHA1_Init(SHA1_CTX* context)
+void _SHA1_Init(SHA1_CTX* context)
 {
     /* SHA1 initialization constants */
     context->state[0] = 0x67452301;
@@ -196,12 +196,12 @@ void SHA1_Init(SHA1_CTX* context)
 
 
 /* Run your data through this. */
-void SHA1_Update(SHA1_CTX* context, const unsigned char* data, const size_t len)
+void _SHA1_Update(SHA1_CTX* context, const unsigned char* data, const size_t len)
 {
     size_t i, j;
 
 #ifdef VERBOSE
-    SHAPrintContext(context, "before");
+    _SHAPrintContext(context, "before");
 #endif
 
     j = (context->count[0] >> 3) & 63;
@@ -209,9 +209,9 @@ void SHA1_Update(SHA1_CTX* context, const unsigned char* data, const size_t len)
     context->count[1] += (len >> 29);
     if ((j + len) > 63) {
         memcpy(&context->buffer[j], data, (i = 64-j));
-        SHA1_Transform(context->state, context->buffer);
+        _SHA1_Transform(context->state, context->buffer);
         for ( ; i + 63 < len; i += 64) {
-            SHA1_Transform(context->state, data + i);
+            _SHA1_Transform(context->state, data + i);
         }
         j = 0;
     }
@@ -219,13 +219,13 @@ void SHA1_Update(SHA1_CTX* context, const unsigned char* data, const size_t len)
     memcpy(&context->buffer[j], &data[i], len - i);
 
 #ifdef VERBOSE
-    SHAPrintContext(context, "after ");
+    _SHAPrintContext(context, "after ");
 #endif
 }
 
 
 /* Add padding and return the message digest. */
-void SHA1_Final(SHA1_CTX* context, unsigned char digest[SHA1_DIGEST_SIZE])
+void _SHA1_Final(SHA1_CTX* context, unsigned char digest[SHA1_DIGEST_SIZE])
 {
     unsigned i;
     unsigned char  finalcount[8];
@@ -234,11 +234,11 @@ void SHA1_Final(SHA1_CTX* context, unsigned char digest[SHA1_DIGEST_SIZE])
         finalcount[i] = (unsigned char)((context->count[(i >= 4 ? 0 : 1)]
          >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
     }
-    SHA1_Update(context, (unsigned char *)"\200", 1);
+    _SHA1_Update(context, (unsigned char *)"\200", 1);
     while ((context->count[0] & 504) != 448) {
-        SHA1_Update(context, (unsigned char *)"\0", 1);
+        _SHA1_Update(context, (unsigned char *)"\0", 1);
     }
-    SHA1_Update(context, finalcount, 8);  /* Should cause a SHA1_Transform() */
+    _SHA1_Update(context, finalcount, 8);  /* Should cause a SHA1_Transform() */
     for (i = 0; i < SHA1_DIGEST_SIZE; i++) {
         digest[i] = (unsigned char)
          ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
@@ -252,7 +252,7 @@ void SHA1_Final(SHA1_CTX* context, unsigned char digest[SHA1_DIGEST_SIZE])
     memset(finalcount, 0, 8);	/* SWR */
 
 #ifdef SHA1HANDSOFF  /* make SHA1Transform overwrite its own static vars */
-    SHA1_Transform(context->state, context->buffer);
+    _SHA1_Transform(context->state, context->buffer);
 #endif
 }
 

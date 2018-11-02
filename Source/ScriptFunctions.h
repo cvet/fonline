@@ -167,10 +167,10 @@ static void Global_Yield( uint time )
 static string Global_SHA1( string text )
 {
     SHA1_CTX ctx;
-    SHA1_Init( &ctx );
-    SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
+    _SHA1_Init( &ctx );
+    _SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
     uchar digest[ SHA1_DIGEST_SIZE ];
-    SHA1_Final( &ctx, digest );
+    _SHA1_Final( &ctx, digest );
 
     static const char* nums = "0123456789abcdef";
     char               hex_digest[ SHA1_DIGEST_SIZE * 2 ];
