@@ -39,12 +39,6 @@ cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$
 make -j4
 cd ../
 
-mkdir -p release_secured
-cd release_secured
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_SECURED_WEB_SOCKETS "$SOURCE_FULL_PATH/Source"
-make -j4
-cd ../
-
 mkdir -p debug
 cd debug
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$SOURCE_FULL_PATH/Source"
