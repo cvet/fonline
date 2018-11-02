@@ -1,7 +1,7 @@
 # FOnline Engine
 
-## Give, and it will be given to you.
-## And don't use drugs!
+Before clone make sure that you install Git LFS
+https://git-lfs.github.com/
 
 ## Help and support
-- [Official FOnline forum](https://fonline.ru/).
+- [Official FOnline forum](https://fonline.ru/)
