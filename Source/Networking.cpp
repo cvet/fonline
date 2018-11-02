@@ -1,4 +1,5 @@
 #include "Networking.h"
+#include <stdexcept>
 
 #define ASIO_STANDALONE
 #include "asio.hpp"
@@ -512,7 +513,7 @@ NetServerBase* NetServerBase::StartSecuredWebSocketsServer( ushort port, string 
     try
     {
         StrVec keys = _str( wss_credentials ).split( ' ' );
-        if( keys.size() != 2 ) throw std::exception( "Invalid 'WssCredentials' option" );
+        if( keys.size() != 2 ) throw std::runtime_error( "Invalid 'WssCredentials' option" );
 
         return new NetTlsWebSocketsServer( port, keys[ 0 ], keys[ 1 ], callback );
     }
