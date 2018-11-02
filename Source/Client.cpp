@@ -295,7 +295,7 @@ bool FOClient::PostInit()
 
     // Clean up previous data
     SAFEREL( SomeItem );
-    SAFEDEL( Globals );
+    SAFEREL( Globals );
     SAFEREL( ScriptFunc.ClientCurMap );
     SAFEREL( ScriptFunc.ClientCurLocation );
     ProtoMngr.ClearProtos();
