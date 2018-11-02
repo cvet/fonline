@@ -1395,7 +1395,7 @@ bool FOClient::CheckSocketStatus( bool for_write )
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
-    int is_secured = EM_ASM_INT( "return (('document' in globals && document.location.protocol == 'https:') ? 1 : 0);" );
+    int is_secured = EM_ASM_INT( "return (('window' in globals && window.location.protocol == 'https:') ? 1 : 0);" );
     if( !is_secured )
     {
         port += 1;
