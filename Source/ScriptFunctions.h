@@ -226,7 +226,7 @@ static void PrintLog( string& log, bool last_call, std::function< void(const str
 
 static int SystemCall( string command, std::function< void(const string&) > log_callback )
 {
-    #ifdef FO_WINDOWS
+    #if defined( FO_WINDOWS )
     HANDLE              out_read = nullptr;
     HANDLE              out_write = nullptr;
     SECURITY_ATTRIBUTES sa;
@@ -292,7 +292,7 @@ static int SystemCall( string command, std::function< void(const string&) > log_
     CloseHandle( pi.hThread );
     return (int) retval;
 
-    #else
+    #elif !defined( FO_WEB )
     FILE* in = popen( command.c_str(), "r" );
     if( !in )
         return -1;

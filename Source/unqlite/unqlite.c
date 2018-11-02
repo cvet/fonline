@@ -40454,7 +40454,7 @@ static int UnixVfs_Chgrp(const char *zPath, const char *zGroup)
   struct group *group;
   gid_t gid;
   int rc;
-  group = getgrnam(zGroup);
+  group = 0; // Patch for Web getgrnam(zGroup);
   if (group == 0) {
     return -1;
   }
