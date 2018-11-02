@@ -54,11 +54,13 @@ public:
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
     StrVec                GetCustomEntityTypes();
-    bool                  RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );
-    void*                 FindInternalEvent( const string& event_name );
-    bool                  RaiseInternalEvent( void* event_ptr, va_list args );
-    void                  RemoveEventsEntity( Entity* entity );
-    void                  HandleRpc( void* context );
+    #ifdef FONLINE_SERVER
+    bool RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );
+    #endif
+    void* FindInternalEvent( const string& event_name );
+    bool  RaiseInternalEvent( void* event_ptr, va_list args );
+    void  RemoveEventsEntity( Entity* entity );
+    void  HandleRpc( void* context );
 };
 
 #endif // __SCRIPT_PRAGMAS__

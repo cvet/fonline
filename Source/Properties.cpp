@@ -3,7 +3,9 @@
 #include "Entity.h"
 #include "IniParser.h"
 #include "Script.h"
-#include "DataBase.h"
+#ifdef FONLINE_SERVER
+# include "DataBase.h"
+#endif
 
 NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
 
@@ -1724,6 +1726,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
     }
 }
 
+#ifdef FONLINE_SERVER
 DataBase::Document Properties::SaveToDbDocument( Properties* base )
 {
     RUNTIME_ASSERT( !base || registrator == base->registrator );
@@ -1837,7 +1840,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 continue;
             }
 
-            #define PARSE_VALUE( t )                                      \
+            # define PARSE_VALUE( t )                                     \
                 do                                                        \
                 {                                                         \
                     if( prop->asObjTypeId == asTYPEID_INT8 )              \
@@ -1879,7 +1882,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
             else
                 RUNTIME_ASSERT( !"Unreachable place" );
 
-            #undef PARSE_VALUE
+            # undef PARSE_VALUE
 
             prop->SetPropRawData( this, pod_data, prop->baseSize );
         }
@@ -1970,7 +1973,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 uchar* data = new uchar[ data_size ];
                 int arr_element_index = arr[ 0 ].which();
 
-                #define PARSE_VALUE( t )                                                           \
+                # define PARSE_VALUE( t )                                                          \
                     do                                                                             \
                     {                                                                              \
                         for( size_t i = 0; i < arr.size(); i++ )                                   \
@@ -2014,7 +2017,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 else
                     RUNTIME_ASSERT( !"Unreachable place" );
 
-                #undef PARSE_VALUE
+                # undef PARSE_VALUE
 
                 prop->SetPropRawData( this, data, data_size );
                 delete[] data;
@@ -2299,7 +2302,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                     {
                         for( auto& e : arr )
                         {
-                            #define PARSE_VALUE( t )                                        \
+                            # define PARSE_VALUE( t )                                       \
                                 do                                                          \
                                 {                                                           \
                                     RUNTIME_ASSERT( sizeof( t ) == arr_element_size );      \
@@ -2340,7 +2343,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                             else
                                 RUNTIME_ASSERT( !"Unreachable place" );
 
-                            #undef PARSE_VALUE
+                            # undef PARSE_VALUE
 
                             data_pos += arr_element_size;
                         }
@@ -2363,7 +2366,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 {
                     RUNTIME_ASSERT( !( value_element_type_id & asTYPEID_MASK_OBJECT ) );
 
-                    #define PARSE_VALUE( t )                                                \
+                    # define PARSE_VALUE( t )                                               \
                         do                                                                  \
                         {                                                                   \
                             RUNTIME_ASSERT( sizeof( t ) == value_element_size );            \
@@ -2406,7 +2409,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                     else
                         *(int*) ( data + data_pos ) = Script::GetEnumValue( value_element_type_name, kv.second.get< string >(), is_error );
 
-                    #undef PARSE_VALUE
+                    # undef PARSE_VALUE
 
                     data_pos += value_element_size;
                 }
@@ -2442,8 +2445,8 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
         if( prop->isHash || prop->isResource )
             return _str().parseHash( *(hash*) &podData[ prop->podDataOffset ] ).str();
 
-        #define PARSE_VALUE( as_t, t, ret_t ) \
-            if( prop->asObjTypeId == as_t )   \
+        # define PARSE_VALUE( as_t, t, ret_t ) \
+            if( prop->asObjTypeId == as_t )    \
                 return (ret_t) *(t*) &podData[ prop->podDataOffset ];
 
         PARSE_VALUE( asTYPEID_INT8, char, int );
@@ -2458,7 +2461,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
         PARSE_VALUE( asTYPEID_DOUBLE, double, double );
         PARSE_VALUE( asTYPEID_BOOL, bool, bool );
 
-        #undef PARSE_VALUE
+        # undef PARSE_VALUE
 
         return Script::GetEnumValueName( prop->asObjType->GetName(), *(int*) &podData[ prop->podDataOffset ] );
     }
@@ -2724,6 +2727,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
     }
     return DataBase::Value();
 }
+#endif
 
 bool Properties::LoadPropertyFromText( Property* prop, const string& text )
 {

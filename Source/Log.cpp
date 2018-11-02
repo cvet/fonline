@@ -51,7 +51,7 @@ void LogToFunc( LogFunc func, bool enable )
         size_t index = 0;
         for( auto& f : LogFunctions )
         {
-            if( f.target< LogFunc >() == func.target< LogFunc >() )
+            if( f.target_type() == func.target_type() )
             {
                 LogFunctions.erase( LogFunctions.begin() + index );
                 break;
