@@ -1396,6 +1396,9 @@ bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
     port++;
+    # ifdef SECURED_WEB_SOCKETS
+    port++;
+    # endif
     #endif
 
     WriteLog( "Connecting to server '{}:{}'.\n", host, port );

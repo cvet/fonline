@@ -14,6 +14,7 @@ uint                      FOServer::UpdateLastTick;
 ClVec                     FOServer::LogClients;
 NetServerBase*            FOServer::TcpServer;
 NetServerBase*            FOServer::WebSocketsServer;
+NetServerBase*            FOServer::SecuredWebSocketsServer;
 ClVec                     FOServer::ConnectedClients;
 Mutex                     FOServer::ConnectedClientsLocker;
 FOServer::Statistics_     FOServer::Statistics;
@@ -84,6 +85,7 @@ void FOServer::Finish()
     // Shutdown servers
     SAFEDEL( TcpServer );
     SAFEDEL( WebSocketsServer );
+    SAFEDEL( SecuredWebSocketsServer );
 
     // Managers
     DlgMngr.Finish();
@@ -1911,14 +1913,24 @@ bool FOServer::InitReal()
 
     // Net
     ushort port = MainConfig->GetInt( "", "Port", 4000 );
-    WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
+    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
+
+    if( wss_credentials.empty() )
+        WriteLog( "Starting server on ports {} and {}.\n", port, port + 1 );
+    else
+        WriteLog( "Starting server on ports {}, {} and {}.\n", port, port + 1, port + 2 );
 
     if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
         return false;
 
-    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
-    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, wss_credentials, FOServer::OnNewConnection ) ) )
+    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, FOServer::OnNewConnection ) ) )
         return false;
+
+    if( !wss_credentials.empty() )
+    {
+        if( !( SecuredWebSocketsServer = NetServerBase::StartSecuredWebSocketsServer( port + 2, wss_credentials, FOServer::OnNewConnection ) ) )
+            return false;
+    }
 
     // Script timeouts
     Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );
