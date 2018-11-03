@@ -14,7 +14,7 @@ static void ClientEntry( void* )
     {
         #ifdef FO_WEB
         // Wait file system synchronization
-        if( emscripten_run_script_int( "Module.syncfsDone" ) != 1 )
+        if( EM_ASM_INT( return Module.syncfsDone ) != 1 )
             return;
         #endif
 

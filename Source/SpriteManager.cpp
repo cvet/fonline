@@ -148,7 +148,7 @@ bool SpriteManager::Init()
     attr.alpha = EM_FALSE;
     attr.depth = EM_FALSE;
     attr.stencil = EM_FALSE;
-    attr.antialias = EM_TRUE;
+    attr.antialias = EM_FALSE;
     attr.premultipliedAlpha = EM_TRUE;
     attr.preserveDrawingBuffer = EM_FALSE;
     attr.preferLowPowerToHighPerformance = EM_FALSE;
@@ -250,7 +250,7 @@ bool SpriteManager::Init()
     OGL_texture_multisample = true;
     # endif
     # ifdef FO_WEB
-    OGL_vertex_array_object = emscripten_webgl_enable_extension( emscripten_webgl_get_current_context(), "OES_vertex_array_object" ) != 0;
+    OGL_vertex_array_object = emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE;
     # endif
     #endif
 
