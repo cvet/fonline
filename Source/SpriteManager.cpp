@@ -143,6 +143,20 @@ bool SpriteManager::Init()
     #else
     EM_ASM( GLctxIsOnParentThread = true );
 
+    int    screen_w = EM_ASM_INT( return screen.width );
+    int    screen_h = EM_ASM_INT( return screen.height );
+    double pixel_ratio = emscripten_get_device_pixel_ratio();
+    if( pixel_ratio < 0.99 || pixel_ratio > 1.01 )
+    {
+        double w = (double) screen_w * pixel_ratio;
+        double h = (double) screen_h * pixel_ratio;
+        emscripten_set_canvas_size( (int) w, (int) h );
+    }
+    else
+    {
+        emscripten_set_canvas_size( screen_w, screen_h );
+    }
+
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
     attr.alpha = EM_FALSE;

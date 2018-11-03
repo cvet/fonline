@@ -48,10 +48,12 @@ uint Timer::FastTick()
 
 double Timer::AccurateTick()
 {
-    #ifdef FO_WINDOWS
+    #if defined ( FO_WINDOWS )
     int64 qpc_value;
     QueryPerformanceCounter( (LARGE_INTEGER*) &qpc_value );
     return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 ) - InitialAccurateTick;
+    #elif defined ( FO_WEB )
+    return emscripten_get_now() / 1000.0;
     #else
     struct timeval tv;
     gettimeofday( &tv, nullptr );
