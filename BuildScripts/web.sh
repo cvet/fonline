@@ -5,7 +5,7 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-if [ -n "$FO_INSTALL_PACKAGES" ]; then
+if [[ $FO_INSTALL_PACKAGES -eq 1 ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
 	sudo apt-get -y install cmake

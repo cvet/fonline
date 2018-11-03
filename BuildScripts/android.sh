@@ -8,7 +8,7 @@ export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
-if [ -n "$FO_INSTALL_PACKAGES" ]; then
+if [[ $FO_INSTALL_PACKAGES -eq 1 ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
 	sudo apt-get -y install cmake
@@ -27,9 +27,9 @@ rm -rf Android/*
 cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
-	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip" 
+	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
 	unzip "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
-	wget "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip" 
+	wget "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
 	mkdir -p sdk
 	unzip "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
 fi
