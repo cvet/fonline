@@ -33,6 +33,7 @@
 
 #if defined ( FO_WEB )
 # include <emscripten.h>
+# include <emscripten/html5.h>
 #endif
 
 #if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WEB )
