@@ -69,6 +69,8 @@ bool isAligned(const void* const pointer, asUINT alignment);
 
 // We don't overload the new operator as that would affect the application as well
 
+typedef void *(*asALLOCFUNCDEBUG_t)(size_t, const char *, unsigned int);
+
 #ifndef AS_DEBUG
 
 	#define asNEW(x)        new(userAlloc(sizeof(x))) x
@@ -83,8 +85,6 @@ bool isAligned(const void* const pointer, asUINT alignment);
 #endif
 
 #else
-
-	typedef void *(*asALLOCFUNCDEBUG_t)(size_t, const char *, unsigned int);
 
 	#define asNEW(x)        new(((asALLOCFUNCDEBUG_t)(userAlloc))(sizeof(x), __FILE__, __LINE__)) x
 	#define asDELETE(ptr,x) {void *tmp = ptr; (ptr)->~x(); userFree(tmp);}
