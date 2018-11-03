@@ -665,7 +665,7 @@ int  asCDataType::GetAlignment() const
 		return 4; //Default alignment
 	}
 
-	return typeInfo->alignment;
+	return 4; // Patch typeInfo->alignment;
 }
 #endif
 

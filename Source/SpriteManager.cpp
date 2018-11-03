@@ -264,7 +264,8 @@ bool SpriteManager::Init()
     OGL_texture_multisample = true;
     # endif
     # ifdef FO_WEB
-    OGL_vertex_array_object = emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE;
+    OGL_vertex_array_object = ( attr.majorVersion > 1 ||
+                                emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE );
     # endif
     #endif
 

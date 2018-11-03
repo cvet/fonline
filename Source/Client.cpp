@@ -1404,15 +1404,17 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         port += 1;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'ws://' );
+        WriteLog( "Connecting to server 'ws://{}:{}'.\n", host, port );
     }
     else
     {
         port += 2;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'wss://' );
+        WriteLog( "Connecting to server 'wss://{}:{}'.\n", host, port );
     }
-    #endif
-
+    #else
     WriteLog( "Connecting to server '{}:{}'.\n", host, port );
+    #endif
 
     IsConnecting = false;
     IsConnected = false;
