@@ -73,7 +73,7 @@ bool SpriteManager::Init()
     curDrawQuad = 0;
 
     // Detect tablets
-    #if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WINDOWS )
+    #ifndef FO_WEB
     bool is_tablet = false;
     # if defined ( FO_IOS ) || defined ( FO_ANDROID )
     is_tablet = true;

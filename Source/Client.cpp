@@ -1403,12 +1403,12 @@ bool FOClient::NetConnect( const char* host, ushort port )
     if( !is_secured )
     {
         port += 1;
-        EM_ASM( { Module[ 'websocket' ] = { url: 'ws://', subprotocol: 'binary' } } );
+        EM_ASM( Module[ 'websocket' ][ 'url' ] = 'ws://' );
     }
     else
     {
         port += 2;
-        EM_ASM( { Module[ 'websocket' ] = { url: 'wss://', subprotocol: 'binary' } } );
+        EM_ASM( Module[ 'websocket' ][ 'url' ] = 'wss://' );
     }
     #endif
 
