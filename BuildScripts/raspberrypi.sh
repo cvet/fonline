@@ -5,11 +5,13 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-#sudo apt-get -y update || true
-#sudo apt-get -y install build-essential
-#sudo apt-get -y install cmake
-#sudo apt-get -y install wput
-#sudo apt-get -y install git
+if [ -n "$FO_INSTALL_PACKAGES" ]; then
+	#sudo apt-get -y update || true
+	#sudo apt-get -y install build-essential
+	#sudo apt-get -y install cmake
+	#sudo apt-get -y install wput
+	#sudo apt-get -y install git
+fi
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST

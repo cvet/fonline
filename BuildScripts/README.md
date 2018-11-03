@@ -30,6 +30,11 @@ Path to directory where binary files will be copied after build.
  
 `FO_COPY_DEST=C:\FONLINE-COPY`
 
+### Optional: FO_INSTALL_PACKAGES
+Automatically install packages needed for build.
+ 
+`FO_INSTALL_PACKAGES=1`
+
 ### Optional: GoCD
 Additional documentation describing integratation with GoCD continuous delivery system can be found here: [GoCD documentation](https://docs.gocd.org/).
 

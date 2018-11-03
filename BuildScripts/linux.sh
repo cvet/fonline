@@ -5,15 +5,17 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-sudo apt-get -y update || true
-sudo apt-get -y install build-essential
-sudo apt-get -y install cmake
-sudo apt-get -y install wput
-sudo apt-get -y install libx11-dev
-sudo apt-get -y install freeglut3-dev
-sudo apt-get -y install libssl-dev
-sudo apt-get -y install libevent-dev
-sudo apt-get -y install libxi-dev
+if [ -n "$FO_INSTALL_PACKAGES" ]; then
+	sudo apt-get -y update || true
+	sudo apt-get -y install build-essential
+	sudo apt-get -y install cmake
+	sudo apt-get -y install wput
+	sudo apt-get -y install libx11-dev
+	sudo apt-get -y install freeglut3-dev
+	sudo apt-get -y install libssl-dev
+	sudo apt-get -y install libevent-dev
+	sudo apt-get -y install libxi-dev
+fi
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
@@ -31,13 +33,15 @@ make -j4
 cd ../
 
 # x86
-sudo apt-get -y install gcc-multilib
-sudo apt-get -y install g++-multilib
-sudo apt-get -y install libx11-dev:i386
-sudo apt-get -y install freeglut3-dev:i386
-sudo apt-get -y install libssl-dev:i386
-sudo apt-get -y install libevent-dev:i386
-sudo apt-get -y install libxi-dev:i386
+if [ -n "$FO_INSTALL_PACKAGES" ]; then
+	sudo apt-get -y install gcc-multilib
+	sudo apt-get -y install g++-multilib
+	sudo apt-get -y install libx11-dev:i386
+	sudo apt-get -y install freeglut3-dev:i386
+	sudo apt-get -y install libssl-dev:i386
+	sudo apt-get -y install libevent-dev:i386
+	sudo apt-get -y install libxi-dev:i386
+fi
 
 mkdir -p x86
 cd x86
