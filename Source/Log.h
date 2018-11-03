@@ -13,7 +13,7 @@ inline void WriteLog( const string& message, Args ... args ) { WriteLogMessage( 
 // Control
 void LogWithoutTimestamp();
 void LogToFile( const string& fname );
-void LogToFunc( LogFunc func, bool enable );
+void LogToFunc( const string& key, LogFunc func, bool enable );
 void LogToBuffer( bool enable );
 void LogGetBuffer( string& buf );
 

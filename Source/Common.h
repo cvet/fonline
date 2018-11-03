@@ -265,13 +265,11 @@ extern bool OGL_vertex_array_object;
 extern bool OGL_get_program_binary;
 # define GL_HAS( extension )    ( OGL_ ## extension )
 
-extern SDL_Window*   MainWindow;
-extern SDL_GLContext GLContext;
-extern IntVec        MainWindowKeyboardEvents;
-extern StrVec        MainWindowKeyboardEventsText;
-extern IntVec        MainWindowMouseEvents;
+extern IntVec MainWindowKeyboardEvents;
+extern StrVec MainWindowKeyboardEventsText;
+extern IntVec MainWindowMouseEvents;
 
-const uchar          SELECT_ALPHA    = 100;
+const uchar   SELECT_ALPHA    = 100;
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();

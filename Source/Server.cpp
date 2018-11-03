@@ -68,7 +68,7 @@ void FOServer::Finish()
         DbHistory->CommitChanges();
 
     // Logging clients
-    LogToFunc( FOServer::LogToClients, false );
+    LogToFunc( "LogToClients", FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
@@ -829,9 +829,9 @@ void FOServer::Process_Text( Client* cl )
 
 void FOServer::Process_Command( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
-    LogToFunc( logcb, true );
+    LogToFunc( "Process_Command", logcb, true );
     Process_CommandReal( buf, logcb, cl_, admin_panel );
-    LogToFunc( logcb, false );
+    LogToFunc( "Process_Command", logcb, false );
 }
 
 void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
@@ -1597,7 +1597,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             return;
         }
 
-        LogToFunc( FOServer::LogToClients, false );
+        LogToFunc( "LogToClients", FOServer::LogToClients, false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
@@ -1619,7 +1619,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             LogClients.clear();
         }
         if( !LogClients.empty() )
-            LogToFunc( FOServer::LogToClients, true );
+            LogToFunc( "LogToClients", FOServer::LogToClients, true );
     }
     break;
     case CMD_DEV_EXEC:
@@ -2106,7 +2106,7 @@ void FOServer::LogToClients( const string& str )
             }
         }
         if( LogClients.empty() )
-            LogToFunc( FOServer::LogToClients, false );
+            LogToFunc( "LogToClients", FOServer::LogToClients, false );
     }
 }
 
