@@ -179,7 +179,7 @@ bool SpriteManager::Init()
     }
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( WebGlContext );
-    if( r <= 0 )
+    if( r != 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", r );
         return false;
