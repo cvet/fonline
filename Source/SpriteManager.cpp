@@ -141,9 +141,11 @@ bool SpriteManager::Init()
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
     #else
+    EM_ASM( GLctxIsOnParentThread = true );
+
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
-    attr.alpha = EM_TRUE;
+    attr.alpha = EM_FALSE;
     attr.depth = EM_FALSE;
     attr.stencil = EM_FALSE;
     attr.antialias = EM_TRUE;
@@ -179,7 +181,7 @@ bool SpriteManager::Init()
     }
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( WebGlContext );
-    if( r != 0 )
+    if( r < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", r );
         return false;
