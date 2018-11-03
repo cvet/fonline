@@ -1,7 +1,6 @@
 #include "Crypt.h"
 #include "zlib.h"
 #include "SHA/sha2.h"
-#include "unqlite.h"
 #include "FileManager.h"
 
 CryptManager Crypt;
@@ -276,6 +275,9 @@ bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
     return true;
 }
 
+#ifndef FO_WEB
+# include "unqlite.h"
+
 static unqlite* CacheDb;
 
 bool CryptManager::InitCache()
@@ -416,3 +418,118 @@ bool CryptManager::GetCache( const string& data_name, UCharVec& data )
     SAFEDELA( result );
     return true;
 }
+
+#else
+# include "FileSystem.h"
+
+static string MakeCachePath( const string& data_name )
+{
+    return FileManager::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
+}
+
+bool CryptManager::InitCache()
+{
+    return true;
+}
+
+bool CryptManager::IsCache( const string& data_name )
+{
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, false );
+    bool   exists = ( f != nullptr );
+    FileClose( f );
+    return exists;
+}
+
+void CryptManager::EraseCache( const string& data_name )
+{
+    string path = MakeCachePath( data_name );
+    FileDelete( path );
+}
+
+void CryptManager::SetCache( const string& data_name, const uchar* data, uint data_len )
+{
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, true );
+    if( !f )
+    {
+        WriteLog( "Can't open write cache at '{}'.\n", path );
+        return;
+    }
+
+    if( !FileWrite( f, data, data_len ) )
+    {
+        WriteLog( "Can't write cache to '{}'.\n", path );
+        FileClose( f );
+        FileDelete( path );
+        return;
+    }
+
+    FileClose( f );
+}
+
+void CryptManager::SetCache( const string& data_name, const string& str )
+{
+    SetCache( data_name, !str.empty() ? (uchar*) str.c_str() : (uchar*) "", (uint) str.length() );
+}
+
+void CryptManager::SetCache( const string& data_name, UCharVec& data )
+{
+    SetCache( data_name, !data.empty() ? (uchar*) &data[ 0 ] : (uchar*) "", (uint) data.size() );
+}
+
+uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
+{
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, false );
+    if( !f )
+        return nullptr;
+
+    data_len = FileGetSize( f );
+    uchar* data = new uchar[ data_len ];
+
+    if( !FileRead( f, data, data_len ) )
+    {
+        WriteLog( "Can't read cache from '{}'.\n", path );
+        SAFEDELA( data );
+        data_len = 0;
+        FileClose( f );
+        return nullptr;
+    }
+
+    FileClose( f );
+    return data;
+}
+
+string CryptManager::GetCache( const string& data_name )
+{
+    string str;
+    uint   result_len;
+    uchar* result = GetCache( data_name, result_len );
+    if( !result )
+        return str;
+
+    if( result_len )
+    {
+        str.resize( result_len );
+        memcpy( &str[ 0 ], result, result_len );
+    }
+    SAFEDELA( result );
+    return str;
+}
+
+bool CryptManager::GetCache( const string& data_name, UCharVec& data )
+{
+    data.clear();
+    uint   result_len;
+    uchar* result = GetCache( data_name, result_len );
+    if( !result )
+        return false;
+
+    data.resize( result_len );
+    if( result_len )
+        memcpy( &data[ 0 ], result, result_len );
+    SAFEDELA( result );
+    return true;
+}
+#endif

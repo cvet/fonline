@@ -14,6 +14,7 @@ uint                      FOServer::UpdateLastTick;
 ClVec                     FOServer::LogClients;
 NetServerBase*            FOServer::TcpServer;
 NetServerBase*            FOServer::WebSocketsServer;
+NetServerBase*            FOServer::SecuredWebSocketsServer;
 ClVec                     FOServer::ConnectedClients;
 Mutex                     FOServer::ConnectedClientsLocker;
 FOServer::Statistics_     FOServer::Statistics;
@@ -67,7 +68,7 @@ void FOServer::Finish()
         DbHistory->CommitChanges();
 
     // Logging clients
-    LogToFunc( FOServer::LogToClients, false );
+    LogToFunc( "LogToClients", FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
@@ -84,6 +85,7 @@ void FOServer::Finish()
     // Shutdown servers
     SAFEDEL( TcpServer );
     SAFEDEL( WebSocketsServer );
+    SAFEDEL( SecuredWebSocketsServer );
 
     // Managers
     DlgMngr.Finish();
@@ -827,9 +829,9 @@ void FOServer::Process_Text( Client* cl )
 
 void FOServer::Process_Command( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
-    LogToFunc( logcb, true );
+    LogToFunc( "Process_Command", logcb, true );
     Process_CommandReal( buf, logcb, cl_, admin_panel );
-    LogToFunc( logcb, false );
+    LogToFunc( "Process_Command", logcb, false );
 }
 
 void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
@@ -1595,7 +1597,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             return;
         }
 
-        LogToFunc( FOServer::LogToClients, false );
+        LogToFunc( "LogToClients", FOServer::LogToClients, false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
@@ -1617,7 +1619,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             LogClients.clear();
         }
         if( !LogClients.empty() )
-            LogToFunc( FOServer::LogToClients, true );
+            LogToFunc( "LogToClients", FOServer::LogToClients, true );
     }
     break;
     case CMD_DEV_EXEC:
@@ -1911,12 +1913,24 @@ bool FOServer::InitReal()
 
     // Net
     ushort port = MainConfig->GetInt( "", "Port", 4000 );
-    WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
+    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
+
+    if( wss_credentials.empty() )
+        WriteLog( "Starting server on ports {} and {}.\n", port, port + 1 );
+    else
+        WriteLog( "Starting server on ports {}, {} and {}.\n", port, port + 1, port + 2 );
 
     if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
         return false;
+
     if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, FOServer::OnNewConnection ) ) )
         return false;
+
+    if( !wss_credentials.empty() )
+    {
+        if( !( SecuredWebSocketsServer = NetServerBase::StartSecuredWebSocketsServer( port + 2, wss_credentials, FOServer::OnNewConnection ) ) )
+            return false;
+    }
 
     // Script timeouts
     Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );
@@ -2092,7 +2106,7 @@ void FOServer::LogToClients( const string& str )
             }
         }
         if( LogClients.empty() )
-            LogToFunc( FOServer::LogToClients, false );
+            LogToFunc( "LogToClients", FOServer::LogToClients, false );
     }
 }
 

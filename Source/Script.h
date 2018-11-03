@@ -101,7 +101,9 @@ public:
     static string GetProfilerStatistics();
 
     static StrVec GetCustomEntityTypes();
-    static bool   RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
+    #ifdef FONLINE_SERVER
+    static bool RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
+    #endif
 
     static void* FindInternalEvent( const string& event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );

@@ -934,11 +934,13 @@ StrVec Script::GetCustomEntityTypes()
     return edata->PragmaCB->GetCustomEntityTypes();
 }
 
+#ifdef FONLINE_SERVER
 bool Script::RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     return edata->PragmaCB->RestoreCustomEntity( type_name, id, doc );
 }
+#endif
 
 void* Script::FindInternalEvent( const string& event_name )
 {

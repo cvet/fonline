@@ -1,4 +1,5 @@
 #include "Networking.h"
+#include <stdexcept>
 
 #define ASIO_STANDALONE
 #include "asio.hpp"
@@ -8,9 +9,11 @@
 #define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_
 #define _WEBSOCKETPP_CPP11_MEMORY_
 #define _WEBSOCKETPP_CPP11_STL_
-#include "websocketpp/config/asio_no_tls.hpp"
+#include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
-typedef websocketpp::server< websocketpp::config::asio > web_sockets;
+using web_sockets_tls = websocketpp::server< websocketpp::config::asio_tls >;
+using web_sockets_no_tls = websocketpp::server< websocketpp::config::asio >;
+using ssl_context = websocketpp::lib::asio::ssl::context;
 
 static void* ZlibAlloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 static void  ZlibFree( void* opaque, void* address )                          { free( address ); }
@@ -299,12 +302,16 @@ public:
     }
 };
 
+template< typename web_sockets >
 class NetConnectionWS: public NetConnectionImpl
 {
-    web_sockets*                server;
-    web_sockets::connection_ptr connection;
+    using connection_ptr = typename web_sockets::connection_ptr;
+    using message_ptr = typename web_sockets::message_ptr;
 
-    void OnMessage( web_sockets::message_ptr msg )
+    web_sockets*   server;
+    connection_ptr connection;
+
+    void OnMessage( message_ptr msg )
     {
         const string& payload = msg->get_payload();
         RUNTIME_ASSERT( !payload.empty() );
@@ -349,7 +356,7 @@ class NetConnectionWS: public NetConnectionImpl
     }
 
 public:
-    NetConnectionWS( web_sockets* server, web_sockets::connection_ptr connection ): server( server ), connection( connection )
+    NetConnectionWS( web_sockets* server, connection_ptr connection ): server( server ), connection( connection )
     {
         const auto& address = connection->get_raw_socket().remote_endpoint().address();
         Ip = ( address.is_v4() ? address.to_v4().to_ulong() : uint( -1 ) );
@@ -369,10 +376,10 @@ public:
     }
 };
 
-class NetWebSocketsServer: public NetServerBase
+class NetNoTlsWebSocketsServer: public NetServerBase
 {
     std::function< void(NetConnection*) > connectionCallback;
-    web_sockets                           server;
+    web_sockets_no_tls                    server;
     std::thread                           runThread;
 
     void Run()
@@ -382,33 +389,93 @@ class NetWebSocketsServer: public NetServerBase
 
     void OnOpen( websocketpp::connection_hdl hdl )
     {
-        web_sockets::connection_ptr connection = server.get_con_from_hdl( hdl );
-        connectionCallback( new NetConnectionWS( &server, connection ) );
+        web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl( hdl );
+        connectionCallback( new NetConnectionWS< web_sockets_no_tls >( &server, connection ) );
     }
 
     bool OnValidate( websocketpp::connection_hdl hdl )
     {
-        web_sockets::connection_ptr connection = server.get_con_from_hdl( hdl );
-        std::error_code             error;
+        web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl( hdl );
+        std::error_code                    error;
         connection->select_subprotocol( "binary", error );
         return !error;
     }
 
 public:
-    NetWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
+    NetNoTlsWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
     {
         connectionCallback = callback;
 
         server.init_asio();
-        server.set_open_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
-        server.set_validate_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1 ) );
+        server.set_open_handler( websocketpp::lib::bind( &NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
+        server.set_validate_handler( websocketpp::lib::bind( &NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1 ) );
         server.listen( asio::ip::tcp::v6(), port );
         server.start_accept();
 
-        runThread = std::thread( &NetWebSocketsServer::Run, this );
+        runThread = std::thread( &NetNoTlsWebSocketsServer::Run, this );
     }
 
-    virtual ~NetWebSocketsServer() override
+    virtual ~NetNoTlsWebSocketsServer() override
+    {
+        server.stop();
+        runThread.join();
+    }
+};
+
+class NetTlsWebSocketsServer: public NetServerBase
+{
+    std::function< void(NetConnection*) > connectionCallback;
+    web_sockets_tls                       server;
+    std::thread                           runThread;
+    string                                privateKey;
+    string                                certificate;
+
+    void Run()
+    {
+        server.run();
+    }
+
+    void OnOpen( websocketpp::connection_hdl hdl )
+    {
+        web_sockets_tls::connection_ptr connection = server.get_con_from_hdl( hdl );
+        connectionCallback( new NetConnectionWS< web_sockets_tls >( &server, connection ) );
+    }
+
+    bool OnValidate( websocketpp::connection_hdl hdl )
+    {
+        web_sockets_tls::connection_ptr connection = server.get_con_from_hdl( hdl );
+        std::error_code                 error;
+        connection->select_subprotocol( "binary", error );
+        return !error;
+    }
+
+    websocketpp::lib::shared_ptr< ssl_context > OnTlsInit( websocketpp::connection_hdl hdl )
+    {
+        websocketpp::lib::shared_ptr< ssl_context > ctx( new ssl_context( ssl_context::tlsv1 ) );
+        ctx->set_options( ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use );
+        ctx->use_certificate_chain_file( certificate );
+        ctx->use_private_key_file( privateKey, ssl_context::pem );
+        return ctx;
+    }
+
+public:
+    NetTlsWebSocketsServer( ushort port, string private_key, string cert, std::function< void(NetConnection*) > callback )
+    {
+        connectionCallback = callback;
+        privateKey = private_key;
+        certificate = cert;
+
+        server.init_asio();
+        server.set_open_handler( websocketpp::lib::bind( &NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
+        server.set_validate_handler( websocketpp::lib::bind( &NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1 ) );
+        server.set_tls_init_handler( websocketpp::lib::bind( &NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1 ) );
+        server.listen( asio::ip::tcp::v6(), port );
+        server.start_accept();
+
+        runThread = std::thread( &NetTlsWebSocketsServer::Run, this );
+    }
+
+    virtual ~NetTlsWebSocketsServer() override
     {
         server.stop();
         runThread.join();
@@ -432,7 +499,23 @@ NetServerBase* NetServerBase::StartWebSocketsServer( ushort port, std::function<
 {
     try
     {
-        return new NetWebSocketsServer( port, callback );
+        return new NetNoTlsWebSocketsServer( port, callback );
+    }
+    catch( std::exception ex )
+    {
+        WriteLog( "Can't start Web sockets server: {}.\n", ex.what() );
+        return nullptr;
+    }
+}
+
+NetServerBase* NetServerBase::StartSecuredWebSocketsServer( ushort port, string wss_credentials, std::function< void(NetConnection*) > callback )
+{
+    try
+    {
+        StrVec keys = _str( wss_credentials ).split( ' ' );
+        if( keys.size() != 2 ) throw std::runtime_error( "Invalid 'WssCredentials' option" );
+
+        return new NetTlsWebSocketsServer( port, keys[ 0 ], keys[ 1 ], callback );
     }
     catch( std::exception ex )
     {

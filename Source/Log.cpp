@@ -9,13 +9,13 @@
 #endif
 
 #ifndef NO_THREADING
-static Mutex             LogLocker;
+static Mutex                  LogLocker;
 #endif
-static bool              LogDisableTimestamp;
-static void*             LogFileHandle;
-static vector< LogFunc > LogFunctions;
-static bool              LogFunctionsInProcess;
-static string*           LogBufferStr;
+static bool                   LogDisableTimestamp;
+static void*                  LogFileHandle;
+static map< string, LogFunc > LogFunctions;
+static bool                   LogFunctionsInProcess;
+static string*                LogBufferStr;
 
 void LogWithoutTimestamp()
 {
@@ -40,7 +40,7 @@ void LogToFile( const string& fname )
         LogFileHandle = FileOpen( fname, true, true );
 }
 
-void LogToFunc( LogFunc func, bool enable )
+void LogToFunc( const string& key, LogFunc func, bool enable )
 {
     #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
@@ -48,18 +48,10 @@ void LogToFunc( LogFunc func, bool enable )
 
     if( func )
     {
-        size_t index = 0;
-        for( auto& f : LogFunctions )
-        {
-            if( f.target< LogFunc >() == func.target< LogFunc >() )
-            {
-                LogFunctions.erase( LogFunctions.begin() + index );
-                break;
-            }
-            index++;
-        }
+        LogFunctions.erase( key );
+
         if( enable )
-            LogFunctions.push_back( func );
+            LogFunctions.insert( std::make_pair( key, func ) );
     }
     else if( !enable )
     {
@@ -121,8 +113,8 @@ void WriteLogMessage( const string& message )
     if( !LogFunctions.empty() )
     {
         LogFunctionsInProcess = true;
-        for( auto& func : LogFunctions )
-            func( result );
+        for( auto& kv : LogFunctions )
+            kv.second( result );
         LogFunctionsInProcess = false;
     }
 

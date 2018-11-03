@@ -743,11 +743,9 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
-SDL_Window*   MainWindow = nullptr;
-SDL_GLContext GLContext = nullptr;
-IntVec        MainWindowKeyboardEvents;
-StrVec        MainWindowKeyboardEventsText;
-IntVec        MainWindowMouseEvents;
+IntVec MainWindowKeyboardEvents;
+StrVec MainWindowKeyboardEventsText;
+IntVec MainWindowMouseEvents;
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light )
 {
@@ -1271,8 +1269,8 @@ GameOptions::GameOptions()
     AlwaysOnTop = false;
     TextDelay = 3000;
     DamageHitDelay = 0;
-    ScreenWidth = 800;
-    ScreenHeight = 600;
+    ScreenWidth = 1024;
+    ScreenHeight = 768;
     MultiSampling = -1;
     MouseScroll = true;
     DoubleClickTime = 0;
@@ -1368,8 +1366,8 @@ GameOptions::GameOptions()
     Random = &::Random;
     GetTick = &Timer::FastTick;
     SetLogCallback = [] ( void ( * func )( const char* ), bool enable ) {
-        LogToFunc([ func ] ( const string &s ) { func( s.c_str() );
-                  }, enable );
+        LogToFunc( "SetLogCallback", [ func ] ( const string &s ) { func( s.c_str() );
+                   }, enable );
     };
     AddPropertyCallback = &::AddPropertyCallback;
 }

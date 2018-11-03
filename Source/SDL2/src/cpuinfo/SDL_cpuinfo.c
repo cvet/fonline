@@ -69,6 +69,7 @@
 #ifndef HWCAP_NEON
 #define HWCAP_NEON (1 << 12)
 #endif
+#undef HAVE_GETAUXVAL // Patch, Android-21 don't have this stuff
 #if defined HAVE_GETAUXVAL
 #include <sys/auxv.h>
 #else

@@ -167,10 +167,10 @@ static void Global_Yield( uint time )
 static string Global_SHA1( string text )
 {
     SHA1_CTX ctx;
-    SHA1_Init( &ctx );
-    SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
+    _SHA1_Init( &ctx );
+    _SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
     uchar digest[ SHA1_DIGEST_SIZE ];
-    SHA1_Final( &ctx, digest );
+    _SHA1_Final( &ctx, digest );
 
     static const char* nums = "0123456789abcdef";
     char               hex_digest[ SHA1_DIGEST_SIZE * 2 ];
@@ -226,7 +226,7 @@ static void PrintLog( string& log, bool last_call, std::function< void(const str
 
 static int SystemCall( string command, std::function< void(const string&) > log_callback )
 {
-    #ifdef FO_WINDOWS
+    #if defined ( FO_WINDOWS )
     HANDLE              out_read = nullptr;
     HANDLE              out_write = nullptr;
     SECURITY_ATTRIBUTES sa;
@@ -292,7 +292,7 @@ static int SystemCall( string command, std::function< void(const string&) > log_
     CloseHandle( pi.hThread );
     return (int) retval;
 
-    #else
+    #elif !defined ( FO_WEB )
     FILE* in = popen( command.c_str(), "r" );
     if( !in )
         return -1;

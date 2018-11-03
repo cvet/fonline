@@ -30,6 +30,7 @@ public:
 
     static NetServerBase* StartTcpServer( ushort port, std::function< void(NetConnection*) > callback );
     static NetServerBase* StartWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback );
+    static NetServerBase* StartSecuredWebSocketsServer( ushort port, string wss_credentials, std::function< void(NetConnection*) > callback );
 };
 
 #endif // __NETWORKING__

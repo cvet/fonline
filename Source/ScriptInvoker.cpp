@@ -1,6 +1,5 @@
 #include "ScriptInvoker.h"
 #include "Script.h"
-
 #ifdef FONLINE_SERVER
 # include "DataBase.h"
 #endif

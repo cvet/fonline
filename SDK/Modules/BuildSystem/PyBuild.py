@@ -145,15 +145,15 @@ try:
 			os.makedirs(gameOutputPath)
 			shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/index.html')
 			shutil.copy(binariesPath + '/Web/FOnline.js', gameOutputPath + '/FOnline.js')
-			shutil.copy(binariesPath + '/Web/FOnline.js.mem', gameOutputPath + '/FOnline.js.mem')
+			shutil.copy(binariesPath + '/Web/FOnline.wasm', gameOutputPath + '/FOnline.wasm')
 			shutil.copy(binariesPath + '/Web/SimpleWebServer.py', gameOutputPath + '/SimpleWebServer.py')
-			patchConfig(gameOutputPath + '/FOnline.js.mem')
+			patchConfig(gameOutputPath + '/FOnline.wasm')
 			
 			# Debug version
 			shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/debug.html')
 			shutil.copy(binariesPath + '/Web/FOnline_Debug.js', gameOutputPath + '/FOnline_Debug.js')
-			shutil.copy(binariesPath + '/Web/FOnline_Debug.js.mem', gameOutputPath + '/FOnline_Debug.js.mem')
-			patchConfig(gameOutputPath + '/FOnline_Debug.js.mem')
+			shutil.copy(binariesPath + '/Web/FOnline_Debug.wasm', gameOutputPath + '/FOnline_Debug.wasm')
+			patchConfig(gameOutputPath + '/FOnline_Debug.wasm')
 			patchFile(gameOutputPath + '/debug.html', 'FOnline.js', 'FOnline_Debug.js')
 			
 			# Generate resources

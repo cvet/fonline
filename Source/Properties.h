@@ -2,7 +2,9 @@
 #define __PROPERTIES__
 
 #include "Common.h"
-#include "DataBase.h"
+#ifdef FONLINE_SERVER
+# include "DataBase.h"
+#endif
 
 #define PROPERTIES_HEADER()                                          \
     static PropertyRegistrator * PropertiesRegistrator;              \
@@ -204,17 +206,19 @@ public:
     Properties( PropertyRegistrator* reg );
     Properties( const Properties& other );
     ~Properties();
-    Properties&          operator=( const Properties& other );
-    Property*            FindByEnum( int enum_value );
-    void*                FindData( const string& property_name );
-    uint                 StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
-    void                 RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
-    void                 RestoreData( UCharVecVec& all_data );
-    bool                 LoadFromText( const StrMap& key_values );
-    void                 SaveToText( StrMap& key_values, Properties* base );
-    DataBase::Document   SaveToDbDocument( Properties* base );
-    bool                 LoadFromDbDocument( const DataBase::Document& doc );
-    DataBase::Value      SavePropertyToDbValue( Property* prop );
+    Properties& operator=( const Properties& other );
+    Property*   FindByEnum( int enum_value );
+    void*       FindData( const string& property_name );
+    uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
+    void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
+    void        RestoreData( UCharVecVec& all_data );
+    bool        LoadFromText( const StrMap& key_values );
+    void        SaveToText( StrMap& key_values, Properties* base );
+    #ifdef FONLINE_SERVER
+    DataBase::Document SaveToDbDocument( Properties* base );
+    bool               LoadFromDbDocument( const DataBase::Document& doc );
+    DataBase::Value    SavePropertyToDbValue( Property* prop );
+    #endif
     bool                 LoadPropertyFromText( Property* prop, const string& text );
     string               SavePropertyToText( Property* prop );
     static int           GetValueAsInt( Entity* entity, int enum_value );

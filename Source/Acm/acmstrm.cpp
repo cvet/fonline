@@ -90,51 +90,44 @@ CACMUnpacker::CACMUnpacker (unsigned char* file_buf, int file_len, int &channels
 	fileLen = file_len;
 	fileCur = 0;
 
-	try
-	{
-		bufferSize = 0x200;
-		availBytes = 0;
-		nextBits = 0;
-		availBits = 0;
+	bufferSize = 0x200;
+	availBytes = 0;
+	nextBits = 0;
+	availBits = 0;
 
-		if ((getBits (24) & 0xFFFFFF) != 0x032897) throw;
-		if ((getBits (8) & 0xFF) != 1) throw;
-		valsToGo = (getBits (16) & 0xFFFF);
-		valsToGo |= ((getBits (16) & 0xFFFF) << 16);
-		channels = getBits (16) & 0xFFFF;
-		frequency = getBits (16) & 0xFFFF;
-		samples = valsToGo;
+	if ((getBits (24) & 0xFFFFFF) != 0x032897) return;
+	if ((getBits (8) & 0xFF) != 1) return;
+	valsToGo = (getBits (16) & 0xFFFF);
+	valsToGo |= ((getBits (16) & 0xFFFF) << 16);
+	channels = getBits (16) & 0xFFFF;
+	frequency = getBits (16) & 0xFFFF;
+	samples = valsToGo;
 
-		packAttrs = getBits (4) & 0xF;
-		packAttrs2 = getBits (12) & 0xFFF;
+	packAttrs = getBits (4) & 0xF;
+	packAttrs2 = getBits (12) & 0xFFF;
 
-		someSize = 1 << packAttrs;
-		someSize2 = someSize * packAttrs2;
+	someSize = 1 << packAttrs;
+	someSize2 = someSize * packAttrs2;
 
-		int decBuf_size = 0;
-		if (packAttrs)
-			decBuf_size = 3*someSize / 2 - 2;
+	int decBuf_size = 0;
+	if (packAttrs)
+		decBuf_size = 3*someSize / 2 - 2;
 
-		blocks = 0x800 / someSize - 2;
-		if (blocks < 1) blocks = 1;
-		totBlSize = blocks * someSize;
+	blocks = 0x800 / someSize - 2;
+	if (blocks < 1) blocks = 1;
+	totBlSize = blocks * someSize;
 
-		if (decBuf_size) {
-			//decompBuff=new int[decBuf_size];
-			decompBuff = (int*)calloc (decBuf_size, sizeof(int));
-			if (!decompBuff) throw;
-		}
-
-		//someBuff = new int[someSize2];
-		someBuff = (int*)calloc (someSize2, sizeof(int));
-		if (!someBuff) throw;
-
-		valCnt = 0;
+	if (decBuf_size) {
+		//decompBuff=new int[decBuf_size];
+		decompBuff = (int*)calloc (decBuf_size, sizeof(int));
+		if (!decompBuff) return;
 	}
-	catch(...)
-	{
-		//CACMUnpacker::~CACMUnpacker();
-	}
+
+	//someBuff = new int[someSize2];
+	someBuff = (int*)calloc (someSize2, sizeof(int));
+	if (!someBuff) return;
+
+	valCnt = 0;
 }
 
 
