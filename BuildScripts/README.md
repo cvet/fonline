@@ -11,7 +11,7 @@ It is adviced to keep build directory outside of repository, and avoid in-source
 Additional documentation describing build process can be found here: [CMake documentation](https://cmake.org/documentation).
 
 ### Required: FO_SOURCE
-Path to FOnline sources directory.
+Path to root directory of FOnline repository.
 
 `FO_SOURCE=FOnlineSource`
 
@@ -21,7 +21,7 @@ Address of FTP server where binary files will be uploaded after build.
 `FO_FTP_DEST=127.0.0.1`
 
 ### Optional: FO_FTP_USER
-FTP user name and password, separated by colon. This variable is required if FO_FTP_DEST is set.
+FTP user name and password, separated by colon. This variable is required if **FO_FTP_DEST** is set.
 
 `FO_FTP_USER=user:password`
 
