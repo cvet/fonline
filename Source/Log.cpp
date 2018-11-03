@@ -113,8 +113,8 @@ void WriteLogMessage( const string& message )
     if( !LogFunctions.empty() )
     {
         LogFunctionsInProcess = true;
-        for( auto& func : LogFunctions )
-            func( result );
+        for( auto& kv : LogFunctions )
+            kv.second( result );
         LogFunctionsInProcess = false;
     }
 

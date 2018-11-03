@@ -184,6 +184,8 @@ bool SpriteManager::Init()
         WriteLog( "Can't set current context, error '{}'.\n", r );
         return false;
     }
+
+    emscripten_hide_mouse();
     #endif
 
     SDL_ShowCursor( 0 );

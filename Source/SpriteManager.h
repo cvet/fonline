@@ -7,11 +7,9 @@
 #include "Text.h"
 #include "3dStuff.h"
 #include "GraphicLoader.h"
-#ifdef FO_WEB
-# include <emscripten/html5.h>
-#endif
 
 #ifndef FO_WEB
+# include "SDL_video.h"
 extern SDL_Window*   MainWindow;
 extern SDL_GLContext GLContext;
 # define GL_SwapWindow()                 SDL_GL_SwapWindow( MainWindow )
@@ -24,6 +22,7 @@ extern SDL_GLContext GLContext;
 # define GL_EnableFullscreen()           ( !SDL_SetWindowFullscreen( MainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP ) )
 # define GL_DisableFullscreen()          ( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
 #else
+# include <emscripten/html5.h>
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
 # define GL_SwapWindow()                 emscripten_webgl_commit_frame()
 # define GL_GetWindowSize( w, h )        emscripten_webgl_get_drawing_buffer_size( WebGlContext, w, h )

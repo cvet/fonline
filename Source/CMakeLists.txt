@@ -102,7 +102,6 @@ elseif( EMSCRIPTEN )
 		# Uncomment these optimizations later, they may give side effects
 		# set( WEB_OPTIONS "${WEB_OPTIONS} --closure 1" )
 		# set( WEB_OPTIONS "${WEB_OPTIONS} --llvm-lto 1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s GL_STATE_CACHE=1" )
 		set( WEB_OPTIONS "${WEB_OPTIONS} -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['Pointer_stringify', 'intArrayFromString', 'UTF8ToString']\"" )
 	endif()
 	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${WEB_OPTIONS}" )
