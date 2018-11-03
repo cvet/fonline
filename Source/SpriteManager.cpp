@@ -10,6 +10,7 @@ SDL_Window*                     MainWindow;
 SDL_GLContext                   GLContext;
 #else
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
+int                             DummyInt;
 #endif
 
 SpriteManager SprMngr;
@@ -155,6 +156,14 @@ bool SpriteManager::Init()
         emscripten_set_canvas_size( GameOpt.ScreenWidth, GameOpt.ScreenHeight );
     }
 
+    EmscriptenFullscreenStrategy fullscreen_strategy;
+    fullscreen_strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT;
+    fullscreen_strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
+    fullscreen_strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR;
+    fullscreen_strategy.canvasResizedCallback = nullptr;
+    fullscreen_strategy.canvasResizedCallbackUserData = nullptr;
+    emscripten_request_fullscreen_strategy( nullptr, EM_TRUE, &fullscreen_strategy );
+
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
     attr.alpha = EM_FALSE;
@@ -171,12 +180,12 @@ bool SpriteManager::Init()
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    WebGlContext = emscripten_webgl_create_context( 0, &attr );
+    WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
     if( WebGlContext <= 0 )
     {
         attr.majorVersion = 1;
         attr.minorVersion = 0;
-        WebGlContext = emscripten_webgl_create_context( 0, &attr );
+        WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
         if( WebGlContext <= 0 )
         {
             WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) WebGlContext );

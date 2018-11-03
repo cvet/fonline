@@ -23,15 +23,16 @@ extern SDL_GLContext GLContext;
 # define GL_DisableFullscreen()          ( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
 #else
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
+extern int                             DummyInt;
 # define GL_SwapWindow()                 emscripten_webgl_commit_frame()
-# define GL_GetWindowSize( w, h )        emscripten_webgl_get_drawing_buffer_size( WebGlContext, w, h )
-# define GL_SetWindowSize( w, h )        (void) 0
+# define GL_GetWindowSize( w, h )        emscripten_get_canvas_size( w, h, &DummyInt )
+# define GL_SetWindowSize( w, h )        emscripten_set_canvas_size( w, h )
 # define GL_GetWindowPosition( x, y )    (void) 0
 # define GL_SetWindowPosition( x, y )    (void) 0
 # define GL_IsWindowFocused()            ( true )
 # define GL_MinimizeWindow()             (void) 0
-# define GL_EnableFullscreen()           ( emscripten_request_fullscreen( 0, true ) > 0 )
-# define GL_DisableFullscreen()          ( emscripten_exit_fullscreen() > 0 )
+# define GL_EnableFullscreen()           ( emscripten_request_fullscreen( nullptr, EM_TRUE ) >= 0 )
+# define GL_DisableFullscreen()          ( emscripten_exit_fullscreen() >= 0 )
 #endif
 
 // Font flags
