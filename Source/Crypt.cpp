@@ -427,6 +427,11 @@ static string MakeCachePath( const string& data_name )
     return FileManager::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
 }
 
+bool CryptManager::InitCache()
+{
+    return true;
+}
+
 bool CryptManager::IsCache( const string& data_name )
 {
     string path = MakeCachePath( data_name );
