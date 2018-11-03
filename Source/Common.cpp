@@ -1269,8 +1269,8 @@ GameOptions::GameOptions()
     AlwaysOnTop = false;
     TextDelay = 3000;
     DamageHitDelay = 0;
-    ScreenWidth = 800;
-    ScreenHeight = 600;
+    ScreenWidth = 1024;
+    ScreenHeight = 768;
     MultiSampling = -1;
     MouseScroll = true;
     DoubleClickTime = 0;
