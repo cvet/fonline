@@ -11,6 +11,7 @@ try:
 	for a in sys.argv:
 		print a
 	
+	curPath = os.path.dirname(sys.argv[0])
 	gameName = sys.argv[1]
 	binariesPath = sys.argv[2]
 	resourcesPath = sys.argv[3]
@@ -90,8 +91,69 @@ try:
 			# Zip
 			makeZip(targetOutputPath + '/' + gameName + '.zip', gameOutputPath)
 			
-			# Installer
-			pass
+			# MSI Installer
+			sys.path.insert(0, os.path.join(curPath, '_msicreator'))
+			import createmsi
+			import uuid
+
+			msiConfig = """ \
+			{
+				"upgrade_guid": "%s",
+				"version": "%s",
+				"product_name": "%s",
+				"manufacturer": "%s",
+				"name": "%s",
+				"name_base": "%s",
+				"comments": "%s",
+				"installdir": "%s",
+				"license_file": "%s",
+				"need_msvcrt": %s,
+				"arch": %s,
+				"parts":
+				[ {
+					 "id": "%s",
+					 "title": "%s",
+					 "description": "%s",
+					 "absent": "%s",
+					 "staged_dir": "%s"
+				} ]
+			}""" % (uuid.uuid3(uuid.NAMESPACE_OID, gameName), '1.0.0', \
+					gameName, 'Dream', gameName, gameName, 'The game', \
+					gameName, 'License.rtf', 'false', 32, \
+					gameName, gameName, 'MMORPG', 'disallow', gameName)
+
+			try:
+				cwd = os.getcwd()
+				wixBinPath = os.path.abspath(os.path.join(curPath, '_wix'))
+				wixTempPath = os.path.abspath(os.path.join(targetOutputPath, 'WixTemp'))
+				os.environ['WIX_TEMP'] = wixTempPath
+				os.makedirs(wixTempPath)
+				
+				shutil.copy(os.path.join(curPath, 'License.rtf'), \
+						os.path.join(targetOutputPath, 'License.rtf'))
+				
+				with open(os.path.join(targetOutputPath, 'MSI.json'), 'wt') as f:
+					f.write(msiConfig)
+				
+				os.chdir(targetOutputPath)
+				
+				msi = createmsi.PackageGenerator('MSI.json')
+				msi.generate_files()
+				msi.final_output = gameName + '.msi'
+				msi.args1 = ['-nologo', '-sw']
+				msi.args2 = ['-sf', '-spdb', '-sw', '-nologo']
+				msi.build_package(wixBinPath)
+				
+				shutil.rmtree(wixTempPath, True)
+				os.remove('MSI.json')
+				os.remove('License.rtf')
+				os.remove(gameName + '.wixobj')
+				os.remove(gameName + '.wxs')
+				
+			except Exception, e:
+				print str(e)
+			finally:
+				os.chdir(cwd)
 			
 			# Update binaries
 			binPath = resourcesPath + '/../Binaries'
@@ -152,8 +214,8 @@ try:
 			# Debug version
 			shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/debug.html')
 			shutil.copy(binariesPath + '/Web/FOnline_Debug.js', gameOutputPath + '/FOnline_Debug.js')
-			shutil.copy(binariesPath + '/Web/FOnline_Debug.wasm', gameOutputPath + '/FOnline_Debug.wasm')
-			patchConfig(gameOutputPath + '/FOnline_Debug.wasm')
+			shutil.copy(binariesPath + '/Web/FOnline_Debug.mem', gameOutputPath + '/FOnline_Debug.mem')
+			patchConfig(gameOutputPath + '/FOnline_Debug.mem')
 			patchFile(gameOutputPath + '/debug.html', 'FOnline.js', 'FOnline_Debug.js')
 			
 			# Generate resources
