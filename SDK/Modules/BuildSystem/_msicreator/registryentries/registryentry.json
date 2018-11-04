@@ -1,0 +1,31 @@
+{
+    "upgrade_guid": "5DE3A7D5-0B2D-4A45-A73E-7700766A811F",
+    "version": "1.0.0",
+    "product_name": "Registry entry test",
+    "manufacturer": "Somebody",
+    "name": "Registry test",
+    "name_base": "registrytest",
+    "comments": "Testing registry creation",
+    "installdir": "registryentry",
+    "license_file": "../License.rtf",
+    "registry_entries": [
+        {
+            "root": "HKLM",
+            "key": "SOFTWARE\\MyApplicationName",
+            "action": "createAndRemoveOnUninstall",
+            "name": "Install_Dir",
+            "type": "string",
+            "value": "[INSTALLDIR]",
+            "key_path": "no"
+        }
+    ],
+    "parts": [
+        {
+         "id": "MainProgram",
+         "title": "The Prgoram",
+         "description": "This does nothing",
+         "absent": "disallow",
+         "staged_dir": "main"
+        }
+    ]
+}

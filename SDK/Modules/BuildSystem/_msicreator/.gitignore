@@ -1,0 +1,10 @@
+*~
+*.wxs
+*.wixobj
+*.wixpdb
+*.msi
+*.exe
+*.obj
+*.res
+__pycache__
+

@@ -1,0 +1,24 @@
+{
+    "upgrade_guid": "9DE3A7D5-0B2D-4A45-A73E-8800766A811A",
+    "version": "1.0.0",
+    "product_name": "MajorUpgrade entry test",
+    "manufacturer": "Somebody",
+    "name": "MajorUpgrade test",
+    "name_base": "majorupgrade",
+    "comments": "Testing MajorUpgrade extra attributes",
+    "installdir": "majorupgrade",
+    "license_file": "../License.rtf",
+    "major_upgrade": {
+         "AllowDowngrades": "yes",
+         "IgnoreRemoveFailure": "yes"
+    },
+    "parts": [
+        {
+         "id": "MainProgram",
+         "title": "The Program",
+         "description": "This does nothing",
+         "absent": "disallow",
+         "staged_dir": "main"
+        }
+    ]
+}
