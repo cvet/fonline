@@ -27,7 +27,10 @@ pipeline {
         }
       }
     }  
-    //stage('Build') {
+    stage('Build') {
+      options {
+        skipDefaultCheckout()
+      }    
       parallel {
         stage('Build Android') {
           agent {
@@ -124,6 +127,6 @@ pipeline {
 					}
         }        
       }
-    //}
+    }
   }
 }
