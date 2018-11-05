@@ -38,24 +38,6 @@ pipeline {
             }
           }
         }
-        stage('Build iOS') {
-          agent {
-            node {
-              label 'master'
-            }
-          }
-          steps { 
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              checkout scm
-              sh './BuildScripts/ios.sh'
-            }
-          }
-					post {
-    				cleanup{
-        			deleteDir()
-    				}
-					}          
-        }        
         stage('Build Linux') {
           agent {
             kubernetes {
