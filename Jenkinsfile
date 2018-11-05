@@ -11,23 +11,23 @@ pipeline {
   stages {
     stage('Clean FTP directory') {
       agent {
-        node {
-          label 'master'
+        kubernetes {
+          label 'linux'
+          yamlFile 'BuildScripts/build-pod.yaml'
         }
       }
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          //sh './BuildScripts/cleanup.sh'
-          sh 'echo "will add"'
+          sh './BuildScripts/cleanup.sh'
         }
       }
-    }  
+    }
     stage('Build') {
       parallel {
         stage('Build Android') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -41,7 +41,7 @@ pipeline {
         stage('Build Linux') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -57,7 +57,7 @@ pipeline {
         stage('Build Web') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -73,7 +73,7 @@ pipeline {
         stage('Build Windows') {
           agent {
             node {
-              label 'win1.ci.fonline.ru'
+              label 'win'
             }
           }
           steps {
@@ -86,7 +86,7 @@ pipeline {
     				cleanup{
         			deleteDir()
     				}
-					}          
+					}
         }
         stage('Build Mac OS') {
           agent {
@@ -105,7 +105,7 @@ pipeline {
         			deleteDir()
     				}
 					}
-        }        
+        }
       }
     }
   }
