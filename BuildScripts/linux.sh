@@ -5,7 +5,8 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-if [ -n "$FO_INSTALL_PACKAGES" ]; then
+
+if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
 	sudo apt-get -y install cmake
@@ -33,7 +34,7 @@ make -j4
 cd ../
 
 # x86 (Temporarily disabled)
-#if [ -n "$FO_INSTALL_PACKAGES" ]; then
+#if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 #	sudo apt-get -y install gcc-multilib
 #	sudo apt-get -y install g++-multilib
 #	sudo apt-get -y install libx11-dev:i386

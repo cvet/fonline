@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-if [ -n "$FO_INSTALL_PACKAGES" ]; then
+if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install lftp
 fi
