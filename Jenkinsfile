@@ -15,6 +15,7 @@ pipeline {
       parallel {
         stage('Build Android') {
           agent {
+            label 'linux'
             kubernetes {
               label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
@@ -31,6 +32,7 @@ pipeline {
         }
         stage('Build Linux') {
           agent {
+            label 'linux'
             kubernetes {
               label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
@@ -47,6 +49,7 @@ pipeline {
         }
         stage('Build Web') {
           agent {
+            label 'linux'
             kubernetes {
               label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
@@ -61,11 +64,20 @@ pipeline {
             }
           }
         }
+        stage('Build Mac') {
+          agent {
+            label 'mac'
+          }
+          steps {
+            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              sh 'chmod +x ./BuildScripts/mac.sh'
+              sh './BuildScripts/mac.sh'
+            }
+          }
+        }
         stage('Build Windows') {
           agent {
-            node {
-              label 'win1.ci.fonline.ru'
-            }
+            label 'win'
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
