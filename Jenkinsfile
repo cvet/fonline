@@ -5,17 +5,11 @@ pipeline {
     FO_FTP_DEST = '109.167.147.160'
     FO_INSTALL_PACKAGES = 0
   }
-  agent {
-    node {
-      label 'master'
-    }
-  }
+  agent none
+  options { skipDefaultCheckout() }
 
   stages {
     stage('Clean FTP directory') {
-      options {
-        skipDefaultCheckout()
-      }
       agent {
         node {
           label 'master'
@@ -24,13 +18,11 @@ pipeline {
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
           sh './BuildScripts/cleanup.sh'
+          sh 'echo "will add"'
         }
       }
     }  
     stage('Build') {
-      options {
-        skipDefaultCheckout()
-      }    
       parallel {
         stage('Build Android') {
           agent {
@@ -41,6 +33,7 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              checkout scm
               sh './BuildScripts/android.sh'
             }
           }
@@ -53,6 +46,7 @@ pipeline {
           }
           steps { 
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              checkout scm
               sh './BuildScripts/ios.sh'
             }
           }
@@ -72,6 +66,7 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+                checkout scm
                 sh './BuildScripts/linux.sh'
               }
             }
@@ -87,6 +82,7 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+                checkout scm
                 sh './BuildScripts/web.sh'
               }
             }
@@ -100,6 +96,7 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              checkout scm
               bat 'BuildScripts\\windows.bat'
             }
           }
@@ -117,6 +114,7 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              checkout scm
               sh './BuildScripts/mac.sh'
             }
           }
