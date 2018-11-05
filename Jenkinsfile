@@ -5,11 +5,7 @@ pipeline {
     FO_FTP_DEST = '109.167.147.160'
     FO_INSTALL_PACKAGES = 0
   }
-  agent {
-    node {
-      label 'master'
-    }
-  }
+  agent none
   stages {
     stage('Build') {
       parallel {
