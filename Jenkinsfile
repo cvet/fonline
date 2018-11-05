@@ -11,8 +11,8 @@ pipeline {
       parallel {
         stage('Build Android') {
           agent {
-            label 'linux'
             kubernetes {
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -27,8 +27,8 @@ pipeline {
         }
         stage('Build Linux') {
           agent {
-            label 'linux'
             kubernetes {
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -43,8 +43,8 @@ pipeline {
         }
         stage('Build Web') {
           agent {
-            label 'linux'
             kubernetes {
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
