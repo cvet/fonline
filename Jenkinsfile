@@ -13,7 +13,6 @@ pipeline {
           agent {
             label 'linux'
             kubernetes {
-              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -30,7 +29,6 @@ pipeline {
           agent {
             label 'linux'
             kubernetes {
-              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -47,7 +45,6 @@ pipeline {
           agent {
             label 'linux'
             kubernetes {
-              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
