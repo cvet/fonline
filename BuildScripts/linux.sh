@@ -33,21 +33,21 @@ make -j4
 cd ../
 
 # x86
-if [[ $FO_INSTALL_PACKAGES -eq 1 ]]; then
-	sudo apt-get -y install gcc-multilib
-	sudo apt-get -y install g++-multilib
-	sudo apt-get -y install libx11-dev:i386
-	sudo apt-get -y install freeglut3-dev:i386
-	sudo apt-get -y install libssl-dev:i386
-	sudo apt-get -y install libevent-dev:i386
-	sudo apt-get -y install libxi-dev:i386
-fi
+#if [[ $FO_INSTALL_PACKAGES -eq 1 ]]; then
+#	sudo apt-get -y install gcc-multilib
+#	sudo apt-get -y install g++-multilib
+#	sudo apt-get -y install libx11-dev:i386
+#	sudo apt-get -y install freeglut3-dev:i386
+#	sudo apt-get -y install libssl-dev:i386
+#	sudo apt-get -y install libevent-dev:i386
+#	sudo apt-get -y install libxi-dev:i386
+#fi
 
-mkdir -p x86
-cd x86
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make -j4
-cd ../
+#mkdir -p x86
+#cd x86
+#cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
+#make -j4
+#cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then
 	wput Client --basename=Client/ ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/Linux/

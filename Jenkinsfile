@@ -10,7 +10,24 @@ pipeline {
       label 'master'
     }
   }
+
+withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+
   stages {
+    stage('Clean FTP directory') {
+      agent {
+        node {
+          label 'master'
+        }
+      }
+      steps {
+        container('jnlp') {
+          withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+            sh './BuildScripts/android.sh'
+          }
+        }
+      }
+    }  
     stage('Build') {
       parallel {
         stage('Build Android') {
@@ -21,14 +38,23 @@ pipeline {
             }
           }
           steps {
-            container('jnlp') {
-              withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh 'chmod +x ./BuildScripts/android.sh'
-                sh './BuildScripts/android.sh'
-              }
+            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              sh './BuildScripts/android.sh'
             }
           }
         }
+        stage('Build iOS') {
+          agent {
+            node {
+              label 'master'
+            }
+          }
+          steps { 
+            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              sh './BuildScripts/ios.sh'
+            }
+          }
+        }        
         stage('Build Linux') {
           agent {
             kubernetes {
@@ -39,7 +65,6 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh 'chmod +x ./BuildScripts/linux.sh'
                 sh './BuildScripts/linux.sh'
               }
             }
@@ -55,7 +80,6 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh 'chmod +x ./BuildScripts/web.sh'
                 sh './BuildScripts/web.sh'
               }
             }
@@ -69,11 +93,26 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              bat 'cmd.exe /c BuildScripts\\windows.bat'
+              bat 'BuildScripts\\windows.bat'
             }
           }
         }
+        stage('Build Mac OS') {
+          agent {
+            node {
+              label 'mac1.ci.fonline.ru'
+            }
+          }
+          steps {
+            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+              sh './BuildScripts/mac.sh'
+            }
+          }
+        }        
       }
     }
   }
+
+}
+
 }
