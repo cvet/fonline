@@ -9,42 +9,40 @@ pipeline {
   options { skipDefaultCheckout() }
 
   stages {
-    stage('Clean FTP directory') {
-      agent {
-        kubernetes {
-          label 'fonline-sdk'
-          yamlFile 'BuildScripts/build-pod.yaml'
-        }
-      }
-      steps {
-        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          //checkout scm
-          sh 'echo 123'
-          //sh './BuildScripts/cleanup.sh'
-        }
-      }
-    }
     stage('Build') {
       parallel {
         stage('Build Android') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               checkout scm
-              sh 'chmod +x ./BuildScripts/android.sh'
               sh './BuildScripts/android.sh'
             }
           }
         }
+		    stage('Clean FTP directory') {
+		      agent {
+		        kubernetes {
+		          label 'linux'
+		          yamlFile 'BuildScripts/build-pod.yaml'
+		        }
+		      }
+		      steps {
+		        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+		          checkout scm
+		          sh './BuildScripts/cleanup.sh'
+		        }
+		      }
+		    }        
         stage('Build Linux') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -52,7 +50,6 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 checkout scm
-                sh 'chmod +x ./BuildScripts/linux.sh'
                 sh './BuildScripts/linux.sh'
               }
             }
@@ -61,7 +58,7 @@ pipeline {
         stage('Build Web') {
           agent {
             kubernetes {
-              label 'fonline-sdk'
+              label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -69,7 +66,6 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 checkout scm
-                sh 'chmod +x ./BuildScripts/web.sh'
                 sh './BuildScripts/web.sh'
               }
             }
@@ -96,13 +92,12 @@ pipeline {
         stage('Build Mac OS') {
           agent {
             node {
-              label 'mac1.ci.fonline.ru'
+              label 'mac'
             }
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               checkout scm
-              sh 'chmod +x ./BuildScripts/mac.sh'
               sh './BuildScripts/mac.sh'
             }
           }
