@@ -12,7 +12,7 @@ pipeline {
     stage('Clean FTP directory') {
       agent {
         kubernetes {
-          label 'linux'
+          label 'fonline-sdk'
           yamlFile 'BuildScripts/build-pod.yaml'
         }
       }
@@ -29,7 +29,7 @@ pipeline {
         stage('Build Android') {
           agent {
             kubernetes {
-              label 'linux'
+              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -44,7 +44,7 @@ pipeline {
         stage('Build Linux') {
           agent {
             kubernetes {
-              label 'linux'
+              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
@@ -61,7 +61,7 @@ pipeline {
         stage('Build Web') {
           agent {
             kubernetes {
-              label 'linux'
+              label 'fonline-sdk'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
