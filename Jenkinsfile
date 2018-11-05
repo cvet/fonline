@@ -18,6 +18,7 @@ pipeline {
       }
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+          sh 'chmod +x ./BuildScripts/cleanup.sh'
           sh './BuildScripts/cleanup.sh'
         }
       }
@@ -34,6 +35,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               checkout scm
+              sh 'chmod +x ./BuildScripts/android.sh'
               sh './BuildScripts/android.sh'
             }
           }
@@ -49,6 +51,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 checkout scm
+                sh 'chmod +x ./BuildScripts/linux.sh'
                 sh './BuildScripts/linux.sh'
               }
             }
@@ -65,6 +68,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 checkout scm
+                sh 'chmod +x ./BuildScripts/web.sh'
                 sh './BuildScripts/web.sh'
               }
             }
@@ -97,6 +101,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               checkout scm
+              sh 'chmod +x ./BuildScripts/mac.sh'
               sh './BuildScripts/mac.sh'
             }
           }
