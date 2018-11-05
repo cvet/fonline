@@ -13,20 +13,21 @@ pipeline {
 
   stages {
     stage('Clean FTP directory') {
+      options {
+        skipDefaultCheckout()
+      }
       agent {
         node {
           label 'master'
         }
       }
       steps {
-        container('jnlp') {
-          withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-            sh './BuildScripts/android.sh'
-          }
+        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+          sh './BuildScripts/cleanup.sh'
         }
       }
     }  
-    stage('Build') {
+    //stage('Build') {
       parallel {
         stage('Build Android') {
           agent {
@@ -52,6 +53,11 @@ pipeline {
               sh './BuildScripts/ios.sh'
             }
           }
+					post {
+    				cleanup{
+        			deleteDir()
+    				}
+					}          
         }        
         stage('Build Linux') {
           agent {
@@ -94,6 +100,11 @@ pipeline {
               bat 'BuildScripts\\windows.bat'
             }
           }
+					post {
+    				cleanup{
+        			deleteDir()
+    				}
+					}          
         }
         stage('Build Mac OS') {
           agent {
@@ -106,8 +117,13 @@ pipeline {
               sh './BuildScripts/mac.sh'
             }
           }
+					post {
+    				cleanup{
+        			deleteDir()
+    				}
+					}
         }        
       }
-    }
+    //}
   }
 }
