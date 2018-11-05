@@ -19,7 +19,7 @@ pipeline {
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
           //checkout scm
-          sh 'chmod +x ./BuildScripts/cleanup.sh'
+          sh 'kek'
           //sh './BuildScripts/cleanup.sh'
         }
       }
