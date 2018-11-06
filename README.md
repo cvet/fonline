@@ -1,6 +1,6 @@
 # FOnline Engine
 
-[![Build Status](https://ci.fonline.ru/job/fonline_debug/master/badge/icon)](https://ci.fonline.ru/job/fonline_debug/master)
+![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline_debug/master)
 
 Before clone make sure that you install Git LFS
 https://git-lfs.github.com/
