@@ -35,18 +35,17 @@ try:
 		with open(filePath, 'rb') as f:
 			file = f.read()
 		fileSize = os.path.getsize(filePath)
-		pos = file.find('###InternalConfig###')
-		assert pos != -1
-		pos2 = file.find('\0', pos)
+		pos1 = file.find('###InternalConfig###')
+		assert pos1 != -1
+		pos2 = file.find('\0', pos1)
 		assert pos2 != -1
-		pos2 += 1
-		pos3 = file.find('\0', pos2)
+		pos3 = file.find('\0', pos2 + 1)
 		assert pos3 != -1
-		size = pos3 - pos
-		assert size == 5025
+		size = pos3 - pos1
+		assert size + 1 == 5022 # Magic
 		assert len(config) <= size
 		padding = '#' * (size - len(config))
-		file = file[0:pos] + config + padding + file[pos3:]
+		file = file[0:pos1] + config + padding + file[pos3:]
 		with open(filePath, 'wb') as f:
 			f.write(file)
 		assert fileSize == os.path.getsize(filePath)
