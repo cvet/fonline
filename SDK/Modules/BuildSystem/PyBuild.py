@@ -34,15 +34,22 @@ try:
 			config = config.replace('\n\n', '\n')
 		with open(filePath, 'rb') as f:
 			file = f.read()
+		fileSize = os.path.getsize(filePath)
 		pos = file.find('###InternalConfig###')
 		assert pos != -1
 		pos2 = file.find('\0', pos)
-		size = int(file[pos + len('###InternalConfig###'):pos2])
+		assert pos2 != -1
+		pos2 += 1
+		pos3 = file.find('\0', pos2)
+		assert pos3 != -1
+		size = pos3 - pos
+		assert size == 5025
 		assert len(config) <= size
-		size = len(config) + 1
-		file = file[0:pos] + config + '\0' + file[pos + size:]
+		padding = '#' * (size - len(config))
+		file = file[0:pos] + config + padding + file[pos3:]
 		with open(filePath, 'wb') as f:
 			f.write(file)
+		assert fileSize == os.path.getsize(filePath)
 	
 	def patchFile(filePath, textFrom, textTo):
 		with open(filePath, 'rb') as f:
@@ -214,8 +221,8 @@ try:
 			# Debug version
 			shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/debug.html')
 			shutil.copy(binariesPath + '/Web/FOnline_Debug.js', gameOutputPath + '/FOnline_Debug.js')
-			shutil.copy(binariesPath + '/Web/FOnline_Debug.mem', gameOutputPath + '/FOnline_Debug.mem')
-			patchConfig(gameOutputPath + '/FOnline_Debug.mem')
+			shutil.copy(binariesPath + '/Web/FOnline_Debug.js.mem', gameOutputPath + '/FOnline_Debug.js.mem')
+			patchConfig(gameOutputPath + '/FOnline_Debug.js.mem')
 			patchFile(gameOutputPath + '/debug.html', 'FOnline.js', 'FOnline_Debug.js')
 			
 			# Generate resources
