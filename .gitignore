@@ -1,7 +1,7 @@
-# skip per-directory ignores
+# Skip per-directory ignores
 .gitignore
 !/.gitignore
 
-# MSVC
+# MSVC files
 .vs
 /InterfaceEditor/obj/
