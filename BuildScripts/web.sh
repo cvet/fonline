@@ -5,7 +5,7 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-if [[ $FO_INSTALL_PACKAGES -eq 1 ]]; then
+if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
 	sudo apt-get -y install cmake
@@ -52,5 +52,5 @@ if [ -n "$FO_FTP_DEST" ]; then
 fi
 
 if [ -n "$FO_COPY_DEST" ]; then
-	cp -r Web "$FO_COPY_DEST/Client"
+	cp -r Web $FO_COPY_DEST/Client
 fi

@@ -1,36 +1,35 @@
 # This Dockerfile is used to build an image containing basic stuff to be used as a Jenkins slave build node.
 FROM ubuntu:16.04
 MAINTAINER Oleg Gumbar <brigthside@fonline-status.ru>
-LABEL Description=" This image is for building U-Boot inside a container"
+LABEL Description="This image is for building FOnline SDK inside a container"
 
 # Make sure apt is happy
 ENV DEBIAN_FRONTEND=noninteractive
 
-# add i386 architecture
+# Add i386 architecture
+#RUN sed -i 's/main$/main universe/' /etc/apt/sources.list
+#RUN dpkg --add-architecture i386
 
-RUN sed -i 's/main$/main universe/' /etc/apt/sources.list
-RUN dpkg --add-architecture i386
-
-RUN apt-get -qq update && apt-get -qqy dist-upgrade
-
-# Install a basic SSH server
-RUN apt-get install -y openssh-server
-RUN mkdir -p /var/run/sshd
-
-
-# Install JDK 8 (most stable edition) for Jenkins
-RUN apt-get install -y --no-install-recommends default-jdk
+# RUN apt-get -qq update && apt-get -qqy dist-upgrade
 
 # Install dependencies
+RUN apt-get -qq update && apt-get install -y default-jdk git openssh-client bash unzip curl python2.7 nodejs default-jre git-core wget lftp cmake wput ant \
+  build-essential cmake gcc-multilib g++-multilib freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libxi-dev libsdl2-dev
 
-RUN apt-get install -y git openssh-client bash unzip curl build-essential cmake unzip wput ant libx11-dev freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libxmu-dev && \
-  apt-get install -y gcc-multilib g++-multilib python2.7 nodejs default-jre git-core wget libsdl2-dev && \
-  apt-get autoclean
+# Install i386 dependencies
+#RUN apt-get install -y freeglut3-dev:i386 libssl-dev:i386 libevent-dev:i386 libx11-dev:i386 libxi-dev:i386 libxmu-dev:i386 \
+#  libxext-dev:i386 libxrandr-dev:i386 libxcursor-dev:i386 libxi-dev:i386 libxinerama-dev:i386 libxxf86vm-dev:i386 \
+#  libxss-dev:i386 libgl1-mesa-dev:i386 libesd0-dev:i386 libdbus-1-dev:i386 libudev-dev:i386 libgles2-mesa-dev:i386 libmirclient-dev:i386 libxkbcommon-dev:i386 libegl1-mesa-dev:i386 libsdl2-dev:i386 \
+#  libxkbcommon-dev:i386 libxt-dev:i386 libxv-dev:i386
 
+# Install git-lfs for pulling large binaries
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
 RUN apt-get -qq update && apt-get install -y git-lfs
 
-# User and permissions for jenkins
+# Cleaning a bit
+RUN apt-get autoclean
+
+# Install jenkins agent
 ARG user=jenkins
 ARG group=jenkins
 ARG uid=10000
