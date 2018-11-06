@@ -6,8 +6,7 @@ pipeline {
     FO_INSTALL_PACKAGES = 0
   }
   agent none
-  options { skipDefaultCheckout() }
-
+  
   stages {
     stage('Build') {
       parallel {
@@ -20,7 +19,6 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              checkout scm
               sh './BuildScripts/android.sh'
             }
           }
@@ -34,7 +32,6 @@ pipeline {
 		      }
 		      steps {
 		        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-		          checkout scm
 		          sh './BuildScripts/cleanup.sh'
 		        }
 		      }
@@ -49,7 +46,6 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                checkout scm
                 sh './BuildScripts/linux.sh'
               }
             }
@@ -65,7 +61,6 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                checkout scm
                 sh './BuildScripts/web.sh'
               }
             }
@@ -79,7 +74,6 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              checkout scm
               bat 'BuildScripts\\windows.bat'
             }
           }
@@ -97,7 +91,6 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              checkout scm
               sh './BuildScripts/mac.sh'
             }
           }
