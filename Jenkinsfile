@@ -8,7 +8,20 @@ pipeline {
   agent none
   
   stages {
-    stage('Build') {
+    stage('Clean FTP directory') {
+      agent {
+        kubernetes {
+          label 'linux'
+          yamlFile 'BuildScripts/build-pod.yaml'
+        }
+      }
+      steps {
+        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+          sh './BuildScripts/cleanup.sh'
+        }
+      }
+    }          
+    stage('Build Main targets') {
       parallel {
         stage('Build Android') {
           agent {
@@ -23,19 +36,6 @@ pipeline {
             }
           }
         }
-		    stage('Clean FTP directory') {
-		      agent {
-		        kubernetes {
-		          label 'linux'
-		          yamlFile 'BuildScripts/build-pod.yaml'
-		        }
-		      }
-		      steps {
-		        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-		          sh './BuildScripts/cleanup.sh'
-		        }
-		      }
-		    }        
         stage('Build Linux') {
           agent {
             kubernetes {
