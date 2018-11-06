@@ -16,9 +16,11 @@ pipeline {
         }
       }
       steps {
+      ansiColor('xterm') {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
           sh './BuildScripts/cleanup.sh'
         }
+     	}
       }
     }          
     stage('Build Main targets') {
@@ -31,8 +33,10 @@ pipeline {
             }
           }
           steps {
+          ansiColor('xterm') {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/android.sh'
+            }
             }
           }
         }
