@@ -52,7 +52,8 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh './BuildScripts/linux.sh'
+                //sh './BuildScripts/linux.sh'
+                sh 'echo 333'
               }
             }
           }
@@ -67,7 +68,8 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh './BuildScripts/web.sh'
+                //sh './BuildScripts/web.sh'
+                sh 'echo 333'
               }
             }
           }
@@ -80,7 +82,8 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              bat 'BuildScripts\\windows.bat'
+              //bat 'BuildScripts\\windows.bat'
+              print '123'
             }
           }
 					post {

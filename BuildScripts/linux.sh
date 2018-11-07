@@ -49,17 +49,3 @@ cd ../
 #cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
 #make -j4
 #cd ../
-
-if [ -n "$FO_FTP_DEST" ]; then
-	wput Client --basename=Client/ ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/Linux/
-	wput Server ftp://$FO_FTP_USER@$FO_FTP_DEST/
-	wput Mapper ftp://$FO_FTP_USER@$FO_FTP_DEST/
-	wput ASCompiler ftp://$FO_FTP_USER@$FO_FTP_DEST/
-fi
-
-if [ -n "$FO_COPY_DEST" ]; then
-	cp -r ./Client/. "$FO_COPY_DEST/Client/Linux"
-	cp -r ./Server/. "$FO_COPY_DEST/Server"
-	cp -r ./Mapper/. "$FO_COPY_DEST/Mapper"
-	cp -r ./ASCompiler/. "$FO_COPY_DEST/ASCompiler"
-fi

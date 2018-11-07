@@ -54,13 +54,3 @@ cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
-
-if [ -n "$FO_FTP_DEST" ]; then
-	find Android/* | while read line; do
-		wput $line ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/ || true
-	done
-fi
-
-if [ -n "$FO_COPY_DEST" ]; then
-	cp -r Android "$FO_COPY_DEST/Client"
-fi

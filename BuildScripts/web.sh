@@ -46,11 +46,3 @@ cd debug
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
-
-if [ -n "$FO_FTP_DEST" ]; then
-	wput Web ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
-fi
-
-if [ -n "$FO_COPY_DEST" ]; then
-	cp -r Web $FO_COPY_DEST/Client
-fi
