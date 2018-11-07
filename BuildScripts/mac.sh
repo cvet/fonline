@@ -14,11 +14,3 @@ rm -rf Mac/*
 
 /Applications/CMake.app/Contents/bin/cmake -G Xcode "$SOURCE_FULL_PATH/Source"
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline
-
-if [ -n "$FO_FTP_DEST" ]; then
-	curl -T Mac/FOnline -u $FO_FTP_USER --ftp-create-dirs ftp://$FO_FTP_DEST/Client/Mac/
-fi
-
-if [ -n "$FO_COPY_DEST" ]; then
-	cp -r Mac "$FO_COPY_DEST/Client"
-fi
