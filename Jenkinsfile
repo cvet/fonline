@@ -6,7 +6,10 @@ pipeline {
     FO_INSTALL_PACKAGES = 0
   }
   agent none
-  
+  options {
+    ansiColor('xterm')
+  }
+
   stages {
     stage('Clean FTP directory') {
       agent {
@@ -16,13 +19,12 @@ pipeline {
         }
       }
       steps {
-      ansiColor('xterm') {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          sh './BuildScripts/cleanup.sh'
+          //sh './BuildScripts/cleanup.sh'
+          sh 'echo 123'
         }
-     	}
       }
-    }          
+    }
     stage('Build Main targets') {
       parallel {
         stage('Build Android') {
@@ -33,10 +35,10 @@ pipeline {
             }
           }
           steps {
-          ansiColor('xterm') {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/android.sh'
-            }
+              sh 'ls -la ./'
+              stash name: 'androidbin', includes: '**/bin/**'
             }
           }
         }
@@ -96,6 +98,8 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/mac.sh'
+              sh 'ls -la ./'
+              stash name: 'macosbin', includes: '**/bin/**'
             }
           }
 					post {
@@ -106,5 +110,21 @@ pipeline {
         }
       }
     }
+
+    stage('Upload build artifacts') {
+      agent {
+        node {
+          label 'master'
+        }
+      }
+      steps {
+        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
+          unstash 'macosbin'
+          unstash 'androidbin'
+          sh 'ls -la ./'
+        }
+      }
+    }
+
   }
 }
