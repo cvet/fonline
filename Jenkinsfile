@@ -54,7 +54,7 @@ pipeline {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/linux.sh'
                 sh 'tree ./'
-                stash name: 'linuxbin', includes: '**/bin/**'
+                stash name: 'linuxbin', includes: '**'
               }
             }
           }
