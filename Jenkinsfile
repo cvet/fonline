@@ -12,6 +12,9 @@ pipeline {
 
   stages {
     stage('Clean FTP directory') {
+      options {
+        skipDefaultCheckout true
+      }
       agent {
         kubernetes {
           label 'linux'
@@ -37,8 +40,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/android.sh'
-              sh 'tree ./'
-              stash name: 'androidbin', includes: '**/bin/**'
+              stash name: 'androidbin', includes: '**/Build/android/**'
             }
           }
         }
@@ -53,8 +55,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/linux.sh'
-                sh 'tree ./'
-                stash name: 'linuxbin', includes: '**'
+                stash name: 'androidbin', includes: '**/Build/linux/bin/**'
               }
             }
           }
@@ -69,8 +70,8 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                //sh './BuildScripts/web.sh'
-                sh 'echo 333'
+                sh './BuildScripts/web.sh'
+                sh 'tree ./'
               }
             }
           }
@@ -83,8 +84,8 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              //bat 'BuildScripts\\windows.bat'
-              print '123'
+              bat 'BuildScripts\\windows.bat'
+              stash name: 'androidbin', includes: '**/Build/windows/bin/**'
             }
           }
 					post {
@@ -101,9 +102,8 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              print '123'
-              //sh './BuildScripts/mac.sh'
-              //stash name: 'macosbin', includes: '**/bin/**'
+              sh './BuildScripts/mac.sh'
+              stash name: 'androidbin', includes: '**/Build/mac/bin/**'
             }
           }
 					post {
