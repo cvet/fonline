@@ -40,7 +40,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/android.sh'
-              stash name: 'androidbin', includes: '**/Build/android/**'
+              stash name: 'android', includes: '**/Build/android/**'
             }
           }
         }
@@ -55,7 +55,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/linux.sh'
-                stash name: 'androidbin', includes: '**/Build/linux/bin/**'
+                stash name: 'linux', includes: '**/Build/linux/**'
               }
             }
           }
@@ -71,7 +71,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/web.sh'
-                sh 'tree ./'
+                stash name: 'web', includes: '**/Build/web/**'
               }
             }
           }
@@ -85,7 +85,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               bat 'BuildScripts\\windows.bat'
-              stash name: 'androidbin', includes: '**/Build/windows/bin/**'
+              stash name: 'windows', includes: '**/Build/windows/**'
             }
           }
 					post {
@@ -103,7 +103,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/mac.sh'
-              stash name: 'androidbin', includes: '**/Build/mac/bin/**'
+              stash name: 'macos', includes: '**/Build/mac/**'
             }
           }
 					post {
@@ -123,11 +123,11 @@ pipeline {
       }
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          sh 'tree ./'
-          unstash 'linuxbin'
-          sh 'tree ./'
-          unstash 'androidbin'
-          sh 'tree ./'
+          unstash 'linux'
+          unstash 'android'
+          unstash 'windows'
+          unstash 'macos'
+          unstash 'web'
         }
       }
     }
