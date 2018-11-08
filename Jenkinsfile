@@ -40,7 +40,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/android.sh'
-              stash name: 'android', includes: '**/Build/android/**'
+              stash name: 'android', includes: '**/Build/android/bin/**'
             }
           }
         }
@@ -55,7 +55,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/linux.sh'
-                stash name: 'linux', includes: '**/Build/linux/**'
+                stash name: 'linux', includes: '**/Build/linux/bin/**'
               }
             }
           }
@@ -71,7 +71,7 @@ pipeline {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
                 sh './BuildScripts/web.sh'
-                stash name: 'web', includes: '**/Build/web/**'
+                stash name: 'web', includes: '**/Build/web/bin/**'
               }
             }
           }
@@ -85,7 +85,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               bat 'BuildScripts\\windows.bat'
-              stash name: 'windows', includes: '**/Build/windows/**'
+              stash name: 'windows', includes: '**/Build/windows/bin/**'
             }
           }
 					post {
@@ -103,7 +103,7 @@ pipeline {
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
               sh './BuildScripts/mac.sh'
-              stash name: 'macos', includes: '**/Build/mac/**'
+              stash name: 'macos', includes: '**/Build/mac/bin/**'
             }
           }
 					post {
@@ -128,6 +128,7 @@ pipeline {
           unstash 'windows'
           unstash 'macos'
           unstash 'web'
+          ls 'tree ./'
         }
       }
     }
