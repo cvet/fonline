@@ -72,6 +72,9 @@ pipeline {
           }
         }
         stage('Build Web') {
+		          options {
+       			skipDefaultCheckout true
+      		}
           agent {
             kubernetes {
               label 'linux'
