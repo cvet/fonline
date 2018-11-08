@@ -52,8 +52,9 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                //sh './BuildScripts/linux.sh'
-                sh 'echo 333'
+                sh './BuildScripts/linux.sh'
+                sh 'tree ./'
+                stash name: 'linuxbin', includes: '**/bin/**'
               }
             }
           }
@@ -100,9 +101,9 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              sh './BuildScripts/mac.sh'
-              sh 'tree ./'
-              stash name: 'macosbin', includes: '**/bin/**'
+              print '123'
+              //sh './BuildScripts/mac.sh'
+              //stash name: 'macosbin', includes: '**/bin/**'
             }
           }
 					post {
@@ -123,7 +124,7 @@ pipeline {
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
           sh 'tree ./'
-          unstash 'macosbin'
+          unstash 'linuxbin'
           sh 'tree ./'
           unstash 'androidbin'
           sh 'tree ./'
