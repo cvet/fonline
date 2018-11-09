@@ -2,7 +2,6 @@ pipeline {
   environment {
     FO_BUILD_DEST = 'Build'
     FO_SOURCE = '.'
-    FO_FTP_DEST = '109.167.147.160'
     FO_INSTALL_PACKAGES = 0
   }
   agent none
@@ -163,7 +162,7 @@ pipeline {
       }
     post {
         always {
-            archiveArtifacts artifacts: '$GIT_COMMIT.zip', fingerprint: true
+		archiveArtifacts artifacts: '${GIT_COMMIT}.zip', fingerprint: true
             //junit 'build/reports/**/*.xml'
         }
     }	    
