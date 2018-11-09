@@ -25,9 +25,7 @@ pipeline {
           }
         }
         stage('Build Linux') {
-      		options {
-		        skipDefaultCheckout true
-      		}        
+     
           agent {
             kubernetes {
               label 'linux'
@@ -42,9 +40,7 @@ pipeline {
           }
         }
         stage('Build Web') {
-		          options {
-       			skipDefaultCheckout true
-      		}
+
           agent {
             kubernetes {
               label 'linux'
@@ -59,9 +55,7 @@ pipeline {
           }
         }
         stage('Build Windows') {
-          options {
-        		skipDefaultCheckout true
-      		}
+
           agent {
             node {
               label 'win'
