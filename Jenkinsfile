@@ -10,41 +10,18 @@ pipeline {
   }
 
   stages {
-    stage('Checkout') {
-      //options {
-      // skipDefaultCheckout true
-      //}
-      agent {
-        kubernetes {
-          label 'linux'
-          yamlFile 'BuildScripts/build-pod.yaml'
-        }
-      }
-      steps {
-        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-	  stash name: 'build', includes: '**'
-        }
-      }
-    }
     stage('Build Main targets') {
       parallel {
         stage('Build Android') {
-          options {
-       			skipDefaultCheckout true
-      		}
           agent {
             kubernetes {
               label 'linux'
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
-          steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-	     unstash 'build'
+          steps {      
               sh './BuildScripts/android.sh'
               stash name: 'android', includes: '**/Build/android/bin/**'
-              
-            }
           }
         }
         stage('Build Linux') {
@@ -59,11 +36,8 @@ pipeline {
           }
           steps {
             container('jnlp') {
-              withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-		unstash 'build'
                 sh './BuildScripts/linux.sh'
                 stash name: 'linux', includes: '**/Build/linux/bin/**'
-              }
             }
           }
         }
@@ -79,11 +53,8 @@ pipeline {
           }
           steps {
             container('jnlp') {
-              withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-		unstash 'build'
                 sh './BuildScripts/web.sh'
                 stash name: 'web', includes: '**/Build/web/bin/**'
-              }
             }
           }
         }
@@ -97,12 +68,8 @@ pipeline {
             }
           }
           steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-	      unstash 'build'
               bat 'BuildScripts\\windows.bat'
               stash name: 'windows', includes: '**/Build/windows/bin/**'
-              
-            }
           }
 					post {
     				cleanup{
@@ -120,12 +87,8 @@ pipeline {
             }
           }
           steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-		unstash 'build'
               sh './BuildScripts/mac.sh'
               stash name: 'macos', includes: '**/Build/mac/bin/**'
-              
-            }
           }
 					post {
     				cleanup{
