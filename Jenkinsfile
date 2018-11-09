@@ -162,7 +162,7 @@ pipeline {
       }
     post {
         always {
-		archiveArtifacts artifacts: '${GIT_COMMIT}.zip', fingerprint: true
+		archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
             //junit 'build/reports/**/*.xml'
         }
     }	    
