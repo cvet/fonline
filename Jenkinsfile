@@ -69,9 +69,7 @@ pipeline {
 					}
         }
         stage('Build Mac OS') {
-          options {
-        		skipDefaultCheckout true
-      		}
+
           agent {
             node {
               label 'mac'
