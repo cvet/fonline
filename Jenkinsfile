@@ -3,6 +3,7 @@ pipeline {
     FO_BUILD_DEST = 'Build'
     FO_SOURCE = '.'
     FO_INSTALL_PACKAGES = 0
+    COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse HEAD')
   }
   agent none
 
@@ -16,14 +17,14 @@ pipeline {
               yamlFile 'BuildScripts/build-pod.yaml'
             }
           }
-          steps {      
+          steps {
               sh './BuildScripts/android.sh'
 	      sh 'tree ./'
-              stash name: 'android', includes: '**/Build/android/**'
+              stash name: 'android', includes: 'Build/android/**'
           }
         }
         stage('Build Linux') {
-     
+
           agent {
             kubernetes {
               label 'linux'
@@ -34,7 +35,7 @@ pipeline {
             container('jnlp') {
                 sh './BuildScripts/linux.sh'
 		sh 'tree ./'
-                stash name: 'linux', includes: '**/Build/linux/**'
+                stash name: 'linux', includes: 'Build/linux/**'
             }
           }
         }
@@ -49,8 +50,8 @@ pipeline {
           steps {
             container('jnlp') {
                 sh './BuildScripts/web.sh'
-		sh 'tree ./'    
-                stash name: 'web', includes: '**/Build/web/**'
+		sh 'tree ./'
+                stash name: 'web', includes: 'Build/web/**'
             }
           }
         }
@@ -64,7 +65,7 @@ pipeline {
           steps {
               bat 'BuildScripts\\windows.bat'
 	      bat 'dir'
-              stash name: 'windows', includes: '**/Build/windows/**'
+              stash name: 'windows', includes: 'Build/windows/**'
           }
 					post {
     				cleanup{
@@ -82,7 +83,7 @@ pipeline {
           steps {
               sh './BuildScripts/mac.sh'
 	      sh 'ls -la ./'
-              stash name: 'macos', includes: '**/Build/mac/**'
+              stash name: 'macos', includes: 'Build/mac/**'
           }
 					post {
     				cleanup{
@@ -92,7 +93,7 @@ pipeline {
         }
       }
     }
-    
+
         stage('Build Mac OS') {
 
           agent {
@@ -101,26 +102,28 @@ pipeline {
             }
           }
           steps {
+      deleteDir()      
 			unstash 'linux'
 			unstash 'android'
 			unstash 'windows'
 			unstash 'macos'
 			unstash 'web'
 			sh 'tree ./'
-			sh 'zip -r -0 $GIT_COMMIT.zip ./'
-			sh "tree ./"             
+			sh 'zip -r -0 $COMMIT_ID.zip ./'
+			sh "tree ./"
+      sh "echo $COMMIT_ID"
           }
 					post {
     				success{
-        			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
+        			archiveArtifacts artifacts: "${COMMIT_ID}.zip", fingerprint: true
     				}
 					}
         }
-	  
-	  
-	  
-	  
 
-  }	
-	
+
+
+
+
+  }
+
 }
