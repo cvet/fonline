@@ -144,9 +144,9 @@ pipeline {
           label 'master'
         }
       }
-      options {
-        skipDefaultCheckout true
-      }      
+      //options {
+      //  skipDefaultCheckout true
+      //}      
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
           //unstash 'linux'
@@ -155,14 +155,9 @@ pipeline {
           //unstash 'macos'
           //unstash 'web'
           //ls 'tree ./'
-	  sh 'echo ${GIT_COMMIT}'
-	  sh 'echo $GIT_COMMIT'
-	  sh "echo ${GIT_COMMIT}"
-	  sh "echo $GIT_COMMIT"
-		sh "echo ${env.GIT_COMMIT}"
-          unstash 'keklel'
+	  unstash 'keklel'
           sh 'tree ./'
-	  sh "zip -r ${env.GIT_COMMIT}.zip ./"
+	  sh "zip -r $GIT_COMMIT.zip ./"
 	  sh 'tree ./'
 		nexusArtifactUploader artifacts: [[artifactId: "$GIT_COMMIT", classifier: '', file: "$GIT_COMMIT", type: 'zip']], credentialsId: 'b8c7457a-3141-4e6b-aff8-8d1e18a52248', groupId: 'dd', nexusUrl: 'builds.fonline.ru', nexusVersion: 'nexus3', protocol: 'https', repository: 'sdk', version: "GIT_COMMIT"
         }
