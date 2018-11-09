@@ -107,15 +107,13 @@ pipeline {
 			unstash 'windows'
 			unstash 'macos'
 			unstash 'web'
-      COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse HEAD')
 			sh 'tree ./'
-			sh 'zip -r -0 $COMMIT_ID.zip ./'
+			sh 'zip -r -0 build.zip ./'
 			sh "tree ./"
-      sh "echo $COMMIT_ID"
           }
 					post {
     				success{
-        			archiveArtifacts artifacts: "${COMMIT_ID}.zip", fingerprint: true
+        			archiveArtifacts artifacts: "build.zip", fingerprint: true
     				}
 					}
         }
