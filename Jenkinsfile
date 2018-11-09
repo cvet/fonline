@@ -10,10 +10,10 @@ pipeline {
   }
 
   stages {
-    stage('Clean FTP directory') {
-      options {
-        skipDefaultCheckout true
-      }
+    stage('Checkout') {
+      //options {
+      // skipDefaultCheckout true
+      //}
       agent {
         kubernetes {
           label 'linux'
@@ -22,11 +22,7 @@ pipeline {
       }
       steps {
         withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          //sh './BuildScripts/cleanup.sh'
-          sh 'echo 123'
-          sh 'mkdir ./keklel'
-          sh 'echo 1234 >> ./keklel/lel.txt'
-          stash name: 'keklel', includes: '**'
+	  stash name: 'build', includes: '**'
         }
       }
     }
@@ -44,9 +40,10 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              //sh './BuildScripts/android.sh'
-              //stash name: 'android', includes: '**/Build/android/bin/**'
-              print '123'
+	     unstash 'build'
+              sh './BuildScripts/android.sh'
+              stash name: 'android', includes: '**/Build/android/bin/**'
+              
             }
           }
         }
@@ -63,9 +60,9 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                //sh './BuildScripts/linux.sh'
-                //stash name: 'linux', includes: '**/Build/linux/bin/**'
-                print '123'
+		unstash 'build'
+                sh './BuildScripts/linux.sh'
+                stash name: 'linux', includes: '**/Build/linux/bin/**'
               }
             }
           }
@@ -83,9 +80,9 @@ pipeline {
           steps {
             container('jnlp') {
               withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                //sh './BuildScripts/web.sh'
-                //stash name: 'web', includes: '**/Build/web/bin/**'
-                print '123'
+		unstash 'build'
+                sh './BuildScripts/web.sh'
+                stash name: 'web', includes: '**/Build/web/bin/**'
               }
             }
           }
@@ -101,9 +98,10 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              //bat 'BuildScripts\\windows.bat'
-              //stash name: 'windows', includes: '**/Build/windows/bin/**'
-              print '123'
+	      unstash 'build'
+              bat 'BuildScripts\\windows.bat'
+              stash name: 'windows', includes: '**/Build/windows/bin/**'
+              
             }
           }
 					post {
@@ -123,9 +121,10 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              //sh './BuildScripts/mac.sh'
-              //stash name: 'macos', includes: '**/Build/mac/bin/**'
-              print '123'
+		unstash 'build'
+              sh './BuildScripts/mac.sh'
+              stash name: 'macos', includes: '**/Build/mac/bin/**'
+              
             }
           }
 					post {
@@ -136,43 +135,34 @@ pipeline {
         }
       }
     }
+    
 
-post {
+
+  }
+	
+	
+	
+	
+	
+	    post {
 	success {
 		node('master') {
-			//unstash 'linux'
-			//unstash 'android'
-			//unstash 'windows'
-			//unstash 'macos'
-			//unstash 'web'
+			unstash 'linux'
+			unstash 'android'
+			unstash 'windows'
+			unstash 'macos'
+			unstash 'web'
 			ls 'tree ./'
 			sh 'zip -r -0 $GIT_COMMIT.zip ./'
 			sh "tree ./"
 			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
 		}
         }
-    }	   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  }
+    }	
+	
+	
+	
+	
+	
+	
 }
