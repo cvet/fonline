@@ -5,9 +5,6 @@ pipeline {
     FO_INSTALL_PACKAGES = 0
   }
   agent none
-  options {
-    ansiColor('xterm')
-  }
 
   stages {
     stage('Build Main targets') {
