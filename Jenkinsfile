@@ -104,7 +104,7 @@ pipeline {
 			unstash 'windows'
 			unstash 'macos'
 			unstash 'web'
-			ls 'tree ./'
+			sh 'tree ./'
 			sh 'zip -r -0 $GIT_COMMIT.zip ./'
 			sh "tree ./"
 			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
