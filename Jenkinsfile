@@ -157,7 +157,6 @@ pipeline {
           //ls 'tree ./'
 	  sh 'echo ${GIT_COMMIT}'
 	  sh 'echo $GIT_COMMIT'
-		sh 'echo ${env.GIT_COMMIT}'
 	  sh "echo ${GIT_COMMIT}"
 	  sh "echo $GIT_COMMIT"
 		sh "echo ${env.GIT_COMMIT}"
