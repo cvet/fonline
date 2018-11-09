@@ -88,17 +88,14 @@ pipeline {
       }
     }
     
+        stage('Build Mac OS') {
 
-
-  }
-	
-	
-	
-	
-	
-	    post {
-	success {
-		node('master') {
+          agent {
+            node {
+              label 'master'
+            }
+          }
+          steps {
 			unstash 'linux'
 			unstash 'android'
 			unstash 'windows'
@@ -106,15 +103,19 @@ pipeline {
 			unstash 'web'
 			sh 'tree ./'
 			sh 'zip -r -0 $GIT_COMMIT.zip ./'
-			sh "tree ./"
-			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
-		}
+			sh "tree ./"             
+          }
+					post {
+    				success{
+        			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
+    				}
+					}
         }
-    }	
-	
-	
-	
-	
-	
+	  
+	  
+	  
+	  
+
+  }	
 	
 }
