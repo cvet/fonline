@@ -3,7 +3,6 @@ pipeline {
     FO_BUILD_DEST = 'Build'
     FO_SOURCE = '.'
     FO_INSTALL_PACKAGES = 0
-    COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse HEAD')
   }
   agent none
 
@@ -102,12 +101,13 @@ pipeline {
             }
           }
           steps {
-      deleteDir()      
+      deleteDir()
 			unstash 'linux'
 			unstash 'android'
 			unstash 'windows'
 			unstash 'macos'
 			unstash 'web'
+      COMMIT_ID = sh(returnStdout: true, script: 'git rev-parse HEAD')
 			sh 'tree ./'
 			sh 'zip -r -0 $COMMIT_ID.zip ./'
 			sh "tree ./"
