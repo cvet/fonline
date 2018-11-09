@@ -18,7 +18,8 @@ pipeline {
           }
           steps {      
               sh './BuildScripts/android.sh'
-              stash name: 'android', includes: '**/Build/android/bin/**'
+	      sh 'tree ./'
+              stash name: 'android', includes: '**/Build/android/**'
           }
         }
         stage('Build Linux') {
@@ -32,7 +33,8 @@ pipeline {
           steps {
             container('jnlp') {
                 sh './BuildScripts/linux.sh'
-                stash name: 'linux', includes: '**/Build/linux/bin/**'
+		sh 'tree ./'
+                stash name: 'linux', includes: '**/Build/linux/**'
             }
           }
         }
@@ -47,7 +49,8 @@ pipeline {
           steps {
             container('jnlp') {
                 sh './BuildScripts/web.sh'
-                stash name: 'web', includes: '**/Build/web/bin/**'
+		sh 'tree ./'    
+                stash name: 'web', includes: '**/Build/web/**'
             }
           }
         }
@@ -60,7 +63,8 @@ pipeline {
           }
           steps {
               bat 'BuildScripts\\windows.bat'
-              stash name: 'windows', includes: '**/Build/windows/bin/**'
+	      bat 'dir'
+              stash name: 'windows', includes: '**/Build/windows/**'
           }
 					post {
     				cleanup{
@@ -77,7 +81,8 @@ pipeline {
           }
           steps {
               sh './BuildScripts/mac.sh'
-              stash name: 'macos', includes: '**/Build/mac/bin/**'
+	      sh 'ls -la ./'
+              stash name: 'macos', includes: '**/Build/mac/**'
           }
 					post {
     				cleanup{
