@@ -159,9 +159,14 @@ pipeline {
           sh "tree ./"
 	sh 'zip -r $GIT_COMMIT.zip ./'
 	  sh "tree ./"
-		nexusArtifactUploader artifacts: [[artifactId: '$GIT_COMMIT', classifier: '', file: '${GIT_COMMIT}.zip', type: 'zip']], credentialsId: 'b8c7457a-3141-4e6b-aff8-8d1e18a52248', groupId: '', nexusUrl: 'builds.fonline.ru', nexusVersion: 'nexus3', protocol: 'https', repository: 'sdk', version: '$GIT_COMMIT'
         }
       }
+    post {
+        always {
+            archiveArtifacts artifacts: '$GIT_COMMIT.zip', fingerprint: true
+            //junit 'build/reports/**/*.xml'
+        }
+    }	    
     }
 
   }
