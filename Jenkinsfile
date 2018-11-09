@@ -137,36 +137,42 @@ pipeline {
       }
     }
 
-    stage('Upload build artifacts') {
-      agent {
-        node {
-          label 'master'
+post {
+	success {
+		node('master') {
+			//unstash 'linux'
+			//unstash 'android'
+			//unstash 'windows'
+			//unstash 'macos'
+			//unstash 'web'
+			ls 'tree ./'
+			sh 'zip -r -0 $GIT_COMMIT.zip ./'
+			sh "tree ./"
+			archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
+		}
         }
-      }
-      //options {
-      //  skipDefaultCheckout true
-      //}      
-      steps {
-        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          //unstash 'linux'
-          //unstash 'android'
-          //unstash 'windows'
-          //unstash 'macos'
-          //unstash 'web'
-          //ls 'tree ./'
-	  unstash 'keklel'
-          sh "tree ./"
-	sh 'zip -r $GIT_COMMIT.zip ./'
-	  sh "tree ./"
-        }
-      }
-    post {
-        always {
-		archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
-            //junit 'build/reports/**/*.xml'
-        }
-    }	    
-    }
+    }	   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   }
 }
