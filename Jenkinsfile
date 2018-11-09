@@ -155,6 +155,12 @@ pipeline {
           //unstash 'macos'
           //unstash 'web'
           //ls 'tree ./'
+	  sh 'echo ${GIT_COMMIT}'
+	  sh 'echo $GIT_COMMIT'
+		sh 'echo ${env.GIT_COMMIT}'
+	  sh "echo ${GIT_COMMIT}"
+	  sh "echo $GIT_COMMIT"
+		sh "echo ${env.GIT_COMMIT}"
           unstash 'keklel'
           sh 'tree ./'
 	  sh "zip -r ${env.GIT_COMMIT}.zip ./"
