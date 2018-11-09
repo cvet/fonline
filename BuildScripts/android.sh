@@ -44,6 +44,9 @@ cd ../
 export ANDROID_ABI=armeabi-v7a
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
+
+pwd
+
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
