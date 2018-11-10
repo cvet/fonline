@@ -22,9 +22,9 @@ mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir -p android
 cd android
-mkdir -p Android
-rm -rf Android/*
-cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
+
+mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
+cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
@@ -44,6 +44,9 @@ cd ../
 export ANDROID_ABI=armeabi-v7a
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
+
+pwd
+
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
@@ -54,13 +57,3 @@ cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
-
-if [ -n "$FO_FTP_DEST" ]; then
-	find Android/* | while read line; do
-		wput $line ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/ || true
-	done
-fi
-
-if [ -n "$FO_COPY_DEST" ]; then
-	cp -r Android "$FO_COPY_DEST/Client"
-fi
