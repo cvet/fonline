@@ -110,10 +110,9 @@ pipeline {
         }
       }
       steps {
-        sh 'mkdir -p release'
-        sh 'mv SDK/* ./release/'
-        dir('release')
+        dir('SDK')
         {
+          sh 'rm -rf ./Binaries/*'
           unstash 'linux'
           unstash 'android'
           unstash 'windows'
@@ -126,7 +125,7 @@ pipeline {
       }
       post {
         success{
-          dir('release'){
+          dir('SDK'){
               archiveArtifacts artifacts: "$GIT_COMMIT.zip", fingerprint: true
           }
         }
