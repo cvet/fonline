@@ -108,15 +108,13 @@ pipeline {
           unstash 'windows'
           unstash 'mac'
           unstash 'web'
-          sh 'tree ./'
           sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
-          sh 'tree ./'
         }
       }
       post {
         success{
           dir('SDK'){
-            archiveArtifacts artifacts: "$GIT_COMMIT.zip", fingerprint: true
+            archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
           }
         }
       }
