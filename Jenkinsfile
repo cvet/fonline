@@ -4,6 +4,9 @@ pipeline {
     FO_SOURCE = '.'
     FO_INSTALL_PACKAGES = 0
   }
+  options {
+      disableConcurrentBuilds()
+  }
   agent none
   stages {
     stage('Build Main targets') {
