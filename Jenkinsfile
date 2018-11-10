@@ -2,25 +2,13 @@ pipeline {
   environment {
     FO_BUILD_DEST = 'Build'
     FO_SOURCE = '.'
-    FO_FTP_DEST = '109.167.147.160'
     FO_INSTALL_PACKAGES = 0
   }
+  options {
+      disableConcurrentBuilds()
+  }
   agent none
-  
   stages {
-    stage('Clean FTP directory') {
-      agent {
-        kubernetes {
-          label 'linux'
-          yamlFile 'BuildScripts/build-pod.yaml'
-        }
-      }
-      steps {
-        withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-          sh './BuildScripts/cleanup.sh'
-        }
-      }
-    }          
     stage('Build Main targets') {
       parallel {
         stage('Build Android') {
@@ -31,8 +19,9 @@ pipeline {
             }
           }
           steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              sh './BuildScripts/android.sh'
+            sh './BuildScripts/android.sh'
+            dir('Build/android/'){
+              stash name: 'android', includes: 'Binaries/**'
             }
           }
         }
@@ -45,8 +34,9 @@ pipeline {
           }
           steps {
             container('jnlp') {
-              withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh './BuildScripts/linux.sh'
+              sh './BuildScripts/linux.sh'
+              dir('Build/linux/'){
+                stash name: 'linux', includes: 'Binaries/**'
               }
             }
           }
@@ -60,8 +50,9 @@ pipeline {
           }
           steps {
             container('jnlp') {
-              withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-                sh './BuildScripts/web.sh'
+              sh './BuildScripts/web.sh'
+              dir('Build/web/'){
+                stash name: 'web', includes: 'Binaries/**'
               }
             }
           }
@@ -73,15 +64,16 @@ pipeline {
             }
           }
           steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              bat 'BuildScripts\\windows.bat'
+            bat 'BuildScripts\\windows.bat'
+            dir('Build/windows/'){
+              stash name: 'windows', includes: 'Binaries/**'
             }
           }
-					post {
-    				cleanup{
-        			deleteDir()
-    				}
-					}
+          post {
+            cleanup{
+              deleteDir()
+            }
+          }
         }
         stage('Build Mac OS') {
           agent {
@@ -90,17 +82,45 @@ pipeline {
             }
           }
           steps {
-            withCredentials(bindings: [string(credentialsId: '0d28d996-7f62-49a2-b647-8f5bfc89a661', variable: 'FO_FTP_USER')]) {
-              sh './BuildScripts/mac.sh'
+            sh './BuildScripts/mac.sh'
+            dir('Build/mac/'){
+              stash name: 'mac', includes: 'Binaries/**'
             }
           }
-					post {
-    				cleanup{
-        			deleteDir()
-    				}
-					}
+          post {
+            cleanup{
+              deleteDir()
+            }
+          }
+        }
+      }
+    }
+
+    stage('Create build artifact') {
+      agent {
+        node {
+          label 'master'
+        }
+      }
+      steps {
+        dir('SDK')
+        {
+          sh 'rm -rf ./Binaries/*'
+          unstash 'linux'
+          unstash 'android'
+          unstash 'windows'
+          unstash 'mac'
+          unstash 'web'
+          sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
+        }
+      }
+      post {
+        success{
+          dir('SDK'){
+            archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
+          }
         }
       }
     }
   }
-}
+} 
