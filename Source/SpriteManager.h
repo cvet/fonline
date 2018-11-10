@@ -24,7 +24,7 @@ extern SDL_GLContext GLContext;
 #else
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
 extern int                             DummyInt;
-# define GL_SwapWindow()                 emscripten_webgl_commit_frame()
+# define GL_SwapWindow()                 (void) 0
 # define GL_GetWindowSize( w, h )        emscripten_get_canvas_size( w, h, &DummyInt )
 # define GL_SetWindowSize( w, h )        emscripten_set_canvas_size( w, h )
 # define GL_GetWindowPosition( x, y )    (void) 0

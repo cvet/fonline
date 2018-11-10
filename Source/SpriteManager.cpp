@@ -103,7 +103,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
@@ -175,8 +175,8 @@ bool SpriteManager::Init()
     attr.preferLowPowerToHighPerformance = EM_FALSE;
     attr.failIfMajorPerformanceCaveat = EM_FALSE;
     attr.enableExtensionsByDefault = EM_TRUE;
-    attr.explicitSwapControl = EM_TRUE;
-    attr.renderViaOffscreenBackBuffer = EM_TRUE;
+    attr.explicitSwapControl = EM_FALSE;
+    attr.renderViaOffscreenBackBuffer = EM_FALSE;
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
