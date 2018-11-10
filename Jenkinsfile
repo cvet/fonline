@@ -19,7 +19,9 @@ pipeline {
           steps {
             sh './BuildScripts/android.sh'
             sh 'tree ./'
-            stash name: 'android', includes: 'Build/android/Binaries/**'
+            dir('Build/android/'){
+                stash name: 'android', includes: 'Binaries/**'
+            }
           }
         }
         stage('Build Linux') {
@@ -34,7 +36,9 @@ pipeline {
             container('jnlp') {
               sh './BuildScripts/linux.sh'
               sh 'tree ./'
-              stash name: 'linux', includes: 'Build/linux/Binaries/**'
+              dir('Build/linux/'){
+                  stash name: 'linux', includes: 'Binaries/**'
+              }
             }
           }
         }
@@ -50,7 +54,9 @@ pipeline {
             container('jnlp') {
               sh './BuildScripts/web.sh'
               sh 'tree ./'
-              stash name: 'web', includes: 'Build/web/Binaries/**'
+              dir('Build/web/'){
+                  stash name: 'web', includes: 'Binaries/**'
+              }
             }
           }
         }
@@ -63,8 +69,9 @@ pipeline {
           }
           steps {
             bat 'BuildScripts\\windows.bat'
-            bat 'dir'
-            stash name: 'windows', includes: 'Build/windows/Binaries/**'
+            dir('Build/windows/'){
+                stash name: 'windows', includes: 'Binaries/**'
+            }
           }
           post {
             cleanup{
@@ -82,7 +89,9 @@ pipeline {
           steps {
             sh './BuildScripts/mac.sh'
             sh 'ls -la ./'
-            stash name: 'macos', includes: 'Build/mac/Binaries/**'
+            dir('Build/mac/'){
+                stash name: 'mac', includes: 'Binaries/**'
+            }
           }
           post {
             cleanup{
@@ -102,18 +111,22 @@ pipeline {
       }
       steps {
         deleteDir()
-        unstash 'linux'
-        unstash 'android'
-        unstash 'windows'
-        unstash 'macos'
-        unstash 'web'
-        sh 'tree ./'
-        sh 'zip -r -0 build.zip ./'
-        sh "tree ./"
+        sh 'mkdir -p build'
+        dir('build')
+        {
+          unstash 'linux'
+          unstash 'android'
+          unstash 'windows'
+          unstash 'mac'
+          unstash 'web'
+          sh 'tree ./'
+          sh 'zip -r -0 build.zip ./'
+          sh "tree ./"
+        }
       }
       post {
         success{
-          archiveArtifacts artifacts: "build.zip", fingerprint: true
+          archiveArtifacts artifacts: "build/build.zip", fingerprint: true
         }
       }
     }
