@@ -5,7 +5,7 @@
 #include "F2Palette.h"
 #include <time.h>
 
-#ifndef FO_WEB
+#ifndef FO_WEB_EMSCRIPTEN
 SDL_Window*                     MainWindow;
 SDL_GLContext                   GLContext;
 #else
@@ -74,7 +74,7 @@ bool SpriteManager::Init()
     curDrawQuad = 0;
 
     // Detect tablets
-    #ifndef FO_WEB
+    #ifndef FO_WEB_EMSCRIPTEN
     bool is_tablet = false;
     # if defined ( FO_IOS ) || defined ( FO_ANDROID )
     is_tablet = true;
@@ -99,7 +99,7 @@ bool SpriteManager::Init()
     #endif
 
     // Initialize window
-    #ifndef FO_WEB
+    #ifndef FO_WEB_EMSCRIPTEN
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
@@ -270,7 +270,7 @@ bool SpriteManager::Init()
     OGL_framebuffer_multisample = true;
     OGL_texture_multisample = true;
     # endif
-    # ifdef FO_WEB
+    # ifdef FO_WEB_EMSCRIPTEN
     OGL_vertex_array_object = ( attr.majorVersion > 1 ||
                                 emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE );
     # endif

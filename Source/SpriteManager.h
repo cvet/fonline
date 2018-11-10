@@ -8,7 +8,9 @@
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 
-#ifndef FO_WEB
+// #define FO_WEB_EMSCRIPTEN
+
+#ifndef FO_WEB_EMSCRIPTEN
 # include "SDL_video.h"
 extern SDL_Window*   MainWindow;
 extern SDL_GLContext GLContext;
