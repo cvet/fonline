@@ -174,7 +174,7 @@ FOClient::FOClient()
 bool FOClient::PreInit()
 {
     // SDL
-    #ifndef FO_WEB_EMSCRIPTEN
+    #ifndef FO_WEB_NATIVE_RENDER
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     #else
     if( SDL_Init( SDL_INIT_EVENTS ) )

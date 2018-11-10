@@ -5,7 +5,7 @@
 #include "F2Palette.h"
 #include <time.h>
 
-#ifndef FO_WEB_EMSCRIPTEN
+#ifndef FO_WEB_NATIVE_RENDER
 SDL_Window*                     MainWindow;
 SDL_GLContext                   GLContext;
 #else
@@ -74,7 +74,7 @@ bool SpriteManager::Init()
     curDrawQuad = 0;
 
     // Detect tablets
-    #ifndef FO_WEB_EMSCRIPTEN
+    #ifndef FO_WEB_NATIVE_RENDER
     bool is_tablet = false;
     # if defined ( FO_IOS ) || defined ( FO_ANDROID )
     is_tablet = true;
@@ -99,7 +99,7 @@ bool SpriteManager::Init()
     #endif
 
     // Initialize window
-    #ifndef FO_WEB_EMSCRIPTEN
+    #ifndef FO_WEB_NATIVE_RENDER
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
@@ -142,8 +142,6 @@ bool SpriteManager::Init()
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
     #else
-    EM_ASM( GLctxIsOnParentThread = true );
-
     double pixel_ratio = emscripten_get_device_pixel_ratio();
     if( pixel_ratio < 0.99 || pixel_ratio > 1.01 )
     {
@@ -166,11 +164,11 @@ bool SpriteManager::Init()
 
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
-    attr.alpha = EM_TRUE;
+    attr.alpha = EM_FALSE;
     attr.depth = EM_FALSE;
     attr.stencil = EM_FALSE;
     attr.antialias = EM_FALSE;
-    attr.premultipliedAlpha = EM_TRUE;
+    attr.premultipliedAlpha = EM_FALSE;
     attr.preserveDrawingBuffer = EM_FALSE;
     attr.preferLowPowerToHighPerformance = EM_FALSE;
     attr.failIfMajorPerformanceCaveat = EM_FALSE;
@@ -270,9 +268,11 @@ bool SpriteManager::Init()
     OGL_framebuffer_multisample = true;
     OGL_texture_multisample = true;
     # endif
-    # ifdef FO_WEB_EMSCRIPTEN
-    OGL_vertex_array_object = ( attr.majorVersion > 1 ||
-                                emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE );
+    # ifdef FO_WEB
+    #  ifdef FO_WEB_NATIVE_RENDER
+    OGL_vertex_array_object = ( OGL_vertex_array_object || attr.majorVersion > 1 );
+    #  endif
+    OGL_vertex_array_object = ( OGL_vertex_array_object || emscripten_webgl_enable_extension(WebGlContext, "OES_vertex_array_object") );
     # endif
     #endif
 
