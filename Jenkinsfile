@@ -5,7 +5,6 @@ pipeline {
     FO_INSTALL_PACKAGES = 0
   }
   agent none
-
   stages {
     stage('Build Main targets') {
       parallel {
@@ -18,14 +17,12 @@ pipeline {
           }
           steps {
             sh './BuildScripts/android.sh'
-            sh 'tree ./'
             dir('Build/android/'){
-                stash name: 'android', includes: 'Binaries/**'
+              stash name: 'android', includes: 'Binaries/**'
             }
           }
         }
         stage('Build Linux') {
-
           agent {
             kubernetes {
               label 'linux'
@@ -35,15 +32,13 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/linux.sh'
-              sh 'tree ./'
               dir('Build/linux/'){
-                  stash name: 'linux', includes: 'Binaries/**'
+                stash name: 'linux', includes: 'Binaries/**'
               }
             }
           }
         }
         stage('Build Web') {
-
           agent {
             kubernetes {
               label 'linux'
@@ -53,15 +48,13 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/web.sh'
-              sh 'tree ./'
               dir('Build/web/'){
-                  stash name: 'web', includes: 'Binaries/**'
+                stash name: 'web', includes: 'Binaries/**'
               }
             }
           }
         }
         stage('Build Windows') {
-
           agent {
             node {
               label 'win'
@@ -70,7 +63,7 @@ pipeline {
           steps {
             bat 'BuildScripts\\windows.bat'
             dir('Build/windows/'){
-                stash name: 'windows', includes: 'Binaries/**'
+              stash name: 'windows', includes: 'Binaries/**'
             }
           }
           post {
@@ -80,7 +73,6 @@ pipeline {
           }
         }
         stage('Build Mac OS') {
-
           agent {
             node {
               label 'mac'
@@ -88,9 +80,8 @@ pipeline {
           }
           steps {
             sh './BuildScripts/mac.sh'
-            sh 'ls -la ./'
             dir('Build/mac/'){
-                stash name: 'mac', includes: 'Binaries/**'
+              stash name: 'mac', includes: 'Binaries/**'
             }
           }
           post {
@@ -102,8 +93,7 @@ pipeline {
       }
     }
 
-    stage('Assemble build artifacts') {
-
+    stage('Create build artifact') {
       agent {
         node {
           label 'master'
@@ -119,19 +109,17 @@ pipeline {
           unstash 'mac'
           unstash 'web'
           sh 'tree ./'
-          sh 'zip -r -0 $GIT_COMMIT.zip ./'
+          sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
           sh 'tree ./'
         }
       }
       post {
         success{
           dir('SDK'){
-              archiveArtifacts artifacts: "$GIT_COMMIT.zip", fingerprint: true
+            archiveArtifacts artifacts: "$GIT_COMMIT.zip", fingerprint: true
           }
         }
       }
     }
-
   }
-
 }
