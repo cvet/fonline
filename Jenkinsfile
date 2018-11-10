@@ -102,7 +102,7 @@ pipeline {
       }
     }
 
-    stage('Build Mac OS') {
+    stage('Assemble build artifacts') {
 
       agent {
         node {
@@ -110,9 +110,9 @@ pipeline {
         }
       }
       steps {
-        deleteDir()
-        sh 'mkdir -p build'
-        dir('build')
+        sh 'mkdir -p release'
+        sh 'mv SDK/* ./release/'
+        dir('release')
         {
           unstash 'linux'
           unstash 'android'
@@ -120,13 +120,15 @@ pipeline {
           unstash 'mac'
           unstash 'web'
           sh 'tree ./'
-          sh 'zip -r -0 build.zip ./'
-          sh "tree ./"
+          sh 'zip -r -0 $GIT_COMMIT.zip ./'
+          sh 'tree ./'
         }
       }
       post {
         success{
-          archiveArtifacts artifacts: "build/build.zip", fingerprint: true
+          dir('release'){
+              archiveArtifacts artifacts: "$GIT_COMMIT.zip", fingerprint: true
+          }
         }
       }
     }

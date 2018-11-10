@@ -139,9 +139,9 @@ if( FO_DEBUG )
 	set( NON_CLIENT_POSTFIX "${NON_CLIENT_POSTFIX}_Debug" )
 endif()
 
-set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server/${OS}" )
-set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Mapper/${OS}" )
-set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/ASCompiler/${OS}" )
+set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server" )
+set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Mapper" )
+set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/ASCompiler" )
 
 set( FO_OUTPUT_BINARIES_PATH "" CACHE PATH "Fixed output path" )
 if( NOT "${FO_OUTPUT_BINARIES_PATH}" STREQUAL "" )

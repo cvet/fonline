@@ -22,9 +22,9 @@ mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir -p android
 cd android
-mkdir -p Android
-rm -rf Android/*
-cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
+
+mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
+cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"

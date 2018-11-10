@@ -20,9 +20,8 @@ mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir -p web
 cd web
-mkdir -p Web
-rm -rf Web/*
-cp -r "$SOURCE_FULL_PATH/BuildScripts/web/." "./Web/"
+mkdir -p "./Binaries/Client/Web" && rm -rf "./Binaries/Client/Web/*"
+cp -r "$SOURCE_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
 
 mkdir -p emsdk
 cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"
