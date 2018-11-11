@@ -101,8 +101,8 @@ bool SpriteManager::Init()
     // Initialize window
     #ifndef FO_WEB_NATIVE_RENDER
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
@@ -342,7 +342,7 @@ bool SpriteManager::Init()
         ( *it ) = nullptr;
 
     // Render targets
-    rtMain = nullptr; // CreateRenderTarget(false, false, true, 0, 0, true);
+    rtMain = CreateRenderTarget(false, false, true, 0, 0, true);
     rtContours = CreateRenderTarget( false, false, true, 0, 0, false );
     rtContoursMid = CreateRenderTarget( false, false, true, 0, 0, false );
 
