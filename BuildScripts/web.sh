@@ -5,6 +5,8 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
+export EMSCRIPTEN_VERSION="1.38.12"
+
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
@@ -28,8 +30,8 @@ cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
 chmod +x ./emsdk
 ./emsdk update
-./emsdk install latest
-./emsdk activate latest
+./emsdk install $EMSCRIPTEN_VERSION
+./emsdk activate $EMSCRIPTEN_VERSION
 source ./emsdk_env.sh
 cd ../
 emcc -v

@@ -5,7 +5,6 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
 	sudo apt-get -y install build-essential
