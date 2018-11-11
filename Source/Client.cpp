@@ -1400,7 +1400,7 @@ bool FOClient::CheckSocketStatus( bool for_write )
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
-    /*int is_secured = EM_ASM_INT( { return ( ( window.location.protocol == 'https:' ) ? 1 : 0 ); } );
+    int is_secured = EM_ASM_INT( { return ( ( window.location.protocol == 'https:' ) ? 1 : 0 ); } );
     if( !is_secured )
     {
         port += 1;
@@ -1412,7 +1412,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
         port += 2;
         EM_ASM( { Module[ 'websocket' ][ 'url' ] = 'wss://'; } );
         WriteLog( "Connecting to server 'wss://{}:{}'.\n", host, port );
-    }*/
+    }
     #else
     WriteLog( "Connecting to server '{}:{}'.\n", host, port );
     #endif
