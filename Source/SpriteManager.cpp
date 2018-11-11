@@ -164,7 +164,7 @@ bool SpriteManager::Init()
 
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
-    attr.alpha = EM_FALSE;
+    attr.alpha = EM_TRUE;
     attr.depth = EM_FALSE;
     attr.stencil = EM_FALSE;
     attr.antialias = EM_FALSE;
