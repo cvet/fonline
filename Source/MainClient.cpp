@@ -20,6 +20,8 @@ static void ClientEntry( void* )
 
         client = new FOClient();
     }
+
+    WriteLog("main loop begin\n");
     client->MainLoop();
 }
 
