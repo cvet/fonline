@@ -174,11 +174,7 @@ FOClient::FOClient()
 bool FOClient::PreInit()
 {
     // SDL
-    #ifndef FO_WEB_NATIVE_RENDER
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
-    #else
-    if( SDL_Init( SDL_INIT_EVENTS ) )
-    #endif
     {
         WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
         return false;

@@ -5,16 +5,9 @@
 #include "F2Palette.h"
 #include <time.h>
 
-#ifndef FO_WEB_NATIVE_RENDER
-SDL_Window*                     MainWindow;
-SDL_GLContext                   GLContext;
-#else
-EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
-int                             DummyInt;
-#endif
-
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = nullptr;
+SDL_Window*   MainWindow;
 
 #define MAX_ATLAS_SIZE           ( 4096 )
 #define SPRITES_BUFFER_SIZE      ( 10000 )
@@ -74,14 +67,13 @@ bool SpriteManager::Init()
     curDrawQuad = 0;
 
     // Detect tablets
-    #ifndef FO_WEB_NATIVE_RENDER
     bool is_tablet = false;
-    # if defined ( FO_IOS ) || defined ( FO_ANDROID )
+    #if defined ( FO_IOS ) || defined ( FO_ANDROID )
     is_tablet = true;
-    # endif
-    # if defined ( FO_WINDOWS )
+    #endif
+    #if defined ( FO_WINDOWS )
     is_tablet = ( GetSystemMetrics( SM_TABLETPC ) != 0 );
-    # endif
+    #endif
     if( is_tablet )
     {
         SDL_DisplayMode mode;
@@ -96,10 +88,8 @@ bool SpriteManager::Init()
         }
         GameOpt.FullScreen = true;
     }
-    #endif
 
     // Initialize window
-    #ifndef FO_WEB_NATIVE_RENDER
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
@@ -114,11 +104,11 @@ bool SpriteManager::Init()
         window_create_flags |= SDL_WINDOW_FULLSCREEN;
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
-    # ifdef FO_OGL_ES
+    #ifdef FO_OGL_ES
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
-    # endif
+    #endif
     MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
@@ -127,13 +117,14 @@ bool SpriteManager::Init()
         return false;
     }
 
-    GLContext = SDL_GL_CreateContext( MainWindow );
-    if( !GLContext )
+    #ifndef FO_WEB
+    SDL_GLContext gl_context = SDL_GL_CreateContext( MainWindow );
+    if( !gl_context )
     {
         WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
-    if( SDL_GL_MakeCurrent( MainWindow, GLContext ) < 0 )
+    if( SDL_GL_MakeCurrent( MainWindow, gl_context ) < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", SDL_GetError() );
         return false;
@@ -178,15 +169,15 @@ bool SpriteManager::Init()
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
-    if( WebGlContext <= 0 )
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context( nullptr, &attr );
+    if( gl_context <= 0 )
     {
         attr.majorVersion = 1;
         attr.minorVersion = 0;
-        WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
-        if( WebGlContext <= 0 )
+        gl_context = emscripten_webgl_create_context( nullptr, &attr );
+        if( gl_context <= 0 )
         {
-            WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) WebGlContext );
+            WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) gl_context );
             return false;
         }
         else
@@ -199,13 +190,12 @@ bool SpriteManager::Init()
         WriteLog( "Created WebGL2 context.\n" );
     }
 
-    EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( WebGlContext );
+    EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( gl_context );
     if( r < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", r );
         return false;
     }
-
     #endif
 
     SDL_ShowCursor( 0 );
@@ -268,10 +258,7 @@ bool SpriteManager::Init()
     OGL_texture_multisample = true;
     # endif
     # ifdef FO_WEB
-    #  ifdef FO_WEB_NATIVE_RENDER
-    // OGL_vertex_array_object = ( OGL_vertex_array_object || attr.majorVersion > 1 );
-    #  endif
-    // OGL_vertex_array_object = ( OGL_vertex_array_object || emscripten_webgl_enable_extension( emscripten_webgl_get_current_context(), "OES_vertex_array_object" ) );
+    OGL_vertex_array_object = ( attr.majorVersion > 1 || emscripten_webgl_enable_extension( gl_context, "OES_vertex_array_object" ) );
     # endif
     #endif
 
