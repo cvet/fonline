@@ -5,9 +5,12 @@
 #include "F2Palette.h"
 #include <time.h>
 
+#ifdef FO_WEB
+# define SDL_GL_SwapWindow()    (void) 0
+#endif
+
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = nullptr;
-SDL_Window*   MainWindow;
 
 #define MAX_ATLAS_SIZE           ( 4096 )
 #define SPRITES_BUFFER_SIZE      ( 10000 )
@@ -27,6 +30,8 @@ bool OGL_get_program_binary = false;
 
 SpriteManager::SpriteManager()
 {
+    mainWindow = nullptr;
+
     drawQuadCount = 0;
     curDrawQuad = 0;
     sceneBeginned = false;
@@ -97,34 +102,40 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
-    window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
-    if( is_tablet )
-    {
-        window_create_flags |= SDL_WINDOW_FULLSCREEN;
-        window_create_flags |= SDL_WINDOW_BORDERLESS;
-    }
     #ifdef FO_OGL_ES
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
     #endif
-    MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
+
+    uint window_create_flags = SDL_WINDOW_SHOWN;
+    if( GameOpt.FullScreen )
+        window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    if( is_tablet )
+    {
+        window_create_flags |= SDL_WINDOW_FULLSCREEN;
+        window_create_flags |= SDL_WINDOW_BORDERLESS;
+    }
+    #ifndef FO_WEB
+    window_create_flags |= SDL_WINDOW_OPENGL;
+    #endif
+
+    mainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
-    if( !MainWindow )
+    if( !mainWindow )
     {
         WriteLog( "SDL Window not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
     #ifndef FO_WEB
-    SDL_GLContext gl_context = SDL_GL_CreateContext( MainWindow );
+    SDL_GLContext gl_context = SDL_GL_CreateContext( mainWindow );
     if( !gl_context )
     {
         WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
-    if( SDL_GL_MakeCurrent( MainWindow, gl_context ) < 0 )
+    if( SDL_GL_MakeCurrent( mainWindow, gl_context ) < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", SDL_GetError() );
         return false;
@@ -133,18 +144,6 @@ bool SpriteManager::Init()
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
     #else
-    double pixel_ratio = emscripten_get_device_pixel_ratio();
-    if( pixel_ratio < 0.99 || pixel_ratio > 1.01 )
-    {
-        double w = (double) GameOpt.ScreenWidth * pixel_ratio;
-        double h = (double) GameOpt.ScreenHeight * pixel_ratio;
-        emscripten_set_canvas_size( (int) w, (int) h );
-    }
-    else
-    {
-        emscripten_set_canvas_size( GameOpt.ScreenWidth, GameOpt.ScreenHeight );
-    }
-
     EmscriptenFullscreenStrategy fullscreen_strategy;
     fullscreen_strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT;
     fullscreen_strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
@@ -334,7 +333,7 @@ bool SpriteManager::Init()
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    GL_SwapWindow();
+    SDL_GL_SwapWindow( mainWindow );
     if( rtMain )
         PushRenderTarget( rtMain );
 
@@ -379,6 +378,66 @@ void SpriteManager::Finish()
     WriteLog( "Sprite manager finish complete.\n" );
 }
 
+void SpriteManager::GetWindowSize( int& w, int& h )
+{
+    SDL_GetWindowSize( mainWindow, &w, &h );
+}
+
+void SpriteManager::SetWindowSize( int w, int h )
+{
+    SDL_SetWindowSize( mainWindow, w, h );
+}
+
+void SpriteManager::GetWindowPosition( int& x, int& y )
+{
+    SDL_GetWindowPosition( mainWindow, &x, &y );
+}
+
+void SpriteManager::SetWindowPosition( int x, int y )
+{
+    SDL_SetWindowPosition( mainWindow, x, y );
+}
+
+void SpriteManager::GetMousePosition( int& x, int& y )
+{
+    SDL_GetMouseState( &x, &y );
+}
+
+void SpriteManager::SetMousePosition( int x, int y )
+{
+    SDL_WarpMouseInWindow( mainWindow, x, y );
+}
+
+bool SpriteManager::IsWindowFocused()
+{
+    return SDL_GetWindowFlags( mainWindow ) & SDL_WINDOW_INPUT_FOCUS;
+}
+
+void SpriteManager::MinimizeWindow()
+{
+    SDL_MinimizeWindow( mainWindow );
+}
+
+bool SpriteManager::EnableFullscreen()
+{
+    return !SDL_SetWindowFullscreen( mainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP );
+}
+
+bool SpriteManager::DisableFullscreen()
+{
+    return !SDL_SetWindowFullscreen( mainWindow, 0 );
+}
+
+void SpriteManager::BlinkWindow()
+{
+    #ifdef FO_WINDOWS
+    SDL_SysWMinfo info;
+    SDL_VERSION( &info.version );
+    if( GameOpt.MessNotify && SDL_GetWindowWMInfo( mainWindow, &info ) )
+        FlashWindow( info.info.win.window, true );
+    #endif
+}
+
 void SpriteManager::BeginScene( uint clear_color )
 {
     // Render 3d animations
@@ -407,12 +466,12 @@ void SpriteManager::EndScene()
     {
         PopRenderTarget();
         DrawRenderTarget( rtMain, false );
-        GL_SwapWindow();
+        SDL_GL_SwapWindow( mainWindow );
         PushRenderTarget( rtMain );
     }
     else
     {
-        GL_SwapWindow();
+        SDL_GL_SwapWindow( mainWindow );
     }
 
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
@@ -440,7 +499,7 @@ void SpriteManager::SetAlwaysOnTop( bool enable )
     #ifdef FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION( &info.version );
-    if( SDL_GetWindowWMInfo( MainWindow, &info ) )
+    if( SDL_GetWindowWMInfo( mainWindow, &info ) )
         SetWindowPos( info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
     #endif
 }
@@ -834,7 +893,7 @@ void SpriteManager::RefreshViewport()
     }
     else
     {
-        GL_GetWindowSize( &w, &h );
+        GetWindowSize( w, h );
         screen_size = true;
     }
 
@@ -1238,7 +1297,7 @@ void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
     int w = ( tex ? tex->Width : 0 );
     int h = ( tex ? tex->Height : 0 );
     if( !tex )
-        GL_GetWindowSize( &w, &h );
+        GetWindowSize( w, h );
 
     // Get data
     uchar* data = new uchar[ w * h * 4 ];
