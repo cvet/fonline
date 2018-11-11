@@ -123,7 +123,7 @@ elseif( EMSCRIPTEN )
 		#set( WEB_OPTIONS "${WEB_OPTIONS} --no-heap-copy" )
 		#set( WEB_OPTIONS "${WEB_OPTIONS} -s ASSERTIONS=0" )
 		#set( WEB_OPTIONS "${WEB_OPTIONS} -s DISABLE_EXCEPTION_CATCHING=1" )
-		#set( WEB_OPTIONS "${WEB_OPTIONS} -s BINARYEN_TRAP_MODE='clamp'" )
+		set( WEB_OPTIONS "${WEB_OPTIONS} -s BINARYEN_TRAP_MODE='clamp'" )
 		# Uncomment these optimizations later, they may give side effects
 		# set( WEB_OPTIONS "${WEB_OPTIONS} --closure 1" ) - conflicts with NO_DYNAMIC_EXECUTION
 		# set( WEB_OPTIONS "${WEB_OPTIONS} --llvm-lto 1" )

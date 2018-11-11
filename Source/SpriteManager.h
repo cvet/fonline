@@ -8,7 +8,7 @@
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 
-#if 0
+#ifdef FO_WEB
 # define FO_WEB_NATIVE_RENDER
 #endif
 

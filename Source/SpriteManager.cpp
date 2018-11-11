@@ -101,9 +101,9 @@ bool SpriteManager::Init()
     // Initialize window
     #ifndef FO_WEB_NATIVE_RENDER
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
+    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
@@ -165,9 +165,9 @@ bool SpriteManager::Init()
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
     attr.alpha = EM_TRUE;
-    attr.depth = EM_FALSE;
-    attr.stencil = EM_FALSE;
-    attr.antialias = EM_FALSE;
+    attr.depth = EM_TRUE;
+    attr.stencil = EM_TRUE;
+    attr.antialias = EM_TRUE;
     attr.premultipliedAlpha = EM_FALSE;
     attr.preserveDrawingBuffer = EM_FALSE;
     attr.preferLowPowerToHighPerformance = EM_FALSE;
@@ -176,7 +176,7 @@ bool SpriteManager::Init()
     attr.explicitSwapControl = EM_FALSE;
     attr.renderViaOffscreenBackBuffer = EM_FALSE;
 
-    attr.majorVersion = 2;
+    attr.majorVersion = 1;
     attr.minorVersion = 0;
     WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
     if( WebGlContext <= 0 )

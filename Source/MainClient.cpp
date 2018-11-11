@@ -70,7 +70,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
                    } );
         } );
     emscripten_set_main_loop_arg( ClientEntry, nullptr, 30, 1 );
-    emscripten_set_main_loop_timing( EM_TIMING_SETTIMEOUT, 15 );
+    emscripten_set_main_loop_timing( EM_TIMING_RAF, 1 );
 
     #elif defined ( FO_ANDROID )
     while( !GameOpt.Quit )
