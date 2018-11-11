@@ -5,7 +5,7 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-export EMSCRIPTEN_VERSION="sdk-1.37.19-64bit"
+export EMSCRIPTEN_VERSION="sdk-1.38.6-64bit"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
