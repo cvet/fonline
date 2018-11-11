@@ -334,9 +334,7 @@ void FileClose( void* file )
         # ifdef FO_WEB
         if( ( (FileDesc*) file )->Write )
         {
-            EM_ASM(
-                FS.syncfs( function( err ) {} );
-                );
+            EM_ASM( { FS.syncfs( function( err ) {} ); } );
         }
         # endif
 

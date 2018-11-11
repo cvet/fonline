@@ -14,7 +14,7 @@ static void ClientEntry( void* )
     {
         #ifdef FO_WEB
         // Wait file system synchronization
-        if( EM_ASM_INT( return Module.syncfsDone ) != 1 )
+        if( EM_ASM_INT( { return Module.syncfsDone; } ) != 1 )
             return;
         #endif
 
@@ -58,7 +58,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
 
     #elif defined ( FO_WEB )
-    EM_ASM(
+    EM_ASM( {
         FS.mkdir( '/PersistentData' );
         FS.mount( IDBFS, {}, '/PersistentData' );
         Module.syncfsDone = 0;
@@ -67,7 +67,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
                        assert( !err );
                        Module.syncfsDone = 1;
                    } );
-        );
+        } );
     emscripten_set_main_loop_arg( ClientEntry, nullptr, 0, 1 );
 
     #elif defined ( FO_ANDROID )
