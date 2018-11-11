@@ -27,24 +27,6 @@ pipeline {
             }
           }
         }
-        stage('Build Windows') {
-          agent {
-            node {
-              label 'win'
-            }
-          }
-          steps {
-            bat 'BuildScripts\\windows.bat'
-            dir('Build/windows/'){
-              stash name: 'windows', includes: 'Binaries/**'
-            }
-          }
-          post {
-            cleanup{
-              deleteDir()
-            }
-          }
-        }
       }
     }
 
@@ -58,7 +40,6 @@ pipeline {
         dir('SDK')
         {
           sh 'rm -rf ./Binaries/*'
-          unstash 'windows'
           unstash 'web'
           sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
         }
