@@ -270,9 +270,9 @@ bool SpriteManager::Init()
     # endif
     # ifdef FO_WEB
     #  ifdef FO_WEB_NATIVE_RENDER
-    OGL_vertex_array_object = ( OGL_vertex_array_object || attr.majorVersion > 1 );
+    // OGL_vertex_array_object = ( OGL_vertex_array_object || attr.majorVersion > 1 );
     #  endif
-    OGL_vertex_array_object = ( OGL_vertex_array_object || emscripten_webgl_enable_extension( emscripten_webgl_get_current_context(), "OES_vertex_array_object" ) );
+    // OGL_vertex_array_object = ( OGL_vertex_array_object || emscripten_webgl_enable_extension( emscripten_webgl_get_current_context(), "OES_vertex_array_object" ) );
     # endif
     #endif
 
