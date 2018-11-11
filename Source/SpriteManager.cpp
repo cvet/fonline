@@ -6,7 +6,7 @@
 #include <time.h>
 
 #ifdef FO_WEB
-# define SDL_GL_SwapWindow()    (void) 0
+# define SDL_GL_SwapWindow( a )    (void) 0
 #endif
 
 SpriteManager SprMngr;
