@@ -206,7 +206,6 @@ bool SpriteManager::Init()
         return false;
     }
 
-    emscripten_hide_mouse();
     #endif
 
     SDL_ShowCursor( 0 );
@@ -342,7 +341,7 @@ bool SpriteManager::Init()
         ( *it ) = nullptr;
 
     // Render targets
-    rtMain = CreateRenderTarget(false, false, true, 0, 0, true);
+    rtMain = CreateRenderTarget( false, false, true, 0, 0, true );
     rtContours = CreateRenderTarget( false, false, true, 0, 0, false );
     rtContoursMid = CreateRenderTarget( false, false, true, 0, 0, false );
 
