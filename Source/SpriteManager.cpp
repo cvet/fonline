@@ -342,7 +342,7 @@ bool SpriteManager::Init()
         ( *it ) = nullptr;
 
     // Render targets
-    rtMain = CreateRenderTarget( false, false, true, 0, 0, true );
+    rtMain = nullptr; // CreateRenderTarget(false, false, true, 0, 0, true);
     rtContours = CreateRenderTarget( false, false, true, 0, 0, false );
     rtContoursMid = CreateRenderTarget( false, false, true, 0, 0, false );
 
