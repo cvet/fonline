@@ -886,10 +886,7 @@ void FOClient::MainLoop()
 
     // Game end
     if( GameOpt.Quit )
-    {
-        WriteLog("main loop end 1\n");
         return;
-    }
 
     // Restart logic
     if( DoRestart )
@@ -902,16 +899,12 @@ void FOClient::MainLoop()
     if( IsConnecting )
     {
         if( !CheckSocketStatus( true ) )
-        {
-            WriteLog("main loop end 2\n");
             return;
-        }
     }
 
     if( UpdateFilesInProgress )
     {
         UpdateFilesLoop();
-        WriteLog("main loop end 3\n");
         return;
     }
 
@@ -921,7 +914,6 @@ void FOClient::MainLoop()
         {
             WriteLog( "FOnline engine initialization failed.\n" );
             GameOpt.Quit = true;
-            WriteLog("main loop end 4\n");
             return;
         }
 
@@ -936,7 +928,6 @@ void FOClient::MainLoop()
                 ScreenFadeOut();
         }
 
-        WriteLog("main loop end 5\n");
         return;
     }
 
@@ -1077,7 +1068,6 @@ void FOClient::MainLoop()
     if( IsVideoPlayed() )
     {
         RenderVideo();
-        WriteLog("main loop end 6\n");
         return;
     }
 
@@ -1105,8 +1095,6 @@ void FOClient::MainLoop()
     ProcessScreenEffectFading();
 
     SprMngr.EndScene();
-
-    WriteLog("main loop end 7\n");
 }
 
 void FOClient::DrawIface()

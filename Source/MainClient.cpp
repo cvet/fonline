@@ -21,7 +21,6 @@ static void ClientEntry( void* )
         client = new FOClient();
     }
 
-    WriteLog("main loop begin\n");
     client->MainLoop();
 }
 
@@ -70,7 +69,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
                        Module.syncfsDone = 1;
                    } );
         } );
-    emscripten_set_main_loop_arg( ClientEntry, nullptr, 0, 1 );
+    emscripten_set_main_loop_arg( ClientEntry, nullptr, 30, 1 );
 
     #elif defined ( FO_ANDROID )
     while( !GameOpt.Quit )
