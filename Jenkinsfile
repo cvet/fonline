@@ -105,6 +105,10 @@ pipeline {
         dir('SDK')
         {
           sh 'rm -rf ./Binaries/*'
+          unstash 'linux'
+          unstash 'android'
+          unstash 'windows'
+          unstash 'mac'
           unstash 'web'
           sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
         }
