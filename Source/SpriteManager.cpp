@@ -5,12 +5,8 @@
 #include "F2Palette.h"
 #include <time.h>
 
-#ifndef FO_WEB
-SDL_Window*                     MainWindow;
-SDL_GLContext                   GLContext;
-#else
-EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
-int                             DummyInt;
+#ifdef FO_WEB
+# define SDL_GL_SwapWindow( a )    (void) 0
 #endif
 
 SpriteManager SprMngr;
@@ -34,6 +30,8 @@ bool OGL_get_program_binary = false;
 
 SpriteManager::SpriteManager()
 {
+    mainWindow = nullptr;
+
     drawQuadCount = 0;
     curDrawQuad = 0;
     sceneBeginned = false;
@@ -74,14 +72,13 @@ bool SpriteManager::Init()
     curDrawQuad = 0;
 
     // Detect tablets
-    #ifndef FO_WEB
     bool is_tablet = false;
-    # if defined ( FO_IOS ) || defined ( FO_ANDROID )
+    #if defined ( FO_IOS ) || defined ( FO_ANDROID )
     is_tablet = true;
-    # endif
-    # if defined ( FO_WINDOWS )
+    #endif
+    #if defined ( FO_WINDOWS )
     is_tablet = ( GetSystemMetrics( SM_TABLETPC ) != 0 );
-    # endif
+    #endif
     if( is_tablet )
     {
         SDL_DisplayMode mode;
@@ -96,44 +93,49 @@ bool SpriteManager::Init()
         }
         GameOpt.FullScreen = true;
     }
-    #endif
 
     // Initialize window
-    #ifndef FO_WEB
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
-    window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
+    #ifdef FO_OGL_ES
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+    #endif
+
+    uint window_create_flags = SDL_WINDOW_SHOWN;
+    if( GameOpt.FullScreen )
+        window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     if( is_tablet )
     {
         window_create_flags |= SDL_WINDOW_FULLSCREEN;
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
-    # ifdef FO_OGL_ES
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
-    # endif
-    MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
+    #ifndef FO_WEB
+    window_create_flags |= SDL_WINDOW_OPENGL;
+    #endif
+
+    mainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
-    if( !MainWindow )
+    if( !mainWindow )
     {
         WriteLog( "SDL Window not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
-    GLContext = SDL_GL_CreateContext( MainWindow );
-    if( !GLContext )
+    #ifndef FO_WEB
+    SDL_GLContext gl_context = SDL_GL_CreateContext( mainWindow );
+    if( !gl_context )
     {
         WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
-    if( SDL_GL_MakeCurrent( MainWindow, GLContext ) < 0 )
+    if( SDL_GL_MakeCurrent( mainWindow, gl_context ) < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", SDL_GetError() );
         return false;
@@ -142,53 +144,31 @@ bool SpriteManager::Init()
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
     #else
-    EM_ASM( GLctxIsOnParentThread = true );
-
-    double pixel_ratio = emscripten_get_device_pixel_ratio();
-    if( pixel_ratio < 0.99 || pixel_ratio > 1.01 )
-    {
-        double w = (double) GameOpt.ScreenWidth * pixel_ratio;
-        double h = (double) GameOpt.ScreenHeight * pixel_ratio;
-        emscripten_set_canvas_size( (int) w, (int) h );
-    }
-    else
-    {
-        emscripten_set_canvas_size( GameOpt.ScreenWidth, GameOpt.ScreenHeight );
-    }
-
-    EmscriptenFullscreenStrategy fullscreen_strategy;
-    fullscreen_strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT;
-    fullscreen_strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
-    fullscreen_strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR;
-    fullscreen_strategy.canvasResizedCallback = nullptr;
-    fullscreen_strategy.canvasResizedCallbackUserData = nullptr;
-    emscripten_request_fullscreen_strategy( nullptr, EM_TRUE, &fullscreen_strategy );
-
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
     attr.alpha = EM_FALSE;
     attr.depth = EM_FALSE;
     attr.stencil = EM_FALSE;
-    attr.antialias = EM_FALSE;
+    attr.antialias = EM_TRUE;
     attr.premultipliedAlpha = EM_TRUE;
     attr.preserveDrawingBuffer = EM_FALSE;
     attr.preferLowPowerToHighPerformance = EM_FALSE;
     attr.failIfMajorPerformanceCaveat = EM_FALSE;
     attr.enableExtensionsByDefault = EM_TRUE;
-    attr.explicitSwapControl = EM_TRUE;
-    attr.renderViaOffscreenBackBuffer = EM_TRUE;
+    attr.explicitSwapControl = EM_FALSE;
+    attr.renderViaOffscreenBackBuffer = EM_FALSE;
 
     attr.majorVersion = 2;
     attr.minorVersion = 0;
-    WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
-    if( WebGlContext <= 0 )
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE gl_context = emscripten_webgl_create_context( nullptr, &attr );
+    if( gl_context <= 0 )
     {
         attr.majorVersion = 1;
         attr.minorVersion = 0;
-        WebGlContext = emscripten_webgl_create_context( nullptr, &attr );
-        if( WebGlContext <= 0 )
+        gl_context = emscripten_webgl_create_context( nullptr, &attr );
+        if( gl_context <= 0 )
         {
-            WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) WebGlContext );
+            WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) gl_context );
             return false;
         }
         else
@@ -201,14 +181,12 @@ bool SpriteManager::Init()
         WriteLog( "Created WebGL2 context.\n" );
     }
 
-    EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( WebGlContext );
+    EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( gl_context );
     if( r < 0 )
     {
         WriteLog( "Can't set current context, error '{}'.\n", r );
         return false;
     }
-
-    emscripten_hide_mouse();
     #endif
 
     SDL_ShowCursor( 0 );
@@ -271,8 +249,7 @@ bool SpriteManager::Init()
     OGL_texture_multisample = true;
     # endif
     # ifdef FO_WEB
-    OGL_vertex_array_object = ( attr.majorVersion > 1 ||
-                                emscripten_webgl_enable_extension( WebGlContext, "OES_vertex_array_object" ) != EM_FALSE );
+    OGL_vertex_array_object = ( attr.majorVersion > 1 || emscripten_webgl_enable_extension( gl_context, "OES_vertex_array_object" ) );
     # endif
     #endif
 
@@ -348,7 +325,7 @@ bool SpriteManager::Init()
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    GL_SwapWindow();
+    SDL_GL_SwapWindow( mainWindow );
     if( rtMain )
         PushRenderTarget( rtMain );
 
@@ -393,6 +370,66 @@ void SpriteManager::Finish()
     WriteLog( "Sprite manager finish complete.\n" );
 }
 
+void SpriteManager::GetWindowSize( int& w, int& h )
+{
+    SDL_GetWindowSize( mainWindow, &w, &h );
+}
+
+void SpriteManager::SetWindowSize( int w, int h )
+{
+    SDL_SetWindowSize( mainWindow, w, h );
+}
+
+void SpriteManager::GetWindowPosition( int& x, int& y )
+{
+    SDL_GetWindowPosition( mainWindow, &x, &y );
+}
+
+void SpriteManager::SetWindowPosition( int x, int y )
+{
+    SDL_SetWindowPosition( mainWindow, x, y );
+}
+
+void SpriteManager::GetMousePosition( int& x, int& y )
+{
+    SDL_GetMouseState( &x, &y );
+}
+
+void SpriteManager::SetMousePosition( int x, int y )
+{
+    SDL_WarpMouseInWindow( mainWindow, x, y );
+}
+
+bool SpriteManager::IsWindowFocused()
+{
+    return SDL_GetWindowFlags( mainWindow ) & SDL_WINDOW_INPUT_FOCUS;
+}
+
+void SpriteManager::MinimizeWindow()
+{
+    SDL_MinimizeWindow( mainWindow );
+}
+
+bool SpriteManager::EnableFullscreen()
+{
+    return !SDL_SetWindowFullscreen( mainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP );
+}
+
+bool SpriteManager::DisableFullscreen()
+{
+    return !SDL_SetWindowFullscreen( mainWindow, 0 );
+}
+
+void SpriteManager::BlinkWindow()
+{
+    #ifdef FO_WINDOWS
+    SDL_SysWMinfo info;
+    SDL_VERSION( &info.version );
+    if( GameOpt.MessNotify && SDL_GetWindowWMInfo( mainWindow, &info ) )
+        FlashWindow( info.info.win.window, true );
+    #endif
+}
+
 void SpriteManager::BeginScene( uint clear_color )
 {
     // Render 3d animations
@@ -421,12 +458,12 @@ void SpriteManager::EndScene()
     {
         PopRenderTarget();
         DrawRenderTarget( rtMain, false );
-        GL_SwapWindow();
+        SDL_GL_SwapWindow( mainWindow );
         PushRenderTarget( rtMain );
     }
     else
     {
-        GL_SwapWindow();
+        SDL_GL_SwapWindow( mainWindow );
     }
 
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
@@ -454,7 +491,7 @@ void SpriteManager::SetAlwaysOnTop( bool enable )
     #ifdef FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION( &info.version );
-    if( SDL_GetWindowWMInfo( MainWindow, &info ) )
+    if( SDL_GetWindowWMInfo( mainWindow, &info ) )
         SetWindowPos( info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
     #endif
 }
@@ -848,7 +885,7 @@ void SpriteManager::RefreshViewport()
     }
     else
     {
-        GL_GetWindowSize( &w, &h );
+        GetWindowSize( w, h );
         screen_size = true;
     }
 
@@ -1252,7 +1289,7 @@ void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
     int w = ( tex ? tex->Width : 0 );
     int h = ( tex ? tex->Height : 0 );
     if( !tex )
-        GL_GetWindowSize( &w, &h );
+        GetWindowSize( w, h );
 
     // Get data
     uchar* data = new uchar[ w * h * 4 ];

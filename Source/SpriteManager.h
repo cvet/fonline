@@ -7,33 +7,7 @@
 #include "Text.h"
 #include "3dStuff.h"
 #include "GraphicLoader.h"
-
-#ifndef FO_WEB
-# include "SDL_video.h"
-extern SDL_Window*   MainWindow;
-extern SDL_GLContext GLContext;
-# define GL_SwapWindow()                 SDL_GL_SwapWindow( MainWindow )
-# define GL_GetWindowSize( w, h )        SDL_GetWindowSize( MainWindow, w, h )
-# define GL_SetWindowSize( w, h )        SDL_SetWindowSize( MainWindow, w, h )
-# define GL_GetWindowPosition( x, y )    SDL_GetWindowPosition( MainWindow, x, y )
-# define GL_SetWindowPosition( x, y )    SDL_SetWindowPosition( MainWindow, x, y )
-# define GL_IsWindowFocused()            ( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS )
-# define GL_MinimizeWindow()             SDL_MinimizeWindow( MainWindow )
-# define GL_EnableFullscreen()           ( !SDL_SetWindowFullscreen( MainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP ) )
-# define GL_DisableFullscreen()          ( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
-#else
-extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE WebGlContext;
-extern int                             DummyInt;
-# define GL_SwapWindow()                 emscripten_webgl_commit_frame()
-# define GL_GetWindowSize( w, h )        emscripten_get_canvas_size( w, h, &DummyInt )
-# define GL_SetWindowSize( w, h )        emscripten_set_canvas_size( w, h )
-# define GL_GetWindowPosition( x, y )    (void) 0
-# define GL_SetWindowPosition( x, y )    (void) 0
-# define GL_IsWindowFocused()            ( true )
-# define GL_MinimizeWindow()             (void) 0
-# define GL_EnableFullscreen()           ( emscripten_request_fullscreen( nullptr, EM_TRUE ) >= 0 )
-# define GL_DisableFullscreen()          ( emscripten_exit_fullscreen() >= 0 )
-#endif
+#include "SDL_video.h"
 
 // Font flags
 #define FT_NOBREAK                 ( 0x0001 )
@@ -47,20 +21,20 @@ extern int                             DummyInt;
 #define FT_NO_COLORIZE             ( 0x0080 )
 #define FT_ALIGN                   ( 0x0100 )
 #define FT_BORDERED                ( 0x0200 )
-#define FT_SKIPLINES( l )                ( 0x0400 | ( ( l ) << 16 ) )
-#define FT_SKIPLINES_END( l )            ( 0x0800 | ( ( l ) << 16 ) )
+#define FT_SKIPLINES( l )             ( 0x0400 | ( ( l ) << 16 ) )
+#define FT_SKIPLINES_END( l )         ( 0x0800 | ( ( l ) << 16 ) )
 
 // Colors
-#define COLOR_LIGHT( c )                 SpriteManager::PackColor( ( ( ( c ) >> 16 ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 8 ) & 0xFF ) + GameOpt.Light, ( ( c ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 24 ) & 0xFF ) )
-#define COLOR_SCRIPT_SPRITE( c )         ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_IFACE_FIX ) )
-#define COLOR_SCRIPT_TEXT( c )           ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_TEXT ) )
-#define COLOR_RGBA( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xFF ) << 24 ) | ( ( ( r ) & 0xFF ) << 16 ) | ( ( ( g ) & 0xFF ) << 8 ) | ( ( b ) & 0xFF ) ) )
-#define COLOR_RGB( r, g, b )             COLOR_RGBA( 0xFF, r, g, b )
-#define COLOR_SWAP_RB( c )               ( ( ( c ) & 0xFF00FF00 ) | ( ( ( c ) & 0x00FF0000 ) >> 16 ) | ( ( ( c ) & 0x000000FF ) << 16 ) )
-#define COLOR_CHANGE_ALPHA( v, a )       ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
+#define COLOR_LIGHT( c )              SpriteManager::PackColor( ( ( ( c ) >> 16 ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 8 ) & 0xFF ) + GameOpt.Light, ( ( c ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 24 ) & 0xFF ) )
+#define COLOR_SCRIPT_SPRITE( c )      ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_IFACE_FIX ) )
+#define COLOR_SCRIPT_TEXT( c )        ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_TEXT ) )
+#define COLOR_RGBA( a, r, g, b )      ( (uint) ( ( ( ( a ) & 0xFF ) << 24 ) | ( ( ( r ) & 0xFF ) << 16 ) | ( ( ( g ) & 0xFF ) << 8 ) | ( ( b ) & 0xFF ) ) )
+#define COLOR_RGB( r, g, b )          COLOR_RGBA( 0xFF, r, g, b )
+#define COLOR_SWAP_RB( c )            ( ( ( c ) & 0xFF00FF00 ) | ( ( ( c ) & 0x00FF0000 ) >> 16 ) | ( ( ( c ) & 0x000000FF ) << 16 ) )
+#define COLOR_CHANGE_ALPHA( v, a )    ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
 #define COLOR_IFACE_FIX            COLOR_GAME_RGB( 103, 95, 86 )
 #define COLOR_IFACE                SpriteManager::PackColor( ( ( COLOR_IFACE_FIX >> 16 ) & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 8 ) & 0xFF ) + GameOpt.Light, ( COLOR_IFACE_FIX & 0xFF ) + GameOpt.Light )
-#define COLOR_GAME_RGB( r, g, b )        SpriteManager::PackColor( ( r ) + GameOpt.Light, ( g ) + GameOpt.Light, ( b ) + GameOpt.Light )
+#define COLOR_GAME_RGB( r, g, b )     SpriteManager::PackColor( ( r ) + GameOpt.Light, ( g ) + GameOpt.Light, ( b ) + GameOpt.Light )
 #define COLOR_IFACE_RED            ( COLOR_IFACE | ( 0xFF << 16 ) )
 #define COLOR_CRITTER_NAME         COLOR_GAME_RGB( 0xAD, 0xAD, 0xB9 )
 #define COLOR_TEXT                 COLOR_GAME_RGB( 60, 248, 0 )
@@ -84,8 +58,8 @@ extern int                             DummyInt;
 #define DRAW_ORDER_CRITTER         ( DRAW_ORDER + 9 )
 #define DRAW_ORDER_RAIN            ( DRAW_ORDER + 12 )
 #define DRAW_ORDER_LAST            ( 39 )
-#define DRAW_ORDER_ITEM_AUTO( i )        ( i->GetIsFlat() ? ( !i->IsAnyScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( !i->IsAnyScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) )
-#define DRAW_ORDER_CRIT_AUTO( c )        ( c->IsDead() && !c->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER )
+#define DRAW_ORDER_ITEM_AUTO( i )     ( i->GetIsFlat() ? ( !i->IsAnyScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( !i->IsAnyScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) )
+#define DRAW_ORDER_CRIT_AUTO( c )     ( c->IsDead() && !c->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER )
 
 // Sprites cutting
 #define SPRITE_CUT_HORIZONTAL      ( 1 )
@@ -114,6 +88,22 @@ extern int                             DummyInt;
 
 class SpriteManager
 {
+private:
+    SDL_Window* mainWindow;
+
+public:
+    void GetWindowSize( int& w, int& h );
+    void SetWindowSize( int w, int h );
+    void GetWindowPosition( int& x, int& y );
+    void SetWindowPosition( int x, int y );
+    void GetMousePosition( int& x, int& y );
+    void SetMousePosition( int x, int y );
+    bool IsWindowFocused();
+    void MinimizeWindow();
+    bool EnableFullscreen();
+    bool DisableFullscreen();
+    void BlinkWindow();
+
 private:
     Matrix          projectionMatrixCM;
     bool            sceneBeginned;

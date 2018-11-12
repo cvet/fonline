@@ -53,7 +53,7 @@ double Timer::AccurateTick()
     QueryPerformanceCounter( (LARGE_INTEGER*) &qpc_value );
     return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 ) - InitialAccurateTick;
     #elif defined ( FO_WEB )
-    return emscripten_get_now() / 1000.0;
+    return emscripten_get_now();
     #else
     struct timeval tv;
     gettimeofday( &tv, nullptr );

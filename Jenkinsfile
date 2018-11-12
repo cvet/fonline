@@ -9,7 +9,7 @@ pipeline {
   }
   agent none
   stages {
-    stage('Build Main targets') {
+    stage('Build Main Targets') {
       parallel {
         stage('Build Android') {
           agent {
@@ -20,7 +20,7 @@ pipeline {
           }
           steps {
             sh './BuildScripts/android.sh'
-            dir('Build/android/'){
+            dir('Build/android/') {
               stash name: 'android', includes: 'Binaries/**'
             }
           }
@@ -35,7 +35,7 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/linux.sh'
-              dir('Build/linux/'){
+              dir('Build/linux/') {
                 stash name: 'linux', includes: 'Binaries/**'
               }
             }
@@ -51,7 +51,7 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/web.sh'
-              dir('Build/web/'){
+              dir('Build/web/') {
                 stash name: 'web', includes: 'Binaries/**'
               }
             }
@@ -65,12 +65,12 @@ pipeline {
           }
           steps {
             bat 'BuildScripts\\windows.bat'
-            dir('Build/windows/'){
+            dir('Build/windows/') {
               stash name: 'windows', includes: 'Binaries/**'
             }
           }
           post {
-            cleanup{
+            cleanup {
               deleteDir()
             }
           }
@@ -83,20 +83,19 @@ pipeline {
           }
           steps {
             sh './BuildScripts/mac.sh'
-            dir('Build/mac/'){
+            dir('Build/mac/') {
               stash name: 'mac', includes: 'Binaries/**'
             }
           }
           post {
-            cleanup{
+            cleanup {
               deleteDir()
             }
           }
         }
       }
     }
-
-    stage('Create build artifact') {
+    stage('Create Build Artifacts') {
       agent {
         node {
           label 'master'
@@ -115,12 +114,12 @@ pipeline {
         }
       }
       post {
-        success{
-          dir('SDK'){
+        success {
+          dir('SDK') {
             archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
           }
         }
       }
     }
   }
-} 
+}

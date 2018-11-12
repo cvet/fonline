@@ -667,7 +667,7 @@ void FOMapper::AnimFree( int res_type )
 void FOMapper::ParseKeyboard()
 {
     // Stop processing if window not active
-    if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
+    if( !SprMngr.IsWindowFocused() )
     {
         MainWindowKeyboardEvents.clear();
         MainWindowKeyboardEventsText.clear();
@@ -795,19 +795,19 @@ void FOMapper::ParseKeyboard()
             case DIK_F11:
                 if( !GameOpt.FullScreen )
                 {
-                    if( !SDL_SetWindowFullscreen( MainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP ) )
+                    if( SprMngr.EnableFullscreen() )
                         GameOpt.FullScreen = true;
                 }
                 else
                 {
-                    if( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
+                    if( SprMngr.DisableFullscreen() )
                         GameOpt.FullScreen = false;
                 }
                 SprMngr.RefreshViewport();
                 continue;
             // Minimize
             case DIK_F12:
-                SDL_MinimizeWindow( MainWindow );
+                SprMngr.MinimizeWindow();
                 continue;
 
             case DIK_DELETE:
@@ -1045,7 +1045,7 @@ void FOMapper::ParseMouse()
     GameOpt.MouseY = CLAMP( my, 0, GameOpt.ScreenHeight - 1 );
 
     // Stop processing if window not active
-    if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
+    if( !SprMngr.IsWindowFocused() )
     {
         MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
@@ -1287,7 +1287,7 @@ void FOMapper::MainLoop()
         if( event.type == SDL_MOUSEMOTION )
         {
             int sw = 0, sh = 0;
-            SDL_GetWindowSize( MainWindow, &sw, &sh );
+            SprMngr.GetWindowSize( sw, sh );
             int x = (int) ( event.motion.x / (float) sw * (float) GameOpt.ScreenWidth );
             int y = (int) ( event.motion.y / (float) sh * (float) GameOpt.ScreenHeight );
             GameOpt.MouseX = CLAMP( x, 0, GameOpt.ScreenWidth - 1 );

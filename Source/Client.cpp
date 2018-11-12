@@ -174,11 +174,7 @@ FOClient::FOClient()
 bool FOClient::PreInit()
 {
     // SDL
-    #ifndef FO_WEB
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
-    #else
-    if( SDL_Init( SDL_INIT_EVENTS ) )
-    #endif
     {
         WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
         return false;
@@ -254,9 +250,9 @@ bool FOClient::PreInit()
 
     // Cursor position
     int sw = 0, sh = 0;
-    GL_GetWindowSize( &sw, &sh );
+    SprMngr.GetWindowSize( sw, sh );
     int mx = 0, my = 0;
-    SDL_GetMouseState( &mx, &my );
+    SprMngr.GetMousePosition( mx, my );
     GameOpt.MouseX = GameOpt.LastMouseX = CLAMP( mx, 0, sw - 1 );
     GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, sh - 1 );
 
@@ -927,6 +923,7 @@ void FOClient::MainLoop()
             if( !IsVideoPlayed() )
                 ScreenFadeOut();
         }
+
         return;
     }
 
@@ -937,7 +934,7 @@ void FOClient::MainLoop()
         if( event.type == SDL_MOUSEMOTION )
         {
             int sw = 0, sh = 0;
-            GL_GetWindowSize( &sw, &sh );
+            SprMngr.GetWindowSize( sw, sh );
             int x = (int) ( event.motion.x / (float) sw * (float) GameOpt.ScreenWidth );
             int y = (int) ( event.motion.y / (float) sh * (float) GameOpt.ScreenHeight );
             GameOpt.MouseX = CLAMP( x, 0, GameOpt.ScreenWidth - 1 );
@@ -1208,7 +1205,7 @@ void FOClient::ProcessScreenEffectQuake()
 void FOClient::ParseKeyboard()
 {
     // Stop processing if window not active
-    if( !GL_IsWindowFocused() )
+    if( !SprMngr.IsWindowFocused() )
     {
         MainWindowKeyboardEvents.clear();
         MainWindowKeyboardEventsText.clear();
@@ -1283,7 +1280,7 @@ void FOClient::ParseKeyboard()
 void FOClient::ParseMouse()
 {
     // Stop processing if window not active
-    if( !GL_IsWindowFocused() )
+    if( !SprMngr.IsWindowFocused() )
     {
         MainWindowMouseEvents.clear();
         Script::RaiseInternalEvent( ClientFunctions.InputLost );
@@ -1399,16 +1396,15 @@ bool FOClient::CheckSocketStatus( bool for_write )
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
-    int is_secured = EM_ASM_INT( return ( ( window.location.protocol == 'https:' ) ? 1 : 0 ) );
-    if( !is_secured )
+    port++;
+    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
+    if( wss_credentials.empty() )
     {
-        port += 1;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'ws://' );
         WriteLog( "Connecting to server 'ws://{}:{}'.\n", host, port );
     }
     else
     {
-        port += 2;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'wss://' );
         WriteLog( "Connecting to server 'wss://{}:{}'.\n", host, port );
     }
@@ -4485,25 +4481,21 @@ void FOClient::TryExit()
 
 bool FOClient::IsCurInWindow()
 {
-    if( !GL_IsWindowFocused() )
+    if( !SprMngr.IsWindowFocused() )
         return false;
     return true;
 }
 
 void FOClient::FlashGameWindow()
 {
-    if( GL_IsWindowFocused() )
+    if( SprMngr.IsWindowFocused() )
         return;
 
+    SprMngr.BlinkWindow();
+
     #ifdef FO_WINDOWS
-    SDL_SysWMinfo info;
-    SDL_VERSION( &info.version );
-    if( GameOpt.MessNotify && SDL_GetWindowWMInfo( MainWindow, &info ) )
-        FlashWindow( info.info.win.window, true );
     if( GameOpt.SoundNotify )
         Beep( 100, 200 );
-    #else
-    // Todo: Linux
     #endif
 }
 
@@ -5870,20 +5862,20 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     {
         if( !GameOpt.FullScreen )
         {
-            if( GL_EnableFullscreen() )
+            if( SprMngr.EnableFullscreen() )
                 GameOpt.FullScreen = true;
         }
         else
         {
-            if( GL_DisableFullscreen() )
+            if( SprMngr.DisableFullscreen() )
             {
                 GameOpt.FullScreen = false;
 
                 if( Self->WindowResolutionDiffX || Self->WindowResolutionDiffY )
                 {
                     int x, y;
-                    GL_GetWindowPosition( &x, &y );
-                    GL_SetWindowPosition( x - Self->WindowResolutionDiffX, y - Self->WindowResolutionDiffY );
+                    SprMngr.GetWindowPosition( x, y );
+                    SprMngr.SetWindowPosition( x - Self->WindowResolutionDiffX, y - Self->WindowResolutionDiffY );
                     Self->WindowResolutionDiffX = Self->WindowResolutionDiffY = 0;
                 }
             }
@@ -5892,7 +5884,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "MinimizeWindow" )
     {
-        GL_MinimizeWindow();
+        SprMngr.MinimizeWindow();
     }
     else if( cmd == "SwitchLookBorders" )
     {
@@ -5925,12 +5917,12 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         bool motion = _str( args[ 3 ] ).toBool();
         if( motion )
         {
-            SDL_WarpMouseInWindow( MainWindow, x, y );
+            SprMngr.SetMousePosition( x, y );
         }
         else
         {
             SDL_EventState( SDL_MOUSEMOTION, SDL_DISABLE );
-            SDL_WarpMouseInWindow( MainWindow, x, y );
+            SprMngr.SetMousePosition( x, y );
             SDL_EventState( SDL_MOUSEMOTION, SDL_ENABLE );
             GameOpt.MouseX = GameOpt.LastMouseX = x;
             GameOpt.MouseY = GameOpt.LastMouseY = y;
@@ -5983,13 +5975,13 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 
         GameOpt.ScreenWidth = w;
         GameOpt.ScreenHeight = h;
-        GL_SetWindowSize( w, h );
+        SprMngr.SetWindowSize( w, h );
 
         if( !GameOpt.FullScreen )
         {
             int x, y;
-            GL_GetWindowPosition( &x, &y );
-            GL_SetWindowPosition( x - diff_w / 2, y - diff_h / 2 );
+            SprMngr.GetWindowPosition( x, y );
+            SprMngr.SetWindowPosition( x - diff_w / 2, y - diff_h / 2 );
         }
         else
         {
