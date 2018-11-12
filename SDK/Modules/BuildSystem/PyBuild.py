@@ -172,9 +172,9 @@ try:
 			# Raw files
 			os.makedirs(gameOutputPath)
 			shutil.copytree(resourcesPath, gameOutputPath + '/Data')
-			shutil.copy(binariesPath + '/Linux/FOnline32', gameOutputPath + '/' + gameName + '32')
+			# shutil.copy(binariesPath + '/Linux/FOnline32', gameOutputPath + '/' + gameName + '32')
 			shutil.copy(binariesPath + '/Linux/FOnline64', gameOutputPath + '/' + gameName + '64')
-			patchConfig(gameOutputPath + '/' + gameName + '32')
+			# patchConfig(gameOutputPath + '/' + gameName + '32')
 			patchConfig(gameOutputPath + '/' + gameName + '64')
 			
 			# Tar

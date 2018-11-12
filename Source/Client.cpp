@@ -1396,16 +1396,15 @@ bool FOClient::CheckSocketStatus( bool for_write )
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
-    int is_secured = EM_ASM_INT( return ( ( window.location.protocol == 'https:' ) ? 1 : 0 ) );
-    if( !is_secured )
+    port++;
+    string wss_credentials = MainConfig->GetStr( "", "WssCredentials", "" );
+    if( wss_credentials.empty() )
     {
-        port += 1;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'ws://' );
         WriteLog( "Connecting to server 'ws://{}:{}'.\n", host, port );
     }
     else
     {
-        port += 2;
         EM_ASM( Module[ 'websocket' ][ 'url' ] = 'wss://' );
         WriteLog( "Connecting to server 'wss://{}:{}'.\n", host, port );
     }

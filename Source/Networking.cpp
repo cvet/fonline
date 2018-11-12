@@ -495,27 +495,21 @@ NetServerBase* NetServerBase::StartTcpServer( ushort port, std::function< void(N
     }
 }
 
-NetServerBase* NetServerBase::StartWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
+NetServerBase* NetServerBase::StartWebSocketsServer( ushort port, string wss_credentials, std::function< void(NetConnection*) > callback )
 {
     try
     {
-        return new NetNoTlsWebSocketsServer( port, callback );
-    }
-    catch( std::exception ex )
-    {
-        WriteLog( "Can't start Web sockets server: {}.\n", ex.what() );
-        return nullptr;
-    }
-}
+        if( wss_credentials.empty() )
+        {
+            return new NetNoTlsWebSocketsServer( port, callback );
+        }
+        else
+        {
+            StrVec keys = _str( wss_credentials ).split( ' ' );
+            if( keys.size() != 2 ) throw std::runtime_error( "Invalid 'WssCredentials' option" );
 
-NetServerBase* NetServerBase::StartSecuredWebSocketsServer( ushort port, string wss_credentials, std::function< void(NetConnection*) > callback )
-{
-    try
-    {
-        StrVec keys = _str( wss_credentials ).split( ' ' );
-        if( keys.size() != 2 ) throw std::runtime_error( "Invalid 'WssCredentials' option" );
-
-        return new NetTlsWebSocketsServer( port, keys[ 0 ], keys[ 1 ], callback );
+            return new NetTlsWebSocketsServer( port, keys[ 0 ], keys[ 1 ], callback );
+        }
     }
     catch( std::exception ex )
     {

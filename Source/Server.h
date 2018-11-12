@@ -165,7 +165,6 @@ public:
     // Net
     static NetServerBase* TcpServer;
     static NetServerBase* WebSocketsServer;
-    static NetServerBase* SecuredWebSocketsServer;
     static ClVec          ConnectedClients;
     static Mutex          ConnectedClientsLocker;
 
