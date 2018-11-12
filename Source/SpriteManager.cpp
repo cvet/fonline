@@ -144,14 +144,6 @@ bool SpriteManager::Init()
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
     #else
-    EmscriptenFullscreenStrategy fullscreen_strategy;
-    fullscreen_strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT;
-    fullscreen_strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
-    fullscreen_strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR;
-    fullscreen_strategy.canvasResizedCallback = nullptr;
-    fullscreen_strategy.canvasResizedCallbackUserData = nullptr;
-    emscripten_request_fullscreen_strategy( nullptr, EM_TRUE, &fullscreen_strategy );
-
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes( &attr );
     attr.alpha = EM_FALSE;
