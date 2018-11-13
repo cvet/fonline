@@ -174,6 +174,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 # define PI_VALUE                                 ( 3.141592654f )
 
 # include "SDL.h"
+# include "SDL_video.h"
 # include "SDL_syswm.h"
 # include "GluStuff.h"
 # ifndef FO_OGL_ES
@@ -189,6 +190,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  endif
 # else
 #  include "SDL_opengles2.h"
+#  include "SDL_opengles2_gl2ext.h"
 #  define glGenVertexArrays                       glGenVertexArraysOES
 #  define glBindVertexArray                       glBindVertexArrayOES
 #  define glDeleteVertexArrays                    glDeleteVertexArraysOES
@@ -219,31 +221,35 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  define GL_STENCIL_ATTACHMENT_EXT               GL_STENCIL_ATTACHMENT
 #  define glGetTexImage( a, b, c, d, e )
 #  define glDrawBuffer( a )
-#  define GL_MAX_COLOR_TEXTURE_SAMPLES            0
-#  define GL_TEXTURE_2D_MULTISAMPLE               0
-#  if defined ( FO_MAC ) || defined ( FO_IOS )
+#  ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
+#   define GL_MAX_COLOR_TEXTURE_SAMPLES           0
+#   define GL_TEXTURE_2D_MULTISAMPLE              0
+#  endif
+#  ifndef GL_MAX
+#   define GL_MAX                                 GL_MAX_EXT
+#   define GL_MIN                                 GL_MIN_EXT
+#  endif
+#  if defined ( FO_IOS )
+#   define glTexImage2DMultisample( a, b, c, d, e, f )
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
-#  endif
-#  ifdef FO_ANDROID
-#   undef glGenVertexArrays
-#   undef glBindVertexArray
-#   undef glDeleteVertexArrays
-#   define glGenVertexArrays( a, b )
-#   define glBindVertexArray( a )
-#   define glDeleteVertexArrays( a, b )
+#  elif defined ( FO_ANDROID )
+#   define glGenVertexArraysOES                   glGenVertexArraysOES_
+#   define glBindVertexArrayOES                   glBindVertexArrayOES_
+#   define glDeleteVertexArraysOES                glDeleteVertexArraysOES_
+#   define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
+#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
+#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
+extern PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
+extern PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
+extern PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
+extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
+extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
+#  elif defined ( FO_WEB )
+#   define glTexImage2DMultisample( a, b, c, d, e, f )
 #   define glRenderbufferStorageMultisample( a, b, c, d, e )
 #   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
-#   define GL_MAX                                 GL_MAX_EXT
-#   define GL_MIN                                 GL_MIN_EXT
 #  endif
-#  ifdef FO_WEB
-#   define GL_MAX                                 GL_MAX_EXT
-#   define GL_MIN                                 GL_MIN_EXT
-#   define glRenderbufferStorageMultisample( a, b, c, d, e )
-#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
-#  endif
-#  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
 # ifdef FO_MSVC
 #  pragma comment( lib, "opengl32.lib" )
