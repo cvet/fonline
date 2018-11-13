@@ -179,7 +179,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 # include "GluStuff.h"
 # ifndef FO_OGL_ES
 #  include "GL/glew.h"
-#  include "SDL_opengl.h"
 #  ifdef FO_MAC
 #   undef glGenVertexArrays
 #   undef glBindVertexArray
