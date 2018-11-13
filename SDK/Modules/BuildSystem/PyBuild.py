@@ -100,7 +100,7 @@ try:
 			if os.name == 'nt':
 				icoPath = os.path.join(gameOutputPath, 'Windows.ico')
 				logo.save(icoPath, 'ico')
-				resHackPath = curPath + '/_other/ReplaceVistaIcon.exe'
+				resHackPath = os.path.abspath(os.path.join(curPath, '_other', 'ReplaceVistaIcon.exe'))
 				r = subprocess.call([resHackPath, gameOutputPath + '/' + gameName + '.exe', icoPath], shell = True)
 				os.remove(icoPath)
 				assert r == 0
@@ -112,7 +112,7 @@ try:
 			sys.path.insert(0, os.path.join(curPath, '_msicreator'))
 			import createmsi
 			import uuid
-
+			
 			msiConfig = """ \
 			{
 				"upgrade_guid": "%s",
@@ -138,7 +138,7 @@ try:
 					gameName, 'Dream', gameName, gameName, 'The game', \
 					gameName, 'License.rtf', 'false', 32, \
 					gameName, gameName, 'MMORPG', 'disallow', gameName)
-
+			
 			try:
 				cwd = os.getcwd()
 				wixBinPath = os.path.abspath(os.path.join(curPath, '_wix'))
@@ -180,7 +180,7 @@ try:
 				os.makedirs(binPath)
 			shutil.copy(gameOutputPath + '/' + gameName + '.exe', binPath + '/' + gameName + '.exe')
 			shutil.copy(gameOutputPath + '/' + gameName + '.pdb', binPath + '/' + gameName + '.pdb')
-
+		
 		elif buildTarget == 'Linux':
 			# Raw files
 			os.makedirs(gameOutputPath)
@@ -193,7 +193,7 @@ try:
 			# Tar
 			makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
 			makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
-
+		
 		elif buildTarget == 'Mac':
 			# Raw files
 			os.makedirs(gameOutputPath)
@@ -204,7 +204,7 @@ try:
 			# Tar
 			makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
 			makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
-
+		
 		elif buildTarget == 'Android':
 			shutil.copytree(binariesPath + '/Android', gameOutputPath)
 			patchConfig(gameOutputPath + '/libs/armeabi-v7a/libFOnline.so')
@@ -223,11 +223,11 @@ try:
 				f.write('\n'.join(os.listdir(resourcesPath)))
 			
 			# Pack
-			antPath = curPath + '/_ant/bin/ant.bat'
+			antPath = os.path.abspath(os.path.join(curPath, '_ant', 'bin', 'ant.bat'))
 			r = subprocess.call([antPath, '-f', gameOutputPath, 'debug'], shell = True)
 			assert r == 0
 			shutil.copy(gameOutputPath + '/bin/SDLActivity-debug.apk', targetOutputPath + '/' + gameName + '.apk')
-
+		
 		elif buildTarget == 'Web':
 			# Release version
 			os.makedirs(gameOutputPath)
@@ -262,7 +262,7 @@ try:
 		
 		else:
 			assert False, 'Unknown build target'
-
+	
 	try:
 		targetOutputPath = outputPath + '/' + buildTarget
 		shutil.rmtree(targetOutputPath, True)
