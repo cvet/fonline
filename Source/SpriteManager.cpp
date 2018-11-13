@@ -28,6 +28,14 @@ bool OGL_texture_multisample = false;
 bool OGL_vertex_array_object = false;
 bool OGL_get_program_binary = false;
 
+#ifdef FO_ANDROID
+PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
+PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
+PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
+PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
+PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
+#endif
+
 SpriteManager::SpriteManager()
 {
     mainWindow = nullptr;
@@ -242,15 +250,15 @@ bool SpriteManager::Init()
     OGL_vertex_array_object = false;
     OGL_get_program_binary = false;
     # if FO_ANDROID
-    //void* es_lib = dlopen( "libGLESv2.so", RTLD_LAZY );
-    //RUNTIME_ASSERT( es_lib );
-    //glBindVertexArrayOES = (PFNGLBINDVERTEXARRAYOESPROC) dlsym( es_lib, "glBindVertexArrayOES" );
-    //glDeleteVertexArraysOES = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym( es_lib, "glDeleteVertexArraysOES" );
-    //glGenVertexArraysOES = (PFNGLGENVERTEXARRAYSOESPROC) dlsym( es_lib, "glGenVertexArraysOES" );
-    //OGL_vertex_array_object = ( glBindVertexArrayOES && glDeleteVertexArraysOES && glGenVertexArraysOES );
-    //glRenderbufferStorageMultisampleIMG = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG) dlsym( es_lib, "glRenderbufferStorageMultisampleIMG" );
-    //glFramebufferTexture2DMultisampleIMG = (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG) dlsym( es_lib, "glFramebufferTexture2DMultisampleIMG" );
-    //OGL_framebuffer_multisample = OGL_texture_multisample = ( glRenderbufferStorageMultisampleIMG && glFramebufferTexture2DMultisampleIMG );
+    void* es_lib = dlopen( "libGLESv2.so", RTLD_LAZY );
+    RUNTIME_ASSERT( es_lib );
+    glBindVertexArrayOES_ = (PFNGLBINDVERTEXARRAYOESPROC) dlsym( es_lib, "glBindVertexArrayOES" );
+    glDeleteVertexArraysOES_ = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym( es_lib, "glDeleteVertexArraysOES" );
+    glGenVertexArraysOES_ = (PFNGLGENVERTEXARRAYSOESPROC) dlsym( es_lib, "glGenVertexArraysOES" );
+    OGL_vertex_array_object = ( glBindVertexArrayOES && glDeleteVertexArraysOES && glGenVertexArraysOES );
+    glRenderbufferStorageMultisampleIMG_ = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG) dlsym( es_lib, "glRenderbufferStorageMultisampleIMG" );
+    glFramebufferTexture2DMultisampleIMG_ = (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG) dlsym( es_lib, "glFramebufferTexture2DMultisampleIMG" );
+    OGL_framebuffer_multisample = OGL_texture_multisample = ( glRenderbufferStorageMultisampleIMG && glFramebufferTexture2DMultisampleIMG );
     # endif
     # ifdef FO_IOS
     OGL_vertex_array_object = true;

@@ -234,9 +234,17 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 #  elif defined ( FO_ANDROID )
-#   define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG
-#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
-#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
+#   define glGenVertexArraysOES                   glGenVertexArraysOES_
+#   define glBindVertexArrayOES                   glBindVertexArrayOES_
+#   define glDeleteVertexArraysOES                glDeleteVertexArraysOES_
+#   define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
+#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
+#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
+extern PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
+extern PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
+extern PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
+extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
+extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
 #  elif defined ( FO_WEB )
 #   define glTexImage2DMultisample( a, b, c, d, e, f )
 #   define glRenderbufferStorageMultisample( a, b, c, d, e )
