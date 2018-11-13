@@ -28,12 +28,6 @@ bool OGL_texture_multisample = false;
 bool OGL_vertex_array_object = false;
 bool OGL_get_program_binary = false;
 
-#ifdef FO_ANDROID
-PFNGLBINDVERTEXARRAYOESPROC    glBindVertexArrayOES;
-PFNGLDELETEVERTEXARRAYSOESPROC glDeleteVertexArraysOES;
-PFNGLGENVERTEXARRAYSOESPROC    glGenVertexArraysOES;
-#endif
-
 SpriteManager::SpriteManager()
 {
     mainWindow = nullptr;
@@ -253,7 +247,9 @@ bool SpriteManager::Init()
     glDeleteVertexArraysOES = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym( es_lib, "glDeleteVertexArraysOES" );
     glGenVertexArraysOES = (PFNGLGENVERTEXARRAYSOESPROC) dlsym( es_lib, "glGenVertexArraysOES" );
     OGL_vertex_array_object = ( glBindVertexArrayOES && glDeleteVertexArraysOES && glGenVertexArraysOES );
-    RUNTIME_ASSERT( OGL_vertex_array_object );
+    glRenderbufferStorageMultisampleIMG = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG) dlsym( es_lib, "glBindVertexArrayOES" );
+    glFramebufferTexture2DMultisampleIMG = (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG) dlsym( es_lib, "glBindVertexArrayOES" );
+    OGL_framebuffer_multisample = OGL_texture_multisample = ( glRenderbufferStorageMultisampleIMG && glFramebufferTexture2DMultisampleIMG );
     # endif
     # ifdef FO_IOS
     OGL_vertex_array_object = true;

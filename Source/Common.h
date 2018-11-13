@@ -223,27 +223,23 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #   define GL_MAX_COLOR_TEXTURE_SAMPLES           0
 #   define GL_TEXTURE_2D_MULTISAMPLE              0
 #  endif
+#  ifndef GL_MAX
+#   define GL_MAX                                 GL_MAX_EXT
+#   define GL_MIN                                 GL_MIN_EXT
+#  endif
 #  if defined ( FO_IOS )
+#   define glTexImage2DMultisample( a, b, c, d, e, f )
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
-#  endif
-#  ifdef FO_ANDROID
-#   define glRenderbufferStorageMultisample( a, b, c, d, e )
-#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
-#   ifndef GL_MAX
-#    define GL_MAX                                GL_MAX_EXT
-#    define GL_MIN                                GL_MIN_EXT
-#   endif
-#  endif
-#  ifdef FO_WEB
-#   ifndef GL_MAX
-#    define GL_MAX                                GL_MAX_EXT
-#    define GL_MIN                                GL_MIN_EXT
-#   endif
+#  elif defined ( FO_ANDROID )
+#   define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG
+#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
+#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
+#  elif defined ( FO_WEB )
+#   define glTexImage2DMultisample( a, b, c, d, e, f )
 #   define glRenderbufferStorageMultisample( a, b, c, d, e )
 #   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
 #  endif
-#  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
 # ifdef FO_MSVC
 #  pragma comment( lib, "opengl32.lib" )
