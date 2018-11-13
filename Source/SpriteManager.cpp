@@ -86,11 +86,9 @@ bool SpriteManager::Init()
         RUNTIME_ASSERT( !r && "SDL_GetCurrentDisplayMode" );
         GameOpt.ScreenWidth = MAX( mode.w, mode.h );
         GameOpt.ScreenHeight = MIN( mode.w, mode.h );
-        while( GameOpt.ScreenWidth >= 2048 )
-        {
-            GameOpt.ScreenWidth /= 2;
-            GameOpt.ScreenHeight /= 2;
-        }
+        float ratio = (float) GameOpt.ScreenWidth / (float) GameOpt.ScreenHeight;
+        GameOpt.ScreenHeight = 768;
+        GameOpt.ScreenWidth = (int) ( (float) GameOpt.ScreenHeight * ratio + 0.5f );
         GameOpt.FullScreen = true;
     }
 
