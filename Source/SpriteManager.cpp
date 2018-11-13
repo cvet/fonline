@@ -241,6 +241,9 @@ bool SpriteManager::Init()
     OGL_texture_multisample = false;
     OGL_vertex_array_object = false;
     OGL_get_program_binary = false;
+    # if FO_ANDROID
+    OGL_vertex_array_object = true;
+    # endif
     # ifdef FO_IOS
     OGL_vertex_array_object = true;
     OGL_framebuffer_multisample = true;

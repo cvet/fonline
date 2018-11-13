@@ -25,74 +25,6 @@ pipeline {
             }
           }
         }
-        stage('Build Linux') {
-          agent {
-            kubernetes {
-              label 'linux'
-              yamlFile 'BuildScripts/build-pod.yaml'
-            }
-          }
-          steps {
-            container('jnlp') {
-              sh './BuildScripts/linux.sh'
-              dir('Build/linux/') {
-                stash name: 'linux', includes: 'Binaries/**'
-              }
-            }
-          }
-        }
-        stage('Build Web') {
-          agent {
-            kubernetes {
-              label 'linux'
-              yamlFile 'BuildScripts/build-pod.yaml'
-            }
-          }
-          steps {
-            container('jnlp') {
-              sh './BuildScripts/web.sh'
-              dir('Build/web/') {
-                stash name: 'web', includes: 'Binaries/**'
-              }
-            }
-          }
-        }
-        stage('Build Windows') {
-          agent {
-            node {
-              label 'win'
-            }
-          }
-          steps {
-            bat 'BuildScripts\\windows.bat'
-            dir('Build/windows/') {
-              stash name: 'windows', includes: 'Binaries/**'
-            }
-          }
-          post {
-            cleanup {
-              deleteDir()
-            }
-          }
-        }
-        stage('Build Mac OS') {
-          agent {
-            node {
-              label 'mac'
-            }
-          }
-          steps {
-            sh './BuildScripts/mac.sh'
-            dir('Build/mac/') {
-              stash name: 'mac', includes: 'Binaries/**'
-            }
-          }
-          post {
-            cleanup {
-              deleteDir()
-            }
-          }
-        }
       }
     }
     stage('Create Build Artifacts') {
@@ -105,11 +37,7 @@ pipeline {
         dir('SDK')
         {
           sh 'rm -rf ./Binaries/*'
-          unstash 'linux'
           unstash 'android'
-          unstash 'windows'
-          unstash 'mac'
-          unstash 'web'
           sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
         }
       }
