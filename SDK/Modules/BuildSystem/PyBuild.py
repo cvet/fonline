@@ -8,6 +8,15 @@ try:
 	import subprocess
 	import tarfile
 	
+	# Install Pillow
+	try:
+		from PIL import Image
+	except:
+		import pip
+		from pip._internal import main as pip_main
+		pip_main(['install', 'pillow'])
+		from PIL import Image
+	
 	for a in sys.argv:
 		print a
 	
@@ -89,9 +98,11 @@ try:
 			
 			# Patch icon
 			if os.name == 'nt':
-				icoPath = outputPath + '/Client.ico'
-				resHackPath = os.path.dirname(os.path.realpath(__file__)) + '/_other/ReplaceVistaIcon.exe'
+				icoPath = os.path.join(gameOutputPath, 'Windows.ico')
+				logo.save(icoPath, 'ico')
+				resHackPath = curPath + '/_other/ReplaceVistaIcon.exe'
 				r = subprocess.call([resHackPath, gameOutputPath + '/' + gameName + '.exe', icoPath], shell = True)
+				os.remove(icoPath)
 				assert r == 0
 			
 			# Zip
@@ -135,8 +146,10 @@ try:
 				os.environ['WIX_TEMP'] = wixTempPath
 				os.makedirs(wixTempPath)
 				
-				shutil.copy(os.path.join(curPath, 'License.rtf'), \
-						os.path.join(targetOutputPath, 'License.rtf'))
+				licensePath = os.path.join(outputPath, 'MsiLicense.rtf')
+				if not os.path.isfile(licensePath):
+					licensePath = os.path.join(binariesPath, 'DefaultMsiLicense.rtf')
+				shutil.copy(licensePath, os.path.join(targetOutputPath, 'License.rtf'))
 				
 				with open(os.path.join(targetOutputPath, 'MSI.json'), 'wt') as f:
 					f.write(msiConfig)
@@ -196,6 +209,13 @@ try:
 			shutil.copytree(binariesPath + '/Android', gameOutputPath)
 			patchConfig(gameOutputPath + '/libs/armeabi-v7a/libFOnline.so')
 			patchConfig(gameOutputPath + '/libs/x86/libFOnline.so')
+			patchFile(gameOutputPath + '/res/values/strings.xml', 'FOnline', gameName)
+			
+			# Icons
+			logo.resize((48, 48)).save(gameOutputPath + '/res/drawable-mdpi/ic_launcher.png', 'png')
+			logo.resize((72, 72)).save(gameOutputPath + '/res/drawable-hdpi/ic_launcher.png', 'png')
+			logo.resize((96, 96)).save(gameOutputPath + '/res/drawable-xhdpi/ic_launcher.png', 'png')
+			logo.resize((144, 144)).save(gameOutputPath + '/res/drawable-xxhdpi/ic_launcher.png', 'png')
 			
 			# Bundle
 			shutil.copytree(resourcesPath, gameOutputPath + '/assets')
@@ -203,7 +223,7 @@ try:
 				f.write('\n'.join(os.listdir(resourcesPath)))
 			
 			# Pack
-			antPath = os.path.dirname(os.path.realpath(__file__)) + '/_ant/bin/ant.bat'
+			antPath = curPath + '/_ant/bin/ant.bat'
 			r = subprocess.call([antPath, '-f', gameOutputPath, 'debug'], shell = True)
 			assert r == 0
 			shutil.copy(gameOutputPath + '/bin/SDLActivity-debug.apk', targetOutputPath + '/' + gameName + '.apk')
@@ -236,7 +256,10 @@ try:
 			patchFile(gameOutputPath + '/index.html', '$LOADING$', gameName)
 			patchFile(gameOutputPath + '/debug.html', '$TITLE$', gameName + ' Debug')
 			patchFile(gameOutputPath + '/debug.html', '$LOADING$', gameName + ' Debug')
-
+			
+			# Favicon
+			logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
+		
 		else:
 			assert False, 'Unknown build target'
 
@@ -244,6 +267,11 @@ try:
 		targetOutputPath = outputPath + '/' + buildTarget
 		shutil.rmtree(targetOutputPath, True)
 		os.makedirs(targetOutputPath)
+		
+		logoPath = os.path.join(outputPath, 'Logo.png')
+		if not os.path.isfile(logoPath):
+			logoPath = os.path.join(binariesPath, 'DefaultLogo.png')
+		logo = Image.open(logoPath)
 		
 		build()
 	except:
