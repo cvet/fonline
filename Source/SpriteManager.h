@@ -7,7 +7,7 @@
 #include "Text.h"
 #include "3dStuff.h"
 #include "GraphicLoader.h"
-#include "SDL_opengl.h"
+#include "SDL_video.h"
 
 // Font flags
 #define FT_NOBREAK                 ( 0x0001 )

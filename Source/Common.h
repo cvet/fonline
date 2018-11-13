@@ -174,11 +174,11 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 # define PI_VALUE                                 ( 3.141592654f )
 
 # include "SDL.h"
-# include "SDL_video.h"
 # include "SDL_syswm.h"
 # include "GluStuff.h"
 # ifndef FO_OGL_ES
 #  include "GL/glew.h"
+#  include "SDL_opengl.h"
 #  ifdef FO_MAC
 #   undef glGenVertexArrays
 #   undef glBindVertexArray
