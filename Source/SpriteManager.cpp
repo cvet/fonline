@@ -29,9 +29,9 @@ bool OGL_vertex_array_object = false;
 bool OGL_get_program_binary = false;
 
 #ifdef FO_ANDROID
-PFNGLBINDVERTEXARRAYOESPROC glGenVertexArraysOES;
-PFNGLBINDVERTEXARRAYOESPROC glBindVertexArrayOES;
-PFNGLBINDVERTEXARRAYOESPROC glDeleteVertexArraysOES;
+PFNGLBINDVERTEXARRAYOESPROC    glBindVertexArrayOES;
+PFNGLDELETEVERTEXARRAYSOESPROC glDeleteVertexArraysOES;
+PFNGLGENVERTEXARRAYSOESPROC    glGenVertexArraysOES;
 #endif
 
 SpriteManager::SpriteManager()
