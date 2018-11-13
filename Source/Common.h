@@ -174,6 +174,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 # define PI_VALUE                                 ( 3.141592654f )
 
 # include "SDL.h"
+# include "SDL_video.h"
 # include "SDL_syswm.h"
 # include "GluStuff.h"
 # ifndef FO_OGL_ES
@@ -189,6 +190,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  endif
 # else
 #  include "SDL_opengles2.h"
+#  include "SDL_opengles2_gl2ext.h"
 #  define glGenVertexArrays                       glGenVertexArraysOES
 #  define glBindVertexArray                       glBindVertexArrayOES
 #  define glDeleteVertexArrays                    glDeleteVertexArraysOES
