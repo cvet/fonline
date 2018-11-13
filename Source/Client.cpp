@@ -5705,8 +5705,11 @@ void FOClient::SScriptFunc::Crit_AddAnimationCallback( CritterCl* cr, uint anim1
     RUNTIME_ASSERT( bind_id );
     cr->Anim3d->AnimationCallbacks.push_back( { anim1, anim2, normalized_time, [ cr, bind_id ]
                                                 {
+                                                    if( cr->IsDestroyed )
+                                                        return;
+
                                                     Script::PrepareContext( bind_id, "AnimationCallback" );
-                                                    Script::SetArgObject( cr );
+                                                    Script::SetArgEntity( cr );
                                                     Script::RunPrepared();
                                                 } } );
 }
