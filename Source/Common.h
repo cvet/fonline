@@ -219,27 +219,30 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  define GL_STENCIL_ATTACHMENT_EXT               GL_STENCIL_ATTACHMENT
 #  define glGetTexImage( a, b, c, d, e )
 #  define glDrawBuffer( a )
-#  define GL_MAX_COLOR_TEXTURE_SAMPLES            0
-#  define GL_TEXTURE_2D_MULTISAMPLE               0
-#  if defined ( FO_MAC ) || defined ( FO_IOS )
+#  ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
+#   define GL_MAX_COLOR_TEXTURE_SAMPLES           0
+#   define GL_TEXTURE_2D_MULTISAMPLE              0
+#  endif
+#  if defined ( FO_IOS )
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 #  endif
 #  ifdef FO_ANDROID
-typedef void ( *PFNGLBINDVERTEXARRAYOESPROC )( GLuint array );
-typedef void ( *PFNGLDELETEVERTEXARRAYSOESPROC )( GLsizei n, const GLuint* arrays );
-typedef void ( *PFNGLGENVERTEXARRAYSOESPROC )( GLsizei n, GLuint* arrays );
 extern PFNGLBINDVERTEXARRAYOESPROC glGenVertexArraysOES;
 extern PFNGLBINDVERTEXARRAYOESPROC glBindVertexArrayOES;
 extern PFNGLBINDVERTEXARRAYOESPROC glDeleteVertexArraysOES;
 #   define glRenderbufferStorageMultisample( a, b, c, d, e )
 #   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
-#   define GL_MAX                                 GL_MAX_EXT
-#   define GL_MIN                                 GL_MIN_EXT
+#   ifndef GL_MAX
+#    define GL_MAX                                GL_MAX_EXT
+#    define GL_MIN                                GL_MIN_EXT
+#   endif
 #  endif
 #  ifdef FO_WEB
-#   define GL_MAX                                 GL_MAX_EXT
-#   define GL_MIN                                 GL_MIN_EXT
+#   ifndef GL_MAX
+#    define GL_MAX                                GL_MAX_EXT
+#    define GL_MIN                                GL_MIN_EXT
+#   endif
 #   define glRenderbufferStorageMultisample( a, b, c, d, e )
 #   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
 #  endif
