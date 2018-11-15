@@ -36,6 +36,10 @@ PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
 PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
 #endif
 
+#ifdef FO_IOS
+extern void ClientEntry( void* );
+#endif
+
 SpriteManager::SpriteManager()
 {
     mainWindow = nullptr;
@@ -133,6 +137,10 @@ bool SpriteManager::Init()
         WriteLog( "SDL Window not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
+
+    #ifdef FO_IOS
+    SDL_iPhoneSetAnimationCallback( mainWindow, 1, ClientEntry, nullptr );
+    #endif
 
     #ifndef FO_WEB
     SDL_GLContext gl_context = SDL_GL_CreateContext( mainWindow );
