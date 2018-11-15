@@ -304,6 +304,12 @@ windows_file_close(SDL_RWops * context)
 #endif /* __WIN32__ */
 
 #ifdef HAVE_STDIO_H
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) //! For iOS build
+#undef HAVE_FOPEN64
+#undef HAVE_FSEEKO64
+#undef HAVE__FSEEKI64
+#endif
+
 #ifdef HAVE_FOPEN64
 #define fopen   fopen64
 #endif
