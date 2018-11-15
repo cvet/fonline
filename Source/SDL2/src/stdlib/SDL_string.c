@@ -28,7 +28,7 @@
 
 #include "SDL_stdinc.h"
 
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE)) //! For iOS build
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) //! For iOS build
 #undef HAVE__STRREV
 #undef HAVE__STRUPR
 #undef HAVE__STRLWR
