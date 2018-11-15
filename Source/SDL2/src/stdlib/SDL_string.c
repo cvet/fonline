@@ -28,6 +28,18 @@
 
 #include "SDL_stdinc.h"
 
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE)) //! For iOS build
+#undef HAVE__STRREV
+#undef HAVE__STRUPR
+#undef HAVE__STRLWR
+#undef HAVE_ITOA
+#undef HAVE__UITOA
+#undef HAVE__LTOA
+#undef HAVE__ULTOA
+#undef HAVE__I64TOA
+#undef HAVE__UI64TOA
+#endif
+
 #if !defined(HAVE_VSSCANF) || !defined(HAVE_STRTOL) || !defined(HAVE_STRTOUL)  || !defined(HAVE_STRTOLL) || !defined(HAVE_STRTOULL) || !defined(HAVE_STRTOD)
 #define SDL_isupperhex(X)   (((X) >= 'A') && ((X) <= 'F'))
 #define SDL_islowerhex(X)   (((X) >= 'a') && ((X) <= 'f'))
