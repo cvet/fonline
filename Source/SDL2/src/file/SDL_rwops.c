@@ -308,11 +308,10 @@ windows_file_close(SDL_RWops * context)
 #ifdef HAVE_FOPEN64
 #define fopen   fopen64
 #endif
-#ifdef HAVE_FSEEKO64 && !(defined(__APPLE__) && defined(TARGET_OS_IPHONE)) //! For iOS build
+#if defined(HAVE_FSEEKO64) && !(defined(__APPLE__) && defined(TARGET_OS_IPHONE)) //! For iOS build
 #define fseek_off_t off64_t
 #define fseek   fseeko64
 #define ftell   ftello64
-#endif
 #elif defined(HAVE_FSEEKO)
 #if defined(OFF_MIN) && defined(OFF_MAX)
 #define FSEEK_OFF_MIN OFF_MIN
