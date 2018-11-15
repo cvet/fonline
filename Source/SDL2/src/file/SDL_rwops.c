@@ -19,10 +19,6 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) //! For iOS build
-#undef HAVE_FSEEKO64
-#endif
-
 /* We won't get fseeko64 on QNX if _LARGEFILE64_SOURCE is defined, but the
    configure script knows the C runtime has it and enables it. */
 #ifndef __QNXNTO__
@@ -316,6 +312,9 @@ windows_file_close(SDL_RWops * context)
 #define fseek_off_t off64_t
 #define fseek   fseeko64
 #define ftell   ftello64
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) //! For iOS build
+#define off64_t int64_t
+#endif
 #elif defined(HAVE_FSEEKO)
 #if defined(OFF_MIN) && defined(OFF_MAX)
 #define FSEEK_OFF_MIN OFF_MIN
