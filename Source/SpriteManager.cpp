@@ -37,7 +37,7 @@ PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
 #endif
 
 #ifdef FO_IOS
-extern void ClientEntry( void* );
+SDL_Window* SprMngr_MainWindow;
 #endif
 
 SpriteManager::SpriteManager()
@@ -139,7 +139,7 @@ bool SpriteManager::Init()
     }
 
     #ifdef FO_IOS
-    SDL_iPhoneSetAnimationCallback( mainWindow, 1, ClientEntry, nullptr );
+    SprMngr_MainWindow = mainWindow;
     #endif
 
     #ifndef FO_WEB
