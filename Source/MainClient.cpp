@@ -60,7 +60,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #if defined ( FO_IOS )
     ClientEntry( nullptr );
     SDL_iPhoneSetAnimationCallback( SprMngr_MainWindow, 1, ClientEntry, nullptr );
-    return;
+    return 0;
 
     #elif defined ( FO_WEB )
     EM_ASM(
