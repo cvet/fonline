@@ -58,7 +58,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Loop
     #if defined ( FO_IOS )
-    ClientEntry();
+    ClientEntry( nullptr );
     SDL_iPhoneSetAnimationCallback( SprMngr_MainWindow, 1, ClientEntry, nullptr );
     return;
 
