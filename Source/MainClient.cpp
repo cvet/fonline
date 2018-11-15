@@ -55,7 +55,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Loop
     #if defined ( FO_IOS )
-    SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
+    // SDL_iPhoneSetAnimationCallback called in sprite manager because need pass valid window handle
 
     #elif defined ( FO_WEB )
     EM_ASM(
