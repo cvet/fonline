@@ -1621,8 +1621,13 @@ endif()
 #   endif()
 # endif()
 
-configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
-  "${SDL2_BINARY_DIR}/include/SDL_config.h")
+if(NOT IOS) #!
+  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
+    "${SDL2_BINARY_DIR}/include/SDL_config.h")
+else()
+  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_iphoneos.h"
+    "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+endif()
 
 # Prepare the flags and remove duplicates
 if(EXTRA_LDFLAGS)
