@@ -332,9 +332,9 @@ static int Global_SystemCallExt( string command, string& output )
 
 static void Global_OpenLink( string link )
 {
-    #ifdef FO_WINDOWS
+    #if defined ( FO_WINDOWS )
     ShellExecuteW( nullptr, L"open", _str( link ).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL );
-    #else
+    #elif !defined ( FO_IOS )
     system( ( string( "xdg-open " ) + link ).c_str() );
     #endif
 }

@@ -189,7 +189,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  endif
 # else
 #  include "SDL_opengles2.h"
-#  include "SDL_opengles2_gl2ext.h"
 #  define glGenVertexArrays                       glGenVertexArraysOES
 #  define glBindVertexArray                       glBindVertexArrayOES
 #  define glDeleteVertexArrays                    glDeleteVertexArraysOES

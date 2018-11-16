@@ -716,6 +716,7 @@ string FileManager::GetExePath()
     return _str().parseWideChar( exe_path );
     #else
     RUNTIME_ASSERT( !"Invalid platform for executable path" );
+    return "";
     #endif
 }
 

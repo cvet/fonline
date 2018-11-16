@@ -93,6 +93,24 @@ pipeline {
             }
           }
         }
+        stage('Build iOS') {
+          agent {
+            node {
+              label 'mac'
+            }
+          }
+          steps {
+            sh './BuildScripts/ios.sh'
+            dir('Build/ios/') {
+              stash name: 'ios', includes: 'Binaries/**'
+            }
+          }
+          post {
+            cleanup {
+              deleteDir()
+            }
+          }
+        }
       }
     }
     stage('Create Build Artifacts') {
@@ -105,11 +123,12 @@ pipeline {
         dir('SDK')
         {
           sh 'rm -rf ./Binaries/*'
-          unstash 'linux'
           unstash 'android'
+          unstash 'linux'
+          unstash 'web'
           unstash 'windows'
           unstash 'mac'
-          unstash 'web'
+          unstash 'ios'
           sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
         }
       }

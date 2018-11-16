@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -182,7 +182,7 @@ EMSCRIPTENAUDIO_CloseDevice(_THIS)
         }
     }, this->iscapture);
 
-#if 1  /* !!! FIXME: currently not used. Can we move some stuff off the SDL2 namespace? --ryan. */
+#if 0  /* !!! FIXME: currently not used. Can we move some stuff off the SDL2 namespace? --ryan. */
     SDL_free(this->hidden);
 #endif
 }
@@ -238,7 +238,7 @@ EMSCRIPTENAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscaptu
     }
 
     /* Initialize all variables that we clean on shutdown */
-#if 1  /* !!! FIXME: currently not used. Can we move some stuff off the SDL2 namespace? --ryan. */
+#if 0  /* !!! FIXME: currently not used. Can we move some stuff off the SDL2 namespace? --ryan. */
     this->hidden = (struct SDL_PrivateAudioData *)
         SDL_malloc((sizeof *this->hidden));
     if (this->hidden == NULL) {

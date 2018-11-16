@@ -6,6 +6,9 @@
 #ifndef FO_WINDOWS
 # include <signal.h>
 #endif
+#ifdef FO_IOS
+extern SDL_Window* SprMngr_MainWindow;
+#endif
 
 static void ClientEntry( void* )
 {
@@ -55,7 +58,9 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Loop
     #if defined ( FO_IOS )
-    SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
+    ClientEntry( nullptr );
+    SDL_iPhoneSetAnimationCallback( SprMngr_MainWindow, 1, ClientEntry, nullptr );
+    return 0;
 
     #elif defined ( FO_WEB )
     EM_ASM(
