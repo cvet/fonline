@@ -231,7 +231,6 @@ UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
 void SDL_NSLog(const char *text)
 {
     NSLog(@"%s", text);
-	SDL_IsIPad();
 }
 
 /*
@@ -242,6 +241,7 @@ void SDL_NSLog(const char *text)
  */
 SDL_bool SDL_IsIPad(void)
 {
+111
     return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
 }
 
