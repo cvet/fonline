@@ -1526,6 +1526,11 @@ elseif(APPLE)
     endif()
   endif()
 
+  if(IOS) #!
+    file(GLOB METAL_SOURCES ${SDL2_SOURCE_DIR}/src/render/metal/*.m)
+    set(SOURCE_FILES ${SOURCE_FILES} ${METAL_SOURCES})
+  endif()
+
   CheckPTHREAD()
 elseif(HAIKU)
   if(SDL_VIDEO)
