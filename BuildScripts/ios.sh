@@ -15,4 +15,4 @@ rm -rf iOS/*
 pwd
 
 /Applications/CMake.app/Contents/bin/cmake -C "$SOURCE_FULL_PATH/BuildScripts/ios.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make
+/Applications/CMake.app/Contents/bin/cmake --build . --config Release --target FOnline
