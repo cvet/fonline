@@ -16,7 +16,3 @@ pwd
 
 /Applications/CMake.app/Contents/bin/cmake -C "$SOURCE_FULL_PATH/BuildScripts/ios.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make
-make install
-
-#xcodebuild -project "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/Unity-iPhone.xcodeproj" -configuration Release -scheme "Unity-iPhone" clean archive -archivePath "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/build/Unity-iPhone"
-#xcodebuild -exportArchive -archivePath "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/build/Unity-iPhone.xcarchive" -exportFormat ipa -exportPath "${PROJECT}/${TARGET}_${PLATFORM}/Build/Unity-iPhone.ipa" -exportProvisioningProfile "Warfair"
