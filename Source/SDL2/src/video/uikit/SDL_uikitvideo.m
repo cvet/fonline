@@ -231,6 +231,7 @@ UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
 void SDL_NSLog(const char *text)
 {
     NSLog(@"%s", text);
+	SDL_IsIPad();
 }
 
 /*
