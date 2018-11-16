@@ -443,7 +443,7 @@ if(USE_GCC OR USE_CLANG)
       #endif
       int main(int argc, char **argv) {}" HAVE_GCC_FVISIBILITY)
   if(HAVE_GCC_FVISIBILITY)
-    list(APPEND EXTRA_CFLAGS "-fvisibility=hidden")
+    #! list(APPEND EXTRA_CFLAGS "-fvisibility=hidden")
   endif()
   set(CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
 
