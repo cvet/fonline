@@ -157,7 +157,6 @@
 #define SDL_TIMER_UNIX  1
 
 /* Supported video drivers */
-222
 #define SDL_VIDEO_DRIVER_UIKIT  1
 #define SDL_VIDEO_DRIVER_DUMMY  1
 
