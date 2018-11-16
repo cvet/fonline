@@ -241,7 +241,6 @@ void SDL_NSLog(const char *text)
  */
 SDL_bool SDL_IsIPad(void)
 {
-111
     return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
 }
 
