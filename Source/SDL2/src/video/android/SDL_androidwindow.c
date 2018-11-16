@@ -102,6 +102,10 @@ Android_SetWindowTitle(_THIS, SDL_Window * window)
 void
 Android_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
 {
+    //! error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]
+    SDL_WindowData *data;
+    int old_w, old_h, new_w, new_h;
+
     /* If the window is being destroyed don't change visible state */
     if (!window->is_destroying) {
         Android_JNI_SetWindowStyle(fullscreen);
@@ -117,17 +121,17 @@ Android_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * displ
         return;
     }
 
-    SDL_WindowData * data = (SDL_WindowData *)window->driverdata;
+    data = (SDL_WindowData *)window->driverdata;
 
     if (!data || !data->native_window) {
         return;
     }
 
-    int old_w = window->w;
-    int old_h = window->h;
+    old_w = window->w;
+    old_h = window->h;
 
-    int new_w = ANativeWindow_getWidth(data->native_window);
-    int new_h = ANativeWindow_getHeight(data->native_window);
+    new_w = ANativeWindow_getWidth(data->native_window);
+    new_h = ANativeWindow_getHeight(data->native_window);
 
     if (old_w != new_w || old_h != new_h) {
         SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED, new_w, new_h);
