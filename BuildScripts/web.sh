@@ -1,9 +1,9 @@
 #!/bin/bash -ex
 
-[ "$FO_SOURCE" ] || { echo "FO_SOURCE is empty"; exit 1; }
+[ "$FO_ROOT" ] || { echo "FO_ROOT is empty"; exit 1; }
 [ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
 
-export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
+export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 export EMSCRIPTEN_VERSION="sdk-1.38.15-64bit"
 
@@ -23,10 +23,10 @@ cd $FO_BUILD_DEST
 mkdir -p web
 cd web
 mkdir -p "./Binaries/Client/Web" && rm -rf "./Binaries/Client/Web/*"
-cp -r "$SOURCE_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
+cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
 
 mkdir -p emsdk
-cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"
+cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
 chmod +x ./emsdk
 ./emsdk update
@@ -38,12 +38,12 @@ emcc -v
 
 mkdir -p release
 cd release
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" "$ROOT_FULL_PATH/Source"
 make -j4
 cd ../
 
 mkdir -p debug
 cd debug
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$ROOT_FULL_PATH/Source"
 make -j4
 cd ../

@@ -1,9 +1,9 @@
 #!/bin/bash -ex
 
-[ "$FO_SOURCE" ] || { echo "FO_SOURCE is empty"; exit 1; }
+[ "$FO_ROOT" ] || { echo "FO_ROOT is empty"; exit 1; }
 [ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
 
-export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
+export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
@@ -24,7 +24,7 @@ mkdir -p android
 cd android
 
 mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
-cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
+cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
@@ -47,13 +47,13 @@ cd $ANDROID_ABI
 
 pwd
 
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH/Source"
 make -j4
 cd ../
 
 export ANDROID_ABI=x86
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH/Source"
 make -j4
 cd ../
