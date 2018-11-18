@@ -1,7 +1,7 @@
 ECHO ON
 
-IF [%FO_ROOT%] == [] ECHO FO_ROOT is empty & EXIT /B 1
-IF [%FO_BUILD_DEST%] == [] ECHO FO_BUILD_DEST is empty & EXIT /B 1
+IF [%FO_ROOT%] == [] ECHO FO_ROOT variable is not set & EXIT /B 1
+IF [%FO_BUILD_DEST%] == [] ECHO FO_BUILD_DEST variable is not set & EXIT /B 1
 
 PUSHD %CD%\%FO_ROOT%
 SET ROOT_FULL_PATH=%CD%

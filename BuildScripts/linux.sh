@@ -1,7 +1,7 @@
 #!/bin/bash -ex
 
-[ "$FO_ROOT" ] || { echo "FO_ROOT is empty"; exit 1; }
-[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
+[ "$FO_ROOT" ] || { echo "FO_ROOT variable is not set"; exit 1; }
+[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST variable is not set"; exit 1; }
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
