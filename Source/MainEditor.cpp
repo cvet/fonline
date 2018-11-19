@@ -1,56 +1,32 @@
 #include "Common.h"
 #include "Mapper.h"
 #include "Exception.h"
-#include <locale.h>
+#include "wx/wx.h"
 
-int main( int argc, char** argv )
+class FOnlineEditor: public wxApp
 {
-    InitialSetup( argc, argv );
-
-    // Threading
-    Thread::SetCurrentName( "GUI" );
-
-    // Exceptions
-    CatchExceptions( "FOnlineMapper", FONLINE_VERSION );
-
-    // Timer
-    Timer::Init();
-
-    // Logging
-    LogToFile( "FOMapper.log" );
-
-    // Options
-    GetClientOptions();
-
-    // Start
-    WriteLog( "Starting Mapper (version {})...\n", FONLINE_VERSION );
-
-    // Create engine
-    FOMapper* mapper = new FOMapper();
-    if( !mapper || !mapper->Init() )
+public:
+    virtual bool OnInit() override
     {
-        WriteLog( "FOnline engine initialization fail.\n" );
-        GameOpt.Quit = true;
-        return 0;
+        InitialSetup( argc, argv );
+
+        // Threading
+        Thread::SetCurrentName( "GUI" );
+
+        // Exceptions
+        CatchExceptions( "FOnlineEditor", FONLINE_VERSION );
+
+        // Timer
+        Timer::Init();
+
+        // Logging
+        LogToFile( "FOnlineEditor.log" );
+
+        // Options
+        GetClientOptions();
+
+        return true;
     }
+};
 
-    // Loop
-    while( !GameOpt.Quit )
-        mapper->MainLoop();
-
-    // Finish script
-    Script::RunMandatorySuspended();
-    Script::RaiseInternalEvent( MapperFunctions.Finish );
-
-    // Just kill process
-    // System automatically clean up all resources
-    WriteLog( "Exit from mapper.\n" );
-    ExitProcess( 0 );
-
-    // Destroy engine
-    mapper->Finish();
-    SAFEDEL( mapper );
-
-    WriteLog( "FOnline finished.\n" );
-    return 0;
-}
+wxIMPLEMENT_APP( FOnlineEditor );

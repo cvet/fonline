@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "Text.h"
 #include "Crypt.h"
-#include "FLTK/src/xutf8/headers/case.h"
+#include "UcsTables.h"
 #include <sstream>
 #include "FileSystem.h"
 
