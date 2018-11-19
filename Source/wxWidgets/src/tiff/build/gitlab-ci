@@ -1,0 +1,57 @@
+#!/bin/sh
+# This script is used for testing the build, primarily for use
+# with travis, but may be used by hand as well.
+
+set -e
+set -x
+
+# Test autoconf build
+autoconf_build()
+{
+    autoreconf -ivf
+
+    mkdir autoconf-build
+    cd autoconf-build
+    echo "Running ../configure --prefix=$(pwd)/../autoconf-install) ${opts}"
+    ../configure --prefix=$(pwd)/../autoconf-install ${opts}
+    make
+    make install
+    make check
+    make distcheck
+}
+
+# Test autoconf build
+cmake_build()
+{
+    PATH="$(pwd)/tools/bin:$PATH"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        PATH="$(pwd)/tools/CMake.app/Contents/bin:$PATH"
+    fi
+    mkdir cmake-build
+    cd cmake-build
+    echo "Running cmake -G "$1" -DCMAKE_BUILD_TYPE="$2" -DCMAKE_INSTALL_PREFIX=../autoconf-install ${opts} .."
+    cmake -G "$1" -DCMAKE_BUILD_TYPE="$2" -DCMAKE_INSTALL_PREFIX=../autoconf-install ${opts} ..
+    cmake --build .
+    cmake --build . --target install
+    ctest -V
+}
+
+build=$1
+shift
+
+case $build in
+    autoconf)
+        echo "Testing Autoconf build"
+        autoconf_build "$@"
+        ;;
+    cmake)
+        echo "Testing CMake build"
+        cmake_build "$@"
+        ;;
+    *)
+        echo "Invalid argument: \"$arg\"" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
