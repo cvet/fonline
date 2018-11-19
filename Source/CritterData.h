@@ -2,7 +2,7 @@
 #define __CRITTER_DATA__
 
 #include "Common.h"
-#ifdef FONLINE_MAPPER
+#ifdef FONLINE_EDITOR
 # include "CritterCl.h"
 #endif
 
@@ -16,7 +16,7 @@ public:
     UIntVec  TextsLang;
     FOMsgVec Texts;
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     string CollectionName;
     #endif
 };

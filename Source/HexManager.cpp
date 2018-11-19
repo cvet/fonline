@@ -4,7 +4,7 @@
 #include "LineTracer.h"
 #include "ProtoManager.h"
 
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "Script.h"
 #endif
 
@@ -328,7 +328,7 @@ bool HexManager::Init()
     maxHexX = 0;
     maxHexY = 0;
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     ClearSelTiles();
     #endif
 
@@ -498,7 +498,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     if( is_deleted )
         item->SetHideAnim();
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     DeleteItem( item );
     #endif
 }
@@ -1091,7 +1091,7 @@ void HexManager::RebuildMap( int rx, int ry )
 
     #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
-    #else // FONLINE_MAPPER
+    #else // FONLINE_EDITOR
     Script::RaiseInternalEvent( MapperFunctions.RenderMap );
     #endif
 }
@@ -1337,7 +1337,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 Field::Tile& tile = f.GetTile( i, false );
                 uint         spr_id = tile.Anim->GetSprId( 0 );
 
-                #ifdef FONLINE_MAPPER
+                #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& tiles = GetTiles( nx, ny, false );
                 Sprite&            spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1360,7 +1360,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 Field::Tile& roof = f.GetTile( i, true );
                 uint         spr_id = roof.Anim->GetSprId( 0 );
 
-                #ifdef FONLINE_MAPPER
+                #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& roofs = GetTiles( nx, ny, true );
                 Sprite&            spr = roofTree.InsertSprite( DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                 &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1405,7 +1405,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
 
     #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
-    #else     // FONLINE_MAPPER
+    #else     // FONLINE_EDITOR
     Script::RaiseInternalEvent( MapperFunctions.RenderMap );
     #endif
 }
@@ -1846,7 +1846,7 @@ void HexManager::CollectLightSources()
         return;
 
     // Scenery
-    #ifndef FONLINE_MAPPER
+    #ifndef FONLINE_EDITOR
     lightSources = lightSourcesScen;
     #else
     for( auto& item : hexItems )
@@ -1875,7 +1875,7 @@ void HexManager::CollectLightSources()
         }
 
         // Default chosen light
-        #ifndef FONLINE_MAPPER
+        #ifndef FONLINE_EDITOR
         if( cr->IsChosen() && !added )
             lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance, GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags, &cr->SprOx, &cr->SprOy ) );
         #endif
@@ -1925,7 +1925,7 @@ void HexManager::RebuildTiles()
                 Field::Tile& tile = f.GetTile( i, false );
                 uint         spr_id = tile.Anim->GetSprId( 0 );
 
-                #ifdef FONLINE_MAPPER
+                #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
                 Sprite&            spr = tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                               &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1977,7 +1977,7 @@ void HexManager::RebuildRoof()
                     Field::Tile& roof = f.GetTile( i, true );
                     uint         spr_id = roof.Anim->GetSprId( 0 );
 
-                    #ifdef FONLINE_MAPPER
+                    #ifdef FONLINE_EDITOR
                     ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                     Sprite&            spr = roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -3121,7 +3121,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
             continue;
         if( item->IsWall() && !GameOpt.ShowWall )
             continue;
-        #else // FONLINE_MAPPER
+        #else // FONLINE_EDITOR
         bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
         if( item->IsScenery() && !GameOpt.ShowScen && !is_fast )
             continue;
@@ -4115,7 +4115,7 @@ void HexManager::UnloadMap()
     ResizeField( 0, 0 );
     DeleteCritters();
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     TilesField.clear();
     RoofsField.clear();
     #endif
@@ -4243,7 +4243,7 @@ void HexManager::OnResolutionChanged()
     RefreshMap();
 }
 
-#ifdef FONLINE_MAPPER
+#ifdef FONLINE_EDITOR
 bool HexManager::SetProtoMap( ProtoMap& pmap )
 {
     WriteLog( "Create map from prototype.\n" );
@@ -4705,4 +4705,4 @@ void HexManager::MarkPassedHexes()
     RefreshMap();
 }
 
-#endif // FONLINE_MAPPER
+#endif // FONLINE_EDITOR

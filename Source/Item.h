@@ -58,7 +58,7 @@ public:
     UIntVec  TextsLang;
     FOMsgVec Texts;
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     string CollectionName;
     #endif
 
@@ -93,7 +93,7 @@ public:
     bool IsScenery()    { return GetIsScenery(); }
     bool IsWall()       { return GetIsWall(); }
 
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     uint GetCurSprId();
     #endif
 };
@@ -195,7 +195,7 @@ public:
 
     ProtoItem* GetProtoItem() { return (ProtoItem*) Proto; }
 
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     Item* Clone();
     #endif
 
@@ -217,7 +217,7 @@ public:
 
     void ChangeCount( int val );
 
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     uint GetCurSprId();
     #endif
 

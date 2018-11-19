@@ -344,7 +344,7 @@ Sprite& Sprites::PutSprite( Sprite* child, int draw_order, int hx, int hy, int c
             spr_.CutTexR = si->SprRect.L + ( si->SprRect.R - si->SprRect.L ) * ( ( xx + ww ) / widthf );
             spr_.CutType = cut;
 
-            #ifdef FONLINE_MAPPER
+            #ifdef FONLINE_EDITOR
             spr_.CutOyL = ( hor ? -6 : -12 ) * ( ( hor ? hx : hy ) - i );
             spr_.CutOyR = spr_.CutOyL;
             if( ww < stepf )

@@ -4,7 +4,7 @@
 # include "Critter.h"
 # include "Map.h"
 #endif
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "Item.h"
 # include "ItemHex.h"
 # include "CritterCl.h"
@@ -82,7 +82,7 @@ string Entity::GetName() const
 EntityVec Entity::GetChildren() const
 {
     EntityVec children;
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     # if defined ( FONLINE_SERVER )
     if( Type == EntityType::Npc || Type == EntityType::Client )
     {
@@ -91,7 +91,7 @@ EntityVec Entity::GetChildren() const
             children.push_back( item );
     }
     # endif
-    # if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    # if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     if( Type == EntityType::CritterCl )
     {
         CritterCl* cr = (CritterCl*) this;
@@ -137,7 +137,7 @@ void Entity::Release() const
         else if( Type == EntityType::Map )
             delete (Map*) this;
         #endif
-        #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+        #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
         else if( Type == EntityType::Item )
             delete (Item*) this;
         else if( Type == EntityType::CritterCl )

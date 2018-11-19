@@ -30,7 +30,7 @@ static T* EntityUpCast( Entity* a )
     CHECK_CAST( Critter, EntityType::Client );
     CHECK_CAST( Item, EntityType::Item );
     CHECK_CAST( Item, EntityType::ItemHex );
-    #elif defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #elif defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     CHECK_CAST( Location, EntityType::Location );
     CHECK_CAST( Map, EntityType::Map );
     CHECK_CAST( CritterCl, EntityType::CritterCl );

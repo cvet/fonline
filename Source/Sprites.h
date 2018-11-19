@@ -45,7 +45,7 @@ public:
     Sprite*    ChainChild;
     SpriteVec* UnvalidatedPlace;
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     int CutOyL, CutOyR;
     #endif
 

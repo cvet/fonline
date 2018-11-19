@@ -25,7 +25,7 @@ public:
     CLASS_PROPERTY_ALIAS( bool, IsNoLogOut );
 
     // Entities
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     EntityVec AllEntities;
     uint      LastEntityId;
     #endif
@@ -38,7 +38,7 @@ public:
         short  OffsX, OffsY;
         uchar  Layer;
         bool   IsRoof;
-        #ifdef FONLINE_MAPPER
+        #ifdef FONLINE_EDITOR
         bool   IsSelected;
         #endif
 
@@ -49,7 +49,7 @@ public:
     TileVec Tiles;
 
 private:
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     void SaveTextFormat( IniParser& file );
     #endif
     bool LoadTextFormat( const char* buf );
@@ -76,7 +76,7 @@ private:
 public:
     bool Load();
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     void        GenNew();
     bool        Save( const string& custom_name );
     static bool IsMapFile( const string& fname );

@@ -169,7 +169,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 /* Client & Mapper                                                      */
 /************************************************************************/
 
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 
 # define PI_VALUE                                 ( 3.141592654f )
 

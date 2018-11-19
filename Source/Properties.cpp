@@ -3178,7 +3178,7 @@ Property* PropertyRegistrator::Register(
         disable_set = true;
     if( is_const )
         disable_set = true;
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     disable_get = false;
     #endif
 

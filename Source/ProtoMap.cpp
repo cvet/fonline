@@ -38,7 +38,7 @@ ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
     MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
     #endif
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     LastEntityId = 0;
     #endif
 }
@@ -72,7 +72,7 @@ ProtoMap::~ProtoMap()
     #endif
 
     Tiles.clear();
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     for( auto& entity : AllEntities )
         entity->Release();
     AllEntities.clear();
@@ -89,7 +89,7 @@ ProtoMap::~ProtoMap()
     #endif
 }
 
-#ifdef FONLINE_MAPPER
+#ifdef FONLINE_EDITOR
 void ProtoMap::SaveTextFormat( IniParser& file )
 {
     // Header
@@ -906,7 +906,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
     #endif
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     // Get lower id
     LastEntityId = 0;
     for( auto& entity : entities )
@@ -1011,7 +1011,7 @@ bool ProtoMap::Load()
     return true;
 }
 
-#ifdef FONLINE_MAPPER
+#ifdef FONLINE_EDITOR
 void ProtoMap::GenNew()
 {
     SetWidth( MAXHEX_DEF );
@@ -1067,7 +1067,7 @@ bool ProtoMap::IsMapFile( const string& fname )
 
     return false;
 }
-#endif // FONLINE_MAPPER
+#endif // FONLINE_EDITOR
 
 #ifdef FONLINE_SERVER
 void ProtoMap::GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers )

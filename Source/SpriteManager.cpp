@@ -4252,7 +4252,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         if( ++curDrawQuad == drawQuadCount )
             Flush();
 
-        #ifdef FONLINE_MAPPER
+        #ifdef FONLINE_EDITOR
         // Corners indication
         if( GameOpt.ShowCorners && spr->EggType )
         {

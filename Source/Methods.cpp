@@ -148,7 +148,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         disable_registration = true;
     if( !isServer && !( call & Method::ClientMask ) )
         disable_registration = true;
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     disable_registration = false;
     #endif
 

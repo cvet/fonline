@@ -172,7 +172,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 string str;
                 #ifdef FONLINE_CLIENT
                 if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
-                #else // FONLINE_MAPPER
+                #else // FONLINE_EDITOR
                 if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
                 #endif
                 {
@@ -257,7 +257,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
         uint anim1_ = anim1, anim2_ = anim2;
         #ifdef FONLINE_CLIENT
         if( !anim && Script::RaiseInternalEvent( ClientFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) )
-        #else // FONLINE_MAPPER
+        #else // FONLINE_EDITOR
         if( !anim && Script::RaiseInternalEvent( MapperFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) )
         #endif
         {
@@ -290,7 +290,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim( hash model_name, uint anim1, uint a
     uint anim1ex = 0, anim2ex = 0, flags = 0;
     #ifdef FONLINE_CLIENT
     if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimationFallout, model_name, &anim1, &anim2, &anim1ex, &anim2ex, &flags ) )
-    #else // FONLINE_MAPPER
+    #else // FONLINE_EDITOR
     if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimationFallout, model_name, &anim1, &anim2, &anim1ex, &anim2ex, &flags ) )
     #endif
     {

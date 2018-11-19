@@ -401,7 +401,7 @@ private:
 /* Mapper                                                               */
 /************************************************************************/
 
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
 public:
     // Proto map
     ProtoMap* CurProtoMap;
@@ -436,7 +436,7 @@ public:
 
     void GetHexesRect( const Rect& rect, UShortPairVec& hexes );
     void MarkPassedHexes();
-    #endif // FONLINE_MAPPER
+    #endif // FONLINE_EDITOR
 
 };
 

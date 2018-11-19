@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.10 )
+cmake_minimum_required( VERSION 3.5 )
 project( FOnlineProject )
 
 #
@@ -147,14 +147,14 @@ if( FO_DEBUG )
 endif()
 
 set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server" )
-set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Mapper" )
+set( EDITOR_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Editor" )
 set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/ASCompiler" )
 
 set( FO_OUTPUT_BINARIES_PATH "" CACHE PATH "Fixed output path" )
 if( NOT "${FO_OUTPUT_BINARIES_PATH}" STREQUAL "" )
 	set( CLIENT_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Client/${OS}" )
 	set( SERVER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Server" )
-	set( MAPPER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Mapper" )
+	set( EDITOR_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Editor" )
 	set( ASCOMPILER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/ASCompiler" )
 	message( STATUS "Output binaries: ${FO_OUTPUT_BINARIES_PATH}" )
 endif()
@@ -182,7 +182,7 @@ endif()
 string( TOUPPER "${OS}" OS_UPPER )
 set( SERVER_DEFINES "-DFONLINE_SERVER -DFO_${OS_UPPER}" )
 set( CLIENT_DEFINES "-DFONLINE_CLIENT -DFO_${OS_UPPER}" )
-set( MAPPER_DEFINES "-DFONLINE_MAPPER -DFO_${OS_UPPER}" )
+set( EDITOR_DEFINES "-DFONLINE_EDITOR -DFO_${OS_UPPER}" )
 set( ASCPMPILER_DEFINES "-DFONLINE_SCRIPT_COMPILER -DFO_${OS_UPPER}" )
 
 #
@@ -453,7 +453,7 @@ set( COMMON_SOURCE
 	Timer.cpp Timer.h
 	Types.h
 )
-set( SERVER_CLIENT_MAPPER_SOURCE
+set( SERVER_CLIENT_EDITOR_SOURCE
 	3dAnimation.h
 	CritterData.h
 	GraphicStructures.cpp GraphicStructures.h
@@ -473,7 +473,7 @@ set( SERVER_CLIENT_SOURCE
 set( SERVER_ASCOMPILER_SOURCE
 	DummyData.h
 )
-set( CLIENT_MAPPER_SOURCE
+set( CLIENT_EDITOR_SOURCE
 	${GLEW_SOURCE}
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
@@ -490,14 +490,14 @@ set( CLIENT_MAPPER_SOURCE
 	SpriteManagerFont.cpp
 	Sprites.cpp Sprites.h
 )
-set( SERVER_MAPPER_SOURCE
+set( SERVER_EDITOR_SOURCE
 	ResourceConverter.h ResourceConverter.cpp
 )
 
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
-	${SERVER_CLIENT_MAPPER_SOURCE}
-	${SERVER_MAPPER_SOURCE}
+	${SERVER_CLIENT_EDITOR_SOURCE}
+	${SERVER_EDITOR_SOURCE}
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
@@ -520,9 +520,9 @@ set( SERVER_SOURCE
 )
 set( CLIENT_SOURCE
 	${COMMON_SOURCE}
-	${SERVER_CLIENT_MAPPER_SOURCE}
+	${SERVER_CLIENT_EDITOR_SOURCE}
 	${SERVER_CLIENT_SOURCE}
-	${CLIENT_MAPPER_SOURCE}
+	${CLIENT_EDITOR_SOURCE}
 	${OGG_SOURCE}
 	${VORBIS_SOURCE}
 	${THEORA_SOURCE}
@@ -531,13 +531,13 @@ set( CLIENT_SOURCE
 	MainClient.cpp
 	SoundManager.cpp SoundManager.h
 )
-set( MAPPER_SOURCE
+set( EDITOR_SOURCE
 	${COMMON_SOURCE}
-	${SERVER_CLIENT_MAPPER_SOURCE}
-	${SERVER_MAPPER_SOURCE}
-	${CLIENT_MAPPER_SOURCE}
+	${SERVER_CLIENT_EDITOR_SOURCE}
+	${SERVER_EDITOR_SOURCE}
+	${CLIENT_EDITOR_SOURCE}
 	${fbxsdk_SOURCE}
-	MainMapper.cpp
+	MainEditor.cpp
 	Mapper.cpp Mapper.h
 )
 set( ASCOMPILER_SOURCE
@@ -583,10 +583,10 @@ if( NOT BUILD_ONLY_CLIENT )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ipc" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 	endif()
 
-	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
-	set_target_properties( Mapper PROPERTIES ${RO0} ${MAPPER_OUTPUT} ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
-	set_target_properties( Mapper PROPERTIES OUTPUT_NAME "Mapper${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	add_executable( Editor WIN32 ${EDITOR_SOURCE} "Editor.rc" )
+	set_target_properties( Editor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
+	set_target_properties( Editor PROPERTIES OUTPUT_NAME "Editor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
+	target_link_libraries( Editor "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 	set_target_properties( ASCompiler PROPERTIES ${RO0} ${ASCOMPILER_OUTPUT} ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
@@ -594,7 +594,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	target_link_libraries( ASCompiler "Angelscript" "AngelscriptExt" "zlibstatic" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
-	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
+	set_property( TARGET FOnlineServer FOnline Editor ASCompiler PROPERTY FOLDER "Binaries")
 	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ipc ssl crypto PROPERTY FOLDER "Libraries")
 	if( WXWIDGETS )
 		set_property( TARGET ${WXWIDGETS} "wxrc" PROPERTY FOLDER "Libraries/wxWidgets")

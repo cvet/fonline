@@ -830,7 +830,7 @@ void CritterCl::RefreshAnim()
         Anim3d->SetAnimation( ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0 );
 
         // Start mesh generation for Mapper
-        #ifdef FONLINE_MAPPER
+        #ifdef FONLINE_EDITOR
         Anim3d->StartMeshGeneration();
         Anim3dStay->StartMeshGeneration();
         #endif

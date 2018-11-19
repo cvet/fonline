@@ -176,7 +176,7 @@ void InitialSetup( uint argc, char** argv )
     }
 
     // Cache project files
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR ) || defined ( FONLINE_SCRIPT_COMPILER )
     RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "ProjectFiles" ), "'ProjectFiles' not found in config file" );
     string project_files = MainConfig->GetStr( "", "ProjectFiles" );
     for( string project_path : _str( project_files ).split( ';' ) )
@@ -592,7 +592,7 @@ int ConvertParamValue( const string& str, bool& fail )
     if( _str( str ).compareIgnoreCase( "false" ) )
         return 0;
 
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     return Script::GetEnumValue( str, fail );
     #else
     return 0;
@@ -741,7 +741,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 
 IntVec MainWindowKeyboardEvents;
 StrVec MainWindowKeyboardEventsText;
@@ -831,7 +831,7 @@ void GetClientOptions()
     // Data files
     FileManager::ClearDataFiles();
     FileManager::InitDataFiles( "$Basic" );
-    # ifndef FONLINE_MAPPER
+    # ifndef FONLINE_EDITOR
     #  if defined ( FO_IOS )
     FileManager::InitDataFiles( "../../Documents/" );
     #  elif defined ( FO_ANDROID )
@@ -942,7 +942,7 @@ void GetClientOptions()
         LogToFile( "" );
     }
 
-    # ifdef FONLINE_MAPPER
+    # ifdef FONLINE_EDITOR
     Script::SetRunTimeout( 0, 0 );
     # endif
 }
@@ -1096,7 +1096,7 @@ string GetLastSocketError()
 
 static void AddPropertyCallback( void ( * function )( void*, void*, void*, void* ) )
 {
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     PropertyRegistrator::GlobalSetCallbacks.push_back( (NativeCallback) function );
     #endif
 }

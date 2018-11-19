@@ -5,7 +5,7 @@
 #include "FileSystem.h"
 #include "Resources/Resources.h"
 
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # define DISABLE_FOLDER_CACHING
 #endif
 
@@ -659,7 +659,7 @@ bool ZipFile::Init( const string& fname )
 
         ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
         {
-            #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+            #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
             if( Str::Compare( filename, "$Basic" ) )
             {
                 MemStream* mem_stream = new MemStream();

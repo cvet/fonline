@@ -323,7 +323,7 @@ bool ProtoManager::LoadProtosFromFiles()
         return false;
 
     // Mapper collections
-    #ifdef FONLINE_MAPPER
+    #ifdef FONLINE_EDITOR
     for( auto& kv : itemProtos )
     {
         ProtoItem* proto_item = (ProtoItem*) kv.second;

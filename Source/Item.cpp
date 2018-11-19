@@ -144,7 +144,7 @@ void Item::SetProto( ProtoItem* proto )
     Props = proto->Props;
 }
 
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 Item* Item::Clone()
 {
     RUNTIME_ASSERT( Type == EntityType::Item );
@@ -391,7 +391,7 @@ void Item::ContGetItems( ItemVec& items, uint stack_id )
 }
 #endif // FONLINE_SERVER
 
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "ResourceManager.h"
 # include "SpriteManager.h"
 
