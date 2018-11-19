@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 2.8 )
+cmake_minimum_required( VERSION 3.10 )
 project( FOnlineProject )
 
 #
@@ -398,6 +398,31 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "${CMAKE_BINARY_DIR}/openssl/ssl" )
 endif()
 
+if( NOT BUILD_ONLY_CLIENT )
+	set( wxBUILD_SHARED OFF CACHE BOOL "" FORCE )
+	set( wxBUILD_TESTS OFF CACHE STRING "" FORCE )
+	set( wxBUILD_SAMPLES OFF CACHE STRING "" FORCE )
+	set( wxBUILD_DEMOS OFF CACHE BOOL "" FORCE )
+	set( wxUSE_GUI ON CACHE BOOL "" FORCE )
+	set( wxBUILD_COMPATIBILITY "3.0" CACHE STRING "" FORCE )
+	set( wxBUILD_PRECOMP OFF CACHE BOOL "" FORCE )
+	set( wxBUILD_MONOLITHIC OFF CACHE BOOL "" FORCE )
+	set( wxBUILD_USE_STATIC_RUNTIME ON CACHE BOOL "" FORCE )
+	set( wxBUILD_INSTALL OFF CACHE BOOL "" FORCE )
+	set( wxUSE_FS_INET OFF CACHE BOOL "" FORCE )
+	set( wxUSE_IPV6 OFF CACHE BOOL "" FORCE )
+	set( wxUSE_PROTOCOL OFF CACHE BOOL "" FORCE )
+	set( wxUSE_PROTOCOL_FILE OFF CACHE BOOL "" FORCE )
+	set( wxUSE_PROTOCOL_FTP OFF CACHE BOOL "" FORCE )
+	set( wxUSE_PROTOCOL_HTTP OFF CACHE BOOL "" FORCE )
+	set( wxUSE_SOCKETS OFF CACHE BOOL "" FORCE )
+	set( wxUSE_URL OFF CACHE BOOL "" FORCE )
+	add_subdirectory( "wxWidgets" )
+	include_directories( "wxWidgets/include" )
+	set( WXWIDGETS "gl" "core" "base" "adv" "aui" "html" "media" "propgrid" "qa" "ribbon" "richtext" "ssl" "stc"
+		"webview" "xml" "xrc" "wxexpat" "wxjpeg" "wxpng" "wxregex" "wxscintilla" "wxtiff" "wxzlib" )
+endif()
+
 set( COMMON_SOURCE
 	${Json_SOURCE}
 	${fmt_SOURCE}
@@ -571,4 +596,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
 	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ipc ssl crypto PROPERTY FOLDER "Libraries")
+	if( WXWIDGETS )
+		set_property( TARGET ${WXWIDGETS} "wxrc" PROPERTY FOLDER "Libraries/wxWidgets")
+	endif()
 endif()
