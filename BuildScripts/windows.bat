@@ -1,10 +1,10 @@
 ECHO ON
 
-IF [%FO_SOURCE%] == [] ECHO FO_SOURCE is empty & EXIT /B 1
-IF [%FO_BUILD_DEST%] == [] ECHO FO_BUILD_DEST is empty & EXIT /B 1
+IF [%FO_ROOT%] == [] ECHO FO_ROOT variable is not set & EXIT /B 1
+IF [%FO_BUILD_DEST%] == [] ECHO FO_BUILD_DEST variable is not set & EXIT /B 1
 
-PUSHD %CD%\%FO_SOURCE%
-SET SOURCE_FULL_PATH=%CD%
+PUSHD %CD%\%FO_ROOT%
+SET ROOT_FULL_PATH=%CD%
 POPD
 
 MKDIR %FO_BUILD_DEST%
@@ -16,12 +16,12 @@ IF EXIST windows\ASCompiler RD windows\ASCompiler /S /Q
 
 MKDIR windows\x86
 PUSHD windows\x86
-cmake -G "Visual Studio 15 2017" "%SOURCE_FULL_PATH%\Source"
+cmake -G "Visual Studio 15 2017" "%ROOT_FULL_PATH%\Source"
 POPD
 
 MKDIR windows\x64
 PUSHD windows\x64
-cmake -G "Visual Studio 15 2017 Win64" "%SOURCE_FULL_PATH%\Source"
+cmake -G "Visual Studio 15 2017 Win64" "%ROOT_FULL_PATH%\Source"
 POPD
 
 cmake --build windows\x64 --config RelWithDebInfo --target FOnlineServer

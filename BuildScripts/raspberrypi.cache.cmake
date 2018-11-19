@@ -1,3 +1,3 @@
 # CMake initial cache
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{SOURCE_FULL_PATH}/BuildScripts/raspberrypi.toolchain.cmake" CACHE PATH "" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{ROOT_FULL_PATH}/BuildScripts/raspberrypi.toolchain.cmake" CACHE PATH "" FORCE )

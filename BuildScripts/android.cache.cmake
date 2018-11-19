@@ -1,13 +1,13 @@
 # CMake initial cache
 
-if( NOT DEFINED "ENV{SOURCE_FULL_PATH}" )
-	message( FATAL_ERROR "Define SOURCE_FULL_PATH" )
+if( NOT DEFINED "ENV{ROOT_FULL_PATH}" )
+	message( FATAL_ERROR "Define ROOT_FULL_PATH" )
 endif()
 if( NOT DEFINED "ENV{ANDROID_NDK}" )
 	message( FATAL_ERROR "Define ANDROID_NDK" )
 endif()
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{SOURCE_FULL_PATH}/BuildScripts/android.toolchain.cmake" CACHE PATH "" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{ROOT_FULL_PATH}/BuildScripts/android.toolchain.cmake" CACHE PATH "" FORCE )
 set( ANDROID YES CACHE STRING "" FORCE )
 set( ANDROID_NDK $ENV{ANDROID_NDK} CACHE STRING "" FORCE )
 set( ANDROID_ABI $ENV{ANDROID_ABI} CACHE STRING "" FORCE )
