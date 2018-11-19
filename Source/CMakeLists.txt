@@ -148,14 +148,12 @@ endif()
 
 set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server" )
 set( EDITOR_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Editor" )
-set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/ASCompiler" )
 
 set( FO_OUTPUT_BINARIES_PATH "" CACHE PATH "Fixed output path" )
 if( NOT "${FO_OUTPUT_BINARIES_PATH}" STREQUAL "" )
 	set( CLIENT_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Client/${OS}" )
 	set( SERVER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Server" )
 	set( EDITOR_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Editor" )
-	set( ASCOMPILER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/ASCompiler" )
 	message( STATUS "Output binaries: ${FO_OUTPUT_BINARIES_PATH}" )
 endif()
 
@@ -183,7 +181,6 @@ string( TOUPPER "${OS}" OS_UPPER )
 set( SERVER_DEFINES "-DFONLINE_SERVER -DFO_${OS_UPPER}" )
 set( CLIENT_DEFINES "-DFONLINE_CLIENT -DFO_${OS_UPPER}" )
 set( EDITOR_DEFINES "-DFONLINE_EDITOR -DFO_${OS_UPPER}" )
-set( ASCPMPILER_DEFINES "-DFONLINE_SCRIPT_COMPILER -DFO_${OS_UPPER}" )
 
 #
 # Resources generation
@@ -470,9 +467,6 @@ set( SERVER_CLIENT_SOURCE
 	BufferManager.cpp BufferManager.h
 	DataMask.h
 )
-set( SERVER_ASCOMPILER_SOURCE
-	DummyData.h
-)
 set( CLIENT_EDITOR_SOURCE
 	${GLEW_SOURCE}
 	3dStuff.cpp 3dStuff.h
@@ -499,7 +493,6 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_EDITOR_SOURCE}
 	${SERVER_EDITOR_SOURCE}
 	${SERVER_CLIENT_SOURCE}
-	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
 	Critter.cpp Critter.h
 	CritterData.h
@@ -539,11 +532,6 @@ set( EDITOR_SOURCE
 	${fbxsdk_SOURCE}
 	MainEditor.cpp
 	Mapper.cpp Mapper.h
-)
-set( ASCOMPILER_SOURCE
-	${COMMON_SOURCE}
-	${SERVER_ASCOMPILER_SOURCE}
-	ASCompiler.cpp
 )
 
 #
@@ -588,13 +576,8 @@ if( NOT BUILD_ONLY_CLIENT )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
 	target_link_libraries( FOnlineEditor "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
-	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
-	set_target_properties( ASCompiler PROPERTIES ${RO0} ${ASCOMPILER_OUTPUT} ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
-	set_target_properties( ASCompiler PROPERTIES OUTPUT_NAME "ASCompiler${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${ASCPMPILER_DEFINES}" )
-	target_link_libraries( ASCompiler "Angelscript" "AngelscriptExt" "zlibstatic" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${CMAKE_DL_LIBS}" )
-
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
-	set_property( TARGET FOnlineServer FOnline FOnlineEditor ASCompiler PROPERTY FOLDER "Binaries")
+	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries")
 	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ipc ssl crypto PROPERTY FOLDER "Libraries")
 	if( WXWIDGETS )
 		set_property( TARGET ${WXWIDGETS} "wxrc" PROPERTY FOLDER "Libraries/wxWidgets")
