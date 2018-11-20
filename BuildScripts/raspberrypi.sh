@@ -1,9 +1,9 @@
 #!/bin/bash -ex
 
-[ "$FO_SOURCE" ] || { echo "FO_SOURCE is empty"; exit 1; }
-[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
+[ "$FO_ROOT" ] || { echo "FO_ROOT variable is not set"; exit 1; }
+[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST variable is not set"; exit 1; }
 
-export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
+export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 if [ -n "$FO_INSTALL_PACKAGES" ]; then
 	#sudo apt-get -y update || true
@@ -25,7 +25,7 @@ if [ ! -d "./tools" ]; then
 fi
 export PI_TOOLS_HOME=$PWD/tools
 
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$ROOT_FULL_PATH/Source"
 make -j4
 
 if [ -n "$FO_FTP_DEST" ]; then

@@ -1,7 +1,7 @@
 pipeline {
   environment {
     FO_BUILD_DEST = 'Build'
-    FO_SOURCE = '.'
+    FO_ROOT = '.'
     FO_INSTALL_PACKAGES = 0
   }
   options {

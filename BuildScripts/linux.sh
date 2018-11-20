@@ -1,9 +1,9 @@
 #!/bin/bash -ex
 
-[ "$FO_SOURCE" ] || { echo "FO_SOURCE is empty"; exit 1; }
-[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
+[ "$FO_ROOT" ] || { echo "FO_ROOT variable is not set"; exit 1; }
+[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST variable is not set"; exit 1; }
 
-export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
+export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
@@ -28,7 +28,7 @@ rm -rf ASCompiler/*
 
 mkdir -p x64
 cd x64
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux64.cache.cmake" "$ROOT_FULL_PATH/Source"
 make -j4
 cd ../
 
@@ -45,6 +45,6 @@ cd ../
 
 #mkdir -p x86
 #cd x86
-#cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
+#cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux32.cache.cmake" "$ROOT_FULL_PATH/Source"
 #make -j4
 #cd ../
