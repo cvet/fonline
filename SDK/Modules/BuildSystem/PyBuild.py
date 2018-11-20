@@ -231,10 +231,14 @@ try:
 		elif buildTarget == 'Web':
 			# Release version
 			os.makedirs(gameOutputPath)
-			shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/index.html')
-			shutil.copy(binariesPath + '/Web/FOnline.js', gameOutputPath + '/FOnline.js')
-			shutil.copy(binariesPath + '/Web/FOnline.wasm', gameOutputPath + '/FOnline.wasm')
-			shutil.copy(binariesPath + '/Web/SimpleWebServer.py', gameOutputPath + '/SimpleWebServer.py')
+			
+			if os.path.isfile(os.path.join(outputPath, 'WebIndex.html')):
+				shutil.copy(os.path.join(outputPath, 'WebIndex.html'), os.path.join(gameOutputPath, 'index.html'))
+			else:
+				shutil.copy(os.path.join(binariesPath, 'Web', 'index.html'), os.path.join(gameOutputPath, 'index.html'))
+			shutil.copy(binariesPath + '/Web/FOnline.js', os.path.join(gameOutputPath, 'FOnline.js'))
+			shutil.copy(binariesPath + '/Web/FOnline.wasm', os.path.join(gameOutputPath, 'FOnline.wasm'))
+			shutil.copy(binariesPath + '/Web/SimpleWebServer.py', os.path.join(gameOutputPath, 'SimpleWebServer.py'))
 			patchConfig(gameOutputPath + '/FOnline.wasm')
 			
 			# Debug version
