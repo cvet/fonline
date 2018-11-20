@@ -403,6 +403,28 @@ bool FOClient::PostInit()
     LookBorders.clear();
     ShootBorders.clear();
 
+    // Auto login
+    string auto_login = MainConfig->GetStr( "", "AutoLogin" );
+    #ifdef FO_WEB
+    char*  auto_login_web = nullptr;
+    EM_ASM( auto_login_web = 'foAutoLogin' in Module ? allocate( intArrayFromString( Module.foAutoLogin ), 'i8', ALLOC_NORMAL ) : null );
+    if( auto_login_web )
+    {
+        auto_login = auto_login_web;
+        free( auto_login_web );
+    }
+    #endif
+    if( !auto_login.empty() )
+    {
+        StrVec auto_login_args = _str( auto_login ).split( ' ' );
+        if( auto_login_args.size() == 2 )
+        {
+            LoginName = auto_login_args[ 0 ];
+            LoginPassword = auto_login_args[ 1 ];
+            InitNetReason = INIT_NET_REASON_LOGIN;
+        }
+    }
+
     WriteLog( "Engine initialization complete.\n" );
     return true;
 }
