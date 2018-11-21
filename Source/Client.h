@@ -55,6 +55,7 @@ public:
     FOClient();
     bool PreInit();
     bool PostInit();
+    void ProcessAutoLogin();
     void Finish(); // Not used
     void Restart();
     void UpdateBinary();

@@ -404,6 +404,14 @@ bool FOClient::PostInit()
     ShootBorders.clear();
 
     // Auto login
+    ProcessAutoLogin();
+
+    WriteLog( "Engine initialization complete.\n" );
+    return true;
+}
+
+void FOClient::ProcessAutoLogin()
+{
     string auto_login = MainConfig->GetStr( "", "AutoLogin" );
     #ifdef FO_WEB
     char*  auto_login_web = nullptr;
@@ -412,21 +420,20 @@ bool FOClient::PostInit()
     {
         auto_login = auto_login_web;
         free( auto_login_web );
+        auto_login_web = nullptr;
     }
     #endif
-    if( !auto_login.empty() )
-    {
-        StrVec auto_login_args = _str( auto_login ).split( ' ' );
-        if( auto_login_args.size() == 2 )
-        {
-            LoginName = auto_login_args[ 0 ];
-            LoginPassword = auto_login_args[ 1 ];
-            InitNetReason = INIT_NET_REASON_LOGIN;
-        }
-    }
 
-    WriteLog( "Engine initialization complete.\n" );
-    return true;
+    if( auto_login.empty() )
+        return;
+
+    StrVec auto_login_args = _str( auto_login ).split( ' ' );
+    if( auto_login_args.size() != 2 )
+        return;
+
+    LoginName = auto_login_args[ 0 ];
+    LoginPassword = auto_login_args[ 1 ];
+    InitNetReason = INIT_NET_REASON_LOGIN;
 }
 
 void FOClient::Finish()
@@ -1736,6 +1743,8 @@ void FOClient::NetDisconnect()
     Bout.Reset();
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
+
+    ProcessAutoLogin();
 }
 
 void FOClient::ParseSocket()
