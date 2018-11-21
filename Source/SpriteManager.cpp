@@ -104,6 +104,22 @@ bool SpriteManager::Init()
         GameOpt.FullScreen = true;
     }
 
+    #ifdef FO_WEB
+    // Floating size
+    int canvas_w, canvas_h, is_fullscreen;
+    emscripten_get_canvas_size( &canvas_w, &canvas_h, &is_fullscreen );
+    GameOpt.ScreenWidth = CLAMP( canvas_w - 200, 1024, 1920 );
+    GameOpt.ScreenHeight = CLAMP( canvas_h - 100, 768, 1080 );
+
+    // Fixed size
+    int fixed_w = EM_ASM_INT( return 'foScreenWidth' in Module ? Module.foScreenWidth : 0 );
+    int fixed_h = EM_ASM_INT( return 'foScreenHeight' in Module ? Module.foScreenHeight : 0 );
+    if( fixed_w )
+        GameOpt.ScreenWidth = fixed_w;
+    if( fixed_h )
+        GameOpt.ScreenHeight = fixed_h;
+    #endif
+
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
