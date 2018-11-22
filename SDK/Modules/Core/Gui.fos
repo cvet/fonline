@@ -2094,6 +2094,7 @@ const int        PasswordShowTime = 1000;
     int            _ScrollLines;
     Sprite::Sprite _ScrollUp;
     Sprite::Sprite _ScrollDown;
+    bool           _CursorHidden;
 
     void _Construct() override
     {
@@ -2144,7 +2145,11 @@ const int        PasswordShowTime = 1000;
 
     void _Remove() override
     {
-        __HideCursor = false;
+        if( _CursorHidden )
+        {
+            _CursorHidden = false;
+            __HideCursor = false;
+        }
 
         Text::_Remove();
     }
@@ -2153,14 +2158,22 @@ const int        PasswordShowTime = 1000;
     {
         Text::_Hover();
 
-        __HideCursor = true;
+        if( !__HideCursor )
+        {
+            _CursorHidden = true;
+            __HideCursor = true;
+        }
     }
 
     void _Unhover() override
     {
         Text::_Unhover();
 
-        __HideCursor = false;
+        if( _CursorHidden )
+        {
+            _CursorHidden = false;
+            __HideCursor = false;
+        }
     }
 
     void _SizeChanged() override
