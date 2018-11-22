@@ -868,7 +868,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        string istr = _str( istr, "|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ",
+        string istr = _str( "|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ",
                             cl_->GetName(), cl_->GetId() );
         switch( cl_->Access )
         {
