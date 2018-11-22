@@ -105,11 +105,11 @@ bool SpriteManager::Init()
     }
 
     #ifdef FO_WEB
-    // Floating size
-    int canvas_w, canvas_h, is_fullscreen;
-    emscripten_get_canvas_size( &canvas_w, &canvas_h, &is_fullscreen );
-    GameOpt.ScreenWidth = CLAMP( canvas_w - 200, 1024, 1920 );
-    GameOpt.ScreenHeight = CLAMP( canvas_h - 100, 768, 1080 );
+    // Adaptive size
+    int window_w = EM_ASM_INT( return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName( 'body' )[ 0 ].clientWidth );
+    int window_h = EM_ASM_INT( return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName( 'body' )[ 0 ].clientHeight );
+    GameOpt.ScreenWidth = CLAMP( window_w - 200, 1024, 1920 );
+    GameOpt.ScreenHeight = CLAMP( window_h - 100, 768, 1080 );
 
     // Fixed size
     int fixed_w = EM_ASM_INT( return 'foScreenWidth' in Module ? Module.foScreenWidth : 0 );
