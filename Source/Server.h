@@ -296,6 +296,7 @@ public:
 
         static void Cl_SendItems( Critter* cl, CScriptArray* items, int param );
         static void Cl_Disconnect( Critter* cl );
+        static bool Cl_IsOnline( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, asIScriptFunction* func );
 

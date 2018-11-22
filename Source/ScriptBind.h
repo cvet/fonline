@@ -171,6 +171,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendItems(const array<const Item@>@+ items, int param = 0)", SCRIPT_FUNC_THIS( BIND_CLASS Cl_SendItems ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendItems(const array<Item@>@+ items, int param = 0)", SCRIPT_FUNC_THIS( BIND_CLASS Cl_SendItems ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Disconnect()", SCRIPT_FUNC_THIS( BIND_CLASS Cl_Disconnect ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsOnline()", SCRIPT_FUNC_THIS( BIND_CLASS Cl_IsOnline ), SCRIPT_FUNC_THIS_CONV ) );
 
     BIND_ASSERT( engine->RegisterFuncdef( "void CritterInitFunc(Critter@+, bool)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetScript(CritterInitFunc@+ func)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetScript ), SCRIPT_FUNC_THIS_CONV ) );

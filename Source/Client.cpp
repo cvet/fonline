@@ -413,9 +413,18 @@ bool FOClient::PostInit()
 void FOClient::ProcessAutoLogin()
 {
     string auto_login = MainConfig->GetStr( "", "AutoLogin" );
+
     #ifdef FO_WEB
-    char*  auto_login_web = nullptr;
-    EM_ASM( auto_login_web = 'foAutoLogin' in Module ? allocate( intArrayFromString( Module.foAutoLogin ), 'i8', ALLOC_NORMAL ) : null );
+    char* auto_login_web = (char*) EM_ASM_INT( {
+                                                   if( 'foAutoLogin' in Module )
+                                                   {
+                                                       var len = lengthBytesUTF8( Module.foAutoLogin ) + 1;
+                                                       var str = _malloc( len );
+                                                       stringToUTF8( Module.foAutoLogin, str, len + 1 );
+                                                       return str;
+                                                   }
+                                                   return null;
+                                               } );
     if( auto_login_web )
     {
         auto_login = auto_login_web;
