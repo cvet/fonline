@@ -122,7 +122,7 @@ pipeline {
       steps {
         dir('SDK')
         {
-          sh 'rm -rf ./Binaries/*'
+          sh 'rm -rf ./Binaries/ReadMe.txt'
           unstash 'android'
           unstash 'linux'
           unstash 'web'
