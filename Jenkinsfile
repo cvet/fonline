@@ -138,6 +138,9 @@ pipeline {
             archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
           }
         }
+        cleanup {
+          deleteDir()
+        }        
       }
     }
   }
