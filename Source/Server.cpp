@@ -405,16 +405,16 @@ void FOServer::Process( Client* cl )
             {
             case 0xFFFFFFFF:
             {
-                // at least 16 bytes should be sent for backward compatibility,
+                // At least 16 bytes should be sent for backward compatibility,
                 // even if answer data will change its meaning
                 BOUT_BEGIN( cl );
                 cl->Connection->DisableCompression();
-                cl->Connection->Bout << (uint)Statistics.CurOnline - 1;
-                cl->Connection->Bout << (uint)Statistics.Uptime;
-                cl->Connection->Bout << (uint)0;
-                cl->Connection->Bout << (uchar)0;
-                cl->Connection->Bout << (uchar)0xF0;
-                cl->Connection->Bout << (ushort)FONLINE_VERSION;
+                cl->Connection->Bout << (uint) Statistics.CurOnline - 1;
+                cl->Connection->Bout << (uint) Statistics.Uptime;
+                cl->Connection->Bout << (uint) 0;
+                cl->Connection->Bout << (uchar) 0;
+                cl->Connection->Bout << (uchar) 0xF0;
+                cl->Connection->Bout << (ushort) FONLINE_VERSION;
                 BOUT_END( cl );
                 cl->Disconnect();
                 BIN_END( cl );
