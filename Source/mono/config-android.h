@@ -1280,13 +1280,15 @@
 /* #undef HAVE__FINITE */
 
 /* ... */
-#define HOST_AMD64 1
+// #define HOST_AMD64 1
 
 /* Targeting the Android platform */
 /* #undef HOST_ANDROID */
+#define HOST_ANDROID 1
 
 /* ... */
 /* #undef HOST_ARM */
+#define HOST_ARM 1
 
 /* ... */
 /* #undef HOST_ARM64 */
@@ -1354,7 +1356,7 @@
 /* #undef MAJOR_IN_SYSMACROS */
 
 /* The architecture this is running on */
-#define MONO_ARCHITECTURE "amd64"
+#define MONO_ARCHITECTURE "arm"
 
 /* Enable the allocation and indexing of arrays greater than Int32.MaxValue */
 /* #undef MONO_BIG_ARRAYS */
@@ -1432,7 +1434,7 @@
 #define SIZEOF_INT 4
 
 /* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 8
+#define SIZEOF_LONG 4
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -1441,10 +1443,10 @@
 #define SIZEOF_REGISTER SIZEOF_VOID_P
 
 /* The size of `size_t', as computed by sizeof. */
-#define SIZEOF_SIZE_T 8
+#define SIZEOF_SIZE_T 4
 
 /* The size of `void *', as computed by sizeof. */
-#define SIZEOF_VOID_P 8
+#define SIZEOF_VOID_P 4
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -1453,13 +1455,15 @@
 #define STRERROR_R_CHAR_P 1
 
 /* ... */
-#define TARGET_AMD64 1
+// #define TARGET_AMD64 1
 
 /* ... */
 /* #undef TARGET_ANDROID */
+#define TARGET_ANDROID
 
 /* ... */
 /* #undef TARGET_ARM */
+#define TARGET_ARM
 
 /* ... */
 /* #undef TARGET_ARM64 */
