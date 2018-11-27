@@ -58,7 +58,7 @@
  */
 #if !defined(MONO_DLL_EXPORT) || !defined(_MSC_VER)
 #if defined(HAVE_BOEHM_GC) || defined(HAVE_SGEN_GC)
-#error "The code in mini/ should not depend on these defines."
+//! #error "The code in mini/ should not depend on these defines."
 #endif
 #endif
 
