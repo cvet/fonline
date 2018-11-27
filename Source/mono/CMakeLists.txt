@@ -842,6 +842,8 @@ if( WIN32 )
 	target_link_libraries( libmono "Mincore.lib" )
 	
 else()
+	add_definitions( "-D__USE_GNU" )
+	
 	add_library( libmono STATIC ${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
 		${LIBGCMONOSGEN_SOURCE} ${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE}
 		${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE} ${LIBMONORUNTIME_COMMON_SOURCE}
