@@ -13,6 +13,8 @@
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
+#include <mono/mini/jit.h>
+#include <mono/metadata/assembly.h>
 
 #pragma MESSAGE("Rework native calls.")
 #if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false
@@ -304,6 +306,8 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     ScriptWatcherFinish = false;
     ScriptWatcherThread.Start( Script::Watcher, "ScriptWatcher" );
     #endif
+
+    MonoDomain* domain = mono_jit_init_version( "1", "2" );
     return true;
 }
 
