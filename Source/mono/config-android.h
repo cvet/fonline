@@ -24,9 +24,11 @@
 
 /* Disable agent attach support */
 /* #undef DISABLE_ATTACH */
+#define DISABLE_ATTACH
 
 /* Disable COM support */
 /* #undef DISABLE_COM */
+#define DISABLE_COM
 
 /* Disable runtime debugging support */
 /* #undef DISABLE_DEBUG */
@@ -55,6 +57,7 @@
 /* Disable the JIT, only full-aot mode or interpreter will be supported by the
    runtime. */
 /* #undef DISABLE_JIT */
+#define DISABLE_JIT
 
 /* Disable support for huge assemblies */
 /* #undef DISABLE_LARGE_CODE */
@@ -85,6 +88,7 @@
 
 /* Disable reflection emit support */
 /* #undef DISABLE_REFLECTION_EMIT */
+#define DISABLE_REFLECTION_EMIT
 
 /* Disable assembly saving support in reflection emit */
 /* #undef DISABLE_REFLECTION_EMIT_SAVE */
@@ -197,13 +201,16 @@
 
 /* Define to 1 if you have the <android/api-level.h> header file. */
 /* #undef HAVE_ANDROID_API_LEVEL_H */
+#define HAVE_ANDROID_API_LEVEL_H
 
 /* Define to 1 if you have the <android/legacy_signal_inlines.h> header file.
    */
 /* #undef HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H */
+#define HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H
 
 /* Define to 1 if you have the <android/versioning.h> header file. */
 /* #undef HAVE_ANDROID_VERSIONING_H */
+#define HAVE_ANDROID_VERSIONING_H
 
 /* arc4random */
 /* #undef HAVE_ARC4RANDOM */
@@ -216,6 +223,7 @@
 
 /* ARM v7 */
 /* #undef HAVE_ARMV7 */
+#define HAVE_ARMV7
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
@@ -245,7 +253,7 @@
 /* #undef HAVE_CHECKLIST_H */
 
 /* Use classic Windows API support */
-#define HAVE_CLASSIC_WINAPI_SUPPORT 1
+// #define HAVE_CLASSIC_WINAPI_SUPPORT 1
 
 /* CLOCK_MONOTONIC */
 #define HAVE_CLOCK_MONOTONIC 1
@@ -607,22 +615,22 @@
 #define HAVE_LINK_H 1
 
 /* linux/in.h */
-#define HAVE_LINUX_IN_H 1
+// #define HAVE_LINUX_IN_H 1
 
 /* Define to 1 if you have the <linux/magic.h> header file. */
-#define HAVE_LINUX_MAGIC_H 1
+// #define HAVE_LINUX_MAGIC_H 1
 
 /* Define to 1 if you have the <linux/netlink.h> header file. */
-#define HAVE_LINUX_NETLINK_H 1
+// #define HAVE_LINUX_NETLINK_H 1
 
 /* Define to 1 if you have the <linux/rtc.h> header file. */
-#define HAVE_LINUX_RTC_H 1
+// #define HAVE_LINUX_RTC_H 1
 
 /* Define to 1 if you have the <linux/rtnetlink.h> header file. */
-#define HAVE_LINUX_RTNETLINK_H 1
+// #define HAVE_LINUX_RTNETLINK_H 1
 
 /* Define to 1 if you have the <linux/serial.h> header file. */
-#define HAVE_LINUX_SERIAL_H 1
+// #define HAVE_LINUX_SERIAL_H 1
 
 /* Define to 1 if you have the <localcharset.h> header file. */
 /* #undef HAVE_LOCALCHARSET_H */
