@@ -115,7 +115,7 @@ extern struct jit_descriptor __jit_debug_descriptor;
 /* gcc seems to inline/eliminate calls to noinline functions, thus the asm () */
 void MONO_NEVER_INLINE __jit_debug_register_code(void) {
 #if defined(__GNUC__)
-	asm ("");
+	__asm__ (""); //!
 #endif
 }
 

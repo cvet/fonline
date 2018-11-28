@@ -133,7 +133,7 @@ __mono_jit_debug_register_code (void)
 {
 	/* Make sure that even compilers that ignore __noinline__ don't inline this */
 #if defined(__GNUC__)
-	asm ("");
+	__asm__ (""); //!
 #endif
 }
 

@@ -45,7 +45,7 @@
 	__attribute__ ((__naked__)) access void				\
 	name arglist							\
 	{								\
-		asm volatile (						\
+		__asm__ volatile (						\
 			      "mov r0, r0\n\t"				\
 			      "mov r0, r0\n\t"				\
 			      "mov r0, r0\n\t"				\

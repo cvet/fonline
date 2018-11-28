@@ -216,6 +216,7 @@
 
 /* ARM v7 */
 /* #undef HAVE_ARMV7 */
+#define HAVE_ARMV7
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
