@@ -1,4 +1,6 @@
-#if defined(ANDROID) || defined(__ANDROID__)
+#if defined(EMSCRIPTEN)
+#include "config-web.h"
+#elif defined(ANDROID) || defined(__ANDROID__)
 #include "config-android.h"
 #elif defined(WIN32) || defined(_WIN32)
 #include "config-win.h"
