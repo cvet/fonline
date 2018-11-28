@@ -858,11 +858,11 @@ if( WIN32 )
 	
 else()
 	if( APPLE )
-		string( REPLACE "-Wdeprecated-declarations" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS} )
+		string( REPLACE "-Wdeprecated-declarations" " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS} )
 	endif()
 	add_definitions( "-D__USE_GNU" )
 	add_definitions( "-D_GNU_SOURCE" )
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11" )
+	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
 	
 	add_library( libmono STATIC
@@ -872,5 +872,5 @@ else()
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 	
-	target_link_libraries( libmono "c" "rt" )
+	target_link_libraries( libmono "rt" )
 endif()
