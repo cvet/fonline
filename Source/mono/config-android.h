@@ -235,7 +235,7 @@
 /* #undef HAVE_ATTR_XATTR_H */
 
 /* Define to 1 if you have the `backtrace_symbols' function. */
-#define HAVE_BACKTRACE_SYMBOLS 1
+// #define HAVE_BACKTRACE_SYMBOLS 1
 
 /* Define to 1 if the system has the type `blkcnt_t'. */
 #define HAVE_BLKCNT_T 1

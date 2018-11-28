@@ -58,7 +58,13 @@ void mono_wasm_enable_debugging (void);
 void mono_wasm_breakpoint_hit (void);
 void mono_wasm_set_timeout (int timeout, int id);
 
-#define MONO_ARCH_USE_FPSTACK FALSE //!
-#define MONO_ARCH_HAVE_VOLATILE_NON_PARAM_REGISTER 0 //!
+//!
+#define MONO_ARCH_USE_FPSTACK TRUE
+#define MONO_ARCH_FPSTACK_SIZE 6
+#define MONO_ARCH_HAVE_VOLATILE_NON_PARAM_REGISTER 1
+#define MONO_ARCH_CALLEE_REGS X86_CALLEE_REGS
+#define MONO_ARCH_CALLEE_SAVED_REGS X86_CALLER_REGS
+#define MONO_ARCH_INST_IS_REGPAIR(desc) (desc == 'l' || desc == 'L')
+#define MONO_ARCH_INST_REGPAIR_REG2(desc,hreg1) (desc == 'l' ? X86_EDX : -1)
 
 #endif /* __MONO_MINI_WASM_H__ */  

@@ -1294,7 +1294,7 @@
 #define HOST_ARM64
 
 /* Host Platform is Darwin */
-//#define HOST_DARWIN 1
+#define HOST_DARWIN 1
 
 /* ... */
 /* #undef HOST_MIPS */
