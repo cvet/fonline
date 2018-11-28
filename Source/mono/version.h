@@ -1,1 +1,1 @@
-#define FULL_VERSION "Visual Studio built mono"
+#define FULL_VERSION "FOnline Mono Build"
