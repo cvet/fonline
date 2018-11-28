@@ -506,6 +506,8 @@ if( WIN32 )
 		"repo/mono/metadata/file-mmap-windows.c" )
 else()
 	set( LIBMONORUNTIME_COMMON_SOURCE ${LIBMONORUNTIME_COMMON_SOURCE}
+		"repo/mono/metadata/mono-route.c"
+		"repo/mono/metadata/w32handle-namespace.c"
 		"repo/mono/metadata/file-mmap-posix.c" )
 endif()
 
