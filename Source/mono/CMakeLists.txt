@@ -843,6 +843,8 @@ if( WIN32 )
 	
 else()
 	add_definitions( "-D__USE_GNU" )
+	add_definitions( "-D_GNU_SOURCE" )
+	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
 	
 	add_library( libmono STATIC ${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
