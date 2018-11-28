@@ -24,11 +24,9 @@
 
 /* Disable agent attach support */
 /* #undef DISABLE_ATTACH */
-#define DISABLE_ATTACH
 
 /* Disable COM support */
 /* #undef DISABLE_COM */
-#define DISABLE_COM
 
 /* Disable runtime debugging support */
 /* #undef DISABLE_DEBUG */
@@ -57,7 +55,6 @@
 /* Disable the JIT, only full-aot mode or interpreter will be supported by the
    runtime. */
 /* #undef DISABLE_JIT */
-#define DISABLE_JIT
 
 /* Disable support for huge assemblies */
 /* #undef DISABLE_LARGE_CODE */
@@ -88,7 +85,6 @@
 
 /* Disable reflection emit support */
 /* #undef DISABLE_REFLECTION_EMIT */
-#define DISABLE_REFLECTION_EMIT
 
 /* Disable assembly saving support in reflection emit */
 /* #undef DISABLE_REFLECTION_EMIT_SAVE */

@@ -1,9 +1,3 @@
-#define DISABLE_JIT
-#define DISABLE_ATTACH
-#define DISABLE_COM
-#define DISABLE_REFLECTION_EMIT
-#define DISABLE_REFLECTION_EMIT_SAVE
-
 #ifndef _MSC_VER
 #include "cygconfig.h"
 #else

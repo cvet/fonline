@@ -1,9 +1,3 @@
-#define DISABLE_JIT
-#define DISABLE_ATTACH
-#define DISABLE_COM
-#define DISABLE_REFLECTION_EMIT
-#define DISABLE_REFLECTION_EMIT_SAVE
-
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
