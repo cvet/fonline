@@ -456,7 +456,7 @@
 /* #undef HAVE_GETHRTIME */
 
 /* Have getifaddrs */
-#define HAVE_GETIFADDRS 1
+// #define HAVE_GETIFADDRS 1
 
 /* Define to 1 if you have the `getlogin_r' function. */
 #define HAVE_GETLOGIN_R 1

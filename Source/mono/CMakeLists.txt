@@ -866,7 +866,7 @@ if( WIN32 )
 	
 else()
 	if( APPLE )
-		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations" )
+		add_definitions( "-Wno-deprecated-declarations" )
 		add_definitions( "-D_THREAD_SAFE" )
 		add_definitions( "-DGC_MACOSX_THREADS" )
 		add_definitions( "-DUSE_MUNMAP" )
