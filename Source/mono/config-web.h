@@ -1328,6 +1328,7 @@
 
 /* ... */
 /* #undef HOST_X86 */
+#define HOST_X86
 
 /* inotify_rm_watch with unsigned wd */
 /* #undef INOTIFY_RM_WATCH_WD_UNSIGNED */
@@ -1517,6 +1518,7 @@
 
 /* ... */
 /* #undef TARGET_X86 */
+#define TARGET_X86
 
 /* ... */
 /* #undef TARGET_XBOX360 */

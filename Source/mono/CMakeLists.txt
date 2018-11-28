@@ -728,12 +728,14 @@ set( LIBMONOUTILS_COMMON_SOURCE
 )
 if( APPLE )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
+		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-darwin.c"
 		"repo/mono/utils/mono-log-darwin.c"
 		"repo/mono/utils/mono-threads-posix.c"
 		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( ANDROID )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
+		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-log-android.c"
 		"repo/mono/utils/mono-threads-android.c"
@@ -741,11 +743,13 @@ elseif( ANDROID )
 		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( EMSCRIPTEN )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
+		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-wasm.c"
 		"repo/mono/utils/mono-log-posix.c"
 		"repo/mono/utils/mono-threads-wasm.c" )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
+		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-log-posix.c"
 		"repo/mono/utils/mono-threads-linux.c"
@@ -851,6 +855,9 @@ if( WIN32 )
 	target_link_libraries( libmono "Mincore.lib" )
 	
 else()
+	if( APPLE )
+		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations" )
+	endif()
 	add_definitions( "-D__USE_GNU" )
 	add_definitions( "-D_GNU_SOURCE" )
 	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11" )
