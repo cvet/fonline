@@ -866,7 +866,7 @@ if( WIN32 )
 	
 else()
 	if( APPLE )
-		add_definitions( "-Wno-deprecated-declarations" )
+		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations" )
 		add_definitions( "-D_THREAD_SAFE" )
 		add_definitions( "-DGC_MACOSX_THREADS" )
 		add_definitions( "-DUSE_MUNMAP" )
@@ -896,5 +896,5 @@ else()
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 	
-	target_link_libraries( libmono "m" "rt" "dl" "pthreads" )
+	target_link_libraries( libmono "m" "rt" "dl" )
 endif()
