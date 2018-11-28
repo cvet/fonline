@@ -886,7 +886,7 @@ else()
 	
 	add_definitions( "-DUSE_MMAP" )
 	
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g -fno-strict-aliasing -fwrapv -Wunused-but-set-variable" )
+	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -g -fno-strict-aliasing -fwrapv -Wunused-but-set-variable" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
 	
 	add_library( libmono STATIC
