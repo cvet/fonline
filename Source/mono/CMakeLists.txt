@@ -730,15 +730,15 @@ if( APPLE )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-dl-darwin.c"
 		"repo/mono/utils/mono-log-darwin.c"
-		"repo/mono/utils/mono-threads-posix.c" )
-		"repo/mono/utils/mono-threads-posix-signals.c"
+		"repo/mono/utils/mono-threads-posix.c"
+		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( ANDROID )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-log-android.c"
-		"repo/mono/utils/mono-threads-android.c" )
+		"repo/mono/utils/mono-threads-android.c"
 		"repo/mono/utils/mono-threads-posix.c"
-		"repo/mono/utils/mono-threads-posix-signals.c"
+		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( EMSCRIPTEN )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-dl-wasm.c"
@@ -748,9 +748,9 @@ elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-log-posix.c"
-		"repo/mono/utils/mono-threads-linux.c" )
+		"repo/mono/utils/mono-threads-linux.c"
 		"repo/mono/utils/mono-threads-posix.c"
-		"repo/mono/utils/mono-threads-posix-signals.c"
+		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( WIN32 )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-dl-windows.c"
