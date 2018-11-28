@@ -265,9 +265,15 @@ set( LIBMINI_LLVM_SOURCE
 )
 
 set( LIBMINI_POSIX_SOURCE
-	"repo/mono/mini/mini-darwin.c"
-	"repo/mono/mini/mini-posix.c"
+	""
 )
+if( APPLE )
+	set( LIBMINI_POSIX_SOURCE ${LIBMINI_POSIX_SOURCE}
+		"repo/mono/mini/mini-darwin.c" )
+else()
+	set( LIBMINI_POSIX_SOURCE ${LIBMINI_POSIX_SOURCE}
+		"repo/mono/mini/mini-posix.c" )
+endif()
 
 set( LIBMINI_WIN32_SOURCE
 	"repo/mono/mini/mini-windows.c"
