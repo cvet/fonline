@@ -253,7 +253,7 @@
 /* #undef HAVE_CHECKLIST_H */
 
 /* Use classic Windows API support */
-// #define HAVE_CLASSIC_WINAPI_SUPPORT 1
+#define HAVE_CLASSIC_WINAPI_SUPPORT 1
 
 /* CLOCK_MONOTONIC */
 #define HAVE_CLOCK_MONOTONIC 1

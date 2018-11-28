@@ -1,3 +1,9 @@
+#define DISABLE_JIT
+#define DISABLE_ATTACH
+#define DISABLE_COM
+#define DISABLE_REFLECTION_EMIT
+#define DISABLE_REFLECTION_EMIT_SAVE
+
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -11,7 +17,7 @@
 /* #undef BIND_ADDRLEN_UNSIGNED */
 
 /* GC description */
-#define DEFAULT_GC_NAME "Included Boehm (with typed GC and Parallel Mark)"
+#define DEFAULT_GC_NAME "Included Boehm (with typed GC)"
 
 /* String of disabled features */
 #define DISABLED_FEATURES "none"
@@ -24,11 +30,9 @@
 
 /* Disable agent attach support */
 /* #undef DISABLE_ATTACH */
-#define DISABLE_ATTACH
 
 /* Disable COM support */
 /* #undef DISABLE_COM */
-#define DISABLE_COM
 
 /* Disable runtime debugging support */
 /* #undef DISABLE_DEBUG */
@@ -57,7 +61,6 @@
 /* Disable the JIT, only full-aot mode or interpreter will be supported by the
    runtime. */
 /* #undef DISABLE_JIT */
-#define DISABLE_JIT
 
 /* Disable support for huge assemblies */
 /* #undef DISABLE_LARGE_CODE */
@@ -88,7 +91,6 @@
 
 /* Disable reflection emit support */
 /* #undef DISABLE_REFLECTION_EMIT */
-#define DISABLE_REFLECTION_EMIT
 
 /* Disable assembly saving support in reflection emit */
 /* #undef DISABLE_REFLECTION_EMIT_SAVE */
@@ -149,7 +151,7 @@
 /* #undef ENABLE_COOP_SUSPEND */
 
 /* Enable DTrace probes */
-/* #undef ENABLE_DTRACE */
+#define ENABLE_DTRACE 1
 
 /* Extension module enabled */
 /* #undef ENABLE_EXTENSION_MODULE */
@@ -182,13 +184,13 @@
 /* #undef ENABLE_OVERRIDABLE_ALLOCATORS */
 
 /* Have GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY */
-/* #undef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY */
+#define GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY 1
 
 /* GLIBC has CPU_COUNT macro in sched.h */
 #define GLIBC_HAS_CPU_COUNT 1
 
 /* accept4 */
-#define HAVE_ACCEPT4 1
+/* #undef HAVE_ACCEPT4 */
 
 /* Have access */
 #define HAVE_ACCESS 1
@@ -201,19 +203,16 @@
 
 /* Define to 1 if you have the <android/api-level.h> header file. */
 /* #undef HAVE_ANDROID_API_LEVEL_H */
-#define HAVE_ANDROID_API_LEVEL_H
 
 /* Define to 1 if you have the <android/legacy_signal_inlines.h> header file.
    */
 /* #undef HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H */
-#define HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H
 
 /* Define to 1 if you have the <android/versioning.h> header file. */
 /* #undef HAVE_ANDROID_VERSIONING_H */
-#define HAVE_ANDROID_VERSIONING_H
 
 /* arc4random */
-/* #undef HAVE_ARC4RANDOM */
+#define HAVE_ARC4RANDOM 1
 
 /* ARM v5 */
 /* #undef HAVE_ARMV5 */
@@ -223,7 +222,6 @@
 
 /* ARM v7 */
 /* #undef HAVE_ARMV7 */
-#define HAVE_ARMV7
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
@@ -232,7 +230,7 @@
 #define HAVE_ARRAY_ELEM_INIT 1
 
 /* Define to 1 if you have the <asm/sigcontext.h> header file. */
-#define HAVE_ASM_SIGCONTEXT_H 1
+/* #undef HAVE_ASM_SIGCONTEXT_H */
 
 /* Define to 1 if you have the <attr/xattr.h> header file. */
 /* #undef HAVE_ATTR_XATTR_H */
@@ -259,16 +257,16 @@
 #define HAVE_CLOCK_MONOTONIC 1
 
 /* CLOCK_MONOTONIC_COARSE */
-#define HAVE_CLOCK_MONOTONIC_COARSE 1
+/* #undef HAVE_CLOCK_MONOTONIC_COARSE */
 
 /* Define to 1 if you have the `clock_nanosleep' function. */
-#define HAVE_CLOCK_NANOSLEEP 1
+/* #undef HAVE_CLOCK_NANOSLEEP */
 
 /* CLOCK_REALTIME */
 #define HAVE_CLOCK_REALTIME 1
 
 /* Define to 1 if you have the <CommonCrypto/CommonDigest.h> header file. */
-/* #undef HAVE_COMMONCRYPTO_COMMONDIGEST_H */
+#define HAVE_COMMONCRYPTO_COMMONDIGEST_H 1
 
 /* Define to 1 if you have the <complex.h> header file. */
 #define HAVE_COMPLEX_H 1
@@ -280,16 +278,16 @@
 #define HAVE_CONFSTR 1
 
 /* Define to 1 if you have the <copyfile.h> header file. */
-/* #undef HAVE_COPYFILE_H */
+#define HAVE_COPYFILE_H 1
 
 /* Define to 1 if you have the <crt_externs.h> header file. */
-/* #undef HAVE_CRT_EXTERNS_H */
+#define HAVE_CRT_EXTERNS_H 1
 
 /* Have /dev/random */
 #define HAVE_CRYPT_RNG 1
 
 /* Define to 1 if you have the <curses.h> header file. */
-/* #undef HAVE_CURSES_H */
+#define HAVE_CURSES_H 1
 
 /* Define to 1 if you have the declaration of `InterlockedAdd', and to 0 if
    you don't. */
@@ -330,7 +328,7 @@
 #define HAVE_DIRENT_H 1
 
 /* struct dirent.d_namlen */
-/* #undef HAVE_DIRENT_NAME_LEN */
+#define HAVE_DIRENT_NAME_LEN 1
 
 /* Define to 1 if you have the `dladdr' function. */
 #define HAVE_DLADDR 1
@@ -339,7 +337,7 @@
 #define HAVE_DLFCN_H 1
 
 /* Define to 1 if you have the `dl_iterate_phdr' function. */
-#define HAVE_DL_ITERATE_PHDR 1
+/* #undef HAVE_DL_ITERATE_PHDR */
 
 /* dlopen-based dynamic loader available */
 #define HAVE_DL_LOADER 1
@@ -348,7 +346,7 @@
 #define HAVE_ECHO 1
 
 /* Define to 1 if you have the <elf.h> header file. */
-#define HAVE_ELF_H 1
+/* #undef HAVE_ELF_H */
 
 /* Define to 1 if you have the `endgrent' function. */
 #define HAVE_ENDGRENT 1
@@ -360,10 +358,10 @@
 #define HAVE_ENDUSERSHELL 1
 
 /* epoll_create1 */
-#define HAVE_EPOLL 1
+/* #undef HAVE_EPOLL */
 
 /* Define to 1 if you have the `epoll_ctl' function. */
-#define HAVE_EPOLL_CTL 1
+/* #undef HAVE_EPOLL_CTL */
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #define HAVE_EXECINFO_H 1
@@ -378,22 +376,22 @@
 #define HAVE_EXECVP 1
 
 /* fcopyfile */
-/* #undef HAVE_FCOPYFILE */
+#define HAVE_FCOPYFILE 1
 
 /* struct fd_set.fds_bits */
-/* #undef HAVE_FDS_BITS */
+#define HAVE_FDS_BITS 1
 
 /* Define to 1 if you have the `fgetgrent' function. */
-#define HAVE_FGETGRENT 1
+/* #undef HAVE_FGETGRENT */
 
 /* Define to 1 if you have the `fgetpwent' function. */
-#define HAVE_FGETPWENT 1
+/* #undef HAVE_FGETPWENT */
 
 /* Define to 1 if you have the `finite' function. */
 #define HAVE_FINITE 1
 
 /* struct flock64 */
-#define HAVE_FLOCK64 1
+/* #undef HAVE_FLOCK64 */
 
 /* Define to 1 if you have the `fork' function. */
 #define HAVE_FORK 1
@@ -411,7 +409,7 @@
 #define HAVE_FSTATVFS 1
 
 /* ftruncate64 */
-#define HAVE_FTRUNCATE64 1
+/* #undef HAVE_FTRUNCATE64 */
 
 /* Define to 1 if you have the `futimens' function. */
 #define HAVE_FUTIMENS 1
@@ -432,7 +430,7 @@
 /* #undef HAVE_GETENTROPY */
 
 /* Define to 1 if you have the `getfsstat' function. */
-/* #undef HAVE_GETFSSTAT */
+#define HAVE_GETFSSTAT 1
 
 /* Define to 1 if you have the `getgrent' function. */
 #define HAVE_GETGRENT 1
@@ -450,7 +448,7 @@
 #define HAVE_GETHOSTBYNAME2 1
 
 /* Have gethostbyname2_r */
-#define HAVE_GETHOSTBYNAME2_R 1
+/* #undef HAVE_GETHOSTBYNAME2_R */
 
 /* Define to 1 if you have the `gethostid' function. */
 #define HAVE_GETHOSTID 1
@@ -465,7 +463,7 @@
 #define HAVE_GETLOGIN_R 1
 
 /* getmntinfo */
-/* #undef HAVE_GETMNTINFO */
+#define HAVE_GETMNTINFO 1
 
 /* Have getnameinfo */
 #define HAVE_GETNAMEINFO 1
@@ -477,7 +475,7 @@
 #define HAVE_GETOPT_H 1
 
 /* getpeereid */
-/* #undef HAVE_GETPEEREID */
+#define HAVE_GETPEEREID 1
 
 /* Define to 1 if you have the `getpriority' function. */
 #define HAVE_GETPRIORITY 1
@@ -498,7 +496,7 @@
 /* #undef HAVE_GETRANDOM */
 
 /* Define to 1 if you have the `getresuid' function. */
-#define HAVE_GETRESUID 1
+/* #undef HAVE_GETRESUID */
 
 /* Define to 1 if you have the `getrlimit' function. */
 #define HAVE_GETRLIMIT 1
@@ -507,7 +505,7 @@
 #define HAVE_GETRUSAGE 1
 
 /* char* strerror(int errnum, char *buf, size_t buflen) */
-#define HAVE_GNU_STRERROR_R 1
+/* #undef HAVE_GNU_STRERROR_R */
 
 /* Define to 1 if you have the <grp.h> header file. */
 #define HAVE_GRP_H 1
@@ -516,7 +514,7 @@
 #define HAVE_ICANON 1
 
 /* Define to 1 if you have the <iconv.h> header file. */
-// #define HAVE_ICONV_H 1
+#define HAVE_ICONV_H 1
 
 /* Define to 1 if you have the <ieeefp.h> header file. */
 /* #undef HAVE_IEEEFP_H */
@@ -534,22 +532,22 @@
 #define HAVE_INET_PTON 1
 
 /* HAVE_INOTIFY */
-#define HAVE_INOTIFY 1
+/* #undef HAVE_INOTIFY */
 
 /* inotify_add_watch */
-#define HAVE_INOTIFY_ADD_WATCH 1
+/* #undef HAVE_INOTIFY_ADD_WATCH */
 
 /* inotify_init */
-#define HAVE_INOTIFY_INIT 1
+/* #undef HAVE_INOTIFY_INIT */
 
 /* inotify_rm_watch */
-#define HAVE_INOTIFY_RM_WATCH 1
+/* #undef HAVE_INOTIFY_RM_WATCH */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
 /* IN_EXCL_UNLINK */
-#define HAVE_IN_EXCL_UNLINK 1
+/* #undef HAVE_IN_EXCL_UNLINK */
 
 /* struct in_pktinfo */
 #define HAVE_IN_PKTINFO 1
@@ -567,7 +565,7 @@
 #define HAVE_IPPROTO_TCP 1
 
 /* Have IPV6_PKTINFO */
-#define HAVE_IPV6_PKTINFO 1
+/* #undef HAVE_IPV6_PKTINFO */
 
 /* Have IP_DONTFRAG */
 /* #undef HAVE_IP_DONTFRAG */
@@ -579,13 +577,13 @@
 #define HAVE_IP_MREQN 1
 
 /* Have IP_MTU_DISCOVER */
-#define HAVE_IP_MTU_DISCOVER 1
+/* #undef HAVE_IP_MTU_DISCOVER */
 
 /* Have IP_PKTINFO */
-#define HAVE_IP_PKTINFO 1
+/* #undef HAVE_IP_PKTINFO */
 
 /* Have IP_PMTUDISC_DO */
-#define HAVE_IP_PMTUDISC_DO 1
+/* #undef HAVE_IP_PMTUDISC_DO */
 
 /* Define to 1 if you have the `isfinite' function. */
 #define HAVE_ISFINITE 1
@@ -597,43 +595,43 @@
 #define HAVE_KILL 1
 
 /* kqueue */
-/* #undef HAVE_KQUEUE */
+#define HAVE_KQUEUE 1
 
 /* Have __thread keyword */
-#define HAVE_KW_THREAD 1
+/* #undef HAVE_KW_THREAD */
 
 /* Have large file support */
 #define HAVE_LARGE_FILE_SUPPORT 1
 
 /* Define to 1 if you have the `iconv' library (-liconv). */
-/* #undef HAVE_LIBICONV */
+#define HAVE_LIBICONV 1
 
 /* Define to 1 if you have the <libproc.h> header file. */
-/* #undef HAVE_LIBPROC_H */
+#define HAVE_LIBPROC_H 1
 
 /* Define to 1 if you have the <link.h> header file. */
-#define HAVE_LINK_H 1
+/* #undef HAVE_LINK_H */
 
 /* linux/in.h */
-// #define HAVE_LINUX_IN_H 1
+/* #undef HAVE_LINUX_IN_H */
 
 /* Define to 1 if you have the <linux/magic.h> header file. */
-// #define HAVE_LINUX_MAGIC_H 1
+/* #undef HAVE_LINUX_MAGIC_H */
 
 /* Define to 1 if you have the <linux/netlink.h> header file. */
-// #define HAVE_LINUX_NETLINK_H 1
+/* #undef HAVE_LINUX_NETLINK_H */
 
 /* Define to 1 if you have the <linux/rtc.h> header file. */
-// #define HAVE_LINUX_RTC_H 1
+/* #undef HAVE_LINUX_RTC_H */
 
 /* Define to 1 if you have the <linux/rtnetlink.h> header file. */
-// #define HAVE_LINUX_RTNETLINK_H 1
+/* #undef HAVE_LINUX_RTNETLINK_H */
 
 /* Define to 1 if you have the <linux/serial.h> header file. */
-// #define HAVE_LINUX_SERIAL_H 1
+/* #undef HAVE_LINUX_SERIAL_H */
 
 /* Define to 1 if you have the <localcharset.h> header file. */
-/* #undef HAVE_LOCALCHARSET_H */
+#define HAVE_LOCALCHARSET_H 1
 
 /* Define to 1 if you have the `localtime_r' function. */
 #define HAVE_LOCALTIME_R 1
@@ -642,7 +640,7 @@
 #define HAVE_LOCKF 1
 
 /* lseek64 */
-#define HAVE_LSEEK64 1
+/* #undef HAVE_LSEEK64 */
 
 /* Define to 1 if you have the `lutimes' function. */
 #define HAVE_LUTIMES 1
@@ -651,10 +649,10 @@
 /* #undef HAVE_MACHINE_ENDIAN_H */
 
 /* mach_absolute_time */
-/* #undef HAVE_MACH_ABSOLUTE_TIME */
+#define HAVE_MACH_ABSOLUTE_TIME 1
 
 /* mach_timebase_info */
-/* #undef HAVE_MACH_TIMEBASE_INFO */
+#define HAVE_MACH_TIMEBASE_INFO 1
 
 /* Define to 1 if you have the `madvise' function. */
 #define HAVE_MADVISE 1
@@ -669,7 +667,7 @@
 #define HAVE_MKDTEMP 1
 
 /* Define to 1 if you have the `mknodat' function. */
-#define HAVE_MKNODAT 1
+/* #undef HAVE_MKNODAT */
 
 /* Define to 1 if you have the `mkstemp' function. */
 #define HAVE_MKSTEMP 1
@@ -681,16 +679,16 @@
 #define HAVE_MMAP 1
 
 /* mmap64 */
-#define HAVE_MMAP64 1
+/* #undef HAVE_MMAP64 */
 
 /* Moving collector */
 #define HAVE_MOVING_COLLECTOR 1
 
 /* Define to 1 if you have the `mremap' function. */
-#define HAVE_MREMAP 1
+/* #undef HAVE_MREMAP */
 
 /* Have MSG_NOSIGNAL */
-#define HAVE_MSG_NOSIGNAL 1
+/* #undef HAVE_MSG_NOSIGNAL */
 
 /* Define to 1 if you have the <netdb.h> header file. */
 #define HAVE_NETDB_H 1
@@ -705,7 +703,7 @@
 #define HAVE_NET_IF_H 1
 
 /* _NSGetEnviron */
-/* #undef HAVE_NSGETENVIRON */
+#define HAVE_NSGETENVIRON 1
 
 /* No GC support. */
 /* #undef HAVE_NULL_GC */
@@ -714,7 +712,7 @@
 /* #undef HAVE_PATHCONF_H */
 
 /* pipe2 */
-#define HAVE_PIPE2 1
+/* #undef HAVE_PIPE2 */
 
 /* Define to 1 if you have the `poll' function. */
 #define HAVE_POLL 1
@@ -723,22 +721,22 @@
 #define HAVE_POLL_H 1
 
 /* posix_fadvise */
-#define HAVE_POSIX_FADVISE 1
+/* #undef HAVE_POSIX_FADVISE */
 
 /* posix_fadvise64 */
-#define HAVE_POSIX_FADVISE64 1
+/* #undef HAVE_POSIX_FADVISE64 */
 
 /* Define to 1 if you have the `posix_fallocate' function. */
-#define HAVE_POSIX_FALLOCATE 1
+/* #undef HAVE_POSIX_FALLOCATE */
 
 /* Define to 1 if you have the `posix_madvise' function. */
 #define HAVE_POSIX_MADVISE 1
 
 /* Define to 1 if you have the `prctl' function. */
-#define HAVE_PRCTL 1
+/* #undef HAVE_PRCTL */
 
 /* Define to 1 if you have the `preadv' function. */
-#define HAVE_PREADV 1
+/* #undef HAVE_PREADV */
 
 /* struct fd_set.__fds_bits */
 /* #undef HAVE_PRIVATE_FDS_BITS */
@@ -760,19 +758,19 @@
 
 /* Define to 1 if you have the `pthread_cond_timedwait_relative_np' function.
    */
-/* #undef HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP */
+#define HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP 1
 
 /* Define to 1 if you have the `pthread_getattr_np' function. */
-#define HAVE_PTHREAD_GETATTR_NP 1
+/* #undef HAVE_PTHREAD_GETATTR_NP */
 
 /* Define to 1 if you have the `pthread_getname_np' function. */
 #define HAVE_PTHREAD_GETNAME_NP 1
 
 /* Define to 1 if you have the `pthread_get_stackaddr_np' function. */
-/* #undef HAVE_PTHREAD_GET_STACKADDR_NP */
+#define HAVE_PTHREAD_GET_STACKADDR_NP 1
 
 /* Define to 1 if you have the `pthread_get_stacksize_np' function. */
-/* #undef HAVE_PTHREAD_GET_STACKSIZE_NP */
+#define HAVE_PTHREAD_GET_STACKSIZE_NP 1
 
 /* Define to 1 if you have the <pthread.h> header file. */
 #define HAVE_PTHREAD_H 1
@@ -781,7 +779,7 @@
 #define HAVE_PTHREAD_KILL 1
 
 /* Define to 1 if you have the `pthread_mutex_timedlock' function. */
-#define HAVE_PTHREAD_MUTEX_TIMEDLOCK 1
+/* #undef HAVE_PTHREAD_MUTEX_TIMEDLOCK */
 
 /* Define to 1 if you have the <pthread_np.h> header file. */
 /* #undef HAVE_PTHREAD_NP_H */
@@ -793,7 +791,7 @@
 #define HAVE_PWD_H 1
 
 /* Define to 1 if you have the `pwritev' function. */
-#define HAVE_PWRITEV 1
+/* #undef HAVE_PWRITEV */
 
 /* readdir_r */
 #define HAVE_READDIR_R 1
@@ -808,7 +806,7 @@
 /* #undef HAVE_READ_REAL_TIME */
 
 /* Define to 1 if you have the `remap_file_pages' function. */
-#define HAVE_REMAP_FILE_PAGES 1
+/* #undef HAVE_REMAP_FILE_PAGES */
 
 /* Define to 1 if you have the `rewinddir' function. */
 #define HAVE_REWINDDIR 1
@@ -817,13 +815,13 @@
 #define HAVE_RT_MSGHDR 1
 
 /* sched_getaffinity */
-#define HAVE_SCHED_GETAFFINITY 1
+/* #undef HAVE_SCHED_GETAFFINITY */
 
 /* Define to 1 if you have the `sched_getcpu' function. */
-#define HAVE_SCHED_GETCPU 1
+/* #undef HAVE_SCHED_GETCPU */
 
 /* sched_setaffinity */
-#define HAVE_SCHED_SETAFFINITY 1
+/* #undef HAVE_SCHED_SETAFFINITY */
 
 /* Define to 1 if you have the `seekdir' function. */
 #define HAVE_SEEKDIR 1
@@ -835,7 +833,7 @@
 #define HAVE_SENDFILE 1
 
 /* sendfile with 4 arguments */
-#define HAVE_SENDFILE_4 1
+/* #undef HAVE_SENDFILE_4 */
 
 /* sendfile with 6 arguments */
 #define HAVE_SENDFILE_6 1
@@ -865,7 +863,7 @@
 #define HAVE_SETPWENT 1
 
 /* Define to 1 if you have the `setresuid' function. */
-#define HAVE_SETRESUID 1
+/* #undef HAVE_SETRESUID */
 
 /* Define to 1 if you have the `setusershell' function. */
 #define HAVE_SETUSERSHELL 1
@@ -874,7 +872,7 @@
 #define HAVE_SHM_OPEN 1
 
 /* shm_open that works well enough with mmap */
-#define HAVE_SHM_OPEN_THAT_WORKS_WELL_ENOUGH_WITH_MMAP 1
+/* #undef HAVE_SHM_OPEN_THAT_WORKS_WELL_ENOUGH_WITH_MMAP */
 
 /* Define to 1 if you have the `sigaction' function. */
 #define HAVE_SIGACTION 1
@@ -892,19 +890,19 @@
 #define HAVE_SIOCGIFCONF 1
 
 /* sockaddr_in6 has sin6_len */
-/* #undef HAVE_SOCKADDR_IN6_SIN_LEN */
+#define HAVE_SOCKADDR_IN6_SIN_LEN 1
 
 /* sockaddr_in has sin_len */
-/* #undef HAVE_SOCKADDR_IN_SIN_LEN */
+#define HAVE_SOCKADDR_IN_SIN_LEN 1
 
 /* Have socklen_t */
 #define HAVE_SOCKLEN_T 1
 
 /* Have SOL_IP */
-#define HAVE_SOL_IP 1
+/* #undef HAVE_SOL_IP */
 
 /* Have SOL_IPV6 */
-#define HAVE_SOL_IPV6 1
+/* #undef HAVE_SOL_IPV6 */
 
 /* Have SOL_TCP */
 /* #undef HAVE_SOL_TCP */
@@ -916,7 +914,7 @@
 #define HAVE_STATFS 1
 
 /* struct statfs.f_fstypename */
-/* #undef HAVE_STATFS_FSTYPENAME */
+#define HAVE_STATFS_FSTYPENAME 1
 
 /* Define to 1 if you have the `statvfs' function. */
 #define HAVE_STATVFS 1
@@ -931,10 +929,10 @@
 /* #undef HAVE_STAT_NSEC */
 
 /* struct stat.st_atim */
-#define HAVE_STAT_TIM 1
+/* #undef HAVE_STAT_TIM */
 
 /* struct stat.st_atimespec */
-/* #undef HAVE_STAT_TIMESPEC */
+#define HAVE_STAT_TIMESPEC 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -943,7 +941,7 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the `stime' function. */
-#define HAVE_STIME 1
+/* #undef HAVE_STIME */
 
 /* Define to 1 if you have the `stpcpy' function. */
 #define HAVE_STPCPY 1
@@ -961,7 +959,7 @@
 #define HAVE_STRING_H 1
 
 /* Define to 1 if you have the `strlcpy' function. */
-/* #undef HAVE_STRLCPY */
+#define HAVE_STRLCPY 1
 
 /* Define to 1 if you have the `strndup' function. */
 /* #undef HAVE_STRNDUP */
@@ -973,7 +971,7 @@
 #define HAVE_STRUCT_CMSGHDR 1
 
 /* Define to 1 if `d_off' is a member of `struct dirent'. */
-#define HAVE_STRUCT_DIRENT_D_OFF 1
+/* #undef HAVE_STRUCT_DIRENT_D_OFF */
 
 /* Define to 1 if `d_reclen' is a member of `struct dirent'. */
 #define HAVE_STRUCT_DIRENT_D_RECLEN 1
@@ -994,7 +992,7 @@
 #define HAVE_STRUCT_IP_MREQN 1
 
 /* Define to 1 if `kp_proc' is a member of `struct kinfo_proc'. */
-/* #undef HAVE_STRUCT_KINFO_PROC_KP_PROC */
+#define HAVE_STRUCT_KINFO_PROC_KP_PROC 1
 
 /* Define to 1 if the system has the type `struct linger'. */
 #define HAVE_STRUCT_LINGER 1
@@ -1024,19 +1022,19 @@
 #define HAVE_STRUCT_STAT 1
 
 /* Define to 1 if `f_flags' is a member of `struct statfs'. */
-#define HAVE_STRUCT_STATFS_F_FLAGS 1
+/* #undef HAVE_STRUCT_STATFS_F_FLAGS */
 
 /* Define to 1 if `st_atim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_ATIM 1
+/* #undef HAVE_STRUCT_STAT_ST_ATIM */
 
 /* Define to 1 if `st_atimespec' is a member of `struct stat'. */
-/* #undef HAVE_STRUCT_STAT_ST_ATIMESPEC */
+#define HAVE_STRUCT_STAT_ST_ATIMESPEC 1
 
 /* Define to 1 if `st_ctim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_CTIM 1
+/* #undef HAVE_STRUCT_STAT_ST_CTIM */
 
 /* Define to 1 if `st_mtim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_MTIM 1
+/* #undef HAVE_STRUCT_STAT_ST_MTIM */
 
 /* Define to 1 if the system has the type `struct timespec'. */
 #define HAVE_STRUCT_TIMESPEC 1
@@ -1051,7 +1049,7 @@
 #define HAVE_STRUCT_UTIMBUF 1
 
 /* HAVE_SUPPORT_FOR_DUAL_MODE_IPV4_PACKET_INFO */
-#define HAVE_SUPPORT_FOR_DUAL_MODE_IPV4_PACKET_INFO 1
+#define HAVE_SUPPORT_FOR_DUAL_MODE_IPV4_PACKET_INFO 0
 
 /* Define to 1 if the system has the type `suseconds_t'. */
 #define HAVE_SUSECONDS_T 1
@@ -1069,7 +1067,7 @@
 #define HAVE_SYSTEM 1
 
 /* Define to 1 if you have the <sys/auxv.h> header file. */
-#define HAVE_SYS_AUXV_H 1
+/* #undef HAVE_SYS_AUXV_H */
 
 /* Define to 1 if you have the <sys/cdefs.h> header file. */
 #define HAVE_SYS_CDEFS_H 1
@@ -1078,22 +1076,22 @@
 /* #undef HAVE_SYS_ENDIAN_H */
 
 /* Define to 1 if you have the <sys/epoll.h> header file. */
-#define HAVE_SYS_EPOLL_H 1
+/* #undef HAVE_SYS_EPOLL_H */
 
 /* Define to 1 if you have the <sys/errno.h> header file. */
 #define HAVE_SYS_ERRNO_H 1
 
 /* Define to 1 if you have the <sys/event.h> header file. */
-/* #undef HAVE_SYS_EVENT_H */
+#define HAVE_SYS_EVENT_H 1
 
 /* Define to 1 if you have the <sys/extattr.h> header file. */
 /* #undef HAVE_SYS_EXTATTR_H */
 
 /* Define to 1 if you have the <sys/filio.h> header file. */
-/* #undef HAVE_SYS_FILIO_H */
+#define HAVE_SYS_FILIO_H 1
 
 /* Define to 1 if you have the <sys/inotify.h> header file. */
-#define HAVE_SYS_INOTIFY_H 1
+/* #undef HAVE_SYS_INOTIFY_H */
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
@@ -1117,7 +1115,7 @@
 #define HAVE_SYS_POLL_H 1
 
 /* Define to 1 if you have the <sys/prctl.h> header file. */
-#define HAVE_SYS_PRCTL_H 1
+/* #undef HAVE_SYS_PRCTL_H */
 
 /* Define to 1 if you have the <sys/random.h> header file. */
 /* #undef HAVE_SYS_RANDOM_H */
@@ -1126,22 +1124,22 @@
 #define HAVE_SYS_RESOURCE_H 1
 
 /* Define to 1 if you have the <sys/sdt.h> header file. */
-/* #undef HAVE_SYS_SDT_H */
+#define HAVE_SYS_SDT_H 1
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #define HAVE_SYS_SELECT_H 1
 
 /* Define to 1 if you have the <sys/sendfile.h> header file. */
-#define HAVE_SYS_SENDFILE_H 1
+/* #undef HAVE_SYS_SENDFILE_H */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
 #define HAVE_SYS_SOCKET_H 1
 
 /* Define to 1 if you have the <sys/sockio.h> header file. */
-/* #undef HAVE_SYS_SOCKIO_H */
+#define HAVE_SYS_SOCKIO_H 1
 
 /* Define to 1 if you have the <sys/statfs.h> header file. */
-#define HAVE_SYS_STATFS_H 1
+/* #undef HAVE_SYS_STATFS_H */
 
 /* Define to 1 if you have the <sys/statvfs.h> header file. */
 #define HAVE_SYS_STATVFS_H 1
@@ -1192,13 +1190,13 @@
 #define HAVE_TCGETATTR 1
 
 /* HAVE_TCP_FSM_H */
-/* #undef HAVE_TCP_FSM_H */
+#define HAVE_TCP_FSM_H 1
 
 /* TCPSTATE enum in netinet/tcp.h */
-#define HAVE_TCP_H_TCPSTATE_ENUM 1
+/* #undef HAVE_TCP_H_TCPSTATE_ENUM */
 
 /* tcp/var.h */
-/* #undef HAVE_TCP_VAR_H */
+#define HAVE_TCP_VAR_H 1
 
 /* TCSANOW */
 #define HAVE_TCSANOW 1
@@ -1213,7 +1211,7 @@
 #define HAVE_TERMIOS_H 1
 
 /* Define to 1 if you have the <term.h> header file. */
-/* #undef HAVE_TERM_H */
+#define HAVE_TERM_H 1
 
 /* Have timezone variable */
 /* #undef HAVE_TIMEZONE */
@@ -1222,7 +1220,7 @@
 #define HAVE_TIOCGWINSZ 1
 
 /* tls_model available */
-#define HAVE_TLS_MODEL_ATTR 1
+/* #undef HAVE_TLS_MODEL_ATTR */
 
 /* Have tm_gmtoff */
 #define HAVE_TM_GMTOFF 1
@@ -1234,7 +1232,7 @@
 #define HAVE_TTYNAME_R 1
 
 /* Define to 1 if you have the <ucontext.h> header file. */
-#define HAVE_UCONTEXT_H 1
+/* #undef HAVE_UCONTEXT_H */
 
 /* uname */
 #define HAVE_UNAME 1
@@ -1246,7 +1244,7 @@
 #define HAVE_UNWIND_H 1
 
 /* Define to 1 if you have /usr/include/malloc.h. */
-#define HAVE_USR_INCLUDE_MALLOC_H 1
+/* #undef HAVE_USR_INCLUDE_MALLOC_H */
 
 /* Define to 1 if you have the `utimensat' function. */
 #define HAVE_UTIMENSAT 1
@@ -1288,7 +1286,7 @@
 /* #undef HAVE__FINITE */
 
 /* ... */
-// #define HOST_AMD64 1
+#define HOST_AMD64 1
 
 /* Targeting the Android platform */
 /* #undef HOST_ANDROID */
@@ -1300,7 +1298,7 @@
 /* #undef HOST_ARM64 */
 
 /* Host Platform is Darwin */
-/* #undef HOST_DARWIN */
+#define HOST_DARWIN 1
 
 /* ... */
 /* #undef HOST_MIPS */
@@ -1325,7 +1323,6 @@
 
 /* Host wasm */
 /* #undef HOST_WASM */
-#define HOST_WASM
 
 /* Host Platform is Win32 */
 /* #undef HOST_WIN32 */
@@ -1337,13 +1334,13 @@
 /* #undef INOTIFY_RM_WATCH_WD_UNSIGNED */
 
 /* struct ipv6_mreq with unsigned ipv6mr_interface */
-/* #undef IPV6MR_INTERFACE_UNSIGNED */
+#define IPV6MR_INTERFACE_UNSIGNED 1
 
 /* kevent with void *data */
-/* #undef KEVENT_HAS_VOID_UDATA */
+#define KEVENT_HAS_VOID_UDATA 1
 
 /* kevent with int parameters */
-/* #undef KEVENT_REQUIRES_INT_PARAMS */
+#define KEVENT_REQUIRES_INT_PARAMS 1
 
 /* Enable lazy gc thread creation by the embedding host. */
 /* #undef LAZY_GC_THREAD_CREATION */
@@ -1363,7 +1360,7 @@
 /* #undef MAJOR_IN_SYSMACROS */
 
 /* The architecture this is running on */
-#define MONO_ARCHITECTURE "wasm"
+#define MONO_ARCHITECTURE "amd64"
 
 /* Enable the allocation and indexing of arrays greater than Int32.MaxValue */
 /* #undef MONO_BIG_ARRAYS */
@@ -1399,7 +1396,7 @@
 /* #undef MONO_SMALL_CONFIG */
 
 /* Xen-specific behaviour */
-#define MONO_XEN_OPT 1
+/* #undef MONO_XEN_OPT */
 
 /* Length of zero length arrays */
 #define MONO_ZERO_LEN_ARRAY 0
@@ -1408,7 +1405,7 @@
 #define NAME_DEV_RANDOM "/dev/random"
 
 /* Define if Unix sockets cannot be created in an anonymous namespace */
-/* #undef NEED_LINK_UNLINK */
+#define NEED_LINK_UNLINK 1
 
 /* Name of package */
 #define PACKAGE "mono"
@@ -1435,13 +1432,13 @@
 #define PRIORITY_REQUIRES_INT_WHO 1
 
 /* pthread is a pointer */
-/* #undef PTHREAD_POINTER_ID */
+#define PTHREAD_POINTER_ID 1
 
 /* The size of `int', as computed by sizeof. */
 #define SIZEOF_INT 4
 
 /* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
+#define SIZEOF_LONG 8
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -1450,19 +1447,19 @@
 #define SIZEOF_REGISTER SIZEOF_VOID_P
 
 /* The size of `size_t', as computed by sizeof. */
-#define SIZEOF_SIZE_T 4
+#define SIZEOF_SIZE_T 8
 
 /* The size of `void *', as computed by sizeof. */
-#define SIZEOF_VOID_P 4
+#define SIZEOF_VOID_P 8
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Define to 1 if strerror_r returns char *. */
-#define STRERROR_R_CHAR_P 1
+/* #undef STRERROR_R_CHAR_P */
 
 /* ... */
-// #define TARGET_AMD64 1
+#define TARGET_AMD64 1
 
 /* ... */
 /* #undef TARGET_ANDROID */
@@ -1480,13 +1477,13 @@
 /* #undef TARGET_IOS */
 
 /* The JIT/AOT targets Apple platforms */
-/* #undef TARGET_MACH */
+#define TARGET_MACH 1
 
 /* ... */
 /* #undef TARGET_MIPS */
 
 /* The JIT/AOT targets OSX */
-/* #undef TARGET_OSX */
+#define TARGET_OSX 1
 
 /* ... */
 /* #undef TARGET_POWERPC */
@@ -1511,7 +1508,6 @@
 
 /* Target wasm */
 /* #undef TARGET_WASM */
-#define TARGET_WASM
 
 /* The JIT/AOT targets WatchOS */
 /* #undef TARGET_WATCHOS */
@@ -1532,7 +1528,7 @@
 /* #undef USE_KQUEUE_FOR_THREADPOOL */
 
 /* ... */
-/* #undef USE_MACH_SEMA */
+#define USE_MACH_SEMA 1
 
 /* Use malloc for each single mempool allocation */
 /* #undef USE_MALLOC_FOR_MEMPOOLS */

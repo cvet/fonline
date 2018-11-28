@@ -1,4 +1,6 @@
-#if defined(EMSCRIPTEN)
+#if defined(APPLE)
+#include "config-mac.h"
+#elif defined(EMSCRIPTEN)
 #include "config-web.h"
 #elif defined(ANDROID) || defined(__ANDROID__)
 #include "config-android.h"
