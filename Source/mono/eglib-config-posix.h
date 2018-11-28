@@ -12,7 +12,11 @@
 #define G_SEARCHPATH_SEPARATOR   ':'
 #define G_DIR_SEPARATOR          '/'
 #define G_DIR_SEPARATOR_S        "/"
+#if defined (HOST_ANDROID)
+#define G_BREAKPOINT()           G_STMT_START { } G_STMT_END
+#else
 #define G_BREAKPOINT()           G_STMT_START { __asm__ ("int $03"); } G_STMT_END
+#endif
 #define G_OS_UNIX
 
 #if 1 == 1
