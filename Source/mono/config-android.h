@@ -268,7 +268,7 @@
 /* #undef HAVE_COMMONCRYPTO_COMMONDIGEST_H */
 
 /* Define to 1 if you have the <complex.h> header file. */
-#define HAVE_COMPLEX_H 1
+// #define HAVE_COMPLEX_H 1
 
 /* Defaults to concurrent GC */
 #define HAVE_CONC_GC_AS_DEFAULT 1
