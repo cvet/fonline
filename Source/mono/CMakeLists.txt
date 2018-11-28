@@ -858,7 +858,7 @@ if( WIN32 )
 	
 else()
 	if( APPLE )
-		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations" )
+		string( REPLACE "-Wdeprecated-declarations" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS} )
 	endif()
 	add_definitions( "-D__USE_GNU" )
 	add_definitions( "-D_GNU_SOURCE" )
@@ -871,4 +871,6 @@ else()
 		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE}
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
+	
+	target_link_libraries( libmono "rt" )
 endif()
