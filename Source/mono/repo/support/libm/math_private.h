@@ -54,7 +54,7 @@
 #define	IEEE_WORD_ORDER	BYTE_ORDER
 #endif
 
-#if IEEE_WORD_ORDER == BIG_ENDIAN
+#if IEEE_WORD_ORDER == BIG_ENDIAN && 0 //!
 
 typedef union
 {
