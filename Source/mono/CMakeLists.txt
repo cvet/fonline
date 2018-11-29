@@ -170,7 +170,7 @@ endif()
 #)
 
 set( LIBMINI_COMMON_SOURCE
-	#"repo/mono/mini/mini.c"
+	"repo/mono/mini/mini.c"
 	"repo/mono/mini/mini-runtime.c"
 	"repo/mono/mini/seq-points.c"
 	"repo/mono/mini/seq-points.h"
@@ -194,10 +194,10 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/regalloc.h"
 	"repo/mono/mini/helpers.c"
 	"repo/mono/mini/liveness.c"
-	#"repo/mono/mini/ssa.c"
+	"repo/mono/mini/ssa.c"
 	"repo/mono/mini/abcremoval.c"
 	"repo/mono/mini/abcremoval.h"
-	#"repo/mono/mini/local-propagation.c"
+	"repo/mono/mini/local-propagation.c"
 	"repo/mono/mini/driver.c"
 	"repo/mono/mini/debug-mini.c"
 	"repo/mono/mini/linear-scan.c"
@@ -206,7 +206,7 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/aot-runtime.c"
 	"repo/mono/mini/aot-runtime-wasm.c"
 	"repo/mono/mini/graph.c"
-	#"repo/mono/mini/mini-codegen.c"
+	"repo/mono/mini/mini-codegen.c"
 	"repo/mono/mini/mini-exceptions.c"
 	"repo/mono/mini/mini-trampolines.c"
 	"repo/mono/mini/branch-opts.c"
@@ -245,12 +245,12 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/mini-profiler.c"
 	"repo/mono/mini/interp-stubs.c"
 )
-if( NOT EMSCRIPTEN )
-	set( LIBMINI_COMMON_SOURCE ${LIBMINI_COMMON_SOURCE}
-		"repo/mono/mini/mini.c"
-		"repo/mono/mini/mini-codegen.c"
-		"repo/mono/mini/ssa.c"
-		"repo/mono/mini/local-propagation.c" )
+if( EMSCRIPTEN )
+	set( LIBMINI_COMMON_SOURCE
+		"version.h"
+		"repo/mono/mini/mini-runtime.c"
+		"repo/mono/mini/driver.c"
+	)
 endif()
 
 set( LIBMINI_INTERP_SOURCE
@@ -918,7 +918,7 @@ else()
 	endif()
 	if( ANDROID )
 		include_directories( "repo/support/libm" )
-		set( EXTRA_SOURCE "tkill.c" "complex.c" )
+		set( EXTRA_SOURCE "tkill.c" "repo/support/libm/complex.c" )
 		add_definitions( "-DARM_FPU_NONE=1" )
 		add_definitions( "-DPAGE_SIZE=4096" )
 		add_definitions( "-DS_IWRITE=S_IWUSR" )
