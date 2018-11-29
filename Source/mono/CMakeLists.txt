@@ -197,7 +197,7 @@ set( LIBMINI_COMMON_SOURCE
 	#"repo/mono/mini/ssa.c"
 	"repo/mono/mini/abcremoval.c"
 	"repo/mono/mini/abcremoval.h"
-	"repo/mono/mini/local-propagation.c"
+	#"repo/mono/mini/local-propagation.c"
 	"repo/mono/mini/driver.c"
 	"repo/mono/mini/debug-mini.c"
 	"repo/mono/mini/linear-scan.c"
@@ -249,7 +249,8 @@ if( NOT EMSCRIPTEN )
 	set( LIBMINI_COMMON_SOURCE ${LIBMINI_COMMON_SOURCE}
 		"repo/mono/mini/mini.c"
 		"repo/mono/mini/mini-codegen.c"
-		"repo/mono/mini/ssa.c" )
+		"repo/mono/mini/ssa.c"
+		"repo/mono/mini/local-propagation.c" )
 endif()
 
 set( LIBMINI_INTERP_SOURCE
@@ -873,9 +874,6 @@ include_directories( "." )
 include_directories( "repo" )
 include_directories( "repo/mono" )
 include_directories( "repo/mono/eglib" )
-if( APPLE AND IOS_PLATFORM )
-	include_directories( "repo/support/ios" )
-endif()
 
 if( WIN32 )
 	add_definitions( "-DWIN32_LEAN_AND_MEAN" )
@@ -912,10 +910,15 @@ else()
 		add_definitions( "-D_REENTRANT" )
 		add_definitions( "-DGC_LINUX_THREADS" )
 	endif()
+	if( APPLE AND IOS_PLATFORM )
+		include_directories( "repo/support/ios" )
+	endif()
 	if( EMSCRIPTEN )
 		add_definitions( "-DNO_UNALIGNED_ACCESS" )
 	endif()
 	if( ANDROID )
+		include_directories( "repo/support/libm" )
+		set( EXTRA_SOURCE "tkill.c" "complex.c" )
 		add_definitions( "-DARM_FPU_NONE=1" )
 		add_definitions( "-DPAGE_SIZE=4096" )
 		add_definitions( "-DS_IWRITE=S_IWUSR" )
@@ -926,7 +929,7 @@ else()
 	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -g -fno-strict-aliasing -fwrapv" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
 	
-	add_library( libmono STATIC
+	add_library( libmono STATIC ${EXTRA_SOURCE}
 		${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
 		${LIBGCMONOSGEN_SOURCE}
 		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE}

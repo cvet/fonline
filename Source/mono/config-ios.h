@@ -282,7 +282,7 @@
 #define HAVE_CRYPT_RNG 1
 
 /* Define to 1 if you have the <curses.h> header file. */
-#define HAVE_CURSES_H 1
+// #define HAVE_CURSES_H 1
 
 /* Define to 1 if you have the declaration of `InterlockedAdd', and to 0 if
    you don't. */
