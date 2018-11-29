@@ -265,14 +265,11 @@ set( LIBMINI_LLVM_SOURCE
 )
 
 set( LIBMINI_POSIX_SOURCE
-	""
+	"repo/mono/mini/mini-posix.c"
 )
 if( APPLE )
 	set( LIBMINI_POSIX_SOURCE ${LIBMINI_POSIX_SOURCE}
 		"repo/mono/mini/mini-darwin.c" )
-else()
-	set( LIBMINI_POSIX_SOURCE ${LIBMINI_POSIX_SOURCE}
-		"repo/mono/mini/mini-posix.c" )
 endif()
 
 set( LIBMINI_WIN32_SOURCE
@@ -551,8 +548,9 @@ set( LIBMONORUNTIME_WIN32_SOURCE
 )
 
 set( LIBMONOUTILS_ARCH_SOURCE
+	""
 	#"repo/mono/utils/mach-support-x86.c"
-	"repo/mono/utils/mono-hwcap-x86.c"
+	#"repo/mono/utils/mono-hwcap-x86.c"
 	#"repo/mono/utils/mach-support-amd64.c"
 	#"repo/mono/utils/mach-support-arm.c"
 	#"repo/mono/utils/mono-hwcap-arm.c"
@@ -566,6 +564,29 @@ set( LIBMONOUTILS_ARCH_SOURCE
 	#"repo/mono/utils/mach-support-unknown.c"
 	#"repo/mono/utils/mono-hwcap-cross.c"
 )
+if( APPLE AND IOS_PLATFORM )
+	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+		"repo/mono/utils/mach-hwcap-arm64.c"
+		"repo/mono/utils/mach-support-arm64.c" )
+elseif( ANDROID )
+	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+		"repo/mono/utils/mach-hwcap-arm.c" )
+		"repo/mono/utils/mach-support-arm.c" )
+elseif( EMSCRIPTEN )
+	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+		"repo/mono/utils/mono-hwcap-wasm.c" )
+		"repo/mono/utils/mach-support-unknown.c" )
+else()
+	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mach-hwcap-amd64.c" )
+			"repo/mono/utils/mach-support-amd64.c" )
+	else()
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mach-hwcap-x86.c" )
+			"repo/mono/utils/mach-support-x86.c" )
+	endif()
+endif()
 
 set( LIBMONOUTILS_COMMON_SOURCE
 	"repo/mono/utils/mono-md5.c"
