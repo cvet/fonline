@@ -1518,6 +1518,7 @@
 
 /* ... */
 /* #undef TARGET_X86 */
+#define TARGET_X86
 
 /* ... */
 /* #undef TARGET_XBOX360 */

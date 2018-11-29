@@ -896,5 +896,5 @@ else()
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 	
-	target_link_libraries( libmono "m" "rt" "dl" )
+	target_link_libraries( libmono "m" "dl" )
 endif()

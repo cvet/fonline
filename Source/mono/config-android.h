@@ -720,10 +720,10 @@
 #define HAVE_POLL_H 1
 
 /* posix_fadvise */
-#define HAVE_POSIX_FADVISE 1
+// #define HAVE_POSIX_FADVISE 1
 
 /* posix_fadvise64 */
-#define HAVE_POSIX_FADVISE64 1
+// #define HAVE_POSIX_FADVISE64 1
 
 /* Define to 1 if you have the `posix_fallocate' function. */
 #define HAVE_POSIX_FALLOCATE 1
@@ -1024,16 +1024,16 @@
 #define HAVE_STRUCT_STATFS_F_FLAGS 1
 
 /* Define to 1 if `st_atim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_ATIM 1
+// #define HAVE_STRUCT_STAT_ST_ATIM 1
 
 /* Define to 1 if `st_atimespec' is a member of `struct stat'. */
 /* #undef HAVE_STRUCT_STAT_ST_ATIMESPEC */
 
 /* Define to 1 if `st_ctim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_CTIM 1
+// #define HAVE_STRUCT_STAT_ST_CTIM 1
 
 /* Define to 1 if `st_mtim' is a member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_MTIM 1
+// #define HAVE_STRUCT_STAT_ST_MTIM 1
 
 /* Define to 1 if the system has the type `struct timespec'. */
 #define HAVE_STRUCT_TIMESPEC 1
