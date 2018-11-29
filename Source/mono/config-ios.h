@@ -1059,7 +1059,7 @@
 #define HAVE_SYSLOG_H 1
 
 /* Define to 1 if you have the `system' function. */
-#define HAVE_SYSTEM 1
+// #define HAVE_SYSTEM 1
 
 /* Define to 1 if you have the <sys/auxv.h> header file. */
 /* #undef HAVE_SYS_AUXV_H */

@@ -170,7 +170,6 @@ endif()
 #)
 
 set( LIBMINI_COMMON_SOURCE
-	"repo/mono/mini/mini.c"
 	"repo/mono/mini/mini-runtime.c"
 	"repo/mono/mini/seq-points.c"
 	"repo/mono/mini/seq-points.h"
@@ -247,6 +246,7 @@ set( LIBMINI_COMMON_SOURCE
 )
 if( NOT EMSCRIPTEN )
 	set( LIBMINI_COMMON_SOURCE ${LIBMINI_COMMON_SOURCE}
+		"repo/mono/mini/mini.c"
 		"repo/mono/mini/mini-codegen.c" )
 endif()
 
