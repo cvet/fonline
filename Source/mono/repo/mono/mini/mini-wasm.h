@@ -59,6 +59,19 @@ void mono_wasm_breakpoint_hit (void);
 void mono_wasm_set_timeout (int timeout, int id);
 
 //!
+typedef enum {
+	X86_EAX = 0,
+	X86_ECX = 1,
+	X86_EDX = 2,
+	X86_EBX = 3,
+	X86_ESP = 4,
+	X86_EBP = 5,
+	X86_ESI = 6,
+	X86_EDI = 7,
+	X86_NREG
+} X86_Reg_No;
+#define X86_CALLEE_REGS ((1<<X86_EAX) | (1<<X86_ECX) | (1<<X86_EDX))
+#define X86_CALLER_REGS ((1<<X86_EBX) | (1<<X86_EBP) | (1<<X86_ESI) | (1<<X86_EDI))
 #define MONO_ARCH_USE_FPSTACK TRUE
 #define MONO_ARCH_FPSTACK_SIZE 6
 #define MONO_ARCH_HAVE_VOLATILE_NON_PARAM_REGISTER 1
