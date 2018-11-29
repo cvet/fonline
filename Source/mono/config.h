@@ -1,11 +1,14 @@
 #pragma once
 
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE)
+#if defined(__APPLE__)
+#include "TargetConditionals.h"
+#if defined(TARGET_OS_IPHONE)
 #pragma message("Used 'config-ios.h'")
 #include "config-ios.h"
-#elif defined(__APPLE__)
+#else
 #pragma message("Used 'config-mac.h'")
 #include "config-mac.h"
+#endif
 #elif defined(EMSCRIPTEN)
 #pragma message("Used 'config-web.h'")
 #include "config-web.h"
