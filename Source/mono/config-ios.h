@@ -626,7 +626,7 @@
 /* #undef HAVE_LINUX_SERIAL_H */
 
 /* Define to 1 if you have the <localcharset.h> header file. */
-#define HAVE_LOCALCHARSET_H 1
+// #define HAVE_LOCALCHARSET_H 1
 
 /* Define to 1 if you have the `localtime_r' function. */
 #define HAVE_LOCALTIME_R 1

@@ -896,5 +896,9 @@ else()
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 	
-	target_link_libraries( libmono "m" "dl" )
+	if( APPLE )
+		target_link_libraries( libmono "m" "dl" )
+	else()
+		target_link_libraries( libmono "m" "rt" "dl" )
+	eneif()
 endif()

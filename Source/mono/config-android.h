@@ -916,7 +916,7 @@
 /* #undef HAVE_STATFS_FSTYPENAME */
 
 /* Define to 1 if you have the `statvfs' function. */
-#define HAVE_STATVFS 1
+// #define HAVE_STATVFS 1
 
 /* struct statvfs.f_fstypename */
 /* #undef HAVE_STATVFS_FSTYPENAME */
