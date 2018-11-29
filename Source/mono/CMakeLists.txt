@@ -206,7 +206,7 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/aot-runtime.c"
 	"repo/mono/mini/aot-runtime-wasm.c"
 	"repo/mono/mini/graph.c"
-	"repo/mono/mini/mini-codegen.c"
+	#"repo/mono/mini/mini-codegen.c"
 	"repo/mono/mini/mini-exceptions.c"
 	"repo/mono/mini/mini-trampolines.c"
 	"repo/mono/mini/branch-opts.c"
@@ -245,6 +245,10 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/mini-profiler.c"
 	"repo/mono/mini/interp-stubs.c"
 )
+if( NOT EMSCRIPTEN )
+	set( LIBMINI_COMMON_SOURCE ${LIBMINI_COMMON_SOURCE}
+		"repo/mono/mini/mini-codegen.c" )
+endif()
 
 set( LIBMINI_INTERP_SOURCE
 	"repo/mono/mini/interp/hacks.h"
@@ -759,6 +763,7 @@ if( APPLE )
 		"repo/mono/utils/mono-log-posix.c"
 		"repo/mono/utils/mono-log-darwin.c"
 		"repo/mono/utils/mono-threads-mach.c"
+		"repo/mono/utils/mono-threads-mach-helper.c"
 		"repo/mono/utils/mono-threads-posix.c"
 		"repo/mono/utils/mono-threads-posix-signals.c" )
 elseif( ANDROID )
