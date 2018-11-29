@@ -55,6 +55,7 @@
 /* Disable the JIT, only full-aot mode or interpreter will be supported by the
    runtime. */
 /* #undef DISABLE_JIT */
+#define DISABLE_JIT
 
 /* Disable support for huge assemblies */
 /* #undef DISABLE_LARGE_CODE */
