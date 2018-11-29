@@ -602,7 +602,7 @@
 #define HAVE_LIBICONV 1
 
 /* Define to 1 if you have the <libproc.h> header file. */
-#define HAVE_LIBPROC_H 1
+// #define HAVE_LIBPROC_H 1
 
 /* Define to 1 if you have the <link.h> header file. */
 /* #undef HAVE_LINK_H */

@@ -61,8 +61,6 @@ typedef __uint128_t MonoContextSimdReg;
  */
 #if defined (TARGET_WASM)
 
-#define MONO_ARCH_HAS_MONO_CONTEXT 1 //!
-
 typedef struct {
 	mgreg_t wasm_sp;
 	mgreg_t wasm_bp;
