@@ -5,7 +5,7 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
-export ANDROID_NDK_VERSION="android-ndk-r18b"
+export ANDROID_NDK_VERSION="android-ndk-r16b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then

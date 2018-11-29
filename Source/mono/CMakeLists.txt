@@ -170,6 +170,7 @@ endif()
 #)
 
 set( LIBMINI_COMMON_SOURCE
+	#"repo/mono/mini/mini.c"
 	"repo/mono/mini/mini-runtime.c"
 	"repo/mono/mini/seq-points.c"
 	"repo/mono/mini/seq-points.h"
@@ -193,7 +194,7 @@ set( LIBMINI_COMMON_SOURCE
 	"repo/mono/mini/regalloc.h"
 	"repo/mono/mini/helpers.c"
 	"repo/mono/mini/liveness.c"
-	"repo/mono/mini/ssa.c"
+	#"repo/mono/mini/ssa.c"
 	"repo/mono/mini/abcremoval.c"
 	"repo/mono/mini/abcremoval.h"
 	"repo/mono/mini/local-propagation.c"
@@ -247,7 +248,8 @@ set( LIBMINI_COMMON_SOURCE
 if( NOT EMSCRIPTEN )
 	set( LIBMINI_COMMON_SOURCE ${LIBMINI_COMMON_SOURCE}
 		"repo/mono/mini/mini.c"
-		"repo/mono/mini/mini-codegen.c" )
+		"repo/mono/mini/mini-codegen.c"
+		"repo/mono/mini/ssa.c" )
 endif()
 
 set( LIBMINI_INTERP_SOURCE
@@ -871,6 +873,9 @@ include_directories( "." )
 include_directories( "repo" )
 include_directories( "repo/mono" )
 include_directories( "repo/mono/eglib" )
+if( APPLE AND IOS_PLATFORM )
+	include_directories( "repo/support/ios" )
+endif()
 
 if( WIN32 )
 	add_definitions( "-DWIN32_LEAN_AND_MEAN" )
