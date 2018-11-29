@@ -1,4 +1,6 @@
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE == 1
+#pragma once
+
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE)
 #pragma message("Used 'config-ios.h'")
 #include "config-ios.h"
 #elif defined(__APPLE__)

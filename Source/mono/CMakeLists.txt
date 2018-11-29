@@ -579,7 +579,7 @@ elseif( EMSCRIPTEN )
 else()
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
-			"repo/mono/utils/mono-hwcap-amd64.c"
+			"repo/mono/utils/mono-hwcap-x86.c"
 			"repo/mono/utils/mach-support-amd64.c" )
 	else()
 		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
