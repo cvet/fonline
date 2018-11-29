@@ -28,7 +28,7 @@ typedef ptrdiff_t gssize;
 
 #define G_GSIZE_FORMAT   "%lu"
 
-#if defined (HOST_WATCHOS)
+#if defined (HOST_WATCHOS) || defined (HOST_ARM) || defined (HOST_ARM64)
 #undef G_BREAKPOINT
 #define G_BREAKPOINT()
 #endif
