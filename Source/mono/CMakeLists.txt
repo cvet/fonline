@@ -754,6 +754,7 @@ if( APPLE )
 		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-dl-darwin.c"
+		"repo/mono/utils/mono-log-posix.c"
 		"repo/mono/utils/mono-log-darwin.c"
 		"repo/mono/utils/mono-threads-posix.c"
 		"repo/mono/utils/mono-threads-posix-signals.c" )
@@ -761,6 +762,7 @@ elseif( ANDROID )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
 		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-posix.c"
+		"repo/mono/utils/mono-log-posix.c"
 		"repo/mono/utils/mono-log-android.c"
 		"repo/mono/utils/mono-threads-android.c"
 		"repo/mono/utils/mono-threads-posix.c"

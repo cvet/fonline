@@ -505,7 +505,7 @@ mono_atomic_cas_i64(volatile gint64 *dest, gint64 exch, gint64 comp)
 	return __sync_val_compare_and_swap (dest, comp, exch);
 }
 
-#elif defined (__arm__) && defined (HAVE_ARMV7) && (defined(TARGET_IOS) || defined(TARGET_WATCHOS) || defined(TARGET_ANDROID))
+#elif 0 //! defined (__arm__) && defined (HAVE_ARMV7) && (defined(TARGET_IOS) || defined(TARGET_WATCHOS) || defined(TARGET_ANDROID))
 
 #if defined (TARGET_IOS) || defined (TARGET_WATCHOS)
 
