@@ -5,8 +5,8 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
-export ANDROID_NDK_VERSION="android-ndk-r12b"
-export ANDROID_SDK_VERSION="tools_r25.2.3"
+export ANDROID_NDK_VERSION="android-ndk-r18b"
+export ANDROID_SDK_VERSION="tools_r26.1.1"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
