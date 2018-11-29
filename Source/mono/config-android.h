@@ -435,10 +435,10 @@
 #define HAVE_GETGRENT 1
 
 /* Define to 1 if you have the `getgrgid_r' function. */
-#define HAVE_GETGRGID_R 1
+// #define HAVE_GETGRGID_R 1
 
 /* Define to 1 if you have the `getgrnam_r' function. */
-#define HAVE_GETGRNAM_R 1
+// #define HAVE_GETGRNAM_R 1
 
 /* Have gethostbyname */
 #define HAVE_GETHOSTBYNAME 1
@@ -763,7 +763,7 @@
 #define HAVE_PTHREAD_GETATTR_NP 1
 
 /* Define to 1 if you have the `pthread_getname_np' function. */
-#define HAVE_PTHREAD_GETNAME_NP 1
+// #define HAVE_PTHREAD_GETNAME_NP 1
 
 /* Define to 1 if you have the `pthread_get_stackaddr_np' function. */
 /* #undef HAVE_PTHREAD_GET_STACKADDR_NP */
@@ -868,10 +868,10 @@
 #define HAVE_SETUSERSHELL 1
 
 /* Define to 1 if you have the `shm_open' function. */
-#define HAVE_SHM_OPEN 1
+// #define HAVE_SHM_OPEN 1
 
 /* shm_open that works well enough with mmap */
-#define HAVE_SHM_OPEN_THAT_WORKS_WELL_ENOUGH_WITH_MMAP 1
+// #define HAVE_SHM_OPEN_THAT_WORKS_WELL_ENOUGH_WITH_MMAP 1
 
 /* Define to 1 if you have the `sigaction' function. */
 #define HAVE_SIGACTION 1
@@ -943,7 +943,7 @@
 #define HAVE_STIME 1
 
 /* Define to 1 if you have the `stpcpy' function. */
-#define HAVE_STPCPY 1
+// #define HAVE_STPCPY 1
 
 /* strcpy_s */
 /* #undef HAVE_STRCPY_S */

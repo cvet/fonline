@@ -27,7 +27,7 @@
 #include "interp/interp.h"
 
 #include "mini-arm.h"
-//! #include "cpu-arm.h"
+#include "cpu-arm.h"
 #include "trace.h"
 #include "ir-emit.h"
 #include "debugger-agent.h"

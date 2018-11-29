@@ -751,6 +751,7 @@ set( LIBMONOUTILS_COMMON_SOURCE
 )
 if( APPLE )
 	set( LIBMONOUTILS_COMMON_SOURCE ${LIBMONOUTILS_COMMON_SOURCE}
+		"repo/mono/utils/mono-merp.c"
 		"repo/mono/utils/mono-os-mutex.c"
 		"repo/mono/utils/mono-dl-posix.c"
 		"repo/mono/utils/mono-dl-darwin.c"
@@ -920,7 +921,7 @@ else()
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 	
-	if( APPLE )
+	if( APPLE OR ANDROID )
 		target_link_libraries( libmono "m" "dl" )
 	else()
 		target_link_libraries( libmono "m" "rt" "dl" )
