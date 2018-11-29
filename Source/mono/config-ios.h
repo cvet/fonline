@@ -145,7 +145,7 @@
 /* #undef ENABLE_COOP_SUSPEND */
 
 /* Enable DTrace probes */
-#define ENABLE_DTRACE 1
+// #define ENABLE_DTRACE 1
 
 /* Extension module enabled */
 /* #undef ENABLE_EXTENSION_MODULE */
