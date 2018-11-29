@@ -2,7 +2,7 @@
 
 #if defined(__APPLE__)
 #include "TargetConditionals.h"
-#if defined(TARGET_OS_IPHONE)
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE == 1
 #pragma message("Used 'config-ios.h'")
 #include "config-ios.h"
 #else
