@@ -203,7 +203,7 @@
 /* Define to 1 if you have the <android/legacy_signal_inlines.h> header file.
    */
 /* #undef HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H */
-#define HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H
+// #define HAVE_ANDROID_LEGACY_SIGNAL_INLINES_H
 
 /* Define to 1 if you have the <android/versioning.h> header file. */
 /* #undef HAVE_ANDROID_VERSIONING_H */
