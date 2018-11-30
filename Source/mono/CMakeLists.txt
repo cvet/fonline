@@ -251,7 +251,7 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/mini.c"
 		"repo/mono/mini/mini-runtime.c"
 		"repo/mono/mini/mini-exceptions.c"
-		"repo/mono/mini/jit-calls.c"
+		"repo/mono/mini/jit-icalls.c"
 		"repo/mono/mini/aot-runtime.c"
 		"repo/mono/mini/driver.c"
 		"repo/mono/mini/mini-trampolines.c"
