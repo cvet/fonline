@@ -256,6 +256,10 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/driver.c"
 		"repo/mono/mini/mini-trampolines.c"
 		"repo/mono/mini/mini-profiler.c"
+		"repo/mono/mini/mini-gc.c"
+		"repo/mono/mini/mini-generic-sharing.c"
+		"repo/mono/mini/mini-native-types.c"
+		"repo/mono/mini/arch-stubs.c"
 	)
 endif()
 
