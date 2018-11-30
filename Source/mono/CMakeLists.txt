@@ -268,6 +268,7 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/interp-stubs.c"
 		"repo/mono/mini/lldb.c"
 		"repo/mono/mini/tasklets.c"
+		"repo/mono/mini/trace.c"
 	)
 endif()
 
