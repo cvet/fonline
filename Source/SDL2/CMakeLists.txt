@@ -1645,7 +1645,7 @@ elseif(EMSCRIPTEN)
 elseif(ANDROID)
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_android.h"
     "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
-else
+else()
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
     "${SDL2_BINARY_DIR}/include/SDL_config.h")
 endif()
