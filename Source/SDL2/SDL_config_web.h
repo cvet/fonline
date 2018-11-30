@@ -20,8 +20,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef _SDL_config_h
-#define _SDL_config_h
+#ifndef SDL_config_web_h_
+#define SDL_config_web_h_
+#define SDL_config_h_
 
 /**
  *  \file SDL_config.h.in
@@ -348,4 +349,4 @@
 /* #undef SDL_ASSEMBLY_ROUTINES */
 /* #undef SDL_ALTIVEC_BLITTERS */
 
-#endif /* _SDL_config_h */
+#endif /* SDL_config_web_h_ */
