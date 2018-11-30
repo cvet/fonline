@@ -269,6 +269,8 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/lldb.c"
 		"repo/mono/mini/tasklets.c"
 		"repo/mono/mini/trace.c"
+		"repo/mono/mini/xdebug.c"
+		"repo/mono/mini/seq-points.c"
 	)
 endif()
 
@@ -933,7 +935,9 @@ else()
 		include_directories( "repo/support/ios" )
 	endif()
 	if( EMSCRIPTEN )
+		set( EXTRA_SOURCE "repo/sdks/wasm/driver.c" )
 		add_definitions( "-DNO_UNALIGNED_ACCESS" )
+		add_definitions( "--js-library \"$ENV{ROOT_FULL_PATH}/Source/mono/repo/sdks/wasm/library_mono.js\"" )
 	endif()
 	if( ANDROID )
 		include_directories( "repo/support/libm" )
