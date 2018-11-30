@@ -1161,7 +1161,7 @@
 #define HAVE_SYS_UN_H 1
 
 /* Define to 1 if you have the <sys/user.h> header file. */
-#define HAVE_SYS_USER_H 1
+// #define HAVE_SYS_USER_H 1
 
 /* Define to 1 if you have the <sys/utime.h> header file. */
 /* #undef HAVE_SYS_UTIME_H */
