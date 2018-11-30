@@ -1465,14 +1465,14 @@
 
 /* ... */
 /* #undef TARGET_ARM64 */
-#define TARGET_ARM64
+#define TARGET_ARM64 1
 
 /* byte order of target */
 #define TARGET_BYTE_ORDER G_BYTE_ORDER
 
 /* The JIT/AOT targets iOS */
 /* #undef TARGET_IOS */
-#define TARGET_IOS
+#define TARGET_IOS 1
 
 /* The JIT/AOT targets Apple platforms */
 #define TARGET_MACH 1

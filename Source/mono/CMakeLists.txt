@@ -262,7 +262,6 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/mini-native-types.c"
 		"repo/mono/mini/arch-stubs.c"
 		"repo/mono/mini/mini-cross-helpers.c"
-		"repo/mono/mini/threadpool-io-epoll.c"
 	)
 endif()
 

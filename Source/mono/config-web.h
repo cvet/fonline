@@ -18,7 +18,7 @@
 
 /* Disable AOT Compiler */
 /* #undef DISABLE_AOT */
-#define DISABLE_AOT
+#define DISABLE_AOT 1
 
 /* Disable support for multiple appdomains. */
 /* #undef DISABLE_APPDOMAINS */
@@ -56,7 +56,7 @@
 /* Disable the JIT, only full-aot mode or interpreter will be supported by the
    runtime. */
 /* #undef DISABLE_JIT */
-#define DISABLE_JIT
+#define DISABLE_JIT 1
 
 /* Disable support for huge assemblies */
 /* #undef DISABLE_LARGE_CODE */
@@ -1323,7 +1323,7 @@
 
 /* Host wasm */
 /* #undef HOST_WASM */
-#define HOST_WASM
+#define HOST_WASM 1
 
 /* Host Platform is Win32 */
 /* #undef HOST_WIN32 */
@@ -1510,7 +1510,7 @@
 
 /* Target wasm */
 /* #undef TARGET_WASM */
-#define TARGET_WASM
+#define TARGET_WASM 1
 
 /* The JIT/AOT targets WatchOS */
 /* #undef TARGET_WATCHOS */
