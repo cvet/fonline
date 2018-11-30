@@ -358,7 +358,7 @@
 #define HAVE_ENDUSERSHELL 1
 
 /* epoll_create1 */
-#define HAVE_EPOLL 1
+// #define HAVE_EPOLL 1
 
 /* Define to 1 if you have the `epoll_ctl' function. */
 // #define HAVE_EPOLL_CTL 1
