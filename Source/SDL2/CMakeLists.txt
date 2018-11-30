@@ -1631,12 +1631,15 @@ endif()
 
 #!
 if(IOS)
+	message(STATUS "SDL_config_iphoneos.h")
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_iphoneos.h"
     "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
 elseif(EMSCRIPTEN)
-  configure_file("${SDL2_SOURCE_DIR}/SDL_config_web.h"
+	message(STATUS "SDL_config_web.h")
+  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_web.h"
     "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
 else()
+	message(STATUS "SDL_config.h.cmake")
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
     "${SDL2_BINARY_DIR}/include/SDL_config.h")
 endif()
