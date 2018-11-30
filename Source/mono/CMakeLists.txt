@@ -950,8 +950,11 @@ else()
 	
 	add_definitions( "-DUSE_MMAP" )
 	
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -fno-strict-aliasing -fwrapv" )
+	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fno-strict-aliasing -fwrapv" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
+	if( NOT EMSCRIPTEN )
+		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99" )
+	endif()
 	
 	add_library( libmono STATIC ${EXTRA_SOURCE}
 		${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
