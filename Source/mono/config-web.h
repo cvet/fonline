@@ -815,7 +815,7 @@
 #define HAVE_RT_MSGHDR 1
 
 /* sched_getaffinity */
-#define HAVE_SCHED_GETAFFINITY 1
+// #define HAVE_SCHED_GETAFFINITY 1
 
 /* Define to 1 if you have the `sched_getcpu' function. */
 #define HAVE_SCHED_GETCPU 1

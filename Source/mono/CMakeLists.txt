@@ -248,6 +248,7 @@ set( LIBMINI_COMMON_SOURCE
 if( EMSCRIPTEN )
 	set( LIBMINI_COMMON_SOURCE
 		"version.h"
+		"repo/mono/mini/mini-wasm.c"
 		"repo/mono/mini/mini.c"
 		"repo/mono/mini/mini-runtime.c"
 		"repo/mono/mini/mini-exceptions.c"
@@ -262,6 +263,11 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/mini-native-types.c"
 		"repo/mono/mini/arch-stubs.c"
 		"repo/mono/mini/mini-cross-helpers.c"
+		"repo/mono/mini/unwind.c"
+		"repo/mono/mini/debugger-agent-stubs.c"
+		"repo/mono/mini/interp-stubs.c"
+		"repo/mono/mini/ldb.c"
+		"repo/mono/mini/tasklets.c"
 	)
 endif()
 
