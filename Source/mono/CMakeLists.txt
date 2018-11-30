@@ -271,6 +271,7 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/trace.c"
 		"repo/mono/mini/xdebug.c"
 		"repo/mono/mini/seq-points.c"
+		"repo/mono/mini/aot-runtime-wasm.c"
 	)
 endif()
 
