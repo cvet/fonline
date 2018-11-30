@@ -253,6 +253,7 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/mini-exceptions.c"
 		"repo/mono/mini/jit-icalls.c"
 		"repo/mono/mini/aot-runtime.c"
+		"repo/mono/mini/aot-compiler.c"
 		"repo/mono/mini/driver.c"
 		"repo/mono/mini/mini-trampolines.c"
 		"repo/mono/mini/mini-profiler.c"
@@ -260,6 +261,8 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/mini-generic-sharing.c"
 		"repo/mono/mini/mini-native-types.c"
 		"repo/mono/mini/arch-stubs.c"
+		"repo/mono/mini/mini-cross-helpers.c"
+		"repo/mono/mini/threadpool-io-epoll.c"
 	)
 endif()
 

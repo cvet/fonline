@@ -18,6 +18,7 @@
 
 /* Disable AOT Compiler */
 /* #undef DISABLE_AOT */
+#define DISABLE_AOT
 
 /* Disable support for multiple appdomains. */
 /* #undef DISABLE_APPDOMAINS */
@@ -435,10 +436,10 @@
 #define HAVE_GETGRENT 1
 
 /* Define to 1 if you have the `getgrgid_r' function. */
-#define HAVE_GETGRGID_R 1
+// #define HAVE_GETGRGID_R 1
 
 /* Define to 1 if you have the `getgrnam_r' function. */
-#define HAVE_GETGRNAM_R 1
+// #define HAVE_GETGRNAM_R 1
 
 /* Have gethostbyname */
 #define HAVE_GETHOSTBYNAME 1
@@ -489,7 +490,7 @@
 #define HAVE_GETPWNAM_R 1
 
 /* Define to 1 if you have the `getpwuid_r' function. */
-#define HAVE_GETPWUID_R 1
+// #define HAVE_GETPWUID_R 1
 
 /* Define to 1 if you have the `getrandom' function. */
 /* #undef HAVE_GETRANDOM */
