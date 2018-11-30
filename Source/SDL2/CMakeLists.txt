@@ -1633,21 +1633,34 @@ endif()
 if(IOS)
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_iphoneos.h"
     "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
-elseif(APPLE)
-  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_macosx.h"
-    "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
-elseif(WIN32)
-  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_windows.h"
-    "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
 elseif(EMSCRIPTEN)
   configure_file("${SDL2_SOURCE_DIR}/SDL_config_web.h"
-    "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
-elseif(ANDROID)
-  configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_android.h"
     "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
 else()
   configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
     "${SDL2_BINARY_DIR}/include/SDL_config.h")
+endif()
+
+if(FALSE)
+    if(IOS)
+      configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_iphoneos.h"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+    elseif(APPLE)
+      configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_macosx.h"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+    elseif(WIN32)
+      configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_windows.h"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+    elseif(EMSCRIPTEN)
+      configure_file("${SDL2_SOURCE_DIR}/SDL_config_web.h"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+    elseif(ANDROID)
+      configure_file("${SDL2_SOURCE_DIR}/include/SDL_config_android.h"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h" COPYONLY)
+    else()
+      configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
+        "${SDL2_BINARY_DIR}/include/SDL_config.h")
+    endif()
 endif()
 #!
 
