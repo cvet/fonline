@@ -266,7 +266,7 @@ if( EMSCRIPTEN )
 		"repo/mono/mini/unwind.c"
 		"repo/mono/mini/debugger-agent-stubs.c"
 		"repo/mono/mini/interp-stubs.c"
-		"repo/mono/mini/ldb.c"
+		"repo/mono/mini/lldb.c"
 		"repo/mono/mini/tasklets.c"
 	)
 endif()
