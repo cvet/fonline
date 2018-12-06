@@ -89,7 +89,7 @@ elseif( EMSCRIPTEN )
 	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}" )
 	set( CMAKE_EXECUTABLE_SUFFIX ".js" )
 	set( WEB_OPTIONS "-s TOTAL_MEMORY=268435456" ) # 256 Mb
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s ERROR_ON_UNDEFINED_SYMBOLS=0" ) # Todo: set to 1
+	set( WEB_OPTIONS "${WEB_OPTIONS} -s ERROR_ON_UNDEFINED_SYMBOLS=1" )
 	set( WEB_OPTIONS "${WEB_OPTIONS} -s ALLOW_MEMORY_GROWTH=1" )
 	set( WEB_OPTIONS "${WEB_OPTIONS} -s USE_WEBGL2=1" )
 	set( WEB_OPTIONS "${WEB_OPTIONS} -s FORCE_FILESYSTEM=1" )
@@ -233,6 +233,9 @@ endif()
 if( APPLE AND IOS_PLATFORM )
 	set( SDL_JOYSTICK ON CACHE STRING "" FORCE )
 	set( SDL_HAPTIC ON CACHE STRING "" FORCE )
+endif()
+if( EMSCRIPTEN )
+	set( SDL_JOYSTICK ON CACHE STRING "" FORCE )
 endif()
 add_definitions( "-DGL_GLEXT_PROTOTYPES" )
 add_subdirectory( "${SDL_DIR}" )
@@ -397,7 +400,10 @@ if( NOT BUILD_ONLY_CLIENT )
 endif()
 
 add_subdirectory( "mono" )
+include_directories( "mono" )
 include_directories( "mono/repo" )
+include_directories( "mono/repo/mono" )
+include_directories( "mono/repo/mono/eglib" )
 
 set( COMMON_SOURCE
 	${Json_SOURCE}
@@ -469,7 +475,6 @@ set( CLIENT_MAPPER_SOURCE
 set( SERVER_MAPPER_SOURCE
 	ResourceConverter.h ResourceConverter.cpp
 )
-
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_CLIENT_MAPPER_SOURCE}

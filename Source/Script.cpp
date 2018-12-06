@@ -15,6 +15,13 @@
 #include <strstream>
 #include <mono/mini/jit.h>
 #include <mono/metadata/assembly.h>
+#include <mono/metadata/mono-config.h>
+#include <mono/metadata/debug-helpers.h>
+#include <mono/dis/meta.h>
+
+static MonoAssembly* LoadNetAssembly( const string& name );
+static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images );
+static bool          CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images );
 
 #pragma MESSAGE("Rework native calls.")
 #if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false
@@ -307,7 +314,98 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     ScriptWatcherThread.Start( Script::Watcher, "ScriptWatcher" );
     #endif
 
-    MonoDomain* domain = mono_jit_init_version( "1", "2" );
+    for( auto& module_path : ProjectFiles )
+        FileManager::LoadDataFile( module_path );
+
+    mono_config_parse_memory( R"(
+    <configuration>
+        <dllmap dll="i:cygwin1.dll" target="libc.so.6" os="!windows" />
+        <dllmap dll="libc" target="libc.so.6" os="!windows"/>
+        <dllmap dll="intl" target="libc.so.6" os="!windows"/>
+        <dllmap dll="intl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
+        <dllmap dll="libintl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
+        <dllmap dll="libintl" target="libc.so.6" os="!windows"/>
+        <dllmap dll="i:libxslt.dll" target="libxslt.so" os="!windows"/>
+        <dllmap dll="i:odbc32.dll" target="libodbc.so" os="!windows"/>
+        <dllmap dll="i:odbc32.dll" target="libiodbc.dylib" os="osx"/>
+        <dllmap dll="oci" target="libclntsh.so" os="!windows"/>
+        <dllmap dll="db2cli" target="libdb2_36.so" os="!windows"/>
+        <dllmap dll="MonoPosixHelper" target="$mono_libdir/libMonoPosixHelper.so" os="!windows" />
+        <dllmap dll="System.Native" target="$mono_libdir/libmono-system-native.so" os="!windows" />
+        <dllmap dll="libmono-btls-shared" target="$mono_libdir/libmono-btls-shared.so" os="!windows" />
+        <dllmap dll="i:msvcrt" target="libc.so.6" os="!windows"/>
+        <dllmap dll="i:msvcrt.dll" target="libc.so.6" os="!windows"/>
+        <dllmap dll="sqlite" target="libsqlite.so.0" os="!windows"/>
+        <dllmap dll="sqlite3" target="libsqlite3.so.0" os="!windows"/>
+        <dllmap dll="libX11" target="libX11.so" os="!windows" />
+        <dllmap dll="libgdk-x11-2.0" target="libgdk-x11-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgdk_pixbuf-2.0" target="libgdk_pixbuf-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgtk-x11-2.0" target="libgtk-x11-2.0.so.0" os="!windows"/>
+        <dllmap dll="libglib-2.0" target="libglib-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgobject-2.0" target="libgobject-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgnomeui-2" target="libgnomeui-2.so.0" os="!windows"/>
+        <dllmap dll="librsvg-2" target="librsvg-2.so.2" os="!windows"/>
+        <dllmap dll="libXinerama" target="libXinerama.so.1" os="!windows" />
+        <dllmap dll="libasound" target="libasound.so.2" os="!windows" />
+        <dllmap dll="libcairo-2.dll" target="libcairo.so.2" os="!windows"/>
+        <dllmap dll="libcairo-2.dll" target="libcairo.2.dylib" os="osx"/>
+        <dllmap dll="libcups" target="libcups.so.2" os="!windows"/>
+        <dllmap dll="libcups" target="libcups.dylib" os="osx"/>
+        <dllmap dll="i:kernel32.dll">
+            <dllentry dll="__Internal" name="CopyMemory" target="mono_win32_compat_CopyMemory"/>
+            <dllentry dll="__Internal" name="FillMemory" target="mono_win32_compat_FillMemory"/>
+            <dllentry dll="__Internal" name="MoveMemory" target="mono_win32_compat_MoveMemory"/>
+            <dllentry dll="__Internal" name="ZeroMemory" target="mono_win32_compat_ZeroMemory"/>
+        </dllmap>
+        <dllmap dll="gdiplus" target="libgdiplus.so" os="!windows"/>
+        <dllmap dll="gdiplus.dll" target="libgdiplus.so"  os="!windows"/>
+        <dllmap dll="gdi32" target="libgdiplus.so" os="!windows"/>
+        <dllmap dll="gdi32.dll" target="libgdiplus.so" os="!windows"/>
+    </configuration>)" );
+
+    mono_set_dirs( "./dummy/lib", "./dummy/etc" );
+    mono_set_assemblies_path( "./dummy/lib/gac" );
+
+    map< string, MonoImage* > assembly_images;
+    mono_install_assembly_preload_hook([] ( MonoAssemblyName * aname, char** assemblies_path, void* user_data )->MonoAssembly *
+                                       {
+                                           auto assembly_images = ( map< string, MonoImage* >* )user_data;
+                                           if( assembly_images->count( aname->name ) )
+                                               return LoadGameAssembly( aname->name, *assembly_images );
+                                           return LoadNetAssembly( aname->name );
+                                       }, (void*) &assembly_images );
+
+    MonoDomain* domain = mono_jit_init_version( "FOnlineDomain", "v4.0.30319" );
+    RUNTIME_ASSERT( domain );
+
+    CompileGameAssemblies( "Server", assembly_images );
+
+    for( auto& kv : assembly_images )
+    {
+        bool ok = LoadGameAssembly( kv.first, assembly_images );
+        RUNTIME_ASSERT( ok );
+    }
+
+    RUNTIME_ASSERT( assembly_images.count( "FOnline.Core" ) );
+    RUNTIME_ASSERT( assembly_images[ "FOnline.Core" ] );
+    MonoClass* tween_class = mono_class_from_name( assembly_images[ "FOnline.Core" ], "FOnline.Core", "Tween" );
+    RUNTIME_ASSERT( tween_class );
+
+    MonoMethodDesc* desc = mono_method_desc_new( "int Test()", FALSE );
+    RUNTIME_ASSERT( desc );
+    MonoMethod*     test_func = mono_method_desc_search_in_class( desc, tween_class );
+    RUNTIME_ASSERT( test_func );
+    mono_method_desc_free( desc );
+
+    MonoObject* exc;
+    MonoObject* r = mono_runtime_invoke( test_func, NULL, NULL, &exc );
+    RUNTIME_ASSERT( r );
+    void*       pr = mono_object_unbox( r );
+    RUNTIME_ASSERT( pr );
+    int         pri = *(int*) pr;
+    RUNTIME_ASSERT( pri == 42 );
+
+    ExitProcess( 0 );
     return true;
 }
 
@@ -501,6 +599,176 @@ void Script::UnloadScripts()
 
     while( Engine->GetModuleCount() > 0 )
         Engine->GetModuleByIndex( 0 )->Discard();
+}
+
+static int SystemCall( const string& command, string& output )
+{
+    #if defined ( FO_WINDOWS )
+    HANDLE              out_read = nullptr;
+    HANDLE              out_write = nullptr;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof( SECURITY_ATTRIBUTES );
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    if( !CreatePipe( &out_read, &out_write, &sa, 0 ) )
+        return -1;
+    if( !SetHandleInformation( out_read, HANDLE_FLAG_INHERIT, 0 ) )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    STARTUPINFOW si;
+    ZeroMemory( &si, sizeof( STARTUPINFO ) );
+    si.cb = sizeof( STARTUPINFO );
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi;
+    ZeroMemory( &pi, sizeof( PROCESS_INFORMATION ) );
+
+    wchar_t* cmd_line = _wcsdup( _str( command ).toWideChar().c_str() );
+    BOOL     result = CreateProcessW( nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi );
+    SAFEDELA( cmd_line );
+    if( !result )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    string log;
+    while( true )
+    {
+        Thread_Sleep( 1 );
+
+        DWORD bytes;
+        while( PeekNamedPipe( out_read, nullptr, 0, nullptr, &bytes, nullptr ) && bytes > 0 )
+        {
+            char buf[ TEMP_BUF_SIZE ];
+            if( ReadFile( out_read, buf, sizeof( buf ), &bytes, nullptr ) )
+                output.append( buf, bytes );
+        }
+
+        if( WaitForSingleObject( pi.hProcess, 0 ) != WAIT_TIMEOUT )
+            break;
+    }
+
+    DWORD retval;
+    GetExitCodeProcess( pi.hProcess, &retval );
+    CloseHandle( out_read );
+    CloseHandle( out_write );
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+    return (int) retval;
+
+    #elif !defined ( FO_WEB )
+    FILE* in = popen( command.c_str(), "r" );
+    if( !in )
+        return -1;
+
+    string log;
+    char   buf[ TEMP_BUF_SIZE ];
+    while( fgets( buf, sizeof( buf ), in ) )
+        output.append( buf );
+
+    return pclose( in );
+
+    #else
+    WriteLog( "Not supported!" );
+    return -1;
+    #endif
+}
+
+static MonoAssembly* LoadNetAssembly( const string& name )
+{
+    string assemblies_path = "Assemblies/" + name;
+    #ifdef FONLINE_SERVER
+    assemblies_path = "Resources/Mono/" + assemblies_path;
+    #endif
+
+    FileManager file;
+    file.LoadFile( assemblies_path );
+    RUNTIME_ASSERT( file.IsLoaded() );
+
+    MonoImageOpenStatus status;
+    MonoImage*          image = mono_image_open_from_data( (char*) file.GetBuf(), file.GetFsize(), TRUE, &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+    MonoAssembly* assembly = mono_assembly_load_from( image, name.c_str(), &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+
+    return assembly;
+}
+
+static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images )
+{
+    RUNTIME_ASSERT( assembly_images.count( name ) );
+    MonoImage*          image = assembly_images[ name ];
+
+    MonoImageOpenStatus status;
+    MonoAssembly*       assembly = mono_assembly_load_from( image, name.c_str(), &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+
+    return assembly;
+}
+
+static bool CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images )
+{
+    string          mono_path = MainConfig->GetStr( "", "MonoPath" );
+    string          xbuild_path = _str( mono_path + "/bin/xbuild" ).resolvePath();
+
+    FilesCollection proj_files( "csproj" );
+    while( proj_files.IsNextFile() )
+    {
+        string       name, path;
+        FileManager& file = proj_files.GetNextFile( &name, &path );
+        RUNTIME_ASSERT( file.IsLoaded() );
+
+        WriteLog( "Load assembly {}.\n", path );
+
+        // Compile
+        string command = _str( "{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path );
+        string output;
+        int    call_result = SystemCall( command, output );
+        if( call_result )
+        {
+            StrVec errors = _str( output ).split( '\n' );
+            WriteLog( "Compilation failed! Error{}:", errors.size() > 1 ? "s" : "" );
+            for( string& error : errors )
+                WriteLog( "{}\n", error );
+            return false;
+        }
+
+        // Get output path
+        string file_content = (char*) file.GetBuf();
+        size_t pos = file_content.find( "'$(Configuration)|$(Platform)' == '" + target + "|" );
+        RUNTIME_ASSERT( pos != string::npos );
+        pos = file_content.find( "<OutputPath>", pos );
+        RUNTIME_ASSERT( pos != string::npos );
+        size_t epos = file_content.find( "</OutputPath>", pos );
+        RUNTIME_ASSERT( epos != string::npos );
+        pos += _str( "<OutputPath>" ).length();
+
+        string assembly_name = name + ".dll";
+        string assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
+        WriteLog( "Assembly path: '{}'\n", assembly_path );
+
+        FileManager assembly_file;
+        assembly_file.LoadFile( assembly_path );
+        RUNTIME_ASSERT( assembly_file.IsLoaded() );
+
+        MonoImageOpenStatus status;
+        MonoImage*          image = mono_image_open_from_data( (char*) assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status );
+        RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+        assembly_images[ assembly_name ] = image;
+    }
+
+    return true;
 }
 
 bool Script::ReloadScripts( const string& target )
