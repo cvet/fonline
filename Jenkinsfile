@@ -145,7 +145,7 @@ pipeline {
           unstash 'mac'
           unstash 'ios'
           unstash 'sdk'
-          sh 'zip -r -0 FOnlineSDK.zip ./'
+          sh 'zip -r -1 FOnlineSDK.zip ./'
         }
       }
       post {
