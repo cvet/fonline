@@ -8,9 +8,9 @@ export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 export MONO_ZIP="mono-5.16.0.220-x64-0.zip"
 export VSCODE_ZIP="vscode-1.29.1.zip"
 export VSCODE_EXTENSIONS_ZIP="vscode-extensions-1.zip"
-export MONO_URL="https://www.dropbox.com/s/zqkqfynqs5q0nds/$MONO_ZIP?dl=0"
-export VSCODE_URL="https://www.dropbox.com/s/eheuybsdkll6nhp/$VSCODE_ZIP?dl=0"
-export VSCODE_EXTENSIONS_URL="https://www.dropbox.com/s/w049fgcpa0dk7jj/$VSCODE_EXTENSIONS_ZIP?dl=0"
+export MONO_URL="https://www.dropbox.com/s/zqkqfynqs5q0nds/$MONO_ZIP"
+export VSCODE_URL="https://www.dropbox.com/s/eheuybsdkll6nhp/$VSCODE_ZIP"
+export VSCODE_EXTENSIONS_URL="https://www.dropbox.com/s/w049fgcpa0dk7jj/$VSCODE_EXTENSIONS_ZIP"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true
