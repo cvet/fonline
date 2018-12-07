@@ -111,6 +111,22 @@ pipeline {
             }
           }
         }
+        stage('Build SDK') {
+          agent {
+            kubernetes {
+              label 'linux'
+              yamlFile 'BuildScripts/build-pod.yaml'
+            }
+          }
+          steps {
+            container('jnlp') {
+              sh './BuildScripts/sdk.sh'
+              dir('Build/sdk/') {
+                stash name: 'sdk', includes: 'Binaries/**'
+              }
+            }
+          }
+        }
       }
     }
     stage('Create Build Artifacts') {
@@ -122,20 +138,20 @@ pipeline {
       steps {
         dir('SDK')
         {
-          sh 'rm -rf ./Binaries/ReadMe.txt'
           unstash 'android'
           unstash 'linux'
           unstash 'web'
           unstash 'windows'
           unstash 'mac'
           unstash 'ios'
-          sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
+          unstash 'sdk'
+          sh 'zip -r -0 FOnlineSDK.zip ./'
         }
       }
       post {
         success {
           dir('SDK') {
-            archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
+            archiveArtifacts artifacts: "FOnlineSDK.zip", fingerprint: true
           }
         }
         cleanup {

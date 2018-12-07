@@ -7,9 +7,10 @@
 /InterfaceEditor/obj/
 SDK/Modules/*/bin
 SDK/Modules/*/obj
-/SDK/Binaries/VSCode/VSCode-win32-x64/data/user-data
+
+# Other
+_Temp
 /SDK/Binaries/VSCode/VSCode-win32-x64
 /SDK/Binaries/VSCode/VSCode-linux-x64
 /SDK/Binaries/Mono
-/SDK/Binaries/VSCode
 /SDK/Modules/Core/Resources/Mono
