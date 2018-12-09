@@ -23,21 +23,27 @@ cd $FO_BUILD_DEST
 mkdir -p sdk
 cd sdk
 
+cp -r "$ROOT_FULL_PATH/SDK/." "./"
+
 wget "$MONO_URL"
 wget "$VSCODE_URL"
 wget "$VSCODE_EXTENSIONS_URL"
 
-unzip "$MONO_ZIP" -d "./Binaries/"
 unzip "$VSCODE_ZIP" -d "./Binaries/VSCode/"
 mkdir "./Binaries/VSCode/VSCode-win32-x64/data"
 mkdir "./Binaries/VSCode/VSCode-linux-x64/data"
 unzip "$VSCODE_EXTENSIONS_ZIP" -d "./Binaries/VSCode/VSCode-win32-x64/data/extensions/"
 cp -r "./Binaries/VSCode/VSCode-win32-x64/data/extensions" "./Binaries/VSCode/VSCode-linux-x64/data/extensions"
-#cp -r "../SDK/Binaries/VSCode/fonline-vscode-extension" "./Binaries/VSCode/VSCode-win32-x64/data/extensions/"
-#cp -r "../SDK/Binaries/VSCode/fonline-vscode-extension" "./Binaries/VSCode/VSCode-linux-x64/data/extensions/"
-cp -r "./Binaries/Mono/lib/mono/4.5/*.dll" "./Modules/Core/Resources/Mono/Assemblies"
-cp -r "./Binaries/Mono/lib/mono/4.5/Facades/*.dll" "./Modules/Core/Resources/Mono/Assemblies"
+cp -r "./Binaries/VSCode/fonline-vscode-extension" "./Binaries/VSCode/VSCode-win32-x64/data/extensions/"
+cp -r "./Binaries/VSCode/fonline-vscode-extension" "./Binaries/VSCode/VSCode-linux-x64/data/extensions/"
 
+unzip "$MONO_ZIP" -d "./Binaries/"
+mkdir "./Modules/Core/Resources/Mono"
+mkdir "./Modules/Core/Resources/Mono/Assemblies"
+cp "./Binaries/Mono/lib/mono/4.5/"*.dll "./Modules/Core/Resources/Mono/Assemblies/"
+cp "./Binaries/Mono/lib/mono/4.5/Facades/"*.dll "./Modules/Core/Resources/Mono/Assemblies/"
+
+rm -rf "./Binaries/VSCode/fonline-vscode-extension"
 rm -rf "$MONO_ZIP"
 rm -rf "$VSCODE_ZIP"
 rm -rf "$VSCODE_EXTENSIONS_ZIP"
