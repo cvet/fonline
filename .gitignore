@@ -10,3 +10,7 @@ _Temp
 /SDK/Binaries/VSCode/VSCode-linux-x64
 /SDK/Binaries/Mono
 /SDK/Modules/Core/Resources/Mono
+/SDK/Binaries/Client/*
+/SDK/Binaries/Mapper/*
+/SDK/Binaries/Server/*
+/SDK/Binaries/ASCompiler/*
