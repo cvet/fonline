@@ -386,7 +386,7 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     {
         for( auto& kv :* assemblies_data )
         {
-            MonoImageOpenStatus status;
+            MonoImageOpenStatus status = MONO_IMAGE_OK;
             MonoImage*          image = mono_image_open_from_data( (char*) &kv.second[ 0 ], (uint) kv.second.size(), TRUE, &status );
             RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
 
@@ -708,7 +708,7 @@ static MonoAssembly* LoadNetAssembly( const string& name )
     file.LoadFile( assemblies_path );
     RUNTIME_ASSERT( file.IsLoaded() );
 
-    MonoImageOpenStatus status;
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
     MonoImage*          image = mono_image_open_from_data( (char*) file.GetBuf(), file.GetFsize(), TRUE, &status );
     RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
 
@@ -723,7 +723,7 @@ static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImag
     RUNTIME_ASSERT( assembly_images.count( name ) );
     MonoImage*          image = assembly_images[ name ];
 
-    MonoImageOpenStatus status;
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
     MonoAssembly*       assembly = mono_assembly_load_from( image, name.c_str(), &status );
     RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
 
@@ -741,8 +741,6 @@ static bool CompileGameAssemblies( const string& target, map< string, MonoImage*
         string       name, path;
         FileManager& file = proj_files.GetNextFile( &name, &path );
         RUNTIME_ASSERT( file.IsLoaded() );
-
-        WriteLog( "Load assembly {}.\n", path );
 
         // Compile
         string command = _str( "{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path );
@@ -769,13 +767,12 @@ static bool CompileGameAssemblies( const string& target, map< string, MonoImage*
 
         string assembly_name = name + ".dll";
         string assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
-        WriteLog( "Assembly path: '{}'\n", assembly_path );
 
         FileManager assembly_file;
         assembly_file.LoadFile( assembly_path );
         RUNTIME_ASSERT( assembly_file.IsLoaded() );
 
-        MonoImageOpenStatus status;
+        MonoImageOpenStatus status = MONO_IMAGE_OK;
         MonoImage*          image = mono_image_open_from_data( (char*) assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status );
         RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
 
