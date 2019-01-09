@@ -5338,6 +5338,21 @@ bool FOClient::ReloadScripts()
         errors++;
     }
 
+    // Mono assemblies
+    map< string, UCharVec > assemblies_data;
+    uint                    mono_assembly_index = STR_INTERNAL_SCRIPT_MONO_DLLS;
+    while( msg_script.Count( mono_assembly_index ) )
+    {
+        string   assembly_name = msg_script.GetStr( mono_assembly_index++ );
+        UCharVec assembly_data;
+        msg_script.GetBinary( mono_assembly_index++, assembly_data );
+        assemblies_data[ assembly_name ] = std::move( assembly_data );
+    }
+
+    bool ok = Script::InitMono( "Client", &assemblies_data );
+    RUNTIME_ASSERT( ok );
+
+    // Bind events
     #define BIND_INTERNAL_EVENT( name )    ClientFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );

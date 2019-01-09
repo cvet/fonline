@@ -187,6 +187,11 @@ void InitialSetup( uint argc, char** argv )
         ProjectFiles.push_back( _str( project_path ).normalizePathSlashes() );
     }
     #endif
+
+    // Fix Mono path
+    string mono_path = MainConfig->GetStr( "", "MonoPath" );
+    mono_path = _str( GameOpt.WorkDir ).combinePath( mono_path ).normalizeLineEndings().resolvePath();
+    MainConfig->SetStr( "", "MonoPath", mono_path );
 }
 
 // Default randomizer

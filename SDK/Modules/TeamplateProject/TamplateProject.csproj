@@ -4,13 +4,14 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{f6977201-75e2-4689-b095-aaf5e764ecbd}</ProjectGuid>
+    <ProjectGuid>{8481E41F-C16C-4AFA-BDF0-644F5E8FC58A}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>FOnlineEngine</RootNamespace>
-    <AssemblyName>FOnline.Core</AssemblyName>
+    <RootNamespace>FOnline.Scores</RootNamespace>
+    <AssemblyName>FOnline.Scores</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Client|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
@@ -53,13 +54,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Core.cs" />
+    <Compile Include="TemplateClass.cs" />
     <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="Entity.cs" />
-    <Compile Include="Component.cs" />
-    <Compile Include="Var.cs" />
-    <Compile Include="GlobalEvents.cs" />
-    <Compile Include="InternalCalls.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

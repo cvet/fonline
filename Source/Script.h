@@ -60,6 +60,8 @@ class Script
 {
 public:
     static bool Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
+    static bool InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data );
+    static bool GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data );
     static void Finish();
 
     static void* LoadDynamicLibrary( const string& dll_name );

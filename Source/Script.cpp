@@ -313,7 +313,11 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     ScriptWatcherFinish = false;
     ScriptWatcherThread.Start( Script::Watcher, "ScriptWatcher" );
     #endif
+    return true;
+}
 
+bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data )
+{
     for( auto& module_path : ProjectFiles )
         FileManager::LoadDataFile( module_path );
 
@@ -378,7 +382,22 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     MonoDomain* domain = mono_jit_init_version( "FOnlineDomain", "v4.0.30319" );
     RUNTIME_ASSERT( domain );
 
-    CompileGameAssemblies( "Server", assembly_images );
+    if( assemblies_data )
+    {
+        for( auto& kv :* assemblies_data )
+        {
+            MonoImageOpenStatus status;
+            MonoImage*          image = mono_image_open_from_data( (char*) &kv.second[ 0 ], (uint) kv.second.size(), TRUE, &status );
+            RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+            assembly_images[ kv.first ] = image;
+        }
+    }
+    else
+    {
+        bool ok = CompileGameAssemblies( dll_target, assembly_images );
+        RUNTIME_ASSERT( ok );
+    }
 
     for( auto& kv : assembly_images )
     {
@@ -386,26 +405,21 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
         RUNTIME_ASSERT( ok );
     }
 
-    RUNTIME_ASSERT( assembly_images.count( "FOnline.Core" ) );
-    RUNTIME_ASSERT( assembly_images[ "FOnline.Core" ] );
-    MonoClass* tween_class = mono_class_from_name( assembly_images[ "FOnline.Core" ], "FOnline.Core", "Tween" );
-    RUNTIME_ASSERT( tween_class );
+    return true;
+}
 
-    MonoMethodDesc* desc = mono_method_desc_new( "int Test()", FALSE );
-    RUNTIME_ASSERT( desc );
-    MonoMethod*     test_func = mono_method_desc_search_in_class( desc, tween_class );
-    RUNTIME_ASSERT( test_func );
-    mono_method_desc_free( desc );
+bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data )
+{
+    map< string, MonoImage* > assembly_images;
+    bool                      ok = CompileGameAssemblies( dll_target, assembly_images );
+    RUNTIME_ASSERT( ok );
 
-    MonoObject* exc;
-    MonoObject* r = mono_runtime_invoke( test_func, NULL, NULL, &exc );
-    RUNTIME_ASSERT( r );
-    void*       pr = mono_object_unbox( r );
-    RUNTIME_ASSERT( pr );
-    int         pri = *(int*) pr;
-    RUNTIME_ASSERT( pri == 42 );
-
-    ExitProcess( 0 );
+    for( auto& kv : assembly_images )
+    {
+        UCharVec data( kv.second->raw_data_len );
+        memcpy( &data[ 0 ], kv.second->raw_data, data.size() );
+        assemblies_data[ kv.first ] = std::move( data );
+    }
     return true;
 }
 
@@ -719,7 +733,7 @@ static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImag
 static bool CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images )
 {
     string          mono_path = MainConfig->GetStr( "", "MonoPath" );
-    string          xbuild_path = _str( mono_path + "/bin/xbuild" ).resolvePath();
+    string          xbuild_path = _str( mono_path + "/bin/xbuild.bat" ).resolvePath();
 
     FilesCollection proj_files( "csproj" );
     while( proj_files.IsNextFile() )

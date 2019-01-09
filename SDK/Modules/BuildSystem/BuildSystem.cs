@@ -1,12 +1,6 @@
-﻿using FOnline.Core;
-
-namespace FOnline.BuildSystem
+﻿namespace FOnlineEngine.BuildSystem
 {
     public class BuildSystem
     {
-        public void Foo()
-        {
-            new Tween();
-        }
     }
 }
