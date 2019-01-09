@@ -14,3 +14,4 @@ _Temp
 /SDK/Binaries/Mapper/*
 /SDK/Binaries/Server/*
 /SDK/Binaries/ASCompiler/*
+/SDK/Modules/BuildSystem/_msicreator/createmsi.pyc
