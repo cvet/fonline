@@ -35,10 +35,12 @@ namespace FOnlineEngine
     {
     }
 
+    [NotImplemented]
     public abstract class Var
     {
     }
 
+    [NotImplemented]
     public sealed class Var<T> : Var
     {
         public delegate void ValueChangedDelegate(T value, T oldValue);
@@ -81,7 +83,7 @@ namespace FOnlineEngine
                     _name = ((SerializeAsAttribute)attr).VarName;
                 else if (attr is ModifiableAttribute)
                     _isModifiable = true;
-#if SERVCER
+#if SERVER
                 else if (attr is NonSerializableAttribute)
                     _isNotSerializable = true;
 #endif
@@ -149,7 +151,7 @@ namespace FOnlineEngine
                         }
                         catch (Exception ex)
                         {
-                            Engine.LogError(ex);
+                            Engine.LogError(ex.ToString());
                         }
                     }
                 }

@@ -2,6 +2,7 @@ using System.Linq;
 
 namespace FOnlineEngine
 {
+    [NotImplemented]
     public abstract class Entity
     {
         protected readonly long _id;

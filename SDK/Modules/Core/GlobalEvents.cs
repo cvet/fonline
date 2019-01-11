@@ -1,12 +1,31 @@
 using System;
-using System.Linq;
+using System.Reflection;
 
 namespace FOnlineEngine
 {
     public static class GlobalEvents
     {
+        static void OnInit()
+        {
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                foreach (Type type in assembly.GetTypes())
+                {
+                    try
+                    {
+                        System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+                    }
+                    catch (Exception ex)
+                    {
+                        Engine.Log("Failed to run type: " + type.Name);
+                        Engine.Log(ex.ToString());
+                    }
+                }
+            }
+        }
+
 #if SERVER
-        public delegate void ResourcesGeneratedEventDelegate();
+        /*public delegate void ResourcesGeneratedEventDelegate();
         public static event ResourcesGeneratedEventDelegate ResourcesGeneratedEvent;
         internal static void OnResourcesGenerated()
         {
@@ -18,12 +37,11 @@ namespace FOnlineEngine
                 }
                 catch (Exception ex)
                 {
-                    Engine.LogError(ex);
+                    Engine.LogError(ex.ToString());
                 }
             }
         }
 
-        public delegate void InitEventDelegate();
         public delegate void GenerateWorldEventDelegate();
         public delegate void StartEventDelegate();
         public delegate void FinishEventDelegate();
@@ -59,17 +77,17 @@ namespace FOnlineEngine
         public delegate void CritterMessageEventDelegate(Critter critter, Critter receiver, int num, int value);
         public delegate void CritterTalkEventDelegate(Critter critter, Critter who, bool begin, int talkers);
         public delegate void CritterBarterEventDelegate(Critter critter, Critter trader, bool begin, int barterCount);
-        public delegate void PlayerRegistrationEventDelegate( string ip, string name );
-        public delegate void PlayerLoginEventDelegate( string ip, string name );
+        public delegate void PlayerRegistrationEventDelegate(string ip, string name);
+        public delegate void PlayerLoginEventDelegate(string ip, string name);
         public delegate void PlayerLogoutEventDelegate(Critter player);
         public delegate void ItemInitEventDelegate(Item item, bool firstTime);
         public delegate void ItemFinishEventDelegate(Item item);
         public delegate void ItemWalkEventDelegate(Item item, Critter critter, bool isIn, int dir);
         public delegate void ItemCheckMoveEventDelegate(Item item, int count, Entity from, Entity to);
-        public delegate void StaticItemWalkEventDelegate(Item item, Critter critter, bool isIn, int dir);
+        public delegate void StaticItemWalkEventDelegate(Item item, Critter critter, bool isIn, int dir);*/
 
 #elif CLIENT
-        public delegate void StartEventDelegate();
+        /*public delegate void StartEventDelegate();
         public delegate void FinishEventDelegate();
         public delegate void LoopEventDelegate();
         public delegate void GetActiveScreensEventDelegate(int[] screens);
@@ -106,7 +124,7 @@ namespace FOnlineEngine
         //public delegate void CritterAnimationSubstituteEventDelegate( hash, uint, uint, hash&, uint&, uint& );
         //public delegate void CritterAnimationFalloutEventDelegate( hash, uint&, uint&, uint&, uint&, uint& );
         //public delegate void CritterCheckMoveItemEventDelegate(  Critter critter,  Item item, uint8 toSlot );
-        //public delegate void CritterGetAttackDistantionEventDelegate(  Critter critter,  Item item, uint8 itemMode, uint& dist );
+        //public delegate void CritterGetAttackDistantionEventDelegate(  Critter critter,  Item item, uint8 itemMode, uint& dist );*/
 
 #elif MAPPER
         /*public delegate void StartEventDelegate();

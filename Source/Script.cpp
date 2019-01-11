@@ -19,6 +19,7 @@
 #include <mono/metadata/debug-helpers.h>
 #include <mono/dis/meta.h>
 
+static void          SetMonoInternalCalls();
 static MonoAssembly* LoadNetAssembly( const string& name );
 static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images );
 static bool          CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images );
@@ -382,6 +383,8 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     MonoDomain* domain = mono_jit_init_version( "FOnlineDomain", "v4.0.30319" );
     RUNTIME_ASSERT( domain );
 
+    SetMonoInternalCalls();
+
     if( assemblies_data )
     {
         for( auto& kv :* assemblies_data )
@@ -405,6 +408,18 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
         RUNTIME_ASSERT( ok );
     }
 
+    MonoClass*      global_events = mono_class_from_name( assembly_images[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
+    RUNTIME_ASSERT( global_events );
+    MonoMethodDesc* on_init_desc = mono_method_desc_new( ":OnInit()", FALSE );
+    RUNTIME_ASSERT( on_init_desc );
+    MonoMethod*     on_init = mono_method_desc_search_in_class( on_init_desc, global_events );
+    RUNTIME_ASSERT( on_init );
+    mono_method_desc_free( on_init_desc );
+
+    MonoObject* exc;
+    MonoObject* r = mono_runtime_invoke( on_init, NULL, NULL, &exc );
+    if( exc )
+        mono_print_unhandled_exception( exc );
     return true;
 }
 
@@ -421,6 +436,26 @@ bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec 
         assemblies_data[ kv.first ] = std::move( data );
     }
     return true;
+}
+
+static void Engine_Log( MonoString* s )
+{
+    const char* utf8 = mono_string_to_utf8( s );
+    WriteLog( "{}\n", utf8 );
+    mono_free( (void*) utf8 );
+}
+
+static void Engine_LogError( MonoString* s )
+{
+    const char* utf8 = mono_string_to_utf8( s );
+    WriteLog( "Error: {}\n", utf8 );
+    mono_free( (void*) utf8 );
+}
+
+static void SetMonoInternalCalls()
+{
+    mono_add_internal_call( "FOnlineEngine.Engine::Log", Engine_Log );
+    mono_add_internal_call( "FOnlineEngine.Engine::LogError", Engine_LogError );
 }
 
 void Script::Finish()
@@ -458,6 +493,8 @@ void Script::Finish()
         FinishContext( FreeContexts[ 0 ] );
 
     FinishEngine( Engine );     // Finish default engine
+
+    mono_jit_cleanup( mono_domain_get() );
 }
 
 void* Script::LoadDynamicLibrary( const string& dll_name )
@@ -699,7 +736,7 @@ static int SystemCall( const string& command, string& output )
 
 static MonoAssembly* LoadNetAssembly( const string& name )
 {
-    string assemblies_path = "Assemblies/" + name;
+    string assemblies_path = "Assemblies/" + name + ( _str( name ).endsWith( ".dll" ) ? "" : ".dll" );
     #ifdef FONLINE_SERVER
     assemblies_path = "Resources/Mono/" + assemblies_path;
     #endif
@@ -765,8 +802,8 @@ static bool CompileGameAssemblies( const string& target, map< string, MonoImage*
         RUNTIME_ASSERT( epos != string::npos );
         pos += _str( "<OutputPath>" ).length();
 
-        string assembly_name = name + ".dll";
-        string assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
+        string      assembly_name = name + ".dll";
+        string      assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
 
         FileManager assembly_file;
         assembly_file.LoadFile( assembly_path );

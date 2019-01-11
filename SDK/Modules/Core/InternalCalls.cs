@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace FOnlineEngine
 {
+    [NotImplemented]
     internal static class InternalCalls
     {
 #if SERVER

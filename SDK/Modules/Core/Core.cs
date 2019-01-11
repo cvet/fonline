@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace FOnlineEngine
 {
+    [AttributeUsage(AttributeTargets.All)]
+    public class NotImplementedAttribute : Attribute
+    {
+    }
+
     public struct Hash
     {
     }
 
     public static class Engine
     {
-        public static void Log(object message)
-        {
-        }
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern public static void Log(string message);
 
-        public static void LogError(object message)
-        {
-        }
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern public static void LogError(string message);
     }
 }
