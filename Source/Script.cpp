@@ -319,8 +319,10 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
 
 bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data )
 {
-    for( auto& module_path : ProjectFiles )
-        FileManager::LoadDataFile( module_path );
+    g_set_print_handler([] ( const gchar * string ) { WriteLog( "{}", string );
+                        } );
+    g_set_printerr_handler([] ( const gchar * string ) { WriteLog( "{}", string );
+                           } );
 
     mono_config_parse_memory( R"(
     <configuration>
@@ -417,10 +419,11 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     mono_method_desc_free( on_init_desc );
 
     MonoObject* exc;
-    MonoObject* r = mono_runtime_invoke( on_init, NULL, NULL, &exc );
+    MonoObject* on_init_result = mono_runtime_invoke( on_init, NULL, NULL, &exc );
     if( exc )
         mono_print_unhandled_exception( exc );
-    return true;
+
+    return !exc && *(bool*) mono_object_unbox( on_init_result );
 }
 
 bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data )
