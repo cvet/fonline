@@ -1,12 +1,14 @@
 using System;
+using System.IO;
 using System.Reflection;
 
 namespace FOnlineEngine
 {
     public static class GlobalEvents
     {
-        static void OnInit()
+        static bool OnInit()
         {
+            int errors = 0;
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 foreach (Type type in assembly.GetTypes())
@@ -19,9 +21,11 @@ namespace FOnlineEngine
                     {
                         Engine.Log("Failed to run type: " + type.Name);
                         Engine.Log(ex.ToString());
+                        errors++;
                     }
                 }
             }
+            return errors == 0;
         }
 
 #if SERVER
