@@ -1299,7 +1299,7 @@ bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uin
         if( leader_id && leader_id != cr->GetId() )
         {
             Critter* leader = CrMngr.GetCritter( leader_id );
-            if( !leader || leader->GetMapId() || leader->GetGlobalMapTripId() != cr->GetGlobalMapTripId() )
+            if( !leader || leader->GetMapId() )
                 return false;
         }
     }

@@ -208,7 +208,8 @@ try:
 		elif buildTarget == 'Android':
 			shutil.copytree(binariesPath + '/Android', gameOutputPath)
 			patchConfig(gameOutputPath + '/libs/armeabi-v7a/libFOnline.so')
-			patchConfig(gameOutputPath + '/libs/x86/libFOnline.so')
+			# No x86 build
+			# patchConfig(gameOutputPath + '/libs/x86/libFOnline.so')
 			patchFile(gameOutputPath + '/res/values/strings.xml', 'FOnline', gameName)
 			
 			# Icons
