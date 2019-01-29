@@ -12,6 +12,41 @@ EntityManager::EntityManager()
     memzero( entitiesCount, sizeof( entitiesCount ) );
 }
 
+static const char* GetEntityTypeMonoName( EntityType type )
+{
+    if( type == EntityType::Global )
+        return "Global";
+    else if( type == EntityType::Custom )
+        return "Custom";
+    #if defined ( FONLINE_SERVER )
+    else if( type == EntityType::Item )
+        return "Item";
+    else if( type == EntityType::Client )
+        return "Critter";
+    else if( type == EntityType::Npc )
+        return "Critter";
+    else if( type == EntityType::Location )
+        return "Location";
+    else if( type == EntityType::Map )
+        return "Map";
+    #endif
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    else if( type == EntityType::Item )
+        return "Item";
+    else if( type == EntityType::CritterCl )
+        return "Critter";
+    else if( type == EntityType::ItemHex )
+        return "Item";
+    else if( type == EntityType::Location )
+        return "Location";
+    else if( type == EntityType::Map )
+        return "Map";
+    #endif
+
+    RUNTIME_ASSERT( !"Unreachable place" );
+    return nullptr;
+}
+
 void EntityManager::RegisterEntity( Entity* entity )
 {
     if( !entity->Id )
@@ -42,10 +77,21 @@ void EntityManager::RegisterEntity( Entity* entity )
     auto it = allEntities.insert( std::make_pair( entity->Id, entity ) );
     RUNTIME_ASSERT( it.second );
     entitiesCount[ (int) entity->Type ]++;
+
+    entity->MonoHandle = Script::CreateMonoObject( GetEntityTypeMonoName( entity->Type ) );
+    RUNTIME_ASSERT( entity->MonoHandle );
+
+    long long_id = entity->Id;
+    Script::CallMonoObjectMethod( "Entity", "Init(long)", entity->MonoHandle, &long_id );
 }
 
 void EntityManager::UnregisterEntity( Entity* entity )
 {
+    Script::CallMonoObjectMethod( "Entity", "Destroy()", entity->MonoHandle, nullptr );
+    Script::DestroyMonoObject( entity->MonoHandle );
+
+    entity->MonoHandle = 0;
+
     auto it = allEntities.find( entity->Id );
     RUNTIME_ASSERT( it != allEntities.end() );
     allEntities.erase( it );

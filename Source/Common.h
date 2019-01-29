@@ -22,7 +22,7 @@
 #include <math.h>
 #ifndef FO_WINDOWS
 # include <errno.h>
-# include <string.h> // strerror
+# include <string.h>  // strerror
 # include <unistd.h>
 # define ERRORSTR                                 strerror( errno )
 # define ExitProcess( code )              exit( code )
@@ -161,7 +161,7 @@ inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
 }
 
 // Hex offsets
-#define MAX_HEX_OFFSET                            ( 50 ) // Must be not odd
+#define MAX_HEX_OFFSET                            ( 50 )  // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -278,70 +278,6 @@ const uchar   SELECT_ALPHA    = 100;
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();
 
-struct ClientScriptFunctions
-{
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* GetActiveScreens;
-    void* ScreenChange;
-    void* ScreenScroll;
-    void* RenderIface;
-    void* RenderMap;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* CritterIn;
-    void* CritterOut;
-    void* ItemMapIn;
-    void* ItemMapChanged;
-    void* ItemMapOut;
-    void* ItemInvAllIn;
-    void* ItemInvIn;
-    void* ItemInvChanged;
-    void* ItemInvOut;
-    void* ReceiveItems;
-    void* MapMessage;
-    void* InMessage;
-    void* OutMessage;
-    void* MessageBox;
-    void* CombatResult;
-    void* ItemCheckMove;
-    void* CritterAction;
-    void* Animation2dProcess;
-    void* Animation3dProcess;
-    void* CritterAnimation;
-    void* CritterAnimationSubstitute;
-    void* CritterAnimationFallout;
-    void* CritterCheckMoveItem;
-    void* CritterGetAttackDistantion;
-} extern ClientFunctions;
-
-struct MapperScriptFunctions
-{
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* ConsoleMessage;
-    void* RenderIface;
-    void* RenderMap;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* CritterAnimation;
-    void* CritterAnimationSubstitute;
-    void* CritterAnimationFallout;
-    void* MapLoad;
-    void* MapSave;
-    void* InspectorProperties;
-} extern MapperFunctions;
-
 #endif
 
 /************************************************************************/
@@ -357,63 +293,6 @@ extern bool AllowServerNativeCalls;
 extern bool AllowClientNativeCalls;
 
 void GetServerOptions();
-
-struct ServerScriptFunctions
-{
-    void* ResourcesGenerated;
-    void* Init;
-    void* GenerateWorld;
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* GlobalMapCritterIn;
-    void* GlobalMapCritterOut;
-
-    void* LocationInit;
-    void* LocationFinish;
-
-    void* MapInit;
-    void* MapFinish;
-    void* MapLoop;
-    void* MapCritterIn;
-    void* MapCritterOut;
-    void* MapCheckLook;
-    void* MapCheckTrapLook;
-
-    void* CritterInit;
-    void* CritterFinish;
-    void* CritterIdle;
-    void* CritterGlobalMapIdle;
-    void* CritterCheckMoveItem;
-    void* CritterMoveItem;
-    void* CritterShow;
-    void* CritterShowDist1;
-    void* CritterShowDist2;
-    void* CritterShowDist3;
-    void* CritterHide;
-    void* CritterHideDist1;
-    void* CritterHideDist2;
-    void* CritterHideDist3;
-    void* CritterShowItemOnMap;
-    void* CritterHideItemOnMap;
-    void* CritterChangeItemOnMap;
-    void* CritterMessage;
-    void* CritterTalk;
-    void* CritterBarter;
-    void* CritterGetAttackDistantion;
-    void* PlayerRegistration;
-    void* PlayerLogin;
-    void* PlayerGetAccess;
-    void* PlayerAllowCommand;
-    void* PlayerLogout;
-
-    void* ItemInit;
-    void* ItemFinish;
-    void* ItemWalk;
-    void* ItemCheckMove;
-
-    void* StaticItemWalk;
-} extern ServerFunctions;
 
 #endif
 
@@ -733,4 +612,4 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
     return size ? &vec[ pos - size ] : nullptr;
 }
 
-#endif // __COMMON__
+#endif  // __COMMON__

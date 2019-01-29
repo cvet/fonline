@@ -16,8 +16,5 @@ namespace FOnlineEngine
     {
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern public static void Log(string message);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        extern public static void LogError(string message);
     }
 }

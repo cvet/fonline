@@ -1,13 +1,17 @@
+#pragma warning disable CS0067
+
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace FOnlineEngine
 {
     public static class GlobalEvents
     {
-        static bool OnInit()
+        static bool Initialize()
         {
+            // Invoke static constructor calls
             int errors = 0;
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -29,9 +33,9 @@ namespace FOnlineEngine
         }
 
 #if SERVER
-        /*public delegate void ResourcesGeneratedEventDelegate();
+        public delegate void ResourcesGeneratedEventDelegate();
         public static event ResourcesGeneratedEventDelegate ResourcesGeneratedEvent;
-        internal static void OnResourcesGenerated()
+        internal static bool OnResourcesGeneratedEvent()
         {
             foreach (var eventDelegate in ResourcesGeneratedEvent.GetInvocationList().Cast<ResourcesGeneratedEventDelegate>())
             {
@@ -41,12 +45,13 @@ namespace FOnlineEngine
                 }
                 catch (Exception ex)
                 {
-                    Engine.LogError(ex.ToString());
+                    Engine.Log(ex.ToString());
                 }
             }
+            return true;
         }
 
-        public delegate void GenerateWorldEventDelegate();
+        /*public delegate void GenerateWorldEventDelegate();
         public delegate void StartEventDelegate();
         public delegate void FinishEventDelegate();
         public delegate void LoopEventDelegate();
@@ -60,10 +65,49 @@ namespace FOnlineEngine
         public delegate void MapCritterInEventDelegate(Map map, Critter critter);
         public delegate void MapCritterOutEventDelegate(Map map, Critter critter);
         public delegate void MapCheckLookEventDelegate(Map map, Critter critter, Critter target);
-        public delegate void MapCheckTrapLookEventDelegate(Map map, Critter critter, Item item);
-        public delegate void CritterInitEventDelegate(Critter critter, bool firstTime);
-        public delegate void CritterFinishEventDelegate(Critter critter);
-        public delegate void CritterIdleEventDelegate(Critter critter);
+        public delegate void MapCheckTrapLookEventDelegate(Map map, Critter critter, Item item);*/
+
+        public delegate void CritterInitEventDelegate(Critter cr, bool firstTime);
+        public static event CritterInitEventDelegate CritterInitEvent;
+        internal static void OnCritterInitEvent(Critter cr, bool firstTime)
+        {
+            foreach (var eventDelegate in CritterInitEvent.GetInvocationList().Cast<CritterInitEventDelegate>())
+            {
+                try
+                {
+                    if (cr.IsDestroyed)
+                        break;
+
+                    eventDelegate(cr, firstTime);
+                }
+                catch (Exception ex)
+                {
+                    Engine.Log(ex.ToString());
+                }
+            }
+        }
+
+        public delegate void CritterFinishEventDelegate(Critter cr);
+        public static event CritterFinishEventDelegate CritterFinishEvent;
+        internal static void OnCritterFinishEvent(Critter cr)
+        {
+            foreach (var eventDelegate in CritterInitEvent.GetInvocationList().Cast<CritterFinishEventDelegate>())
+            {
+                try
+                {
+                    if (cr.IsDestroyed)
+                        break;
+
+                    eventDelegate(cr);
+                }
+                catch (Exception ex)
+                {
+                    Engine.Log(ex.ToString());
+                }
+            }
+        }
+
+        /*public delegate void CritterIdleEventDelegate(Critter critter);
         public delegate void CritterGlobalMapIdleEventDelegate(Critter critter);
         public delegate void CritterCheckMoveItemEventDelegate(Critter critter, Item item, int toSlot);
         public delegate void CritterMoveItemEventDelegate(Critter critter, Item item, int fromSlot);

@@ -952,8 +952,6 @@ void GetClientOptions()
     # endif
 }
 
-ClientScriptFunctions ClientFunctions;
-MapperScriptFunctions MapperFunctions;
 #endif
 /************************************************************************/
 /*                                                                      */
@@ -973,8 +971,6 @@ void GetServerOptions()
     AllowServerNativeCalls = ( MainConfig->GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
     AllowClientNativeCalls = ( MainConfig->GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
 }
-
-ServerScriptFunctions ServerFunctions;
 
 #endif
 /************************************************************************/

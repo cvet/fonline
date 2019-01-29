@@ -471,8 +471,11 @@ bool FOServer::ReloadClientScripts()
 
     // Mono assemblies
     std::map< string, UCharVec > assemblies_data;
-    bool                         ok = Script::GetMonoAssemblies( "Client", assemblies_data );
-    RUNTIME_ASSERT( ok );
+    if( !Script::GetMonoAssemblies( "Client", assemblies_data ) )
+    {
+        WriteLog( "Can't compile client scripts.\n" );
+        return false;
+    }
 
     uint mono_assembly_index = STR_INTERNAL_SCRIPT_MONO_DLLS;
     for( auto& kv : assemblies_data )

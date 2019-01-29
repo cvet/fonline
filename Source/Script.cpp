@@ -19,6 +19,7 @@
 #include <mono/metadata/debug-helpers.h>
 #include <mono/dis/meta.h>
 
+static map< string, MonoImage* > EngineAssemblyImages;
 static void          SetMonoInternalCalls();
 static MonoAssembly* LoadNetAssembly( const string& name );
 static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images );
@@ -110,6 +111,22 @@ static Thread ScriptWatcherThread;
 static bool   ScriptWatcherFinish = false;
 static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
+#endif
+
+struct EventData
+{
+    void*       ASEvent;
+    MonoMethod* MMethod;
+};
+
+#ifdef FONLINE_SERVER
+ServerScriptFunctions ServerFunctions;
+#endif
+#ifdef FONLINE_CLIENT
+ClientScriptFunctions ClientFunctions;
+#endif
+#ifdef FONLINE_MAPPER
+MapperScriptFunctions MapperFunctions;
 #endif
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls,
@@ -373,14 +390,14 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     mono_set_dirs( "./dummy/lib", "./dummy/etc" );
     mono_set_assemblies_path( "./dummy/lib/gac" );
 
-    map< string, MonoImage* > assembly_images;
+    RUNTIME_ASSERT( EngineAssemblyImages.empty() );
     mono_install_assembly_preload_hook([] ( MonoAssemblyName * aname, char** assemblies_path, void* user_data )->MonoAssembly *
                                        {
                                            auto assembly_images = ( map< string, MonoImage* >* )user_data;
                                            if( assembly_images->count( aname->name ) )
                                                return LoadGameAssembly( aname->name, *assembly_images );
                                            return LoadNetAssembly( aname->name );
-                                       }, (void*) &assembly_images );
+                                       }, (void*) &EngineAssemblyImages );
 
     MonoDomain* domain = mono_jit_init_version( "FOnlineDomain", "v4.0.30319" );
     RUNTIME_ASSERT( domain );
@@ -395,42 +412,45 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
             MonoImage*          image = mono_image_open_from_data( (char*) &kv.second[ 0 ], (uint) kv.second.size(), TRUE, &status );
             RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
 
-            assembly_images[ kv.first ] = image;
+            EngineAssemblyImages[ kv.first ] = image;
         }
     }
     else
     {
-        bool ok = CompileGameAssemblies( dll_target, assembly_images );
+        bool ok = CompileGameAssemblies( dll_target, EngineAssemblyImages );
         RUNTIME_ASSERT( ok );
     }
 
-    for( auto& kv : assembly_images )
+    for( auto& kv : EngineAssemblyImages )
     {
-        bool ok = LoadGameAssembly( kv.first, assembly_images );
+        bool ok = LoadGameAssembly( kv.first, EngineAssemblyImages );
         RUNTIME_ASSERT( ok );
     }
 
-    MonoClass*      global_events = mono_class_from_name( assembly_images[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
-    RUNTIME_ASSERT( global_events );
-    MonoMethodDesc* on_init_desc = mono_method_desc_new( ":OnInit()", FALSE );
-    RUNTIME_ASSERT( on_init_desc );
-    MonoMethod*     on_init = mono_method_desc_search_in_class( on_init_desc, global_events );
-    RUNTIME_ASSERT( on_init );
-    mono_method_desc_free( on_init_desc );
+    MonoClass*      global_events_class = mono_class_from_name( EngineAssemblyImages[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
+    RUNTIME_ASSERT( global_events_class );
+    MonoMethodDesc* init_method_desc = mono_method_desc_new( ":Initialize()", FALSE );
+    RUNTIME_ASSERT( init_method_desc );
+    MonoMethod*     init_method = mono_method_desc_search_in_class( init_method_desc, global_events_class );
+    RUNTIME_ASSERT( init_method );
+    mono_method_desc_free( init_method_desc );
 
     MonoObject* exc;
-    MonoObject* on_init_result = mono_runtime_invoke( on_init, NULL, NULL, &exc );
+    MonoObject* init_method_result = mono_runtime_invoke( init_method, NULL, NULL, &exc );
     if( exc )
         mono_print_unhandled_exception( exc );
 
-    return !exc && *(bool*) mono_object_unbox( on_init_result );
+    if( exc || *(bool*) mono_object_unbox( init_method_result ) == false )
+        return false;
+
+    return true;
 }
 
 bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data )
 {
     map< string, MonoImage* > assembly_images;
-    bool                      ok = CompileGameAssemblies( dll_target, assembly_images );
-    RUNTIME_ASSERT( ok );
+    if( !CompileGameAssemblies( dll_target, assembly_images ) )
+        return false;
 
     for( auto& kv : assembly_images )
     {
@@ -441,6 +461,49 @@ bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec 
     return true;
 }
 
+uint Script::CreateMonoObject( const string& type_name )
+{
+    MonoImage* image = EngineAssemblyImages[ "FOnline.Core.dll" ];
+    RUNTIME_ASSERT( image );
+    MonoClass* obj_class = mono_class_from_name( image, "FOnlineEngine", type_name.c_str() );
+    RUNTIME_ASSERT( obj_class );
+
+    MonoObject* mono_obj = mono_object_new( mono_domain_get(), obj_class );
+    RUNTIME_ASSERT( mono_obj );
+    mono_runtime_object_init( mono_obj );
+
+    return mono_gchandle_new( mono_obj, TRUE );
+}
+
+void Script::CallMonoObjectMethod( const string& type_name, const string& method_name, uint obj, void* arg )
+{
+    MonoImage*      image = EngineAssemblyImages[ "FOnline.Core.dll" ];
+    RUNTIME_ASSERT( image );
+    MonoClass*      obj_class = mono_class_from_name( image, "FOnlineEngine", type_name.c_str() );
+    RUNTIME_ASSERT( obj_class );
+    MonoMethodDesc* method_desc = mono_method_desc_new( _str( ":{}", method_name ).c_str(), FALSE );
+    RUNTIME_ASSERT( method_desc );
+    MonoMethod*     method = mono_method_desc_search_in_class( method_desc, obj_class );
+    RUNTIME_ASSERT( method );
+    mono_method_desc_free( method_desc );
+
+    RUNTIME_ASSERT( obj );
+    MonoObject* mono_obj = mono_gchandle_get_target( obj );
+    RUNTIME_ASSERT( mono_obj );
+
+    MonoObject* exc;
+    void*       args[ 1 ] = { arg };
+    mono_runtime_invoke( method, mono_obj, args, &exc );
+    if( exc )
+        mono_print_unhandled_exception( exc );
+}
+
+void Script::DestroyMonoObject( uint obj )
+{
+    RUNTIME_ASSERT( obj );
+    mono_gchandle_free( obj );
+}
+
 static void Engine_Log( MonoString* s )
 {
     const char* utf8 = mono_string_to_utf8( s );
@@ -448,17 +511,9 @@ static void Engine_Log( MonoString* s )
     mono_free( (void*) utf8 );
 }
 
-static void Engine_LogError( MonoString* s )
-{
-    const char* utf8 = mono_string_to_utf8( s );
-    WriteLog( "Error: {}\n", utf8 );
-    mono_free( (void*) utf8 );
-}
-
 static void SetMonoInternalCalls()
 {
     mono_add_internal_call( "FOnlineEngine.Engine::Log", Engine_Log );
-    mono_add_internal_call( "FOnlineEngine.Engine::LogError", Engine_LogError );
 }
 
 void Script::Finish()
@@ -1265,21 +1320,70 @@ bool Script::RestoreCustomEntity( const string& type_name, uint id, const DataBa
 }
 #endif
 
-void* Script::FindInternalEvent( const string& event_name )
+EventData* Script::FindInternalEvent( const string& event_name )
 {
+    EventData* ev_data = new EventData;
+    memzero( ev_data, sizeof( EventData ) );
+
+    // AngelScript part
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    void*       result = edata->PragmaCB->FindInternalEvent( event_name );
-    RUNTIME_ASSERT( result );
-    return result;
+    void*       as_event = edata->PragmaCB->FindInternalEvent( event_name );
+    RUNTIME_ASSERT( as_event );
+    ev_data->ASEvent = as_event;
+
+    // Mono part
+    MonoClass*      global_events_class = mono_class_from_name( EngineAssemblyImages[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
+    RUNTIME_ASSERT( global_events_class );
+    string          mono_event_name = ":On" + _str( event_name ).erase( 'E', 't' ) + "Event";
+    MonoMethodDesc* init_method_desc = mono_method_desc_new( mono_event_name.c_str(), FALSE );
+    RUNTIME_ASSERT( init_method_desc );
+    MonoMethod*     init_method = mono_method_desc_search_in_class( init_method_desc, global_events_class );
+    // RUNTIME_ASSERT(init_method);
+    mono_method_desc_free( init_method_desc );
+    ev_data->MMethod = init_method;
+
+    return ev_data;
 }
 
-bool Script::RaiseInternalEvent( void* event_ptr, ... )
+bool Script::RaiseInternalEvent( EventData* ev_data, ... )
 {
+    // AngelScript part
     EngineData* edata = (EngineData*) Engine->GetUserData();
     va_list     args;
-    va_start( args, event_ptr );
-    bool        result = edata->PragmaCB->RaiseInternalEvent( event_ptr, args );
+    va_start( args, ev_data );
+    bool        result = edata->PragmaCB->RaiseInternalEvent( ev_data->ASEvent, args );
     va_end( args );
+
+    // Mono part
+    if( ev_data->MMethod )
+    {
+        void*         mono_args[ 16 ];
+        const IntVec& arg_infos = edata->PragmaCB->GetInternalEventArgInfos( ev_data->ASEvent );
+        va_start( args, ev_data );
+        for( size_t i = 0; i < arg_infos.size(); i++ )
+        {
+            int arg_info = arg_infos[ i ];
+            if( arg_info == -2 )
+                mono_args[ i ] = mono_gchandle_get_target( va_arg( args, Entity* )->MonoHandle );
+            else if( arg_info == -3 )
+                mono_args[ i ] = va_arg( args, void* );
+            else if( arg_info == 1 || arg_info == 2 || arg_info == 4 )
+                mono_args[ i ] = &va_arg( args, int );
+            else if( arg_info == 8 )
+                mono_args[ i ] = &va_arg( args, int64 );
+            else
+                RUNTIME_ASSERT( !"Unreachable place" );
+        }
+        va_end( args );
+
+        MonoObject* exc;
+        MonoObject* method_result = mono_runtime_invoke( ev_data->MMethod, nullptr, mono_args, &exc );
+        if( exc )
+            mono_print_unhandled_exception( exc );
+        if( exc || ( method_result && *(bool*) mono_object_unbox( method_result ) == false ) )
+            return false;
+    }
+
     return result;
 }
 

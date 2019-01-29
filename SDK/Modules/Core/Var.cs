@@ -151,7 +151,7 @@ namespace FOnlineEngine
                         }
                         catch (Exception ex)
                         {
-                            Engine.LogError(ex.ToString());
+                            Engine.Log(ex.ToString());
                         }
                     }
                 }

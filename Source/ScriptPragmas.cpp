@@ -966,6 +966,7 @@ public:
         bool              Deferred;
         FuncVec           Callbacks;
         ArgInfoVec        ArgInfos;
+        IntVec            ArgInfosAsInts;
         EntityFuncMulMap* EntityCallbacks;
 
         ScriptEvent()
@@ -1318,6 +1319,7 @@ public:
 
         asIScriptFunction* func_def = engine->GetFunctionById( func_def_id );
         event->ArgInfos.resize( func_def->GetParamCount() );
+        event->ArgInfosAsInts.resize( event->ArgInfos.size() );
         for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
         {
             int         type_id;
@@ -1326,9 +1328,18 @@ public:
             func_def->GetParam( i, &type_id, &flags, &name );
 
             ScriptEvent::ArgInfo& arg_info = event->ArgInfos[ i ];
+            int&                  arg_info_as_int = event->ArgInfosAsInts[ i ];
+
             arg_info.IsObject = ( type_id & asTYPEID_MASK_OBJECT ) != 0;
             arg_info.IsPodRef = ( type_id >= asTYPEID_BOOL && type_id <= asTYPEID_DOUBLE && flags & asTM_INOUTREF );
             arg_info.PodSize = engine->GetSizeOfPrimitiveType( type_id );
+
+            if( arg_info.IsObject )
+                arg_info_as_int = -1;
+            else if( arg_info.IsPodRef )
+                arg_info_as_int = -3;
+            else
+                arg_info_as_int = arg_info.PodSize;
 
             arg_info.IsObjectEntity = false;
             if( arg_info.IsObject && type_id & asTYPEID_APPOBJECT )
@@ -1344,7 +1355,10 @@ public:
                         matches++;
                 }
                 if( matches == 3 )
+                {
                     arg_info.IsObjectEntity = true;
+                    arg_info_as_int = -2;
+                }
             }
 
             if( name && name[ 0 ] )
@@ -1389,6 +1403,12 @@ public:
     bool Raise( void* event_ptr, va_list args )
     {
         return ScriptEvent::RaiseInternal( event_ptr, args );
+    }
+
+    const IntVec& GetArgInfos( void* event_ptr )
+    {
+        ScriptEvent* event = (ScriptEvent*) event_ptr;
+        return event->ArgInfosAsInts;
     }
 
     void RemoveEntity( Entity* entity )
@@ -1854,6 +1874,11 @@ void* ScriptPragmaCallback::FindInternalEvent( const string& event_name )
 bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, va_list args )
 {
     return eventPragma->Raise( event_ptr, args );
+}
+
+const IntVec& ScriptPragmaCallback::GetInternalEventArgInfos( void* event_ptr )
+{
+    return eventPragma->GetArgInfos( event_ptr );
 }
 
 void ScriptPragmaCallback::RemoveEventsEntity( Entity* entity )
