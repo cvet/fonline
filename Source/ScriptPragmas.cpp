@@ -1655,7 +1655,7 @@ public:
 
         if( func_index >= (uint) inFunc.size() )
         {
-            net_buf.SetError();
+            net_buf.SetError( true );
             return;
         }
 
@@ -1694,7 +1694,7 @@ public:
             void* value = ReadValue( buf, type_id, obj_type, is_hashes, 0, pod_buf, is_error );
             if( is_error )
             {
-                net_buf.SetError();
+                net_buf.SetError( true );
                 return;
             }
 

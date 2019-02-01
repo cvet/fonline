@@ -1752,6 +1752,8 @@ void FOClient::NetDisconnect()
     Bout.Reset();
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
+    Bin.SetError( false );
+    Bout.SetError( false );
 
     ProcessAutoLogin();
 }
