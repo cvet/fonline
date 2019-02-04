@@ -169,6 +169,7 @@ FOClient::FOClient()
     SomeItem = nullptr;
     GmapFog = nullptr;
     CanDrawInScripts = false;
+    IsAutoLogin = false;
 }
 
 bool FOClient::PreInit()
@@ -412,6 +413,9 @@ bool FOClient::PostInit()
 
 void FOClient::ProcessAutoLogin()
 {
+    if( !ClientFunctions.AutoLogin )
+        return;
+
     string auto_login = MainConfig->GetStr( "", "AutoLogin" );
 
     #ifdef FO_WEB
@@ -440,9 +444,15 @@ void FOClient::ProcessAutoLogin()
     if( auto_login_args.size() != 2 )
         return;
 
-    LoginName = auto_login_args[ 0 ];
-    LoginPassword = auto_login_args[ 1 ];
-    InitNetReason = INIT_NET_REASON_LOGIN;
+    IsAutoLogin = true;
+
+    if( !Script::RaiseInternalEvent( ClientFunctions.AutoLogin, &auto_login_args[ 0 ], &auto_login_args[ 1 ] ) ||
+        InitNetReason == INIT_NET_REASON_NONE )
+    {
+        LoginName = auto_login_args[ 0 ];
+        LoginPassword = auto_login_args[ 1 ];
+        InitNetReason = INIT_NET_REASON_LOGIN;
+    }
 }
 
 void FOClient::Finish()
@@ -5345,6 +5355,7 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( GetActiveScreens );
+    BIND_INTERNAL_EVENT( AutoLogin );
     BIND_INTERNAL_EVENT( ScreenChange );
     BIND_INTERNAL_EVENT( ScreenScroll );
     BIND_INTERNAL_EVENT( RenderIface );
@@ -5842,7 +5853,6 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
     cont->ContGetItems( items, stack_id );
     return Script::CreateArrayRef( "Item[]", items );
 }
-
 
 string FOClient::SScriptFunc::Global_CustomCall( string command, string separator )
 {

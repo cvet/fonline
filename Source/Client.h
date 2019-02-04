@@ -78,6 +78,7 @@ public:
     string     LoginName;
     string     LoginPassword;
     bool       CanDrawInScripts;
+    bool       IsAutoLogin;
 
     // Offscreen drawing
     EffectVec       OffscreenEffects;

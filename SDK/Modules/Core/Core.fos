@@ -60,6 +60,7 @@
 # pragma event "EventStart()"
 # pragma event "EventFinish()"
 # pragma event "EventLoop()"
+# pragma event "EventAutoLogin( string login, string password )"
 # pragma event "EventGetActiveScreens( int[] screens )"
 # pragma event "EventScreenChange( bool show, int screen, dictionary params )"
 # pragma event "EventScreenScroll( int offsetX, int offsetY )"

@@ -238,6 +238,11 @@ void FOClient::ShowMainScreen( int new_screen, CScriptDictionary* params /* = NU
     while( GetActiveScreen() != SCREEN_NONE )
         HideScreen( SCREEN_NONE );
 
+    if( ScreenModeMain == new_screen )
+        return;
+    if( IsAutoLogin && new_screen == SCREEN_LOGIN )
+        return;
+
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )
         RunScreenScript( false, ScreenModeMain, nullptr );

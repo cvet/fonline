@@ -283,6 +283,7 @@ struct ClientScriptFunctions
     void* Start;
     void* Finish;
     void* Loop;
+    void* AutoLogin;
     void* GetActiveScreens;
     void* ScreenChange;
     void* ScreenScroll;
