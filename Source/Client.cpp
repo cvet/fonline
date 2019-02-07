@@ -5375,6 +5375,8 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( ItemInvIn );
     BIND_INTERNAL_EVENT( ItemInvChanged );
     BIND_INTERNAL_EVENT( ItemInvOut );
+    BIND_INTERNAL_EVENT( MapLoad );
+    BIND_INTERNAL_EVENT( MapUnload );
     BIND_INTERNAL_EVENT( ReceiveItems );
     BIND_INTERNAL_EVENT( MapMessage );
     BIND_INTERNAL_EVENT( InMessage );

@@ -304,6 +304,8 @@ struct ClientScriptFunctions
     void* ItemInvIn;
     void* ItemInvChanged;
     void* ItemInvOut;
+    void* MapLoad;
+    void* MapUnload;
     void* ReceiveItems;
     void* MapMessage;
     void* InMessage;
