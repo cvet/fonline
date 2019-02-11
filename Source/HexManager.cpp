@@ -240,6 +240,7 @@ void Field::UnvalidateSpriteChain()
 
 HexManager::HexManager()
 {
+    curPidMap = 0;
     viewField = nullptr;
     isShowHex = false;
     roofSkip = 0;
