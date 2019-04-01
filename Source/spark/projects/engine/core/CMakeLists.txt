@@ -60,7 +60,7 @@ source_group(Headers FILES
 # ###############################################
 #!set(SPARK_GENERATOR "(${CMAKE_SYSTEM_NAME}@${CMAKE_GENERATOR})")
 include_directories(${SPARK_DIR}/include)
-include_directories(${SPARK_DIR}/../thirdparty/PugiXML) #!
+include_directories(${SPARK_DIR}/../thirdparty/pugi) #!
 #!link_directories(${SPARK_DIR}/lib/${SPARK_GENERATOR}/external/pugixml)
 if(${SPARK_STATIC_BUILD})
 #!	set(SPARK_OUTPUT_TYPE static)
