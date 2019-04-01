@@ -64,7 +64,7 @@
 #include <GL/gl.h>
 #endif
 
-#if defined(linux) || defined(__linux)
+#if (defined(linux) || defined(__linux)) && !(defined(ANDROID) || defined(__ANDROID__)) //! FOnline
 #define GLX_GLXEXT_PROTOTYPES
 #include <GL/glx.h>
 #endif
