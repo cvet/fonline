@@ -23,12 +23,12 @@ get_filename_component(PUGIXML_DIR ${SPARK_DIR}/../thirdparty/PugiXML/void REALP
 message(${PUGIXML_DIR})
 get_filename_component(PUGIXML_DIR ${PUGIXML_DIR} PATH)
 message(${PUGIXML_DIR})
-file(GLOB_RECURSE SRC_FILES
-	"${PUGIXML_DIR}/*.c"
-	"${PUGIXML_DIR}/*.cpp"
-	"${PUGIXML_DIR}/*.cxx"
-	"${PUGIXML_DIR}/*.h"
-	"${PUGIXML_DIR}/*.hpp"
+file(GLOB SRC_FILES
+	${PUGIXML_DIR}/*.c
+	${PUGIXML_DIR}/*.cpp
+	${PUGIXML_DIR}/*.cxx
+	${PUGIXML_DIR}/*.h
+	${PUGIXML_DIR}/*.hpp
 )
 
 
