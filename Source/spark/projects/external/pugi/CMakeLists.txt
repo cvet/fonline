@@ -18,18 +18,15 @@ project(PugiXML)
 # ###############################################
 set(SPARK_DIR ../../../spark) #!
 #!set(SPARK_GENERATOR "(${CMAKE_SYSTEM_NAME}@${CMAKE_GENERATOR})")
-message(${SPARK_DIR})
-get_filename_component(PUGIXML_DIR ${SPARK_DIR}/../thirdparty/PugiXML/void REALPATH)
-message(${PUGIXML_DIR})
+get_filename_component(PUGIXML_DIR ${SPARK_DIR}/../thirdparty/PugiXML/void REALPATH) #!
 get_filename_component(PUGIXML_DIR ${PUGIXML_DIR} PATH)
-message(${PUGIXML_DIR})
-file(GLOB SRC_FILES
-	${PUGIXML_DIR}/*.c
-	${PUGIXML_DIR}/*.cpp
-	${PUGIXML_DIR}/*.cxx
-	${PUGIXML_DIR}/*.h
-	${PUGIXML_DIR}/*.hpp
+set(SRC_FILES
+	${PUGIXML_DIR}/pugixml.cpp
+	${PUGIXML_DIR}/pugixml.hpp
+	${PUGIXML_DIR}/pugiconfig.hpp
 )
+message("pugiDir=${PUGIXML_DIR}")
+message("pugiSrc=${SRC_FILES}")
 
 
 
