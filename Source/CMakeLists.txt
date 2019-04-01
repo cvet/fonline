@@ -398,6 +398,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "${CMAKE_BINARY_DIR}/openssl/ssl" )
 endif()
 
+# SPARK particle engine
 set( SPARK_STATIC_BUILD ON CACHE BOOL "" FORCE )
 set( SparkLibs "SPARK_Core" "SPARK_OpenGL" "PugiXML" )
 add_subdirectory( "spark/projects/engine/core" )
