@@ -18,14 +18,17 @@ project(PugiXML)
 # ###############################################
 set(SPARK_DIR ../../../spark) #!
 #!set(SPARK_GENERATOR "(${CMAKE_SYSTEM_NAME}@${CMAKE_GENERATOR})")
+message(${SPARK_DIR})
 get_filename_component(SPARK_DIR ${SPARK_DIR}/void REALPATH)
+message(${SPARK_DIR})
 get_filename_component(SPARK_DIR ${SPARK_DIR} PATH)
+message(${SPARK_DIR})
 file(GLOB_RECURSE SRC_FILES
-	${SPARK_DIR}/../thirdparty/PugiXML/*.c #!
-	${SPARK_DIR}/../thirdparty/PugiXML/*.cpp #!
-	${SPARK_DIR}/../thirdparty/PugiXML/*.cxx #!
-	${SPARK_DIR}/../thirdparty/PugiXML/*.h #!
-	${SPARK_DIR}/../thirdparty/PugiXML/*.hpp #!
+	"${SPARK_DIR}/../thirdparty/PugiXML/*.c"
+	"${SPARK_DIR}/../thirdparty/PugiXML/*.cpp"
+	"${SPARK_DIR}/../thirdparty/PugiXML/*.cxx"
+	"${SPARK_DIR}/../thirdparty/PugiXML/*.h"
+	"${SPARK_DIR}/../thirdparty/PugiXML/*.hpp"
 )
 
 
