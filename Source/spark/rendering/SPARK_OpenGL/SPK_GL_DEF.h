@@ -47,7 +47,16 @@
 #include <windows.h>
 #endif
 
-#if defined(__APPLE__)
+#if (defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE == 1) || (defined(ANDROID) || defined(__ANDROID__)) || defined(__EMSCRIPTEN__) //! FOnline
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE == 1
+#include <OpenGLES/ES2/gl.h>
+#include <OpenGLES/ES2/glext.h>
+#else
+#include <GLES2/gl2platform.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#endif
+#elif defined(__APPLE__)
 #include <OpenGL/gl.h>
 #elif defined(macintosh)
 #include <gl.h>
