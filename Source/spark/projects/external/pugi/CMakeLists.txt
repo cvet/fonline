@@ -18,7 +18,7 @@ project(PugiXML)
 # ###############################################
 set(SPARK_DIR ../../../spark) #!
 #!set(SPARK_GENERATOR "(${CMAKE_SYSTEM_NAME}@${CMAKE_GENERATOR})")
-message(${PUGIXML_DIR})
+message(${SPARK_DIR})
 get_filename_component(PUGIXML_DIR ${SPARK_DIR}/../thirdparty/PugiXML/void REALPATH)
 message(${PUGIXML_DIR})
 get_filename_component(PUGIXML_DIR ${PUGIXML_DIR} PATH)
