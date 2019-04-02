@@ -12,7 +12,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(SPARK_Core)
 set(SPARK_STATIC_BUILD OFF CACHE BOOL "Store whether SPARK is built as a static library (ON) or a dynamic one OFF)")
-
+add_definitions("-DSPK_NO_XML") #!
 
 
 # Sources
@@ -60,7 +60,7 @@ source_group(Headers FILES
 # ###############################################
 #!set(SPARK_GENERATOR "(${CMAKE_SYSTEM_NAME}@${CMAKE_GENERATOR})")
 include_directories(${SPARK_DIR}/include)
-include_directories(${SPARK_DIR}/../thirdparty/pugi) #!
+#!include_directories(${SPARK_DIR}/../thirdparty/pugi)
 #!link_directories(${SPARK_DIR}/lib/${SPARK_GENERATOR}/external/pugixml)
 if(${SPARK_STATIC_BUILD})
 #!	set(SPARK_OUTPUT_TYPE static)
@@ -73,7 +73,7 @@ endif()
 if(MSVC)
 	set_target_properties(SPARK_Core PROPERTIES COMPILE_FLAGS "/fp:fast")
 endif()
-target_link_libraries(SPARK_Core PugiXML)
+#!target_link_libraries(SPARK_Core PugiXML)
 #!set_target_properties(SPARK_Core PROPERTIES
 #!	OUTPUT_NAME SPARK
 #!	DEBUG_POSTFIX _debug

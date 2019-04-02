@@ -400,10 +400,7 @@ endif()
 
 # SPARK particle engine
 set( SPARK_STATIC_BUILD ON CACHE BOOL "" FORCE )
-set( SparkLibs "SPARK_Core" "SPARK_OpenGL" "PugiXML" )
 add_subdirectory( "spark/projects/engine/core" )
-add_subdirectory( "spark/projects/engine/ogl" )
-add_subdirectory( "spark/projects/external/pugi" )
 include_directories( "${CMAKE_BINARY_DIR}/spark/include" )
 
 set( COMMON_SOURCE
@@ -551,7 +548,7 @@ else()
 	set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CLIENT_OUTPUT} )
 endif()
 set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${RENDER_LIBS}" "${SparkLibs}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${RENDER_LIBS}" "SPARK_Core" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
@@ -569,7 +566,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
 	set_target_properties( Mapper PROPERTIES ${RO0} ${MAPPER_OUTPUT} ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 	set_target_properties( Mapper PROPERTIES OUTPUT_NAME "Mapper${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${SparkLibs}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "SPARK_Core" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 	set_target_properties( ASCompiler PROPERTIES ${RO0} ${ASCOMPILER_OUTPUT} ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
@@ -578,5 +575,5 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ipc ssl crypto ${SparkLibs} PROPERTY FOLDER "Libraries")
+	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ipc ssl crypto SPARK_Core PROPERTY FOLDER "Libraries")
 endif()
