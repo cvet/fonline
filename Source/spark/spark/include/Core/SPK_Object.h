@@ -286,7 +286,7 @@ namespace SPK
 
 		std::map<SPKObject*,SPKObject*>::const_iterator it = copyBuffer->find(ref.get());
 		if (it != copyBuffer->end())
-			return dynamic_cast<T*>(it->second);
+			return (T*) it->second; //! FOnline dynamic_cast<T*>(it->second);
 
 		ref->copyBuffer = copyBuffer; // Sets the copyBuffer of the child to the copyBuffer of the parent
         Ref<SPKObject> clone = staticCast<SPKObject>(ref)->clone();
