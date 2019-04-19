@@ -5849,3 +5849,26 @@ void FOMapper::SScriptFunc::Global_PopDrawScissor()
 {
     SprMngr.PopScissor();
 }
+
+void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
+{
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    gen->SetReturnByte( 0 );
+    RUNTIME_ASSERT( ref );
+
+    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    if( !prop )
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
+
+    string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
+    if( result != "" )
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
+}

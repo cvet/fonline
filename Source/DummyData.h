@@ -418,7 +418,6 @@ struct BindClass
     static void DataVal_Index() {}
 
     static void Global_GetTime()                                       {}
-    static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
     static void Global_AddPropertySetCallback( asIScriptGeneric* gen ) {}
     static void Global_GetGlobalMapRelief()                            {}
     #endif
@@ -533,6 +532,7 @@ struct BindClass
     static void Global_GetProtoItem()  {}
     static void Global_GetDistantion() {}
     static void Global_GetUnixTime()   {}
+    static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
 };
 
 #ifdef BIND_CLIENT

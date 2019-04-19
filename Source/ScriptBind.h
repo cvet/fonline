@@ -487,7 +487,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", SCRIPT_FUNC( BIND_CLASS Global_GetFullSecond ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTime(uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)", SCRIPT_FUNC( BIND_CLASS Global_GetTime ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)", SCRIPT_FUNC( BIND_CLASS Global_GetGameTime ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, ?&in func)", asFUNCTION( BIND_CLASS Global_SetPropertyGetCallback ), asCALL_GENERIC ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)", asFUNCTION( BIND_CLASS Global_AddPropertySetCallback ), asCALL_GENERIC ) );
 
     BIND_ASSERT( engine->RegisterGlobalProperty( "const uint __FullSecond", &GameOpt.FullSecond ) );
@@ -786,6 +785,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string dataFileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadDataFile ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", SCRIPT_FUNC( BIND_CLASS Global_AllowSlot ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, ?&in func)", asFUNCTION( BIND_CLASS Global_SetPropertyGetCallback ), asCALL_GENERIC ) );
 
     // Invoker
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );
