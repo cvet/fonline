@@ -5850,7 +5850,7 @@ void FOMapper::SScriptFunc::Global_PopDrawScissor()
     SprMngr.PopScissor();
 }
 
-void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
+void FOMapper::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
 {
     int   prop_enum_value = gen->GetArgDWord( 0 );
     void* ref = gen->GetArgAddress( 1 );
