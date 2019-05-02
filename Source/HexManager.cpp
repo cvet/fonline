@@ -308,13 +308,13 @@ bool HexManager::Init()
 {
     WriteLog( "Hex field initialization...\n" );
 
-    rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
+    rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, Effect::FlushMap );
 
     rtScreenOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
     rtScreenOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
-    rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
+    rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, Effect::FlushLight );
     #ifdef FONLINE_CLIENT
-    rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
+    rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, Effect::FlushFog );
     #endif
 
     isShowTrack = false;

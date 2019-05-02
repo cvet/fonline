@@ -4665,7 +4665,7 @@ void FOClient::PlayVideo()
     CurVideo->Context = th_decode_alloc( &CurVideo->VideoInfo, CurVideo->SetupInfo );
 
     // Create texture
-    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height, true );
+    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height );
     if( !CurVideo->RT )
     {
         WriteLog( "Can't create render target.\n" );
@@ -7495,7 +7495,7 @@ void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
 
     if( Self->OffscreenSurfaces.empty() )
     {
-        RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false );
+        RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, true, 0, 0 );
         if( !rt )
             SCRIPT_ERROR_R( "Can't create offscreen surface." );
 

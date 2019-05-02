@@ -360,9 +360,9 @@ bool SpriteManager::Init()
         ( *it ) = nullptr;
 
     // Render targets
-    rtMain = CreateRenderTarget( false, false, true, 0, 0, true );
-    rtContours = CreateRenderTarget( false, false, true, 0, 0, false );
-    rtContoursMid = CreateRenderTarget( false, false, true, 0, 0, false );
+    rtMain = CreateRenderTarget( false, false, true, 0, 0 );
+    rtContours = CreateRenderTarget( false, false, true, 0, 0 );
+    rtContoursMid = CreateRenderTarget( false, false, true, 0, 0 );
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
@@ -521,7 +521,7 @@ void SpriteManager::OnResolutionChanged()
     {
         RenderTarget* rt = *it;
         if( rt->ScreenSize )
-            CreateRenderTarget( rt->DepthBuffer != 0, rt->Multisampling, rt->ScreenSize, rt->Width, rt->Height, rt->TexLinear, rt->DrawEffect, rt );
+            CreateRenderTarget( rt->DepthBuffer != 0, rt->Multisampling, rt->ScreenSize, rt->Width, rt->Height, rt->DrawEffect, rt );
     }
 
     RefreshViewport();
@@ -537,7 +537,7 @@ void SpriteManager::SetAlwaysOnTop( bool enable )
     #endif
 }
 
-RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect /* = NULL */, RenderTarget* rt_refresh /* = NULL */ )
+RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling, bool screen_size, uint width, uint height, Effect* effect /* = NULL */, RenderTarget* rt_refresh /* = NULL */ )
 {
     // Flush current sprites
     Flush();
@@ -612,10 +612,15 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
     if( !multisampling )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+
+        GL( glGenerateMipmap( GL_TEXTURE_2D ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
+
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE ) );
+
         GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr ) );
         if( GL_HAS( framebuffer_object ) )
         {
@@ -641,7 +646,6 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
         }
     }
     rt->TargetTexture = tex;
-    rt->TexLinear = tex_linear;
 
     // Depth
     if( depth )
@@ -963,7 +967,7 @@ RenderTarget* SpriteManager::Get3dRenderTarget( uint width, uint height )
         if( rt->TargetTexture->Width == width && rt->TargetTexture->Height == height )
             return rt;
     }
-    rt3D.push_back( CreateRenderTarget( true, true, false, width, height, false ) );
+    rt3D.push_back( CreateRenderTarget( true, true, false, width, height ) );
     return rt3D.back();
 }
 
@@ -1182,7 +1186,7 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
         h = atlasHeight;
     }
 
-    atlas->RT = CreateRenderTarget( false, false, false, w, h, true );
+    atlas->RT = CreateRenderTarget( false, false, false, w, h );
     atlas->RT->LastPixelPicks = new UIntPairVec();
     atlas->RT->LastPixelPicks->reserve( MAX_STORED_PIXEL_PICKS );
     atlas->TextureOwner = atlas->RT->TargetTexture;

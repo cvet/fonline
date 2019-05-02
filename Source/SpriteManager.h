@@ -126,7 +126,7 @@ public:
     void SetAlwaysOnTop( bool enable );
 
     // Render targets
-    RenderTarget* CreateRenderTarget( bool depth, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );
+    RenderTarget* CreateRenderTarget( bool depth, bool multisampling, bool screen_size, uint width, uint height, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );
     void          CleanRenderTarget( RenderTarget* rt );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );
