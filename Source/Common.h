@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                           ( 832 )
+#define FONLINE_VERSION                           ( 840 )
 
 // Debugging
 // #define DEV_VERSION
@@ -283,6 +283,7 @@ struct ClientScriptFunctions
     void* Start;
     void* Finish;
     void* Loop;
+    void* AutoLogin;
     void* GetActiveScreens;
     void* ScreenChange;
     void* ScreenScroll;
@@ -303,6 +304,8 @@ struct ClientScriptFunctions
     void* ItemInvIn;
     void* ItemInvChanged;
     void* ItemInvOut;
+    void* MapLoad;
+    void* MapUnload;
     void* ReceiveItems;
     void* MapMessage;
     void* InMessage;

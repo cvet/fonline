@@ -5677,6 +5677,10 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
     if( !map_spr )
         SCRIPT_ERROR_R( "Map sprite arg is null." );
 
+    if( !Self->HexMngr.IsMapLoaded() )
+        return;
+    if( map_spr->HexX >= Self->HexMngr.GetWidth() || map_spr->HexY >= Self->HexMngr.GetHeight() )
+        return;
     if( !Self->HexMngr.IsHexToDraw( map_spr->HexX, map_spr->HexY ) )
         return;
 

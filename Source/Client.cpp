@@ -169,6 +169,7 @@ FOClient::FOClient()
     SomeItem = nullptr;
     GmapFog = nullptr;
     CanDrawInScripts = false;
+    IsAutoLogin = false;
 }
 
 bool FOClient::PreInit()
@@ -403,8 +404,55 @@ bool FOClient::PostInit()
     LookBorders.clear();
     ShootBorders.clear();
 
+    // Auto login
+    ProcessAutoLogin();
+
     WriteLog( "Engine initialization complete.\n" );
     return true;
+}
+
+void FOClient::ProcessAutoLogin()
+{
+    if( !ClientFunctions.AutoLogin )
+        return;
+
+    string auto_login = MainConfig->GetStr( "", "AutoLogin" );
+
+    #ifdef FO_WEB
+    char* auto_login_web = (char*) EM_ASM_INT( {
+                                                   if( 'foAutoLogin' in Module )
+                                                   {
+                                                       var len = lengthBytesUTF8( Module.foAutoLogin ) + 1;
+                                                       var str = _malloc( len );
+                                                       stringToUTF8( Module.foAutoLogin, str, len + 1 );
+                                                       return str;
+                                                   }
+                                                   return null;
+                                               } );
+    if( auto_login_web )
+    {
+        auto_login = auto_login_web;
+        free( auto_login_web );
+        auto_login_web = nullptr;
+    }
+    #endif
+
+    if( auto_login.empty() )
+        return;
+
+    StrVec auto_login_args = _str( auto_login ).split( ' ' );
+    if( auto_login_args.size() != 2 )
+        return;
+
+    IsAutoLogin = true;
+
+    if( !Script::RaiseInternalEvent( ClientFunctions.AutoLogin, &auto_login_args[ 0 ], &auto_login_args[ 1 ] ) ||
+        InitNetReason == INIT_NET_REASON_NONE )
+    {
+        LoginName = auto_login_args[ 0 ];
+        LoginPassword = auto_login_args[ 1 ];
+        InitNetReason = INIT_NET_REASON_LOGIN;
+    }
 }
 
 void FOClient::Finish()
@@ -1714,6 +1762,10 @@ void FOClient::NetDisconnect()
     Bout.Reset();
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
+    Bin.SetError( false );
+    Bout.SetError( false );
+
+    ProcessAutoLogin();
 }
 
 void FOClient::ParseSocket()
@@ -5303,6 +5355,7 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( GetActiveScreens );
+    BIND_INTERNAL_EVENT( AutoLogin );
     BIND_INTERNAL_EVENT( ScreenChange );
     BIND_INTERNAL_EVENT( ScreenScroll );
     BIND_INTERNAL_EVENT( RenderIface );
@@ -5322,6 +5375,8 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( ItemInvIn );
     BIND_INTERNAL_EVENT( ItemInvChanged );
     BIND_INTERNAL_EVENT( ItemInvOut );
+    BIND_INTERNAL_EVENT( MapLoad );
+    BIND_INTERNAL_EVENT( MapUnload );
     BIND_INTERNAL_EVENT( ReceiveItems );
     BIND_INTERNAL_EVENT( MapMessage );
     BIND_INTERNAL_EVENT( InMessage );
@@ -5800,7 +5855,6 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
     cont->ContGetItems( items, stack_id );
     return Script::CreateArrayRef( "Item[]", items );
 }
-
 
 string FOClient::SScriptFunc::Global_CustomCall( string command, string separator )
 {
@@ -7259,6 +7313,10 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
     if( !map_spr )
         SCRIPT_ERROR_R( "Map sprite arg is null." );
 
+    if( !Self->HexMngr.IsMapLoaded() )
+        return;
+    if( map_spr->HexX >= Self->HexMngr.GetWidth() || map_spr->HexY >= Self->HexMngr.GetHeight() )
+        return;
     if( !Self->HexMngr.IsHexToDraw( map_spr->HexX, map_spr->HexY ) )
         return;
 

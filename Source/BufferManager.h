@@ -48,7 +48,7 @@ public:
     uint   GetEndPos()           { return bufEndPos; }
     void   MoveReadPos( int val );
     bool   IsError()               { return isError; }
-    void   SetError()              { isError = true; }
+    void   SetError( bool value )  { isError = value; }
     bool   IsEmpty()               { return bufReadPos >= bufEndPos; }
     bool   IsHaveSize( uint size ) { return bufReadPos + size <= bufEndPos; }
     bool   NeedProcess();

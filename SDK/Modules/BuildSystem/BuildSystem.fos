@@ -29,8 +29,8 @@ int BuildTarget( string target, string gameName, string sdkPath, string jdkPath,
 {
     Log( "Build " + target + " distributives." );
 
-    string scriptCommand = "python -u \"" + sdkPath + "/Modules/BuildSystem/PyBuild.py\" " + gameName +
-                           " \"" + sdkPath + "/Binaries/Client\" ./Update ../FOnline.cfg ../Client " +
+    string scriptCommand = "python -u \"" + sdkPath + "/Modules/BuildSystem/PyBuild.py\" \"" + gameName +
+                           "\" \"" + sdkPath + "/Binaries/Client\" ./Update ../FOnline.cfg ../Client " +
                            "\"" + jdkPath + "\" \"" + androidSdkPath + "\" \"" + emscriptenPath + "\" ";
 
     string output = "";

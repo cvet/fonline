@@ -1,5 +1,5 @@
 # This Dockerfile is used to build an image containing basic stuff to be used as a Jenkins slave build node.
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER Oleg Gumbar <brigthside@fonline-status.ru>
 LABEL Description="This image is for building FOnline SDK inside a container"
 
@@ -13,8 +13,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # RUN apt-get -qq update && apt-get -qqy dist-upgrade
 
 # Install dependencies
-RUN apt-get -qq update && apt-get install -y default-jdk git openssh-client bash unzip curl python2.7 nodejs default-jre git-core wget lftp cmake wput ant \
-  build-essential cmake gcc-multilib g++-multilib freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libxi-dev libsdl2-dev
+RUN apt-get -qq update && apt-get install -y default-jdk git openssh-client bash unzip curl python-minimal nodejs default-jre git-core wget lftp cmake ant \
+  build-essential cmake freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libsdl2-dev
 
 # Install i386 dependencies
 #RUN apt-get install -y freeglut3-dev:i386 libssl-dev:i386 libevent-dev:i386 libx11-dev:i386 libxi-dev:i386 libxmu-dev:i386 \

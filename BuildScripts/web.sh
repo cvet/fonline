@@ -5,7 +5,7 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
-export EMSCRIPTEN_VERSION="sdk-1.38.15-64bit"
+export EMSCRIPTEN_VERSION="sdk-1.38.24-64bit"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y update || true

@@ -163,7 +163,7 @@ void FOClient::FormatTags( string& text, CritterCl* player, CritterCl* npc, cons
                 size_t pos = lexems.find( lex );
                 if( pos != string::npos )
                 {
-                    pos += lex.length() + 1;
+                    pos += lex.length();
                     tag = _str( lexems.substr( pos ) ).substringUntil( '$' ).trim();
                 }
                 else
@@ -174,6 +174,7 @@ void FOClient::FormatTags( string& text, CritterCl* player, CritterCl* npc, cons
             // Msg text
             else if( tag.length() > 4 && tag[ 0 ] == 'm' && tag[ 1 ] == 's' && tag[ 2 ] == 'g' && tag[ 3 ] == ' ' )
             {
+                tag = tag.substr( 4 );
                 tag = _str( tag ).erase( '(' ).erase( ')' );
                 istringstream itag( tag );
                 string        msg_type_name;
@@ -236,6 +237,11 @@ void FOClient::ShowMainScreen( int new_screen, CScriptDictionary* params /* = NU
 {
     while( GetActiveScreen() != SCREEN_NONE )
         HideScreen( SCREEN_NONE );
+
+    if( ScreenModeMain == new_screen )
+        return;
+    if( IsAutoLogin && new_screen == SCREEN_LOGIN )
+        return;
 
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )

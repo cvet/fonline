@@ -55,6 +55,7 @@ public:
     FOClient();
     bool PreInit();
     bool PostInit();
+    void ProcessAutoLogin();
     void Finish(); // Not used
     void Restart();
     void UpdateBinary();
@@ -77,6 +78,7 @@ public:
     string     LoginName;
     string     LoginPassword;
     bool       CanDrawInScripts;
+    bool       IsAutoLogin;
 
     // Offscreen drawing
     EffectVec       OffscreenEffects;

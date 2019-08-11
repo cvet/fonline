@@ -240,6 +240,7 @@ void Field::UnvalidateSpriteChain()
 
 HexManager::HexManager()
 {
+    curPidMap = 0;
     viewField = nullptr;
     isShowHex = false;
     roofSkip = 0;
@@ -4063,6 +4064,11 @@ bool HexManager::LoadMap( hash map_pid )
     curMapTime = -1;
     AutoScroll.Active = false;
     WriteLog( "Load map success.\n" );
+
+    #ifdef FONLINE_CLIENT
+    Script::RaiseInternalEvent( ClientFunctions.MapLoad );
+    #endif
+
     return true;
 }
 
@@ -4072,6 +4078,10 @@ void HexManager::UnloadMap()
         return;
 
     WriteLog( "Unload map.\n" );
+
+    #ifdef FONLINE_CLIENT
+    Script::RaiseInternalEvent( ClientFunctions.MapUnload );
+    #endif
 
     curPidMap = 0;
     curMapTime = -1;

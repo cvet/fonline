@@ -1472,9 +1472,21 @@ void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( !cl->IsPlayer() )
         SCRIPT_ERROR_R( "Critter is not player." );
+
     Client* cl_ = (Client*) cl;
     if( cl_->IsOnline() )
         cl_->Disconnect();
+}
+
+bool FOServer::SScriptFunc::Cl_IsOnline( Critter* cl )
+{
+    if( cl->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !cl->IsPlayer() )
+        SCRIPT_ERROR_R0( "Critter is not player." );
+
+    Client* cl_ = (Client*) cl;
+    return cl_->IsOnline();
 }
 
 bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func )

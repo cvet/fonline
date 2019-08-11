@@ -2,6 +2,9 @@
 <!-- This should be changed to the name of your project -->
 <project name="SDLActivity" default="help">
 
+    <property name="java.target" value="1.7" />
+    <property name="java.source" value="1.7" />
+
     <!-- The local.properties file is created and updated by the 'android' tool.
          It contains the path to the SDK. It should *NOT* be checked into
          Version Control Systems. -->
