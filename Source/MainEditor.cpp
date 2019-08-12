@@ -1,32 +1,28 @@
 #include "Common.h"
 #include "Mapper.h"
 #include "Exception.h"
-#include "wx/wx.h"
+#include "imgui/imgui.h"
 
-class FOnlineEditor: public wxApp
+extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-public:
-    virtual bool OnInit() override
-    {
-        InitialSetup( argc, argv );
+    ImGuiIO& io = ImGui::GetIO();
 
-        // Threading
-        Thread::SetCurrentName( "GUI" );
+    InitialSetup( argc, argv );
 
-        // Exceptions
-        CatchExceptions( "FOnlineEditor", FONLINE_VERSION );
+    // Threading
+    Thread::SetCurrentName( "GUI" );
 
-        // Timer
-        Timer::Init();
+    // Exceptions
+    CatchExceptions( "FOnlineEditor", FONLINE_VERSION );
 
-        // Logging
-        LogToFile( "FOnlineEditor.log" );
+    // Timer
+    Timer::Init();
 
-        // Options
-        GetClientOptions();
+    // Logging
+    LogToFile( "FOnlineEditor.log" );
 
-        return true;
-    }
-};
+    // Options
+    GetClientOptions();
 
-wxIMPLEMENT_APP( FOnlineEditor );
+    return 0;
+}

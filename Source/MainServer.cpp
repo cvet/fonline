@@ -5,10 +5,11 @@
 #include "BufferManager.h"
 #include "FlexRect.h"
 #include <locale.h>
-#include "wx/wx.h"
 #ifndef FO_WINDOWS
 # include <signal.h>
 #endif
+#include "imgui/imgui.h"
+#include "SDL.h"
 
 static void InitAdminManager();
 
@@ -58,248 +59,245 @@ static int  GUIMessageExit = 1;
 static void ServiceMain( bool as_service );
 # endif
 
-class FOnlineServer: public wxApp
+extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    virtual bool OnInit() override
+    ImGuiIO& io = ImGui::GetIO();
+
+    InitialSetup( argc, argv );
+
+    // Threading
+    Thread::SetCurrentName( "GUI" );
+
+    // Disable SIGPIPE signal
+    # ifndef FO_WINDOWS
+    signal( SIGPIPE, SIG_IGN );
+    # endif
+
+    // Exceptions catcher
+    CatchExceptions( "FOnlineServer", FONLINE_VERSION );
+
+    // Timer
+    Timer::Init();
+
+    // Memory debugging
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
+    if( MemoryDebugLevel >= 3 )
+        Debugger::StartTraceMemory();
+
+    // Service
+    if( MainConfig->IsKey( "", "Service" ) )
     {
-        InitialSetup( argc, argv );
-
-        // Threading
-        Thread::SetCurrentName( "GUI" );
-
-        // Disable SIGPIPE signal
-        # ifndef FO_WINDOWS
-        signal( SIGPIPE, SIG_IGN );
+        # ifdef FO_WINDOWS
+        ServiceMain( MainConfig->IsKey( "", "StartService" ) );
         # endif
-
-        // Exceptions catcher
-        CatchExceptions( "FOnlineServer", FONLINE_VERSION );
-
-        // Timer
-        Timer::Init();
-
-        // Memory debugging
-        MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
-        if( MemoryDebugLevel >= 3 )
-            Debugger::StartTraceMemory();
-
-        // Service
-        if( MainConfig->IsKey( "", "Service" ) )
-        {
-            # ifdef FO_WINDOWS
-            ServiceMain( MainConfig->IsKey( "", "StartService" ) );
-            # endif
-            return 0;
-        }
-
-        LogToFile( "FOnlineServer.log" );
-        LogToBuffer( true );
-
-        FOQuit = true;
-
-        InitControls();
-
-        /*if( GuiWindow )
-           {
-                LogToBuffer( true );
-                GuiCBtnAutoUpdate->value( 0 );
-           }
-
-           WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
-
-           // Autostart
-           if( !MainConfig->IsKey( "", "NoStart" ) )
-           {
-                if( GuiWindow )
-                {
-                        GuiBtnStartStop->do_callback();
-                }
-                else
-                {
-                        FOQuit = false;
-                        LoopThread.Start( GameLoopThread, "Main" );
-                }
-           }
-
-           // Start admin manager
-           InitAdminManager();
-
-           // Loop
-           if( GuiWindow )
-           {
-                GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
-                while( Fl::wait() )
-                {
-                        int* msg = (int*) Fl::thread_message();
-                        if( msg == &GUIMessageUpdate )
-                        {
-                                UpdateLog();
-                                UpdateInfo();
-                                CheckTextBoxSize( false );
-                        }
-                        else if( msg == &GUIMessageExit )
-                        {
-                                // Disable buttons
-                                GuiBtnRlClScript->deactivate();
-                                GuiBtnPlayers->deactivate();
-                                GuiBtnLocsMaps->deactivate();
-                                GuiBtnDeferredCalls->deactivate();
-                                GuiBtnProperties->deactivate();
-                                GuiBtnItemsCount->deactivate();
-                                GuiBtnProfiler->deactivate();
-                                GuiBtnSaveInfo->deactivate();
-                                break;
-                        }
-                }
-                Fl::unlock();
-           }
-           else
-           {
-                while( !FOQuit )
-                        Thread_Sleep( 100 );
-           }*/
-
         return 0;
     }
 
-    void InitControls()
-    {
-        // Setup
-        /*struct
-           {
-                int  FontType;
-                int  FontSize;
+    LogToFile( "FOnlineServer.log" );
+    LogToBuffer( true );
 
-                void Setup(Fl_Box* widget)
-                {
-                        widget->labelfont(FontType);
-                        widget->labelsize(FontSize);
-                        widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-                        widget->box(FL_NO_BOX);
-                        widget->label(new char[GUI_LABEL_BUF_SIZE]);
-           *(char*)widget->label() = 0;
-                }
+    FOQuit = true;
 
-                void Setup(Fl_Button* widget)
-                {
-                        widget->labelfont(FontType);
-                        widget->labelsize(FontSize);
-                        widget->callback(GUICallback);
-                }
+    //InitControls();
 
-                void Setup(Fl_Check_Button* widget)
-                {
-                        widget->labelfont(FontType);
-                        widget->labelsize(FontSize);
-                        widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-                        widget->callback(GUICallback);
-                }
+    /*if( GuiWindow )
+       {
+            LogToBuffer( true );
+            GuiCBtnAutoUpdate->value( 0 );
+       }
 
-                void Setup(Fl_Text_Display* widget)
-                {
-                        widget->labelfont(FontType);
-                        widget->labelsize(FontSize);
-                        widget->buffer(new Fl_Text_Buffer());
-                        widget->textfont(FontType);
-                        widget->textsize(FontSize);
-                }
-           } GUISetup;
+       WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
-           GUISizeMod = MainConfig->GetInt("", "GUISize", 0);
-           GUISetup.FontType = FL_COURIER;
-           GUISetup.FontSize = 11;
+       // Autostart
+       if( !MainConfig->IsKey( "", "NoStart" ) )
+       {
+            if( GuiWindow )
+            {
+                    GuiBtnStartStop->do_callback();
+            }
+            else
+            {
+                    FOQuit = false;
+                    LoopThread.Start( GameLoopThread, "Main" );
+            }
+       }
 
-           // Main window
-           int wx = MainConfig->GetInt("", "PositionX", 0);
-           int wy = MainConfig->GetInt("", "PositionY", 0);
-           if (!wx && !wy)
-                wx = (Fl::w() - GUI_SIZE1(496)) / 2, wy = (Fl::h() - GUI_SIZE1(412)) / 2;
-           GuiWindow = new Fl_Window(wx, wy, GUI_SIZE2(496, 412), "FOnline Server");
-           GuiWindow->labelfont(GUISetup.FontType);
-           GuiWindow->labelsize(GUISetup.FontSize);
-           GuiWindow->callback(GUICallback);
-           GuiWindow->size_range(GUI_SIZE2(129, 129));
+       // Start admin manager
+       InitAdminManager();
 
-           // Name
-           GuiWindow->label(MainConfig->GetStr("", "WindowName", "FOnline").c_str());
+       // Loop
+       if( GuiWindow )
+       {
+            GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
+            while( Fl::wait() )
+            {
+                    int* msg = (int*) Fl::thread_message();
+                    if( msg == &GUIMessageUpdate )
+                    {
+                            UpdateLog();
+                            UpdateInfo();
+                            CheckTextBoxSize( false );
+                    }
+                    else if( msg == &GUIMessageExit )
+                    {
+                            // Disable buttons
+                            GuiBtnRlClScript->deactivate();
+                            GuiBtnPlayers->deactivate();
+                            GuiBtnLocsMaps->deactivate();
+                            GuiBtnDeferredCalls->deactivate();
+                            GuiBtnProperties->deactivate();
+                            GuiBtnItemsCount->deactivate();
+                            GuiBtnProfiler->deactivate();
+                            GuiBtnSaveInfo->deactivate();
+                            break;
+                    }
+            }
+            Fl::unlock();
+       }
+       else
+       {
+            while( !FOQuit )
+                    Thread_Sleep( 100 );
+       }*/
 
-           // Icon
-         # ifdef FO_WINDOWS
-           GuiWindow->icon((char*)LoadIcon(fl_display, MAKEINTRESOURCE(101)));
-         # else
-           fl_open_display();
-           // Todo: linux
-         # endif
+    return 0;
+}
 
-           // Labels
-           GUISetup.Setup(GuiLabelGameTime = new Fl_Box(GUI_SIZE4(5, 6, 128, 8), "Time:"));
-           GUISetup.Setup(GuiLabelClients = new Fl_Box(GUI_SIZE4(5, 14, 124, 8), "Connections:"));
-           GUISetup.Setup(GuiLabelIngame = new Fl_Box(GUI_SIZE4(5, 22, 124, 8), "Players in game:"));
-           GUISetup.Setup(GuiLabelNPC = new Fl_Box(GUI_SIZE4(5, 30, 124, 8), "NPC in game:"));
-           GUISetup.Setup(GuiLabelLocCount = new Fl_Box(GUI_SIZE4(5, 38, 124, 8), "Locations:"));
-           GUISetup.Setup(GuiLabelItemsCount = new Fl_Box(GUI_SIZE4(5, 46, 124, 8), "Items:"));
-           GUISetup.Setup(GuiLabelFPS = new Fl_Box(GUI_SIZE4(5, 54, 124, 8), "Cycles per second:"));
-           GUISetup.Setup(GuiLabelDelta = new Fl_Box(GUI_SIZE4(5, 62, 124, 8), "Cycle time:"));
-           GUISetup.Setup(GuiLabelUptime = new Fl_Box(GUI_SIZE4(5, 70, 124, 8), "Uptime:"));
-           GUISetup.Setup(GuiLabelSend = new Fl_Box(GUI_SIZE4(5, 78, 124, 8), "KBytes send:"));
-           GUISetup.Setup(GuiLabelRecv = new Fl_Box(GUI_SIZE4(5, 86, 124, 8), "KBytes recv:"));
-           GUISetup.Setup(GuiLabelCompress = new Fl_Box(GUI_SIZE4(5, 94, 124, 8), "Compress ratio:"));
+void InitControls()
+{
+    // Setup
+    /*struct
+       {
+            int  FontType;
+            int  FontSize;
 
-           // Buttons
-           GUISetup.Setup(GuiBtnRlClScript = new Fl_Button(GUI_SIZE4(5, 144, 124, 14), "Reload client scripts"));
-           GUISetup.Setup(GuiBtnSaveLog = new Fl_Button(GUI_SIZE4(5, 160, 124, 14), "Save log"));
-           GUISetup.Setup(GuiBtnSaveInfo = new Fl_Button(GUI_SIZE4(5, 176, 124, 14), "Save info"));
-           GUISetup.Setup(GuiBtnCreateDump = new Fl_Button(GUI_SIZE4(5, 192, 124, 14), "Create dump"));
-           GUISetup.Setup(GuiBtnMemory = new Fl_Button(GUI_SIZE4(5, 219, 124, 14), "Memory usage"));
-           GUISetup.Setup(GuiBtnPlayers = new Fl_Button(GUI_SIZE4(5, 235, 124, 14), "Players"));
-           GUISetup.Setup(GuiBtnLocsMaps = new Fl_Button(GUI_SIZE4(5, 251, 124, 14), "Locations and maps"));
-           GUISetup.Setup(GuiBtnDeferredCalls = new Fl_Button(GUI_SIZE4(5, 267, 124, 14), "Deferred calls"));
-           GUISetup.Setup(GuiBtnProperties = new Fl_Button(GUI_SIZE4(5, 283, 124, 14), "Properties"));
-           GUISetup.Setup(GuiBtnItemsCount = new Fl_Button(GUI_SIZE4(5, 299, 124, 14), "Items count"));
-           GUISetup.Setup(GuiBtnProfiler = new Fl_Button(GUI_SIZE4(5, 315, 124, 14), "Profiler"));
-           GUISetup.Setup(GuiBtnStartStop = new Fl_Button(GUI_SIZE4(5, 393, 124, 14), "Start server"));
-           GUISetup.Setup(GuiBtnSplitUp = new Fl_Button(GUI_SIZE4(117, 357, 12, 9), ""));
-           GUISetup.Setup(GuiBtnSplitDown = new Fl_Button(GUI_SIZE4(117, 368, 12, 9), ""));
+            void Setup(Fl_Box* widget)
+            {
+                    widget->labelfont(FontType);
+                    widget->labelsize(FontSize);
+                    widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+                    widget->box(FL_NO_BOX);
+                    widget->label(new char[GUI_LABEL_BUF_SIZE]);
+       *(char*)widget->label() = 0;
+            }
 
-           // Check buttons
-           GUISetup.Setup(GuiCBtnAutoUpdate = new Fl_Check_Button(GUI_SIZE4(5, 339, 110, 10), "Update info every second"));
-           // GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
-           // GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
-           // GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
-           // GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
+            void Setup(Fl_Button* widget)
+            {
+                    widget->labelfont(FontType);
+                    widget->labelsize(FontSize);
+                    widget->callback(GUICallback);
+            }
 
-           // Text boxes
-           GUISetup.Setup(GuiLog = new Fl_Text_Display(GUI_SIZE4(133, 7, 358, 195)));
-           GUISetup.Setup(GuiInfo = new Fl_Text_Display(GUI_SIZE4(133, 204, 358, 203)));
+            void Setup(Fl_Check_Button* widget)
+            {
+                    widget->labelfont(FontType);
+                    widget->labelsize(FontSize);
+                    widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+                    widget->callback(GUICallback);
+            }
 
-           // Disable buttons
-           GuiBtnRlClScript->deactivate();
-           GuiBtnPlayers->deactivate();
-           GuiBtnLocsMaps->deactivate();
-           GuiBtnDeferredCalls->deactivate();
-           GuiBtnProperties->deactivate();
-           GuiBtnItemsCount->deactivate();
-           GuiBtnProfiler->deactivate();
-           GuiBtnSaveInfo->deactivate();
+            void Setup(Fl_Text_Display* widget)
+            {
+                    widget->labelfont(FontType);
+                    widget->labelsize(FontSize);
+                    widget->buffer(new Fl_Text_Buffer());
+                    widget->textfont(FontType);
+                    widget->textsize(FontSize);
+            }
+       } GUISetup;
 
-           // Give initial focus to Start / Stop
-           GuiBtnStartStop->take_focus();
+       GUISizeMod = MainConfig->GetInt("", "GUISize", 0);
+       GUISetup.FontType = FL_COURIER;
+       GUISetup.FontSize = 11;
 
-           // Info
-           MainInitRect(GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h());
-           LogInitRect(GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h());
-           InfoInitRect(GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h());
-           UpdateInfo();
+       // Main window
+       int wx = MainConfig->GetInt("", "PositionX", 0);
+       int wy = MainConfig->GetInt("", "PositionY", 0);
+       if (!wx && !wy)
+            wx = (Fl::w() - GUI_SIZE1(496)) / 2, wy = (Fl::h() - GUI_SIZE1(412)) / 2;
+       GuiWindow = new Fl_Window(wx, wy, GUI_SIZE2(496, 412), "FOnline Server");
+       GuiWindow->labelfont(GUISetup.FontType);
+       GuiWindow->labelsize(GUISetup.FontSize);
+       GuiWindow->callback(GUICallback);
+       GuiWindow->size_range(GUI_SIZE2(129, 129));
 
-           // Show window
-           char  dummy_argv0[2] = "";
-           char* dummy_argv[] = { dummy_argv0 };
-           int   dummy_argc = 1;
-           GuiWindow->show(dummy_argc, dummy_argv);*/
-    }
-};
+       // Name
+       GuiWindow->label(MainConfig->GetStr("", "WindowName", "FOnline").c_str());
 
-wxIMPLEMENT_APP( FOnlineServer );
+       // Icon
+     # ifdef FO_WINDOWS
+       GuiWindow->icon((char*)LoadIcon(fl_display, MAKEINTRESOURCE(101)));
+     # else
+       fl_open_display();
+       // Todo: linux
+     # endif
+
+       // Labels
+       GUISetup.Setup(GuiLabelGameTime = new Fl_Box(GUI_SIZE4(5, 6, 128, 8), "Time:"));
+       GUISetup.Setup(GuiLabelClients = new Fl_Box(GUI_SIZE4(5, 14, 124, 8), "Connections:"));
+       GUISetup.Setup(GuiLabelIngame = new Fl_Box(GUI_SIZE4(5, 22, 124, 8), "Players in game:"));
+       GUISetup.Setup(GuiLabelNPC = new Fl_Box(GUI_SIZE4(5, 30, 124, 8), "NPC in game:"));
+       GUISetup.Setup(GuiLabelLocCount = new Fl_Box(GUI_SIZE4(5, 38, 124, 8), "Locations:"));
+       GUISetup.Setup(GuiLabelItemsCount = new Fl_Box(GUI_SIZE4(5, 46, 124, 8), "Items:"));
+       GUISetup.Setup(GuiLabelFPS = new Fl_Box(GUI_SIZE4(5, 54, 124, 8), "Cycles per second:"));
+       GUISetup.Setup(GuiLabelDelta = new Fl_Box(GUI_SIZE4(5, 62, 124, 8), "Cycle time:"));
+       GUISetup.Setup(GuiLabelUptime = new Fl_Box(GUI_SIZE4(5, 70, 124, 8), "Uptime:"));
+       GUISetup.Setup(GuiLabelSend = new Fl_Box(GUI_SIZE4(5, 78, 124, 8), "KBytes send:"));
+       GUISetup.Setup(GuiLabelRecv = new Fl_Box(GUI_SIZE4(5, 86, 124, 8), "KBytes recv:"));
+       GUISetup.Setup(GuiLabelCompress = new Fl_Box(GUI_SIZE4(5, 94, 124, 8), "Compress ratio:"));
+
+       // Buttons
+       GUISetup.Setup(GuiBtnRlClScript = new Fl_Button(GUI_SIZE4(5, 144, 124, 14), "Reload client scripts"));
+       GUISetup.Setup(GuiBtnSaveLog = new Fl_Button(GUI_SIZE4(5, 160, 124, 14), "Save log"));
+       GUISetup.Setup(GuiBtnSaveInfo = new Fl_Button(GUI_SIZE4(5, 176, 124, 14), "Save info"));
+       GUISetup.Setup(GuiBtnCreateDump = new Fl_Button(GUI_SIZE4(5, 192, 124, 14), "Create dump"));
+       GUISetup.Setup(GuiBtnMemory = new Fl_Button(GUI_SIZE4(5, 219, 124, 14), "Memory usage"));
+       GUISetup.Setup(GuiBtnPlayers = new Fl_Button(GUI_SIZE4(5, 235, 124, 14), "Players"));
+       GUISetup.Setup(GuiBtnLocsMaps = new Fl_Button(GUI_SIZE4(5, 251, 124, 14), "Locations and maps"));
+       GUISetup.Setup(GuiBtnDeferredCalls = new Fl_Button(GUI_SIZE4(5, 267, 124, 14), "Deferred calls"));
+       GUISetup.Setup(GuiBtnProperties = new Fl_Button(GUI_SIZE4(5, 283, 124, 14), "Properties"));
+       GUISetup.Setup(GuiBtnItemsCount = new Fl_Button(GUI_SIZE4(5, 299, 124, 14), "Items count"));
+       GUISetup.Setup(GuiBtnProfiler = new Fl_Button(GUI_SIZE4(5, 315, 124, 14), "Profiler"));
+       GUISetup.Setup(GuiBtnStartStop = new Fl_Button(GUI_SIZE4(5, 393, 124, 14), "Start server"));
+       GUISetup.Setup(GuiBtnSplitUp = new Fl_Button(GUI_SIZE4(117, 357, 12, 9), ""));
+       GUISetup.Setup(GuiBtnSplitDown = new Fl_Button(GUI_SIZE4(117, 368, 12, 9), ""));
+
+       // Check buttons
+       GUISetup.Setup(GuiCBtnAutoUpdate = new Fl_Check_Button(GUI_SIZE4(5, 339, 110, 10), "Update info every second"));
+       // GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
+       // GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
+       // GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
+       // GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
+
+       // Text boxes
+       GUISetup.Setup(GuiLog = new Fl_Text_Display(GUI_SIZE4(133, 7, 358, 195)));
+       GUISetup.Setup(GuiInfo = new Fl_Text_Display(GUI_SIZE4(133, 204, 358, 203)));
+
+       // Disable buttons
+       GuiBtnRlClScript->deactivate();
+       GuiBtnPlayers->deactivate();
+       GuiBtnLocsMaps->deactivate();
+       GuiBtnDeferredCalls->deactivate();
+       GuiBtnProperties->deactivate();
+       GuiBtnItemsCount->deactivate();
+       GuiBtnProfiler->deactivate();
+       GuiBtnSaveInfo->deactivate();
+
+       // Give initial focus to Start / Stop
+       GuiBtnStartStop->take_focus();
+
+       // Info
+       MainInitRect(GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h());
+       LogInitRect(GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h());
+       InfoInitRect(GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h());
+       UpdateInfo();
+
+       // Show window
+       char  dummy_argv0[2] = "";
+       char* dummy_argv[] = { dummy_argv0 };
+       int   dummy_argc = 1;
+       GuiWindow->show(dummy_argc, dummy_argv);*/
+}
 
 /*
    static void GUICallback( Fl_Widget* widget, void* data )
