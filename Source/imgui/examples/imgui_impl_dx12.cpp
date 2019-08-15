@@ -4,7 +4,8 @@
 // Implemented features:
 //  [X] Renderer: User texture binding. Use 'D3D12_GPU_DESCRIPTOR_HANDLE' as ImTextureID. Read the FAQ about ImTextureID in imgui.cpp.
 //  [X] Renderer: Support for large meshes (64k+ vertices) with 16-bits indices.
-// Issues:
+// Missing features, issues:
+//  [ ] Renderer: Missing multi-viewport support.
 //  [ ] 64-bit only for now! (Because sizeof(ImTextureId) == sizeof(void*)). See github.com/ocornut/imgui/pull/301
 
 // You can copy and use unmodified imgui_impl_* files in your project. See main.cpp for an example of using this.
@@ -60,6 +61,10 @@ struct VERTEX_CONSTANT_BUFFER
 {
     float   mvp[4][4];
 };
+
+// Forward Declarations
+static void ImGui_ImplDX12_InitPlatformInterface();
+static void ImGui_ImplDX12_ShutdownPlatformInterface();
 
 static void ImGui_ImplDX12_SetupRenderState(ImDrawData* draw_data, ID3D12GraphicsCommandList* ctx, FrameResources* fr)
 {
@@ -609,6 +614,7 @@ bool ImGui_ImplDX12_Init(ID3D12Device* device, int num_frames_in_flight, DXGI_FO
     ImGuiIO& io = ImGui::GetIO();
     io.BackendRendererName = "imgui_impl_dx12";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional) // FIXME-VIEWPORT: Actually unfinished..
 
     g_pd3dDevice = device;
     g_RTVFormat = rtv_format;
@@ -628,11 +634,15 @@ bool ImGui_ImplDX12_Init(ID3D12Device* device, int num_frames_in_flight, DXGI_FO
         fr->VertexBufferSize = 5000;
     }
 
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        ImGui_ImplDX12_InitPlatformInterface();
+
     return true;
 }
 
 void ImGui_ImplDX12_Shutdown()
 {
+    ImGui_ImplDX12_ShutdownPlatformInterface();
     ImGui_ImplDX12_InvalidateDeviceObjects();
     delete[] g_pFrameResources;
     g_pFrameResources = NULL;
@@ -647,4 +657,144 @@ void ImGui_ImplDX12_NewFrame()
 {
     if (!g_pPipelineState)
         ImGui_ImplDX12_CreateDeviceObjects();
+}
+
+//--------------------------------------------------------------------------------------------------------
+// MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
+// This is an _advanced_ and _optional_ feature, allowing the back-end to create and handle multiple viewports simultaneously.
+// If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
+//--------------------------------------------------------------------------------------------------------
+
+struct ImGuiViewportDataDx12
+{
+    IDXGISwapChain3*            SwapChain;
+
+    ImGuiViewportDataDx12() { SwapChain = NULL; }
+    ~ImGuiViewportDataDx12() { IM_ASSERT(SwapChain == NULL); }
+};
+
+static void ImGui_ImplDX12_CreateWindow(ImGuiViewport* viewport)
+{
+    ImGuiViewportDataDx12* data = IM_NEW(ImGuiViewportDataDx12)();
+    viewport->RendererUserData = data;
+    IM_ASSERT(0);
+
+    /*
+    // FIXME-PLATFORM
+    // PlatformHandleRaw should always be a HWND, whereas PlatformHandle might be a higher-level handle (e.g. GLFWWindow*, SDL_Window*).
+    // Some back-ends will leave PlatformHandleRaw NULL, in which case we assume PlatformHandle will contain the HWND.
+    HWND hwnd = viewport->PlatformHandleRaw ? (HWND)viewport->PlatformHandleRaw : (HWND)viewport->PlatformHandle;
+    IM_ASSERT(hwnd != 0);
+
+    // Create swap chain
+    DXGI_SWAP_CHAIN_DESC sd;
+    ZeroMemory(&sd, sizeof(sd));
+    sd.BufferDesc.Width = (UINT)viewport->Size.x;
+    sd.BufferDesc.Height = (UINT)viewport->Size.y;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.SampleDesc.Count = 1;
+    sd.SampleDesc.Quality = 0;
+    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.BufferCount = 1;
+    sd.OutputWindow = hwnd;
+    sd.Windowed = TRUE;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    sd.Flags = 0;
+
+    IM_ASSERT(data->SwapChain == NULL && data->RTView == NULL);
+    g_pFactory->CreateSwapChain(g_pd3dDevice, &sd, &data->SwapChain);
+
+    // Create the render target
+    if (data->SwapChain)
+    {
+        ID3D11Texture2D* pBackBuffer;
+        data->SwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+        g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &data->RTView);
+        pBackBuffer->Release();
+    }
+    */
+}
+
+static void ImGui_ImplDX12_DestroyWindow(ImGuiViewport* viewport)
+{
+    // The main viewport (owned by the application) will always have RendererUserData == NULL since we didn't create the data for it.
+    if (ImGuiViewportDataDx12* data = (ImGuiViewportDataDx12*)viewport->RendererUserData)
+    {
+        IM_ASSERT(0);
+        /*
+        if (data->SwapChain)
+            data->SwapChain->Release();
+        data->SwapChain = NULL;
+        if (data->RTView)
+            data->RTView->Release();
+        data->RTView = NULL;
+        IM_DELETE(data);
+        */
+    }
+    viewport->RendererUserData = NULL;
+}
+
+static void ImGui_ImplDX12_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
+{
+    ImGuiViewportDataDx12* data = (ImGuiViewportDataDx12*)viewport->RendererUserData;
+    IM_ASSERT(0);
+    (void)data; (void)size;
+    /*
+    if (data->RTView)
+    {
+        data->RTView->Release();
+        data->RTView = NULL;
+    }
+    if (data->SwapChain)
+    {
+        ID3D11Texture2D* pBackBuffer = NULL;
+        data->SwapChain->ResizeBuffers(0, (UINT)size.x, (UINT)size.y, DXGI_FORMAT_UNKNOWN, 0);
+        data->SwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+        g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &data->RTView);
+        pBackBuffer->Release();
+    }
+    */
+}
+
+// arg = ID3D12GraphicsCommandList*
+static void ImGui_ImplDX12_RenderWindow(ImGuiViewport* viewport, void* renderer_arg)
+{
+    ImGuiViewportDataDx12* data = (ImGuiViewportDataDx12*)viewport->RendererUserData;
+    IM_ASSERT(0);
+    (void)data;
+
+    ID3D12GraphicsCommandList* command_list = (ID3D12GraphicsCommandList*)renderer_arg;
+
+    /*
+    ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+    g_pd3dDeviceContext->OMSetRenderTargets(1, &data->RTView, NULL);
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
+        g_pd3dDeviceContext->ClearRenderTargetView(data->RTView, (float*)&clear_color);
+    */
+    ImGui_ImplDX12_RenderDrawData(viewport->DrawData, command_list);
+}
+
+static void ImGui_ImplDX12_SwapBuffers(ImGuiViewport* viewport, void*)
+{
+    ImGuiViewportDataDx12* data = (ImGuiViewportDataDx12*)viewport->RendererUserData;
+    IM_ASSERT(0);
+    (void)data;
+    /*
+    data->SwapChain->Present(0, 0); // Present without vsync
+    */
+}
+
+void ImGui_ImplDX12_InitPlatformInterface()
+{
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+    platform_io.Renderer_CreateWindow = ImGui_ImplDX12_CreateWindow;
+    platform_io.Renderer_DestroyWindow = ImGui_ImplDX12_DestroyWindow;
+    platform_io.Renderer_SetWindowSize = ImGui_ImplDX12_SetWindowSize;
+    platform_io.Renderer_RenderWindow = ImGui_ImplDX12_RenderWindow;
+    platform_io.Renderer_SwapBuffers = ImGui_ImplDX12_SwapBuffers;
+}
+
+void ImGui_ImplDX12_ShutdownPlatformInterface()
+{
+    ImGui::DestroyPlatformWindows();
 }
