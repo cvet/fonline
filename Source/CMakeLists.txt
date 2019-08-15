@@ -386,18 +386,22 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "${CMAKE_BINARY_DIR}/openssl/ssl" )
 endif()
 
-if( NOT BUILD_ONLY_CLIENT )
-	set( IMGUI_DIR "imgui" )
-	file( GLOB IMGUI_SOURCE "${IMGUI_DIR}/*.cpp" "${IMGUI_DIR}/*.h" )
-	list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.cpp" )
-	list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.h" )
-	source_group( "ThirdParty\\imgui" FILES ${IMGUI_SOURCE} )
-endif()
+set( IMGUI_DIR "imgui" )
+file( GLOB IMGUI_SOURCE "${IMGUI_DIR}/*.cpp" "${IMGUI_DIR}/*.h" )
+list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.cpp" )
+list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.h" )
+source_group( "ThirdParty\\imgui" FILES ${IMGUI_SOURCE} )
+include_directories( "imgui" )
 
-set( COMMON_SOURCE
+set( SERVER_CLIENT_EDITOR_SOURCE
+	${IMGUI_SOURCE}
+	${GLEW_SOURCE}
 	${Json_SOURCE}
 	${fmt_SOURCE}
+	3dAnimation.h
+	AppGui.h AppGui.cpp AppGuiDX.cpp
 	Common.cpp Common.h
+	CritterData.h
 	Crypt.cpp Crypt.h
 	DataFile.cpp DataFile.h
 	Debugger.cpp Debugger.h
@@ -406,11 +410,19 @@ set( COMMON_SOURCE
 	Exception.cpp Exception.h
 	FileManager.cpp FileManager.h
 	FileSystem.cpp FileSystem.h
+	GraphicStructures.cpp GraphicStructures.h
 	IniParser.cpp IniParser.h
+	Item.cpp Item.h
+	LineTracer.h
 	Log.cpp Log.h
 	Methods.cpp Methods.h
+	MsgFiles.cpp MsgFiles.h
+	MsgStr.h
+	NetProtocol.h
 	PlatformSpecific.h
 	Properties.cpp Properties.h
+	ProtoManager.cpp ProtoManager.h
+	ProtoMap.cpp ProtoMap.h
 	Randomizer.h
 	Script.cpp Script.h
 	ScriptExtensions.cpp
@@ -424,25 +436,12 @@ set( COMMON_SOURCE
 	Timer.cpp Timer.h
 	Types.h
 )
-set( SERVER_CLIENT_EDITOR_SOURCE
-	3dAnimation.h
-	CritterData.h
-	GraphicStructures.cpp GraphicStructures.h
-	Item.cpp Item.h
-	LineTracer.h
-	MsgFiles.cpp MsgFiles.h
-	MsgStr.h
-	NetProtocol.h
-	ProtoManager.cpp ProtoManager.h
-	ProtoMap.cpp ProtoMap.h
-)
 set( SERVER_CLIENT_SOURCE
 	Access.h
 	BufferManager.cpp BufferManager.h
 	DataMask.h
 )
 set( CLIENT_EDITOR_SOURCE
-	${GLEW_SOURCE}
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
 	F2Palette.h
@@ -459,12 +458,10 @@ set( CLIENT_EDITOR_SOURCE
 	Sprites.cpp Sprites.h
 )
 set( SERVER_EDITOR_SOURCE
-	${IMGUI_SOURCE}
 	ResourceConverter.h ResourceConverter.cpp
 )
 
 set( SERVER_SOURCE
-	${COMMON_SOURCE}
 	${SERVER_CLIENT_EDITOR_SOURCE}
 	${SERVER_EDITOR_SOURCE}
 	${SERVER_CLIENT_SOURCE}
@@ -476,7 +473,6 @@ set( SERVER_SOURCE
 	Dialogs.cpp Dialogs.h
 	EntityManager.cpp EntityManager.h
 	ItemManager.cpp ItemManager.h
-	MainServer.cpp
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h
 	Networking.cpp Networking.h
@@ -487,7 +483,6 @@ set( SERVER_SOURCE
 	ServerScript.cpp
 )
 set( CLIENT_SOURCE
-	${COMMON_SOURCE}
 	${SERVER_CLIENT_EDITOR_SOURCE}
 	${SERVER_CLIENT_SOURCE}
 	${CLIENT_EDITOR_SOURCE}
@@ -496,16 +491,13 @@ set( CLIENT_SOURCE
 	${THEORA_SOURCE}
 	Client.cpp Client.h
 	ClientInterface.cpp
-	MainClient.cpp
 	SoundManager.cpp SoundManager.h
 )
 set( EDITOR_SOURCE
-	${COMMON_SOURCE}
 	${SERVER_CLIENT_EDITOR_SOURCE}
 	${SERVER_EDITOR_SOURCE}
 	${CLIENT_EDITOR_SOURCE}
 	${fbxsdk_SOURCE}
-	MainEditor.cpp
 	Mapper.cpp Mapper.h
 )
 
@@ -522,36 +514,40 @@ set( RO3 RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO )
 set( RO4 RUNTIME_OUTPUT_DIRECTORY_RELEASE )
 
 if( NOT BUILD_CLIENT_LIBRARY )
-	add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Client.rc" )
+	add_executable( FOnline WIN32 ${CLIENT_SOURCE} "MainClient.cpp" "Client.rc" )
 	# Todo: Make bundles for Mac and maybe iOS
 	# add_executable( FOnline MACOSX_BUNDLE ${CLIENT_SOURCE} "Client.rc" )
 	set_target_properties( FOnline PROPERTIES ${RO0} ${CLIENT_OUTPUT} ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 else()
-	add_library( FOnline SHARED ${CLIENT_SOURCE} )
+	add_library( FOnline SHARED ${CLIENT_SOURCE} "MainClient.cpp" )
 	set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CLIENT_OUTPUT} )
 endif()
 set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" COMPILE_FLAGS "${CLIENT_DEFINES}" )
 target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
-	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
+	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "MainServer.cpp" "Server.rc" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES}" )
 	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
-		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
+		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "MainServer.cpp" "Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 	endif()
 
-	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "Editor.rc" )
+	add_library( ServerLib STATIC ${SERVER_SOURCE} )
+	set_target_properties( ServerLib PROPERTIES OUTPUT_NAME "ServerLib" COMPILE_FLAGS "${SERVER_DEFINES}" )
+	add_library( ClientLib STATIC ${CLIENT_SOURCE} )
+	set_target_properties( ClientLib PROPERTIES OUTPUT_NAME "ClientLib" COMPILE_FLAGS "${CLIENT_DEFINES}" )
+	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "MainEditor.cpp" "Editor.rc" )
 	set_target_properties( FOnlineEditor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
-	target_link_libraries( FOnlineEditor "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineEditor "ServerLib" "ClientLib" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
+	set_property( TARGET ServerLib ClientLib Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
 endif()

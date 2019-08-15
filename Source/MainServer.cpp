@@ -8,7 +8,7 @@
 #ifndef FO_WINDOWS
 # include <signal.h>
 #endif
-#include "imgui/imgui.h"
+#include "AppGui.h"
 #include "SDL.h"
 
 static void InitAdminManager();
@@ -98,7 +98,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     FOQuit = true;
 
-    //InitControls();
+    // InitControls();
 
     /*if( GuiWindow )
        {

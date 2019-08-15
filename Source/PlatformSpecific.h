@@ -40,6 +40,10 @@
 # define FO_OGL_ES
 #endif
 
+#if defined ( FO_WINDOWS )
+# define FO_HAVE_DX
+#endif
+
 // Detect compiler
 #if defined ( __GNUC__ )
 # define FO_GCC
