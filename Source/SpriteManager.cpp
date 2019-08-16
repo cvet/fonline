@@ -331,6 +331,10 @@ bool SpriteManager::Init()
     GL( glEnable( GL_BLEND ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
     GL( glDisable( GL_CULL_FACE ) );
+    GL( glDisable( GL_LIGHTING ) );
+    GL( glDisable( GL_COLOR_MATERIAL ) );
+    GL( glEnable( GL_TEXTURE_2D ) );
+    GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
     GL( glActiveTexture( GL_TEXTURE0 ) );
     GL( glPixelStorei( GL_PACK_ALIGNMENT, 1 ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );

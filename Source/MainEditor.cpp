@@ -116,7 +116,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Initialize ImGui
     bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 || false );
-    if( !AppGui::Init( "FOnline Editor", use_dx, true ) )
+    if( !AppGui::Init( "FOnline Editor", use_dx, true, true ) )
         return -1;
 
     // Basic windows
