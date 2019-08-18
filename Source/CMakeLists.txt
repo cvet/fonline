@@ -388,10 +388,11 @@ endif()
 
 set( IMGUI_DIR "imgui" )
 file( GLOB IMGUI_SOURCE "${IMGUI_DIR}/*.cpp" "${IMGUI_DIR}/*.h" )
-list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.cpp" )
-list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.h" )
+#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.cpp" )
+#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.h" )
 source_group( "ThirdParty\\imgui" FILES ${IMGUI_SOURCE} )
 include_directories( "imgui" )
+add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 
 set( SERVER_CLIENT_EDITOR_SOURCE
 	${IMGUI_SOURCE}
@@ -410,6 +411,7 @@ set( SERVER_CLIENT_EDITOR_SOURCE
 	Exception.cpp Exception.h
 	FileManager.cpp FileManager.h
 	FileSystem.cpp FileSystem.h
+	GraphicApi.h GraphicApi.cpp
 	GraphicStructures.cpp GraphicStructures.h
 	IniParser.cpp IniParser.h
 	Item.cpp Item.h
@@ -532,7 +534,13 @@ if( NOT BUILD_ONLY_CLIENT )
 	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
-		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "MainServer.cpp" "Server.rc" )
+		set( SERVER_SOURCE_NO_GUI ${SERVER_SOURCE} )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/GraphicApi.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/GraphicApi.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGui.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGui.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGuiDX.cpp" )
+		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "MainServer.cpp" "Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
@@ -548,6 +556,6 @@ if( NOT BUILD_ONLY_CLIENT )
 	target_link_libraries( FOnlineEditor "ServerLib" "ClientLib" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
-	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries")
+	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries" )
 	set_property( TARGET ServerLib ClientLib Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
 endif()

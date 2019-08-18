@@ -2,6 +2,7 @@
 #define __SPRITE_MANAGER__
 
 #include "Common.h"
+#include "GraphicApi.h"
 #include "Sprites.h"
 #include "FileManager.h"
 #include "Text.h"

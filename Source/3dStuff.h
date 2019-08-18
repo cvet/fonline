@@ -2,6 +2,7 @@
 #define __3D_STUFF__
 
 #include "Common.h"
+#include "GraphicApi.h"
 #include "GraphicStructures.h"
 
 #define LAYERS3D_COUNT         ( 30 )

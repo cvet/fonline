@@ -1080,20 +1080,14 @@ public:
             {
                 data.resize( includeScripts.front().Content.length() );
                 memcpy( &data[ 0 ], includeScripts.front().Content.c_str(), includeScripts.front().Content.length() );
-                #ifdef FONLINE_SCRIPT_COMPILER
-                file_path = _str( includeScripts.front().Path ).resolvePath();
-                #else
                 file_path = includeScripts.front().Name;
-                #endif
                 includeScripts.erase( includeScripts.begin() );
                 return true;
             }
 
             bool loaded = Preprocessor::FileLoader::LoadFile( dir, file_name, data, file_path );
-            #ifdef FONLINE_SCRIPT_COMPILER
             if( loaded )
                 file_path = _str( includeScripts.front().Path ).resolvePath();
-            #endif
             return loaded;
         }
 
@@ -2151,11 +2145,7 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
 
-    #ifdef FONLINE_SCRIPT_COMPILER
-    WriteLog( "{}({}): {}: {}\n", Preprocessor::ResolveOriginalFile( msg->row ), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
-    #else
     WriteLog( "{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
-    #endif
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )

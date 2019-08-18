@@ -824,12 +824,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     // ScriptFunctions.h
-    #ifdef FONLINE_SCRIPT_COMPILER
-    # undef SCRIPT_FUNC
-    # undef SCRIPT_FUNC_CONV
-    # define SCRIPT_FUNC         asFUNCTION
-    # define SCRIPT_FUNC_CONV    asCALL_CDECL
-    #endif
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );

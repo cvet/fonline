@@ -127,7 +127,7 @@ public:
     // Main
     static int     UpdateIndex, UpdateLastIndex;
     static uint    UpdateLastTick;
-    static bool    Active, ActiveInProcess, ActiveOnce;
+    static bool    Active, ActiveInProcess;
     static UIntMap RegIp;
     static Mutex   RegIpLocker;
 
@@ -158,7 +158,6 @@ public:
     static bool Started()  { return Active && !ActiveInProcess; }
     static bool Stopping() { return !Active && ActiveInProcess; }
     static bool Stopped()  { return !Active && !ActiveInProcess; }
-    static void MainLoop();
 
     static void LogicTick();
 

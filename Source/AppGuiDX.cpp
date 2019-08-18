@@ -2,17 +2,14 @@
 
 #ifdef FO_HAVE_DX
 
+# include "GraphicApi.h"
 # include <XInput.h>
 # include <tchar.h>
-# include "imgui.h"
-# include <d3d9.h>
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>
 
 # ifdef FO_MSVC
-#  pragma comment(lib, "d3d9")
 #  pragma comment(lib, "xinput")
-#  pragma comment(lib, "gdi32")
 # endif
 
 # ifdef FO_MSVC
@@ -129,7 +126,7 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
     };
     RegisterClassEx( &wc );
     HWND hwnd = CreateWindow( wc.lpszClassName, _T( "Dear ImGui DirectX10 Example" ), WS_OVERLAPPEDWINDOW,
-                              100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr );
+                              100, 100, 1024, 768, nullptr, nullptr, wc.hInstance, nullptr );
 
     // Initialize Direct3D
     if( !CreateDevice( hwnd ) )
@@ -154,6 +151,10 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+
+    io.WantSaveIniSettings = false;
+    io.IniFilename = nullptr;
+
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     if( docking )
     {
@@ -269,21 +270,19 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
 bool AppGui::BeginFrameDX()
 {
     // Handle window messages
-    MSG msg;
+    MSG  msg;
     ZeroMemory( &msg, sizeof( msg ) );
+    bool quit = false;
     while( true )
     {
-        if( PeekMessage( &msg, nullptr, 0U, 0U, PM_REMOVE ) )
-        {
-            TranslateMessage( &msg );
-            DispatchMessage( &msg );
-            continue;
-        }
+        if( !PeekMessage( &msg, nullptr, 0U, 0U, PM_REMOVE ) )
+            break;
+
+        TranslateMessage( &msg );
+        DispatchMessage( &msg );
 
         if( msg.message == WM_QUIT )
-            return false;
-
-        break;
+            quit = true;
     }
 
     // Start the Dear ImGui frame
@@ -362,7 +361,7 @@ bool AppGui::BeginFrameDX()
 
     ImGui::NewFrame();
 
-    return true;
+    return !quit;
 }
 
 void AppGui::EndFrameDX()
@@ -408,33 +407,6 @@ static LRESULT WINAPI WndProcHandler( HWND hwnd, UINT msg, WPARAM wparam, LPARAM
     # ifndef DBT_DEVNODES_CHANGED
     #  define DBT_DEVNODES_CHANGED    0x0007
     # endif
-
-    switch( msg )
-    {
-    case WM_SIZE:
-        if( D3dDevice != nullptr && wparam != SIZE_MINIMIZED )
-        {
-            D3dPP.BackBufferWidth = LOWORD( lparam );
-            D3dPP.BackBufferHeight = HIWORD( lparam );
-            ResetDevice();
-        }
-        return 0;
-    case WM_SYSCOMMAND:
-        if( ( wparam & 0xfff0 ) == SC_KEYMENU )     // Disable ALT application menu
-            return 0;
-        break;
-    case WM_DESTROY:
-        PostQuitMessage( 0 );
-        return 0;
-    case WM_DPICHANGED:
-        if( ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports )
-        {
-            const RECT* suggested_rect = (RECT*) lparam;
-            SetWindowPos( hwnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left,
-                          suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE );
-        }
-        break;
-    }
 
     if( ImGui::GetCurrentContext() != nullptr )
     {
@@ -511,30 +483,57 @@ static LRESULT WINAPI WndProcHandler( HWND hwnd, UINT msg, WPARAM wparam, LPARAM
             WantUpdateMonitors = true;
             return 0;
         }
+
+        if( ImGuiViewport * viewport = ImGui::FindViewportByPlatformHandle( (void*) hwnd ) )
+        {
+            switch( msg )
+            {
+            case WM_CLOSE:
+                viewport->PlatformRequestClose = true;
+                return 0;
+            case WM_MOVE:
+                viewport->PlatformRequestMove = true;
+                break;
+            case WM_SIZE:
+                viewport->PlatformRequestResize = true;
+                break;
+            case WM_MOUSEACTIVATE:
+                if( viewport->Flags & ImGuiViewportFlags_NoFocusOnClick )
+                    return MA_NOACTIVATE;
+                break;
+            case WM_NCHITTEST:
+                if( viewport->Flags & ImGuiViewportFlags_NoInputs )
+                    return HTTRANSPARENT;
+                break;
+            }
+        }
     }
 
-    if( ImGuiViewport * viewport = ImGui::FindViewportByPlatformHandle( (void*) hwnd ) )
+    switch( msg )
     {
-        switch( msg )
+    case WM_SIZE:
+        if( D3dDevice != nullptr && wparam != SIZE_MINIMIZED )
         {
-        case WM_CLOSE:
-            viewport->PlatformRequestClose = true;
-            return 0;
-        case WM_MOVE:
-            viewport->PlatformRequestMove = true;
-            break;
-        case WM_SIZE:
-            viewport->PlatformRequestResize = true;
-            break;
-        case WM_MOUSEACTIVATE:
-            if( viewport->Flags & ImGuiViewportFlags_NoFocusOnClick )
-                return MA_NOACTIVATE;
-            break;
-        case WM_NCHITTEST:
-            if( viewport->Flags & ImGuiViewportFlags_NoInputs )
-                return HTTRANSPARENT;
-            break;
+            D3dPP.BackBufferWidth = LOWORD( lparam );
+            D3dPP.BackBufferHeight = HIWORD( lparam );
+            ResetDevice();
         }
+        return 0;
+    case WM_SYSCOMMAND:
+        if( ( wparam & 0xfff0 ) == SC_KEYMENU )     // Disable ALT application menu
+            return 0;
+        break;
+    case WM_DESTROY:
+        PostQuitMessage( 0 );
+        return 0;
+    case WM_DPICHANGED:
+        if( ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports )
+        {
+            const RECT* suggested_rect = (RECT*) lparam;
+            SetWindowPos( hwnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left,
+                          suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE );
+        }
+        break;
     }
 
     return DefWindowProc( hwnd, msg, wparam, lparam );
@@ -615,7 +614,7 @@ static void RenderDrawData( ImDrawData* draw_data )
         }
         VertexBufferSize = draw_data->TotalVtxCount + 5000;
         if( D3dDevice->CreateVertexBuffer( VertexBufferSize * sizeof( CustomVertex ), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-                                           D3DFVF_CUSTOMVERTEX, D3DPOOL_DEFAULT, &VertexBuffer, NULL ) < 0 )
+                                           D3DFVF_CUSTOMVERTEX, D3DPOOL_DEFAULT, &VertexBuffer, nullptr ) < 0 )
             return;
     }
     if( !IndexBuffer || IndexBufferSize < draw_data->TotalIdxCount )

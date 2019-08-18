@@ -24,7 +24,6 @@ FOServer::TextListenVec   FOServer::TextListeners;
 Mutex                     FOServer::TextListenersLocker;
 bool                      FOServer::Active;
 bool                      FOServer::ActiveInProcess;
-bool                      FOServer::ActiveOnce;
 UIntMap                   FOServer::RegIp;
 Mutex                     FOServer::RegIpLocker;
 FOServer::ClientBannedVec FOServer::Banned;
@@ -34,9 +33,8 @@ UCharVec                  FOServer::UpdateFilesList;
 
 FOServer::FOServer()
 {
-    Active = false;
-    ActiveInProcess = false;
-    ActiveOnce = false;
+    Active = true;
+    ActiveInProcess = true;
     memzero( &Statistics, sizeof( Statistics ) );
     memzero( &ServerFunctions, sizeof( ServerFunctions ) );
     RequestReloadClientScripts = false;
@@ -207,20 +205,6 @@ void FOServer::RemoveClient( Client* cl )
         cl->IsDestroyed = true;
         Script::RemoveEventsEntity( cl );
     }
-}
-
-void FOServer::MainLoop()
-{
-    if( !Started() )
-        return;
-
-    // Start logic threads
-    WriteLog( "***   Starting game loop   ***\n" );
-
-    while( !FOQuit )
-        LogicTick();
-
-    WriteLog( "***   Finishing game loop  ***\n" );
 }
 
 void FOServer::LogicTick()
@@ -1746,9 +1730,6 @@ void FOServer::SetGameTime( int multiplier, int year, int month, int day, int ho
 
 bool FOServer::Init()
 {
-    ActiveOnce = true;
-    Active = true;
-    ActiveInProcess = true;
     Active = InitReal();
     ActiveInProcess = false;
     return Active;

@@ -59,11 +59,7 @@ static int Global_Random( int min, int max )
 
 static void Global_Log( string text )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
     Script::Log( text );
-    #else
-    WriteLog( "{}\n", text );
-    #endif
 }
 
 static bool Global_StrToInt( string text, int& result )
@@ -159,9 +155,7 @@ static void Global_CreateDirectoryTree( string path )
 
 static void Global_Yield( uint time )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
     Script::SuspendCurrentContext( time );
-    #endif
 }
 
 static string Global_SHA1( string text )
@@ -335,13 +329,13 @@ static void Global_OpenLink( string link )
     #if defined ( FO_WINDOWS )
     ShellExecuteW( nullptr, L"open", _str( link ).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #elif !defined ( FO_IOS )
-    system( ( string( "xdg-open " ) + link ).c_str() );
+    int r = system( ( string( "xdg-open " ) + link ).c_str() );
+    UNUSED_VARIABLE( r );     // Supress compiler warning
     #endif
 }
 
 static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
         return nullptr;
@@ -359,9 +353,6 @@ static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
         }
     }
     return item;
-    #else
-    return nullptr;
-    #endif
 }
 
 static uint Global_GetUnixTime()

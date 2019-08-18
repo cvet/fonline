@@ -3,9 +3,6 @@
 #include "Exception.h"
 #include "Keyboard.h"
 #include <locale.h>
-#ifndef FO_WINDOWS
-# include <signal.h>
-#endif
 #ifdef FO_IOS
 extern SDL_Window* SprMngr_MainWindow;
 #endif
@@ -28,18 +25,7 @@ static void ClientEntry( void* )
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    InitialSetup( argc, argv );
-
-    // Disable SIGPIPE signal
-    #ifndef FO_WINDOWS
-    signal( SIGPIPE, SIG_IGN );
-    #endif
-
-    // Exception
-    CatchExceptions( "FOnline", FONLINE_VERSION );
-
-    // Timer
-    Timer::Init();
+    InitialSetup( "FOnline", argc, argv );
 
     // Logging
     LogToFile( "FOnline.log" );

@@ -186,7 +186,6 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
 bool MethodRegistrator::FinishRegistration()
 {
     int errors = 0;
-    #ifndef FONLINE_SCRIPT_COMPILER
     for( size_t i = 0; i < registeredMethods.size(); i++ )
     {
         Method* method = registeredMethods[ i ];
@@ -195,7 +194,6 @@ bool MethodRegistrator::FinishRegistration()
         if( !method->callbackBindId )
             errors++;
     }
-    #endif
     return errors == 0;
 }
 

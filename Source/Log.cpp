@@ -76,7 +76,7 @@ void LogGetBuffer( std::string& buf )
     SCOPE_LOCK( LogLocker );
     #endif
 
-    if( LogBufferStr )
+    if( LogBufferStr && !LogBufferStr->empty() )
     {
         buf = *LogBufferStr;
         LogBufferStr->clear();

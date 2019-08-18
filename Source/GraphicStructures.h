@@ -2,18 +2,11 @@
 #define __GRAPHIC_STRUCTURES__
 
 #include "Common.h"
-#include "Defines.h"
+#include "GraphicApi.h"
 #include "assimp/types.h"
 #include "assimp/scene.h"
 #include "FileManager.h"
 #include "FlexRect.h"
-
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_SCRIPT_COMPILER )
-# define GL( x )        (void) 0
-# define GL_HAS( x )    false
-# define GLuint                 uint
-# define GLint                  int
-#endif
 
 #define EFFECT_TEXTURES         ( 10 )
 #define BONES_PER_VERTEX        ( 4 )

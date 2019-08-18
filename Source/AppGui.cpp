@@ -1,19 +1,5 @@
 #include "AppGui.h"
-#include "SDL.h"
-#include "SDL_syswm.h"
-#include "GluStuff.h"
-#ifndef FO_OGL_ES
-# include "GL/glew.h"
-# include "SDL_opengl.h"
-#else
-# include <GLES2/gl2.h>
-# include "SDL_opengles2.h"
-#endif
-#include "SDL_vulkan.h"
-
-#ifdef FO_MSVC
-# pragma comment( lib, "opengl32.lib" )
-#endif
+#include "GraphicApi.h"
 
 struct ImGuiViewportDataSDL2
 {
@@ -39,6 +25,16 @@ struct ImGuiViewportDataSDL2
 static bool          InitCalled = false;
 static bool          UseDirectX = false;
 static GLuint        FontTexture = 0;
+static GLuint        ShaderHandle = 0;
+static GLuint        VertHandle = 0;
+static GLuint        FragHandle = 0;
+static int           AttribLocationTex = 0;
+static int           AttribLocationProjMtx = 0;
+static int           AttribLocationVtxPos = 0;
+static int           AttribLocationVtxUV = 0;
+static int           AttribLocationVtxColor = 0;
+static unsigned int  VboHandle = 0;
+static unsigned int  ElementsHandle = 0;
 static SDL_Window*   SdlWindow = nullptr;
 static SDL_GLContext GlContext = nullptr;
 static Uint64        CurTime = 0;
@@ -49,6 +45,7 @@ static char*         ClipboardTextData = nullptr;
 static const char* GetClipboardText( void* );
 static void        SetClipboardText( void*, const char* text );
 static void        RenderDrawData( ImDrawData* draw_data );
+static void        SetupRenderState( ImDrawData* draw_data, int fb_width, int fb_height, GLuint vao );
 static void        Platform_CreateWindow( ImGuiViewport* viewport );
 static void        Platform_DestroyWindow( ImGuiViewport* viewport );
 static void        Platform_ShowWindow( ImGuiViewport* viewport );
@@ -103,8 +100,10 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
     #endif
 
-    SDL_WindowFlags window_flags = (SDL_WindowFlags) ( SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_MAXIMIZED );
-    SDL_Window*     window = SDL_CreateWindow( app_name.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, window_flags );
+    SDL_WindowFlags window_flags = (SDL_WindowFlags) ( SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
+                                                       SDL_WINDOW_ALLOW_HIGHDPI | ( maximized ? SDL_WINDOW_MAXIMIZED : 0 ) );
+    SDL_Window*     window = SDL_CreateWindow( app_name.c_str(),
+                                               SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, window_flags );
     SDL_GLContext   gl_context = SDL_GL_CreateContext( window );
     SDL_GL_MakeCurrent( window, gl_context );
     SDL_GL_SetSwapInterval( 0 );
@@ -112,30 +111,99 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     SdlWindow = window;
     GlContext = gl_context;
 
-    // Init GLEW
-    #ifndef FO_OGL_ES
-    GLenum glew_result = glewInit();
-    if( glew_result != GLEW_OK )
+    // Init graphic
+    if( !GraphicApi::Init() )
+        return false;
+
+    if( !GL_HAS( version_2_0 ) || !GL_HAS( vertex_buffer_object ) )
     {
-        WriteLog( "GLEW not initialized, result {}.\n", glew_result );
+        WriteLog( "Minimum OpenGL 2.0 required.\n" );
         return false;
     }
-    #endif
 
     // Setup OpenGL
     GL( glEnable( GL_BLEND ) );
+    GL( glBlendEquation( GL_FUNC_ADD ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
     GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_DEPTH_TEST ) );
+    GL( glEnable( GL_TEXTURE_2D ) );
+    #ifndef FO_OGL_ES
     GL( glDisable( GL_LIGHTING ) );
     GL( glDisable( GL_COLOR_MATERIAL ) );
-    GL( glEnable( GL_TEXTURE_2D ) );
     GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
+    #endif
+
+    // Parse GLSL version string
+    const GLchar* vertex_shader =
+        "#version 110\n"
+        "uniform mat4 ProjMtx;\n"
+        "attribute vec2 Position;\n"
+        "attribute vec2 UV;\n"
+        "attribute vec4 Color;\n"
+        "varying vec2 Frag_UV;\n"
+        "varying vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Frag_UV = UV;\n"
+        "    Frag_Color = Color;\n"
+        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n";
+    const GLchar* fragment_shader =
+        "#version 110\n"
+        #ifdef FO_OGL_ES
+        "precision mediump float;\n"
+        #endif
+        "uniform sampler2D Texture;\n"
+        "varying vec2 Frag_UV;\n"
+        "varying vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV.st);\n"
+        "}\n";
+
+    // Create shaders
+    const GLchar* vertex_shader_arr[ 1 ] = { vertex_shader };
+    VertHandle = glCreateShader( GL_VERTEX_SHADER );
+    GL( glShaderSource( VertHandle, 1, vertex_shader_arr, nullptr ) );
+    GL( glCompileShader( VertHandle ) );
+    GLint vs_status = 0;
+    GL( glGetShaderiv( VertHandle, GL_COMPILE_STATUS, &vs_status ) );
+    RUNTIME_ASSERT( (GLboolean) vs_status == GL_TRUE );
+
+    const GLchar* fragment_shader_arr[ 1 ] = { fragment_shader };
+    FragHandle = glCreateShader( GL_FRAGMENT_SHADER );
+    GL( glShaderSource( FragHandle, 1, fragment_shader_arr, nullptr ) );
+    GL( glCompileShader( FragHandle ) );
+    GLint fs_status = 0;
+    GL( glGetShaderiv( FragHandle, GL_COMPILE_STATUS, &fs_status ) );
+    RUNTIME_ASSERT( (GLboolean) fs_status == GL_TRUE );
+
+    ShaderHandle = glCreateProgram();
+    GL( glAttachShader( ShaderHandle, VertHandle ) );
+    GL( glAttachShader( ShaderHandle, FragHandle ) );
+    GL( glLinkProgram( ShaderHandle ) );
+    GLint program_status = 0;
+    GL( glGetProgramiv( ShaderHandle, GL_LINK_STATUS, &program_status ) );
+    RUNTIME_ASSERT( (GLboolean) program_status == GL_TRUE );
+
+    AttribLocationTex = glGetUniformLocation( ShaderHandle, "Texture" );
+    AttribLocationProjMtx = glGetUniformLocation( ShaderHandle, "ProjMtx" );
+    AttribLocationVtxPos = glGetAttribLocation( ShaderHandle, "Position" );
+    AttribLocationVtxUV = glGetAttribLocation( ShaderHandle, "UV" );
+    AttribLocationVtxColor = glGetAttribLocation( ShaderHandle, "Color" );
+
+    GL( glGenBuffers( 1, &VboHandle ) );
+    GL( glGenBuffers( 1, &ElementsHandle ) );
 
     // Init Dear ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+
+    io.WantSaveIniSettings = false;
+    io.IniFilename = nullptr;
+
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     if( docking )
     {
@@ -152,10 +220,10 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;
+    #ifndef FO_OGL_ES
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+    #endif
     // io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
-    // #ifndef FO_OGL_ES
-    // io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-    // #endif
 
     // Keyboard mapping
     io.KeyMap[ ImGuiKey_Tab ] = SDL_SCANCODE_TAB;
@@ -265,7 +333,9 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     GL( glBindTexture( GL_TEXTURE_2D, FontTexture ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
+    #ifdef GL_UNPACK_ROW_LENGTH
     GL( glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 ) );
+    #endif
     GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ) );
     GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
 
@@ -287,6 +357,7 @@ bool AppGui::BeginFrame()
 
     // Poll and handle events
     SDL_Event event;
+    bool      quit = false;
     while( SDL_PollEvent( &event ) )
     {
         switch( event.type )
@@ -349,7 +420,9 @@ bool AppGui::BeginFrame()
         }
 
         if( event.type == SDL_QUIT )
-            return false;
+            quit = true;
+        if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID( SdlWindow ) )
+            quit = true;
     }
 
     // Setup display size
@@ -430,7 +503,7 @@ bool AppGui::BeginFrame()
 
     ImGui::NewFrame();
 
-    return true;
+    return !quit;
 }
 
 void AppGui::EndFrame()
@@ -445,30 +518,31 @@ void AppGui::EndFrame()
     }
     #endif
 
+    ImGui::Render();
+
     ImGuiIO&      io = ImGui::GetIO();
     GL( glViewport( 0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y ) );
     static ImVec4 clear_color = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
     GL( glClearColor( clear_color.x, clear_color.y, clear_color.z, clear_color.w ) );
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
 
-    GL( glEnable( GL_SCISSOR_TEST ) );
-    GL( glEnableClientState( GL_VERTEX_ARRAY ) );
-    GL( glEnableClientState( GL_TEXTURE_COORD_ARRAY ) );
-    GL( glEnableClientState( GL_COLOR_ARRAY ) );
-    GL( glMatrixMode( GL_MODELVIEW ) );
-    GL( glPushMatrix() );
-    GL( glLoadIdentity() );
-
-    ImGui::Render();
     RenderDrawData( ImGui::GetDrawData() );
 
+    if( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable )
+    {
+        SDL_Window*   backup_current_window = SDL_GL_GetCurrentWindow();
+        SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        SDL_GL_MakeCurrent( backup_current_window, backup_current_context );
+    }
+
     GL( glDisable( GL_SCISSOR_TEST ) );
-    GL( glDisableClientState( GL_COLOR_ARRAY ) );
-    GL( glDisableClientState( GL_TEXTURE_COORD_ARRAY ) );
-    GL( glDisableClientState( GL_VERTEX_ARRAY ) );
-    GL( glMatrixMode( GL_MODELVIEW ) );
-    GL( glPopMatrix() );
+    GL( glUseProgram( 0 ) );
     GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
+    #ifndef FO_OGL_ES
+    GL( glBindVertexArray( 0 ) );
+    #endif
 
     SDL_GL_SwapWindow( SdlWindow );
 
@@ -498,17 +572,12 @@ static void RenderDrawData( ImDrawData* draw_data )
     if( fb_width == 0 || fb_height == 0 )
         return;
 
-    // Backup GL state
-    GLint last_viewport[ 4 ];
-    GL( glGetIntegerv( GL_VIEWPORT, last_viewport ) );
-
     // Setup GL state
-    GL( glViewport( 0, 0, (GLsizei) fb_width, (GLsizei) fb_height ) );
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glPushMatrix() );
-    GL( glLoadIdentity() );
-    GL( glOrtho( draw_data->DisplayPos.x, draw_data->DisplayPos.x + draw_data->DisplaySize.x,
-                 draw_data->DisplayPos.y + draw_data->DisplaySize.y, draw_data->DisplayPos.y, -1.0f, 1.0f ) );
+    GLuint vao = 0;
+    #ifndef FO_OGL_ES
+    GL( glGenVertexArrays( 1, &vao ) );
+    #endif
+    SetupRenderState( draw_data, fb_width, fb_height, vao );
 
     // Scissor/clipping
     ImVec2 clip_off = draw_data->DisplayPos;
@@ -518,11 +587,8 @@ static void RenderDrawData( ImDrawData* draw_data )
     for( int n = 0; n < draw_data->CmdListsCount; n++ )
     {
         const ImDrawList* cmd_list = draw_data->CmdLists[ n ];
-        const ImDrawVert* vtx_buffer = cmd_list->VtxBuffer.Data;
-        const ImDrawIdx*  idx_buffer = cmd_list->IdxBuffer.Data;
-        GL( glVertexPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, pos ) ) ) );
-        GL( glTexCoordPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, uv ) ) ) );
-        GL( glColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, col ) ) ) );
+        GL( glBufferData( GL_ARRAY_BUFFER, (GLsizeiptr) cmd_list->VtxBuffer.Size * sizeof( ImDrawVert ), (const GLvoid*) cmd_list->VtxBuffer.Data, GL_STREAM_DRAW ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr) cmd_list->IdxBuffer.Size * sizeof( ImDrawIdx ), (const GLvoid*) cmd_list->IdxBuffer.Data, GL_STREAM_DRAW ) );
 
         for( int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++ )
         {
@@ -530,17 +596,9 @@ static void RenderDrawData( ImDrawData* draw_data )
             if( pcmd->UserCallback )
             {
                 if( pcmd->UserCallback == ImDrawCallback_ResetRenderState )
-                {
-                    GL( glViewport( 0, 0, (GLsizei) fb_width, (GLsizei) fb_height ) );
-                    GL( glMatrixMode( GL_PROJECTION ) );
-                    GL( glLoadIdentity() );
-                    GL( glOrtho( draw_data->DisplayPos.x, draw_data->DisplayPos.x + draw_data->DisplaySize.x,
-                                 draw_data->DisplayPos.y + draw_data->DisplaySize.y, draw_data->DisplayPos.y, -1.0f, 1.0f ) );
-                }
+                    SetupRenderState( draw_data, fb_width, fb_height, vao );
                 else
-                {
                     pcmd->UserCallback( cmd_list, pcmd );
-                }
             }
             else
             {
@@ -554,17 +612,60 @@ static void RenderDrawData( ImDrawData* draw_data )
                 {
                     GL( glScissor( (int) clip_rect.x, (int) ( fb_height - clip_rect.w ), (int) ( clip_rect.z - clip_rect.x ), (int) ( clip_rect.w - clip_rect.y ) ) );
                     GL( glBindTexture( GL_TEXTURE_2D, (GLuint) (intptr_t) pcmd->TextureId ) );
-                    GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer ) );
+                    #ifndef FO_OGL_ES
+                    GL( glDrawElementsBaseVertex( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                                  (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ), (GLint) pcmd->VtxOffset ) );
+                    #else
+                    GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                        (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ) ) );
+                    #endif
                 }
             }
-            idx_buffer += pcmd->ElemCount;
         }
     }
 
-    // Restore GL state
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glPopMatrix() );
-    GL( glViewport( last_viewport[ 0 ], last_viewport[ 1 ], (GLsizei) last_viewport[ 2 ], (GLsizei) last_viewport[ 3 ] ) );
+    #ifndef FO_OGL_ES
+    GL( glDeleteVertexArrays( 1, &vao ) );
+    #endif
+}
+
+static void SetupRenderState( ImDrawData* draw_data, int fb_width, int fb_height, GLuint vao )
+{
+    GL( glViewport( 0, 0, (GLsizei) fb_width, (GLsizei) fb_height ) );
+
+    float       l = draw_data->DisplayPos.x;
+    float       r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+    float       t = draw_data->DisplayPos.y;
+    float       b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+    const float ortho_projection[ 4 ][ 4 ] =
+    {
+        { 2.0f / ( r - l ),   0.0f,         0.0f,   0.0f },
+        { 0.0f,         2.0f / ( t - b ),   0.0f,   0.0f },
+        { 0.0f,         0.0f,        -1.0f,   0.0f },
+        { ( r + l ) / ( l - r ),  ( t + b ) / ( b - t ),  0.0f,   1.0f },
+    };
+
+    GL( glEnable( GL_SCISSOR_TEST ) );
+    GL( glUseProgram( ShaderHandle ) );
+    GL( glUniform1i( AttribLocationTex, 0 ) );
+    GL( glUniformMatrix4fv( AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[ 0 ][ 0 ] ) );
+    GL( glActiveTexture( GL_TEXTURE0 ) );
+    #ifdef GL_SAMPLER_BINDING
+    GL( glBindSampler( 0, 0 ) );
+    #endif
+    #ifndef FO_OGL_ES
+    GL( glBindVertexArray( vao ) );
+    #else
+    UNUSED_VARIABLE( vao );
+    #endif
+    GL( glBindBuffer( GL_ARRAY_BUFFER, VboHandle ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ElementsHandle ) );
+    GL( glEnableVertexAttribArray( AttribLocationVtxPos ) );
+    GL( glEnableVertexAttribArray( AttribLocationVtxUV ) );
+    GL( glEnableVertexAttribArray( AttribLocationVtxColor ) );
+    GL( glVertexAttribPointer( AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, pos ) ) );
+    GL( glVertexAttribPointer( AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, uv ) ) );
+    GL( glVertexAttribPointer( AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, col ) ) );
 }
 
 static void Platform_CreateWindow( ImGuiViewport* viewport )

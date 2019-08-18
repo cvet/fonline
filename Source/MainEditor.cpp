@@ -1,6 +1,5 @@
 #include "Common.h"
 #include "Mapper.h"
-#include "Exception.h"
 #include "AppGui.h"
 
 struct GuiWindow
@@ -17,6 +16,10 @@ struct DemoWindow: public GuiWindow
 
     virtual bool Loop() override
     {
+        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        if( ShowDemoWindow )
+            ImGui::ShowDemoWindow( &ShowDemoWindow );
+
         {
             static float f = 0.0f;
             static int   counter = 0;
@@ -96,16 +99,10 @@ static vector< GuiWindow* > CloseWindows;
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    InitialSetup( argc, argv );
+    InitialSetup( "FOnlineEditor", argc, argv );
 
     // Threading
     Thread::SetCurrentName( "GUI" );
-
-    // Exceptions
-    CatchExceptions( "FOnlineEditor", FONLINE_VERSION );
-
-    // Timer
-    Timer::Init();
 
     // Logging
     LogToFile( "FOnlineEditor.log" );
@@ -115,7 +112,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     GetClientOptions();
 
     // Initialize ImGui
-    bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 || false );
+    bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 || true );
     if( !AppGui::Init( "FOnline Editor", use_dx, true, true ) )
         return -1;
 

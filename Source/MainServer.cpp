@@ -5,54 +5,60 @@
 #include "BufferManager.h"
 #include "FlexRect.h"
 #include <locale.h>
-#ifndef FO_WINDOWS
-# include <signal.h>
-#endif
 #include "AppGui.h"
 #include "SDL.h"
 
+static FOServer* Server;
+static Thread    ServerThread;
+static bool      StartServer;
+
 static void InitAdminManager();
+
+static void ServerEntry( void* )
+{
+    while( !StartServer )
+        Thread_Sleep( 10 );
+
+    GetServerOptions();
+
+    // Memory debugging
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
+    if( MemoryDebugLevel >= 3 )
+        Debugger::StartTraceMemory();
+
+    // Admin manager
+    InitAdminManager();
+
+    // Init server
+    Server = new FOServer();
+    if( !Server->Init() )
+    {
+        WriteLog( "Initialization failed!\n" );
+        return;
+    }
+
+    // Server loop
+    WriteLog( "***   Starting game loop   ***\n" );
+
+    while( !GameOpt.Quit )
+        Server->LogicTick();
+
+    WriteLog( "***   Finishing game loop  ***\n" );
+
+    // Finish server
+    Server->Finish();
+    FOServer* server = Server;
+    Server = nullptr;
+    delete server;
+}
 
 /************************************************************************/
 /* GUI & Windows service version                                        */
 /************************************************************************/
 
 #ifndef SERVER_DAEMON
-/*static void GUIInit();
-   static void GUICallback( Fl_Widget* widget, void* data );
-   static void UpdateInfo();
-   static void UpdateLog();
-   static void CheckTextBoxSize( bool force );*/
-static void GameLoopThread( void* );
-// static void GUIUpdate( void* );
-// static Rect     MainInitRect, LogInitRect, InfoInitRect;
-static int      SplitProcent = 90;
-static Thread   LoopThread;
-static bool     GameInitEvent;
-static FOServer Server;
-static string   UpdateLogName;
-static Thread   GUIUpdateThread;
 
-// GUI
-/*static Fl_Window* GuiWindow;
-   static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
- * GuiLabelItemsCount, * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
-   static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveLog, * GuiBtnSaveInfo,
- * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnDeferredCalls,
- * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
-   static Fl_Check_Button* GuiCBtnAutoUpdate;
-   static Fl_Text_Display* GuiLog, * GuiInfo;
-   static int              GUISizeMod = 0;*/
-
-static bool GracefulExit = false;
-
-static int  GUIMessageUpdate = 0;
-static int  GUIMessageExit = 1;
-
-# define GUI_SIZE1( x )                 ( (int) ( x ) * 175 * ( 100 + GUISizeMod ) / 100 / 100 )
-# define GUI_SIZE2( x1, x2 )            GUI_SIZE1( x1 ), GUI_SIZE1( x2 )
-# define GUI_SIZE4( x1, x2, x3, x4 )    GUI_SIZE1( x1 ), GUI_SIZE1( x2 ), GUI_SIZE1( x3 ), GUI_SIZE1( x4 )
-# define GUI_LABEL_BUF_SIZE    ( 128 )
+static void ProcessGui();
 
 // Windows service
 # ifdef FO_WINDOWS
@@ -61,28 +67,9 @@ static void ServiceMain( bool as_service );
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    ImGuiIO& io = ImGui::GetIO();
+    InitialSetup( "FOnlineServer", argc, argv );
 
-    InitialSetup( argc, argv );
-
-    // Threading
     Thread::SetCurrentName( "GUI" );
-
-    // Disable SIGPIPE signal
-    # ifndef FO_WINDOWS
-    signal( SIGPIPE, SIG_IGN );
-    # endif
-
-    // Exceptions catcher
-    CatchExceptions( "FOnlineServer", FONLINE_VERSION );
-
-    // Timer
-    Timer::Init();
-
-    // Memory debugging
-    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
-    if( MemoryDebugLevel >= 3 )
-        Debugger::StartTraceMemory();
 
     // Service
     if( MainConfig->IsKey( "", "Service" ) )
@@ -96,528 +83,333 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     LogToFile( "FOnlineServer.log" );
     LogToBuffer( true );
 
-    FOQuit = true;
+    WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
-    // InitControls();
+    // Init Gui
+    if( !AppGui::Init( "FOnline Server", false, false, false ) )
+        return -1;
 
-    /*if( GuiWindow )
-       {
-            LogToBuffer( true );
-            GuiCBtnAutoUpdate->value( 0 );
-       }
+    // Autostart
+    // if (!MainConfig->IsKey("", "NoStart"))
+    //	StartServer = true;
 
-       WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
+    // Server loop in separate thread
+    ServerThread.Start( ServerEntry, "Main" );
+    if( StartServer && !Server )
+        Thread_Sleep( 10 );
 
-       // Autostart
-       if( !MainConfig->IsKey( "", "NoStart" ) )
-       {
-            if( GuiWindow )
-            {
-                    GuiBtnStartStop->do_callback();
-            }
-            else
-            {
-                    FOQuit = false;
-                    LoopThread.Start( GameLoopThread, "Main" );
-            }
-       }
+    // Gui loop
+    while( !StartServer || Server )
+    {
+        if( !AppGui::BeginFrame() )
+        {
+            // Immediate finish
+            if( !StartServer || !Server || Server->Starting() )
+                ExitProcess( 0 );
 
-       // Start admin manager
-       InitAdminManager();
+            // Graceful finish
+            GameOpt.Quit = true;
+        }
 
-       // Loop
-       if( GuiWindow )
-       {
-            GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
-            while( Fl::wait() )
-            {
-                    int* msg = (int*) Fl::thread_message();
-                    if( msg == &GUIMessageUpdate )
-                    {
-                            UpdateLog();
-                            UpdateInfo();
-                            CheckTextBoxSize( false );
-                    }
-                    else if( msg == &GUIMessageExit )
-                    {
-                            // Disable buttons
-                            GuiBtnRlClScript->deactivate();
-                            GuiBtnPlayers->deactivate();
-                            GuiBtnLocsMaps->deactivate();
-                            GuiBtnDeferredCalls->deactivate();
-                            GuiBtnProperties->deactivate();
-                            GuiBtnItemsCount->deactivate();
-                            GuiBtnProfiler->deactivate();
-                            GuiBtnSaveInfo->deactivate();
-                            break;
-                    }
-            }
-            Fl::unlock();
-       }
-       else
-       {
-            while( !FOQuit )
-                    Thread_Sleep( 100 );
-       }*/
+        ProcessGui();
+
+        AppGui::EndFrame();
+    }
+
+    // Wait server finish
+    if( StartServer )
+        ServerThread.Wait();
 
     return 0;
 }
 
-void InitControls()
+static void ProcessGui()
 {
-    // Setup
-    /*struct
-       {
-            int  FontType;
-            int  FontSize;
-
-            void Setup(Fl_Box* widget)
-            {
-                    widget->labelfont(FontType);
-                    widget->labelsize(FontSize);
-                    widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-                    widget->box(FL_NO_BOX);
-                    widget->label(new char[GUI_LABEL_BUF_SIZE]);
-       *(char*)widget->label() = 0;
-            }
-
-            void Setup(Fl_Button* widget)
-            {
-                    widget->labelfont(FontType);
-                    widget->labelsize(FontSize);
-                    widget->callback(GUICallback);
-            }
-
-            void Setup(Fl_Check_Button* widget)
-            {
-                    widget->labelfont(FontType);
-                    widget->labelsize(FontSize);
-                    widget->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-                    widget->callback(GUICallback);
-            }
-
-            void Setup(Fl_Text_Display* widget)
-            {
-                    widget->labelfont(FontType);
-                    widget->labelsize(FontSize);
-                    widget->buffer(new Fl_Text_Buffer());
-                    widget->textfont(FontType);
-                    widget->textsize(FontSize);
-            }
-       } GUISetup;
-
-       GUISizeMod = MainConfig->GetInt("", "GUISize", 0);
-       GUISetup.FontType = FL_COURIER;
-       GUISetup.FontSize = 11;
-
-       // Main window
-       int wx = MainConfig->GetInt("", "PositionX", 0);
-       int wy = MainConfig->GetInt("", "PositionY", 0);
-       if (!wx && !wy)
-            wx = (Fl::w() - GUI_SIZE1(496)) / 2, wy = (Fl::h() - GUI_SIZE1(412)) / 2;
-       GuiWindow = new Fl_Window(wx, wy, GUI_SIZE2(496, 412), "FOnline Server");
-       GuiWindow->labelfont(GUISetup.FontType);
-       GuiWindow->labelsize(GUISetup.FontSize);
-       GuiWindow->callback(GUICallback);
-       GuiWindow->size_range(GUI_SIZE2(129, 129));
-
-       // Name
-       GuiWindow->label(MainConfig->GetStr("", "WindowName", "FOnline").c_str());
-
-       // Icon
-     # ifdef FO_WINDOWS
-       GuiWindow->icon((char*)LoadIcon(fl_display, MAKEINTRESOURCE(101)));
-     # else
-       fl_open_display();
-       // Todo: linux
-     # endif
-
-       // Labels
-       GUISetup.Setup(GuiLabelGameTime = new Fl_Box(GUI_SIZE4(5, 6, 128, 8), "Time:"));
-       GUISetup.Setup(GuiLabelClients = new Fl_Box(GUI_SIZE4(5, 14, 124, 8), "Connections:"));
-       GUISetup.Setup(GuiLabelIngame = new Fl_Box(GUI_SIZE4(5, 22, 124, 8), "Players in game:"));
-       GUISetup.Setup(GuiLabelNPC = new Fl_Box(GUI_SIZE4(5, 30, 124, 8), "NPC in game:"));
-       GUISetup.Setup(GuiLabelLocCount = new Fl_Box(GUI_SIZE4(5, 38, 124, 8), "Locations:"));
-       GUISetup.Setup(GuiLabelItemsCount = new Fl_Box(GUI_SIZE4(5, 46, 124, 8), "Items:"));
-       GUISetup.Setup(GuiLabelFPS = new Fl_Box(GUI_SIZE4(5, 54, 124, 8), "Cycles per second:"));
-       GUISetup.Setup(GuiLabelDelta = new Fl_Box(GUI_SIZE4(5, 62, 124, 8), "Cycle time:"));
-       GUISetup.Setup(GuiLabelUptime = new Fl_Box(GUI_SIZE4(5, 70, 124, 8), "Uptime:"));
-       GUISetup.Setup(GuiLabelSend = new Fl_Box(GUI_SIZE4(5, 78, 124, 8), "KBytes send:"));
-       GUISetup.Setup(GuiLabelRecv = new Fl_Box(GUI_SIZE4(5, 86, 124, 8), "KBytes recv:"));
-       GUISetup.Setup(GuiLabelCompress = new Fl_Box(GUI_SIZE4(5, 94, 124, 8), "Compress ratio:"));
-
-       // Buttons
-       GUISetup.Setup(GuiBtnRlClScript = new Fl_Button(GUI_SIZE4(5, 144, 124, 14), "Reload client scripts"));
-       GUISetup.Setup(GuiBtnSaveLog = new Fl_Button(GUI_SIZE4(5, 160, 124, 14), "Save log"));
-       GUISetup.Setup(GuiBtnSaveInfo = new Fl_Button(GUI_SIZE4(5, 176, 124, 14), "Save info"));
-       GUISetup.Setup(GuiBtnCreateDump = new Fl_Button(GUI_SIZE4(5, 192, 124, 14), "Create dump"));
-       GUISetup.Setup(GuiBtnMemory = new Fl_Button(GUI_SIZE4(5, 219, 124, 14), "Memory usage"));
-       GUISetup.Setup(GuiBtnPlayers = new Fl_Button(GUI_SIZE4(5, 235, 124, 14), "Players"));
-       GUISetup.Setup(GuiBtnLocsMaps = new Fl_Button(GUI_SIZE4(5, 251, 124, 14), "Locations and maps"));
-       GUISetup.Setup(GuiBtnDeferredCalls = new Fl_Button(GUI_SIZE4(5, 267, 124, 14), "Deferred calls"));
-       GUISetup.Setup(GuiBtnProperties = new Fl_Button(GUI_SIZE4(5, 283, 124, 14), "Properties"));
-       GUISetup.Setup(GuiBtnItemsCount = new Fl_Button(GUI_SIZE4(5, 299, 124, 14), "Items count"));
-       GUISetup.Setup(GuiBtnProfiler = new Fl_Button(GUI_SIZE4(5, 315, 124, 14), "Profiler"));
-       GUISetup.Setup(GuiBtnStartStop = new Fl_Button(GUI_SIZE4(5, 393, 124, 14), "Start server"));
-       GUISetup.Setup(GuiBtnSplitUp = new Fl_Button(GUI_SIZE4(117, 357, 12, 9), ""));
-       GUISetup.Setup(GuiBtnSplitDown = new Fl_Button(GUI_SIZE4(117, 368, 12, 9), ""));
-
-       // Check buttons
-       GUISetup.Setup(GuiCBtnAutoUpdate = new Fl_Check_Button(GUI_SIZE4(5, 339, 110, 10), "Update info every second"));
-       // GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
-       // GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
-       // GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
-       // GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
-
-       // Text boxes
-       GUISetup.Setup(GuiLog = new Fl_Text_Display(GUI_SIZE4(133, 7, 358, 195)));
-       GUISetup.Setup(GuiInfo = new Fl_Text_Display(GUI_SIZE4(133, 204, 358, 203)));
-
-       // Disable buttons
-       GuiBtnRlClScript->deactivate();
-       GuiBtnPlayers->deactivate();
-       GuiBtnLocsMaps->deactivate();
-       GuiBtnDeferredCalls->deactivate();
-       GuiBtnProperties->deactivate();
-       GuiBtnItemsCount->deactivate();
-       GuiBtnProfiler->deactivate();
-       GuiBtnSaveInfo->deactivate();
-
-       // Give initial focus to Start / Stop
-       GuiBtnStartStop->take_focus();
-
-       // Info
-       MainInitRect(GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h());
-       LogInitRect(GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h());
-       InfoInitRect(GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h());
-       UpdateInfo();
-
-       // Show window
-       char  dummy_argv0[2] = "";
-       char* dummy_argv[] = { dummy_argv0 };
-       int   dummy_argc = 1;
-       GuiWindow->show(dummy_argc, dummy_argv);*/
-}
-
-/*
-   static void GUICallback( Fl_Widget* widget, void* data )
-   {
-    if( widget == GuiWindow )
+    // Initial start
+    if( !Server && !StartServer )
     {
-        if( !GracefulExit )
+        ImGui::Begin( "", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize );
+        if( ImGui::Button( "Start server", { 200, 100 } ) )
+            StartServer = true;
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Begin( "", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize );
+
+    // Log
+    static ImVec2 log_size;
+    if( ImGui::BeginChild( "Log", log_size, false, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string whole_log, cur_log;
+        LogGetBuffer( cur_log );
+        if( !cur_log.empty() )
         {
-            if( !Server.Started() || Fl::get_key( FL_Shift_L ) )
-            {
-                ExitProcess( 0 );
-            }
-            else
-            {
-                GuiWindow->label( "Graceful exit. Please wait..." );
-                GracefulExit = true;
-                FOQuit = true;
-            }
+            whole_log += cur_log;
+            cur_log.clear();
+            if( whole_log.size() > 1000000 )
+                whole_log = whole_log.substr( whole_log.size() - 1000000 );
         }
+
+        ImGui::TextUnformatted( whole_log.c_str(), whole_log.c_str() + whole_log.size() );
     }
-    else if( widget == GuiBtnRlClScript )
+
+    // Memory
+    static ImVec2 memory_size;
+    if( Server && ImGui::BeginChild( "Memory", memory_size, false, ImGuiWindowFlags_AlwaysAutoResize ) )
     {
-        if( Server.Started() )
-            Server.RequestReloadClientScripts = true;
+        static string stats;
+        stats = Debugger::GetMemoryStatistics();
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
     }
-    else if( widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo )
-    {
+
+    ImGui::End();
+}
+/*
+   // Starting
+   if (Server && Server->ActiveInProcess)
+
+   // Loop
+
+   if (widget == GuiWindow)
+   {
+        if (!GracefulExit)
+        {
+                if (!Server.Started() || Fl::get_key(FL_Shift_L))
+                {
+                        ExitProcess(0);
+                }
+                else
+                {
+                        GuiWindow->label("Graceful exit. Please wait...");
+                        GracefulExit = true;
+                        GameOpt.Quit = true;
+                }
+        }
+   }
+   else if (widget == GuiBtnRlClScript)
+   {
+        if (Server.Started())
+                Server.RequestReloadClientScripts = true;
+   }
+   else if (widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo)
+   {
         DateTimeStamp    dt;
-        Timer::GetCurrentDateTime( dt );
-        Fl_Text_Display* log = ( widget == GuiBtnSaveLog ? GuiLog : GuiInfo );
-        string           log_name_dir = FileManager::GetWritePath( "Logs/" );
-        string           log_name = _str( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
-                                          log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-        FileManager::CreateDirectoryTree( log_name );
-        log->buffer()->savefile( log_name.c_str() );
-    }
-    else if( widget == GuiBtnCreateDump )
-    {
-        CreateDump( "ManualDump", "Manual" );
-    }
-    else if( widget == GuiBtnMemory )
-    {
+        Timer::GetCurrentDateTime(dt);
+        Fl_Text_Display* log = (widget == GuiBtnSaveLog ? GuiLog : GuiInfo);
+        string           log_name_dir = FileManager::GetWritePath("Logs/");
+        string           log_name = _str("{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
+                log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+        FileManager::CreateDirectoryTree(log_name);
+        log->buffer()->savefile(log_name.c_str());
+   }
+   else if (widget == GuiBtnCreateDump)
+   {
+        CreateDump("ManualDump", "Manual");
+   }
+   else if (widget == GuiBtnMemory)
+   {
         FOServer::UpdateIndex = 0;
         FOServer::UpdateLastIndex = 0;
-        if( !Server.Started() )
-            UpdateInfo();
-    }
-    else if( widget == GuiBtnPlayers )
-    {
+        if (!Server.Started())
+                UpdateInfo();
+   }
+   else if (widget == GuiBtnPlayers)
+   {
         FOServer::UpdateIndex = 1;
         FOServer::UpdateLastIndex = 1;
-    }
-    else if( widget == GuiBtnLocsMaps )
-    {
+   }
+   else if (widget == GuiBtnLocsMaps)
+   {
         FOServer::UpdateIndex = 2;
         FOServer::UpdateLastIndex = 2;
-    }
-    else if( widget == GuiBtnDeferredCalls )
-    {
+   }
+   else if (widget == GuiBtnDeferredCalls)
+   {
         FOServer::UpdateIndex = 3;
         FOServer::UpdateLastIndex = 3;
-    }
-    else if( widget == GuiBtnProperties )
-    {
+   }
+   else if (widget == GuiBtnProperties)
+   {
         FOServer::UpdateIndex = 4;
         FOServer::UpdateLastIndex = 4;
-    }
-    else if( widget == GuiBtnItemsCount )
-    {
+   }
+   else if (widget == GuiBtnItemsCount)
+   {
         FOServer::UpdateIndex = 5;
         FOServer::UpdateLastIndex = 5;
-    }
-    else if( widget == GuiBtnProfiler )
-    {
+   }
+   else if (widget == GuiBtnProfiler)
+   {
         FOServer::UpdateIndex = 6;
         FOServer::UpdateLastIndex = 6;
-    }
-    else if( widget == GuiBtnStartStop )
-    {
-        if( !FOQuit )       // End of work
+   }
+   else if (widget == GuiBtnStartStop)
+   {
+        if (!GameOpt.Quit)       // End of work
         {
-            FOQuit = true;
-            GuiBtnStartStop->copy_label( "Start server" );
-            GuiBtnStartStop->deactivate();
+                GameOpt.Quit = true;
+                GuiBtnStartStop->copy_label("Start server");
+                GuiBtnStartStop->deactivate();
 
-            // Disable buttons
-            GuiBtnRlClScript->deactivate();
-            GuiBtnPlayers->deactivate();
-            GuiBtnLocsMaps->deactivate();
-            GuiBtnDeferredCalls->deactivate();
-            GuiBtnProperties->deactivate();
-            GuiBtnItemsCount->deactivate();
+                // Disable buttons
+                GuiBtnRlClScript->deactivate();
+                GuiBtnPlayers->deactivate();
+                GuiBtnLocsMaps->deactivate();
+                GuiBtnDeferredCalls->deactivate();
+                GuiBtnProperties->deactivate();
+                GuiBtnItemsCount->deactivate();
         }
         else         // Begin work
         {
-            GuiBtnStartStop->copy_label( "Stop server" );
-            GuiBtnStartStop->deactivate();
+                GuiBtnStartStop->copy_label("Stop server");
+                GuiBtnStartStop->deactivate();
 
-            FOQuit = false;
-            LoopThread.Start( GameLoopThread, "Main" );
+                GameOpt.Quit = false;
+                LoopThread.Start(GameLoopThread, "Main");
         }
-    }
-    else if( widget == GuiBtnSplitUp )
-    {
-        if( SplitProcent >= 50 )
-            SplitProcent -= 40;
-        CheckTextBoxSize( true );
-        GuiLog->scroll( MAX_INT, 0 );
-    }
-    else if( widget == GuiBtnSplitDown )
-    {
-        if( SplitProcent <= 50 )
-            SplitProcent += 40;
-        CheckTextBoxSize( true );
-        GuiLog->scroll( MAX_INT, 0 );
-    }
-    else if( widget == GuiCBtnAutoUpdate )
-    {
-        if( GuiCBtnAutoUpdate->value() )
-            FOServer::UpdateLastTick = Timer::FastTick();
+   }
+   else if (widget == GuiBtnSplitUp)
+   {
+        if (SplitProcent >= 50)
+                SplitProcent -= 40;
+        CheckTextBoxSize(true);
+        GuiLog->scroll(MAX_INT, 0);
+   }
+   else if (widget == GuiBtnSplitDown)
+   {
+        if (SplitProcent <= 50)
+                SplitProcent += 40;
+        CheckTextBoxSize(true);
+        GuiLog->scroll(MAX_INT, 0);
+   }
+   else if (widget == GuiCBtnAutoUpdate)
+   {
+        if (GuiCBtnAutoUpdate->value())
+                FOServer::UpdateLastTick = Timer::FastTick();
         else
-            FOServer::UpdateLastTick = 0;
-    }
+                FOServer::UpdateLastTick = 0;
+   }
    }
 
-   static void GUIUpdate( void* )
-   {
-    while( true )
-    {
-        Fl::awake( &GUIMessageUpdate );
-        Thread_Sleep( 50 );
-    }
-   }
 
    static void UpdateInfo()
    {
-    struct Label
+   struct Label
+   {
+   static void Update( Fl_Box* label, const string& text )
+   {
+    if( text != (char*) label->label() )
     {
-        static void Update( Fl_Box* label, const string& text )
-        {
-            if( text != (char*) label->label() )
-            {
-                Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text.c_str() );
-                label->redraw_label();
-            }
-        }
-    };
-
-    if( Server.Started() )
-    {
-        DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-        Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}",
-                                               st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, Globals->GetTimeMultiplier() ) );
-        Label::Update( GuiLabelClients, _str( "Connections: {}", Server.Statistics.CurOnline ) );
-        Label::Update( GuiLabelIngame, _str( "Players in game: {}", CrMngr.PlayersInGame() ) );
-        Label::Update( GuiLabelNPC, _str( "NPC in game: {}", CrMngr.NpcInGame() ) );
-        Label::Update( GuiLabelLocCount, _str( "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
-        Label::Update( GuiLabelItemsCount, _str( "Items: {}", ItemMngr.GetItemsCount() ) );
-        Label::Update( GuiLabelFPS, _str( "Cycles per second: {}", Server.Statistics.FPS ) );
-        Label::Update( GuiLabelDelta, _str( "Cycle time: {}", Server.Statistics.CycleTime ) );
+        Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text.c_str() );
+        label->redraw_label();
     }
-    else
-    {
-        Label::Update( GuiLabelGameTime, _str( "Time: n/a" ) );
-        Label::Update( GuiLabelClients, _str( "Connections: n/a" ) );
-        Label::Update( GuiLabelIngame, _str( "Players in game: n/a" ) );
-        Label::Update( GuiLabelNPC, _str( "NPC in game: n/a" ) );
-        Label::Update( GuiLabelLocCount, _str( "Locations: n/a" ) );
-        Label::Update( GuiLabelItemsCount, _str( "Items: n/a" ) );
-        Label::Update( GuiLabelFPS, _str( "Cycles per second: n/a" ) );
-        Label::Update( GuiLabelDelta, _str( "Cycle time: n/a" ) );
-    }
+   }
+   };
 
-    uint seconds = Server.Statistics.Uptime;
-    Label::Update( GuiLabelUptime, _str( "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
-    Label::Update( GuiLabelSend, _str( "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
-    Label::Update( GuiLabelRecv, _str( "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
-    Label::Update( GuiLabelCompress, _str( "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
+   if( Server.Started() )
+   {
+   DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
+   Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}",
+                                       st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, Globals->GetTimeMultiplier() ) );
+   Label::Update( GuiLabelClients, _str( "Connections: {}", Server.Statistics.CurOnline ) );
+   Label::Update( GuiLabelIngame, _str( "Players in game: {}", CrMngr.PlayersInGame() ) );
+   Label::Update( GuiLabelNPC, _str( "NPC in game: {}", CrMngr.NpcInGame() ) );
+   Label::Update( GuiLabelLocCount, _str( "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
+   Label::Update( GuiLabelItemsCount, _str( "Items: {}", ItemMngr.GetItemsCount() ) );
+   Label::Update( GuiLabelFPS, _str( "Cycles per second: {}", Server.Statistics.FPS ) );
+   Label::Update( GuiLabelDelta, _str( "Cycle time: {}", Server.Statistics.CycleTime ) );
+   }
+   else
+   {
+   Label::Update( GuiLabelGameTime, _str( "Time: n/a" ) );
+   Label::Update( GuiLabelClients, _str( "Connections: n/a" ) );
+   Label::Update( GuiLabelIngame, _str( "Players in game: n/a" ) );
+   Label::Update( GuiLabelNPC, _str( "NPC in game: n/a" ) );
+   Label::Update( GuiLabelLocCount, _str( "Locations: n/a" ) );
+   Label::Update( GuiLabelItemsCount, _str( "Items: n/a" ) );
+   Label::Update( GuiLabelFPS, _str( "Cycles per second: n/a" ) );
+   Label::Update( GuiLabelDelta, _str( "Cycle time: n/a" ) );
+   }
 
-    if( FOServer::UpdateIndex == -1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick + 1000 < Timer::FastTick() )
-    {
-        FOServer::UpdateIndex = FOServer::UpdateLastIndex;
-        FOServer::UpdateLastTick = Timer::FastTick();
-    }
+   uint seconds = Server.Statistics.Uptime;
+   Label::Update( GuiLabelUptime, _str( "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
+   Label::Update( GuiLabelSend, _str( "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
+   Label::Update( GuiLabelRecv, _str( "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
+   Label::Update( GuiLabelCompress, _str( "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
 
-    if( FOServer::UpdateIndex != -1 )
-    {
-        string info;
-        switch( FOServer::UpdateIndex )
-        {
-        case 0:         // Memory
-            info = Debugger::GetMemoryStatistics();
-            UpdateLogName = "Memory";
-            break;
-        case 1:         // Players
-            if( !Server.Started() )
-                break;
-            info = Server.GetIngamePlayersStatistics();
-            UpdateLogName = "Players";
-            break;
-        case 2:         // Locations and maps
-            if( !Server.Started() )
-                break;
-            info = MapMngr.GetLocationsMapsStatistics();
-            UpdateLogName = "LocationsAndMaps";
-            break;
-        case 3:         // Deferred calls
-            if( !Server.Started() )
-                break;
-            info = Script::GetDeferredCallsStatistics();
-            UpdateLogName = "DeferredCalls";
-            break;
-        case 4:         // Properties
-            if( !Server.Started() )
-                break;
-            info = "WIP";
-            UpdateLogName = "Properties";
-            break;
-        case 5:         // Items count
-            if( !Server.Started() )
-                break;
-            info = ItemMngr.GetItemsStatistics();
-            UpdateLogName = "ItemsCount";
-            break;
-        case 6:         // Profiler
-            info = Script::GetProfilerStatistics();
-            UpdateLogName = "Profiler";
-            break;
-        default:
-            UpdateLogName = "";
-            break;
-        }
-        GuiInfo->buffer()->text( info.c_str() );
-        if( !GuiBtnSaveInfo->active() )
-            GuiBtnSaveInfo->activate();
-        FOServer::UpdateIndex = -1;
-    }
+   if( FOServer::UpdateIndex == -1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick + 1000 < Timer::FastTick() )
+   {
+   FOServer::UpdateIndex = FOServer::UpdateLastIndex;
+   FOServer::UpdateLastTick = Timer::FastTick();
+   }
+
+   if( FOServer::UpdateIndex != -1 )
+   {
+   string info;
+   switch( FOServer::UpdateIndex )
+   {
+   case 0:         // Memory
+    info = Debugger::GetMemoryStatistics();
+    UpdateLogName = "Memory";
+    break;
+   case 1:         // Players
+    if( !Server.Started() )
+        break;
+    info = Server.GetIngamePlayersStatistics();
+    UpdateLogName = "Players";
+    break;
+   case 2:         // Locations and maps
+    if( !Server.Started() )
+        break;
+    info = MapMngr.GetLocationsMapsStatistics();
+    UpdateLogName = "LocationsAndMaps";
+    break;
+   case 3:         // Deferred calls
+    if( !Server.Started() )
+        break;
+    info = Script::GetDeferredCallsStatistics();
+    UpdateLogName = "DeferredCalls";
+    break;
+   case 4:         // Properties
+    if( !Server.Started() )
+        break;
+    info = "WIP";
+    UpdateLogName = "Properties";
+    break;
+   case 5:         // Items count
+    if( !Server.Started() )
+        break;
+    info = ItemMngr.GetItemsStatistics();
+    UpdateLogName = "ItemsCount";
+    break;
+   case 6:         // Profiler
+    info = Script::GetProfilerStatistics();
+    UpdateLogName = "Profiler";
+    break;
+   default:
+    UpdateLogName = "";
+    break;
+   }
+   GuiInfo->buffer()->text( info.c_str() );
+   if( !GuiBtnSaveInfo->active() )
+    GuiBtnSaveInfo->activate();
+   FOServer::UpdateIndex = -1;
+   }
    }
 
    static void UpdateLog()
    {
-    string str;
-    LogGetBuffer( str );
-    if( !str.empty() )
-    {
-        GuiLog->buffer()->append( str.c_str() );
-        if( Fl::focus() != GuiLog )
-            GuiLog->scroll( MAX_INT, 0 );
-    }
-   }
-
-   static void CheckTextBoxSize( bool force )
+   string str;
+   LogGetBuffer( str );
+   if( !str.empty() )
    {
-    static Rect last_rmain;
-    if( force || GuiWindow->x() != last_rmain[ 0 ] || GuiWindow->y() != last_rmain[ 1 ] ||
-        GuiWindow->x() + GuiWindow->w() != last_rmain[ 2 ] || GuiWindow->y() + GuiWindow->h() != last_rmain[ 3 ] )
-    {
-        Rect rmain( GuiWindow->x(), GuiWindow->y(), GuiWindow->x() + GuiWindow->w(), GuiWindow->y() + GuiWindow->h() );
-        if( rmain.W() > 0 && rmain.H() > 0 )
-        {
-            int  wdiff = rmain.W() - MainInitRect.W();
-            int  hdiff = rmain.H() - MainInitRect.H();
-
-            Rect rlog( GuiLog->x(), GuiLog->y(), GuiLog->x() + GuiLog->w(), GuiLog->y() + GuiLog->h() );
-            Rect rinfo( GuiInfo->x(), GuiInfo->y(), GuiInfo->x() + GuiInfo->w(), GuiInfo->y() + GuiInfo->h() );
-
-            int  hall = LogInitRect.H() + InfoInitRect.H() + hdiff;
-            int  wlog = LogInitRect.W() + wdiff;
-            int  hlog = hall * SplitProcent / 100;
-            int  winfo = InfoInitRect.W() + wdiff;
-            int  hinfo = hall * ( 100 - SplitProcent ) / 100;
-            int  yinfo = hlog - LogInitRect.H();
-
-            GuiLog->position( LogInitRect.L, LogInitRect.T );
-            GuiLog->size( wlog, hlog );
-            GuiInfo->position( InfoInitRect.L, InfoInitRect.T + yinfo );
-            GuiInfo->size( winfo, hinfo );
-            GuiLog->redraw();
-            GuiInfo->redraw();
-            GuiWindow->redraw();
-        }
-        last_rmain = rmain;
-    }
+   GuiLog->buffer()->append( str.c_str() );
+   if( Fl::focus() != GuiLog )
+    GuiLog->scroll( MAX_INT, 0 );
+   }
    }*/
-
-static void GameLoopThread( void* )
-{
-    /*GetServerOptions();
-
-       if( Server.Init() )
-       {
-        if( GuiWindow )
-        {
-            // Enable buttons
-            GuiBtnRlClScript->activate();
-            GuiBtnPlayers->activate();
-            GuiBtnLocsMaps->activate();
-            GuiBtnDeferredCalls->activate();
-            GuiBtnProperties->activate();
-            GuiBtnItemsCount->activate();
-            GuiBtnStartStop->activate();
-            GuiBtnProfiler->activate();
-        }
-
-        GameInitEvent = true;
-        Server.MainLoop();
-        Server.Finish();
-        UpdateInfo();
-       }
-       else
-       {
-        WriteLog( "Initialization fail!\n" );
-        GameInitEvent = true;
-       }
-
-       if( GuiWindow )
-        UpdateLog();
-       if( GuiWindow && GracefulExit )
-        Fl::awake( &GUIMessageExit );*/
-}
 
 #endif // !SERVER_DAEMON
 
@@ -710,18 +502,14 @@ static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
     if( !FOServiceStatusHandle )
         return;
 
-    // Start admin manager
-    InitAdminManager();
-
-    // Start game
     SetFOServiceStatus( SERVICE_START_PENDING );
 
-    FOQuit = false;
-    LoopThread.Start( GameLoopThread, "Main" );
-    while( !GameInitEvent )
-        Thread_Sleep( 0 );
+    StartServer = true;
+    ServerThread.Start( ServerEntry, "Main" );
+    while( !Server || !Server->Started() || !Server->Stopped() )
+        Thread_Sleep( 10 );
 
-    if( Server.Started() )
+    if( Server->Started() )
         SetFOServiceStatus( SERVICE_RUNNING );
     else
         SetFOServiceStatus( SERVICE_STOPPED );
@@ -733,9 +521,8 @@ static VOID WINAPI FOServiceCtrlHandler( DWORD opcode )
     {
     case SERVICE_CONTROL_STOP:
         SetFOServiceStatus( SERVICE_STOP_PENDING );
-        FOQuit = true;
-
-        LoopThread.Wait();
+        GameOpt.Quit = true;
+        ServerThread.Wait();
         SetFOServiceStatus( SERVICE_STOPPED );
         return;
     case SERVICE_CONTROL_INTERROGATE:
@@ -786,13 +573,10 @@ static void SetFOServiceStatus( uint state )
 # include <sys/stat.h>
 
 static void DaemonLoop();
-static void GameLoopThread( void* );
-static FOServer Server;
-static Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
-    InitialSetup( argc, argv );
+    InitialSetup( "FOnlineServer", argc, argv );
 
     if( GameOpt.CommandLine.find( "-nodetach" ) == string::npos )
     {
@@ -828,17 +612,6 @@ int main( int argc, char** argv )
     // Threading
     Thread::SetCurrentName( "Daemon" );
 
-    // Disable SIGPIPE signal
-    # ifndef FO_WINDOWS
-    signal( SIGPIPE, SIG_IGN );
-    # endif
-
-    // Exceptions catcher
-    CatchExceptions( "FOnlineServer", FONLINE_VERSION );
-
-    // Timer
-    Timer::Init();
-
     // Memory debugging
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
@@ -859,30 +632,13 @@ int main( int argc, char** argv )
 static void DaemonLoop()
 {
     // Autostart server
-    LoopThread.Start( GameLoopThread, "Main" );
-
-    // Start admin manager
-    InitAdminManager();
+    StartServer = true;
+    ServerThread.Start( ServerEntry, "Main" );
 
     // Daemon loop
-    while( true )
-        Thread_Sleep( 1000 );
-}
-
-static void GameLoopThread( void* )
-{
-    GetServerOptions();
-
-    if( Server.Init() )
-    {
-        FOQuit = false;
-        Server.MainLoop();
-        Server.Finish();
-    }
-    else
-    {
-        WriteLog( "Initialization fail!\n" );
-    }
+    while( !GameOpt.Quit )
+        Thread_Sleep( 100 );
+    ServerThread.Wait();
 }
 
 #endif // SERVER_DAEMON
@@ -1156,27 +912,19 @@ static void AdminWork( void* session_ )
         }
         else if( cmd == "start" )
         {
-            if( Server.Starting() )
+            if( Server && Server->Starting() )
                 ADMIN_LOG( "Server already starting.\n" );
-            else if( Server.Started() )
+            else if( Server && Server->Started() )
                 ADMIN_LOG( "Server already started.\n" );
-            else if( Server.Stopping() )
+            else if( Server && Server->Stopping() )
                 ADMIN_LOG( "Server stopping, wait.\n" );
-            else if( Server.Stopped() )
+            else
             {
-                if( !Server.ActiveOnce )
+                if( !Server && !StartServer )
                 {
                     ADMIN_LOG( "Starting server.\n" );
-                    /*#ifndef SERVER_DAEMON
-                       if( GuiWindow )
-                       {
-                        GuiBtnStartStop->do_callback();
-                       }
-                       else
-                       #endif
-                       {
-                        LoopThread.Start( GameLoopThread, "Main" );
-                       }*/
+                    StartServer = true;
+                    ServerThread.Start( ServerEntry, "Main" );
                 }
                 else
                 {
@@ -1187,43 +935,37 @@ static void AdminWork( void* session_ )
         }
         else if( cmd == "stop" )
         {
-            if( Server.Starting() )
+            if( Server && Server->Starting() )
                 ADMIN_LOG( "Server starting, wait.\n" );
-            else if( Server.Stopped() )
+            else if( Server && Server->Stopped() )
                 ADMIN_LOG( "Server already stopped.\n" );
-            else if( Server.Stopping() )
+            else if( Server && Server->Stopping() )
                 ADMIN_LOG( "Server already stopping.\n" );
-            else if( Server.Started() )
+            else
             {
-                ADMIN_LOG( "Stopping server.\n" );
-                /*#ifndef SERVER_DAEMON
-                   if( GuiWindow )
-                   {
-                    GuiBtnStartStop->do_callback();
-                   }
-                   else
-                   #endif
-                   {
-                    FOQuit = true;
-                   }*/
+                if( !GameOpt.Quit )
+                {
+                    ADMIN_LOG( "Stopping server.\n" );
+                    GameOpt.Quit = true;
+                }
             }
         }
         else if( cmd == "state" )
         {
-            if( Server.Starting() )
+            if( Server &&  Server->Starting() )
                 ADMIN_LOG( "Server starting.\n" );
-            else if( Server.Started() )
+            else if( Server && Server->Started() )
                 ADMIN_LOG( "Server started.\n" );
-            else if( Server.Stopping() )
+            else if( Server &&  Server->Stopping() )
                 ADMIN_LOG( "Server stopping.\n" );
-            else if( Server.Stopped() )
+            else if( Server && Server->Stopped() )
                 ADMIN_LOG( "Server stopped.\n" );
             else
                 ADMIN_LOG( "Unknown state.\n" );
         }
         else if( !cmd.empty() && cmd[ 0 ] == '~' )
         {
-            if( Server.Started() )
+            if( Server && Server->Started() )
             {
                 bool    send_fail = false;
                 LogFunc func = [ &admin_name, &s, &send_fail ] ( const string &str )
@@ -1246,7 +988,7 @@ static void AdminWork( void* session_ )
                     uint msg;
                     buf >> msg;
                     WriteLog( ADMIN_PREFIX "Execute command '{}'.\n", admin_name, cmd );
-                    Server.Process_Command( buf, func, nullptr, admin_name );
+                    Server->Process_Command( buf, func, nullptr, admin_name );
                 }
 
                 if( send_fail )

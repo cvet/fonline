@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                           ( 840 )
+#define FONLINE_VERSION    ( 840 )
 
 // Debugging
 // #define DEV_VERSION
@@ -24,7 +24,7 @@
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>
-# define ERRORSTR                                 strerror( errno )
+# define ERRORSTR          strerror( errno )
 # define ExitProcess( code )              exit( code )
 #endif
 
@@ -44,13 +44,13 @@
 # include <netinet/tcp.h>
 # include <arpa/inet.h>
 # include <netdb.h>
-# define SOCKET                                   int
-# define INVALID_SOCKET                           ( -1 )
-# define SOCKET_ERROR                             ( -1 )
-# define closesocket                              close
-# define SD_RECEIVE                               SHUT_RD
-# define SD_SEND                                  SHUT_WR
-# define SD_BOTH                                  SHUT_RDWR
+# define SOCKET            int
+# define INVALID_SOCKET    ( -1 )
+# define SOCKET_ERROR      ( -1 )
+# define closesocket       close
+# define SD_RECEIVE        SHUT_RD
+# define SD_SEND           SHUT_WR
+# define SD_BOTH           SHUT_RDWR
 #endif
 
 // DLL
@@ -75,7 +75,7 @@
 #define UNUSED_VARIABLE( x )              (void) ( x )
 #define memzero( ptr, size )              memset( ptr, 0, size )
 #define CLEAN_CONTAINER( cont )           { decltype( cont ) __ ## cont; __ ## cont.swap( cont ); }
-#define GL( expr )                        { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, _str( # expr " error {:#X}", err__ ) ); } }
+#define PI_VALUE           ( 3.141592654f )
 
 // FOnline stuff
 #include "Types.h"
@@ -116,13 +116,13 @@
 #define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
 
 #ifdef SHOW_DEPRECATED
-# define DEPRECATED                               MESSAGE( "Deprecated" )
+# define DEPRECATED        MESSAGE( "Deprecated" )
 #else
 # define DEPRECATED
 #endif
 
 #ifdef SHOW_ANDROID_TODO
-# define ANDROID_TODO                             MESSAGE( "Android todo" )
+# define ANDROID_TODO      MESSAGE( "Android todo" )
 #else
 # define ANDROID_TODO
 #endif
@@ -131,7 +131,7 @@ string GetLastSocketError();
 
 extern IniParser* MainConfig;
 extern StrVec     ProjectFiles;
-void InitialSetup( uint argc, char** argv );
+void InitialSetup( const string& app_name, uint argc, char** argv );
 
 int  Random( int minimum, int maximum );
 int  Procent( int full, int peace );
@@ -162,7 +162,7 @@ inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
 }
 
 // Hex offsets
-#define MAX_HEX_OFFSET                            ( 50 ) // Must be not odd
+#define MAX_HEX_OFFSET     ( 50 )                        // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -171,104 +171,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 /************************************************************************/
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-
-# define PI_VALUE                                 ( 3.141592654f )
-
-# include "SDL.h"
-# include "SDL_syswm.h"
-# include "GluStuff.h"
-# ifndef FO_OGL_ES
-#  include "GL/glew.h"
-#  include "SDL_opengl.h"
-#  ifdef FO_MAC
-#   undef glGenVertexArrays
-#   undef glBindVertexArray
-#   undef glDeleteVertexArrays
-#   define glGenVertexArrays                      glGenVertexArraysAPPLE
-#   define glBindVertexArray                      glBindVertexArrayAPPLE
-#   define glDeleteVertexArrays                   glDeleteVertexArraysAPPLE
-#  endif
-# else
-#  include "SDL_opengles2.h"
-#  define glGenVertexArrays                       glGenVertexArraysOES
-#  define glBindVertexArray                       glBindVertexArrayOES
-#  define glDeleteVertexArrays                    glDeleteVertexArraysOES
-#  define glGenFramebuffersEXT                    glGenFramebuffers
-#  define glBindFramebufferEXT                    glBindFramebuffer
-#  define glFramebufferTexture2DEXT               glFramebufferTexture2D
-#  define glRenderbufferStorageEXT                glRenderbufferStorage
-#  define glGenRenderbuffersEXT                   glGenRenderbuffers
-#  define glBindRenderbufferEXT                   glBindRenderbuffer
-#  define glFramebufferRenderbufferEXT            glFramebufferRenderbuffer
-#  define glCheckFramebufferStatusEXT             glCheckFramebufferStatus
-#  define glDeleteRenderbuffersEXT                glDeleteRenderbuffers
-#  define glDeleteFramebuffersEXT                 glDeleteFramebuffers
-#  define glProgramBinary( a, b, c, d )
-#  define glGetProgramBinary( a, b, c, d, e )
-#  define glProgramParameteri                     glProgramParameteriEXT
-#  define GL_PROGRAM_BINARY_RETRIEVABLE_HINT      0
-#  define GL_PROGRAM_BINARY_LENGTH                0
-#  define GL_FRAMEBUFFER_COMPLETE_EXT             GL_FRAMEBUFFER_COMPLETE
-#  define GL_FRAMEBUFFER_EXT                      GL_FRAMEBUFFER
-#  define GL_COLOR_ATTACHMENT0_EXT                GL_COLOR_ATTACHMENT0
-#  define GL_RENDERBUFFER_EXT                     GL_RENDERBUFFER
-#  define GL_DEPTH_ATTACHMENT_EXT                 GL_DEPTH_ATTACHMENT
-#  define GL_RENDERBUFFER_BINDING_EXT             GL_RENDERBUFFER_BINDING
-#  define GL_CLAMP                                GL_CLAMP_TO_EDGE
-#  define GL_DEPTH24_STENCIL8                     GL_DEPTH24_STENCIL8_OES
-#  define GL_DEPTH24_STENCIL8_EXT                 GL_DEPTH24_STENCIL8_OES
-#  define GL_STENCIL_ATTACHMENT_EXT               GL_STENCIL_ATTACHMENT
-#  define glGetTexImage( a, b, c, d, e )
-#  define glDrawBuffer( a )
-#  ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
-#   define GL_MAX_COLOR_TEXTURE_SAMPLES           0
-#   define GL_TEXTURE_2D_MULTISAMPLE              0
-#  endif
-#  ifndef GL_MAX
-#   define GL_MAX                                 GL_MAX_EXT
-#   define GL_MIN                                 GL_MIN_EXT
-#  endif
-#  if defined ( FO_IOS )
-#   define glTexImage2DMultisample( a, b, c, d, e, f )
-#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
-#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
-#  elif defined ( FO_ANDROID )
-#   define glGenVertexArraysOES                   glGenVertexArraysOES_
-#   define glBindVertexArrayOES                   glBindVertexArrayOES_
-#   define glDeleteVertexArraysOES                glDeleteVertexArraysOES_
-#   define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
-#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
-#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
-extern PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
-extern PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
-extern PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
-extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
-extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
-#  elif defined ( FO_WEB )
-#   define glTexImage2DMultisample( a, b, c, d, e, f )
-#   define glRenderbufferStorageMultisample( a, b, c, d, e )
-#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
-#  endif
-# endif
-# ifdef FO_MSVC
-#  pragma comment( lib, "opengl32.lib" )
-#  pragma comment( lib, "glu32.lib" )
-#  pragma comment( lib, "Version.lib" )
-#  pragma comment( lib, "Winmm.lib" )
-#  pragma comment( lib, "Imm32.lib" )
-# endif
-
-extern bool OGL_version_2_0;
-extern bool OGL_vertex_buffer_object;
-extern bool OGL_framebuffer_object;
-extern bool OGL_framebuffer_object_ext;
-extern bool OGL_framebuffer_multisample;
-extern bool OGL_packed_depth_stencil;
-extern bool OGL_texture_multisample;
-extern bool OGL_vertex_array_object;
-extern bool OGL_get_program_binary;
-# define GL_HAS( extension )    ( OGL_ ## extension )
-
 extern IntVec MainWindowKeyboardEvents;
 extern StrVec MainWindowKeyboardEventsText;
 extern IntVec MainWindowMouseEvents;
@@ -353,7 +255,6 @@ struct MapperScriptFunctions
 
 #ifdef FONLINE_SERVER
 
-extern bool FOQuit;
 extern int  ServerGameSleep;
 extern int  MemoryDebugLevel;
 extern bool AllowServerNativeCalls;

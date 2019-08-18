@@ -8,6 +8,9 @@
 #include "IniParser.h"
 #include "Randomizer.h"
 #include <stdarg.h>
+#ifndef FO_WINDOWS
+# include <signal.h>
+#endif
 
 // Check the sizes of base types
 STATIC_ASSERT( sizeof( char ) == 1 );
@@ -44,8 +47,19 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 IniParser* MainConfig;
 StrVec     ProjectFiles;
 
-void InitialSetup( uint argc, char** argv )
+void InitialSetup( const string& app_name, uint argc, char** argv )
 {
+    // Exceptions catcher
+    CatchExceptions( app_name, FONLINE_VERSION );
+
+    // Disable SIGPIPE signal
+    #ifndef FO_WINDOWS
+    signal( SIGPIPE, SIG_IGN );
+    #endif
+
+    // Timer
+    Timer::Init();
+
     // Parse command line args
     StrVec configs;
     for( uint i = 0; i < argc; i++ )
@@ -176,7 +190,7 @@ void InitialSetup( uint argc, char** argv )
     }
 
     // Cache project files
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR ) || defined ( FONLINE_SCRIPT_COMPILER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "ProjectFiles" ), "'ProjectFiles' not found in config file" );
     string project_files = MainConfig->GetStr( "", "ProjectFiles" );
     for( string project_path : _str( project_files ).split( ';' ) )
@@ -955,7 +969,6 @@ MapperScriptFunctions MapperFunctions;
 /************************************************************************/
 #ifdef FONLINE_SERVER
 
-bool FOQuit = false;
 int  ServerGameSleep = 10;
 int  MemoryDebugLevel = 10;
 uint VarsGarbageTime = 3600000;
