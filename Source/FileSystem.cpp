@@ -127,6 +127,8 @@ uint FileGetSize( void* file )
 
 #elif defined ( FO_ANDROID )
 
+# include "SDL.h"
+
 struct FileDesc
 {
     SDL_RWops* Ops;
