@@ -90,8 +90,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         return -1;
 
     // Autostart
-    // if (!MainConfig->IsKey("", "NoStart"))
-    //	StartServer = true;
+    if( !MainConfig->IsKey( "", "NoStart" ) )
+        StartServer = true;
 
     // Server loop in separate thread
     ServerThread.Start( ServerEntry, "Main" );
@@ -125,291 +125,168 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
 static void ProcessGui()
 {
-    // Initial start
-    if( !Server && !StartServer )
-    {
-        ImGui::Begin( "", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize );
-        if( ImGui::Button( "Start server", { 200, 100 } ) )
-            StartServer = true;
-        ImGui::End();
-        return;
-    }
+    static ImVec2 default_size = ImVec2( 200, 200 );
+    static string whole_log;
 
-    ImGui::Begin( "", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize );
+    // Memory
+    static ImVec2 memory_pos = ImVec2( 0, 0 );
+    ImGui::SetNextWindowPos( memory_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Memory", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        stats = ( Server ? Debugger::GetMemoryStatistics() : "Waiting for server start..." );
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Players
+    static ImVec2 players_pos = ImVec2( 20, 20 );
+    ImGui::SetNextWindowPos( players_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        stats = "WIP...........................";         // ( Server && Server->Started() ? Server->GetIngamePlayersStatistics() : "Waiting for server start..." );
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Locations and maps
+    static ImVec2 loc_maps_pos = ImVec2( 40, 40 );
+    ImGui::SetNextWindowPos( loc_maps_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        stats = "WIP...........................";         // ( Server && Server->Started() ? MapMngr.GetLocationsMapsStatistics() : "Waiting for server start..." );
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Items count
+    static ImVec2 items_pos = ImVec2( 60, 60 );
+    ImGui::SetNextWindowPos( items_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        stats = ( Server && Server->Started() ? ItemMngr.GetItemsStatistics() : "Waiting for server start..." );
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Profiler
+    static ImVec2 profiler_pos = ImVec2( 80, 80 );
+    ImGui::SetNextWindowPos( profiler_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        stats = "WIP...........................";         // Script::GetProfilerStatistics();
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Info
+    static ImVec2 info_pos = ImVec2( 100, 100 );
+    ImGui::SetNextWindowPos( info_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static string stats;
+        if( Server )
+        {
+            stats = "";
+            DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
+            stats += _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n",
+                           st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/ );
+            stats += _str( "Connections: {}\n", Server->Statistics.CurOnline );
+            stats += _str( "Players in game: {}\n", CrMngr.PlayersInGame() );
+            stats += _str( "NPC in game: {}\n", CrMngr.NpcInGame() );
+            stats += _str( "Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() );
+            stats += _str( "Items: {}\n", ItemMngr.GetItemsCount() );
+            stats += _str( "Cycles per second: {}\n", Server->Statistics.FPS );
+            stats += _str( "Cycle time: {}\n", Server->Statistics.CycleTime );
+            uint seconds = Server->Statistics.Uptime;
+            stats += _str( "Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 );
+            stats += _str( "KBytes Send: {}\n", Server->Statistics.BytesSend / 1024 );
+            stats += _str( "KBytes Recv: {}\n", Server->Statistics.BytesRecv / 1024 );
+            stats += _str( "Compress ratio: {}", (double) Server->Statistics.DataReal / ( Server->Statistics.DataCompressed ? Server->Statistics.DataCompressed : 1 ) );
+        }
+        else
+        {
+            stats = "Waiting for server start...";
+        }
+
+        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
+    }
+    ImGui::End();
+
+    // Control panel
+    static ImVec2 control_panel_pos = ImVec2( 120, 120 );
+    ImGui::SetNextWindowPos( control_panel_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( default_size, ImGuiCond_Once );
+    if( ImGui::Begin( "Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        static ImVec2 button_size = ImVec2( 200, 50 );
+        if( !Server && !StartServer && ImGui::Button( "Start", button_size ) )
+            StartServer = true;
+        if( Server && Server->Started() && !GameOpt.Quit && ImGui::Button( "Stop", button_size ) )
+            GameOpt.Quit = true;
+        if( ( !Server || Server->Starting() ) && ImGui::Button( "Quit", button_size ) )
+            ExitProcess( 0 );
+        if( Server && Server->Started() && ImGui::Button( "Reload client scripts", button_size ) )
+            Server->RequestReloadClientScripts = true;
+        if( ImGui::Button( "Create dump", button_size ) )
+            CreateDump( "ManualDump", "Manual" );
+        if( Server && ImGui::Button( "Save log", button_size ) )
+        {
+            DateTimeStamp dt;
+            Timer::GetCurrentDateTime( dt );
+            string        log_name_dir = FileManager::GetWritePath( "Logs/" );
+            string        log_name = _str( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
+                                           log_name_dir, "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+            FileManager::CreateDirectoryTree( log_name );
+            FileManager log_file;
+            log_file.SetStr( whole_log );
+            log_file.SaveFile( log_name );
+        }
+    }
+    ImGui::End();
 
     // Log
-    static ImVec2 log_size;
-    if( ImGui::BeginChild( "Log", log_size, false, ImGuiWindowFlags_AlwaysAutoResize ) )
+    static ImVec2 log_pos = ImVec2( 140, 140 );
+    static ImVec2 log_size = ImVec2( 800, 600 );
+    ImGui::SetNextWindowPos( log_pos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( log_size, ImGuiCond_Once );
+    if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar ) )
     {
-        static string whole_log, cur_log;
+        static string cur_log;
         LogGetBuffer( cur_log );
         if( !cur_log.empty() )
         {
             whole_log += cur_log;
             cur_log.clear();
-            if( whole_log.size() > 1000000 )
-                whole_log = whole_log.substr( whole_log.size() - 1000000 );
+            if( whole_log.size() > 100000 )
+                whole_log = whole_log.substr( whole_log.size() - 100000 );
         }
 
         ImGui::TextUnformatted( whole_log.c_str(), whole_log.c_str() + whole_log.size() );
     }
-
-    // Memory
-    static ImVec2 memory_size;
-    if( Server && ImGui::BeginChild( "Memory", memory_size, false, ImGuiWindowFlags_AlwaysAutoResize ) )
-    {
-        static string stats;
-        stats = Debugger::GetMemoryStatistics();
-
-        ImGui::TextUnformatted( stats.c_str(), stats.c_str() + stats.size() );
-    }
-
     ImGui::End();
 }
-/*
-   // Starting
-   if (Server && Server->ActiveInProcess)
-
-   // Loop
-
-   if (widget == GuiWindow)
-   {
-        if (!GracefulExit)
-        {
-                if (!Server.Started() || Fl::get_key(FL_Shift_L))
-                {
-                        ExitProcess(0);
-                }
-                else
-                {
-                        GuiWindow->label("Graceful exit. Please wait...");
-                        GracefulExit = true;
-                        GameOpt.Quit = true;
-                }
-        }
-   }
-   else if (widget == GuiBtnRlClScript)
-   {
-        if (Server.Started())
-                Server.RequestReloadClientScripts = true;
-   }
-   else if (widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo)
-   {
-        DateTimeStamp    dt;
-        Timer::GetCurrentDateTime(dt);
-        Fl_Text_Display* log = (widget == GuiBtnSaveLog ? GuiLog : GuiInfo);
-        string           log_name_dir = FileManager::GetWritePath("Logs/");
-        string           log_name = _str("{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
-                log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-        FileManager::CreateDirectoryTree(log_name);
-        log->buffer()->savefile(log_name.c_str());
-   }
-   else if (widget == GuiBtnCreateDump)
-   {
-        CreateDump("ManualDump", "Manual");
-   }
-   else if (widget == GuiBtnMemory)
-   {
-        FOServer::UpdateIndex = 0;
-        FOServer::UpdateLastIndex = 0;
-        if (!Server.Started())
-                UpdateInfo();
-   }
-   else if (widget == GuiBtnPlayers)
-   {
-        FOServer::UpdateIndex = 1;
-        FOServer::UpdateLastIndex = 1;
-   }
-   else if (widget == GuiBtnLocsMaps)
-   {
-        FOServer::UpdateIndex = 2;
-        FOServer::UpdateLastIndex = 2;
-   }
-   else if (widget == GuiBtnDeferredCalls)
-   {
-        FOServer::UpdateIndex = 3;
-        FOServer::UpdateLastIndex = 3;
-   }
-   else if (widget == GuiBtnProperties)
-   {
-        FOServer::UpdateIndex = 4;
-        FOServer::UpdateLastIndex = 4;
-   }
-   else if (widget == GuiBtnItemsCount)
-   {
-        FOServer::UpdateIndex = 5;
-        FOServer::UpdateLastIndex = 5;
-   }
-   else if (widget == GuiBtnProfiler)
-   {
-        FOServer::UpdateIndex = 6;
-        FOServer::UpdateLastIndex = 6;
-   }
-   else if (widget == GuiBtnStartStop)
-   {
-        if (!GameOpt.Quit)       // End of work
-        {
-                GameOpt.Quit = true;
-                GuiBtnStartStop->copy_label("Start server");
-                GuiBtnStartStop->deactivate();
-
-                // Disable buttons
-                GuiBtnRlClScript->deactivate();
-                GuiBtnPlayers->deactivate();
-                GuiBtnLocsMaps->deactivate();
-                GuiBtnDeferredCalls->deactivate();
-                GuiBtnProperties->deactivate();
-                GuiBtnItemsCount->deactivate();
-        }
-        else         // Begin work
-        {
-                GuiBtnStartStop->copy_label("Stop server");
-                GuiBtnStartStop->deactivate();
-
-                GameOpt.Quit = false;
-                LoopThread.Start(GameLoopThread, "Main");
-        }
-   }
-   else if (widget == GuiBtnSplitUp)
-   {
-        if (SplitProcent >= 50)
-                SplitProcent -= 40;
-        CheckTextBoxSize(true);
-        GuiLog->scroll(MAX_INT, 0);
-   }
-   else if (widget == GuiBtnSplitDown)
-   {
-        if (SplitProcent <= 50)
-                SplitProcent += 40;
-        CheckTextBoxSize(true);
-        GuiLog->scroll(MAX_INT, 0);
-   }
-   else if (widget == GuiCBtnAutoUpdate)
-   {
-        if (GuiCBtnAutoUpdate->value())
-                FOServer::UpdateLastTick = Timer::FastTick();
-        else
-                FOServer::UpdateLastTick = 0;
-   }
-   }
-
-
-   static void UpdateInfo()
-   {
-   struct Label
-   {
-   static void Update( Fl_Box* label, const string& text )
-   {
-    if( text != (char*) label->label() )
-    {
-        Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text.c_str() );
-        label->redraw_label();
-    }
-   }
-   };
-
-   if( Server.Started() )
-   {
-   DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-   Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}",
-                                       st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, Globals->GetTimeMultiplier() ) );
-   Label::Update( GuiLabelClients, _str( "Connections: {}", Server.Statistics.CurOnline ) );
-   Label::Update( GuiLabelIngame, _str( "Players in game: {}", CrMngr.PlayersInGame() ) );
-   Label::Update( GuiLabelNPC, _str( "NPC in game: {}", CrMngr.NpcInGame() ) );
-   Label::Update( GuiLabelLocCount, _str( "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
-   Label::Update( GuiLabelItemsCount, _str( "Items: {}", ItemMngr.GetItemsCount() ) );
-   Label::Update( GuiLabelFPS, _str( "Cycles per second: {}", Server.Statistics.FPS ) );
-   Label::Update( GuiLabelDelta, _str( "Cycle time: {}", Server.Statistics.CycleTime ) );
-   }
-   else
-   {
-   Label::Update( GuiLabelGameTime, _str( "Time: n/a" ) );
-   Label::Update( GuiLabelClients, _str( "Connections: n/a" ) );
-   Label::Update( GuiLabelIngame, _str( "Players in game: n/a" ) );
-   Label::Update( GuiLabelNPC, _str( "NPC in game: n/a" ) );
-   Label::Update( GuiLabelLocCount, _str( "Locations: n/a" ) );
-   Label::Update( GuiLabelItemsCount, _str( "Items: n/a" ) );
-   Label::Update( GuiLabelFPS, _str( "Cycles per second: n/a" ) );
-   Label::Update( GuiLabelDelta, _str( "Cycle time: n/a" ) );
-   }
-
-   uint seconds = Server.Statistics.Uptime;
-   Label::Update( GuiLabelUptime, _str( "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
-   Label::Update( GuiLabelSend, _str( "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
-   Label::Update( GuiLabelRecv, _str( "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
-   Label::Update( GuiLabelCompress, _str( "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
-
-   if( FOServer::UpdateIndex == -1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick + 1000 < Timer::FastTick() )
-   {
-   FOServer::UpdateIndex = FOServer::UpdateLastIndex;
-   FOServer::UpdateLastTick = Timer::FastTick();
-   }
-
-   if( FOServer::UpdateIndex != -1 )
-   {
-   string info;
-   switch( FOServer::UpdateIndex )
-   {
-   case 0:         // Memory
-    info = Debugger::GetMemoryStatistics();
-    UpdateLogName = "Memory";
-    break;
-   case 1:         // Players
-    if( !Server.Started() )
-        break;
-    info = Server.GetIngamePlayersStatistics();
-    UpdateLogName = "Players";
-    break;
-   case 2:         // Locations and maps
-    if( !Server.Started() )
-        break;
-    info = MapMngr.GetLocationsMapsStatistics();
-    UpdateLogName = "LocationsAndMaps";
-    break;
-   case 3:         // Deferred calls
-    if( !Server.Started() )
-        break;
-    info = Script::GetDeferredCallsStatistics();
-    UpdateLogName = "DeferredCalls";
-    break;
-   case 4:         // Properties
-    if( !Server.Started() )
-        break;
-    info = "WIP";
-    UpdateLogName = "Properties";
-    break;
-   case 5:         // Items count
-    if( !Server.Started() )
-        break;
-    info = ItemMngr.GetItemsStatistics();
-    UpdateLogName = "ItemsCount";
-    break;
-   case 6:         // Profiler
-    info = Script::GetProfilerStatistics();
-    UpdateLogName = "Profiler";
-    break;
-   default:
-    UpdateLogName = "";
-    break;
-   }
-   GuiInfo->buffer()->text( info.c_str() );
-   if( !GuiBtnSaveInfo->active() )
-    GuiBtnSaveInfo->activate();
-   FOServer::UpdateIndex = -1;
-   }
-   }
-
-   static void UpdateLog()
-   {
-   string str;
-   LogGetBuffer( str );
-   if( !str.empty() )
-   {
-   GuiLog->buffer()->append( str.c_str() );
-   if( Fl::focus() != GuiLog )
-    GuiLog->scroll( MAX_INT, 0 );
-   }
-   }*/
 
 #endif // !SERVER_DAEMON
 
