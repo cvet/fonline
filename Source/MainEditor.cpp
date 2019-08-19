@@ -4,7 +4,7 @@
 
 struct GuiWindow
 {
-    virtual bool Loop() = 0;
+    virtual bool Draw() = 0;
     virtual ~GuiWindow() = default;
 };
 
@@ -14,7 +14,7 @@ struct DemoWindow: public GuiWindow
     bool   ShowAnotherWindow = false;
     ImVec4 ClearColor = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
 
-    virtual bool Loop() override
+    virtual bool Draw() override
     {
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if( ShowDemoWindow )
@@ -57,7 +57,47 @@ struct DemoWindow: public GuiWindow
 
 struct ProjectFilesWindow: GuiWindow
 {
-    virtual bool Loop() override
+    string Name;
+    bool   Open = true;
+
+    ProjectFilesWindow( string name )
+    {
+        Name = name;
+        // ImGui::SetNextWindowDockID()
+    }
+
+    virtual bool Draw() override
+    {
+        if( ImGui::Begin( _str( "Project Files {}", Name ).c_str(), &Open ) )
+        {
+            ImGui::Text( "Hello from another window!" );
+            if( ImGui::Button( "Close Me" ) )
+                Open = false;
+        }
+        ImGui::End();
+        return true;
+    }
+};
+
+struct EntitiesWindow: GuiWindow
+{
+    virtual bool Draw() override
+    {
+        return true;
+    }
+};
+
+struct InspectorWindow: GuiWindow
+{
+    virtual bool Draw() override
+    {
+        return true;
+    }
+};
+
+struct LogWindow: GuiWindow
+{
+    virtual bool Draw() override
     {
         return true;
     }
@@ -74,13 +114,11 @@ struct MapWindow: GuiWindow
             SAFEDEL( MapInstance );
     }
 
-    bool IsLoaded()
+    virtual bool Draw() override
     {
-        return MapInstance != nullptr;
-    }
+        if( !MapInstance )
+            return false;
 
-    virtual bool Loop() override
-    {
         MapInstance->MainLoop();
         return true;
     }
@@ -90,6 +128,22 @@ struct MapWindow: GuiWindow
         if( MapInstance )
             MapInstance->Finish();
         SAFEDEL( MapInstance );
+    }
+};
+
+struct ServerWindow: GuiWindow
+{
+    virtual bool Draw() override
+    {
+        return true;
+    }
+};
+
+struct ClientWindow: GuiWindow
+{
+    virtual bool Draw() override
+    {
+        return true;
     }
 };
 
@@ -106,18 +160,27 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Logging
     LogToFile( "FOnlineEditor.log" );
+    LogToBuffer( true );
     WriteLog( "FOnline Editor v.{}.\n", FONLINE_VERSION );
 
     // Options
+    // GetServerOptions();
     GetClientOptions();
 
-    // Initialize ImGui
+    // Initialize Gui
     bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
     if( !AppGui::Init( "FOnline Editor", use_dx, true, true ) )
         return -1;
 
     // Basic windows
-    Windows.push_back( new DemoWindow() );
+    // NewWindows.push_back( new DemoWindow() );
+    NewWindows.push_back( new ProjectFilesWindow( "1" ) );
+    NewWindows.push_back( new ProjectFilesWindow( "2" ) );
+    NewWindows.push_back( new ProjectFilesWindow( "3" ) );
+    /*
+       NewWindows.push_back(new EntitiesWindow());
+       NewWindows.push_back(new InspectorWindow());
+       NewWindows.push_back(new LogWindow());*/
 
     // Main loop
     while( !GameOpt.Quit )
@@ -126,7 +189,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             break;
 
         for( GuiWindow* window : Windows )
-            if( !window->Loop() )
+            if( !window->Draw() )
                 CloseWindows.push_back( window );
 
         if( !NewWindows.empty() )
@@ -134,6 +197,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             Windows.insert( Windows.end(), NewWindows.begin(), NewWindows.end() );
             NewWindows.clear();
         }
+
         while( !CloseWindows.empty() )
         {
             auto       it = std::find( Windows.begin(), Windows.end(), CloseWindows.back() );

@@ -78,13 +78,14 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         return 0;
     }
 
+    // Logging
     LogToFile( "FOnlineServer.log" );
     LogToBuffer( true );
+    WriteLog( "FOnline Server, version {}.\n", FONLINE_VERSION );
 
-    WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
-
-    // Init Gui
-    if( !AppGui::Init( "FOnline Server", false, false, false ) )
+    // Initialize Gui
+    bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
+    if( !AppGui::Init( "FOnline Server", use_dx, false, false ) )
         return -1;
 
     // Autostart

@@ -125,7 +125,7 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
 
     // Create application window
     WndClassName = _str( app_name ).toWideChar();
-    WndSubClassName = WndClassName + L"_Sub";
+    WndSubClassName = WndClassName + L" Sub";
     WNDCLASSEX wc =
     {
         sizeof( WNDCLASSEX ), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandle( nullptr ),
