@@ -4,7 +4,6 @@
 
 # include "GraphicApi.h"
 # include <XInput.h>
-# include <tchar.h>
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>
 
@@ -75,6 +74,8 @@ static LPDIRECT3DINDEXBUFFER9  IndexBuffer = nullptr;
 static LPDIRECT3DTEXTURE9      FontTexture = nullptr;
 static int                     VertexBufferSize = 5000;
 static int                     IndexBufferSize = 10000;
+static std::wstring            WndClassName;
+static std::wstring            WndSubClassName;
 
 static LRESULT WINAPI WndProcHandler( HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam );
 static bool           CreateDevice( HWND hwnd );
@@ -118,15 +119,21 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
 {
     EnableDpiAwareness();
 
+    // Calculate window size
+    RECT rect = { 0, 0, 1024, 768 };
+    AdjustWindowRect( &rect, WS_OVERLAPPEDWINDOW, FALSE );
+
     // Create application window
+    WndClassName = _str( app_name ).toWideChar();
+    WndSubClassName = WndClassName + L"_Sub";
     WNDCLASSEX wc =
     {
         sizeof( WNDCLASSEX ), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandle( nullptr ),
-        nullptr, nullptr, nullptr, nullptr, _T( "ImGui Example" ), nullptr
+        nullptr, nullptr, nullptr, nullptr, _str( app_name ).toWideChar().c_str(), nullptr
     };
     RegisterClassEx( &wc );
-    HWND hwnd = CreateWindow( wc.lpszClassName, _T( "Dear ImGui DirectX10 Example" ), WS_OVERLAPPEDWINDOW,
-                              100, 100, 1024, 768, nullptr, nullptr, wc.hInstance, nullptr );
+    HWND hwnd = CreateWindow( wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                              rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr );
 
     // Initialize Direct3D
     if( !CreateDevice( hwnd ) )
@@ -161,8 +168,6 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
-    // io.ConfigViewportsNoAutoMerge = true;
-    // io.ConfigViewportsNoTaskBarIcon = true;
 
     // Setup back-end capabilities flags
     WndHandle = hwnd;
@@ -223,7 +228,7 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
         wcex.hCursor = nullptr;
         wcex.hbrBackground = (HBRUSH) ( COLOR_BACKGROUND + 1 );
         wcex.lpszMenuName = nullptr;
-        wcex.lpszClassName = _T( "ImGui Platform" );
+        wcex.lpszClassName = WndSubClassName.c_str();
         wcex.hIconSm = nullptr;
         RegisterClassEx( &wcex );
 
@@ -408,6 +413,36 @@ static LRESULT WINAPI WndProcHandler( HWND hwnd, UINT msg, WPARAM wparam, LPARAM
     #  define DBT_DEVNODES_CHANGED    0x0007
     # endif
 
+    switch( msg )
+    {
+    case WM_SIZE:
+        if( D3dDevice != nullptr && wparam != SIZE_MINIMIZED )
+        {
+            D3dPP.BackBufferWidth = LOWORD( lparam );
+            D3dPP.BackBufferHeight = HIWORD( lparam );
+            ResetDevice();
+        }
+        return 0;
+    case WM_SYSCOMMAND:
+        if( ( wparam & 0xfff0 ) == SC_KEYMENU )          // Disable ALT application menu
+            return 0;
+        break;
+    case WM_CLOSE:
+        DestroyWindow( hwnd );
+        return 0;
+    case WM_DESTROY:
+        PostQuitMessage( 0 );
+        return 0;
+    case WM_DPICHANGED:
+        if( ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports )
+        {
+            const RECT* suggested_rect = (RECT*) lparam;
+            SetWindowPos( hwnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left,
+                          suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE );
+        }
+        break;
+    }
+
     if( ImGui::GetCurrentContext() != nullptr )
     {
         ImGuiIO& io = ImGui::GetIO();
@@ -507,33 +542,6 @@ static LRESULT WINAPI WndProcHandler( HWND hwnd, UINT msg, WPARAM wparam, LPARAM
                 break;
             }
         }
-    }
-
-    switch( msg )
-    {
-    case WM_SIZE:
-        if( D3dDevice != nullptr && wparam != SIZE_MINIMIZED )
-        {
-            D3dPP.BackBufferWidth = LOWORD( lparam );
-            D3dPP.BackBufferHeight = HIWORD( lparam );
-            ResetDevice();
-        }
-        return 0;
-    case WM_SYSCOMMAND:
-        if( ( wparam & 0xfff0 ) == SC_KEYMENU )     // Disable ALT application menu
-            return 0;
-        break;
-    case WM_DESTROY:
-        PostQuitMessage( 0 );
-        return 0;
-    case WM_DPICHANGED:
-        if( ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports )
-        {
-            const RECT* suggested_rect = (RECT*) lparam;
-            SetWindowPos( hwnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left,
-                          suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE );
-        }
-        break;
     }
 
     return DefWindowProc( hwnd, msg, wparam, lparam );
@@ -930,9 +938,9 @@ static void Platform_CreateWindow( ImGuiViewport* viewport )
     RECT rect = { (LONG) viewport->Pos.x, (LONG) viewport->Pos.y, (LONG) ( viewport->Pos.x + viewport->Size.x ), (LONG) ( viewport->Pos.y + viewport->Size.y ) };
     AdjustWindowRectEx( &rect, data->DwStyle, FALSE, data->DwExStyle );
     data->Hwnd = CreateWindowEx(
-        data->DwExStyle, _T( "ImGui Platform" ), _T( "Untitled" ), data->DwStyle, // Style, class name, window name
-        rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,      // Window area
-        parent_window, nullptr, GetModuleHandle( nullptr ), nullptr );            // Parent window, Menu, Instance, Param
+        data->DwExStyle, WndSubClassName.c_str(), L"Child", data->DwStyle,   // Style, class name, window name
+        rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, // Window area
+        parent_window, nullptr, GetModuleHandle( nullptr ), nullptr );       // Parent window, Menu, Instance, Param
     data->HwndOwned = true;
     viewport->PlatformRequestResize = false;
     viewport->PlatformHandle = viewport->PlatformHandleRaw = data->Hwnd;

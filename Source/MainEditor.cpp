@@ -55,7 +55,7 @@ struct DemoWindow: public GuiWindow
     }
 };
 
-struct AssetsWindow: GuiWindow
+struct ProjectFilesWindow: GuiWindow
 {
     virtual bool Loop() override
     {
@@ -112,7 +112,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     GetClientOptions();
 
     // Initialize ImGui
-    bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 || true );
+    bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
     if( !AppGui::Init( "FOnline Editor", use_dx, true, true ) )
         return -1;
 
