@@ -341,6 +341,137 @@ void FOServer::LogicTick()
         Thread_Sleep( ServerGameSleep );
 }
 
+void FOServer::DrawGui()
+{
+    // Memory
+    ImGui::SetNextWindowPos( Gui.MemoryPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Memory", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = Debugger::GetMemoryStatistics();
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Players
+    ImGui::SetNextWindowPos( Gui.PlayersPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = "WIP...........................";                 // ( Server && Server->Started() ? Server->GetIngamePlayersStatistics() : "Waiting for server start..." );
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Locations and maps
+    ImGui::SetNextWindowPos( Gui.LocMapsPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = "WIP...........................";                 // ( Server && Server->Started() ? MapMngr.GetLocationsMapsStatistics() : "Waiting for server start..." );
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Items count
+    ImGui::SetNextWindowPos( Gui.ItemsPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = ( Started() ? ItemMngr.GetItemsStatistics() : "Waiting for server start..." );
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Profiler
+    ImGui::SetNextWindowPos( Gui.ProfilerPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = "WIP...........................";                 // Script::GetProfilerStatistics();
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Info
+    ImGui::SetNextWindowPos( Gui.InfoPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        Gui.Stats = "";
+        DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
+        Gui.Stats += _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n",
+                           st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/ );
+        Gui.Stats += _str( "Connections: {}\n", Statistics.CurOnline );
+        Gui.Stats += _str( "Players in game: {}\n", CrMngr.PlayersInGame() );
+        Gui.Stats += _str( "NPC in game: {}\n", CrMngr.NpcInGame() );
+        Gui.Stats += _str( "Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() );
+        Gui.Stats += _str( "Items: {}\n", ItemMngr.GetItemsCount() );
+        Gui.Stats += _str( "Cycles per second: {}\n", Statistics.FPS );
+        Gui.Stats += _str( "Cycle time: {}\n", Statistics.CycleTime );
+        uint seconds = Statistics.Uptime;
+        Gui.Stats += _str( "Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 );
+        Gui.Stats += _str( "KBytes Send: {}\n", Statistics.BytesSend / 1024 );
+        Gui.Stats += _str( "KBytes Recv: {}\n", Statistics.BytesRecv / 1024 );
+        Gui.Stats += _str( "Compress ratio: {}", (double) Statistics.DataReal / ( Statistics.DataCompressed ? Statistics.DataCompressed : 1 ) );
+        ImGui::TextUnformatted( Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size() );
+    }
+    ImGui::End();
+
+    // Control panel
+    ImGui::SetNextWindowPos( Gui.ControlPanelPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.DefaultSize, ImGuiCond_Once );
+    ImGui::SetNextWindowCollapsed( true, ImGuiCond_Once );
+    if( ImGui::Begin( "Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+        if( Started() && !GameOpt.Quit && ImGui::Button( "Stop & Quit", Gui.ButtonSize ) )
+            GameOpt.Quit = true;
+        if( Starting() && ImGui::Button( "Quit", Gui.ButtonSize ) )
+            ExitProcess( 0 );
+        if( Started() && ImGui::Button( "Reload client scripts", Gui.ButtonSize ) )
+            RequestReloadClientScripts = true;
+        if( ImGui::Button( "Create dump", Gui.ButtonSize ) )
+            CreateDump( "ManualDump", "Manual" );
+        if( ImGui::Button( "Save log", Gui.ButtonSize ) )
+        {
+            DateTimeStamp dt;
+            Timer::GetCurrentDateTime( dt );
+            string        log_name_dir = FileManager::GetWritePath( "Logs/" );
+            string        log_name = _str( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
+                                           log_name_dir, "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+            FileManager::CreateDirectoryTree( log_name );
+            FileManager log_file;
+            log_file.SetStr( Gui.WholeLog );
+            log_file.SaveFile( log_name );
+        }
+    }
+    ImGui::End();
+
+    // Log
+    ImGui::SetNextWindowPos( Gui.LogPos, ImGuiCond_Once );
+    ImGui::SetNextWindowSize( Gui.LogSize, ImGuiCond_Once );
+    if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar ) )
+    {
+        LogGetBuffer( Gui.CurLog );
+        if( !Gui.CurLog.empty() )
+        {
+            Gui.WholeLog += Gui.CurLog;
+            Gui.CurLog.clear();
+            if( Gui.WholeLog.size() > 100000 )
+                Gui.WholeLog = Gui.WholeLog.substr( Gui.WholeLog.size() - 100000 );
+        }
+
+        ImGui::TextUnformatted( Gui.WholeLog.c_str(), Gui.WholeLog.c_str() + Gui.WholeLog.size() );
+    }
+    ImGui::End();
+}
+
 void FOServer::OnNewConnection( NetConnection* connection )
 {
     ConnectedClientsLocker.Lock();

@@ -557,7 +557,7 @@ void AppGui::EndFrame()
 
     SDL_GL_SwapWindow( SdlWindow );
 
-    #ifndef FO_WEB
+    #ifdef FO_WINDOWS
     Thread_Sleep( 10 );
     #endif
 }

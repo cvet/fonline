@@ -16,6 +16,7 @@
 #include "EntityManager.h"
 #include "ProtoManager.h"
 #include "DataBase.h"
+#include "imgui.h"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
@@ -161,6 +162,27 @@ public:
 
     static void LogicTick();
 
+    // Gui
+    struct
+    {
+        ImVec2 DefaultSize = ImVec2( 200, 200 );
+        ImVec2 MemoryPos = ImVec2( 0, 0 );
+        ImVec2 PlayersPos = ImVec2( 20, 20 );
+        ImVec2 LocMapsPos = ImVec2( 40, 40 );
+        ImVec2 ItemsPos = ImVec2( 60, 60 );
+        ImVec2 ProfilerPos = ImVec2( 80, 80 );
+        ImVec2 InfoPos = ImVec2( 100, 100 );
+        ImVec2 ControlPanelPos = ImVec2( 120, 120 );
+        ImVec2 ButtonSize = ImVec2( 200, 30 );
+        ImVec2 LogPos = ImVec2( 140, 140 );
+        ImVec2 LogSize = ImVec2( 800, 600 );
+        string CurLog;
+        string WholeLog;
+        string Stats;
+    } Gui;
+
+    void DrawGui();
+
     // Net
     static NetServerBase* TcpServer;
     static NetServerBase* WebSocketsServer;
@@ -173,8 +195,8 @@ public:
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
-    #define BANS_FNAME_ACTIVE                "Save/Bans/Active.txt"
-    #define BANS_FNAME_EXPIRED               "Save/Bans/Expired.txt"
+    #define BANS_FNAME_ACTIVE     "Save/Bans/Active.txt"
+    #define BANS_FNAME_EXPIRED    "Save/Bans/Expired.txt"
     struct ClientBanned
     {
         DateTimeStamp BeginTime;

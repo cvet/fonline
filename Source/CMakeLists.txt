@@ -401,7 +401,6 @@ set( SERVER_CLIENT_EDITOR_SOURCE
 	${Json_SOURCE}
 	${fmt_SOURCE}
 	3dAnimation.h
-	AppGui.h AppGui.cpp AppGuiDX.cpp
 	Common.cpp Common.h
 	CritterData.h
 	Crypt.cpp Crypt.h
@@ -461,6 +460,7 @@ set( CLIENT_EDITOR_SOURCE
 	Sprites.cpp Sprites.h
 )
 set( SERVER_EDITOR_SOURCE
+	AppGui.h AppGui.cpp AppGuiDX.cpp
 	ResourceConverter.h ResourceConverter.cpp
 )
 
