@@ -289,6 +289,7 @@ add_subdirectory( "SHA" )
 if( USE_GLEW )
 	file( GLOB GLEW_SOURCE "GL/*.*" )
 	source_group( "ThirdParty\\GLEW" FILES ${GLEW_SOURCE} )
+	add_definitions( "-DGLEW_STATIC" )
 endif()
 
 if( WIN32 )

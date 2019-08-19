@@ -5,7 +5,6 @@
 #include "SDL_syswm.h"
 #include "GluStuff.h"
 #ifndef FO_OGL_ES
-# define GLEW_STATIC
 # include "GL/glew.h"
 # include "SDL_opengl.h"
 #else
