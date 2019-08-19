@@ -11,6 +11,7 @@
 #ifndef FO_WINDOWS
 # include <signal.h>
 #endif
+#include "SDL.h"
 
 // Check the sizes of base types
 STATIC_ASSERT( sizeof( char ) == 1 );
