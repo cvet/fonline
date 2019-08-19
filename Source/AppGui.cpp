@@ -549,9 +549,8 @@ void AppGui::EndFrame()
     GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
     if( !FixedPipeline )
     {
-        #ifndef FO_OGL_ES
-        GL( glBindVertexArray( 0 ) );
-        #endif
+        if( GL_HAS( vertex_array_object ) )
+            GL( glBindVertexArray( 0 ) );
         GL( glUseProgram( 0 ) );
     }
 
@@ -587,9 +586,8 @@ static void RenderDrawData( ImDrawData* draw_data )
     GLuint vao = 0;
     if( !FixedPipeline )
     {
-        #ifndef FO_OGL_ES
-        GL( glGenVertexArrays( 1, &vao ) );
-        #endif
+        if( GL_HAS( vertex_array_object ) )
+            GL( glGenVertexArrays( 1, &vao ) );
     }
     SetupRenderState( draw_data, fb_width, fb_height, vao );
 
@@ -667,9 +665,8 @@ static void RenderDrawData( ImDrawData* draw_data )
 
     if( !FixedPipeline )
     {
-        #ifndef FO_OGL_ES
-        GL( glDeleteVertexArrays( 1, &vao ) );
-        #endif
+        if( GL_HAS( vertex_array_object ) )
+            GL( glDeleteVertexArrays( 1, &vao ) );
     }
 }
 
@@ -699,11 +696,8 @@ static void SetupRenderState( ImDrawData* draw_data, int fb_width, int fb_height
         #ifdef GL_SAMPLER_BINDING
         GL( glBindSampler( 0, 0 ) );
         #endif
-        #ifndef FO_OGL_ES
-        GL( glBindVertexArray( vao ) );
-        #else
-        UNUSED_VARIABLE( vao );
-        #endif
+        if( GL_HAS( vertex_array_object ) )
+            GL( glBindVertexArray( vao ) );
         GL( glBindBuffer( GL_ARRAY_BUFFER, VboHandle ) );
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ElementsHandle ) );
         GL( glEnableVertexAttribArray( AttribLocationVtxPos ) );
