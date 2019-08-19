@@ -24,6 +24,7 @@ struct ImGuiViewportDataSDL2
 
 static bool          InitCalled = false;
 static bool          UseDirectX = false;
+static bool          FixedPipeline = false;
 static GLuint        FontTexture = 0;
 static GLuint        ShaderHandle = 0;
 static GLuint        VertHandle = 0;
@@ -115,15 +116,21 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     if( !GraphicApi::Init() )
         return false;
 
+    // RDP connection support only fixed pipeline
+    #ifdef FO_WINDOWS
+    int remote_session = GetSystemMetrics( SM_REMOTESESSION );
+    FixedPipeline = ( remote_session != 0 );
+
+    #else
     if( !GL_HAS( version_2_0 ) || !GL_HAS( vertex_buffer_object ) )
     {
         WriteLog( "Minimum OpenGL 2.0 required.\n" );
         return false;
     }
+    #endif
 
     // Setup OpenGL
     GL( glEnable( GL_BLEND ) );
-    GL( glBlendEquation( GL_FUNC_ADD ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
     GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_DEPTH_TEST ) );
@@ -134,67 +141,69 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
     #endif
 
-    // Parse GLSL version string
-    const GLchar* vertex_shader =
-        "#version 110\n"
-        "uniform mat4 ProjMtx;\n"
-        "attribute vec2 Position;\n"
-        "attribute vec2 UV;\n"
-        "attribute vec4 Color;\n"
-        "varying vec2 Frag_UV;\n"
-        "varying vec4 Frag_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Frag_UV = UV;\n"
-        "    Frag_Color = Color;\n"
-        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
-        "}\n";
-    const GLchar* fragment_shader =
-        "#version 110\n"
-        #ifdef FO_OGL_ES
-        "precision mediump float;\n"
-        #endif
-        "uniform sampler2D Texture;\n"
-        "varying vec2 Frag_UV;\n"
-        "varying vec4 Frag_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV.st);\n"
-        "}\n";
+    if( !FixedPipeline )
+    {
+        const GLchar* vertex_shader =
+            "#version 110\n"
+            "uniform mat4 ProjMtx;\n"
+            "attribute vec2 Position;\n"
+            "attribute vec2 UV;\n"
+            "attribute vec4 Color;\n"
+            "varying vec2 Frag_UV;\n"
+            "varying vec4 Frag_Color;\n"
+            "void main()\n"
+            "{\n"
+            "    Frag_UV = UV;\n"
+            "    Frag_Color = Color;\n"
+            "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+            "}\n";
+        const GLchar* fragment_shader =
+            "#version 110\n"
+            #ifdef FO_OGL_ES
+            "precision mediump float;\n"
+            #endif
+            "uniform sampler2D Texture;\n"
+            "varying vec2 Frag_UV;\n"
+            "varying vec4 Frag_Color;\n"
+            "void main()\n"
+            "{\n"
+            "    gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV.st);\n"
+            "}\n";
 
-    // Create shaders
-    const GLchar* vertex_shader_arr[ 1 ] = { vertex_shader };
-    VertHandle = glCreateShader( GL_VERTEX_SHADER );
-    GL( glShaderSource( VertHandle, 1, vertex_shader_arr, nullptr ) );
-    GL( glCompileShader( VertHandle ) );
-    GLint vs_status = 0;
-    GL( glGetShaderiv( VertHandle, GL_COMPILE_STATUS, &vs_status ) );
-    RUNTIME_ASSERT( (GLboolean) vs_status == GL_TRUE );
+        // Create shaders
+        const GLchar* vertex_shader_arr[ 1 ] = { vertex_shader };
+        VertHandle = glCreateShader( GL_VERTEX_SHADER );
+        GL( glShaderSource( VertHandle, 1, vertex_shader_arr, nullptr ) );
+        GL( glCompileShader( VertHandle ) );
+        GLint vs_status = 0;
+        GL( glGetShaderiv( VertHandle, GL_COMPILE_STATUS, &vs_status ) );
+        RUNTIME_ASSERT( (GLboolean) vs_status == GL_TRUE );
 
-    const GLchar* fragment_shader_arr[ 1 ] = { fragment_shader };
-    FragHandle = glCreateShader( GL_FRAGMENT_SHADER );
-    GL( glShaderSource( FragHandle, 1, fragment_shader_arr, nullptr ) );
-    GL( glCompileShader( FragHandle ) );
-    GLint fs_status = 0;
-    GL( glGetShaderiv( FragHandle, GL_COMPILE_STATUS, &fs_status ) );
-    RUNTIME_ASSERT( (GLboolean) fs_status == GL_TRUE );
+        const GLchar* fragment_shader_arr[ 1 ] = { fragment_shader };
+        FragHandle = glCreateShader( GL_FRAGMENT_SHADER );
+        GL( glShaderSource( FragHandle, 1, fragment_shader_arr, nullptr ) );
+        GL( glCompileShader( FragHandle ) );
+        GLint fs_status = 0;
+        GL( glGetShaderiv( FragHandle, GL_COMPILE_STATUS, &fs_status ) );
+        RUNTIME_ASSERT( (GLboolean) fs_status == GL_TRUE );
 
-    ShaderHandle = glCreateProgram();
-    GL( glAttachShader( ShaderHandle, VertHandle ) );
-    GL( glAttachShader( ShaderHandle, FragHandle ) );
-    GL( glLinkProgram( ShaderHandle ) );
-    GLint program_status = 0;
-    GL( glGetProgramiv( ShaderHandle, GL_LINK_STATUS, &program_status ) );
-    RUNTIME_ASSERT( (GLboolean) program_status == GL_TRUE );
+        ShaderHandle = glCreateProgram();
+        GL( glAttachShader( ShaderHandle, VertHandle ) );
+        GL( glAttachShader( ShaderHandle, FragHandle ) );
+        GL( glLinkProgram( ShaderHandle ) );
+        GLint program_status = 0;
+        GL( glGetProgramiv( ShaderHandle, GL_LINK_STATUS, &program_status ) );
+        RUNTIME_ASSERT( (GLboolean) program_status == GL_TRUE );
 
-    AttribLocationTex = glGetUniformLocation( ShaderHandle, "Texture" );
-    AttribLocationProjMtx = glGetUniformLocation( ShaderHandle, "ProjMtx" );
-    AttribLocationVtxPos = glGetAttribLocation( ShaderHandle, "Position" );
-    AttribLocationVtxUV = glGetAttribLocation( ShaderHandle, "UV" );
-    AttribLocationVtxColor = glGetAttribLocation( ShaderHandle, "Color" );
+        AttribLocationTex = glGetUniformLocation( ShaderHandle, "Texture" );
+        AttribLocationProjMtx = glGetUniformLocation( ShaderHandle, "ProjMtx" );
+        AttribLocationVtxPos = glGetAttribLocation( ShaderHandle, "Position" );
+        AttribLocationVtxUV = glGetAttribLocation( ShaderHandle, "UV" );
+        AttribLocationVtxColor = glGetAttribLocation( ShaderHandle, "Color" );
 
-    GL( glGenBuffers( 1, &VboHandle ) );
-    GL( glGenBuffers( 1, &ElementsHandle ) );
+        GL( glGenBuffers( 1, &VboHandle ) );
+        GL( glGenBuffers( 1, &ElementsHandle ) );
+    }
 
     // Init Dear ImGui
     IMGUI_CHECKVERSION();
@@ -223,7 +232,6 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     #ifndef FO_OGL_ES
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
     #endif
-    // io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
 
     // Keyboard mapping
     io.KeyMap[ ImGuiKey_Tab ] = SDL_SCANCODE_TAB;
@@ -538,11 +546,14 @@ void AppGui::EndFrame()
     }
 
     GL( glDisable( GL_SCISSOR_TEST ) );
-    GL( glUseProgram( 0 ) );
     GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
-    #ifndef FO_OGL_ES
-    GL( glBindVertexArray( 0 ) );
-    #endif
+    if( !FixedPipeline )
+    {
+        #ifndef FO_OGL_ES
+        GL( glBindVertexArray( 0 ) );
+        #endif
+        GL( glUseProgram( 0 ) );
+    }
 
     SDL_GL_SwapWindow( SdlWindow );
 
@@ -574,9 +585,12 @@ static void RenderDrawData( ImDrawData* draw_data )
 
     // Setup GL state
     GLuint vao = 0;
-    #ifndef FO_OGL_ES
-    GL( glGenVertexArrays( 1, &vao ) );
-    #endif
+    if( !FixedPipeline )
+    {
+        #ifndef FO_OGL_ES
+        GL( glGenVertexArrays( 1, &vao ) );
+        #endif
+    }
     SetupRenderState( draw_data, fb_width, fb_height, vao );
 
     // Scissor/clipping
@@ -587,8 +601,22 @@ static void RenderDrawData( ImDrawData* draw_data )
     for( int n = 0; n < draw_data->CmdListsCount; n++ )
     {
         const ImDrawList* cmd_list = draw_data->CmdLists[ n ];
-        GL( glBufferData( GL_ARRAY_BUFFER, (GLsizeiptr) cmd_list->VtxBuffer.Size * sizeof( ImDrawVert ), (const GLvoid*) cmd_list->VtxBuffer.Data, GL_STREAM_DRAW ) );
-        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr) cmd_list->IdxBuffer.Size * sizeof( ImDrawIdx ), (const GLvoid*) cmd_list->IdxBuffer.Data, GL_STREAM_DRAW ) );
+        const ImDrawVert* vtx_buffer = cmd_list->VtxBuffer.Data;
+        const ImDrawIdx*  idx_buffer = cmd_list->IdxBuffer.Data;
+
+        if( FixedPipeline )
+        {
+            #ifndef FO_OGL_ES
+            GL( glVertexPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, pos ) ) ) );
+            GL( glTexCoordPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, uv ) ) ) );
+            GL( glColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, col ) ) ) );
+            #endif
+        }
+        else
+        {
+            GL( glBufferData( GL_ARRAY_BUFFER, (GLsizeiptr) cmd_list->VtxBuffer.Size * sizeof( ImDrawVert ), (const GLvoid*) vtx_buffer, GL_STREAM_DRAW ) );
+            GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr) cmd_list->IdxBuffer.Size * sizeof( ImDrawIdx ), (const GLvoid*) idx_buffer, GL_STREAM_DRAW ) );
+        }
 
         for( int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++ )
         {
@@ -612,60 +640,93 @@ static void RenderDrawData( ImDrawData* draw_data )
                 {
                     GL( glScissor( (int) clip_rect.x, (int) ( fb_height - clip_rect.w ), (int) ( clip_rect.z - clip_rect.x ), (int) ( clip_rect.w - clip_rect.y ) ) );
                     GL( glBindTexture( GL_TEXTURE_2D, (GLuint) (intptr_t) pcmd->TextureId ) );
-                    #ifndef FO_OGL_ES
-                    GL( glDrawElementsBaseVertex( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                                                  (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ), (GLint) pcmd->VtxOffset ) );
-                    #else
-                    GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                                        (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ) ) );
-                    #endif
+
+                    if( !FixedPipeline )
+                    {
+                        #ifndef FO_OGL_ES
+                        GL( glDrawElementsBaseVertex( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                                      (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ), (GLint) pcmd->VtxOffset ) );
+                        #else
+                        GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                            (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ) ) );
+                        #endif
+                    }
+                    else
+                    {
+                        #ifndef FO_OGL_ES
+                        GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer ) );
+                        #endif
+                    }
                 }
             }
+
+            if( FixedPipeline )
+                idx_buffer += pcmd->ElemCount;
         }
     }
 
-    #ifndef FO_OGL_ES
-    GL( glDeleteVertexArrays( 1, &vao ) );
-    #endif
+    if( !FixedPipeline )
+    {
+        #ifndef FO_OGL_ES
+        GL( glDeleteVertexArrays( 1, &vao ) );
+        #endif
+    }
 }
 
 static void SetupRenderState( ImDrawData* draw_data, int fb_width, int fb_height, GLuint vao )
 {
     GL( glViewport( 0, 0, (GLsizei) fb_width, (GLsizei) fb_height ) );
 
-    float       l = draw_data->DisplayPos.x;
-    float       r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-    float       t = draw_data->DisplayPos.y;
-    float       b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-    const float ortho_projection[ 4 ][ 4 ] =
+    if( !FixedPipeline )
     {
-        { 2.0f / ( r - l ),   0.0f,         0.0f,   0.0f },
-        { 0.0f,         2.0f / ( t - b ),   0.0f,   0.0f },
-        { 0.0f,         0.0f,        -1.0f,   0.0f },
-        { ( r + l ) / ( l - r ),  ( t + b ) / ( b - t ),  0.0f,   1.0f },
-    };
+        float       l = draw_data->DisplayPos.x;
+        float       r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+        float       t = draw_data->DisplayPos.y;
+        float       b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+        const float ortho_projection[ 4 ][ 4 ] =
+        {
+            { 2.0f / ( r - l ),   0.0f,         0.0f,   0.0f },
+            { 0.0f,         2.0f / ( t - b ),   0.0f,   0.0f },
+            { 0.0f,         0.0f,        -1.0f,   0.0f },
+            { ( r + l ) / ( l - r ),  ( t + b ) / ( b - t ),  0.0f,   1.0f },
+        };
 
-    GL( glEnable( GL_SCISSOR_TEST ) );
-    GL( glUseProgram( ShaderHandle ) );
-    GL( glUniform1i( AttribLocationTex, 0 ) );
-    GL( glUniformMatrix4fv( AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[ 0 ][ 0 ] ) );
-    GL( glActiveTexture( GL_TEXTURE0 ) );
-    #ifdef GL_SAMPLER_BINDING
-    GL( glBindSampler( 0, 0 ) );
-    #endif
-    #ifndef FO_OGL_ES
-    GL( glBindVertexArray( vao ) );
-    #else
-    UNUSED_VARIABLE( vao );
-    #endif
-    GL( glBindBuffer( GL_ARRAY_BUFFER, VboHandle ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ElementsHandle ) );
-    GL( glEnableVertexAttribArray( AttribLocationVtxPos ) );
-    GL( glEnableVertexAttribArray( AttribLocationVtxUV ) );
-    GL( glEnableVertexAttribArray( AttribLocationVtxColor ) );
-    GL( glVertexAttribPointer( AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, pos ) ) );
-    GL( glVertexAttribPointer( AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, uv ) ) );
-    GL( glVertexAttribPointer( AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, col ) ) );
+        GL( glEnable( GL_SCISSOR_TEST ) );
+        GL( glUseProgram( ShaderHandle ) );
+        GL( glUniform1i( AttribLocationTex, 0 ) );
+        GL( glUniformMatrix4fv( AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[ 0 ][ 0 ] ) );
+        GL( glActiveTexture( GL_TEXTURE0 ) );
+        #ifdef GL_SAMPLER_BINDING
+        GL( glBindSampler( 0, 0 ) );
+        #endif
+        #ifndef FO_OGL_ES
+        GL( glBindVertexArray( vao ) );
+        #else
+        UNUSED_VARIABLE( vao );
+        #endif
+        GL( glBindBuffer( GL_ARRAY_BUFFER, VboHandle ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ElementsHandle ) );
+        GL( glEnableVertexAttribArray( AttribLocationVtxPos ) );
+        GL( glEnableVertexAttribArray( AttribLocationVtxUV ) );
+        GL( glEnableVertexAttribArray( AttribLocationVtxColor ) );
+        GL( glVertexAttribPointer( AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, pos ) ) );
+        GL( glVertexAttribPointer( AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, uv ) ) );
+        GL( glVertexAttribPointer( AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( ImDrawVert ), (GLvoid*) IM_OFFSETOF( ImDrawVert, col ) ) );
+    }
+    else
+    {
+        #ifndef FO_OGL_ES
+        GL( glEnableClientState( GL_VERTEX_ARRAY ) );
+        GL( glEnableClientState( GL_TEXTURE_COORD_ARRAY ) );
+        GL( glEnableClientState( GL_COLOR_ARRAY ) );
+        GL( glMatrixMode( GL_MODELVIEW ) );
+        GL( glLoadIdentity() );
+        GL( glMatrixMode( GL_PROJECTION ) );
+        GL( glLoadIdentity() );
+        GL( glOrtho( draw_data->DisplayPos.x, draw_data->DisplayPos.x + draw_data->DisplaySize.x,
+                     draw_data->DisplayPos.y + draw_data->DisplaySize.y, draw_data->DisplayPos.y, -1.0f, 1.0f ) );
+        #endif
+    }
 }
 
 static void Platform_CreateWindow( ImGuiViewport* viewport )
