@@ -1,104 +1,60 @@
 #include "Common.h"
+// #include "Server.h"
+// #include "Client.h"
 #include "Mapper.h"
 #include "AppGui.h"
 
+static void DockSpaceBegin();
+static void DockSpaceEnd();
+
 struct GuiWindow
 {
+    string       Name;
+    GuiWindow( string name ): Name( name ) {}
     virtual bool Draw() = 0;
     virtual ~GuiWindow() = default;
 };
 
-struct DemoWindow: public GuiWindow
-{
-    bool   ShowDemoWindow = true;
-    bool   ShowAnotherWindow = false;
-    ImVec4 ClearColor = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
-
-    virtual bool Draw() override
-    {
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if( ShowDemoWindow )
-            ImGui::ShowDemoWindow( &ShowDemoWindow );
-
-        {
-            static float f = 0.0f;
-            static int   counter = 0;
-
-            ImGui::Begin( "Hello, world!" );                                       // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text( "This is some useful text." );                            // Display some text (you can use a format strings too)
-            ImGui::Checkbox( "Demo Window", &ShowDemoWindow );                     // Edit bools storing our window open/close state
-            ImGui::Checkbox( "Another Window", &ShowAnotherWindow );
-
-            ImGui::SliderFloat( "float", &f, 0.0f, 1.0f );                         // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3( "clear color", (float*) &ClearColor );              // Edit 3 floats representing a color
-
-            if( ImGui::Button( "Button" ) )                                        // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text( "counter = %d", counter );
-
-            ImGui::Text( "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate );
-            ImGui::End();
-        }
-
-        if( ShowAnotherWindow )
-        {
-            ImGui::Begin( "Another Window", &ShowAnotherWindow );
-            ImGui::Text( "Hello from another window!" );
-            if( ImGui::Button( "Close Me" ) )
-                ShowAnotherWindow = false;
-            ImGui::End();
-        }
-
-        return true;
-    }
-};
-
 struct ProjectFilesWindow: GuiWindow
 {
-    string Name;
-    bool   Open = true;
-
-    ProjectFilesWindow( string name )
-    {
-        Name = name;
-        // ImGui::SetNextWindowDockID()
-    }
+    ProjectFilesWindow(): GuiWindow( "Project Files" ) {}
 
     virtual bool Draw() override
     {
-        if( ImGui::Begin( _str( "Project Files {}", Name ).c_str(), &Open ) )
-        {
-            ImGui::Text( "Hello from another window!" );
-            if( ImGui::Button( "Close Me" ) )
-                Open = false;
-        }
-        ImGui::End();
+        ImGui::Text( "ProjectFilesWindow" );
         return true;
     }
 };
 
 struct EntitiesWindow: GuiWindow
 {
+    EntitiesWindow(): GuiWindow( "Entities" ) {}
+
     virtual bool Draw() override
     {
+        ImGui::Text( "EntitiesWindow" );
         return true;
     }
 };
 
 struct InspectorWindow: GuiWindow
 {
+    InspectorWindow(): GuiWindow( "Inspector" ) {}
+
     virtual bool Draw() override
     {
+        ImGui::Text( "InspectorWindow" );
         return true;
     }
 };
 
 struct LogWindow: GuiWindow
 {
+    LogWindow(): GuiWindow( "Log" ) {}
+
     virtual bool Draw() override
     {
+        ImGui::Text( "LogWindow" );
         return true;
     }
 };
@@ -107,7 +63,7 @@ struct MapWindow: GuiWindow
 {
     FOMapper* MapInstance;
 
-    MapWindow( std::string map_name )
+    MapWindow( std::string map_name ): GuiWindow( "Map" )
     {
         MapInstance = new FOMapper();
         if( !MapInstance->Init() )              // || !data->MapInstance->LoadMap)
@@ -118,6 +74,8 @@ struct MapWindow: GuiWindow
     {
         if( !MapInstance )
             return false;
+
+        ImGui::Text( "MapWindow" );
 
         MapInstance->MainLoop();
         return true;
@@ -133,16 +91,22 @@ struct MapWindow: GuiWindow
 
 struct ServerWindow: GuiWindow
 {
+    ServerWindow(): GuiWindow( "Server" ) {}
+
     virtual bool Draw() override
     {
+        ImGui::Text( "ServerWindow" );
         return true;
     }
 };
 
 struct ClientWindow: GuiWindow
 {
+    ClientWindow(): GuiWindow( "Client" ) {}
+
     virtual bool Draw() override
     {
+        ImGui::Text( "ClientWindow" );
         return true;
     }
 };
@@ -173,14 +137,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         return -1;
 
     // Basic windows
-    // NewWindows.push_back( new DemoWindow() );
-    NewWindows.push_back( new ProjectFilesWindow( "1" ) );
-    NewWindows.push_back( new ProjectFilesWindow( "2" ) );
-    NewWindows.push_back( new ProjectFilesWindow( "3" ) );
-    /*
-       NewWindows.push_back(new EntitiesWindow());
-       NewWindows.push_back(new InspectorWindow());
-       NewWindows.push_back(new LogWindow());*/
+    Windows.push_back( new ProjectFilesWindow() );
+    Windows.push_back( new EntitiesWindow() );
+    Windows.push_back( new InspectorWindow() );
+    Windows.push_back( new LogWindow() );
+    Windows.push_back( new ServerWindow() );
+    Windows.push_back( new ServerWindow() );
 
     // Main loop
     while( !GameOpt.Quit )
@@ -188,9 +150,18 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         if( !AppGui::BeginFrame() )
             break;
 
+        DockSpaceBegin();
+
         for( GuiWindow* window : Windows )
-            if( !window->Draw() )
+        {
+            bool keep_alive = true;
+            if( ImGui::Begin( window->Name.c_str(), nullptr, ImGuiWindowFlags_NoCollapse ) )
+                keep_alive = window->Draw();
+            ImGui::End();
+
+            if( !keep_alive )
                 CloseWindows.push_back( window );
+        }
 
         if( !NewWindows.empty() )
         {
@@ -211,6 +182,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         if( Windows.empty() )
             break;
 
+        DockSpaceEnd();
+
         AppGui::EndFrame();
     }
 
@@ -220,4 +193,50 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         delete window;
 
     return 0;
+}
+
+static void DockSpaceBegin()
+{
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+                                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                    ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos( viewport->Pos );
+    ImGui::SetNextWindowSize( viewport->Size );
+    ImGui::SetNextWindowViewport( viewport->ID );
+    ImGui::PushStyleVar( ImGuiStyleVar_WindowRounding, 0.0f );
+    ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0.0f );
+    ImGui::SetNextWindowBgAlpha( 0.0f );
+    ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0.0f, 0.0f ) );
+    ImGui::Begin( "DockSpace", nullptr, window_flags );
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar( 2 );
+
+    ImGuiID dockspace_id = ImGui::GetID( "DockSpace" );
+    if( !ImGui::DockBuilderGetNode( dockspace_id ) )
+    {
+        ImGui::DockBuilderRemoveNode( dockspace_id );
+        ImGui::DockBuilderAddNode( dockspace_id, ImGuiDockNodeFlags_None );
+
+        ImGuiID dock_main_id = dockspace_id;
+        ImGuiID dock_left1_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.15f, nullptr, &dock_main_id );
+        ImGuiID dock_left2_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.1764f, nullptr, &dock_main_id );
+        ImGuiID dock_right_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Right, 0.3f, nullptr, &dock_main_id );
+        ImGuiID dock_down_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Down, 0.25f, nullptr, &dock_main_id );
+
+        ImGui::DockBuilderDockWindow( "Project Files", dock_left1_id );
+        ImGui::DockBuilderDockWindow( "Entities", dock_left2_id );
+        ImGui::DockBuilderDockWindow( "Inspector", dock_right_id );
+        ImGui::DockBuilderDockWindow( "Log", dock_down_id );
+        ImGui::DockBuilderDockWindow( "Server", dock_main_id );
+        ImGui::DockBuilderFinish( dock_main_id );
+    }
+
+    ImGui::DockSpace( dockspace_id, ImVec2( 0.0f, 0.0f ), ImGuiDockNodeFlags_PassthruCentralNode );
+}
+
+static void DockSpaceEnd()
+{
+    ImGui::End();
 }

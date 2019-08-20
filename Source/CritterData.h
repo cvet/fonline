@@ -2,9 +2,6 @@
 #define __CRITTER_DATA__
 
 #include "Common.h"
-#ifdef FONLINE_EDITOR
-# include "CritterCl.h"
-#endif
 
 class ProtoCritter: public ProtoEntity
 {
