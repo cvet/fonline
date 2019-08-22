@@ -527,11 +527,11 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_LoadDataFile()  {}
-    static void Global_AllowSlot()     {}
-    static void Global_GetProtoItem()  {}
-    static void Global_GetDistantion() {}
-    static void Global_GetUnixTime()   {}
+    static void Global_LoadDataFile()                                  {}
+    static void Global_AllowSlot()                                     {}
+    static void Global_GetProtoItem()                                  {}
+    static void Global_GetDistantion()                                 {}
+    static void Global_GetUnixTime()                                   {}
     static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
 };
 
