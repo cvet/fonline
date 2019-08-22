@@ -9,33 +9,80 @@ static void DockSpaceEnd();
 
 struct GuiWindow
 {
-    string       Name;
+    string           Name;
+    ImGuiWindowFlags AdditionalFlags = 0;
     GuiWindow( string name ): Name( name ) {}
-    virtual bool Draw() = 0;
+    virtual bool     Draw() = 0;
     virtual ~GuiWindow() = default;
 };
 
 struct ProjectFilesWindow: GuiWindow
 {
-    ProjectFilesWindow(): GuiWindow( "Project Files" ) {}
+    string           SelectedTree;
+    int              SelectedItem = -1;
+    FilesCollection* Scripts;
+    FilesCollection* Locations;
+    FilesCollection* Maps;
+    FilesCollection* Critters;
+    FilesCollection* Items;
+    FilesCollection* Dialogs;
+    FilesCollection* Texts;
+
+    ProjectFilesWindow(): GuiWindow( "Project Files" )
+    {
+        Scripts = new FilesCollection( "fos" );
+        Locations = new FilesCollection( "foloc" );
+        Maps = new FilesCollection( "fomap" );
+        Critters = new FilesCollection( "focr" );
+        Items = new FilesCollection( "foitem" );
+        Dialogs = new FilesCollection( "fodlg" );
+        Texts = new FilesCollection( "msg" );
+    }
 
     virtual bool Draw() override
     {
-        ImGui::Text( "ProjectFilesWindow" );
+        DrawFiles( "Scripts", Scripts );
+        DrawFiles( "Locations", Locations );
+        DrawFiles( "Maps", Maps );
+        DrawFiles( "Critters", Critters );
+        DrawFiles( "Items", Items );
+        DrawFiles( "Dialogs", Dialogs );
+        DrawFiles( "Texts", Texts );
         return true;
     }
-};
 
-struct EntitiesWindow: GuiWindow
-{
-    EntitiesWindow(): GuiWindow( "Entities" ) {}
-
-    virtual bool Draw() override
+    void DrawFiles( const string& tree_name, FilesCollection* files )
     {
-        ImGui::Text( "EntitiesWindow" );
-        return true;
+        if( ImGui::TreeNode( tree_name.c_str() ) )
+        {
+            ImGui::PushStyleVar( ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3.0f );
+
+            files->ResetCounter();
+            uint files_count = files->GetFilesCount();
+            for( uint i = 0; i < files_count; i++ )
+            {
+                string name, path, relative_path;
+                files->GetNextFile( &name, &path, &relative_path );
+
+                ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                if( SelectedItem == i && SelectedTree == tree_name )
+                    node_flags |= ImGuiTreeNodeFlags_Selected;
+
+                ImGui::TreeNodeEx( (void*) (intptr_t) i, node_flags, "%s", name.c_str() );
+
+                if( ImGui::IsItemClicked() )
+                {
+                    SelectedTree = tree_name;
+                    SelectedItem = i;
+                }
+            }
+
+            ImGui::PopStyleVar();
+            ImGui::TreePop();
+        }
     }
 };
+// static ProjectFilesWindow* ProjectFiles = nullptr;
 
 struct InspectorWindow: GuiWindow
 {
@@ -50,24 +97,67 @@ struct InspectorWindow: GuiWindow
 
 struct LogWindow: GuiWindow
 {
-    LogWindow(): GuiWindow( "Log" ) {}
+    string CurLog;
+    string WholeLog;
+
+    LogWindow(): GuiWindow( "Log" )
+    {
+        AdditionalFlags = ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar;
+    }
 
     virtual bool Draw() override
     {
-        ImGui::Text( "LogWindow" );
+        LogGetBuffer( CurLog );
+        if( !CurLog.empty() )
+        {
+            WholeLog += CurLog;
+            CurLog.clear();
+            if( WholeLog.size() > 100000 )
+                WholeLog = WholeLog.substr( WholeLog.size() - 100000 );
+        }
+
+        if( !WholeLog.empty() )
+            ImGui::TextUnformatted( WholeLog.c_str(), WholeLog.c_str() + WholeLog.size() );
+
         return true;
     }
 };
 
-struct MapWindow: GuiWindow
+struct ServerWindow: GuiWindow
 {
-    FOMapper* MapInstance;
+    ServerWindow(): GuiWindow( "Server" ) {}
 
-    MapWindow( std::string map_name ): GuiWindow( "Map" )
+    virtual bool Draw() override
     {
-        MapInstance = new FOMapper();
-        if( !MapInstance->Init() )              // || !data->MapInstance->LoadMap)
-            SAFEDEL( MapInstance );
+        ImGui::ShowDemoWindow();
+        return true;
+    }
+};
+
+struct ClientWindow: GuiWindow
+{
+    ClientWindow(): GuiWindow( "Client" ) {}
+
+    virtual bool Draw() override
+    {
+        ImGui::Text( "ClientWindow" );
+        return true;
+    }
+};
+
+struct MapperWindow: GuiWindow
+{
+    FOMapper* MapInstance = nullptr;
+
+    MapperWindow( std::string map_name ): GuiWindow( "Map" )
+    {
+        // FileManager& map_file = ProjectFiles->Maps->FindFile(map_name);
+        // if (!map_file.IsLoaded())
+        //	return;
+
+        // MapInstance = new FOMapper();
+        // if (!MapInstance->Init() || !MapInstance->Lo)
+        //	SAFEDEL(MapInstance);
     }
 
     virtual bool Draw() override
@@ -81,33 +171,11 @@ struct MapWindow: GuiWindow
         return true;
     }
 
-    virtual ~MapWindow() override
+    virtual ~MapperWindow() override
     {
         if( MapInstance )
             MapInstance->Finish();
         SAFEDEL( MapInstance );
-    }
-};
-
-struct ServerWindow: GuiWindow
-{
-    ServerWindow(): GuiWindow( "Server" ) {}
-
-    virtual bool Draw() override
-    {
-        ImGui::Text( "ServerWindow" );
-        return true;
-    }
-};
-
-struct ClientWindow: GuiWindow
-{
-    ClientWindow(): GuiWindow( "Client" ) {}
-
-    virtual bool Draw() override
-    {
-        ImGui::Text( "ClientWindow" );
-        return true;
     }
 };
 
@@ -138,11 +206,10 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Basic windows
     Windows.push_back( new ProjectFilesWindow() );
-    Windows.push_back( new EntitiesWindow() );
     Windows.push_back( new InspectorWindow() );
     Windows.push_back( new LogWindow() );
     Windows.push_back( new ServerWindow() );
-    Windows.push_back( new ServerWindow() );
+    Windows.push_back( new ClientWindow() );
 
     // Main loop
     while( !GameOpt.Quit )
@@ -155,7 +222,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         for( GuiWindow* window : Windows )
         {
             bool keep_alive = true;
-            if( ImGui::Begin( window->Name.c_str(), nullptr, ImGuiWindowFlags_NoCollapse ) )
+            if( ImGui::Begin( window->Name.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | window->AdditionalFlags ) )
                 keep_alive = window->Draw();
             ImGui::End();
 
@@ -220,16 +287,16 @@ static void DockSpaceBegin()
         ImGui::DockBuilderAddNode( dockspace_id, ImGuiDockNodeFlags_None );
 
         ImGuiID dock_main_id = dockspace_id;
-        ImGuiID dock_left1_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.15f, nullptr, &dock_main_id );
-        ImGuiID dock_left2_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.1764f, nullptr, &dock_main_id );
-        ImGuiID dock_right_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Right, 0.3f, nullptr, &dock_main_id );
+        ImGuiID dock_left_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.15f, nullptr, &dock_main_id );
+        ImGuiID dock_right_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id );
         ImGuiID dock_down_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Down, 0.25f, nullptr, &dock_main_id );
 
-        ImGui::DockBuilderDockWindow( "Project Files", dock_left1_id );
-        ImGui::DockBuilderDockWindow( "Entities", dock_left2_id );
+        ImGui::DockBuilderDockWindow( "Project Files", dock_left_id );
         ImGui::DockBuilderDockWindow( "Inspector", dock_right_id );
         ImGui::DockBuilderDockWindow( "Log", dock_down_id );
         ImGui::DockBuilderDockWindow( "Server", dock_main_id );
+        ImGui::DockBuilderDockWindow( "Client", dock_main_id );
+        ImGui::DockBuilderDockWindow( "Mapper", dock_main_id );
         ImGui::DockBuilderFinish( dock_main_id );
     }
 
