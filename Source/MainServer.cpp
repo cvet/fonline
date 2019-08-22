@@ -3,10 +3,12 @@
 #include "Exception.h"
 #include "Access.h"
 #include "BufferManager.h"
-#include "FlexRect.h"
 #include <locale.h>
-#include "AppGui.h"
-#include "SDL.h"
+
+#ifndef FO_SERVER_DAEMON
+# include "AppGui.h"
+# include "SDL.h"
+#endif
 
 static FOServer* Server;
 static Thread    ServerThread;
@@ -140,7 +142,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     return 0;
 }
 
-#endif // !SERVER_DAEMON
+#endif // !FO_SERVER_DAEMON
 
 /************************************************************************/
 /* Windows service                                                      */
@@ -297,7 +299,7 @@ static void SetFOServiceStatus( uint state )
 /************************************************************************/
 /* Linux daemon                                                         */
 /************************************************************************/
-#ifdef SERVER_DAEMON
+#ifdef FO_SERVER_DAEMON
 
 # include <sys/stat.h>
 
@@ -370,7 +372,7 @@ static void DaemonLoop()
     ServerThread.Wait();
 }
 
-#endif // SERVER_DAEMON
+#endif // FO_SERVER_DAEMON
 
 /************************************************************************/
 /* Admin panel                                                          */
