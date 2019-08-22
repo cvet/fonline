@@ -56,7 +56,7 @@ static void ServerEntry( void* )
 /* GUI & Windows service version                                        */
 /************************************************************************/
 
-#ifndef SERVER_DAEMON
+#ifndef FO_SERVER_DAEMON
 
 // Windows service
 # ifdef FO_WINDOWS
