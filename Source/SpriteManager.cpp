@@ -236,6 +236,10 @@ bool SpriteManager::Init()
     if( !GraphicApi::Init() )
         return false;
 
+    #ifdef FO_WEB
+    OGL_vertex_array_object = ( attr.majorVersion > 1 || emscripten_webgl_enable_extension( gl_context, "OES_vertex_array_object" ) );
+    #endif
+
     // Check OpenGL extensions
     #define CHECK_EXTENSION( ext, critical  )                                     \
         if( !GL_HAS( ext ) )                                                      \

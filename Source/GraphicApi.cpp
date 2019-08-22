@@ -59,12 +59,6 @@ bool GraphicApi::Init()
     OGL_framebuffer_multisample = true;
     OGL_texture_multisample = true;
     # endif
-    # ifdef FO_WEB
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE  gl_context = emscripten_webgl_get_current_context();
-    EmscriptenWebGLContextAttributes attr;
-    emscripten_webgl_get_context_attributes( gl_context, &attr );
-    OGL_vertex_array_object = ( attr.majorVersion > 1 || emscripten_webgl_enable_extension( gl_context, "OES_vertex_array_object" ) );
-    # endif
     #endif
 
     return true;
