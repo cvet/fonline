@@ -659,7 +659,6 @@ bool ZipFile::Init( const string& fname )
 
         ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
         {
-            #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
             if( Str::Compare( filename, "$Basic" ) )
             {
                 MemStream* mem_stream = new MemStream();
@@ -668,7 +667,6 @@ bool ZipFile::Init( const string& fname )
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
-            #endif
             return 0;
         };
         ffunc.zread_file = [] ( voidpf opaque, voidpf stream, void* buf, uLong size )->uLong

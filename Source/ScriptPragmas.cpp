@@ -189,7 +189,7 @@ public:
 };
 
 // #pragma entity EntityName Movable = true
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "EntityManager.h"
 #endif
 
@@ -208,7 +208,7 @@ public:
     PropertyRegistrator* Registrator;
     uint                 SubType;
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     CustomEntity* CreateEntity()
     {
         CustomEntity* entity = new CustomEntity( 0, SubType, Registrator );
@@ -278,7 +278,7 @@ public:
     #else
     CustomEntity* CreateEntity()                                { return nullptr; }
     static void   CreateEntity_Generic( asIScriptGeneric* gen ) {}
-    # ifdef FONLINE_SERVER
+    # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     bool RestoreEntity( uint id, const DataBase::Document& doc ) { return false; }
     # endif
     void          DeleteEntity( CustomEntity* entity )              {}
@@ -379,7 +379,7 @@ public:
         return true;
     }
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     bool RestoreEntity( const string& class_name, uint id, const DataBase::Document& doc )
     {
         EntityCreator* entity_creator = entityCreators[ class_name ];
@@ -651,109 +651,8 @@ public:
     }
 };
 
-// #pragma method MyObject CallType void Foo(int a, int b) FuncToBind
-class MethodPragma
-{
-private:
-    MethodRegistrator** methodRegistrator;
-    EntityPragma*       entitiesRegistrators;
-
-public:
-    MethodPragma( int pragma_type, EntityPragma* entities_registrators )
-    {
-        bool is_server = ( pragma_type == PRAGMA_SERVER );
-        bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
-
-        methodRegistrator = new MethodRegistrator*[ 6 ];
-        methodRegistrator[ 0 ] = new MethodRegistrator( is_server || is_mapper, "GlobalVars" );
-        methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, "Critter" );
-        methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, "Item" );
-        methodRegistrator[ 3 ] = new MethodRegistrator( is_server || is_mapper, "Map" );
-        methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
-
-        entitiesRegistrators = entities_registrators;
-    }
-
-    bool Call( const string& text )
-    {
-        // Read all
-        istringstream str( text );
-        string        class_name, call_type_str;
-        str >> class_name >> call_type_str;
-        string        line;
-        std::getline( str, line, '\n' );
-        if( str.fail() )
-        {
-            WriteLog( "Error in 'method' pragma '{}'.\n", text );
-            return false;
-        }
-
-        // Decl
-        size_t separator =  line.find( '=' );
-        if( separator == string::npos )
-        {
-            WriteLog( "Error in 'method' pragma declaration '{}'.\n", text );
-            return false;
-        }
-
-        string decl = _str( line.substr( 0, separator ) ).trim();
-        string script_func = _str( line.substr( separator + 1 ) ).trim();
-
-        // Parse access type
-        Method::CallType call_type = (Method::CallType) 0;
-        if( call_type_str == "LocalServer" )
-            call_type = Method::LocalServer;
-        else if( call_type_str == "LocalClient" )
-            call_type = Method::LocalClient;
-        else if( call_type_str == "LocalCommon" )
-            call_type = Method::LocalCommon;
-        else if( call_type_str == "RemoteServer" )
-            call_type = Method::RemoteServer;
-        else if( call_type_str == "RemoteClient" )
-            call_type = Method::RemoteClient;
-        if( call_type == (Method::CallType) 0 )
-        {
-            WriteLog( "Error in 'method' pragma '{}', invalid call type '{}'.\n", text, call_type_str );
-            return false;
-        }
-
-        // Choose registrator
-        MethodRegistrator* registrator = nullptr;
-        if( class_name == "Global" )
-            registrator = methodRegistrator[ 0 ];
-        else if( class_name == "Critter" )
-            registrator = methodRegistrator[ 1 ];
-        else if( class_name == "Item" )
-            registrator = methodRegistrator[ 2 ];
-        else if( class_name == "Map" )
-            registrator = methodRegistrator[ 3 ];
-        else if( class_name == "Location" )
-            registrator = methodRegistrator[ 4 ];
-        // else if (entitiesRegistrators->entityCreators.count(class_name))
-        //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
-        else
-            WriteLog( "Invalid class in 'property' pragma '{}'.\n", text );
-        if( !registrator )
-            return false;
-
-        // Register
-        if( !registrator->Register( decl.c_str(), script_func.c_str(), call_type ) )
-        {
-            WriteLog( "Unable to register 'method' pragma '{}'.\n", text );
-            return false;
-        }
-
-        return true;
-    }
-
-    bool Finish()
-    {
-        return true; // methodRegistrator->FinishRegistration();
-    }
-};
-
 // #pragma content Group fileName
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Dialogs.h"
 #endif
 
@@ -839,7 +738,7 @@ public:
     bool Finish()
     {
         int errors = 0;
-        #ifdef FONLINE_SERVER
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         for( auto it = filesToCheck[ 0 ].begin(); it != filesToCheck[ 0 ].end(); ++it )
         {
             if( !DlgMngr.GetDialog( it->second ) )
@@ -1408,7 +1307,7 @@ public:
 };
 
 // #pragma rpc
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Critter.h"
 #endif
 #ifdef FONLINE_CLIENT
@@ -1603,7 +1502,7 @@ public:
                 SCRIPT_ERROR_R( "Some of argument is too large (more than 65535 bytes length)" );
         }
 
-        # ifdef FONLINE_SERVER
+        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Critter* cr = (Critter*) gen->GetObject();
         if( !cr->IsPlayer() )
         {
@@ -1617,7 +1516,7 @@ public:
         BufferManager& net_buf = FOClient::Self->Bout;
         # endif
 
-        # ifdef FONLINE_SERVER
+        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         BOUT_BEGIN( cl );
         # endif
         net_buf << NETMSG_RPC;
@@ -1630,7 +1529,7 @@ public:
             if( len )
                 net_buf.Push( &args[ i ][ 0 ], len );
         }
-        # ifdef FONLINE_SERVER
+        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         BOUT_END( cl );
         # endif
         #endif
@@ -1639,7 +1538,7 @@ public:
     void HandleRpc( void* context )
     {
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
-        # ifdef FONLINE_SERVER
+        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Client* cl = (Client*) context;
         BufferManager& net_buf = cl->Connection->Bin;
         # else
@@ -1669,7 +1568,7 @@ public:
         asIScriptFunction* func = inFunc[ func_index ];
         for( asUINT i = 0; i < func->GetParamCount(); i++ )
         {
-            # ifdef FONLINE_SERVER
+            # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
             if( i == 0 )
             {
                 Script::SetArgEntity( cl );
@@ -1736,7 +1635,6 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     bindFuncPragma = nullptr;
     entityPragma = nullptr;
     propertyPragma = nullptr;
-    methodPragma = nullptr;
     contentPragma = nullptr;
     enumPragma = nullptr;
     eventPragma = nullptr;
@@ -1749,7 +1647,6 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
         propertyPragma = new PropertyPragma( pragmaType, entityPragma );
-        methodPragma = new MethodPragma( pragmaType, entityPragma );
         contentPragma = new ContentPragma();
         enumPragma = new EnumPragma();
         eventPragma = new EventPragma();
@@ -1764,7 +1661,6 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( bindFuncPragma );
     SAFEDEL( entityPragma );
     SAFEDEL( propertyPragma );
-    SAFEDEL( methodPragma );
     SAFEDEL( contentPragma );
     SAFEDEL( enumPragma );
     SAFEDEL( eventPragma );
@@ -1784,8 +1680,6 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = bindFuncPragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "method" ) && methodPragma )
-        ok = methodPragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "entity" ) && entityPragma )
         ok = entityPragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "content" ) && contentPragma )
@@ -1816,8 +1710,6 @@ void ScriptPragmaCallback::Finish()
         isError = true;
     if( !propertyPragma->Finish() )
         isError = true;
-    if( !methodPragma->Finish() )
-        isError = true;
     if( !contentPragma->Finish() )
         isError = true;
     if( !rpcPragma->Finish() )
@@ -1839,7 +1731,7 @@ StrVec ScriptPragmaCallback::GetCustomEntityTypes()
     return entityPragma->GetTypeNames();
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 bool ScriptPragmaCallback::RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc )
 {
     return entityPragma->RestoreEntity( class_name, id, doc );

@@ -367,7 +367,7 @@ bool ProtoManager::LoadProtosFromFiles()
         return false;
 
     // Load maps data
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     for( auto& kv : mapProtos )
     {
         if( !kv.second->Load() )

@@ -60,10 +60,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     // Map and location for client and mapper
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    REGISTER_ENTITY( "Map", Map );
-    REGISTER_ENTITY_CAST( "Map", Map );
-    REGISTER_ENTITY( "Location", Location );
-    REGISTER_ENTITY_CAST( "Location", Location );
+    REGISTER_ENTITY( "Map", MapCl );
+    REGISTER_ENTITY_CAST( "Map", MapCl );
+    REGISTER_ENTITY( "Location", LocationCl );
+    REGISTER_ENTITY_CAST( "Location", LocationCl );
     #endif
     #if defined ( BIND_CLIENT )
     BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
@@ -340,8 +340,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
     REGISTER_ENTITY( "Critter", CritterCl );
     REGISTER_ENTITY_CAST( "Critter", CritterCl );
-    REGISTER_ENTITY( "Item", Item );
-    REGISTER_ENTITY_CAST( "Item", Item );
+    REGISTER_ENTITY( "Item", ItemCl );
+    REGISTER_ENTITY_CAST( "Item", ItemCl );
     #endif
 
     #ifdef BIND_CLIENT

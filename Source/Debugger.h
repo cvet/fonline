@@ -1,7 +1,7 @@
 #ifndef __DEBUGGER__
 #define __DEBUGGER__
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # define MEMORY_DEBUG
 #endif
 

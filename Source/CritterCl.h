@@ -1,14 +1,12 @@
-#ifndef __CRITTER_CL__
-#define __CRITTER_CL__
+#pragma once
 
 #include "NetProtocol.h"
 #include "Common.h"
 #include "SpriteManager.h"
 #include "BufferManager.h"
-#include "Item.h"
+#include "ItemCl.h"
 #include "3dStuff.h"
 #include "Entity.h"
-#include "CritterData.h"
 
 class CritterCl: public Entity
 {
@@ -62,7 +60,7 @@ public:
     string      Name;
     string      NameOnHead;
     string      Avatar;
-    ItemVec     InvItems;
+    ItemClVec   InvItems;
 
     static bool SlotEnabled[ 0x100 ];
 
@@ -78,9 +76,9 @@ public:
     void   RefreshAnim();
     void   ChangeDir( uchar dir, bool animate = true );
 
-    void Animate( uint anim1, uint anim2, Item* item );
+    void Animate( uint anim1, uint anim2, ItemCl* item );
     void AnimateStay();
-    void Action( int action, int action_ext, Item* item, bool local_call = true );
+    void Action( int action, int action_ext, ItemCl* item, bool local_call = true );
     void Process();
     void DrawStay( Rect r );
 
@@ -100,17 +98,17 @@ public:
 
     // Items
 public:
-    void  AddItem( Item* item );
-    void  DeleteItem( Item* item, bool animate );
-    void  DeleteAllItems();
-    Item* GetItem( uint item_id );
-    Item* GetItemByPid( hash item_pid );
-    Item* GetItemByPidInvPriority( hash item_pid );
-    Item* GetItemByPidSlot( hash item_pid, int slot );
-    Item* GetItemSlot( int slot );
-    void  GetItemsSlot( int slot, ItemVec& items );
-    uint  CountItemPid( hash item_pid );
-    bool  IsHaveLightSources();
+    void    AddItem( ItemCl* item );
+    void    DeleteItem( ItemCl* item, bool animate );
+    void    DeleteAllItems();
+    ItemCl* GetItem( uint item_id );
+    ItemCl* GetItemByPid( hash item_pid );
+    ItemCl* GetItemByPidInvPriority( hash item_pid );
+    ItemCl* GetItemByPidSlot( hash item_pid, int slot );
+    ItemCl* GetItemSlot( int slot );
+    void    GetItemsSlot( int slot, ItemClVec& items );
+    uint    CountItemPid( hash item_pid );
+    bool    IsHaveLightSources();
 
     // Moving
 public:
@@ -142,7 +140,7 @@ public:
 public:
     uint GetAnim1();
     uint GetAnim2();
-    void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );
+    void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemCl* item );
     int* GetLayers3dData();
     bool IsAnimAviable( uint anim1, uint anim2 );
 
@@ -161,10 +159,10 @@ private:
         int        DirOffs;
         uint       IndAnim1;
         uint       IndAnim2;
-        Item*      ActiveItem;
+        ItemCl*    ActiveItem;
         CritterAnim() {}
-        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, Item* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
-                                                                                                                                                       IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
+        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, ItemCl* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
+                                                                                                                                                         IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
     };
     typedef vector< CritterAnim > CritterAnimVec;
 
@@ -241,9 +239,3 @@ private:
     uint   tickTextDelay;
     uint   textOnHeadColor;
 };
-
-typedef map< uint, CritterCl* > CritMap;
-typedef vector< CritterCl* >    CritVec;
-typedef CritterCl*              CritterClPtr;
-
-#endif // __CRITTER_CL__

@@ -36,7 +36,7 @@ private:
     void   RunDeferredCall( DeferredCall& call );
     string GetStatistics();
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     bool LoadDeferredCalls();
     #endif
 

@@ -23,19 +23,19 @@ static T* EntityUpCast( Entity* a )
             b->AddRef();                                                                  \
             return b;                                                                     \
         }
-    #if defined ( FONLINE_SERVER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     CHECK_CAST( Location, EntityType::Location );
     CHECK_CAST( Map, EntityType::Map );
     CHECK_CAST( Critter, EntityType::Npc );
     CHECK_CAST( Critter, EntityType::Client );
     CHECK_CAST( Item, EntityType::Item );
-    CHECK_CAST( Item, EntityType::ItemHex );
-    #elif defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    CHECK_CAST( Location, EntityType::Location );
-    CHECK_CAST( Map, EntityType::Map );
+    #endif
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
+    CHECK_CAST( LocationCl, EntityType::LocationCl );
+    CHECK_CAST( MapCl, EntityType::MapCl );
     CHECK_CAST( CritterCl, EntityType::CritterCl );
-    CHECK_CAST( Item, EntityType::Item );
-    CHECK_CAST( Item, EntityType::ItemHex );
+    CHECK_CAST( ItemCl, EntityType::ItemCl );
+    CHECK_CAST( ItemCl, EntityType::ItemHex );
     #endif
     #undef CHECK_CAST
     return nullptr;
@@ -334,8 +334,9 @@ static void Global_OpenLink( string link )
     #endif
 }
 
-static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
+static void* Global_GetProtoItem( hash pid, CScriptDict* props )
 {
+    #if 0
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
         return nullptr;
@@ -353,6 +354,8 @@ static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
         }
     }
     return item;
+    #endif
+    return 0;
 }
 
 static uint Global_GetUnixTime()

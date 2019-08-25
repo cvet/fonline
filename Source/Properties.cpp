@@ -3,7 +3,7 @@
 #include "Entity.h"
 #include "IniParser.h"
 #include "Script.h"
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif
 
@@ -1726,7 +1726,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
     }
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 DataBase::Document Properties::SaveToDbDocument( Properties* base )
 {
     RUNTIME_ASSERT( !base || registrator == base->registrator );

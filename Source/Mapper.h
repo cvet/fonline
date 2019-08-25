@@ -5,7 +5,7 @@
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "HexManager.h"
-#include "Item.h"
+#include "ItemCl.h"
 #include "MapCl.h"
 #include "CritterCl.h"
 #include "Text.h"
@@ -21,10 +21,12 @@
 #define FONT_BIG_NUM                   ( 2 )
 #define FONT_SAND_NUM                  ( 3 )
 #define FONT_SPECIAL                   ( 4 )
-#define FONT_DEFAULT                   ( 5 )
 #define FONT_THIN                      ( 6 )
 #define FONT_FAT                       ( 7 )
 #define FONT_BIG                       ( 8 )
+#ifndef FONT_DEFAULT
+# define FONT_DEFAULT                  ( 5 )
+#endif
 
 class FOMapper
 {
@@ -178,8 +180,8 @@ public:
     void IntSetMode( int mode );
 
     // Maps
-    MapVec LoadedMaps;
-    Map*   ActiveMap;
+    MapClVec LoadedMaps;
+    MapCl*   ActiveMap;
 
     // Tabs
     #define DEFAULT_SUB_TAB            "000 - all"
@@ -224,7 +226,7 @@ public:
     uint             TabIndex[ INT_MODE_COUNT ];
     int              InContScroll;
     int              ListScroll;
-    Item*            InContItem;
+    ItemCl*          InContItem;
     bool             DrawRoof;
     int              TileLayer;
 
@@ -266,7 +268,7 @@ public:
 
     // Entites creation
     CritterCl* AddCritter( hash pid, ushort hx, ushort hy );
-    Item*      AddItem( hash pid, ushort hx, ushort hy, Entity* owner );
+    ItemCl*    AddItem( hash pid, ushort hx, ushort hy, Entity* owner );
     void       AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
     Entity*    CloneEntity( Entity* entity );
 
@@ -368,8 +370,8 @@ public:
     bool InitScriptSystem();
     void FinishScriptSystem();
     void RunStartScript();
-    void RunMapLoadScript( Map* map );
-    void RunMapSaveScript( Map* map );
+    void RunMapLoadScript( MapCl* map );
+    void RunMapSaveScript( MapCl* map );
     void DrawIfaceLayer( uint layer );
 
     static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -380,14 +382,14 @@ public:
 
     struct SScriptFunc
     {
-        static Item*         Item_AddChild( Item* item, hash pid );
-        static Item*         Crit_AddChild( CritterCl* cr, hash pid );
-        static CScriptArray* Item_GetChildren( Item* item );
+        static ItemCl*       Item_AddChild( ItemCl* item, hash pid );
+        static ItemCl*       Crit_AddChild( CritterCl* cr, hash pid );
+        static CScriptArray* Item_GetChildren( ItemCl* item );
         static CScriptArray* Crit_GetChildren( CritterCl* cr );
 
-        static Item*         Global_AddItem( hash pid, ushort hx, ushort hy );
+        static ItemCl*       Global_AddItem( hash pid, ushort hx, ushort hy );
         static CritterCl*    Global_AddCritter( hash pid, ushort hx, ushort hy );
-        static Item*         Global_GetItemByHex( ushort hx, ushort hy );
+        static ItemCl*       Global_GetItemByHex( ushort hx, ushort hy );
         static CScriptArray* Global_GetItemsByHex( ushort hx, ushort hy );
         static CritterCl*    Global_GetCritterByHex( ushort hx, ushort hy, int find_type );
         static CScriptArray* Global_GetCrittersByHex( ushort hx, ushort hy, int find_type );
@@ -407,10 +409,10 @@ public:
         static void   Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name );
 
         static void          Global_AllowSlot( uchar index, bool enable_send );
-        static Map*          Global_LoadMap( string file_name );
-        static void          Global_UnloadMap( Map* pmap );
-        static bool          Global_SaveMap( Map* pmap, string custom_name );
-        static bool          Global_ShowMap( Map* pmap );
+        static MapCl*        Global_LoadMap( string file_name );
+        static void          Global_UnloadMap( MapCl* pmap );
+        static bool          Global_SaveMap( MapCl* pmap, string custom_name );
+        static bool          Global_ShowMap( MapCl* pmap );
         static CScriptArray* Global_GetLoadedMaps( int& index );
         static CScriptArray* Global_GetMapFileNames( string dir );
         static void          Global_ResizeMap( ushort width, ushort height );
@@ -474,8 +476,8 @@ public:
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
 
-        static Map*          ClientCurMap;
-        static Location*     ClientCurLocation;
+        static MapCl*        ClientCurMap;
+        static LocationCl*   ClientCurLocation;
     };
 };
 

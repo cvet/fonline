@@ -2,12 +2,12 @@
 #define __ITEM_HEX__
 
 #include "Defines.h"
-#include "Item.h"
+#include "ItemCl.h"
 #include "SpriteManager.h"
 
 struct AnyFrames;
 
-class ItemHex: public Item
+class ItemHex: public ItemCl
 {
 private:
     ItemHex( uint id, ProtoItem* proto );

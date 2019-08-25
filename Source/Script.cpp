@@ -378,7 +378,7 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
     #endif
 
     // Server path fixes
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     # ifdef FO_WINDOWS
     FilesCollection dlls( "dll" );
     # else
@@ -906,7 +906,7 @@ void Script::ProcessDeferredCalls()
     edata->Invoker->Process();
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 bool Script::LoadDeferredCalls()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -934,7 +934,7 @@ StrVec Script::GetCustomEntityTypes()
     return edata->PragmaCB->GetCustomEntityTypes();
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 bool Script::RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();

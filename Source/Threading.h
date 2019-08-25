@@ -1,5 +1,4 @@
-#ifndef __THREADING__
-#define __THREADING__
+#pragma once
 
 #include "Common.h"
 
@@ -75,5 +74,3 @@ public:
 };
 
 #endif
-
-#endif // __THREADING__

@@ -3,10 +3,9 @@
 
 #include "Common.h"
 #include "SpriteManager.h"
-#include "Item.h"
+#include "ItemCl.h"
 #include "CritterCl.h"
 #include "ItemHex.h"
-#include "ProtoMap.h"
 
 #define MAX_FIND_PATH    ( 600 )
 #define VIEW_WIDTH       ( (int) ( ( GameOpt.ScreenWidth / GameOpt.MapHexWidth + ( ( GameOpt.ScreenWidth % GameOpt.MapHexWidth ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
@@ -78,7 +77,7 @@ struct Field
     bool        IsView;
     Sprite*     SpriteChain;
     CritterCl*  Crit;
-    CritVec*    DeadCrits;
+    CrClVec*    DeadCrits;
     int         ScrX;
     int         ScrY;
     AnyFrames*  SimplyTile[ 2 ]; // Tile / Roof
@@ -165,7 +164,7 @@ public:
 
     bool FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut );
     bool CutPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut );
-    bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe, CritVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
+    bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe, CrClVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
 
     // Center
 public:
@@ -197,6 +196,7 @@ public:
 
     // Init, finish, restore
 private:
+    bool          mapperMode;
     RenderTarget* rtMap;
     RenderTarget* rtLight;
     RenderTarget* rtFog;
@@ -222,7 +222,7 @@ private:
 
 public:
     HexManager();
-    bool Init();
+    bool Init( bool mapper_mode );
     void Finish();
     void ReloadSprites();
 
@@ -269,7 +269,7 @@ public:
 
     // Critters
 private:
-    CritMap allCritters;
+    CrClMap allCritters;
     uint    chosenId;
     uint    critterContourCrId;
     int     critterContour, crittersContour;
@@ -283,8 +283,8 @@ public:
     void       RemoveCritter( CritterCl* cr );
     void       DeleteCritter( uint crid );
     void       DeleteCritters();
-    void       GetCritters( ushort hx, ushort hy, CritVec& crits, int find_type );
-    CritMap& GetCritters() { return allCritters; }
+    void       GetCritters( ushort hx, ushort hy, CrClVec& crits, int find_type );
+    CrClMap& GetCritters() { return allCritters; }
     void     SetCritterContour( uint crid, int contour );
     void     SetCrittersContour( int contour );
     void     SetMultihex( ushort hx, ushort hy, uint multihex, bool set );
@@ -436,8 +436,7 @@ public:
 
     void GetHexesRect( const Rect& rect, UShortPairVec& hexes );
     void MarkPassedHexes();
-    #endif // FONLINE_EDITOR
-
+    #endif
 };
 
-#endif // __HEX_MANAGER__
+#endif     // __HEX_MANAGER__

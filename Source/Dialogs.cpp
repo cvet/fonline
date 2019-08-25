@@ -2,7 +2,7 @@
 #include "Dialogs.h"
 #include "FileManager.h"
 #include "IniParser.h"
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Script.h"
 # include "Critter.h"
 # include "Map.h"
@@ -12,7 +12,7 @@ DialogManager DlgMngr;
 
 int GetPropEnumIndex( const string& str, bool is_demand, int& type, bool& is_hash )
 {
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
     Property* prop_critter = Critter::PropertiesRegistrator->Find( str );
     Property* prop_item = Item::PropertiesRegistrator->Find( str );
@@ -515,7 +515,7 @@ DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_dem
             fail = true;
         }
 
-        #ifdef FONLINE_SERVER
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         // Bind function
         # define BIND_D_FUNC( params )                                                         \
             do {                                                                               \
@@ -625,7 +625,7 @@ uint DialogManager::GetNotAnswerAction( const string& str, bool& ret_val )
     if( str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None" )
         return 0;
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     uint id = Script::BindByFuncName( str, "uint %s(Critter, Critter, string)", false, true );
     if( id )
     {

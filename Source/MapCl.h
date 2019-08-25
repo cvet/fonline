@@ -1,37 +1,9 @@
-#ifndef __MAP_CL__
-#define __MAP_CL__
+#pragma once
 
 #include "Common.h"
 #include "Entity.h"
-#include "ProtoMap.h"
 
-class Location;
-
-class Map: public Entity
-{
-public:
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY( string, FileDir );
-    CLASS_PROPERTY( ushort, Width );
-    CLASS_PROPERTY( ushort, Height );
-    CLASS_PROPERTY( ushort, WorkHexX );
-    CLASS_PROPERTY( ushort, WorkHexY );
-    CLASS_PROPERTY( uint, LocId );
-    CLASS_PROPERTY( uint, LocMapIndex );
-    CLASS_PROPERTY( uchar, RainCapacity );
-    CLASS_PROPERTY( int, CurDayTime );
-    CLASS_PROPERTY( hash, ScriptId );
-    CLASS_PROPERTY( CScriptArray *, DayTime );    // 4 int
-    CLASS_PROPERTY( CScriptArray *, DayColor );   // 12 uchar
-    CLASS_PROPERTY( bool, IsNoLogOut );
-
-    Map( uint id, ProtoMap* proto );
-    ~Map();
-};
-typedef map< uint, Map* > MapMap;
-typedef vector< Map* >    MapVec;
-
-class Location: public Entity
+class LocationCl: public Entity
 {
 public:
     PROPERTIES_HEADER();
@@ -48,10 +20,28 @@ public:
     CLASS_PROPERTY( bool, ToGarbage );
     CLASS_PROPERTY( uint, Color );
 
-    Location( uint id, ProtoLocation* proto );
-    ~Location();
+    LocationCl( uint id, ProtoLocation* proto );
+    ~LocationCl();
 };
-typedef map< uint, Location* > LocMap;
-typedef vector< Location* >    LocVec;
 
-#endif // __MAP_CL__
+class MapCl: public Entity
+{
+public:
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY( string, FileDir );
+    CLASS_PROPERTY( ushort, Width );
+    CLASS_PROPERTY( ushort, Height );
+    CLASS_PROPERTY( ushort, WorkHexX );
+    CLASS_PROPERTY( ushort, WorkHexY );
+    CLASS_PROPERTY( uint, LocId );
+    CLASS_PROPERTY( uint, LocMapIndex );
+    CLASS_PROPERTY( uchar, RainCapacity );
+    CLASS_PROPERTY( int, CurDayTime );
+    CLASS_PROPERTY( hash, ScriptId );
+    CLASS_PROPERTY( CScriptArray *, DayTime );      // 4 int
+    CLASS_PROPERTY( CScriptArray *, DayColor );     // 12 uchar
+    CLASS_PROPERTY( bool, IsNoLogOut );
+
+    MapCl( uint id, ProtoMap* proto );
+    ~MapCl();
+};

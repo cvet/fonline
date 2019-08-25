@@ -7,12 +7,12 @@
 #include "SHA/sha2.h"
 #include <time.h>
 
-bool      FOMapper::SpritesCanDraw = false;
-FOMapper* FOMapper::Self = nullptr;
-string    FOMapper::ServerWritePath;
-string    FOMapper::ClientWritePath;
-Map*      FOMapper::SScriptFunc::ClientCurMap = nullptr;
-Location* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
+bool        FOMapper::SpritesCanDraw = false;
+FOMapper*   FOMapper::Self = nullptr;
+string      FOMapper::ServerWritePath;
+string      FOMapper::ClientWritePath;
+MapCl*      FOMapper::SScriptFunc::ClientCurMap = nullptr;
+LocationCl* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
 
 FOMapper::FOMapper()
 {
@@ -231,7 +231,7 @@ bool FOMapper::Init()
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Hex manager
-    if( !HexMngr.Init() )
+    if( !HexMngr.Init( true ) )
         return false;
     HexMngr.ReloadSprites();
     HexMngr.SwitchShowTrack();
@@ -257,7 +257,7 @@ bool FOMapper::Init()
                 hexY = pmap->GetWorkHexY();
             HexMngr.FindSetCenter( hexX, hexY );
 
-            Map* map = new Map( 0, pmap );
+            MapCl* map = new MapCl( 0, pmap );
             ActiveMap = map;
             LoadedMaps.push_back( map );
             RunMapLoadScript( map );
@@ -1810,8 +1810,8 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            RUNTIME_ASSERT( children[ i ]->Type == EntityType::Item );
-            Item*      child = (Item*) children[ i ];
+            RUNTIME_ASSERT( children[ i ]->Type == EntityType::ItemCl );
+            ItemCl*    child = (ItemCl*) children[ i ];
 
             AnyFrames* anim = ResMngr.GetInvAnim( child->GetPicInv() );
             if( !anim )
@@ -1835,7 +1835,7 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            Map* map = LoadedMaps[ i ];
+            MapCl* map = LoadedMaps[ i ];
             SprMngr.DrawStr( Rect( x, y, x + w, y + h ), _str( " '{}'", map->GetName() ), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
@@ -2336,7 +2336,7 @@ void FOMapper::IntLMouseDown()
             if( !children.empty() )
             {
                 if( ind < (int) children.size() )
-                    InContItem = (Item*) children[ ind ];
+                    InContItem = (ItemCl*) children[ ind ];
 
                 // Delete child
                 if( Keyb::AltDwn && InContItem )
@@ -2349,7 +2349,7 @@ void FOMapper::IntLMouseDown()
                     }
                     else if( InContItem->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
                     {
-                        Item* owner = HexMngr.GetItemById( InContItem->GetContainerId() );
+                        ItemCl* owner = HexMngr.GetItemById( InContItem->GetContainerId() );
                         RUNTIME_ASSERT( owner );
                         owner->ContEraseItem( InContItem );
                         InContItem->Release();
@@ -2620,7 +2620,7 @@ void FOMapper::IntLMouseUp()
                 }
 
                 ItemHexVec items;
-                CritVec    critters;
+                CrClVec    critters;
                 for( uint i = 0, j = (uint) h.size(); i < j; i++ )
                 {
                     ushort hx = h[ i ].first;
@@ -3028,7 +3028,7 @@ void FOMapper::SelectAll()
 
     if( IsSelectCrit && GameOpt.ShowCrit )
     {
-        CritMap& crits = HexMngr.GetCritters();
+        CrClMap& crits = HexMngr.GetCritters();
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
             SelectAddCrit( it->second );
     }
@@ -3343,7 +3343,7 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
     return cr;
 }
 
-Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
+ItemCl* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
 {
     RUNTIME_ASSERT( ActiveMap );
 
@@ -3361,14 +3361,14 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         SelectClear();
 
     // Create
-    Item* item;
+    ItemCl* item;
     if( owner )
     {
-        item = new Item( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto_item );
+        item = new ItemCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto_item );
         if( owner->Type == EntityType::CritterCl )
             ( (CritterCl*) owner )->AddItem( item );
         else if( owner->Type == EntityType::Item || owner->Type == EntityType::ItemHex )
-            ( (Item*) owner )->ContSetItem( item );
+            ( (ItemCl*) owner )->ContSetItem( item );
     }
     else
     {
@@ -3466,12 +3466,12 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         for( auto& from_child : from->GetChildren() )
         {
             RUNTIME_ASSERT( from_child->Type == EntityType::Item );
-            Item* to_child = new Item( --pmap->LastEntityId, (ProtoItem*) from_child->Proto );
+            ItemCl* to_child = new ItemCl( --pmap->LastEntityId, (ProtoItem*) from_child->Proto );
             to_child->Props = from_child->Props;
             if( to->Type == EntityType::CritterCl )
                 ( (CritterCl*) to )->AddItem( to_child );
             else
-                ( (Item*) to )->ContSetItem( to_child );
+                ( (ItemCl*) to )->ContSetItem( to_child );
             add_entity_children( from_child, to_child );
         }
     };
@@ -3609,12 +3609,12 @@ void FOMapper::BufferPaste( int, int )
             for( auto& child_buf : entity_buf->Children )
             {
                 RUNTIME_ASSERT( child_buf->Type == EntityType::Item );
-                Item* child = new Item( --pmap->LastEntityId, (ProtoItem*) child_buf->Proto );
+                ItemCl* child = new ItemCl( --pmap->LastEntityId, (ProtoItem*) child_buf->Proto );
                 child->Props = *child_buf->Props;
                 if( entity->Type == EntityType::CritterCl )
                     ( (CritterCl*) entity )->AddItem( child );
                 else
-                    ( (Item*) entity )->ContSetItem( child );
+                    ( (ItemCl*) entity )->ContSetItem( child );
                 add_entity_children( child_buf, child );
             }
         };
@@ -3966,7 +3966,7 @@ void FOMapper::ParseCommand( const string& command )
 
         HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
 
-        Map* map = new Map( 0, pmap );
+        MapCl* map = new MapCl( 0, pmap );
         ActiveMap = map;
         LoadedMaps.push_back( map );
 
@@ -4101,7 +4101,7 @@ void FOMapper::ParseCommand( const string& command )
             AddMess( "Create map success." );
             HexMngr.FindSetCenter( 150, 150 );
 
-            Map* map = new Map( 0, pmap );
+            MapCl* map = new MapCl( 0, pmap );
             ActiveMap = map;
             LoadedMaps.push_back( map );
         }
@@ -4253,7 +4253,7 @@ namespace MapperBind
     #undef BIND_DUMMY_DATA
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
+    #define BIND_ASSERT( x )                      if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
     #include "ScriptBind.h"
 }
 
@@ -4294,26 +4294,28 @@ bool FOMapper::InitScriptSystem()
     }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    #define BIND_INTERNAL_EVENT( name )    MapperFunctions.name = Script::FindInternalEvent( "Event" # name )
+    #define BIND_INTERNAL_EVENT( name )           MapperFunctions.name = Script::FindInternalEvent( "Event" # name )
+    #define BIND_INTERNAL_EVENT_CLIENT( name )    ClientFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( ConsoleMessage );
     BIND_INTERNAL_EVENT( RenderIface );
-    BIND_INTERNAL_EVENT( RenderMap );
+    BIND_INTERNAL_EVENT_CLIENT( RenderMap );
     BIND_INTERNAL_EVENT( MouseDown );
     BIND_INTERNAL_EVENT( MouseUp );
     BIND_INTERNAL_EVENT( MouseMove );
     BIND_INTERNAL_EVENT( KeyDown );
     BIND_INTERNAL_EVENT( KeyUp );
     BIND_INTERNAL_EVENT( InputLost );
-    BIND_INTERNAL_EVENT( CritterAnimation );
-    BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
-    BIND_INTERNAL_EVENT( CritterAnimationFallout );
+    BIND_INTERNAL_EVENT_CLIENT( CritterAnimation );
+    BIND_INTERNAL_EVENT_CLIENT( CritterAnimationSubstitute );
+    BIND_INTERNAL_EVENT_CLIENT( CritterAnimationFallout );
     BIND_INTERNAL_EVENT( MapLoad );
     BIND_INTERNAL_EVENT( MapSave );
     BIND_INTERNAL_EVENT( InspectorProperties );
     #undef BIND_INTERNAL_EVENT
+    #undef BIND_INTERNAL_EVENT_CLIENT
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     SAFEDEL( Globals );
@@ -4334,8 +4336,8 @@ bool FOMapper::InitScriptSystem()
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
-    Map::SetPropertyRegistrator( registrators[ 3 ] );
-    Location::SetPropertyRegistrator( registrators[ 4 ] );
+    MapCl::SetPropertyRegistrator( registrators[ 3 ] );
+    LocationCl::SetPropertyRegistrator( registrators[ 4 ] );
 
     if( !Script::PostInitScriptSystem() )
     {
@@ -4364,13 +4366,13 @@ void FOMapper::RunStartScript()
     Script::RaiseInternalEvent( MapperFunctions.Start );
 }
 
-void FOMapper::RunMapLoadScript( Map* map )
+void FOMapper::RunMapLoadScript( MapCl* map )
 {
     RUNTIME_ASSERT( map );
     Script::RaiseInternalEvent( MapperFunctions.MapLoad, map );
 }
 
-void FOMapper::RunMapSaveScript( Map* map )
+void FOMapper::RunMapSaveScript( MapCl* map )
 {
     RUNTIME_ASSERT( map );
     Script::RaiseInternalEvent( MapperFunctions.MapSave, map );
@@ -4456,7 +4458,7 @@ void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
     }
 }
 
-Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )
+ItemCl* FOMapper::SScriptFunc::Item_AddChild( ItemCl* item, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsStatic() )
@@ -4465,7 +4467,7 @@ Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )
     return Self->AddItem( pid, 0, 0, item );
 }
 
-Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
+ItemCl* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsStatic() )
@@ -4474,9 +4476,9 @@ Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
     return Self->AddItem( pid, 0, 0, cr );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( Item* item )
+CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( ItemCl* item )
 {
-    ItemVec children;
+    ItemClVec children;
     item->ContGetItems( children, 0 );
     return Script::CreateArrayRef( "Item[]", children );
 }
@@ -4486,7 +4488,7 @@ CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterCl* cr )
     return Script::CreateArrayRef( "Item[]", cr->InvItems );
 }
 
-Item* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
+ItemCl* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hex args." );
@@ -4508,7 +4510,7 @@ CritterCl* FOMapper::SScriptFunc::Global_AddCritter( hash pid, ushort hx, ushort
     return Self->AddCritter( pid, hx, hy );
 }
 
-Item* FOMapper::SScriptFunc::Global_GetItemByHex( ushort hx, ushort hy )
+ItemCl* FOMapper::SScriptFunc::Global_GetItemByHex( ushort hx, ushort hy )
 {
     return Self->HexMngr.GetItem( hx, hy, 0 );
 }
@@ -4522,14 +4524,14 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetItemsByHex( ushort hx, ushort hy 
 
 CritterCl* FOMapper::SScriptFunc::Global_GetCritterByHex( ushort hx, ushort hy, int find_type )
 {
-    CritVec critters_;
+    CrClVec critters_;
     Self->HexMngr.GetCritters( hx, hy, critters_, find_type );
     return !critters_.empty() ? critters_[ 0 ] : nullptr;
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetCrittersByHex( ushort hx, ushort hy, int find_type )
 {
-    CritVec critters;
+    CrClVec critters;
     Self->HexMngr.GetCritters( hx, hy, critters, find_type );
     return Script::CreateArrayRef( "Critter[]", critters );
 }
@@ -4737,7 +4739,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
-Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
+MapCl* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -4748,13 +4750,13 @@ Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
     }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    Map* map = new Map( 0, pmap );
+    MapCl* map = new MapCl( 0, pmap );
     Self->LoadedMaps.push_back( map );
     Self->RunMapLoadScript( map );
     return map;
 }
 
-void FOMapper::SScriptFunc::Global_UnloadMap( Map* map )
+void FOMapper::SScriptFunc::Global_UnloadMap( MapCl* map )
 {
     if( !map )
         SCRIPT_ERROR_R( "Proto map arg nullptr." );
@@ -4774,7 +4776,7 @@ void FOMapper::SScriptFunc::Global_UnloadMap( Map* map )
     map->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( Map* map, string custom_name )
+bool FOMapper::SScriptFunc::Global_SaveMap( MapCl* map, string custom_name )
 {
     if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
@@ -4787,7 +4789,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap( Map* map, string custom_name )
     return result;
 }
 
-bool FOMapper::SScriptFunc::Global_ShowMap( Map* map )
+bool FOMapper::SScriptFunc::Global_ShowMap( MapCl* map )
 {
     if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
@@ -4808,7 +4810,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
     index = -1;
     for( int i = 0, j = (int) Self->LoadedMaps.size(); i < j; i++ )
     {
-        Map* map = Self->LoadedMaps[ i ];
+        MapCl* map = Self->LoadedMaps[ i ];
         if( map == Self->ActiveMap )
             index = i;
     }
@@ -5767,10 +5769,10 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, u
         SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
 
-Animation3dVec DrawCritter3dAnim;
-UIntVec        DrawCritter3dCrType;
-BoolVec        DrawCritter3dFailToLoad;
-int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
+static Animation3dVec DrawCritter3dAnim;
+static UIntVec        DrawCritter3dCrType;
+static BoolVec        DrawCritter3dFailToLoad;
+static int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
 void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
 {
     // x y

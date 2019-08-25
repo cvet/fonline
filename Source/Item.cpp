@@ -1,44 +1,10 @@
 #include "Common.h"
 #include "Item.h"
 #include "ProtoManager.h"
-
-#ifdef FONLINE_SERVER
-# include "Script.h"
-# include "MapManager.h"
-# include "CritterManager.h"
-# include "ItemManager.h"
-#endif
-
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicInv );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Stackable );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetX );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetY );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, Slot );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, LightIntensity );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightDistance );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightFlags );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, LightColor );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Count );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsFlat );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, DrawOrderOffsetHexY );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Corner );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, DisableEgg );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsStatic );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsScenery );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsWall );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsBadItem );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsColorize );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnimExt );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay0 );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay1 );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, CScriptArray *, BlockLines );
-
-ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
-{
-    InstanceCount = 0;
-}
+#include "Script.h"
+#include "MapManager.h"
+#include "CritterManager.h"
+#include "ItemManager.h"
 
 PROPERTIES_IMPL( Item );
 CLASS_PROPERTY_IMPL( Item, PicMap );
@@ -120,11 +86,8 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
 
     ChildItems = nullptr;
     ViewPlaceOnMap = false;
-
-    #ifdef FONLINE_SERVER
     SceneryScriptBindId = 0;
     ViewByCritter = nullptr;
-    #endif
 
     if( GetCount() == 0 )
         SetCount( 1 );
@@ -144,17 +107,6 @@ void Item::SetProto( ProtoItem* proto )
     Props = proto->Props;
 }
 
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-Item* Item::Clone()
-{
-    RUNTIME_ASSERT( Type == EntityType::Item );
-    Item* clone = new Item( Id, (ProtoItem*) Proto );
-    clone->Props = Props;
-    return clone;
-}
-#endif
-
-#ifdef FONLINE_SERVER
 bool Item::SetScript( asIScriptFunction* func, bool first_time )
 {
     if( func )
@@ -177,7 +129,6 @@ bool Item::SetScript( asIScriptFunction* func, bool first_time )
     }
     return true;
 }
-#endif // FONLINE_SERVER
 
 void Item::SetSortValue( ItemVec& items )
 {
@@ -193,8 +144,8 @@ void Item::SetSortValue( ItemVec& items )
     SetSortValue( sort_value );
 }
 
-bool SortItemsFunc( Item* l, Item* r ) { return l->GetSortValue() < r->GetSortValue(); }
-void Item::SortItems( ItemVec& items )
+static bool SortItemsFunc( Item* l, Item* r ) { return l->GetSortValue() < r->GetSortValue(); }
+void        Item::SortItems( ItemVec& items )
 {
     std::sort( items.begin(), items.end(), SortItemsFunc );
 }
@@ -211,7 +162,6 @@ void Item::ChangeCount( int val )
     SetCount( GetCount() + val );
 }
 
-#ifdef FONLINE_SERVER
 void Item::ContAddItem( Item*& item, uint stack_id )
 {
     RUNTIME_ASSERT( item );
@@ -304,7 +254,6 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide )
     }
 }
 
-# pragma MESSAGE("Add explicit sync lock.")
 Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
     if( !ChildItems )
@@ -345,111 +294,3 @@ void Item::ContDeleteItems()
         ItemMngr.DeleteItem( *ChildItems->begin() );
     }
 }
-
-#else
-
-void Item::ContSetItem( Item* item )
-{
-    if( !ChildItems )
-        ChildItems = new ItemVec();
-
-    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
-
-    ChildItems->push_back( item );
-    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
-    item->SetContainerId( Id );
-}
-
-void Item::ContEraseItem( Item* item )
-{
-    RUNTIME_ASSERT( ChildItems );
-    RUNTIME_ASSERT( item );
-
-    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
-    RUNTIME_ASSERT( it != ChildItems->end() );
-    ChildItems->erase( it );
-
-    item->SetAccessory( ITEM_ACCESSORY_NONE );
-    item->SetContainerId( 0 );
-    item->SetContainerStack( 0 );
-
-    if( ChildItems->empty() )
-        SAFEDEL( ChildItems );
-}
-
-void Item::ContGetItems( ItemVec& items, uint stack_id )
-{
-    if( !ChildItems )
-        return;
-
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
-            items.push_back( item );
-    }
-}
-#endif // FONLINE_SERVER
-
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-# include "ResourceManager.h"
-# include "SpriteManager.h"
-
-uint Item::GetCurSprId()
-{
-    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
-    if( !anim )
-        return 0;
-
-    uint beg = 0, end = 0;
-    if( GetIsShowAnim() )
-    {
-        beg = 0;
-        end = anim->CntFrm - 1;
-    }
-    if( GetIsShowAnimExt() )
-    {
-        beg = GetAnimStay0();
-        end = GetAnimStay1();
-    }
-    if( beg >= anim->CntFrm )
-        beg = anim->CntFrm - 1;
-    if( end >= anim->CntFrm )
-        end = anim->CntFrm - 1;
-    if( beg > end )
-        std::swap( beg, end );
-
-    uint count = end - beg + 1;
-    uint ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
-}
-
-uint ProtoItem::GetCurSprId()
-{
-    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
-    if( !anim )
-        return 0;
-
-    uint beg = 0, end = 0;
-    if( GetIsShowAnim() )
-    {
-        beg = 0;
-        end = anim->CntFrm - 1;
-    }
-    if( GetIsShowAnimExt() )
-    {
-        beg = GetAnimStay0();
-        end = GetAnimStay1();
-    }
-    if( beg >= anim->CntFrm )
-        beg = anim->CntFrm - 1;
-    if( end >= anim->CntFrm )
-        end = anim->CntFrm - 1;
-    if( beg > end )
-        std::swap( beg, end );
-
-    uint count = end - beg + 1;
-    uint ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
-}
-#endif

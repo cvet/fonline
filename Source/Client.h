@@ -6,10 +6,9 @@
 #include "SpriteManager.h"
 #include "SoundManager.h"
 #include "HexManager.h"
-#include "Item.h"
+#include "ItemCl.h"
 #include "CritterCl.h"
 #include "NetProtocol.h"
-#include "BufferManager.h"
 #include "Text.h"
 #include "ResourceManager.h"
 #include "DataMask.h"
@@ -23,7 +22,9 @@
 #include "FlexRect.h"
 
 // Fonts
-#define FONT_DEFAULT              ( 0 )
+#ifndef FONT_DEFAULT
+# define FONT_DEFAULT             ( 0 )
+#endif
 
 // Screens
 #define SCREEN_NONE               ( 0 )
@@ -145,7 +146,7 @@ public:
     sockaddr_in   SockAddr, ProxyAddr;
     SOCKET        Sock;
     fd_set        SockSet;
-    Item*         SomeItem;
+    ItemCl*       SomeItem;
     bool          IsConnecting;
     bool          IsConnected;
     bool          InitNetBegin;
@@ -368,7 +369,7 @@ public:
 /* Scripting                                                            */
 /************************************************************************/
     bool ReloadScripts();
-    void OnItemInvChanged( Item* old_item, Item* new_item );
+    void OnItemInvChanged( ItemCl* old_item, ItemCl* new_item );
 
     struct SScriptFunc
     {
@@ -387,14 +388,14 @@ public:
         static bool          Crit_IsAnimPlaying( CritterCl* cr );
         static uint          Crit_GetAnim1( CritterCl* cr );
         static void          Crit_Animate( CritterCl* cr, uint anim1, uint anim2 );
-        static void          Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item );
+        static void          Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, ItemCl* item );
         static void          Crit_ClearAnim( CritterCl* cr );
         static void          Crit_Wait( CritterCl* cr, uint ms );
         static uint          Crit_CountItem( CritterCl* cr, hash proto_id );
-        static Item*         Crit_GetItem( CritterCl* cr, uint item_id );
-        static Item*         Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate );
-        static Item*         Crit_GetItemBySlot( CritterCl* cr, uchar slot );
-        static Item*         Crit_GetItemByPid( CritterCl* cr, hash proto_id );
+        static ItemCl*       Crit_GetItem( CritterCl* cr, uint item_id );
+        static ItemCl*       Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate );
+        static ItemCl*       Crit_GetItemBySlot( CritterCl* cr, uchar slot );
+        static ItemCl*       Crit_GetItemByPid( CritterCl* cr, hash proto_id );
         static CScriptArray* Crit_GetItems( CritterCl* cr );
         static CScriptArray* Crit_GetItemsBySlot( CritterCl* cr, uchar slot );
         static CScriptArray* Crit_GetItemsPredicate( CritterCl* cr, asIScriptFunction* predicate );
@@ -406,14 +407,14 @@ public:
         static void          Crit_AddAnimationCallback( CritterCl* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback );
         static bool          Crit_GetBonePosition( CritterCl* cr, hash bone_name, int& bone_x, int& bone_y );
 
-        static Item*         Item_Clone( Item* item, uint count );
-        static bool          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
-        static void          Item_Animate( Item* item, uint from_frame, uint to_frame );
-        static CScriptArray* Item_GetItems( Item* cont, uint stack_id );
+        static ItemCl*       Item_Clone( ItemCl* item, uint count );
+        static bool          Item_GetMapPosition( ItemCl* item, ushort& hx, ushort& hy );
+        static void          Item_Animate( ItemCl* item, uint from_frame, uint to_frame );
+        static CScriptArray* Item_GetItems( ItemCl* cont, uint stack_id );
 
         static string        Global_CustomCall( string command, string separator );
         static CritterCl*    Global_GetChosen();
-        static Item*         Global_GetItem( uint item_id );
+        static ItemCl*       Global_GetItem( uint item_id );
         static CScriptArray* Global_GetMapAllItems();
         static CScriptArray* Global_GetMapHexItems( ushort hx, ushort hy );
         static uint          Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 );
@@ -490,7 +491,7 @@ public:
         static void          Global_HideScreen( int screen );
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy );
-        static Item*         Global_GetMonitorItem( int x, int y );
+        static ItemCl*       Global_GetMonitorItem( int x, int y );
         static CritterCl*    Global_GetMonitorCritter( int x, int y );
         static Entity*       Global_GetMonitorEntity( int x, int y );
         static ushort        Global_GetMapWidth();
@@ -520,8 +521,8 @@ public:
         static void          Global_EraseCacheData( string name );
         static void          Global_SetUserConfig( CScriptArray* key_values );
 
-        static Map*          ClientCurMap;
-        static Location*     ClientCurLocation;
+        static MapCl*        ClientCurMap;
+        static LocationCl*   ClientCurLocation;
     } ScriptFunc;
 
 /************************************************************************/

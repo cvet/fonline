@@ -1,6 +1,6 @@
 #include "Common.h"
-// #include "Server.h"
-// #include "Client.h"
+#include "Server.h"
+#include "Client.h"
 #include "Mapper.h"
 #include "AppGui.h"
 
@@ -147,37 +147,75 @@ struct ClientWindow: GuiWindow
 
 struct MapperWindow: GuiWindow
 {
-    FOMapper* MapInstance = nullptr;
+    static FOMapper* MapperInstance;
+    MapCl*           WindowMap = nullptr;
 
     MapperWindow( std::string map_name ): GuiWindow( "Map" )
     {
-        // FileManager& map_file = ProjectFiles->Maps->FindFile(map_name);
-        // if (!map_file.IsLoaded())
-        //	return;
+        if( !MapperInstance )
+        {
+            MapperInstance = new FOMapper();
+            if( !MapperInstance->Init() )
+            {
+                SAFEDEL( MapperInstance );
+                return;
+            }
+        }
 
-        // MapInstance = new FOMapper();
-        // if (!MapInstance->Init() || !MapInstance->Lo)
-        //	SAFEDEL(MapInstance);
+        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
+        FileManager::SetCurrentDir( MapperInstance->ServerWritePath, "./" );
+        if( !pmap->Load() )
+        {
+            MapperInstance->AddMess( "File not found or truncated." );
+            FileManager::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+            return;
+        }
+        FileManager::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+
+        if( MapperInstance->ActiveMap )
+            MapperInstance->HexMngr.GetProtoMap( *(ProtoMap*) MapperInstance->ActiveMap->Proto );
+        if( !MapperInstance->HexMngr.SetProtoMap( *pmap ) )
+        {
+            MapperInstance->AddMess( "Load map fail." );
+            return;
+        }
+
+        MapperInstance->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
+
+        WindowMap = new MapCl( 0, pmap );
+        MapperInstance->ActiveMap = WindowMap;
+        MapperInstance->LoadedMaps.push_back( WindowMap );
+        MapperInstance->AddMess( "Load map complete." );
+        MapperInstance->RunMapLoadScript( WindowMap );
     }
 
     virtual bool Draw() override
     {
-        if( !MapInstance )
+        if( !MapperInstance )
             return false;
 
-        ImGui::Text( "MapWindow" );
+        if( MapperInstance->ActiveMap != WindowMap )
+        {
+            if( MapperInstance->ActiveMap )
+                MapperInstance->HexMngr.GetProtoMap( *(ProtoMap*) MapperInstance->ActiveMap->Proto );
+            if( !MapperInstance->HexMngr.SetProtoMap( *(ProtoMap*) WindowMap->Proto ) )
+                return false;
 
-        MapInstance->MainLoop();
+            ProtoMap* pmap = (ProtoMap*) WindowMap->Proto;
+            MapperInstance->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
+            MapperInstance->ActiveMap = WindowMap;
+        }
+
+        MapperInstance->MainLoop();
         return true;
     }
 
     virtual ~MapperWindow() override
     {
-        if( MapInstance )
-            MapInstance->Finish();
-        SAFEDEL( MapInstance );
+        SAFEDEL( WindowMap );
     }
 };
+FOMapper*                   MapperWindow::MapperInstance;
 
 static vector< GuiWindow* > Windows;
 static vector< GuiWindow* > NewWindows;

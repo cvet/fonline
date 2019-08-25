@@ -237,7 +237,7 @@ const char* Debugger::GetMemoryStatistics()
     result += buf;
     #endif
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     int64 all_alloc = 0, all_dealloc = 0;
 
     if( MemoryDebugLevel >= 1 )

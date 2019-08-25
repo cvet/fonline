@@ -18,7 +18,6 @@ class GlobalVarPragma; // just delete
 class BindFuncPragma;  // [Extern = ...]
 class EntityPragma;    // class NewEntity { [Protected] uint Field1; }
 class PropertyPragma;  // extend class Critter { [Protected] uint LockerId; }
-class MethodPragma;    // extend class Critter { [Protected] void Foo() {} }
 class ContentPragma;   // improve dynamic scan
 class EnumPragma;      // extend enum MyEnum { NewA, NewB }
 class EventPragma;     // [Event] void MyEvent(...)
@@ -39,7 +38,6 @@ private:
     BindFuncPragma*  bindFuncPragma;
     EntityPragma*    entityPragma;
     PropertyPragma*  propertyPragma;
-    MethodPragma*    methodPragma;
     ContentPragma*   contentPragma;
     EnumPragma*      enumPragma;
     EventPragma*     eventPragma;
@@ -54,7 +52,7 @@ public:
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
     StrVec                GetCustomEntityTypes();
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     bool RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );
     #endif
     void* FindInternalEvent( const string& event_name );

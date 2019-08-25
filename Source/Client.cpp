@@ -383,7 +383,7 @@ bool FOClient::PostInit()
 
     // Hex manager
     HexMngr.Finish();
-    if( !HexMngr.Init() )
+    if( !HexMngr.Init( false ) )
         return false;
 
     // Other
@@ -2310,7 +2310,7 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity*
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) entity )->GetCritId();
+        Bout << ( (ItemCl*) entity )->GetCritId();
         Bout << entity->Id;
         break;
     case NetProperty::Critter:
@@ -2680,7 +2680,7 @@ void FOClient::OnText( const string& str, uint crid, int how_say )
             ushort channel = 0;
             if( Chosen )
             {
-                Item* radio = Chosen->GetItem( crid );
+                ItemCl* radio = Chosen->GetItem( crid );
                 if( radio )
                     channel = radio->GetRadioChannel();
             }
@@ -2903,7 +2903,7 @@ void FOClient::Net_OnSomeItem()
 
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     RUNTIME_ASSERT( proto_item );
-    SomeItem = new Item( item_id, proto_item );
+    SomeItem = new ItemCl( item_id, proto_item );
     SomeItem->Props.RestoreData( TempPropertiesData );
 }
 
@@ -2974,7 +2974,7 @@ void FOClient::Net_OnCritterMoveItem()
         int64 prev_hash_sum = 0;
         for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
         {
-            Item* item = *it;
+            ItemCl* item = *it;
             prev_hash_sum += item->LightGetHash();
         }
 
@@ -2985,7 +2985,7 @@ void FOClient::Net_OnCritterMoveItem()
             ProtoItem* proto_item = ProtoMngr.GetProtoItem( slots_data_pid[ i ] );
             if( proto_item )
             {
-                Item* item = new Item( slots_data_id[ i ], proto_item );
+                ItemCl* item = new ItemCl( slots_data_id[ i ], proto_item );
                 item->Props.RestoreData( slots_data_data[ i ] );
                 item->SetCritSlot( slots_data_slot[ i ] );
                 cr->AddItem( item );
@@ -2995,7 +2995,7 @@ void FOClient::Net_OnCritterMoveItem()
         int64 hash_sum = 0;
         for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
         {
-            Item* item = *it;
+            ItemCl* item = *it;
             hash_sum += item->LightGetHash();
         }
         if( hash_sum != prev_hash_sum )
@@ -3109,7 +3109,7 @@ void FOClient::Net_OnCustomCommand()
         break;
         case OTHER_CLEAR_MAP:
         {
-            CritMap crits = HexMngr.GetCritters();
+            CrClMap crits = HexMngr.GetCritters();
             for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
             {
                 CritterCl* cr = it->second;
@@ -3274,9 +3274,9 @@ void FOClient::Net_OnChosenAddItem()
         return;
     }
 
-    Item* prev_item = Chosen->GetItem( item_id );
-    uchar prev_slot = 0;
-    uint  prev_light_hash = 0;
+    ItemCl* prev_item = Chosen->GetItem( item_id );
+    uchar   prev_slot = 0;
+    uint    prev_light_hash = 0;
     if( prev_item )
     {
         prev_slot = prev_item->GetCritSlot();
@@ -3287,7 +3287,7 @@ void FOClient::Net_OnChosenAddItem()
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     RUNTIME_ASSERT( proto_item );
 
-    Item* item = new Item( item_id, proto_item );
+    ItemCl* item = new ItemCl( item_id, proto_item );
     item->Props.RestoreData( TempPropertiesData );
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Chosen->GetId() );
@@ -3321,15 +3321,15 @@ void FOClient::Net_OnChosenEraseItem()
         return;
     }
 
-    Item* item = Chosen->GetItem( item_id );
+    ItemCl* item = Chosen->GetItem( item_id );
     if( !item )
     {
         WriteLog( "Item not found, id {}.\n", item_id );
         return;
     }
 
-    Item* clone = item->Clone();
-    bool  rebuild_light = ( item->GetIsLight() && item->GetCritSlot() );
+    ItemCl* clone = item->Clone();
+    bool    rebuild_light = ( item->GetIsLight() && item->GetCritSlot() );
     Chosen->DeleteItem( item, true );
     if( rebuild_light )
         HexMngr.RebuildLight();
@@ -3374,7 +3374,7 @@ void FOClient::Net_OnAddItemOnMap()
     if( HexMngr.IsMapLoaded() )
         HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &TempPropertiesData );
 
-    Item* item = HexMngr.GetItemById( item_id );
+    ItemCl* item = HexMngr.GetItemById( item_id );
     if( item )
         Script::RaiseInternalEvent( ClientFunctions.ItemMapIn, item );
 
@@ -3392,7 +3392,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
     CHECK_IN_BUFF_ERROR;
 
-    Item* item = HexMngr.GetItemById( item_id );
+    ItemCl* item = HexMngr.GetItemById( item_id );
     if( item )
         Script::RaiseInternalEvent( ClientFunctions.ItemMapOut, item );
 
@@ -3663,12 +3663,12 @@ void FOClient::Net_OnProperty( uint data_size )
             entity = Chosen;
         break;
     case NetProperty::MapItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = ItemCl::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = HexMngr.GetItemById( item_id );
         break;
     case NetProperty::CritterItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = ItemCl::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
             CritterCl* cr = GetCritter( cr_id );
@@ -3677,17 +3677,17 @@ void FOClient::Net_OnProperty( uint data_size )
         }
         break;
     case NetProperty::ChosenItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = ItemCl::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
         break;
     case NetProperty::Map:
-        prop = Map::PropertiesRegistrator->Get( property_index );
+        prop = MapCl::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = ScriptFunc.ClientCurMap;
         break;
     case NetProperty::Location:
-        prop = Location::PropertiesRegistrator->Get( property_index );
+        prop = LocationCl::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = ScriptFunc.ClientCurLocation;
         break;
@@ -3707,7 +3707,7 @@ void FOClient::Net_OnProperty( uint data_size )
 
     if( type == NetProperty::ChosenItem )
     {
-        Item* item = (Item*) entity;
+        ItemCl* item = (ItemCl*) entity;
         item->AddRef();
         OnItemInvChanged( item, item );
     }
@@ -3865,9 +3865,9 @@ void FOClient::Net_OnLoadMap()
     SAFEREL( ScriptFunc.ClientCurLocation );
     if( map_pid )
     {
-        ScriptFunc.ClientCurLocation = new Location( 0, ProtoMngr.GetProtoLocation( loc_pid ) );
+        ScriptFunc.ClientCurLocation = new LocationCl( 0, ProtoMngr.GetProtoLocation( loc_pid ) );
         ScriptFunc.ClientCurLocation->Props.RestoreData( TempPropertiesDataExt );
-        ScriptFunc.ClientCurMap = new Map( 0, ProtoMngr.GetProtoMap( map_pid ) );
+        ScriptFunc.ClientCurMap = new MapCl( 0, ProtoMngr.GetProtoMap( map_pid ) );
         ScriptFunc.ClientCurMap->Props.RestoreData( TempPropertiesData );
     }
 
@@ -4151,7 +4151,7 @@ void FOClient::Net_OnSomeItems()
     Bin >> is_null;
     Bin >> items_count;
 
-    ItemVec item_container;
+    ItemClVec item_container;
     for( uint i = 0; i < items_count; i++ )
     {
         uint item_id;
@@ -4163,7 +4163,7 @@ void FOClient::Net_OnSomeItems()
         ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
         if( item_id && proto_item )
         {
-            Item* item = new Item( item_id, proto_item );
+            ItemCl* item = new ItemCl( item_id, proto_item );
             item->Props.RestoreData( TempPropertiesData );
             item_container.push_back( item );
         }
@@ -5097,7 +5097,7 @@ void FOClient::OnSetCritterModelName( Entity* entity, Property* prop, void* cur_
 
 void FOClient::OnSendItemValue( Entity* entity, Property* prop )
 {
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) )
     {
@@ -5129,20 +5129,20 @@ void FOClient::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, 
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         bool     rebuild_cache = false;
-        if( prop == Item::PropertyIsColorize )
+        if( prop == ItemCl::PropertyIsColorize )
             hex_item->RefreshAlpha();
-        else if( prop == Item::PropertyIsBadItem )
+        else if( prop == ItemCl::PropertyIsBadItem )
             hex_item->SetSprite( nullptr );
-        else if( prop == Item::PropertyIsShootThru )
+        else if( prop == ItemCl::PropertyIsShootThru )
             Self->RebuildLookBorders = true, rebuild_cache = true;
-        else if( prop == Item::PropertyIsLightThru )
+        else if( prop == ItemCl::PropertyIsLightThru )
             Self->HexMngr.RebuildLight(), rebuild_cache = true;
-        else if( prop == Item::PropertyIsNoBlock )
+        else if( prop == ItemCl::PropertyIsNoBlock )
             rebuild_cache = true;
         if( rebuild_cache )
             Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
@@ -5159,7 +5159,7 @@ void FOClient::OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_val
 
 void FOClient::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
@@ -5172,7 +5172,7 @@ void FOClient::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 {
     // OffsetX, OffsetY
 
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
@@ -5184,9 +5184,9 @@ void FOClient::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 
 void FOClient::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) entity;
-    bool  cur = *(bool*) cur_value;
-    bool  old = *(bool*) old_value;
+    ItemCl* item = (ItemCl*) entity;
+    bool    cur = *(bool*) cur_value;
+    bool    old = *(bool*) old_value;
 
     if( item->GetIsCanOpen() )
     {
@@ -5233,8 +5233,8 @@ namespace ClientBind
     #include "ScriptBind.h"
 }
 
-Map*      FOClient::SScriptFunc::ClientCurMap;
-Location* FOClient::SScriptFunc::ClientCurLocation;
+MapCl*      FOClient::SScriptFunc::ClientCurMap;
+LocationCl* FOClient::SScriptFunc::ClientCurLocation;
 
 bool FOClient::ReloadScripts()
 {
@@ -5407,26 +5407,26 @@ bool FOClient::ReloadScripts()
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
     CritterCl::PropertiesRegistrator->SetNativeSetCallback( "ModelName", OnSetCritterModelName );
-    Item::SetPropertyRegistrator( registrators[ 2 ] );
-    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
-    Map::SetPropertyRegistrator( registrators[ 3 ] );
-    Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
-    Location::SetPropertyRegistrator( registrators[ 4 ] );
-    Location::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
+    ItemCl::SetPropertyRegistrator( registrators[ 2 ] );
+    ItemCl::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    MapCl::SetPropertyRegistrator( registrators[ 3 ] );
+    MapCl::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
+    LocationCl::SetPropertyRegistrator( registrators[ 4 ] );
+    LocationCl::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
     Globals->Props.RestoreData( GlovalVarsPropertiesData );
 
@@ -5434,7 +5434,7 @@ bool FOClient::ReloadScripts()
     return true;
 }
 
-void FOClient::OnItemInvChanged( Item* old_item, Item* item )
+void FOClient::OnItemInvChanged( ItemCl* old_item, ItemCl* item )
 {
     Script::RaiseInternalEvent( ClientFunctions.ItemInvChanged, item, old_item );
     old_item->Release();
@@ -5447,14 +5447,14 @@ static bool SortCritterByDistPred( CritterCl* cr1, CritterCl* cr2 )
     return DistGame( SortCritterHx_, SortCritterHy_, cr1->GetHexX(), cr1->GetHexY() ) < DistGame( SortCritterHx_, SortCritterHy_, cr2->GetHexX(), cr2->GetHexY() );
 }
 
-static void SortCritterByDist( CritterCl* cr, CritVec& critters )
+static void SortCritterByDist( CritterCl* cr, CrClVec& critters )
 {
     SortCritterHx_ = cr->GetHexX();
     SortCritterHy_ = cr->GetHexY();
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
 }
 
-static void SortCritterByDist( int hx, int hy, CritVec& critters )
+static void SortCritterByDist( int hx, int hy, CrClVec& critters )
 {
     SortCritterHx_ = hx;
     SortCritterHy_ = hy;
@@ -5571,7 +5571,7 @@ void FOClient::SScriptFunc::Crit_Animate( CritterCl* cr, uint anim1, uint anim2 
     cr->Animate( anim1, anim2, nullptr );
 }
 
-void FOClient::SScriptFunc::Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item )
+void FOClient::SScriptFunc::Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, ItemCl* item )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -5603,7 +5603,7 @@ uint FOClient::SScriptFunc::Crit_CountItem( CritterCl* cr, hash proto_id )
     return cr->CountItemPid( proto_id );
 }
 
-Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, uint item_id )
+ItemCl* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, uint item_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -5611,7 +5611,7 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, uint item_id )
     return cr->GetItem( item_id );
 }
 
-Item* FOClient::SScriptFunc::Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate )
+ItemCl* FOClient::SScriptFunc::Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -5619,8 +5619,8 @@ Item* FOClient::SScriptFunc::Crit_GetItemPredicate( CritterCl* cr, asIScriptFunc
     uint bind_id = Script::BindByFunc( predicate, true );
     RUNTIME_ASSERT( bind_id );
 
-    ItemVec inv_items = cr->InvItems;
-    for( Item* item : inv_items )
+    ItemClVec inv_items = cr->InvItems;
+    for( ItemCl* item : inv_items )
     {
         if( item->IsDestroyed )
             continue;
@@ -5639,7 +5639,7 @@ Item* FOClient::SScriptFunc::Crit_GetItemPredicate( CritterCl* cr, asIScriptFunc
     return nullptr;
 }
 
-Item* FOClient::SScriptFunc::Crit_GetItemBySlot( CritterCl* cr, uchar slot )
+ItemCl* FOClient::SScriptFunc::Crit_GetItemBySlot( CritterCl* cr, uchar slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -5647,7 +5647,7 @@ Item* FOClient::SScriptFunc::Crit_GetItemBySlot( CritterCl* cr, uchar slot )
     return cr->GetItemSlot( slot );
 }
 
-Item* FOClient::SScriptFunc::Crit_GetItemByPid( CritterCl* cr, hash proto_id )
+ItemCl* FOClient::SScriptFunc::Crit_GetItemByPid( CritterCl* cr, hash proto_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -5668,7 +5668,7 @@ CScriptArray* FOClient::SScriptFunc::Crit_GetItemsBySlot( CritterCl* cr, uchar s
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ItemVec items;
+    ItemClVec items;
     cr->GetItemsSlot( slot, items );
     return Script::CreateArrayRef( "Item[]", items );
 }
@@ -5681,10 +5681,10 @@ CScriptArray* FOClient::SScriptFunc::Crit_GetItemsPredicate( CritterCl* cr, asIS
     uint bind_id = Script::BindByFunc( predicate, true );
     RUNTIME_ASSERT( bind_id );
 
-    ItemVec inv_items = cr->InvItems;
-    ItemVec items;
+    ItemClVec inv_items = cr->InvItems;
+    ItemClVec items;
     items.reserve( inv_items.size() );
-    for( Item* item : inv_items )
+    for( ItemCl* item : inv_items )
     {
         if( item->IsDestroyed )
             continue;
@@ -5784,15 +5784,15 @@ bool FOClient::SScriptFunc::Crit_GetBonePosition( CritterCl* cr, hash bone_name,
     return true;
 }
 
-Item* FOClient::SScriptFunc::Item_Clone( Item* item, uint count )
+ItemCl* FOClient::SScriptFunc::Item_Clone( ItemCl* item, uint count )
 {
-    Item* clone = item->Clone();
+    ItemCl* clone = item->Clone();
     if( count )
         clone->SetCount( count );
     return clone;
 }
 
-bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
+bool FOClient::SScriptFunc::Item_GetMapPosition( ItemCl* item, ushort& hx, ushort& hy )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -5821,7 +5821,7 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
 
         if( item->GetId() == item->GetContainerId() )
             SCRIPT_ERROR_R0( "Container accessory, crosslinks." );
-        Item* cont = Self->GetItem( item->GetContainerId() );
+        ItemCl* cont = Self->GetItem( item->GetContainerId() );
         if( !cont )
             SCRIPT_ERROR_R0( "Container accessory, container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion
@@ -5834,7 +5834,7 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     return true;
 }
 
-void FOClient::SScriptFunc::Item_Animate( Item* item, uint from_frame, uint to_frame )
+void FOClient::SScriptFunc::Item_Animate( ItemCl* item, uint from_frame, uint to_frame )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -5846,12 +5846,12 @@ void FOClient::SScriptFunc::Item_Animate( Item* item, uint from_frame, uint to_f
     }
 }
 
-CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
+CScriptArray* FOClient::SScriptFunc::Item_GetItems( ItemCl* cont, uint stack_id )
 {
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ItemVec items;
+    ItemClVec items;
     cont->ContGetItems( items, stack_id );
     return Script::CreateArrayRef( "Item[]", items );
 }
@@ -6147,14 +6147,14 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "MoveItem" && args.size() == 5 )
     {
-        uint  item_count = _str( args[ 1 ] ).toUInt();
-        uint  item_id = _str( args[ 2 ] ).toUInt();
-        uint  item_swap_id = _str( args[ 3 ] ).toUInt();
-        int   to_slot = _str( args[ 4 ] ).toInt();
-        Item* item = Self->Chosen->GetItem( item_id );
-        Item* item_swap = ( item_swap_id ? Self->Chosen->GetItem( item_swap_id ) : nullptr );
-        Item* old_item = item->Clone();
-        int   from_slot = item->GetCritSlot();
+        uint    item_count = _str( args[ 1 ] ).toUInt();
+        uint    item_id = _str( args[ 2 ] ).toUInt();
+        uint    item_swap_id = _str( args[ 3 ] ).toUInt();
+        int     to_slot = _str( args[ 4 ] ).toInt();
+        ItemCl* item = Self->Chosen->GetItem( item_id );
+        ItemCl* item_swap = ( item_swap_id ? Self->Chosen->GetItem( item_swap_id ) : nullptr );
+        ItemCl* old_item = item->Clone();
+        int     from_slot = item->GetCritSlot();
 
         // Move
         bool is_light = item->GetIsLight();
@@ -6263,13 +6263,13 @@ CritterCl* FOClient::SScriptFunc::Global_GetChosen()
     return Self->Chosen;
 }
 
-Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
+ItemCl* FOClient::SScriptFunc::Global_GetItem( uint item_id )
 {
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
 
     // On map
-    Item* item = Self->GetItem( item_id );
+    ItemCl* item = Self->GetItem( item_id );
 
     // On Chosen
     if( !item && Self->Chosen )
@@ -6343,8 +6343,8 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, u
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
 
-    CritMap& crits = Self->HexMngr.GetCritters();
-    CritVec  critters;
+    CrClMap& crits = Self->HexMngr.GetCritters();
+    CrClVec  critters;
     for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         CritterCl* cr = it->second;
@@ -6358,8 +6358,8 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, u
 
 CScriptArray* FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type )
 {
-    CritMap& crits = Self->HexMngr.GetCritters();
-    CritVec  critters;
+    CrClMap& crits = Self->HexMngr.GetCritters();
+    CrClVec  critters;
     if( !pid )
     {
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
@@ -6383,14 +6383,14 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int fin
 
 CScriptArray* FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type )
 {
-    CritVec critters;
+    CrClVec critters;
     Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &critters, find_type, nullptr, nullptr, nullptr, true );
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
 {
-    CritVec    critters;
+    CrClVec    critters;
     UShortPair block, pre_block;
     Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &critters, find_type, &block, &pre_block, nullptr, true );
     pre_block_hx = pre_block.first;
@@ -7067,9 +7067,9 @@ void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
 
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : ItemCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : MapCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : LocationCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
@@ -7090,9 +7090,9 @@ void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     RUNTIME_ASSERT( ref );
 
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : ItemCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : MapCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : LocationCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
@@ -7403,10 +7403,10 @@ void FOClient::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, u
         SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
 
-Animation3dVec DrawCritter3dAnim;
-UIntVec        DrawCritter3dCrType;
-BoolVec        DrawCritter3dFailToLoad;
-int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
+static Animation3dVec DrawCritter3dAnim;
+static UIntVec        DrawCritter3dCrType;
+static BoolVec        DrawCritter3dFailToLoad;
+static int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
 void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
 {
     // x y
@@ -7640,7 +7640,7 @@ bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, usho
     return false;
 }
 
-Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y )
+ItemCl* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y )
 {
     bool item_egg;
     return Self->HexMngr.GetItemPixel( x, y, item_egg );

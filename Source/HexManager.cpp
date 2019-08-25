@@ -3,10 +3,7 @@
 #include "ResourceManager.h"
 #include "LineTracer.h"
 #include "ProtoManager.h"
-
-#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-# include "Script.h"
-#endif
+#include "Script.h"
 
 /************************************************************************/
 /* FIELD                                                                */
@@ -140,7 +137,7 @@ Field::Tile& Field::GetTile( uint index, bool is_roof )
 void Field::AddDeadCrit( CritterCl* cr )
 {
     if( !DeadCrits )
-        DeadCrits = new CritVec();
+        DeadCrits = new CrClVec();
     if( std::find( DeadCrits->begin(), DeadCrits->end(), cr ) == DeadCrits->end() )
         DeadCrits->push_back( cr );
 }
@@ -304,18 +301,19 @@ HexManager::HexManager()
     fogForceRerender = false;
 }
 
-bool HexManager::Init()
+bool HexManager::Init( bool mapper_mode )
 {
     WriteLog( "Hex field initialization...\n" );
+
+    mapperMode = mapper_mode;
 
     rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
 
     rtScreenOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
     rtScreenOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
     rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
-    #ifdef FONLINE_CLIENT
-    rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
-    #endif
+    if( !mapperMode )
+        rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
 
     isShowTrack = false;
     curPidMap = 0;
@@ -1011,28 +1009,33 @@ void HexManager::RebuildMap( int rx, int ry )
             {
                 ItemHex* item = *it;
 
-                #ifdef FONLINE_CLIENT
-                if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
-                    continue;
-                if( !GameOpt.ShowScen && item->IsScenery() )
-                    continue;
-                if( !GameOpt.ShowItem && !item->IsAnyScenery() )
-                    continue;
-                if( !GameOpt.ShowWall && item->IsWall() )
-                    continue;
-                #else
-                bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
-                if( !GameOpt.ShowScen && !is_fast && item->IsScenery() )
-                    continue;
-                if( !GameOpt.ShowItem && !is_fast && !item->IsAnyScenery() )
-                    continue;
-                if( !GameOpt.ShowWall && !is_fast && item->IsWall() )
-                    continue;
-                if( !GameOpt.ShowFast && is_fast )
-                    continue;
-                if( ignorePids.count( item->GetProtoId() ) )
-                    continue;
-                #endif
+                if( !mapperMode )
+                {
+                    if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
+                        continue;
+                    if( !GameOpt.ShowScen && item->IsScenery() )
+                        continue;
+                    if( !GameOpt.ShowItem && !item->IsAnyScenery() )
+                        continue;
+                    if( !GameOpt.ShowWall && item->IsWall() )
+                        continue;
+                }
+                else
+                {
+                    #ifdef FONLINE_EDITOR
+                    bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
+                    if( !GameOpt.ShowScen && !is_fast && item->IsScenery() )
+                        continue;
+                    if( !GameOpt.ShowItem && !is_fast && !item->IsAnyScenery() )
+                        continue;
+                    if( !GameOpt.ShowWall && !is_fast && item->IsWall() )
+                        continue;
+                    if( !GameOpt.ShowFast && is_fast )
+                        continue;
+                    if( ignorePids.count( item->GetProtoId() ) )
+                        continue;
+                    #endif
+                }
 
                 Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                   HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
@@ -1090,11 +1093,7 @@ void HexManager::RebuildMap( int rx, int ry )
     screenHexX = rx;
     screenHexY = ry;
 
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
-    #else // FONLINE_EDITOR
-    Script::RaiseInternalEvent( MapperFunctions.RenderMap );
-    #endif
 }
 
 void HexManager::RebuildMapOffset( int ox, int oy )
@@ -1255,28 +1254,33 @@ void HexManager::RebuildMapOffset( int ox, int oy )
             {
                 ItemHex* item = *it;
 
-                #ifdef FONLINE_CLIENT
-                if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
-                    continue;
-                if( !GameOpt.ShowScen && item->IsScenery() )
-                    continue;
-                if( !GameOpt.ShowItem && !item->IsAnyScenery() )
-                    continue;
-                if( !GameOpt.ShowWall && item->IsWall() )
-                    continue;
-                #else
-                bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
-                if( !GameOpt.ShowScen && !is_fast && item->IsScenery() )
-                    continue;
-                if( !GameOpt.ShowItem && !is_fast && !item->IsAnyScenery() )
-                    continue;
-                if( !GameOpt.ShowWall && !is_fast && item->IsWall() )
-                    continue;
-                if( !GameOpt.ShowFast && is_fast )
-                    continue;
-                if( ignorePids.count( item->GetProtoId() ) )
-                    continue;
-                #endif
+                if( !mapperMode )
+                {
+                    if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
+                        continue;
+                    if( !GameOpt.ShowScen && item->IsScenery() )
+                        continue;
+                    if( !GameOpt.ShowItem && !item->IsAnyScenery() )
+                        continue;
+                    if( !GameOpt.ShowWall && item->IsWall() )
+                        continue;
+                }
+                else
+                {
+                    #ifdef FONLINE_EDITOR
+                    bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
+                    if( !GameOpt.ShowScen && !is_fast && item->IsScenery() )
+                        continue;
+                    if( !GameOpt.ShowItem && !is_fast && !item->IsAnyScenery() )
+                        continue;
+                    if( !GameOpt.ShowWall && !is_fast && item->IsWall() )
+                        continue;
+                    if( !GameOpt.ShowFast && is_fast )
+                        continue;
+                    if( ignorePids.count( item->GetProtoId() ) )
+                        continue;
+                    #endif
+                }
 
                 Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                      HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
@@ -1404,11 +1408,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
     requestRebuildLight = false;
     requestRenderLight = true;
 
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
-    #else     // FONLINE_EDITOR
-    Script::RaiseInternalEvent( MapperFunctions.RenderMap );
-    #endif
 }
 
 /************************************************************************/
@@ -1867,7 +1867,7 @@ void HexManager::CollectLightSources()
         bool       added = false;
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
-            Item* item = *it_;
+            ItemCl* item = *it_;
             if( item->GetIsLight() && item->GetCritSlot() )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
@@ -2629,12 +2629,13 @@ bool HexManager::Scroll()
         }
     }
 
-    #ifdef FONLINE_CLIENT
-    int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
-    int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + ( -ymod / 2 ) * SCROLL_OY;
-    if( final_scr_ox || final_scr_oy )
-        Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
-    #endif
+    if( !mapperMode )
+    {
+        int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
+        int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + ( -ymod / 2 ) * SCROLL_OY;
+        if( final_scr_ox || final_scr_oy )
+            Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
+    }
 
     return xmod || ymod;
 }
@@ -2903,7 +2904,7 @@ void HexManager::DeleteCritters()
     chosenId = 0;
 }
 
-void HexManager::GetCritters( ushort hx, ushort hy, CritVec& crits, int find_type )
+void HexManager::GetCritters( ushort hx, ushort hy, CrClVec& crits, int find_type )
 {
     Field* f = &GetField( hx, hy );
     if( f->Crit && f->Crit->CheckFind( find_type ) )
@@ -3113,28 +3114,33 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
         if( item->IsFinishing() || !item->SprDrawValid )
             continue;
 
-        #ifdef FONLINE_CLIENT
-        if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
-            continue;
-        if( item->IsScenery() && !GameOpt.ShowScen )
-            continue;
-        if( !item->IsAnyScenery() && !GameOpt.ShowItem )
-            continue;
-        if( item->IsWall() && !GameOpt.ShowWall )
-            continue;
-        #else // FONLINE_EDITOR
-        bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
-        if( item->IsScenery() && !GameOpt.ShowScen && !is_fast )
-            continue;
-        if( !item->IsAnyScenery() && !GameOpt.ShowItem && !is_fast )
-            continue;
-        if( item->IsWall() && !GameOpt.ShowWall && !is_fast )
-            continue;
-        if( !GameOpt.ShowFast && is_fast )
-            continue;
-        if( ignorePids.count( item->GetProtoId() ) )
-            continue;
-        #endif
+        if( !mapperMode )
+        {
+            if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
+                continue;
+            if( item->IsScenery() && !GameOpt.ShowScen )
+                continue;
+            if( !item->IsAnyScenery() && !GameOpt.ShowItem )
+                continue;
+            if( item->IsWall() && !GameOpt.ShowWall )
+                continue;
+        }
+        else
+        {
+            #ifdef FONLINE_EDITOR
+            bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
+            if( item->IsScenery() && !GameOpt.ShowScen && !is_fast )
+                continue;
+            if( !item->IsAnyScenery() && !GameOpt.ShowItem && !is_fast )
+                continue;
+            if( item->IsWall() && !GameOpt.ShowWall && !is_fast )
+                continue;
+            if( !GameOpt.ShowFast && is_fast )
+                continue;
+            if( ignorePids.count( item->GetProtoId() ) )
+                continue;
+            #endif
+        }
 
         SpriteInfo* si = SprMngr.GetSpriteInfo( item->SprId );
         if( !si )
@@ -3195,7 +3201,7 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
     if( !IsMapLoaded() || !GameOpt.ShowCrit )
         return nullptr;
 
-    CritVec crits;
+    CrClVec crits;
     for( auto it = allCritters.begin(); it != allCritters.end(); it++ )
     {
         CritterCl* cr = it->second;
@@ -3753,7 +3759,7 @@ bool HexManager::CutPath( CritterCl* cr, ushort start_x, ushort start_y, ushort&
 }
 
 bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe,
-                              CritVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed )
+                              CrClVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed )
 {
     if( IsShowTrack() )
         ClearHexTrack();
@@ -3821,65 +3827,66 @@ void HexManager::FindSetCenter( int cx, int cy )
 
     RebuildMap( cx, cy );
 
-    #ifdef FONLINE_CLIENT
-    int    iw = VIEW_WIDTH / 2 + 2;
-    int    ih = VIEW_HEIGHT / 2 + 2;
-    ushort hx = cx;
-    ushort hy = cy;
-    int    dirs[ 2 ];
+    if( !mapperMode )
+    {
+        int    iw = VIEW_WIDTH / 2 + 2;
+        int    ih = VIEW_HEIGHT / 2 + 2;
+        ushort hx = cx;
+        ushort hy = cy;
+        int    dirs[ 2 ];
 
-    // Up
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 0, dirs[ 1 ] = 5;
-    else
-        dirs[ 0 ] = 0, dirs[ 1 ] = 6;
-    FindSetCenterDir( hx, hy, dirs, ih );
-    // Down
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 3, dirs[ 1 ] = 2;
-    else
-        dirs[ 0 ] = 4, dirs[ 1 ] = 2;
-    FindSetCenterDir( hx, hy, dirs, ih );
-    // Right
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 1, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 1, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, iw );
-    // Left
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 4, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 5, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, iw );
+        // Up
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 0, dirs[ 1 ] = 5;
+        else
+            dirs[ 0 ] = 0, dirs[ 1 ] = 6;
+        FindSetCenterDir( hx, hy, dirs, ih );
+        // Down
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 3, dirs[ 1 ] = 2;
+        else
+            dirs[ 0 ] = 4, dirs[ 1 ] = 2;
+        FindSetCenterDir( hx, hy, dirs, ih );
+        // Right
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 1, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 1, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, iw );
+        // Left
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 4, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 5, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, iw );
 
-    // Up-Right
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 0, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 0, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, ih );
-    // Down-Left
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 3, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 4, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, ih );
-    // Up-Left
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 5, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 6, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, ih );
-    // Down-Right
-    if( GameOpt.MapHexagonal )
-        dirs[ 0 ] = 2, dirs[ 1 ] = -1;
-    else
-        dirs[ 0 ] = 2, dirs[ 1 ] = -1;
-    FindSetCenterDir( hx, hy, dirs, ih );
+        // Up-Right
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 0, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 0, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, ih );
+        // Down-Left
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 3, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 4, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, ih );
+        // Up-Left
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 5, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 6, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, ih );
+        // Down-Right
+        if( GameOpt.MapHexagonal )
+            dirs[ 0 ] = 2, dirs[ 1 ] = -1;
+        else
+            dirs[ 0 ] = 2, dirs[ 1 ] = -1;
+        FindSetCenterDir( hx, hy, dirs, ih );
 
-    RebuildMap( hx, hy );
-    #endif // FONLINE_CLIENT
+        RebuildMap( hx, hy );
+    }
 }
 
 void HexManager::FindSetCenterDir( ushort& hx, ushort& hy, int dirs[ 2 ], int steps )
@@ -4024,7 +4031,7 @@ bool HexManager::LoadMap( hash map_pid )
                 fm.CopyMem( &props_data[ i ][ 0 ], data_size );
             }
         }
-        Properties props( Item::PropertiesRegistrator );
+        Properties props( ItemCl::PropertiesRegistrator );
         props.RestoreData( props_data );
 
         GenerateItem( id, proto_id, props );
@@ -4065,9 +4072,7 @@ bool HexManager::LoadMap( hash map_pid )
     AutoScroll.Active = false;
     WriteLog( "Load map success.\n" );
 
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.MapLoad );
-    #endif
 
     return true;
 }
@@ -4079,9 +4084,7 @@ void HexManager::UnloadMap()
 
     WriteLog( "Unload map.\n" );
 
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.MapUnload );
-    #endif
 
     curPidMap = 0;
     curMapTime = -1;
@@ -4329,7 +4332,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     {
         if( entity->Type == EntityType::Item )
         {
-            Item* entity_item = (Item*) entity;
+            ItemCl* entity_item = (ItemCl*) entity;
             if( entity_item->GetAccessory() == ITEM_ACCESSORY_HEX )
             {
                 GenerateItem( entity_item->Id, entity_item->GetProtoId(), entity_item->Props );
@@ -4342,7 +4345,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             }
             else if( entity_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
             {
-                Item* cont = GetItemById( entity_item->GetContainerId() );
+                ItemCl* cont = GetItemById( entity_item->GetContainerId() );
                 if( cont )
                     cont->ContSetItem( entity_item->Clone() );
             }
@@ -4387,7 +4390,7 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
     {
         Entity* store_entity = nullptr;
         if( entity->Type == EntityType::ItemHex || entity->Type == EntityType::Item )
-            store_entity = new Item( entity->Id, (ProtoItem*) entity->Proto );
+            store_entity = new ItemCl( entity->Id, (ProtoItem*) entity->Proto );
         else if( entity->Type == EntityType::CritterCl )
             store_entity = new CritterCl( entity->Id, (ProtoCritter*) entity->Proto );
         else

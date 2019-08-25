@@ -26,7 +26,7 @@ struct Entity
 
 struct Item: public Entity
 {
-    Item( uint id, void* proto ) {}
+    Item( int id, void* proto ) {}
 
     int Proto;
     int ViewByCritter;
@@ -53,6 +53,7 @@ struct Item: public Entity
         int StackId;
     } AccContainer;
 };
+typedef Item ItemCl;
 
 struct Critter: public Entity
 {
@@ -88,11 +89,13 @@ struct Map: public Entity
 {
     // Empty
 };
+typedef Map MapCl;
 
 struct Location: public Entity
 {
     int GeckCount;
 };
+typedef Location LocationCl;
 
 struct ProtoMap
 {

@@ -102,7 +102,7 @@ public:
     hash  toHash();
     _str& parseHash( hash h );
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     static void loadHashes();
     #endif
 };

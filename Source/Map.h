@@ -2,7 +2,6 @@
 #define __MAP__
 
 #include "Common.h"
-#include "ProtoMap.h"
 #include "Item.h"
 #include "Critter.h"
 #include "Entity.h"

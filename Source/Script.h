@@ -93,7 +93,7 @@ public:
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();
     static void           ProcessDeferredCalls();
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     static bool LoadDeferredCalls();
     #endif
 
@@ -101,7 +101,7 @@ public:
     static string GetProfilerStatistics();
 
     static StrVec GetCustomEntityTypes();
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     static bool RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
     #endif
 

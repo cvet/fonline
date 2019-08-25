@@ -7,11 +7,7 @@
 #include "MsgFiles.h"
 #include "Entity.h"
 
-class Critter;
-class Item;
-typedef map< uint, Item* > ItemMap;
-typedef vector< Item* >    ItemVec;
-class Item: public Entity
+class ItemCl: public Entity
 {
 public:
     // Properties
@@ -88,22 +84,17 @@ public:
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
 public:
-    Item( uint id, ProtoItem* proto );
-    ~Item();
+    ItemCl( uint id, ProtoItem* proto );
+    ~ItemCl();
 
-    // Internal fields
-    ItemVec* ChildItems;
-    bool     ViewPlaceOnMap;
-    uint     SceneryScriptBindId;
-    Critter* ViewByCritter;
+    ItemClVec* ChildItems;
 
-    ProtoItem* GetProtoItem()               { return (ProtoItem*) Proto; }
-    bool       operator==( const uint& id ) { return Id == id; }
-    bool       SetScript( asIScriptFunction* func, bool first_time );
-
-    void        SetSortValue( ItemVec& items );
-    static void SortItems( ItemVec& items );
-    static void ClearItems( ItemVec& items );
+    ProtoItem*  GetProtoItem() { return (ProtoItem*) Proto; }
+    ItemCl*     Clone();
+    bool        operator==( const uint& id ) { return Id == id; }
+    void        SetSortValue( ItemClVec& items );
+    static void SortItems( ItemClVec& items );
+    static void ClearItems( ItemClVec& items );
 
     bool IsStatic()     { return GetIsStatic(); }
     bool IsAnyScenery() { return IsScenery() || IsWall(); }
@@ -112,15 +103,11 @@ public:
 
     void ChangeCount( int val );
 
-    void  ContAddItem( Item*& item, uint stack_id );
-    void  ContSetItem( Item* item );
-    void  ContEraseItem( Item* item );
-    Item* ContGetItem( uint item_id, bool skip_hide );
-    void  ContGetAllItems( ItemVec& items, bool skip_hide );
-    Item* ContGetItemByPid( hash pid, uint stack_id );
-    void  ContGetItems( ItemVec& items, uint stack_id );
-    bool  ContIsItems();
-    void  ContDeleteItems();
+    uint GetCurSprId();
+
+    void ContSetItem( ItemCl* item );
+    void ContEraseItem( ItemCl* item );
+    void ContGetItems( ItemClVec& items, uint stack_id );
 
     // Colorize
     bool  IsColorize()  { return GetIsColorize(); }

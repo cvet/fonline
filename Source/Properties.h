@@ -2,7 +2,8 @@
 #define __PROPERTIES__
 
 #include "Common.h"
-#ifdef FONLINE_SERVER
+
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif
 
@@ -38,12 +39,6 @@
             class_name::PropertiesList.push_back( std::make_pair( # prop, &class_name::Property ## prop ) ); \
         }                                                                                                    \
     } _ ## class_name ## Property ## prop ## Initializer
-#define CLASS_PROPERTY_ALIAS( prop_type, prop ) \
-    prop_type Get ## prop();                    \
-    void Set ## prop( prop_type value );
-#define CLASS_PROPERTY_ALIAS_IMPL( base_class_name, class_name, prop_type, prop )                                        \
-    prop_type base_class_name::Get ## prop() { return Props.GetPropValue< prop_type >( class_name::Property ## prop ); } \
-    void base_class_name::Set ## prop( prop_type value ) { Props.SetPropValue< prop_type >( class_name::Property ## prop, value ); }
 
 extern string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep );
 extern void*  ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error );
@@ -214,7 +209,7 @@ public:
     void        RestoreData( UCharVecVec& all_data );
     bool        LoadFromText( const StrMap& key_values );
     void        SaveToText( StrMap& key_values, Properties* base );
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     DataBase::Document SaveToDbDocument( Properties* base );
     bool               LoadFromDbDocument( const DataBase::Document& doc );
     DataBase::Value    SavePropertyToDbValue( Property* prop );

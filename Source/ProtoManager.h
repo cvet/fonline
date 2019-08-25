@@ -2,13 +2,15 @@
 #define __PROTO_MANAGER__
 
 #include "Common.h"
-#include "Item.h"
-#ifdef FONLINE_SERVER
-# include "Critter.h"
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"
-#else
-# include "CritterCl.h"
+# include "Critter.h"
+# include "Item.h"
+#endif
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "MapCl.h"
+# include "CritterCl.h"
+# include "ItemCl.h"
 #endif
 
 class ProtoManager

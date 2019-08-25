@@ -1,6 +1,6 @@
 #include "ScriptInvoker.h"
 #include "Script.h"
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif
 
@@ -70,7 +70,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         Globals->SetLastDeferredCallId( call.Id );
         deferredCalls.push_back( call );
 
-        #ifdef FONLINE_SERVER
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         if( call.Saved )
         {
             DataBase::Document call_doc;
@@ -113,7 +113,7 @@ bool ScriptInvoker::CancelDeferredCall( uint id )
     {
         if( it->Id == id )
         {
-            #ifdef FONLINE_SERVER
+            #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
             if( it->Saved )
                 DbStorage->Delete( "DeferredCalls", id );
             #endif
@@ -161,7 +161,7 @@ void ScriptInvoker::Process()
                 DeferredCall call = *it;
                 it = deferredCalls.erase( it );
 
-                #ifdef FONLINE_SERVER
+                #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
                 if( call.Saved )
                     DbStorage->Delete( "DeferredCalls", call.Id );
                 #endif
@@ -234,7 +234,7 @@ string ScriptInvoker::GetStatistics()
     return result;
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 bool ScriptInvoker::LoadDeferredCalls()
 {
     WriteLog( "Load deferred calls...\n" );

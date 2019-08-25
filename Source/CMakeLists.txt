@@ -395,114 +395,124 @@ source_group( "ThirdParty\\imgui" FILES ${IMGUI_SOURCE} )
 include_directories( "imgui" )
 add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 
-set( SERVER_CLIENT_EDITOR_SOURCE
+set( COMMON_SOURCE
 	${IMGUI_SOURCE}
-	${GLEW_SOURCE}
-	${Json_SOURCE}
 	${fmt_SOURCE}
-	3dAnimation.h
-	Common.cpp Common.h
-	CritterData.h
-	Crypt.cpp Crypt.h
-	DataFile.cpp DataFile.h
-	Debugger.cpp Debugger.h
-	Defines.h
+
+	Common.cpp Common.h # Clean up from different things
 	Entity.cpp Entity.h
+	ProtoMap.cpp # Remove
 	Exception.cpp Exception.h
-	FileManager.cpp FileManager.h
-	FileSystem.cpp FileSystem.h
-	GraphicApi.h GraphicApi.cpp
-	GraphicStructures.cpp GraphicStructures.h
-	IniParser.cpp IniParser.h
-	Item.cpp Item.h
-	LineTracer.h
+	Debugger.cpp Debugger.h # Delete?
 	Log.cpp Log.h
-	Methods.cpp Methods.h
+	IniParser.cpp IniParser.h # Rename (IniFile)
 	MsgFiles.cpp MsgFiles.h
-	MsgStr.h
-	NetProtocol.h
-	PlatformSpecific.h
+
+	FileSystem.cpp FileSystem.h
+	FileManager.cpp FileManager.h # Rename (File)
+	# FilesCollection -> ProjectFiles?
+	DataFile.cpp DataFile.h
+
+	GraphicApi.cpp GraphicApi.h
+	GraphicStructures.cpp GraphicStructures.h
+
 	Properties.cpp Properties.h
 	ProtoManager.cpp ProtoManager.h
-	ProtoMap.cpp ProtoMap.h
-	Randomizer.h
-	Script.cpp Script.h
-	ScriptExtensions.cpp
+
 	ScriptBind.h
 	ScriptFunctions.h
+	Script.cpp Script.h
+	ScriptExtensions.cpp
 	ScriptInvoker.cpp ScriptInvoker.h
 	ScriptPragmas.cpp ScriptPragmas.h
 	ScriptProfiler.cpp ScriptProfiler.h
-	Text.cpp Text.h
-	Threading.cpp Threading.h
-	Timer.cpp Timer.h
-	Types.h
-)
-set( SERVER_CLIENT_SOURCE
-	Access.h
-	BufferManager.cpp BufferManager.h
-	DataMask.h
-)
-set( CLIENT_EDITOR_SOURCE
-	3dStuff.cpp 3dStuff.h
-	CritterCl.cpp CritterCl.h
-	F2Palette.h
-	FlexRect.h
-	GluStuff.cpp GluStuff.h
-	GraphicLoader.cpp GraphicLoader.h
-	HexManager.cpp HexManager.h
-	ItemHex.cpp ItemHex.h
-	Keyboard.cpp Keyboard.h
-	MapCl.cpp MapCl.h
-	ResourceManager.cpp ResourceManager.h
-	SpriteManager.cpp SpriteManager.h
-	SpriteManagerFont.cpp
-	Sprites.cpp Sprites.h
-)
-set( SERVER_EDITOR_SOURCE
-	AppGui.h AppGui.cpp AppGuiDX.cpp
-	ResourceConverter.h ResourceConverter.cpp
-)
+	DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
 
+	NetProtocol.h # Include to NetBuffer?
+	BufferManager.cpp BufferManager.h # Rename (NetBuffer)
+	UcsTables.h
+	Text.cpp Text.h # Rename (GameTexts, StringExt)
+	Threading.cpp Threading.h # Use C++ threads lib?
+	Timer.cpp Timer.h # Rename (Timing)
+	LineTracer.h LineTracer.cpp
+
+	# Refactor
+	${GLEW_SOURCE} # Remove, use dynamic binding
+	Crypt.cpp Crypt.h # Split to DataStorage/LocalStorage
+	Access.h # To NetProtocol.h?
+	MsgStr.h # To Common.h?
+	3dAnimation.h # To Graphic...?
+	PlatformSpecific.h # To Common.h
+	Types.h # To Common.h
+	Randomizer.h # To Common.h
+	DataMask.h # To Common.h?
+	Defines.h # To Common.h
+)
 set( SERVER_SOURCE
-	${SERVER_CLIENT_EDITOR_SOURCE}
-	${SERVER_EDITOR_SOURCE}
-	${SERVER_CLIENT_SOURCE}
+	${COMMON_SOURCE}
+	${Json_SOURCE}
 	${fbxsdk_SOURCE}
+
+	# Location
+	Map.cpp Map.h
 	Critter.cpp Critter.h
-	CritterData.h
-	CritterManager.h CritterManager.cpp
+	Item.cpp Item.h
+
+	# To Server.h?
+	EntityManager.cpp EntityManager.h
+	# LocationManager
+	MapManager.cpp MapManager.h
+	CritterManager.cpp CritterManager.h
+	ItemManager.cpp ItemManager.h
+
+	AppGui.cpp AppGuiDX.cpp AppGui.h
+	ResourceConverter.cpp ResourceConverter.h
 	DataBase.cpp DataBase.h
 	Dialogs.cpp Dialogs.h
-	EntityManager.cpp EntityManager.h
-	ItemManager.cpp ItemManager.h
-	Map.cpp Map.h
-	MapManager.cpp MapManager.h
 	Networking.cpp Networking.h
+
 	Server.cpp Server.h
-	ServerClient.cpp
-	ServerItem.cpp
-	ServerNpc.cpp
+	ServerClient.cpp # Refactor
+	ServerItem.cpp # Refactor
+	ServerNpc.cpp # Refactor
 	ServerScript.cpp
 )
 set( CLIENT_SOURCE
-	${SERVER_CLIENT_EDITOR_SOURCE}
-	${SERVER_CLIENT_SOURCE}
-	${CLIENT_EDITOR_SOURCE}
+	${COMMON_SOURCE}
 	${OGG_SOURCE}
 	${VORBIS_SOURCE}
 	${THEORA_SOURCE}
+
 	Client.cpp Client.h
-	ClientInterface.cpp
+	ClientInterface.cpp # Remove
 	SoundManager.cpp SoundManager.h
+
+	# Cl to View?
+	MapCl.cpp MapCl.h
+	CritterCl.cpp CritterCl.h
+	ItemCl.cpp ItemCl.h
+	ItemHex.cpp ItemHex.h # Merge with ItemCl or ItemHexView
+
+	Keyboard.cpp Keyboard.h
+	HexManager.cpp HexManager.h
+	ResourceManager.cpp ResourceManager.h
+	GraphicLoader.cpp GraphicLoader.h # Refactor, merge with ResourceManager?
+
+	3dStuff.cpp 3dStuff.h
+	F2Palette.h
+	SpriteManager.cpp SpriteManager.h # Refactor, split loaders
+	SpriteManagerFont.cpp
+	Sprites.cpp Sprites.h
+
+	GluStuff.cpp GluStuff.h # Remove
+	FlexRect.h # Move to Common?
 )
 set( EDITOR_SOURCE
-	${SERVER_CLIENT_EDITOR_SOURCE}
-	${SERVER_EDITOR_SOURCE}
-	${CLIENT_EDITOR_SOURCE}
-	${fbxsdk_SOURCE}
+	${CLIENT_SOURCE}
+	${SERVER_SOURCE}
 	Mapper.cpp Mapper.h
 )
+list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
 #
 # Builds
@@ -548,16 +558,12 @@ if( NOT BUILD_ONLY_CLIENT )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 	endif()
 
-	add_library( ServerLib STATIC ${SERVER_SOURCE} )
-	set_target_properties( ServerLib PROPERTIES OUTPUT_NAME "ServerLib" COMPILE_FLAGS "${SERVER_DEFINES}" )
-	add_library( ClientLib STATIC ${CLIENT_SOURCE} )
-	set_target_properties( ClientLib PROPERTIES OUTPUT_NAME "ClientLib" COMPILE_FLAGS "${CLIENT_DEFINES}" )
 	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "MainEditor.cpp" "Editor.rc" )
 	set_target_properties( FOnlineEditor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
-	target_link_libraries( FOnlineEditor "ServerLib" "ClientLib" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineEditor "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries" )
-	set_property( TARGET ServerLib ClientLib Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
+	set_property( TARGET Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
 endif()

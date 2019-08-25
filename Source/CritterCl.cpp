@@ -2,14 +2,8 @@
 #include "CritterCl.h"
 #include "ResourceManager.h"
 #include "ProtoManager.h"
-
-#ifdef FONLINE_CLIENT
-# include "SoundManager.h"
-# include "Script.h"
-#endif
-
-ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
-CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, CritterCl, uint, Multihex );
+#include "SoundManager.h"
+#include "Script.h"
 
 bool CritterCl::SlotEnabled[ 0x100 ];
 
@@ -89,12 +83,10 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     memzero( anim3dLayers, sizeof( anim3dLayers ) );
     textOnHeadColor = COLOR_CRITTER_NAME;
 
-    #ifdef FONLINE_CLIENT
     CScriptArray* arr = Script::CreateArray( "int[]" );
     arr->Resize( LAYERS3D_COUNT );
     SetAnim3dLayer( arr );
     arr->Release();
-    #endif
 }
 
 CritterCl::~CritterCl()
@@ -144,19 +136,19 @@ uchar CritterCl::GetFadeAlpha()
     return fadeUp == true ? ( fading_proc * 0xFF ) / 100 : ( ( 100 - fading_proc ) * 0xFF ) / 100;
 }
 
-void CritterCl::AddItem( Item* item )
+void CritterCl::AddItem( ItemCl* item )
 {
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Id );
 
     InvItems.push_back( item );
-    Item::SortItems( InvItems );
+    ItemCl::SortItems( InvItems );
 
     if( item->GetCritSlot() && !IsAnim() )
         AnimateStay();
 }
 
-void CritterCl::DeleteItem( Item* item, bool animate )
+void CritterCl::DeleteItem( ItemCl* item, bool animate )
 {
     item->SetAccessory( ITEM_ACCESSORY_NONE );
     item->SetCritId( 0 );
@@ -167,9 +159,7 @@ void CritterCl::DeleteItem( Item* item, bool animate )
     InvItems.erase( it );
 
     item->IsDestroyed = true;
-    #ifdef FONLINE_CLIENT
     Script::RemoveEventsEntity( item );
-    #endif
     item->Release();
 
     if( animate && !IsAnim() )
@@ -182,18 +172,18 @@ void CritterCl::DeleteAllItems()
         DeleteItem( *InvItems.begin(), false );
 }
 
-Item* CritterCl::GetItem( uint item_id )
+ItemCl* CritterCl::GetItem( uint item_id )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        Item* item = *it;
+        ItemCl* item = *it;
         if( item->GetId() == item_id )
             return item;
     }
     return nullptr;
 }
 
-Item* CritterCl::GetItemByPid( hash item_pid )
+ItemCl* CritterCl::GetItemByPid( hash item_pid )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
@@ -201,7 +191,7 @@ Item* CritterCl::GetItemByPid( hash item_pid )
     return nullptr;
 }
 
-Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
+ItemCl* CritterCl::GetItemByPidInvPriority( hash item_pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     if( !proto_item )
@@ -211,17 +201,17 @@ Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
     {
         for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         {
-            Item* item = *it;
+            ItemCl* item = *it;
             if( item->GetProtoId() == item_pid )
                 return item;
         }
     }
     else
     {
-        Item* another_slot = nullptr;
+        ItemCl* another_slot = nullptr;
         for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         {
-            Item* item = *it;
+            ItemCl* item = *it;
             if( item->GetProtoId() == item_pid )
             {
                 if( !item->GetCritSlot() )
@@ -234,18 +224,18 @@ Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
     return nullptr;
 }
 
-Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
+ItemCl* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        Item* item = *it;
+        ItemCl* item = *it;
         if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
             return item;
     }
     return nullptr;
 }
 
-Item* CritterCl::GetItemSlot( int slot )
+ItemCl* CritterCl::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetCritSlot() == slot )
@@ -253,11 +243,11 @@ Item* CritterCl::GetItemSlot( int slot )
     return nullptr;
 }
 
-void CritterCl::GetItemsSlot( int slot, ItemVec& items )
+void CritterCl::GetItemsSlot( int slot, ItemClVec& items )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        Item* item = *it;
+        ItemCl* item = *it;
         if( slot == -1 || item->GetCritSlot() == slot )
             items.push_back( item );
     }
@@ -298,9 +288,7 @@ bool CritterCl::CheckFind( int find_type )
 uint CritterCl::GetAttackDist()
 {
     uint dist = 0;
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist );
-    #endif
     return dist;
 }
 
@@ -508,11 +496,9 @@ void CritterCl::Move( int dir )
     }
 }
 
-void CritterCl::Action( int action, int action_ext, Item* item, bool local_call /* = true */ )
+void CritterCl::Action( int action, int action_ext, ItemCl* item, bool local_call /* = true */ )
 {
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.CritterAction, local_call, this, action, action_ext, item );
-    #endif
 
     switch( action )
     {
@@ -596,7 +582,7 @@ void CritterCl::NextAnim( bool erase_front )
     }
 }
 
-void CritterCl::Animate( uint anim1, uint anim2, Item* item )
+void CritterCl::Animate( uint anim1, uint anim2, ItemCl* item )
 {
     uchar dir = GetDir();
     if( !anim1 )
@@ -718,7 +704,7 @@ bool CritterCl::IsHaveLightSources()
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        Item* item = *it;
+        ItemCl* item = *it;
         if( item->GetIsLight() )
             return true;
     }
@@ -773,11 +759,9 @@ uint CritterCl::GetAnim2()
     return ANIM2_IDLE;
 }
 
-void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item )
+void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemCl* item )
 {
-    #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, animate_stay, this, anim1, anim2, item );
-    #endif
 }
 
 int* CritterCl::GetLayers3dData()

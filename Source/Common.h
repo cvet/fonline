@@ -90,7 +90,7 @@
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
 
-#if defined ( FONLINE_NPCEDITOR ) || defined ( FONLINE_MRFIXIT ) || defined ( FONLINE_CLIENT )
+#if defined ( FONLINE_CLIENT )
 # define NO_THREADING
 #endif
 #include "Threading.h"
@@ -232,16 +232,12 @@ struct MapperScriptFunctions
     void* Loop;
     void* ConsoleMessage;
     void* RenderIface;
-    void* RenderMap;
     void* MouseDown;
     void* MouseUp;
     void* MouseMove;
     void* KeyDown;
     void* KeyUp;
     void* InputLost;
-    void* CritterAnimation;
-    void* CritterAnimationSubstitute;
-    void* CritterAnimationFallout;
     void* MapLoad;
     void* MapSave;
     void* InspectorProperties;
@@ -253,7 +249,7 @@ struct MapperScriptFunctions
 /* Server                                                               */
 /************************************************************************/
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 
 extern int  ServerGameSleep;
 extern int  MemoryDebugLevel;

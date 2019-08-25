@@ -1,40 +1,24 @@
-#include "ProtoMap.h"
+#include "Entity.h"
 #include "ProtoManager.h"
 #include "Crypt.h"
 #include <strstream>
 #include "IniParser.h"
 #include "Script.h"
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"
 # include "Critter.h"
-#else
+# include "Item.h"
+#endif
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "MapCl.h"
 # include "CritterCl.h"
+# include "ItemCl.h"
 #endif
 
-#ifdef FONLINE_SERVER
-# define MUTUAL_CRITTER         Critter
-# define MUTUAL_CRITTER_TYPE    EntityType::Npc
-#else
-# define MUTUAL_CRITTER         CritterCl
-# define MUTUAL_CRITTER_TYPE    EntityType::CritterCl
-#endif
-
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, string, FileDir );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Width );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Height );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexX );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexY );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, int, CurDayTime );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, hash, ScriptId );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayTime );    // 4 int
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayColor );   // 12 uchar
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, bool, IsNoLogOut );
-
-ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
+ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, EntityType::MapProto, ProtoMap::PropertiesRegistrator )
 {
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
     #endif
 
@@ -45,7 +29,7 @@ ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
 
 ProtoMap::~ProtoMap()
 {
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) SceneryData.capacity() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) Tiles.capacity() * sizeof( Tile ) );
@@ -78,7 +62,7 @@ ProtoMap::~ProtoMap()
     AllEntities.clear();
     #endif
 
-    #ifdef FONLINE_SERVER
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     CLEAN_CONTAINER( SceneryData );
     CLEAN_CONTAINER( CrittersVec );
     CLEAN_CONTAINER( HexItemsVec );
@@ -92,6 +76,7 @@ ProtoMap::~ProtoMap()
 #ifdef FONLINE_EDITOR
 void ProtoMap::SaveTextFormat( IniParser& file )
 {
+    # if 0
     // Header
     Props.SaveToText( file.SetApp( "ProtoMap" ), nullptr );
 
@@ -135,11 +120,13 @@ void ProtoMap::SaveTextFormat( IniParser& file )
         if( tile.IsRoof )
             kv[ "IsRoof" ] = _str( "{}", tile.IsRoof );
     }
+    # endif
 }
 #endif
 
 bool ProtoMap::LoadTextFormat( const char* buf )
 {
+    #if 0
     int       errors = 0;
     EntityVec entities;
 
@@ -176,11 +163,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        #ifdef FONLINE_SERVER
+        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Npc*       npc = new Npc( id, proto );
-        #else
+        # else
         CritterCl* npc = new CritterCl( id, proto );
-        #endif
+        # endif
         if( !npc->Props.LoadFromText( kv ) )
         {
             WriteLog( "Unable to load critter '{}' properties.\n", _str().parseHash( proto_id ) );
@@ -264,20 +251,23 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     if( errors )
         return false;
     return OnAfterLoad( entities );
+    #endif
+    return 0;
 }
 
 bool ProtoMap::LoadOldTextFormat( const char* buf )
 {
-    #define MAP_OBJECT_CRITTER                   ( 0 )
-    #define MAP_OBJECT_ITEM                      ( 1 )
-    #define MAP_OBJECT_SCENERY                   ( 2 )
-    #define FO_MAP_VERSION_TEXT1                 ( 1 )
-    #define FO_MAP_VERSION_TEXT2                 ( 2 )
-    #define FO_MAP_VERSION_TEXT3                 ( 3 )
-    #define FO_MAP_VERSION_TEXT4                 ( 4 )
-    #define FO_MAP_VERSION_TEXT5                 ( 5 )
-    #define FO_MAP_VERSION_TEXT6                 ( 6 )
-    #define FO_MAP_VERSION_TEXT7                 ( 7 )
+    #if 0
+    # define MAP_OBJECT_CRITTER                   ( 0 )
+    # define MAP_OBJECT_ITEM                      ( 1 )
+    # define MAP_OBJECT_SCENERY                   ( 2 )
+    # define FO_MAP_VERSION_TEXT1                 ( 1 )
+    # define FO_MAP_VERSION_TEXT2                 ( 2 )
+    # define FO_MAP_VERSION_TEXT3                 ( 3 )
+    # define FO_MAP_VERSION_TEXT4                 ( 4 )
+    # define FO_MAP_VERSION_TEXT5                 ( 5 )
+    # define FO_MAP_VERSION_TEXT6                 ( 6 )
+    # define FO_MAP_VERSION_TEXT7                 ( 7 )
 
     IniParser map_ini;
     map_ini.CollectContent();
@@ -304,10 +294,10 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 {
                     version = ivalue;
                     uint old_version = ( ivalue << 20 );
-                    #define FO_MAP_VERSION_V6    ( 0xFE000000 )
-                    #define FO_MAP_VERSION_V7    ( 0xFF000000 )
-                    #define FO_MAP_VERSION_V8    ( 0xFF100000 )
-                    #define FO_MAP_VERSION_V9    ( 0xFF200000 )
+                    # define FO_MAP_VERSION_V6    ( 0xFE000000 )
+                    # define FO_MAP_VERSION_V7    ( 0xFF000000 )
+                    # define FO_MAP_VERSION_V8    ( 0xFF100000 )
+                    # define FO_MAP_VERSION_V9    ( 0xFF200000 )
                     if( old_version == FO_MAP_VERSION_V6 || old_version == FO_MAP_VERSION_V7 ||
                         old_version == FO_MAP_VERSION_V8 || old_version == FO_MAP_VERSION_V9 )
                         version = FO_MAP_VERSION_TEXT1;
@@ -544,11 +534,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
                     if( is_critter )
                     {
-                        #ifdef FONLINE_SERVER
+                        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
                         Npc* cr = new Npc( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                        #else
+                        # else
                         CritterCl* cr = new CritterCl( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                        #endif
+                        # endif
                         cr->SetCond( COND_LIFE );
                         entities.push_back( cr );
                         entities_addon.push_back( AdditionalFields() );
@@ -563,13 +553,13 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     continue;
                 }
 
-                #define SET_FIELD_CRITTER( field_name, prop )                         \
+                # define SET_FIELD_CRITTER( field_name, prop )                        \
                     if( field == field_name && is_critter )                           \
                     {                                                                 \
                         ( (MUTUAL_CRITTER*) entities.back() )->Set ## prop( ivalue ); \
                         continue;                                                     \
                     }
-                #define SET_FIELD_ITEM( field_name, prop )                  \
+                # define SET_FIELD_ITEM( field_name, prop )                 \
                     if( field == field_name && !is_critter )                \
                     {                                                       \
                         ( (Item*) entities.back() )->Set ## prop( ivalue ); \
@@ -763,11 +753,14 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     }
 
     return OnAfterLoad( entities );
+    #endif
+    return 0;
 }
 
 bool ProtoMap::OnAfterLoad( EntityVec& entities )
 {
-    #ifdef FONLINE_SERVER
+    #if 0
+    # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     // Bind scripts
     if( !BindScripts( entities ) )
         return false;
@@ -785,7 +778,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
         if( entity->Type == MUTUAL_CRITTER_TYPE )
         {
             entity->AddRef();
-            CrittersVec.push_back( (MUTUAL_CRITTER*) entity );
+            // CrittersVec.push_back( (MUTUAL_CRITTER*) entity );
             continue;
         }
 
@@ -904,9 +897,9 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryData.capacity() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GetWidth() * GetHeight() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
-    #endif
+    # endif
 
-    #ifdef FONLINE_EDITOR
+    # ifdef FONLINE_EDITOR
     // Get lower id
     LastEntityId = 0;
     for( auto& entity : entities )
@@ -914,14 +907,17 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             LastEntityId = entity->Id;
 
     AllEntities = std::move( entities );
-    #endif
+    # endif
 
     return true;
+    #endif
+    return 0;
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 bool ProtoMap::BindScripts( EntityVec& entities )
 {
+    # if 0
     int errors = 0;
 
     // Map script
@@ -976,8 +972,10 @@ bool ProtoMap::BindScripts( EntityVec& entities )
         }
     }
     return errors == 0;
+    # endif
+    return 0;
 }
-#endif // FONLINE_SERVER
+#endif
 
 bool ProtoMap::Load()
 {
@@ -1067,9 +1065,9 @@ bool ProtoMap::IsMapFile( const string& fname )
 
     return false;
 }
-#endif // FONLINE_EDITOR
+#endif
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 void ProtoMap::GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers )
 {
     for( auto& item : TriggerItemsVec )
@@ -1105,11 +1103,4 @@ void ProtoMap::GetStaticItemsByPid( hash pid, ItemVec& items )
         if( !pid || item->GetProtoId() == pid )
             items.push_back( item );
 }
-#endif // FONLINE_SERVER
-
-CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, CScriptArray *, MapProtos );
-
-ProtoLocation::ProtoLocation( hash pid ): ProtoEntity( pid, Location::PropertiesRegistrator )
-{
-    //
-}
+#endif

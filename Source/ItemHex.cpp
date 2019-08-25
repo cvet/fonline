@@ -2,7 +2,7 @@
 #include "ItemHex.h"
 #include "ResourceManager.h"
 
-ItemHex::ItemHex( uint id, ProtoItem* proto ): Item( id, proto )
+ItemHex::ItemHex( uint id, ProtoItem* proto ): ItemCl( id, proto )
 {
     const_cast< EntityType& >( Type ) = EntityType::ItemHex;
 

@@ -479,7 +479,7 @@ std::wstring _str::toWideChar()
 }
 #endif
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif
 
@@ -513,7 +513,7 @@ hash _str::toHash()
     {
         ins.first->second = s;
 
-        #ifdef FONLINE_SERVER
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         if( DbStorage )
         {
             if( DbStorage->Get( "Hashes", h ).empty() )
@@ -544,7 +544,7 @@ _str& _str::parseHash( hash h )
     return *this;
 }
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 void _str::loadHashes()
 {
     WriteLog( "Load hashes...\n" );

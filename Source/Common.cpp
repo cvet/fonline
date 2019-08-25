@@ -607,11 +607,7 @@ int ConvertParamValue( const string& str, bool& fail )
     if( _str( str ).compareIgnoreCase( "false" ) )
         return 0;
 
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     return Script::GetEnumValue( str, fail );
-    #else
-    return 0;
-    #endif
 }
 
 /************************************************************************/
@@ -968,7 +964,7 @@ MapperScriptFunctions MapperFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 
 int  ServerGameSleep = 10;
 int  MemoryDebugLevel = 10;
@@ -1110,9 +1106,7 @@ string GetLastSocketError()
 
 static void AddPropertyCallback( void ( * function )( void*, void*, void*, void* ) )
 {
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
     PropertyRegistrator::GlobalSetCallbacks.push_back( (NativeCallback) function );
-    #endif
 }
 
 GameOptions GameOpt;

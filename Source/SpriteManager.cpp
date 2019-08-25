@@ -4281,7 +4281,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             }
             else
             {
-
                 x1 = (int) ( ( spr->ScrX - si->Width / 2 + spr->CutX + GameOpt.ScrOx + 1.0f ) / z );
                 y1 = (int) ( ( spr->ScrY + spr->CutOyL + GameOpt.ScrOy ) / z );
             }
