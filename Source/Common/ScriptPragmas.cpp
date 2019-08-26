@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "ScriptPragmas.h"
 #include "angelscript.h"
 #include "Script.h"

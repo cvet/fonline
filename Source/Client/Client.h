@@ -1,13 +1,13 @@
 #ifndef __CLIENT__
 #define __CLIENT__
 
-#include "Keyboard.h"
 #include "Common.h"
+#include "Keyboard.h"
 #include "SpriteManager.h"
 #include "SoundManager.h"
 #include "HexManager.h"
-#include "ItemCl.h"
-#include "CritterCl.h"
+#include "ItemView.h"
+#include "CritterView.h"
 #include "NetProtocol.h"
 #include "Text.h"
 #include "ResourceManager.h"
@@ -16,7 +16,7 @@
 #include "zlib.h"
 #include "IniParser.h"
 #include "MsgFiles.h"
-#include "MapCl.h"
+#include "MapView.h"
 #include "ProtoManager.h"
 #include "theora/theoradec.h"
 #include "FlexRect.h"
@@ -146,7 +146,7 @@ public:
     sockaddr_in   SockAddr, ProxyAddr;
     SOCKET        Sock;
     fd_set        SockSet;
-    ItemCl*       SomeItem;
+    ItemView*     SomeItem;
     bool          IsConnecting;
     bool          IsConnected;
     bool          InitNetBegin;
@@ -369,65 +369,65 @@ public:
 /* Scripting                                                            */
 /************************************************************************/
     bool ReloadScripts();
-    void OnItemInvChanged( ItemCl* old_item, ItemCl* new_item );
+    void OnItemInvChanged( ItemView* old_item, ItemView* new_item );
 
     struct SScriptFunc
     {
-        static bool Crit_IsChosen( CritterCl* cr );
-        static bool Crit_IsPlayer( CritterCl* cr );
-        static bool Crit_IsNpc( CritterCl* cr );
-        static bool Crit_IsOffline( CritterCl* cr );
-        static bool Crit_IsLife( CritterCl* cr );
-        static bool Crit_IsKnockout( CritterCl* cr );
-        static bool Crit_IsDead( CritterCl* cr );
-        static bool Crit_IsFree( CritterCl* cr );
-        static bool Crit_IsBusy( CritterCl* cr );
+        static bool Crit_IsChosen( CritterView* cr );
+        static bool Crit_IsPlayer( CritterView* cr );
+        static bool Crit_IsNpc( CritterView* cr );
+        static bool Crit_IsOffline( CritterView* cr );
+        static bool Crit_IsLife( CritterView* cr );
+        static bool Crit_IsKnockout( CritterView* cr );
+        static bool Crit_IsDead( CritterView* cr );
+        static bool Crit_IsFree( CritterView* cr );
+        static bool Crit_IsBusy( CritterView* cr );
 
-        static bool          Crit_IsAnim3d( CritterCl* cr );
-        static bool          Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 );
-        static bool          Crit_IsAnimPlaying( CritterCl* cr );
-        static uint          Crit_GetAnim1( CritterCl* cr );
-        static void          Crit_Animate( CritterCl* cr, uint anim1, uint anim2 );
-        static void          Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, ItemCl* item );
-        static void          Crit_ClearAnim( CritterCl* cr );
-        static void          Crit_Wait( CritterCl* cr, uint ms );
-        static uint          Crit_CountItem( CritterCl* cr, hash proto_id );
-        static ItemCl*       Crit_GetItem( CritterCl* cr, uint item_id );
-        static ItemCl*       Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate );
-        static ItemCl*       Crit_GetItemBySlot( CritterCl* cr, uchar slot );
-        static ItemCl*       Crit_GetItemByPid( CritterCl* cr, hash proto_id );
-        static CScriptArray* Crit_GetItems( CritterCl* cr );
-        static CScriptArray* Crit_GetItemsBySlot( CritterCl* cr, uchar slot );
-        static CScriptArray* Crit_GetItemsPredicate( CritterCl* cr, asIScriptFunction* predicate );
-        static void          Crit_SetVisible( CritterCl* cr, bool visible );
-        static bool          Crit_GetVisible( CritterCl* cr );
-        static void          Crit_set_ContourColor( CritterCl* cr, uint value );
-        static uint          Crit_get_ContourColor( CritterCl* cr );
-        static void          Crit_GetNameTextInfo( CritterCl* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines );
-        static void          Crit_AddAnimationCallback( CritterCl* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback );
-        static bool          Crit_GetBonePosition( CritterCl* cr, hash bone_name, int& bone_x, int& bone_y );
+        static bool          Crit_IsAnim3d( CritterView* cr );
+        static bool          Crit_IsAnimAviable( CritterView* cr, uint anim1, uint anim2 );
+        static bool          Crit_IsAnimPlaying( CritterView* cr );
+        static uint          Crit_GetAnim1( CritterView* cr );
+        static void          Crit_Animate( CritterView* cr, uint anim1, uint anim2 );
+        static void          Crit_AnimateEx( CritterView* cr, uint anim1, uint anim2, ItemView* item );
+        static void          Crit_ClearAnim( CritterView* cr );
+        static void          Crit_Wait( CritterView* cr, uint ms );
+        static uint          Crit_CountItem( CritterView* cr, hash proto_id );
+        static ItemView*     Crit_GetItem( CritterView* cr, uint item_id );
+        static ItemView*     Crit_GetItemPredicate( CritterView* cr, asIScriptFunction* predicate );
+        static ItemView*     Crit_GetItemBySlot( CritterView* cr, uchar slot );
+        static ItemView*     Crit_GetItemByPid( CritterView* cr, hash proto_id );
+        static CScriptArray* Crit_GetItems( CritterView* cr );
+        static CScriptArray* Crit_GetItemsBySlot( CritterView* cr, uchar slot );
+        static CScriptArray* Crit_GetItemsPredicate( CritterView* cr, asIScriptFunction* predicate );
+        static void          Crit_SetVisible( CritterView* cr, bool visible );
+        static bool          Crit_GetVisible( CritterView* cr );
+        static void          Crit_set_ContourColor( CritterView* cr, uint value );
+        static uint          Crit_get_ContourColor( CritterView* cr );
+        static void          Crit_GetNameTextInfo( CritterView* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines );
+        static void          Crit_AddAnimationCallback( CritterView* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback );
+        static bool          Crit_GetBonePosition( CritterView* cr, hash bone_name, int& bone_x, int& bone_y );
 
-        static ItemCl*       Item_Clone( ItemCl* item, uint count );
-        static bool          Item_GetMapPosition( ItemCl* item, ushort& hx, ushort& hy );
-        static void          Item_Animate( ItemCl* item, uint from_frame, uint to_frame );
-        static CScriptArray* Item_GetItems( ItemCl* cont, uint stack_id );
+        static ItemView*     Item_Clone( ItemView* item, uint count );
+        static bool          Item_GetMapPosition( ItemView* item, ushort& hx, ushort& hy );
+        static void          Item_Animate( ItemView* item, uint from_frame, uint to_frame );
+        static CScriptArray* Item_GetItems( ItemView* cont, uint stack_id );
 
         static string        Global_CustomCall( string command, string separator );
-        static CritterCl*    Global_GetChosen();
-        static ItemCl*       Global_GetItem( uint item_id );
+        static CritterView*  Global_GetChosen();
+        static ItemView*     Global_GetItem( uint item_id );
         static CScriptArray* Global_GetMapAllItems();
         static CScriptArray* Global_GetMapHexItems( ushort hx, ushort hy );
-        static uint          Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 );
-        static CritterCl*    Global_GetCritter( uint critter_id );
+        static uint          Global_GetCrittersDistantion( CritterView* cr1, CritterView* cr2 );
+        static CritterView*  Global_GetCritter( uint critter_id );
         static CScriptArray* Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type );
         static CScriptArray* Global_GetCrittersByPids( hash pid, int find_type );
         static CScriptArray* Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type );
         static CScriptArray* Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
         static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static CScriptArray* Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
-        static CScriptArray* Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
+        static CScriptArray* Global_GetPathCr( CritterView* cr, ushort to_hx, ushort to_hy, uint cut );
         static uint          Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
-        static uint          Global_GetPathLengthCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
+        static uint          Global_GetPathLengthCr( CritterView* cr, ushort to_hx, ushort to_hy, uint cut );
         static void          Global_FlushScreen( uint from_color, uint to_color, uint ms );
         static void          Global_QuakeScreen( uint noise, uint ms );
         static bool          Global_PlaySound( string sound_name );
@@ -451,7 +451,7 @@ public:
         static string Global_FormatTags( string text, string lexems );
         static void   Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop );
         static void   Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop );
-        static void   Global_LockScreenScroll( CritterCl* cr, bool soft_lock, bool unlock_if_same );
+        static void   Global_LockScreenScroll( CritterView* cr, bool soft_lock, bool unlock_if_same );
         static int    Global_GetFog( ushort zone_x, ushort zone_y );
         static uint   Global_GetDayTime( uint day_part );
         static void   Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
@@ -491,8 +491,8 @@ public:
         static void          Global_HideScreen( int screen );
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy );
-        static ItemCl*       Global_GetMonitorItem( int x, int y );
-        static CritterCl*    Global_GetMonitorCritter( int x, int y );
+        static ItemView*     Global_GetMonitorItem( int x, int y );
+        static CritterView*  Global_GetMonitorCritter( int x, int y );
         static Entity*       Global_GetMonitorEntity( int x, int y );
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
@@ -521,8 +521,8 @@ public:
         static void          Global_EraseCacheData( string name );
         static void          Global_SetUserConfig( CScriptArray* key_values );
 
-        static MapCl*        ClientCurMap;
-        static LocationCl*   ClientCurLocation;
+        static MapView*      ClientCurMap;
+        static LocationView* ClientCurLocation;
     } ScriptFunc;
 
 /************************************************************************/
@@ -552,7 +552,7 @@ public:
     uchar DlgIsNpc;
     uint  DlgNpcId;
 
-    void FormatTags( string& text, CritterCl* player, CritterCl* npc, const string& lexems );
+    void FormatTags( string& text, CritterView* player, CritterView* npc, const string& lexems );
 
 /************************************************************************/
 /* Mini-map                                                             */
@@ -637,13 +637,13 @@ public:
     void SetDayTime( bool refresh );
     void SetGameColor( uint color );
 
-    CritterCl* Chosen;
+    CritterView* Chosen;
 
-    void       AddCritter( CritterCl* cr );
-    CritterCl* GetCritter( uint crid ) { return HexMngr.GetCritter( crid ); }
-    ItemHex*   GetItem( uint item_id ) { return HexMngr.GetItemById( item_id ); }
-    void       DeleteCritters();
-    void       DeleteCritter( uint remid );
+    void         AddCritter( CritterView* cr );
+    CritterView* GetCritter( uint crid ) { return HexMngr.GetCritter( crid ); }
+    ItemHexView* GetItem( uint item_id ) { return HexMngr.GetItemById( item_id ); }
+    void         DeleteCritters();
+    void         DeleteCritter( uint remid );
 
     bool     NoLogOut;
     bool     RebuildLookBorders;

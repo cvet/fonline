@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Exception.h"
 #include "Script.h"
 #include "Threading.h"

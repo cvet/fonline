@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Text.h"
 #include "Crypt.h"
 #include "UcsTables.h"

@@ -60,10 +60,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     // Map and location for client and mapper
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    REGISTER_ENTITY( "Map", MapCl );
-    REGISTER_ENTITY_CAST( "Map", MapCl );
-    REGISTER_ENTITY( "Location", LocationCl );
-    REGISTER_ENTITY_CAST( "Location", LocationCl );
+    REGISTER_ENTITY( "Map", MapView );
+    REGISTER_ENTITY_CAST( "Map", MapView );
+    REGISTER_ENTITY( "Location", LocationView );
+    REGISTER_ENTITY_CAST( "Location", LocationView );
     #endif
     #if defined ( BIND_CLIENT )
     BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
@@ -338,10 +338,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    REGISTER_ENTITY( "Critter", CritterCl );
-    REGISTER_ENTITY_CAST( "Critter", CritterCl );
-    REGISTER_ENTITY( "Item", ItemCl );
-    REGISTER_ENTITY_CAST( "Item", ItemCl );
+    REGISTER_ENTITY( "Critter", CritterView );
+    REGISTER_ENTITY_CAST( "Critter", CritterView );
+    REGISTER_ENTITY( "Item", ItemView );
+    REGISTER_ENTITY_CAST( "Item", ItemView );
     #endif
 
     #ifdef BIND_CLIENT
@@ -387,11 +387,11 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void AddAnimationCallback(uint anim1, uint anim2, float normalizedTime, AnimationCallbackFunc@+ animationCallback) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_AddAnimationCallback ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool GetBonePosition(hash boneName, int& boneX, int& boneY) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetBonePosition ), SCRIPT_FUNC_THIS_CONV ) );
 
-    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string Name", OFFSETOF( CritterCl, Name ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string NameOnHead", OFFSETOF( CritterCl, NameOnHead ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string Avatar", OFFSETOF( CritterCl, Avatar ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint NameColor", OFFSETOF( CritterCl, NameColor ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "bool IsRunning", OFFSETOF( CritterCl, IsRunning ) ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string Name", OFFSETOF( CritterView, Name ) ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string NameOnHead", OFFSETOF( CritterView, NameOnHead ) ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string Avatar", OFFSETOF( CritterView, Avatar ) ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint NameColor", OFFSETOF( CritterView, NameColor ) ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "bool IsRunning", OFFSETOF( CritterView, IsRunning ) ) );
 
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@ Clone(uint newCount = 0) const", SCRIPT_FUNC_THIS( BIND_CLASS Item_Clone ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool  GetMapPosition(uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Item_GetMapPosition ), SCRIPT_FUNC_THIS_CONV ) );

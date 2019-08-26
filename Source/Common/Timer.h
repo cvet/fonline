@@ -1,6 +1,8 @@
 #ifndef __TIMER__
 #define __TIMER__
 
+#include "Common.h"
+
 struct DateTimeStamp
 {
     ushort Year;         // 1601 .. 30827

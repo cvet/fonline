@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Dialogs.h"
 #include "FileManager.h"
 #include "IniParser.h"

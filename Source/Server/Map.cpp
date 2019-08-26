@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Map.h"
 #include "Script.h"
 #include "CritterManager.h"
@@ -898,9 +897,9 @@ Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead )
     return nullptr;
 }
 
-void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters )
+void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters )
 {
-    CrVec find_critters;
+    CritterVec find_critters;
     find_critters.reserve( mapCritters.size() );
     for( Critter* cr : mapCritters )
     {
@@ -916,7 +915,7 @@ void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVe
     }
 }
 
-CrVec Map::GetCritters()
+CritterVec Map::GetCritters()
 {
     return mapCritters;
 }

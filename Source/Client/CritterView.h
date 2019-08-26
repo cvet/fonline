@@ -1,14 +1,14 @@
 #pragma once
 
-#include "NetProtocol.h"
 #include "Common.h"
+#include "NetProtocol.h"
 #include "SpriteManager.h"
 #include "BufferManager.h"
-#include "ItemCl.h"
+#include "ItemView.h"
 #include "3dStuff.h"
 #include "Entity.h"
 
-class CritterCl: public Entity
+class CritterView: public Entity
 {
 public:
     // Properties
@@ -60,12 +60,12 @@ public:
     string      Name;
     string      NameOnHead;
     string      Avatar;
-    ItemClVec   InvItems;
+    ItemViewVec InvItems;
 
     static bool SlotEnabled[ 0x100 ];
 
-    CritterCl( uint id, ProtoCritter* proto );
-    ~CritterCl();
+    CritterView( uint id, ProtoCritter* proto );
+    ~CritterView();
     void Init();
     void Finish();
 
@@ -76,9 +76,9 @@ public:
     void   RefreshAnim();
     void   ChangeDir( uchar dir, bool animate = true );
 
-    void Animate( uint anim1, uint anim2, ItemCl* item );
+    void Animate( uint anim1, uint anim2, ItemView* item );
     void AnimateStay();
-    void Action( int action, int action_ext, ItemCl* item, bool local_call = true );
+    void Action( int action, int action_ext, ItemView* item, bool local_call = true );
     void Process();
     void DrawStay( Rect r );
 
@@ -98,17 +98,17 @@ public:
 
     // Items
 public:
-    void    AddItem( ItemCl* item );
-    void    DeleteItem( ItemCl* item, bool animate );
-    void    DeleteAllItems();
-    ItemCl* GetItem( uint item_id );
-    ItemCl* GetItemByPid( hash item_pid );
-    ItemCl* GetItemByPidInvPriority( hash item_pid );
-    ItemCl* GetItemByPidSlot( hash item_pid, int slot );
-    ItemCl* GetItemSlot( int slot );
-    void    GetItemsSlot( int slot, ItemClVec& items );
-    uint    CountItemPid( hash item_pid );
-    bool    IsHaveLightSources();
+    void      AddItem( ItemView* item );
+    void      DeleteItem( ItemView* item, bool animate );
+    void      DeleteAllItems();
+    ItemView* GetItem( uint item_id );
+    ItemView* GetItemByPid( hash item_pid );
+    ItemView* GetItemByPidInvPriority( hash item_pid );
+    ItemView* GetItemByPidSlot( hash item_pid, int slot );
+    ItemView* GetItemSlot( int slot );
+    void      GetItemsSlot( int slot, ItemViewVec& items );
+    uint      CountItemPid( hash item_pid );
+    bool      IsHaveLightSources();
 
     // Moving
 public:
@@ -140,7 +140,7 @@ public:
 public:
     uint GetAnim1();
     uint GetAnim2();
-    void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemCl* item );
+    void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item );
     int* GetLayers3dData();
     bool IsAnimAviable( uint anim1, uint anim2 );
 
@@ -159,10 +159,10 @@ private:
         int        DirOffs;
         uint       IndAnim1;
         uint       IndAnim2;
-        ItemCl*    ActiveItem;
+        ItemView*  ActiveItem;
         CritterAnim() {}
-        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, ItemCl* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
-                                                                                                                                                         IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
+        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, ItemView* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
+                                                                                                                                                           IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
     };
     typedef vector< CritterAnim > CritterAnimVec;
 

@@ -7,10 +7,10 @@
 class ProtoManager
 {
 private:
-    ProtoItemMap    itemProtos;
-    ProtoCritterMap crProtos;
-    ProtoMapMap     mapProtos;
-    ProtoLocMap     locProtos;
+    ProtoItemMap     itemProtos;
+    ProtoCritterMap  crProtos;
+    ProtoMapMap      mapProtos;
+    ProtoLocationMap locProtos;
 
 public:
     void ClearProtos();
@@ -24,10 +24,10 @@ public:
     ProtoMap*      GetProtoMap( hash pid );
     ProtoLocation* GetProtoLocation( hash pid );
 
-    const ProtoItemMap&    GetProtoItems()     { return itemProtos; }
-    const ProtoCritterMap& GetProtoCritters()  { return crProtos; }
-    const ProtoMapMap&     GetProtoMaps()      { return mapProtos; }
-    const ProtoLocMap&     GetProtoLocations() { return locProtos; }
+    const ProtoItemMap&     GetProtoItems()     { return itemProtos; }
+    const ProtoCritterMap&  GetProtoCritters()  { return crProtos; }
+    const ProtoMapMap&      GetProtoMaps()      { return mapProtos; }
+    const ProtoLocationMap& GetProtoLocations() { return locProtos; }
 };
 
 extern ProtoManager ProtoMngr;

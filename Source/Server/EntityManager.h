@@ -30,11 +30,11 @@ public:
     void      GetItems( ItemVec& items );
     void      GetCritterItems( uint crid, ItemVec& items );
     Critter*  GetCritter( uint crid );
-    void      GetCritters( CrVec& critters );
+    void      GetCritters( CritterVec& critters );
     Map*      GetMapByPid( hash pid, uint skip_count );
     void      GetMaps( MapVec& maps );
     Location* GetLocationByPid( hash pid, uint skip_count );
-    void      GetLocations( LocVec& locations );
+    void      GetLocations( LocationVec& locations );
 
     bool LoadEntities();
     void ClearEntities();

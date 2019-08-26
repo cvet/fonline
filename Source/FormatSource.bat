@@ -8,8 +8,6 @@ call :IndentFile Server, *.h
 call :IndentFile Server, *.cpp
 call :IndentFile Client, *.h
 call :IndentFile Client, *.cpp
-call :IndentFile Mapper, *.h
-call :IndentFile Mapper, *.cpp
 call :IndentFile Applications, *.cpp
 
 exit /B 0

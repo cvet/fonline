@@ -148,7 +148,7 @@ struct ClientWindow: GuiWindow
 struct MapperWindow: GuiWindow
 {
     static FOMapper* MapperInstance;
-    MapCl*           WindowMap = nullptr;
+    MapView*         WindowMap = nullptr;
 
     MapperWindow( std::string map_name ): GuiWindow( "Map" )
     {
@@ -182,7 +182,7 @@ struct MapperWindow: GuiWindow
 
         MapperInstance->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
 
-        WindowMap = new MapCl( 0, pmap );
+        WindowMap = new MapView( 0, pmap );
         MapperInstance->ActiveMap = WindowMap;
         MapperInstance->LoadedMaps.push_back( WindowMap );
         MapperInstance->AddMess( "Load map complete." );

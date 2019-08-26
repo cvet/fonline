@@ -235,10 +235,10 @@ bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int 
 
 void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids )
 {
-    LocVec locs;
+    LocationVec locs;
     EntityMngr.GetLocations( locs );
-    int    wx = zx * GM_ZONE_LEN;
-    int    wy = zy * GM_ZONE_LEN;
+    int         wx = zx * GM_ZONE_LEN;
+    int         wy = zy * GM_ZONE_LEN;
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
@@ -247,7 +247,7 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
     }
 }
 
-void MapManager::GetLocations( LocVec& locs )
+void MapManager::GetLocations( LocationVec& locs )
 {
     EntityMngr.GetLocations( locs );
 }
@@ -263,7 +263,7 @@ void MapManager::LocationGarbager()
     {
         runGarbager = false;
 
-        LocVec locs;
+        LocationVec locs;
         EntityMngr.GetLocations( locs );
 
         ClVec* gmap_players = nullptr;
@@ -1341,7 +1341,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
             cr->SetGlobalMapTripId( cr->GetGlobalMapTripId() + 1 );
             cr->SetRefGlobalMapTripId( cr->GetGlobalMapTripId() );
 
-            cr->GlobalMapGroup = new CrVec();
+            cr->GlobalMapGroup = new CritterVec();
             cr->GlobalMapGroup->push_back( cr );
         }
         else
@@ -1377,7 +1377,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
     {
         Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, map, cr );
 
-        CrVec critters = cr->VisCr;
+        CritterVec critters = cr->VisCr;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
             Script::RaiseInternalEvent( ServerFunctions.CritterHide, *it, cr );
 

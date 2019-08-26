@@ -5,9 +5,9 @@
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "HexManager.h"
-#include "ItemCl.h"
-#include "MapCl.h"
-#include "CritterCl.h"
+#include "ItemView.h"
+#include "MapView.h"
+#include "CritterView.h"
 #include "Text.h"
 #include "ResourceManager.h"
 #include "Script.h"
@@ -180,8 +180,8 @@ public:
     void IntSetMode( int mode );
 
     // Maps
-    MapClVec LoadedMaps;
-    MapCl*   ActiveMap;
+    MapViewVec LoadedMaps;
+    MapView*   ActiveMap;
 
     // Tabs
     #define DEFAULT_SUB_TAB            "000 - all"
@@ -226,7 +226,7 @@ public:
     uint             TabIndex[ INT_MODE_COUNT ];
     int              InContScroll;
     int              ListScroll;
-    ItemCl*          InContItem;
+    ItemView*        InContItem;
     bool             DrawRoof;
     int              TileLayer;
 
@@ -257,8 +257,8 @@ public:
     void MoveEntity( Entity* entity, ushort hx, ushort hy );
     void DeleteEntity( Entity* entity );
     void SelectClear();
-    void SelectAddItem( ItemHex* item );
-    void SelectAddCrit( CritterCl* npc );
+    void SelectAddItem( ItemHexView* item );
+    void SelectAddCrit( CritterView* npc );
     void SelectAddTile( ushort hx, ushort hy, bool is_roof );
     void SelectAdd( Entity* entity );
     void SelectErase( Entity* entity );
@@ -267,10 +267,10 @@ public:
     void SelectDelete();
 
     // Entites creation
-    CritterCl* AddCritter( hash pid, ushort hx, ushort hy );
-    ItemCl*    AddItem( hash pid, ushort hx, ushort hy, Entity* owner );
-    void       AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
-    Entity*    CloneEntity( Entity* entity );
+    CritterView* AddCritter( hash pid, ushort hx, ushort hy );
+    ItemView*    AddItem( hash pid, ushort hx, ushort hy, Entity* owner );
+    void         AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
+    Entity*      CloneEntity( Entity* entity );
 
     // Buffer
     struct EntityBuf
@@ -370,8 +370,8 @@ public:
     bool InitScriptSystem();
     void FinishScriptSystem();
     void RunStartScript();
-    void RunMapLoadScript( MapCl* map );
-    void RunMapSaveScript( MapCl* map );
+    void RunMapLoadScript( MapView* map );
+    void RunMapSaveScript( MapView* map );
     void DrawIfaceLayer( uint layer );
 
     static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -382,16 +382,16 @@ public:
 
     struct SScriptFunc
     {
-        static ItemCl*       Item_AddChild( ItemCl* item, hash pid );
-        static ItemCl*       Crit_AddChild( CritterCl* cr, hash pid );
-        static CScriptArray* Item_GetChildren( ItemCl* item );
-        static CScriptArray* Crit_GetChildren( CritterCl* cr );
+        static ItemView*     Item_AddChild( ItemView* item, hash pid );
+        static ItemView*     Crit_AddChild( CritterView* cr, hash pid );
+        static CScriptArray* Item_GetChildren( ItemView* item );
+        static CScriptArray* Crit_GetChildren( CritterView* cr );
 
-        static ItemCl*       Global_AddItem( hash pid, ushort hx, ushort hy );
-        static CritterCl*    Global_AddCritter( hash pid, ushort hx, ushort hy );
-        static ItemCl*       Global_GetItemByHex( ushort hx, ushort hy );
+        static ItemView*     Global_AddItem( hash pid, ushort hx, ushort hy );
+        static CritterView*  Global_AddCritter( hash pid, ushort hx, ushort hy );
+        static ItemView*     Global_GetItemByHex( ushort hx, ushort hy );
         static CScriptArray* Global_GetItemsByHex( ushort hx, ushort hy );
-        static CritterCl*    Global_GetCritterByHex( ushort hx, ushort hy, int find_type );
+        static CritterView*  Global_GetCritterByHex( ushort hx, ushort hy, int find_type );
         static CScriptArray* Global_GetCrittersByHex( ushort hx, ushort hy, int find_type );
         static void          Global_MoveEntity( Entity* entity, ushort hx, ushort hy );
         static void          Global_DeleteEntity( Entity* entity );
@@ -409,10 +409,10 @@ public:
         static void   Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name );
 
         static void          Global_AllowSlot( uchar index, bool enable_send );
-        static MapCl*        Global_LoadMap( string file_name );
-        static void          Global_UnloadMap( MapCl* pmap );
-        static bool          Global_SaveMap( MapCl* pmap, string custom_name );
-        static bool          Global_ShowMap( MapCl* pmap );
+        static MapView*      Global_LoadMap( string file_name );
+        static void          Global_UnloadMap( MapView* pmap );
+        static bool          Global_SaveMap( MapView* pmap, string custom_name );
+        static bool          Global_ShowMap( MapView* pmap );
         static CScriptArray* Global_GetLoadedMaps( int& index );
         static CScriptArray* Global_GetMapFileNames( string dir );
         static void          Global_ResizeMap( ushort width, ushort height );
@@ -476,8 +476,8 @@ public:
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
 
-        static MapCl*        ClientCurMap;
-        static LocationCl*   ClientCurLocation;
+        static MapView*      ClientCurMap;
+        static LocationView* ClientCurLocation;
     };
 };
 

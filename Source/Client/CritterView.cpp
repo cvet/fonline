@@ -1,49 +1,48 @@
-#include "Common.h"
-#include "CritterCl.h"
+#include "CritterView.h"
 #include "ResourceManager.h"
 #include "ProtoManager.h"
 #include "SoundManager.h"
 #include "Script.h"
 
-bool CritterCl::SlotEnabled[ 0x100 ];
+bool CritterView::SlotEnabled[ 0x100 ];
 
-PROPERTIES_IMPL( CritterCl );
-CLASS_PROPERTY_IMPL( CritterCl, HexX );
-CLASS_PROPERTY_IMPL( CritterCl, HexY );
-CLASS_PROPERTY_IMPL( CritterCl, Dir );
-CLASS_PROPERTY_IMPL( CritterCl, Cond );
-CLASS_PROPERTY_IMPL( CritterCl, Multihex );
-CLASS_PROPERTY_IMPL( CritterCl, Anim1Life );
-CLASS_PROPERTY_IMPL( CritterCl, Anim1Knockout );
-CLASS_PROPERTY_IMPL( CritterCl, Anim1Dead );
-CLASS_PROPERTY_IMPL( CritterCl, Anim2Life );
-CLASS_PROPERTY_IMPL( CritterCl, Anim2Knockout );
-CLASS_PROPERTY_IMPL( CritterCl, Anim2Dead );
-CLASS_PROPERTY_IMPL( CritterCl, ModelName );
-CLASS_PROPERTY_IMPL( CritterCl, ScriptId );
-CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
-CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
-CLASS_PROPERTY_IMPL( CritterCl, Gender );
-CLASS_PROPERTY_IMPL( CritterCl, DialogId );
-CLASS_PROPERTY_IMPL( CritterCl, WorldX );
-CLASS_PROPERTY_IMPL( CritterCl, WorldY );
-CLASS_PROPERTY_IMPL( CritterCl, GlobalMapLeaderId );
-CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
-CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
-CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
-CLASS_PROPERTY_IMPL( CritterCl, RunTime );
-CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
-CLASS_PROPERTY_IMPL( CritterCl, TimeoutBattle );
-CLASS_PROPERTY_IMPL( CritterCl, TimeoutTransfer );
-CLASS_PROPERTY_IMPL( CritterCl, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoRun );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoRotate );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
-CLASS_PROPERTY_IMPL( CritterCl, IsHide );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
+PROPERTIES_IMPL( CritterView );
+CLASS_PROPERTY_IMPL( CritterView, HexX );
+CLASS_PROPERTY_IMPL( CritterView, HexY );
+CLASS_PROPERTY_IMPL( CritterView, Dir );
+CLASS_PROPERTY_IMPL( CritterView, Cond );
+CLASS_PROPERTY_IMPL( CritterView, Multihex );
+CLASS_PROPERTY_IMPL( CritterView, Anim1Life );
+CLASS_PROPERTY_IMPL( CritterView, Anim1Knockout );
+CLASS_PROPERTY_IMPL( CritterView, Anim1Dead );
+CLASS_PROPERTY_IMPL( CritterView, Anim2Life );
+CLASS_PROPERTY_IMPL( CritterView, Anim2Knockout );
+CLASS_PROPERTY_IMPL( CritterView, Anim2Dead );
+CLASS_PROPERTY_IMPL( CritterView, ModelName );
+CLASS_PROPERTY_IMPL( CritterView, ScriptId );
+CLASS_PROPERTY_IMPL( CritterView, LookDistance );
+CLASS_PROPERTY_IMPL( CritterView, Anim3dLayer );
+CLASS_PROPERTY_IMPL( CritterView, Gender );
+CLASS_PROPERTY_IMPL( CritterView, DialogId );
+CLASS_PROPERTY_IMPL( CritterView, WorldX );
+CLASS_PROPERTY_IMPL( CritterView, WorldY );
+CLASS_PROPERTY_IMPL( CritterView, GlobalMapLeaderId );
+CLASS_PROPERTY_IMPL( CritterView, TalkDistance );
+CLASS_PROPERTY_IMPL( CritterView, CurrentHp );
+CLASS_PROPERTY_IMPL( CritterView, WalkTime );
+CLASS_PROPERTY_IMPL( CritterView, RunTime );
+CLASS_PROPERTY_IMPL( CritterView, ScaleFactor );
+CLASS_PROPERTY_IMPL( CritterView, TimeoutBattle );
+CLASS_PROPERTY_IMPL( CritterView, TimeoutTransfer );
+CLASS_PROPERTY_IMPL( CritterView, TimeoutRemoveFromGame );
+CLASS_PROPERTY_IMPL( CritterView, IsNoWalk );
+CLASS_PROPERTY_IMPL( CritterView, IsNoRun );
+CLASS_PROPERTY_IMPL( CritterView, IsNoRotate );
+CLASS_PROPERTY_IMPL( CritterView, IsNoTalk );
+CLASS_PROPERTY_IMPL( CritterView, IsHide );
+CLASS_PROPERTY_IMPL( CritterView, IsNoFlatten );
 
-CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
+CritterView::CritterView( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterView, PropertiesRegistrator, proto )
 {
     SprId = 0;
     NameColor = 0;
@@ -89,14 +88,14 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     arr->Release();
 }
 
-CritterCl::~CritterCl()
+CritterView::~CritterView()
 {
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
 }
 
-void CritterCl::Init()
+void CritterView::Init()
 {
     RefreshAnim();
     AnimateStay();
@@ -108,13 +107,13 @@ void CritterCl::Init()
     SetFade( true );
 }
 
-void CritterCl::Finish()
+void CritterView::Finish()
 {
     SetFade( false );
     finishingTime = FadingTick;
 }
 
-void CritterCl::SetFade( bool fade_up )
+void CritterView::SetFade( bool fade_up )
 {
     uint tick = Timer::GameTick();
     FadingTick = tick + FADING_PERIOD - ( FadingTick > tick ? FadingTick - tick : 0 );
@@ -122,7 +121,7 @@ void CritterCl::SetFade( bool fade_up )
     fadingEnable = true;
 }
 
-uchar CritterCl::GetFadeAlpha()
+uchar CritterView::GetFadeAlpha()
 {
     uint tick = Timer::GameTick();
     int  fading_proc = 100 - Procent( FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0 );
@@ -136,19 +135,19 @@ uchar CritterCl::GetFadeAlpha()
     return fadeUp == true ? ( fading_proc * 0xFF ) / 100 : ( ( 100 - fading_proc ) * 0xFF ) / 100;
 }
 
-void CritterCl::AddItem( ItemCl* item )
+void CritterView::AddItem( ItemView* item )
 {
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Id );
 
     InvItems.push_back( item );
-    ItemCl::SortItems( InvItems );
+    ItemView::SortItems( InvItems );
 
     if( item->GetCritSlot() && !IsAnim() )
         AnimateStay();
 }
 
-void CritterCl::DeleteItem( ItemCl* item, bool animate )
+void CritterView::DeleteItem( ItemView* item, bool animate )
 {
     item->SetAccessory( ITEM_ACCESSORY_NONE );
     item->SetCritId( 0 );
@@ -166,24 +165,24 @@ void CritterCl::DeleteItem( ItemCl* item, bool animate )
         AnimateStay();
 }
 
-void CritterCl::DeleteAllItems()
+void CritterView::DeleteAllItems()
 {
     while( !InvItems.empty() )
         DeleteItem( *InvItems.begin(), false );
 }
 
-ItemCl* CritterCl::GetItem( uint item_id )
+ItemView* CritterView::GetItem( uint item_id )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        ItemCl* item = *it;
+        ItemView* item = *it;
         if( item->GetId() == item_id )
             return item;
     }
     return nullptr;
 }
 
-ItemCl* CritterCl::GetItemByPid( hash item_pid )
+ItemView* CritterView::GetItemByPid( hash item_pid )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
@@ -191,7 +190,7 @@ ItemCl* CritterCl::GetItemByPid( hash item_pid )
     return nullptr;
 }
 
-ItemCl* CritterCl::GetItemByPidInvPriority( hash item_pid )
+ItemView* CritterView::GetItemByPidInvPriority( hash item_pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     if( !proto_item )
@@ -201,17 +200,17 @@ ItemCl* CritterCl::GetItemByPidInvPriority( hash item_pid )
     {
         for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         {
-            ItemCl* item = *it;
+            ItemView* item = *it;
             if( item->GetProtoId() == item_pid )
                 return item;
         }
     }
     else
     {
-        ItemCl* another_slot = nullptr;
+        ItemView* another_slot = nullptr;
         for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         {
-            ItemCl* item = *it;
+            ItemView* item = *it;
             if( item->GetProtoId() == item_pid )
             {
                 if( !item->GetCritSlot() )
@@ -224,18 +223,18 @@ ItemCl* CritterCl::GetItemByPidInvPriority( hash item_pid )
     return nullptr;
 }
 
-ItemCl* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
+ItemView* CritterView::GetItemByPidSlot( hash item_pid, int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        ItemCl* item = *it;
+        ItemView* item = *it;
         if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
             return item;
     }
     return nullptr;
 }
 
-ItemCl* CritterCl::GetItemSlot( int slot )
+ItemView* CritterView::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetCritSlot() == slot )
@@ -243,17 +242,17 @@ ItemCl* CritterCl::GetItemSlot( int slot )
     return nullptr;
 }
 
-void CritterCl::GetItemsSlot( int slot, ItemClVec& items )
+void CritterView::GetItemsSlot( int slot, ItemViewVec& items )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        ItemCl* item = *it;
+        ItemView* item = *it;
         if( slot == -1 || item->GetCritSlot() == slot )
             items.push_back( item );
     }
 }
 
-uint CritterCl::CountItemPid( hash item_pid )
+uint CritterView::CountItemPid( hash item_pid )
 {
     uint result = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
@@ -262,12 +261,12 @@ uint CritterCl::CountItemPid( hash item_pid )
     return result;
 }
 
-bool CritterCl::IsCombatMode()
+bool CritterView::IsCombatMode()
 {
     return IS_TIMEOUT( GetTimeoutBattle() );
 }
 
-bool CritterCl::CheckFind( int find_type )
+bool CritterView::CheckFind( int find_type )
 {
     if( IsNpc() )
     {
@@ -285,14 +284,14 @@ bool CritterCl::CheckFind( int find_type )
            ( IsDead() && FLAG( find_type, FIND_DEAD ) );
 }
 
-uint CritterCl::GetAttackDist()
+uint CritterView::GetAttackDist()
 {
     uint dist = 0;
     Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist );
     return dist;
 }
 
-void CritterCl::DrawStay( Rect r )
+void CritterView::DrawStay( Rect r )
 {
     if( Timer::FastTick() - staySprTick > 500 )
     {
@@ -323,12 +322,12 @@ void CritterCl::DrawStay( Rect r )
     }
 }
 
-bool CritterCl::IsLastHexes()
+bool CritterView::IsLastHexes()
 {
     return !LastHexX.empty() && !LastHexY.empty();
 }
 
-void CritterCl::FixLastHexes()
+void CritterView::FixLastHexes()
 {
     if( IsLastHexes() && LastHexX[ LastHexX.size() - 1 ] == GetHexX() && LastHexY[ LastHexY.size() - 1 ] == GetHexY() )
         return;
@@ -336,21 +335,21 @@ void CritterCl::FixLastHexes()
     LastHexY.push_back( GetHexY() );
 }
 
-ushort CritterCl::PopLastHexX()
+ushort CritterView::PopLastHexX()
 {
     ushort hx = LastHexX[ LastHexX.size() - 1 ];
     LastHexX.pop_back();
     return hx;
 }
 
-ushort CritterCl::PopLastHexY()
+ushort CritterView::PopLastHexY()
 {
     ushort hy = LastHexY[ LastHexY.size() - 1 ];
     LastHexY.pop_back();
     return hy;
 }
 
-void CritterCl::Move( int dir )
+void CritterView::Move( int dir )
 {
     if( dir < 0 || dir >= DIRS_COUNT || GetIsNoRotate() )
         dir = 0;
@@ -496,7 +495,7 @@ void CritterCl::Move( int dir )
     }
 }
 
-void CritterCl::Action( int action, int action_ext, ItemCl* item, bool local_call /* = true */ )
+void CritterView::Action( int action, int action_ext, ItemView* item, bool local_call /* = true */ )
 {
     Script::RaiseInternalEvent( ClientFunctions.CritterAction, local_call, this, action, action_ext, item );
 
@@ -544,7 +543,7 @@ void CritterCl::Action( int action, int action_ext, ItemCl* item, bool local_cal
         AnimateStay();
 }
 
-void CritterCl::NextAnim( bool erase_front )
+void CritterView::NextAnim( bool erase_front )
 {
     if( animSequence.empty() )
         return;
@@ -582,7 +581,7 @@ void CritterCl::NextAnim( bool erase_front )
     }
 }
 
-void CritterCl::Animate( uint anim1, uint anim2, ItemCl* item )
+void CritterView::Animate( uint anim1, uint anim2, ItemView* item )
 {
     uchar dir = GetDir();
     if( !anim1 )
@@ -625,7 +624,7 @@ void CritterCl::Animate( uint anim1, uint anim2, ItemCl* item )
         NextAnim( false );
 }
 
-void CritterCl::AnimateStay()
+void CritterView::AnimateStay()
 {
     uint anim1 = GetAnim1();
     uint anim2 = GetAnim2();
@@ -683,7 +682,7 @@ void CritterCl::AnimateStay()
     }
 }
 
-bool CritterCl::IsWalkAnim()
+bool CritterView::IsWalkAnim()
 {
     if( animSequence.size() )
     {
@@ -693,41 +692,41 @@ bool CritterCl::IsWalkAnim()
     return false;
 }
 
-void CritterCl::ClearAnim()
+void CritterView::ClearAnim()
 {
     for( uint i = 0, j = (uint) animSequence.size(); i < j; i++ )
         SAFEREL( animSequence[ i ].ActiveItem );
     animSequence.clear();
 }
 
-bool CritterCl::IsHaveLightSources()
+bool CritterView::IsHaveLightSources()
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        ItemCl* item = *it;
+        ItemView* item = *it;
         if( item->GetIsLight() )
             return true;
     }
     return false;
 }
 
-void CritterCl::TickStart( uint ms )
+void CritterView::TickStart( uint ms )
 {
     TickCount = ms;
     StartTick = Timer::GameTick();
 }
 
-void CritterCl::TickNull()
+void CritterView::TickNull()
 {
     TickCount = 0;
 }
 
-bool CritterCl::IsFree()
+bool CritterView::IsFree()
 {
     return Timer::GameTick() - StartTick >= TickCount;
 }
 
-uint CritterCl::GetAnim1()
+uint CritterView::GetAnim1()
 {
     switch( GetCond() )
     {
@@ -743,7 +742,7 @@ uint CritterCl::GetAnim1()
     return ANIM1_UNARMED;
 }
 
-uint CritterCl::GetAnim2()
+uint CritterView::GetAnim2()
 {
     switch( GetCond() )
     {
@@ -759,12 +758,12 @@ uint CritterCl::GetAnim2()
     return ANIM2_IDLE;
 }
 
-void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemCl* item )
+void CritterView::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item )
 {
     Script::RaiseInternalEvent( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, animate_stay, this, anim1, anim2, item );
 }
 
-int* CritterCl::GetLayers3dData()
+int* CritterView::GetLayers3dData()
 {
     CScriptArray* layers = GetAnim3dLayer();
     if( layers->GetSize() == LAYERS3D_COUNT )
@@ -775,7 +774,7 @@ int* CritterCl::GetLayers3dData()
     return anim3dLayers;
 }
 
-bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
+bool CritterView::IsAnimAviable( uint anim1, uint anim2 )
 {
     if( !anim1 )
         anim1 = GetAnim1();
@@ -786,7 +785,7 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
     return ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() ) != nullptr;
 }
 
-void CritterCl::RefreshAnim()
+void CritterView::RefreshAnim()
 {
     // Release previous
     SprMngr.FreePure3dAnimation( Anim3d );
@@ -822,7 +821,7 @@ void CritterCl::RefreshAnim()
     SprMngr.PopAtlasType();
 }
 
-void CritterCl::ChangeDir( uchar dir, bool animate /* = true */ )
+void CritterView::ChangeDir( uchar dir, bool animate /* = true */ )
 {
     if( dir >= DIRS_COUNT || GetIsNoRotate() )
         dir = 0;
@@ -835,7 +834,7 @@ void CritterCl::ChangeDir( uchar dir, bool animate /* = true */ )
         AnimateStay();
 }
 
-void CritterCl::Process()
+void CritterView::Process()
 {
     // Fading
     if( fadingEnable == true )
@@ -957,12 +956,12 @@ void CritterCl::Process()
     }
 }
 
-void CritterCl::ChangeOffs( short change_ox, short change_oy, bool move_text )
+void CritterView::ChangeOffs( short change_ox, short change_oy, bool move_text )
 {
     SetOffs( SprOx - OxExtI + change_ox, SprOy - OyExtI + change_oy, move_text );
 }
 
-void CritterCl::SetOffs( short set_ox, short set_oy, bool move_text )
+void CritterView::SetOffs( short set_ox, short set_oy, bool move_text )
 {
     SprOx = set_ox + OxExtI;
     SprOy = set_oy + OyExtI;
@@ -980,7 +979,7 @@ void CritterCl::SetOffs( short set_ox, short set_oy, bool move_text )
     }
 }
 
-void CritterCl::SetSprRect()
+void CritterView::SetSprRect()
 {
     if( SprDrawValid )
     {
@@ -996,14 +995,14 @@ void CritterCl::SetSprRect()
     }
 }
 
-Rect CritterCl::GetTextRect()
+Rect CritterView::GetTextRect()
 {
     if( SprDrawValid )
         return textRect;
     return Rect();
 }
 
-void CritterCl::AddOffsExt( short ox, short oy )
+void CritterView::AddOffsExt( short ox, short oy )
 {
     SprOx -= OxExtI;
     SprOy -= OyExtI;
@@ -1020,14 +1019,14 @@ void CritterCl::AddOffsExt( short ox, short oy )
     SetOffs( SprOx, SprOy, true );
 }
 
-void CritterCl::GetWalkHexOffsets( int dir, int& ox, int& oy )
+void CritterView::GetWalkHexOffsets( int dir, int& ox, int& oy )
 {
     int hx = 1, hy = 1;
     MoveHexByDirUnsafe( hx, hy, dir );
     GetHexInterval( hx, hy, 1, 1, ox, oy );
 }
 
-void CritterCl::SetText( const char* str, uint color, uint text_delay )
+void CritterView::SetText( const char* str, uint color, uint text_delay )
 {
     tickStartText = Timer::GameTick();
     strTextOnHead = str;
@@ -1035,7 +1034,7 @@ void CritterCl::SetText( const char* str, uint color, uint text_delay )
     textOnHeadColor = color;
 }
 
-void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
+void CritterView::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
 {
     nameVisible = false;
 
@@ -1069,7 +1068,7 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
     y += 70 - h;
 }
 
-void CritterCl::DrawTextOnHead()
+void CritterView::DrawTextOnHead()
 {
     if( strTextOnHead.empty() )
     {

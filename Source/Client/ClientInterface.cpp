@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Client.h"
 
 // ==============================================================================================================================
@@ -74,7 +73,7 @@ void FOClient::AddMess( int mess_type, const string& msg, bool script_call )
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::FormatTags( string& text, CritterCl* player, CritterCl* npc, const string& lexems )
+void FOClient::FormatTags( string& text, CritterView* player, CritterView* npc, const string& lexems )
 {
     if( text == "error" )
     {

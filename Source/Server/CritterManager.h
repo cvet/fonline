@@ -12,10 +12,10 @@ public:
     bool RestoreNpc( uint id, hash proto_id, const DataBase::Document& doc );
     void DeleteNpc( Critter* cr );
 
-    void     GetCritters( CrVec& critters );
+    void     GetCritters( CritterVec& critters );
     void     GetNpcs( PcVec& npcs );
     void     GetClients( ClVec& players, bool on_global_map = false );
-    void     GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CrVec& critters );
+    void     GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters );
     Critter* GetCritter( uint crid );
     Client*  GetPlayer( uint crid );
     Client*  GetPlayer( const char* name );

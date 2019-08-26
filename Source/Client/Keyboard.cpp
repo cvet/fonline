@@ -1,4 +1,5 @@
 #include "Common.h"
+#include "SpriteManager.h"
 #include <strstream>
 
 static uchar  KeysMap[ 0x200 ] = { 0 };
@@ -9,7 +10,6 @@ static uchar  KeysMapUser[ 0x100 ] = { 0 };
     struct name ## _INIT { name ## _INIT() { KeysMap[ code ] = index; KeysMapRevert[ index ] = code; } } name ## _INIT_;
 
 #include "Keyboard.h"
-#include "SpriteManager.h"
 
 namespace Keyb
 {

@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Item.h"
 #include "ProtoManager.h"
 #include "Script.h"

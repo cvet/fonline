@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Script.h"
 #include "Text.h"
 #include "FileManager.h"

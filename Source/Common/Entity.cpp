@@ -1,14 +1,15 @@
 #include "Entity.h"
+
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"
 # include "Critter.h"
 # include "Item.h"
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-# include "MapCl.h"
-# include "CritterCl.h"
-# include "ItemCl.h"
-# include "ItemHex.h"
+# include "MapView.h"
+# include "CritterView.h"
+# include "ItemView.h"
+# include "ItemHexView.h"
 #endif
 
 ProtoEntity::ProtoEntity( hash proto_id, EntityType type, PropertyRegistrator* registrator ): Entity( 0, type, registrator, nullptr ), ProtoId( proto_id )
@@ -79,15 +80,15 @@ EntityVec Entity::GetChildren() const
     }
     #endif
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    if( Type == EntityType::CritterCl )
+    if( Type == EntityType::CritterView )
     {
-        CritterCl* cr = (CritterCl*) this;
+        CritterView* cr = (CritterView*) this;
         for( auto& item : cr->InvItems )
             children.push_back( item );
     }
-    else if( Type == EntityType::ItemCl || Type == EntityType::ItemHex )
+    else if( Type == EntityType::ItemView || Type == EntityType::ItemHexView )
     {
-        ItemCl* cont = (ItemCl*) this;
+        ItemView* cont = (ItemView*) this;
         if( cont->ChildItems )
         {
             for( auto& item :* cont->ChildItems )
@@ -134,16 +135,16 @@ void Entity::Release() const
             delete (Map*) this;
         #endif
         #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-        else if( Type == EntityType::ItemCl )
-            delete (ItemCl*) this;
-        else if( Type == EntityType::CritterCl )
-            delete (CritterCl*) this;
-        else if( Type == EntityType::ItemHex )
-            delete (ItemHex*) this;
-        else if( Type == EntityType::LocationCl )
-            delete (LocationCl*) this;
-        else if( Type == EntityType::MapCl )
-            delete (MapCl*) this;
+        else if( Type == EntityType::ItemView )
+            delete (ItemView*) this;
+        else if( Type == EntityType::ItemHexView )
+            delete (ItemHexView*) this;
+        else if( Type == EntityType::CritterView )
+            delete (CritterView*) this;
+        else if( Type == EntityType::MapView )
+            delete (MapView*) this;
+        else if( Type == EntityType::LocationView )
+            delete (LocationView*) this;
         #endif
         else
             RUNTIME_ASSERT( !"Unreachable place" );

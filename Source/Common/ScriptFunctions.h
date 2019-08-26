@@ -31,11 +31,11 @@ static T* EntityUpCast( Entity* a )
     CHECK_CAST( Item, EntityType::Item );
     #endif
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    CHECK_CAST( LocationCl, EntityType::LocationCl );
-    CHECK_CAST( MapCl, EntityType::MapCl );
-    CHECK_CAST( CritterCl, EntityType::CritterCl );
-    CHECK_CAST( ItemCl, EntityType::ItemCl );
-    CHECK_CAST( ItemCl, EntityType::ItemHex );
+    CHECK_CAST( LocationView, EntityType::LocationView );
+    CHECK_CAST( MapView, EntityType::MapView );
+    CHECK_CAST( CritterView, EntityType::CritterView );
+    CHECK_CAST( ItemView, EntityType::ItemView );
+    CHECK_CAST( ItemView, EntityType::ItemHexView );
     #endif
     #undef CHECK_CAST
     return nullptr;

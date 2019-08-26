@@ -556,11 +556,10 @@ set( CLIENT_SOURCE
 	Client/ClientInterface.cpp # Remove
 	Client/SoundManager.cpp Client/SoundManager.h
 
-	# Cl to View?
-	Client/MapCl.cpp Client/MapCl.h
-	Client/CritterCl.cpp Client/CritterCl.h
-	Client/ItemCl.cpp Client/ItemCl.h
-	Client/ItemHex.cpp Client/ItemHex.h # Merge with ItemCl or ItemHexView
+	Client/MapView.cpp Client/MapView.h
+	Client/CritterView.cpp Client/CritterView.h
+	Client/ItemView.cpp Client/ItemView.h
+	Client/ItemHexView.cpp Client/ItemHexView.h
 
 	Client/Keyboard.cpp Client/Keyboard.h
 	Client/HexManager.cpp Client/HexManager.h
@@ -581,7 +580,7 @@ set( CLIENT_SOURCE
 set( EDITOR_SOURCE
 	${CLIENT_SOURCE}
 	${SERVER_SOURCE}
-	Mapper/Mapper.cpp Mapper/Mapper.h
+	Client/Mapper.cpp Client/Mapper.h
 )
 list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
@@ -589,7 +588,6 @@ list( REMOVE_DUPLICATES EDITOR_SOURCE )
 include_directories( "Common" )
 include_directories( "Server" )
 include_directories( "Client" )
-include_directories( "Mapper" )
 include_directories( "ThirdParty" )
 include_directories( "Applications" )
 

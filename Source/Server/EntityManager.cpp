@@ -121,7 +121,7 @@ Critter* EntityManager::GetCritter( uint id )
     return nullptr;
 }
 
-void EntityManager::GetCritters( CrVec& critters )
+void EntityManager::GetCritters( CritterVec& critters )
 {
     critters.reserve( critters.size() + entitiesCount[ (int) EntityType::Npc ] + entitiesCount[ (int) EntityType::Client ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
@@ -179,7 +179,7 @@ Location* EntityManager::GetLocationByPid( hash pid, uint skip_count )
     return nullptr;
 }
 
-void EntityManager::GetLocations( LocVec& locs )
+void EntityManager::GetLocations( LocationVec& locs )
 {
     locs.reserve( locs.size() + entitiesCount[ (int) EntityType::Location ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
@@ -328,7 +328,7 @@ bool EntityManager::LinkMaps()
     }
 
     // Verify linkage result
-    LocVec locs;
+    LocationVec locs;
     MapMngr.GetLocations( locs );
     for( auto& loc : locs )
     {
@@ -352,10 +352,10 @@ bool EntityManager::LinkNpc()
 {
     WriteLog( "Link npc...\n" );
 
-    int   errors = 0;
-    CrVec critters;
+    int        errors = 0;
+    CritterVec critters;
     CrMngr.GetCritters( critters );
-    CrVec critters_groups;
+    CritterVec critters_groups;
     critters_groups.reserve( critters.size() );
 
     // Move all critters to local maps and global map leaders
@@ -409,10 +409,10 @@ bool EntityManager::LinkItems()
 {
     WriteLog( "Link items...\n" );
 
-    int     errors = 0;
-    CrVec   critters;
+    int        errors = 0;
+    CritterVec critters;
     CrMngr.GetCritters( critters );
-    ItemVec game_items;
+    ItemVec    game_items;
     ItemMngr.GetGameItems( game_items );
     for( auto& item : game_items )
     {
@@ -490,7 +490,7 @@ void EntityManager::InitAfterLoad()
     WriteLog( "Init entities after load...\n" );
 
     // Process visible
-    CrVec critters;
+    CritterVec critters;
     CrMngr.GetCritters( critters );
     for( auto& cr : critters )
     {

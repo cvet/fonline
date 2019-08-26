@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Mapper.h"
 #include "Script.h"
 #include "ResourceConverter.h"
@@ -7,12 +6,12 @@
 #include "SHA/sha2.h"
 #include <time.h>
 
-bool        FOMapper::SpritesCanDraw = false;
-FOMapper*   FOMapper::Self = nullptr;
-string      FOMapper::ServerWritePath;
-string      FOMapper::ClientWritePath;
-MapCl*      FOMapper::SScriptFunc::ClientCurMap = nullptr;
-LocationCl* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
+bool          FOMapper::SpritesCanDraw = false;
+FOMapper*     FOMapper::Self = nullptr;
+string        FOMapper::ServerWritePath;
+string        FOMapper::ClientWritePath;
+MapView*      FOMapper::SScriptFunc::ClientCurMap = nullptr;
+LocationView* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
 
 FOMapper::FOMapper()
 {
@@ -257,7 +256,7 @@ bool FOMapper::Init()
                 hexY = pmap->GetWorkHexY();
             HexMngr.FindSetCenter( hexX, hexY );
 
-            MapCl* map = new MapCl( 0, pmap );
+            MapView* map = new MapView( 0, pmap );
             ActiveMap = map;
             LoadedMaps.push_back( map );
             RunMapLoadScript( map );
@@ -1349,7 +1348,7 @@ void FOMapper::MainLoop()
     {
         for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
         {
-            CritterCl* cr = it->second;
+            CritterView* cr = it->second;
             cr->Process();
 
             if( cr->IsNeedMove() )
@@ -1389,7 +1388,7 @@ void FOMapper::MainLoop()
         {
             for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
             {
-                CritterCl* cr = it->second;
+                CritterView* cr = it->second;
                 if( cr->SprDrawValid )
                 {
                     if( DrawCrExtInfo == 1 )
@@ -1780,7 +1779,7 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            hash          model_name = proto->Props.GetPropValue< hash >( CritterCl::PropertyModelName );
+            hash          model_name = proto->Props.GetPropValue< hash >( CritterView::PropertyModelName );
             uint          spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
@@ -1810,8 +1809,8 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            RUNTIME_ASSERT( children[ i ]->Type == EntityType::ItemCl );
-            ItemCl*    child = (ItemCl*) children[ i ];
+            RUNTIME_ASSERT( children[ i ]->Type == EntityType::ItemView );
+            ItemView*  child = (ItemView*) children[ i ];
 
             AnyFrames* anim = ResMngr.GetInvAnim( child->GetPicInv() );
             if( !anim )
@@ -1835,7 +1834,7 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            MapCl* map = LoadedMaps[ i ];
+            MapView* map = LoadedMaps[ i ];
             SprMngr.DrawStr( Rect( x, y, x + w, y + h ), _str( " '{}'", map->GetName() ), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
@@ -1917,13 +1916,13 @@ void FOMapper::ObjDraw()
     if( !entity )
         return;
 
-    ItemCl*    item = ( entity->Type == EntityType::ItemCl || entity->Type == EntityType::ItemHex ? (ItemCl*) entity : nullptr );
-    CritterCl* cr = ( entity->Type == EntityType::CritterCl ? (CritterCl*) entity : nullptr );
-    Rect       r = Rect( ObjWWork, ObjX, ObjY );
-    int        x = r.L;
-    int        y = r.T;
-    int        w = r.W();
-    int        h = r.H();
+    ItemView*    item = ( entity->Type == EntityType::ItemView || entity->Type == EntityType::ItemHexView ? (ItemView*) entity : nullptr );
+    CritterView* cr = ( entity->Type == EntityType::CritterView ? (CritterView*) entity : nullptr );
+    Rect         r = Rect( ObjWWork, ObjX, ObjY );
+    int          x = r.L;
+    int          y = r.T;
+    int          w = r.W();
+    int          h = r.H();
 
     SprMngr.DrawSprite( ObjWMainPic, ObjX, ObjY );
     if( ObjToAll )
@@ -2043,7 +2042,7 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
 void FOMapper::ObjKeyDownApply( Entity* entity )
 {
     const int start_line = 3;
-    RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
+    RUNTIME_ASSERT( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView );
     if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() )
     {
         Property* prop = ShowProps[ ObjCurLine - start_line ];
@@ -2051,10 +2050,10 @@ void FOMapper::ObjKeyDownApply( Entity* entity )
         {
             if( entity->Props.LoadPropertyFromText( prop, ObjCurLineValue.c_str() ) )
             {
-                if( entity->Type == EntityType::ItemHex && ( prop == ItemHex::PropertyOffsetX || prop == ItemHex::PropertyOffsetY ) )
-                    ( (ItemHex*) entity )->SetAnimOffs();
-                if( entity->Type == EntityType::ItemHex && prop == ItemHex::PropertyPicMap )
-                    ( (ItemHex*) entity )->RefreshAnim();
+                if( entity->Type == EntityType::ItemHexView && ( prop == ItemHexView::PropertyOffsetX || prop == ItemHexView::PropertyOffsetY ) )
+                    ( (ItemHexView*) entity )->SetAnimOffs();
+                if( entity->Type == EntityType::ItemHexView && prop == ItemHexView::PropertyPicMap )
+                    ( (ItemHexView*) entity )->RefreshAnim();
             }
             else
             {
@@ -2076,7 +2075,7 @@ void FOMapper::SelectEntityProp( int line )
     Entity* entity = GetInspectorEntity();
     if( entity )
     {
-        RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
+        RUNTIME_ASSERT( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView );
         if( ObjCurLine - start_line >= (int) ShowProps.size() )
             ObjCurLine = (int) ShowProps.size() + start_line - 1;
         if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() && ShowProps[ ObjCurLine - start_line ] )
@@ -2179,11 +2178,11 @@ void FOMapper::IntLMouseDown()
             {
                 for( auto& entity : SelectedEntities )
                 {
-                    if( entity->Type == EntityType::CritterCl )
+                    if( entity->Type == EntityType::CritterView )
                     {
-                        CritterCl* cr = (CritterCl*) entity;
-                        bool       is_run = ( cr->MoveSteps.size() && cr->MoveSteps[ cr->MoveSteps.size() - 1 ].first == SelectHX1 &&
-                                              cr->MoveSteps[ cr->MoveSteps.size() - 1 ].second == SelectHY1 );
+                        CritterView* cr = (CritterView*) entity;
+                        bool         is_run = ( cr->MoveSteps.size() && cr->MoveSteps[ cr->MoveSteps.size() - 1 ].first == SelectHX1 &&
+                                                cr->MoveSteps[ cr->MoveSteps.size() - 1 ].second == SelectHY1 );
 
                         cr->MoveSteps.clear();
                         if( !is_run && cr->GetIsNoWalk() )
@@ -2336,20 +2335,20 @@ void FOMapper::IntLMouseDown()
             if( !children.empty() )
             {
                 if( ind < (int) children.size() )
-                    InContItem = (ItemCl*) children[ ind ];
+                    InContItem = (ItemView*) children[ ind ];
 
                 // Delete child
                 if( Keyb::AltDwn && InContItem )
                 {
                     if( InContItem->GetAccessory() == ITEM_ACCESSORY_CRITTER )
                     {
-                        CritterCl* owner = HexMngr.GetCritter( InContItem->GetCritId() );
+                        CritterView* owner = HexMngr.GetCritter( InContItem->GetCritId() );
                         RUNTIME_ASSERT( owner );
                         owner->DeleteItem( InContItem, true );
                     }
                     else if( InContItem->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
                     {
-                        ItemCl* owner = HexMngr.GetItemById( InContItem->GetContainerId() );
+                        ItemView* owner = HexMngr.GetItemById( InContItem->GetContainerId() );
                         RUNTIME_ASSERT( owner );
                         owner->ContEraseItem( InContItem );
                         InContItem->Release();
@@ -2366,18 +2365,18 @@ void FOMapper::IntLMouseDown()
                     SelectAdd( tmp );
                 }
                 // Change child slot
-                else if( Keyb::ShiftDwn && InContItem && SelectedEntities[ 0 ]->Type == EntityType::CritterCl )
+                else if( Keyb::ShiftDwn && InContItem && SelectedEntities[ 0 ]->Type == EntityType::CritterView )
                 {
-                    CritterCl* cr = (CritterCl*) SelectedEntities[ 0 ];
+                    CritterView* cr = (CritterView*) SelectedEntities[ 0 ];
 
-                    int        to_slot = InContItem->GetCritSlot() + 1;
-                    while( !CritterCl::SlotEnabled[ to_slot % 256 ] )
+                    int          to_slot = InContItem->GetCritSlot() + 1;
+                    while( !CritterView::SlotEnabled[ to_slot % 256 ] )
                         to_slot++;
                     to_slot %= 256;
 
                     for( auto& child : cr->GetChildren() )
-                        if( ( (ItemCl*) child )->GetCritSlot() == to_slot )
-                            ( (ItemCl*) child )->SetCritSlot( 0 );
+                        if( ( (ItemView*) child )->GetCritSlot() == to_slot )
+                            ( (ItemView*) child )->SetCritSlot( 0 );
 
                     InContItem->SetCritSlot( to_slot );
 
@@ -2619,8 +2618,8 @@ void FOMapper::IntLMouseUp()
                     HexMngr.GetHexesRect( Rect( SelectHX1, SelectHY1, SelectHX2, SelectHY2 ), h );
                 }
 
-                ItemHexVec items;
-                CrClVec    critters;
+                ItemHexViewVec items;
+                CritterViewVec critters;
                 for( uint i = 0, j = (uint) h.size(); i < j; i++ )
                 {
                     ushort hx = h[ i ].first;
@@ -2663,8 +2662,8 @@ void FOMapper::IntLMouseUp()
             }
             else
             {
-                ItemHex*   item;
-                CritterCl* cr;
+                ItemHexView* item;
+                CritterView* cr;
                 HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
                 if( item )
@@ -2883,9 +2882,9 @@ void FOMapper::MoveEntity( Entity* entity, ushort hx, ushort hy )
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
         return;
 
-    if( entity->Type == EntityType::CritterCl )
+    if( entity->Type == EntityType::CritterView )
     {
-        CritterCl* cr = (CritterCl*) entity;
+        CritterView* cr = (CritterView*) entity;
         if( cr->IsDead() || !HexMngr.GetField( hx, hy ).Crit )
         {
             HexMngr.RemoveCritter( cr );
@@ -2894,9 +2893,9 @@ void FOMapper::MoveEntity( Entity* entity, ushort hx, ushort hy )
             HexMngr.SetCritter( cr );
         }
     }
-    else if( entity->Type == EntityType::ItemHex )
+    else if( entity->Type == EntityType::ItemHexView )
     {
-        ItemHex* item = (ItemHex*) entity;
+        ItemHexView* item = (ItemHexView*) entity;
         HexMngr.DeleteItem( item, false );
         item->SetHexX( hx );
         item->SetHexY( hy );
@@ -2910,9 +2909,9 @@ void FOMapper::DeleteEntity( Entity* entity )
     if( it != SelectedEntities.end() )
         SelectedEntities.erase( it );
 
-    if( entity->Type == EntityType::CritterCl )
+    if( entity->Type == EntityType::CritterView )
         HexMngr.DeleteCritter( entity->Id );
-    else if( entity->Type == EntityType::ItemHex )
+    else if( entity->Type == EntityType::ItemHexView )
         HexMngr.FinishItem( entity->Id, false );
 }
 
@@ -2921,10 +2920,10 @@ void FOMapper::SelectClear()
     // Clear map objects
     for( auto& entity : SelectedEntities )
     {
-        if( entity->Type == EntityType::ItemHex )
-            ( (ItemHex*) entity )->RestoreAlpha();
-        else if( entity->Type == EntityType::CritterCl )
-            ( (CritterCl*) entity )->Alpha = 0xFF;
+        if( entity->Type == EntityType::ItemHexView )
+            ( (ItemHexView*) entity )->RestoreAlpha();
+        else if( entity->Type == EntityType::CritterView )
+            ( (CritterView*) entity )->Alpha = 0xFF;
     }
     SelectedEntities.clear();
 
@@ -2934,13 +2933,13 @@ void FOMapper::SelectClear()
     SelectedTile.clear();
 }
 
-void FOMapper::SelectAddItem( ItemHex* item )
+void FOMapper::SelectAddItem( ItemHexView* item )
 {
     RUNTIME_ASSERT( item );
     SelectAdd( item );
 }
 
-void FOMapper::SelectAddCrit( CritterCl* npc )
+void FOMapper::SelectAddCrit( CritterView* npc )
 {
     RUNTIME_ASSERT( npc );
     SelectAdd( npc );
@@ -2976,10 +2975,10 @@ void FOMapper::SelectAdd( Entity* entity )
     {
         SelectedEntities.push_back( entity );
 
-        if( entity->Type == EntityType::CritterCl )
-            ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;
-        if( entity->Type == EntityType::ItemHex )
-            ( (ItemHex*) entity )->Alpha = SELECT_ALPHA;
+        if( entity->Type == EntityType::CritterView )
+            ( (CritterView*) entity )->Alpha = SELECT_ALPHA;
+        if( entity->Type == EntityType::ItemHexView )
+            ( (ItemHexView*) entity )->Alpha = SELECT_ALPHA;
     }
 }
 
@@ -2990,10 +2989,10 @@ void FOMapper::SelectErase( Entity* entity )
     {
         SelectedEntities.erase( it );
 
-        if( entity->Type == EntityType::CritterCl )
-            ( (CritterCl*) entity )->Alpha = 0xFF;
-        if( entity->Type == EntityType::ItemHex )
-            ( (ItemHex*) entity )->RestoreAlpha();
+        if( entity->Type == EntityType::CritterView )
+            ( (CritterView*) entity )->Alpha = 0xFF;
+        if( entity->Type == EntityType::ItemHexView )
+            ( (ItemHexView*) entity )->RestoreAlpha();
     }
 }
 
@@ -3012,7 +3011,7 @@ void FOMapper::SelectAll()
         }
     }
 
-    ItemHexVec& items = HexMngr.GetItems();
+    ItemHexViewVec& items = HexMngr.GetItems();
     for( uint i = 0; i < items.size(); i++ )
     {
         if( HexMngr.IsIgnorePid( items[ i ]->GetProtoId() ) )
@@ -3028,7 +3027,7 @@ void FOMapper::SelectAll()
 
     if( IsSelectCrit && GameOpt.ShowCrit )
     {
-        CrClMap& crits = HexMngr.GetCritters();
+        CritterViewMap& crits = HexMngr.GetCritters();
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
             SelectAddCrit( it->second );
     }
@@ -3065,7 +3064,7 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
     // Setup hex moving switcher
     int switcher = 0;
     if( !SelectedEntities.empty() )
-        switcher = ( SelectedEntities[ 0 ]->Type == EntityType::CritterCl ? ( (CritterCl*) SelectedEntities[ 0 ] )->GetHexX() : ( (ItemHex*) SelectedEntities[ 0 ] )->GetHexX() ) % 2;
+        switcher = ( SelectedEntities[ 0 ]->Type == EntityType::CritterView ? ( (CritterView*) SelectedEntities[ 0 ] )->GetHexX() : ( (ItemHexView*) SelectedEntities[ 0 ] )->GetHexX() ) % 2;
     else if( !SelectedTile.empty() )
         switcher = SelectedTile[ 0 ].HexX % 2;
 
@@ -3092,8 +3091,8 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
         // Objects
         for( auto& entity : SelectedEntities )
         {
-            int hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-            int hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+            int hx = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexX() : ( (ItemHexView*) entity )->GetHexX() );
+            int hy = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexY() : ( (ItemHexView*) entity )->GetHexY() );
             if( GameOpt.MapHexagonal )
             {
                 int sw = switcher;
@@ -3140,12 +3139,12 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
     {
         if( !hex_move )
         {
-            if( entity->Type != EntityType::ItemHex )
+            if( entity->Type != EntityType::ItemHexView )
                 continue;
 
-            ItemHex* item = (ItemHex*) entity;
-            int      ox = item->GetOffsetX() + offs_x;
-            int      oy = item->GetOffsetY() + offs_y;
+            ItemHexView* item = (ItemHexView*) entity;
+            int          ox = item->GetOffsetX() + offs_x;
+            int          oy = item->GetOffsetY() + offs_y;
             ox = CLAMP( ox, -MAX_MOVE_OX, MAX_MOVE_OX );
             oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
             if( Keyb::AltDwn )
@@ -3157,8 +3156,8 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
         }
         else
         {
-            int hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-            int hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+            int hx = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexX() : ( (ItemHexView*) entity )->GetHexX() );
+            int hy = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexY() : ( (ItemHexView*) entity )->GetHexY() );
             if( GameOpt.MapHexagonal )
             {
                 int sw = switcher;
@@ -3175,17 +3174,17 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
             hx = CLAMP( hx, 0, HexMngr.GetWidth() - 1 );
             hy = CLAMP( hy, 0, HexMngr.GetHeight() - 1 );
 
-            if( entity->Type == EntityType::ItemHex )
+            if( entity->Type == EntityType::ItemHexView )
             {
-                ItemHex* item = (ItemHex*) entity;
+                ItemHexView* item = (ItemHexView*) entity;
                 HexMngr.DeleteItem( item, false );
                 item->SetHexX( hx );
                 item->SetHexY( hy );
                 HexMngr.PushItem( item );
             }
-            else if( entity->Type == EntityType::CritterCl )
+            else if( entity->Type == EntityType::CritterView )
             {
-                CritterCl* cr = (CritterCl*) entity;
+                CritterView* cr = (CritterView*) entity;
                 HexMngr.RemoveCritter( cr );
                 cr->SetHexX( hx );
                 cr->SetHexY( hy );
@@ -3312,7 +3311,7 @@ void FOMapper::SelectDelete()
     CurMode = CUR_MODE_DEFAULT;
 }
 
-CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
+CritterView* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
 {
     RUNTIME_ASSERT( ActiveMap );
 
@@ -3327,7 +3326,7 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
 
     SelectClear();
 
-    CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto );
+    CritterView* cr = new CritterView( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto );
     cr->SetHexX( hx );
     cr->SetHexY( hy );
     cr->SetDir( NpcDir );
@@ -3343,7 +3342,7 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
     return cr;
 }
 
-ItemCl* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
+ItemView* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
 {
     RUNTIME_ASSERT( ActiveMap );
 
@@ -3361,14 +3360,14 @@ ItemCl* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         SelectClear();
 
     // Create
-    ItemCl* item;
+    ItemView* item;
     if( owner )
     {
-        item = new ItemCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto_item );
-        if( owner->Type == EntityType::CritterCl )
-            ( (CritterCl*) owner )->AddItem( item );
-        else if( owner->Type == EntityType::Item || owner->Type == EntityType::ItemHex )
-            ( (ItemCl*) owner )->ContSetItem( item );
+        item = new ItemView( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto_item );
+        if( owner->Type == EntityType::CritterView )
+            ( (CritterView*) owner )->AddItem( item );
+        else if( owner->Type == EntityType::Item || owner->Type == EntityType::ItemHexView )
+            ( (ItemView*) owner )->ContSetItem( item );
     }
     else
     {
@@ -3411,13 +3410,13 @@ Entity* FOMapper::CloneEntity( Entity* entity )
 {
     RUNTIME_ASSERT( ActiveMap );
 
-    int hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-    int hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+    int hx = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexX() : ( (ItemHexView*) entity )->GetHexX() );
+    int hy = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexY() : ( (ItemHexView*) entity )->GetHexY() );
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
         return nullptr;
 
     Entity* owner = nullptr;
-    if( entity->Type == EntityType::CritterCl )
+    if( entity->Type == EntityType::CritterView )
     {
         if( HexMngr.GetField( hx, hy ).Crit )
         {
@@ -3439,8 +3438,8 @@ Entity* FOMapper::CloneEntity( Entity* entity )
                 return nullptr;
         }
 
-        CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity->Proto );
-        cr->Props = ( (CritterCl*) entity )->Props;
+        CritterView* cr = new CritterView( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity->Proto );
+        cr->Props = ( (CritterView*) entity )->Props;
         cr->SetHexX( hx );
         cr->SetHexY( hy );
         cr->Init();
@@ -3448,10 +3447,10 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         SelectAdd( cr );
         owner = cr;
     }
-    else if( entity->Type == EntityType::ItemHex )
+    else if( entity->Type == EntityType::ItemHexView )
     {
-        uint     id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
-        ItemHex* item = HexMngr.GetItemById( id );
+        uint         id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
+        ItemHexView* item = HexMngr.GetItemById( id );
         SelectAdd( item );
         owner = item;
     }
@@ -3466,12 +3465,12 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         for( auto& from_child : from->GetChildren() )
         {
             RUNTIME_ASSERT( from_child->Type == EntityType::Item );
-            ItemCl* to_child = new ItemCl( --pmap->LastEntityId, (ProtoItem*) from_child->Proto );
+            ItemView* to_child = new ItemView( --pmap->LastEntityId, (ProtoItem*) from_child->Proto );
             to_child->Props = from_child->Props;
-            if( to->Type == EntityType::CritterCl )
-                ( (CritterCl*) to )->AddItem( to_child );
+            if( to->Type == EntityType::CritterView )
+                ( (CritterView*) to )->AddItem( to_child );
             else
-                ( (ItemCl*) to )->ContSetItem( to_child );
+                ( (ItemView*) to )->ContSetItem( to_child );
             add_entity_children( from_child, to_child );
         }
     };
@@ -3500,8 +3499,8 @@ void FOMapper::BufferCopy()
     // Add entities to buffer
     std::function< void(EntityBuf*, Entity*) > add_entity = [ &add_entity ] ( EntityBuf * entity_buf, Entity * entity )
     {
-        entity_buf->HexX = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-        entity_buf->HexY = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+        entity_buf->HexX = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexX() : ( (ItemHexView*) entity )->GetHexX() );
+        entity_buf->HexY = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexY() : ( (ItemHexView*) entity )->GetHexY() );
         entity_buf->Type = entity->Type;
         entity_buf->Proto = entity->Proto;
         entity_buf->Props = new Properties( entity->Props );
@@ -3563,7 +3562,7 @@ void FOMapper::BufferPaste( int, int )
         ushort  hy = entity_buf.HexY;
 
         Entity* owner = nullptr;
-        if( entity_buf.Type == EntityType::CritterCl )
+        if( entity_buf.Type == EntityType::CritterView )
         {
             if( HexMngr.GetField( hx, hy ).Crit )
             {
@@ -3585,7 +3584,7 @@ void FOMapper::BufferPaste( int, int )
                     continue;
             }
 
-            CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity_buf.Proto );
+            CritterView* cr = new CritterView( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity_buf.Proto );
             cr->Props = *entity_buf.Props;
             cr->SetHexX( hx );
             cr->SetHexY( hy );
@@ -3594,10 +3593,10 @@ void FOMapper::BufferPaste( int, int )
             SelectAdd( cr );
             owner = cr;
         }
-        else if( entity_buf.Type == EntityType::ItemHex )
+        else if( entity_buf.Type == EntityType::ItemHexView )
         {
-            uint     id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
-            ItemHex* item = HexMngr.GetItemById( id );
+            uint         id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
+            ItemHexView* item = HexMngr.GetItemById( id );
             item->Props = *entity_buf.Props;
             SelectAdd( item );
             owner = item;
@@ -3609,12 +3608,12 @@ void FOMapper::BufferPaste( int, int )
             for( auto& child_buf : entity_buf->Children )
             {
                 RUNTIME_ASSERT( child_buf->Type == EntityType::Item );
-                ItemCl* child = new ItemCl( --pmap->LastEntityId, (ProtoItem*) child_buf->Proto );
+                ItemView* child = new ItemView( --pmap->LastEntityId, (ProtoItem*) child_buf->Proto );
                 child->Props = *child_buf->Props;
-                if( entity->Type == EntityType::CritterCl )
-                    ( (CritterCl*) entity )->AddItem( child );
+                if( entity->Type == EntityType::CritterView )
+                    ( (CritterView*) entity )->AddItem( child );
                 else
-                    ( (ItemCl*) entity )->ContSetItem( child );
+                    ( (ItemView*) entity )->ContSetItem( child );
                 add_entity_children( child_buf, child );
             }
         };
@@ -3715,7 +3714,7 @@ void FOMapper::CurDraw()
         }
         else if( IsCritMode() && CurNpcProtos->size() )
         {
-            hash model_name = ( *CurNpcProtos )[ GetTabIndex() ]->Props.GetPropValue< hash >( CritterCl::PropertyModelName );
+            hash model_name = ( *CurNpcProtos )[ GetTabIndex() ]->Props.GetPropValue< hash >( CritterView::PropertyModelName );
             uint spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir );
             if( !spr_id )
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
@@ -3781,10 +3780,10 @@ void FOMapper::CurMMouseDown()
     {
         for( auto& entity : SelectedEntities )
         {
-            if( entity->Type == EntityType::CritterCl )
+            if( entity->Type == EntityType::CritterView )
             {
-                CritterCl* cr = (CritterCl*) entity;
-                int        dir = cr->GetDir() + 1;
+                CritterView* cr = (CritterView*) entity;
+                int          dir = cr->GetDir() + 1;
                 if( dir >= DIRS_COUNT )
                     dir = 0;
                 cr->ChangeDir( dir );
@@ -3966,7 +3965,7 @@ void FOMapper::ParseCommand( const string& command )
 
         HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
 
-        MapCl* map = new MapCl( 0, pmap );
+        MapView* map = new MapView( 0, pmap );
         ActiveMap = map;
         LoadedMaps.push_back( map );
 
@@ -4057,9 +4056,9 @@ void FOMapper::ParseCommand( const string& command )
         {
             for( auto& entity : SelectedEntities )
             {
-                if( entity->Type == EntityType::CritterCl )
+                if( entity->Type == EntityType::CritterView )
                 {
-                    CritterCl* cr = (CritterCl*) entity;
+                    CritterView* cr = (CritterView*) entity;
                     cr->ClearAnim();
                     for( uint j = 0; j < anims.size() / 2; j++ )
                         cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], nullptr );
@@ -4070,7 +4069,7 @@ void FOMapper::ParseCommand( const string& command )
         {
             for( auto& cr_kv : HexMngr.GetCritters() )
             {
-                CritterCl* cr = cr_kv.second;
+                CritterView* cr = cr_kv.second;
                 cr->ClearAnim();
                 for( uint j = 0; j < anims.size() / 2; j++ )
                     cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], nullptr );
@@ -4101,7 +4100,7 @@ void FOMapper::ParseCommand( const string& command )
             AddMess( "Create map success." );
             HexMngr.FindSetCenter( 150, 150 );
 
-            MapCl* map = new MapCl( 0, pmap );
+            MapView* map = new MapView( 0, pmap );
             ActiveMap = map;
             LoadedMaps.push_back( map );
         }
@@ -4320,24 +4319,24 @@ bool FOMapper::InitScriptSystem()
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     SAFEDEL( Globals );
     Globals = new GlobalVars();
-    CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
-    ItemCl::SetPropertyRegistrator( registrators[ 2 ] );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
-    MapCl::SetPropertyRegistrator( registrators[ 3 ] );
-    LocationCl::SetPropertyRegistrator( registrators[ 4 ] );
+    CritterView::SetPropertyRegistrator( registrators[ 1 ] );
+    ItemView::SetPropertyRegistrator( registrators[ 2 ] );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    ItemView::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    MapView::SetPropertyRegistrator( registrators[ 3 ] );
+    LocationView::SetPropertyRegistrator( registrators[ 4 ] );
 
     if( !Script::PostInitScriptSystem() )
     {
@@ -4366,13 +4365,13 @@ void FOMapper::RunStartScript()
     Script::RaiseInternalEvent( MapperFunctions.Start );
 }
 
-void FOMapper::RunMapLoadScript( MapCl* map )
+void FOMapper::RunMapLoadScript( MapView* map )
 {
     RUNTIME_ASSERT( map );
     Script::RaiseInternalEvent( MapperFunctions.MapLoad, map );
 }
 
-void FOMapper::RunMapSaveScript( MapCl* map )
+void FOMapper::RunMapSaveScript( MapView* map )
 {
     RUNTIME_ASSERT( map );
     Script::RaiseInternalEvent( MapperFunctions.MapSave, map );
@@ -4389,20 +4388,20 @@ void FOMapper::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, 
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    ItemCl* item = (ItemCl*) entity;
+    ItemView* item = (ItemView*) entity;
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
-        ItemHex* hex_item = (ItemHex*) item;
-        bool     rebuild_cache = false;
-        if( prop == ItemCl::PropertyIsColorize )
+        ItemHexView* hex_item = (ItemHexView*) item;
+        bool         rebuild_cache = false;
+        if( prop == ItemView::PropertyIsColorize )
             hex_item->RefreshAlpha();
-        else if( prop == ItemCl::PropertyIsBadItem )
+        else if( prop == ItemView::PropertyIsBadItem )
             hex_item->SetSprite( nullptr );
-        else if( prop == ItemCl::PropertyIsShootThru )
+        else if( prop == ItemView::PropertyIsShootThru )
             rebuild_cache = true;
-        else if( prop == ItemCl::PropertyIsLightThru )
+        else if( prop == ItemView::PropertyIsLightThru )
             Self->HexMngr.RebuildLight(), rebuild_cache = true;
-        else if( prop == ItemCl::PropertyIsNoBlock )
+        else if( prop == ItemView::PropertyIsNoBlock )
             rebuild_cache = true;
         if( rebuild_cache )
             Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
@@ -4419,11 +4418,11 @@ void FOMapper::OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_val
 
 void FOMapper::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    ItemCl* item = (ItemCl*) entity;
+    ItemView* item = (ItemView*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        ItemHex* hex_item = (ItemHex*) item;
+        ItemHexView* hex_item = (ItemHexView*) item;
         hex_item->RefreshAnim();
     }
 }
@@ -4432,11 +4431,11 @@ void FOMapper::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 {
     // OffsetX, OffsetY
 
-    ItemCl* item = (ItemCl*) entity;
+    ItemView* item = (ItemView*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
-        ItemHex* hex_item = (ItemHex*) item;
+        ItemHexView* hex_item = (ItemHexView*) item;
         hex_item->SetAnimOffs();
         Self->HexMngr.ProcessHexBorders( hex_item );
     }
@@ -4444,13 +4443,13 @@ void FOMapper::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 
 void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    ItemCl* item = (ItemCl*) entity;
-    bool    cur = *(bool*) cur_value;
-    bool    old = *(bool*) old_value;
+    ItemView* item = (ItemView*) entity;
+    bool      cur = *(bool*) cur_value;
+    bool      old = *(bool*) old_value;
 
     if( item->GetIsCanOpen() )
     {
-        ItemHex* hex_item = (ItemHex*) item;
+        ItemHexView* hex_item = (ItemHexView*) item;
         if( !old && cur )
             hex_item->SetAnimFromStart();
         if( old && !cur )
@@ -4458,7 +4457,7 @@ void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
     }
 }
 
-ItemCl* FOMapper::SScriptFunc::Item_AddChild( ItemCl* item, hash pid )
+ItemView* FOMapper::SScriptFunc::Item_AddChild( ItemView* item, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsStatic() )
@@ -4467,7 +4466,7 @@ ItemCl* FOMapper::SScriptFunc::Item_AddChild( ItemCl* item, hash pid )
     return Self->AddItem( pid, 0, 0, item );
 }
 
-ItemCl* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
+ItemView* FOMapper::SScriptFunc::Crit_AddChild( CritterView* cr, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsStatic() )
@@ -4476,19 +4475,19 @@ ItemCl* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
     return Self->AddItem( pid, 0, 0, cr );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( ItemCl* item )
+CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( ItemView* item )
 {
-    ItemClVec children;
+    ItemViewVec children;
     item->ContGetItems( children, 0 );
     return Script::CreateArrayRef( "Item[]", children );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterCl* cr )
+CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterView* cr )
 {
     return Script::CreateArrayRef( "Item[]", cr->InvItems );
 }
 
-ItemCl* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
+ItemView* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hex args." );
@@ -4499,7 +4498,7 @@ ItemCl* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
     return Self->AddItem( pid, hx, hy, nullptr );
 }
 
-CritterCl* FOMapper::SScriptFunc::Global_AddCritter( hash pid, ushort hx, ushort hy )
+CritterView* FOMapper::SScriptFunc::Global_AddCritter( hash pid, ushort hx, ushort hy )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hex args." );
@@ -4510,28 +4509,28 @@ CritterCl* FOMapper::SScriptFunc::Global_AddCritter( hash pid, ushort hx, ushort
     return Self->AddCritter( pid, hx, hy );
 }
 
-ItemCl* FOMapper::SScriptFunc::Global_GetItemByHex( ushort hx, ushort hy )
+ItemView* FOMapper::SScriptFunc::Global_GetItemByHex( ushort hx, ushort hy )
 {
     return Self->HexMngr.GetItem( hx, hy, 0 );
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetItemsByHex( ushort hx, ushort hy )
 {
-    ItemHexVec items;
+    ItemHexViewVec items;
     Self->HexMngr.GetItems( hx, hy, items );
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CritterCl* FOMapper::SScriptFunc::Global_GetCritterByHex( ushort hx, ushort hy, int find_type )
+CritterView* FOMapper::SScriptFunc::Global_GetCritterByHex( ushort hx, ushort hy, int find_type )
 {
-    CrClVec critters_;
+    CritterViewVec critters_;
     Self->HexMngr.GetCritters( hx, hy, critters_, find_type );
     return !critters_.empty() ? critters_[ 0 ] : nullptr;
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetCrittersByHex( ushort hx, ushort hy, int find_type )
 {
-    CrClVec critters;
+    CritterViewVec critters;
     Self->HexMngr.GetCritters( hx, hy, critters, find_type );
     return Script::CreateArrayRef( "Critter[]", critters );
 }
@@ -4739,7 +4738,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
-MapCl* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
+MapView* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -4750,13 +4749,13 @@ MapCl* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
     }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    MapCl* map = new MapCl( 0, pmap );
+    MapView* map = new MapView( 0, pmap );
     Self->LoadedMaps.push_back( map );
     Self->RunMapLoadScript( map );
     return map;
 }
 
-void FOMapper::SScriptFunc::Global_UnloadMap( MapCl* map )
+void FOMapper::SScriptFunc::Global_UnloadMap( MapView* map )
 {
     if( !map )
         SCRIPT_ERROR_R( "Proto map arg nullptr." );
@@ -4776,7 +4775,7 @@ void FOMapper::SScriptFunc::Global_UnloadMap( MapCl* map )
     map->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( MapCl* map, string custom_name )
+bool FOMapper::SScriptFunc::Global_SaveMap( MapView* map, string custom_name )
 {
     if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
@@ -4789,7 +4788,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap( MapCl* map, string custom_name )
     return result;
 }
 
-bool FOMapper::SScriptFunc::Global_ShowMap( MapCl* map )
+bool FOMapper::SScriptFunc::Global_ShowMap( MapView* map )
 {
     if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
@@ -4810,7 +4809,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
     index = -1;
     for( int i = 0, j = (int) Self->LoadedMaps.size(); i < j; i++ )
     {
-        MapCl* map = Self->LoadedMaps[ i ];
+        MapView* map = Self->LoadedMaps[ i ];
         if( map == Self->ActiveMap )
             index = i;
     }
@@ -4881,8 +4880,8 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
         for( auto it = pmap->AllEntities.begin(); it != pmap->AllEntities.end();)
         {
             Entity* entity = *it;
-            int     hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-            int     hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+            int     hx = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexX() : ( (ItemHexView*) entity )->GetHexX() );
+            int     hy = ( entity->Type == EntityType::CritterView ? ( (CritterView*) entity )->GetHexY() : ( (ItemHexView*) entity )->GetHexY() );
             if( hx >= maxhx || hy >= maxhy )
             {
                 entity->Release();
@@ -5345,8 +5344,8 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ignor
     if( !ignore_interface && Self->IsCurInInterface() )
         return nullptr;
 
-    ItemHex*   item;
-    CritterCl* cr;
+    ItemHexView* item;
+    CritterView* cr;
     Self->HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
     Entity* mobj = nullptr;

@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Critter.h"
 #include "Script.h"
 #include "MapManager.h"
@@ -788,11 +787,11 @@ Critter* Critter::GetCritSelf( uint crid )
     return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
-void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self )
+void Critter::GetCrFromVisCr( CritterVec& critters, int find_type, bool vis_cr_self )
 {
-    CrVec& vis_cr = ( vis_cr_self ? VisCrSelf : VisCr );
+    CritterVec& vis_cr = ( vis_cr_self ? VisCrSelf : VisCr );
 
-    CrVec  find_critters;
+    CritterVec  find_critters;
     for( auto it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
     {
         Critter* cr = *it;
@@ -1408,7 +1407,7 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
     }
 }
 
-void Critter::SendAA_Text( const CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text )
+void Critter::SendAA_Text( const CritterVec& to_cr, const string& text, uchar how_say, bool unsafe_text )
 {
     if( text.empty() )
         return;
@@ -1439,7 +1438,7 @@ void Critter::SendAA_Text( const CrVec& to_cr, const string& text, uchar how_say
     }
 }
 
-void Critter::SendAA_Msg( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg )
+void Critter::SendAA_Msg( const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg )
 {
     if( IsPlayer() )
         Send_TextMsg( this, num_str, how_say, num_msg );
@@ -1470,7 +1469,7 @@ void Critter::SendAA_Msg( const CrVec& to_cr, uint num_str, uchar how_say, ushor
     }
 }
 
-void Critter::SendAA_MsgLex( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
+void Critter::SendAA_MsgLex( const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
 {
     if( IsPlayer() )
         Send_TextMsgLex( this, num_str, how_say, num_msg, lexems );
@@ -1550,7 +1549,7 @@ void Critter::Send_AllAutomapsInfo()
     if( !IsPlayer() )
         return;
 
-    LocVec        locs;
+    LocationVec   locs;
     CScriptArray* known_locs = GetKnownLocations();
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
@@ -1570,7 +1569,7 @@ void Critter::SendMessage( int num, int val, int to )
     {
     case MESSAGE_TO_VISIBLE_ME:
     {
-        CrVec critters = VisCr;
+        CritterVec critters = VisCr;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
@@ -1580,7 +1579,7 @@ void Critter::SendMessage( int num, int val, int to )
     break;
     case MESSAGE_TO_IAM_VISIBLE:
     {
-        CrVec critters = VisCrSelf;
+        CritterVec critters = VisCrSelf;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
@@ -2793,8 +2792,8 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
 
     if( locs_vec )
     {
-        LocVec* locs = (LocVec*) locs_vec;
-        uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort );
+        LocationVec* locs = (LocationVec*) locs_vec;
+        uint         msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort );
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
             Location* loc_ = ( *locs )[ i ];

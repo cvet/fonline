@@ -53,7 +53,7 @@ struct Item: public Entity
         int StackId;
     } AccContainer;
 };
-typedef Item ItemCl;
+typedef Item ItemView;
 
 struct Critter: public Entity
 {
@@ -83,19 +83,19 @@ struct Critter: public Entity
     int Name;
     int IsRunning;
 };
-typedef Critter CritterCl;
+typedef Critter CritterView;
 
 struct Map: public Entity
 {
     // Empty
 };
-typedef Map MapCl;
+typedef Map MapView;
 
 struct Location: public Entity
 {
     int GeckCount;
 };
-typedef Location LocationCl;
+typedef Location LocationView;
 
 struct ProtoMap
 {

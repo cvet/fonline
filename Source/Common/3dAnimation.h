@@ -1,6 +1,6 @@
-#ifndef __3D_ANIMATION__
-#define __3D_ANIMATION__
+#pragma once
 
+#include "Common.h"
 #include "GraphicStructures.h"
 #include "FileManager.h"
 
@@ -549,5 +549,3 @@ private:
         }
     }
 };
-
-#endif // __3D_ANIMATION__

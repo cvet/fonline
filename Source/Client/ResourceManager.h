@@ -1,7 +1,7 @@
 #ifndef __RESOURCE_MANAGER__
 #define __RESOURCE_MANAGER__
 
-#include "Defines.h"
+#include "Common.h"
 #include "SpriteManager.h"
 #include "FileManager.h"
 

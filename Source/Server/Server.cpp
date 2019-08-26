@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Server.h"
 #include "scripthelper/scripthelper.h"
 #include "minizip/zip.h"
@@ -250,7 +249,7 @@ void FOServer::LogicTick()
     }
 
     // Process critters
-    CrVec critters;
+    CritterVec critters;
     EntityMngr.GetCritters( critters );
     for( Critter* cr : critters )
     {

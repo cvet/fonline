@@ -1,6 +1,7 @@
 #ifndef __SCRIPT_PRAGMAS__
 #define __SCRIPT_PRAGMAS__
 
+#include "Common.h"
 #include "Entity.h"
 #include "angelscript.h"
 #include "AngelScriptExt/preprocessor.h"

@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Properties.h"
 #include "Entity.h"
 #include "IniParser.h"

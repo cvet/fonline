@@ -121,6 +121,7 @@
 # define ANDROID_TODO
 #endif
 
+class IniParser;
 extern IniParser* MainConfig;
 extern StrVec     ProjectFiles;
 void InitialSetup( const string& app_name, uint argc, char** argv );

@@ -1,10 +1,9 @@
-#include "Common.h"
-#include "ItemHex.h"
+#include "ItemHexView.h"
 #include "ResourceManager.h"
 
-ItemHex::ItemHex( uint id, ProtoItem* proto ): ItemCl( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto ): ItemView( id, proto )
 {
-    const_cast< EntityType& >( Type ) = EntityType::ItemHex;
+    const_cast< EntityType& >( Type ) = EntityType::ItemHexView;
 
     // Hex
     HexScrX = nullptr;
@@ -58,20 +57,20 @@ ItemHex::ItemHex( uint id, ProtoItem* proto ): ItemCl( id, proto )
     DrawEffect = Effect::Generic;
 }
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, Properties& props ): ItemHex( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, Properties& props ): ItemHexView( id, proto )
 {
     Props = props;
     AfterConstruction();
 }
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data ): ItemHex( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data ): ItemHexView( id, proto )
 {
     RUNTIME_ASSERT( props_data );
     Props.RestoreData( *props_data );
     AfterConstruction();
 }
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y ): ItemHex( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y ): ItemHexView( id, proto )
 {
     if( props_data )
         Props.RestoreData( *props_data );
@@ -83,7 +82,7 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, in
     AfterConstruction();
 }
 
-void ItemHex::AfterConstruction()
+void ItemHexView::AfterConstruction()
 {
     RUNTIME_ASSERT( GetAccessory() == ITEM_ACCESSORY_HEX );
 
@@ -96,7 +95,7 @@ void ItemHex::AfterConstruction()
     SetFade( true );
 }
 
-void ItemHex::Finish()
+void ItemHexView::Finish()
 {
     SetFade( false );
     finishing = true;
@@ -105,14 +104,14 @@ void ItemHex::Finish()
         finishingTime = Timer::GameTick();
 }
 
-void ItemHex::StopFinishing()
+void ItemHexView::StopFinishing()
 {
     finishing = false;
     SetFade( true );
     RefreshAnim();
 }
 
-void ItemHex::Process()
+void ItemHexView::Process()
 {
     // Animation
     if( begSpr != endSpr )
@@ -183,7 +182,7 @@ void ItemHex::Process()
     }
 }
 
-void ItemHex::SetEffect( float sx, float sy, uint dist, int dir )
+void ItemHexView::SetEffect( float sx, float sy, uint dist, int dir )
 {
     // Init effect
     effSx = sx;
@@ -205,7 +204,7 @@ void ItemHex::SetEffect( float sx, float sy, uint dist, int dir )
     RefreshAnim();
 }
 
-UShortPair ItemHex::GetEffectStep()
+UShortPair ItemHexView::GetEffectStep()
 {
     uint dist = DistSqrt( (int) effCurX, (int) effCurY, effStartX, effStartY );
     if( dist > effDist )
@@ -216,7 +215,7 @@ UShortPair ItemHex::GetEffectStep()
     return EffSteps[ EffSteps.size() * proc / 100 ];
 }
 
-void ItemHex::SetFade( bool fade_up )
+void ItemHexView::SetFade( bool fade_up )
 {
     uint tick = Timer::GameTick();
     fadingTick = tick + FADING_PERIOD - ( fadingTick > tick ? fadingTick - tick : 0 );
@@ -224,7 +223,7 @@ void ItemHex::SetFade( bool fade_up )
     fading = true;
 }
 
-void ItemHex::SkipFade()
+void ItemHexView::SkipFade()
 {
     if( fading )
     {
@@ -233,7 +232,7 @@ void ItemHex::SkipFade()
     }
 }
 
-void ItemHex::RefreshAnim()
+void ItemHexView::RefreshAnim()
 {
     Anim = nullptr;
     hash name_hash = GetPicMap();
@@ -259,7 +258,7 @@ void ItemHex::RefreshAnim()
     }
 }
 
-void ItemHex::SetSprite( Sprite* spr )
+void ItemHexView::SetSprite( Sprite* spr )
 {
     if( spr )
         SprDraw = spr;
@@ -272,7 +271,7 @@ void ItemHex::SetSprite( Sprite* spr )
     }
 }
 
-int ItemHex::GetEggType()
+int ItemHexView::GetEggType()
 {
     if( GetDisableEgg() || GetIsFlat() )
         return 0;
@@ -292,14 +291,14 @@ int ItemHex::GetEggType()
     return 0;
 }
 
-void ItemHex::StartAnimate()
+void ItemHexView::StartAnimate()
 {
     SetStayAnim();
     animNextTick = Timer::GameTick() + GetAnimWaitBase() * 10 + Random( GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10 );
     isAnimated = true;
 }
 
-void ItemHex::StopAnimate()
+void ItemHexView::StopAnimate()
 {
     SetSpr( animBegSpr );
     begSpr = animBegSpr;
@@ -307,7 +306,7 @@ void ItemHex::StopAnimate()
     isAnimated = false;
 }
 
-void ItemHex::SetAnimFromEnd()
+void ItemHexView::SetAnimFromEnd()
 {
     begSpr = animEndSpr;
     endSpr = animBegSpr;
@@ -315,7 +314,7 @@ void ItemHex::SetAnimFromEnd()
     animTick = Timer::GameTick();
 }
 
-void ItemHex::SetAnimFromStart()
+void ItemHexView::SetAnimFromStart()
 {
     begSpr = animBegSpr;
     endSpr = animEndSpr;
@@ -323,7 +322,7 @@ void ItemHex::SetAnimFromStart()
     animTick = Timer::GameTick();
 }
 
-void ItemHex::SetAnim( uint beg, uint end )
+void ItemHexView::SetAnim( uint beg, uint end )
 {
     if( beg > Anim->CntFrm - 1 )
         beg = Anim->CntFrm - 1;
@@ -335,28 +334,28 @@ void ItemHex::SetAnim( uint beg, uint end )
     animTick = Timer::GameTick();
 }
 
-void ItemHex::SetSprStart()
+void ItemHexView::SetSprStart()
 {
     SetSpr( animBegSpr );
     begSpr = curSpr;
     endSpr = curSpr;
 }
 
-void ItemHex::SetSprEnd()
+void ItemHexView::SetSprEnd()
 {
     SetSpr( animEndSpr );
     begSpr = curSpr;
     endSpr = curSpr;
 }
 
-void ItemHex::SetSpr( uint num_spr )
+void ItemHexView::SetSpr( uint num_spr )
 {
     curSpr = num_spr;
     SprId = Anim->GetSprId( curSpr );
     SetAnimOffs();
 }
 
-void ItemHex::SetAnimOffs()
+void ItemHexView::SetAnimOffs()
 {
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
@@ -372,7 +371,7 @@ void ItemHex::SetAnimOffs()
     }
 }
 
-void ItemHex::SetStayAnim()
+void ItemHexView::SetStayAnim()
 {
     if( GetIsShowAnimExt() )
         SetAnim( GetAnimStay0(), GetAnimStay1() );
@@ -380,7 +379,7 @@ void ItemHex::SetStayAnim()
         SetAnim( 0, Anim->CntFrm - 1 );
 }
 
-void ItemHex::SetShowAnim()
+void ItemHexView::SetShowAnim()
 {
     if( GetIsShowAnimExt() )
         SetAnim( GetAnimShow0(), GetAnimShow1() );
@@ -388,7 +387,7 @@ void ItemHex::SetShowAnim()
         SetAnim( 0, Anim->CntFrm - 1 );
 }
 
-void ItemHex::SetHideAnim()
+void ItemHexView::SetHideAnim()
 {
     if( GetIsShowAnimExt() )
     {

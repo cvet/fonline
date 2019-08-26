@@ -6,7 +6,7 @@
 // - Fallout DAT
 // - Zip
 
-#include "Defines.h"
+#include "Common.h"
 
 class DataFile
 {

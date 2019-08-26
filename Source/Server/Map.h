@@ -40,7 +40,7 @@ public:
 private:
     uchar*     hexFlags;
     int        hexFlagsSize;
-    CrVec      mapCritters;
+    CritterVec mapCritters;
     ClVec      mapPlayers;
     PcVec      mapNpcs;
     ItemVec    mapItems;
@@ -112,17 +112,17 @@ public:
     Critter* GetCritter( uint crid );
     Critter* GetNpc( int npc_role, int find_type, uint skip_count );
     Critter* GetHexCritter( ushort hx, ushort hy, bool dead );
-    void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters ); // Critters append
+    void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters ); // Critters append
 
-    CrVec  GetCritters();
-    ClVec  GetPlayers();
-    PcVec  GetNpcs();
-    CrVec& GetCrittersRaw()   { return mapCritters; }
-    ClVec& GetPlayersRaw()    { return mapPlayers; }
-    PcVec& GetNpcsRaw()       { return mapNpcs; }
-    uint   GetCrittersCount() { return (uint) mapCritters.size(); }
-    uint   GetPlayersCount()  { return (uint) mapPlayers.size(); }
-    uint   GetNpcsCount()     { return (uint) mapNpcs.size(); }
+    CritterVec  GetCritters();
+    ClVec       GetPlayers();
+    PcVec       GetNpcs();
+    CritterVec& GetCrittersRaw()   { return mapCritters; }
+    ClVec&      GetPlayersRaw()    { return mapPlayers; }
+    PcVec&      GetNpcsRaw()       { return mapNpcs; }
+    uint        GetCrittersCount() { return (uint) mapCritters.size(); }
+    uint        GetPlayersCount()  { return (uint) mapPlayers.size(); }
+    uint        GetNpcsCount()     { return (uint) mapNpcs.size(); }
 
     // Sends
     void SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius );
@@ -178,7 +178,7 @@ public:
     bool IsNoNpc();
     bool IsCanDelete();
 };
-using LocMap = map< uint, Location* >;
-using LocVec = vector< Location* >;
+using LocationMap = map< uint, Location* >;
+using LocationVec = vector< Location* >;
 
 #endif // __MAP__

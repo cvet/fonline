@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "SoundManager.h"
 #include "ResourceManager.h"
 #include "Text.h"

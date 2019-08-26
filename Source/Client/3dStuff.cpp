@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "3dStuff.h"
 #include "3dAnimation.h"
 #include "GraphicLoader.h"

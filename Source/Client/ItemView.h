@@ -7,7 +7,7 @@
 #include "MsgFiles.h"
 #include "Entity.h"
 
-class ItemCl: public Entity
+class ItemView: public Entity
 {
 public:
     // Properties
@@ -84,17 +84,17 @@ public:
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
 public:
-    ItemCl( uint id, ProtoItem* proto );
-    ~ItemCl();
+    ItemView( uint id, ProtoItem* proto );
+    ~ItemView();
 
-    ItemClVec* ChildItems;
+    ItemViewVec* ChildItems;
 
     ProtoItem*  GetProtoItem() { return (ProtoItem*) Proto; }
-    ItemCl*     Clone();
+    ItemView*   Clone();
     bool        operator==( const uint& id ) { return Id == id; }
-    void        SetSortValue( ItemClVec& items );
-    static void SortItems( ItemClVec& items );
-    static void ClearItems( ItemClVec& items );
+    void        SetSortValue( ItemViewVec& items );
+    static void SortItems( ItemViewVec& items );
+    static void ClearItems( ItemViewVec& items );
 
     bool IsStatic()     { return GetIsStatic(); }
     bool IsAnyScenery() { return IsScenery() || IsWall(); }
@@ -105,9 +105,9 @@ public:
 
     uint GetCurSprId();
 
-    void ContSetItem( ItemCl* item );
-    void ContEraseItem( ItemCl* item );
-    void ContGetItems( ItemClVec& items, uint stack_id );
+    void ContSetItem( ItemView* item );
+    void ContEraseItem( ItemView* item );
+    void ContGetItems( ItemViewVec& items, uint stack_id );
 
     // Colorize
     bool  IsColorize()  { return GetIsColorize(); }

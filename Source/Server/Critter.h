@@ -21,11 +21,11 @@ class Npc;
 class Map;
 class Location;
 
-typedef map< uint, Critter* > CrMap;
+typedef map< uint, Critter* > CritterMap;
 typedef map< uint, Client* >  ClMap;
 typedef map< uint, Npc* >     PcMap;
 
-typedef vector< Critter* >    CrVec;
+typedef vector< Critter* >    CritterVec;
 typedef vector< Client* >     ClVec;
 typedef vector< Npc* >        PcVec;
 
@@ -122,18 +122,18 @@ public:
     void DeleteInventory();
 
     // Visible critters and items
-    CrVec   VisCr;
-    CrVec   VisCrSelf;
-    CrMap   VisCrMap;
-    CrMap   VisCrSelfMap;
-    UIntSet VisCr1, VisCr2, VisCr3;
-    UIntSet VisItem;
-    Mutex   VisItemLocker;
-    uint    ViewMapId;
-    hash    ViewMapPid;
-    ushort  ViewMapLook, ViewMapHx, ViewMapHy;
-    uchar   ViewMapDir;
-    uint    ViewMapLocId, ViewMapLocEnt;
+    CritterVec VisCr;
+    CritterVec VisCrSelf;
+    CritterMap VisCrMap;
+    CritterMap VisCrSelfMap;
+    UIntSet    VisCr1, VisCr2, VisCr3;
+    UIntSet    VisItem;
+    Mutex      VisItemLocker;
+    uint       ViewMapId;
+    hash       ViewMapPid;
+    ushort     ViewMapLook, ViewMapHx, ViewMapHy;
+    uchar      ViewMapDir;
+    uint       ViewMapLocId, ViewMapLocEnt;
 
     Map* GetMap();
 
@@ -143,7 +143,7 @@ public:
     void ClearVisible();
 
     Critter* GetCritSelf( uint crid );
-    void     GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self );
+    void     GetCrFromVisCr( CritterVec& critters, int find_type, bool vis_cr_self );
     Critter* GetGlobalMapCritter( uint cr_id );
 
     bool AddCrIntoVisVec( Critter* add_cr );
@@ -265,9 +265,9 @@ public:
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
-    void SendAA_Text( const CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text );
-    void SendAA_Msg( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
-    void SendAA_MsgLex( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
+    void SendAA_Text( const CritterVec& to_cr, const string& text, uchar how_say, bool unsafe_text );
+    void SendAA_Msg( const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
+    void SendAA_MsgLex( const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
     void SendA_CustomCommand( ushort num_param, int val );
 
@@ -300,8 +300,8 @@ public:
     void ContinueTimeEvents( int offs_time );
 
     // Other
-    CrVec* GlobalMapGroup;
-    bool   CanBeRemoved;
+    CritterVec* GlobalMapGroup;
+    bool        CanBeRemoved;
 };
 
 #define BIN_BEGIN( cl_ )     cl_->Connection->Bin.Lock()

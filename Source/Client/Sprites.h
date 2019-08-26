@@ -1,6 +1,7 @@
 #ifndef __SPRITES__
 #define __SPRITES__
 
+#include "Common.h"
 #include "GraphicStructures.h"
 
 #define SPRITES_POOL_GROW_SIZE    ( 10000 )

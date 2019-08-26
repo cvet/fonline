@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "Entity.h"
 
-class LocationCl: public Entity
+class LocationView: public Entity
 {
 public:
     PROPERTIES_HEADER();
@@ -20,11 +20,11 @@ public:
     CLASS_PROPERTY( bool, ToGarbage );
     CLASS_PROPERTY( uint, Color );
 
-    LocationCl( uint id, ProtoLocation* proto );
-    ~LocationCl();
+    LocationView( uint id, ProtoLocation* proto );
+    ~LocationView() = default;
 };
 
-class MapCl: public Entity
+class MapView: public Entity
 {
 public:
     PROPERTIES_HEADER();
@@ -42,6 +42,6 @@ public:
     CLASS_PROPERTY( CScriptArray *, DayColor );     // 12 uchar
     CLASS_PROPERTY( bool, IsNoLogOut );
 
-    MapCl( uint id, ProtoMap* proto );
-    ~MapCl();
+    MapView( uint id, ProtoMap* proto );
+    ~MapView() = default;
 };

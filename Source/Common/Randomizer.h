@@ -3,6 +3,7 @@
 
 // Mersenne Twist pseudorandom number generator
 
+#include "Common.h"
 #include <time.h>
 
 class Randomizer

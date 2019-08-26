@@ -7,28 +7,28 @@
 enum class EntityType
 {
     None = 0,
-    EntityProto,
-    LocationProto,
-    MapProto,
-    CritterProto,
-    ItemProto,
-    Custom,
+    EntityProto = 1,
+    ItemProto = 2,
+    CritterProto = 3,
+    MapProto = 4,
+    LocationProto = 5,
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    Location,
-    Map,
-    Client,
-    Npc,
-    Item,
+    Item = 6,
+    Client = 7,
+    Npc = 8,
+    Map = 9,
+    Location = 10,
     #endif
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    LocationCl,
-    MapCl,
-    CritterCl,
-    ItemCl,
-    ItemHex,
+    ItemView = 11,
+    ItemHexView = 12,
+    CritterView = 13,
+    MapView = 14,
+    LocationView = 15,
     #endif
-    Global,
-    Max,
+    Custom = 16,
+    Global = 17,
+    Max = 18,
 };
 
 class Entity;
@@ -36,38 +36,38 @@ using EntityVec = vector< Entity* >;
 using EntityMap = map< uint, Entity* >;
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 class Location;
-using LocVec = vector< Location* >;
-using LocMap = map< uint, Location* >;
+using LocationVec = vector< Location* >;
+using LocationMap = map< uint, Location* >;
 class Map;
 using MapVec = vector< Map* >;
 using MapMap = map< uint, Map* >;
 class Critter;
-using CrMap = map< uint, Critter* >;
-using CrVec = vector< Critter* >;
+using CritterMap = map< uint, Critter* >;
+using CritterVec = vector< Critter* >;
 class Item;
 using ItemVec = vector< Item* >;
 using ItemMap = map< uint, Item* >;
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-class LocationCl;
-using LocClVec = vector< LocationCl* >;
-using LocClMap = map< uint, LocationCl* >;
-class MapCl;
-using MapClVec = vector< MapCl* >;
-using MapClMap = map< uint, MapCl* >;
-class CritterCl;
-using CrClMap = map< uint, CritterCl* >;
-using CrClVec = vector< CritterCl* >;
-class ItemCl;
-using ItemClVec = vector< ItemCl* >;
-using ItemClMap = map< uint, ItemCl* >;
+class LocationView;
+using LocationViewVec = vector< LocationView* >;
+using LocationViewMap = map< uint, LocationView* >;
+class MapView;
+using MapViewVec = vector< MapView* >;
+using MapViewMap = map< uint, MapView* >;
+class CritterView;
+using CritterViewMap = map< uint, CritterView* >;
+using CritterViewVec = vector< CritterView* >;
+class ItemView;
+using ItemViewVec = vector< ItemView* >;
+using ItemViewMap = map< uint, ItemView* >;
 #endif
 class ProtoEntity;
 using ProtoEntityVec = vector< ProtoEntity* >;
 using ProtoEntityMap = map< hash, ProtoEntity* >;
 class ProtoLocation;
-using ProtoLocVec = vector< ProtoLocation* >;
-using ProtoLocMap = map< hash, ProtoLocation* >;
+using ProtoLocationVec = vector< ProtoLocation* >;
+using ProtoLocationMap = map< hash, ProtoLocation* >;
 class ProtoMap;
 using ProtoMapVec = vector< ProtoMap* >;
 using ProtoMapMap = map< hash, ProtoMap* >;
@@ -204,16 +204,16 @@ private:
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 public:
-    UCharVec SceneryData;
-    hash     HashTiles;
-    hash     HashScen;
+    UCharVec   SceneryData;
+    hash       HashTiles;
+    hash       HashScen;
 
-    CrVec    CrittersVec;
-    ItemVec  HexItemsVec;
-    ItemVec  ChildItemsVec;
-    ItemVec  StaticItemsVec;
-    ItemVec  TriggerItemsVec;
-    uchar*   HexFlags;
+    CritterVec CrittersVec;
+    ItemVec    HexItemsVec;
+    ItemVec    ChildItemsVec;
+    ItemVec    StaticItemsVec;
+    ItemVec    TriggerItemsVec;
+    uchar*     HexFlags;
 
 private:
     bool BindScripts( EntityVec& entities );

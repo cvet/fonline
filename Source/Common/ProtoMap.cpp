@@ -11,9 +11,9 @@
 # include "Item.h"
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-# include "MapCl.h"
-# include "CritterCl.h"
-# include "ItemCl.h"
+# include "MapView.h"
+# include "CritterView.h"
+# include "ItemView.h"
 #endif
 
 ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, EntityType::MapProto, ProtoMap::PropertiesRegistrator )
@@ -738,7 +738,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             if( !entity_parent_addon.UID || entity_parent_addon.UID != entity_addon.ContainerUID || entity_parent == entity )
                 continue;
 
-            if( entity_parent->Type == EntityType::CritterCl )
+            if( entity_parent->Type == EntityType::CritterView )
             {
                 entity_item->SetAccessory( ITEM_ACCESSORY_CRITTER );
                 entity_item->SetCritId( entity_parent->Id );

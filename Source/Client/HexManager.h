@@ -3,9 +3,9 @@
 
 #include "Common.h"
 #include "SpriteManager.h"
-#include "ItemCl.h"
-#include "CritterCl.h"
-#include "ItemHex.h"
+#include "ItemView.h"
+#include "CritterView.h"
+#include "ItemHexView.h"
 
 #define MAX_FIND_PATH    ( 600 )
 #define VIEW_WIDTH       ( (int) ( ( GameOpt.ScreenWidth / GameOpt.MapHexWidth + ( ( GameOpt.ScreenWidth % GameOpt.MapHexWidth ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
@@ -74,17 +74,17 @@ struct Field
     };
     typedef vector< Tile > TileVec;
 
-    bool        IsView;
-    Sprite*     SpriteChain;
-    CritterCl*  Crit;
-    CrClVec*    DeadCrits;
-    int         ScrX;
-    int         ScrY;
-    AnyFrames*  SimplyTile[ 2 ]; // Tile / Roof
-    TileVec*    Tiles[ 2 ];      // Tile / Roof
-    ItemHexVec* Items;
-    ItemHexVec* BlockLinesItems;
-    short       RoofNum;
+    bool            IsView;
+    Sprite*         SpriteChain;
+    CritterView*    Crit;
+    CritterViewVec* DeadCrits;
+    int             ScrX;
+    int             ScrY;
+    AnyFrames*      SimplyTile[ 2 ]; // Tile / Roof
+    TileVec*        Tiles[ 2 ];      // Tile / Roof
+    ItemHexViewVec* Items;
+    ItemHexViewVec* BlockLinesItems;
+    short           RoofNum;
 
     struct
     {
@@ -103,14 +103,14 @@ struct Field
     Field() = default;
     ~Field();
 
-    void  AddItem( ItemHex* item, ItemHex* block_lines_item );
-    void  EraseItem( ItemHex* item, ItemHex* block_lines_item );
+    void  AddItem( ItemHexView* item, ItemHexView* block_lines_item );
+    void  EraseItem( ItemHexView* item, ItemHexView* block_lines_item );
     Tile& AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof );
     void  EraseTile( uint index, bool is_roof );
     uint  GetTilesCount( bool is_roof );
     Tile& GetTile( uint index, bool is_roof );
-    void  AddDeadCrit( CritterCl* cr );
-    void  EraseDeadCrit( CritterCl* cr );
+    void  AddDeadCrit( CritterView* cr );
+    void  EraseDeadCrit( CritterView* cr );
     void  ProcessCache();
     void  AddSpriteToChain( Sprite* spr );
     void  UnvalidateSpriteChain();
@@ -162,9 +162,9 @@ public:
     void   SwitchShowTrack();
     bool   IsShowTrack() { return isShowTrack; };
 
-    bool FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut );
-    bool CutPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut );
-    bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe, CrClVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
+    bool FindPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut );
+    bool CutPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut );
+    bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, CritterViewVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
 
     // Center
 public:
@@ -229,7 +229,7 @@ public:
     void ChangeZoom( int zoom );     // <0 in, >0 out, 0 normalize
     void GetScreenHexes( int& sx, int& sy );
     void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
-    bool ProcessHexBorders( ItemHex* item );
+    bool ProcessHexBorders( ItemHexView* item );
 
     void     RebuildMap( int rx, int ry );
     void     RebuildMapOffset( int ox, int oy );
@@ -269,46 +269,46 @@ public:
 
     // Critters
 private:
-    CrClMap allCritters;
-    uint    chosenId;
-    uint    critterContourCrId;
-    int     critterContour, crittersContour;
+    CritterViewMap allCritters;
+    uint           chosenId;
+    uint           critterContourCrId;
+    int            critterContour, crittersContour;
 
 public:
-    void       SetCritter( CritterCl* cr );
-    bool       TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bool force );
-    CritterCl* GetCritter( uint crid );
-    CritterCl* GetChosen();
-    void       AddCritter( CritterCl* cr );
-    void       RemoveCritter( CritterCl* cr );
-    void       DeleteCritter( uint crid );
-    void       DeleteCritters();
-    void       GetCritters( ushort hx, ushort hy, CrClVec& crits, int find_type );
-    CrClMap& GetCritters() { return allCritters; }
-    void     SetCritterContour( uint crid, int contour );
-    void     SetCrittersContour( int contour );
-    void     SetMultihex( ushort hx, ushort hy, uint multihex, bool set );
+    void            SetCritter( CritterView* cr );
+    bool            TransitCritter( CritterView* cr, int hx, int hy, bool animate, bool force );
+    CritterView*    GetCritter( uint crid );
+    CritterView*    GetChosen();
+    void            AddCritter( CritterView* cr );
+    void            RemoveCritter( CritterView* cr );
+    void            DeleteCritter( uint crid );
+    void            DeleteCritters();
+    void            GetCritters( ushort hx, ushort hy, CritterViewVec& crits, int find_type );
+    CritterViewMap& GetCritters() { return allCritters; }
+    void            SetCritterContour( uint crid, int contour );
+    void            SetCrittersContour( int contour );
+    void            SetMultihex( ushort hx, ushort hy, uint multihex, bool set );
 
     // Items
 private:
-    ItemHexVec hexItems;
+    ItemHexViewVec hexItems;
 
-    void AddFieldItem( ushort hx, ushort hy, ItemHex* item );
-    void EraseFieldItem( ushort hx, ushort hy, ItemHex* item );
+    void AddFieldItem( ushort hx, ushort hy, ItemHexView* item );
+    void EraseFieldItem( ushort hx, ushort hy, ItemHexView* item );
 
 public:
-    uint        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
-    void        FinishItem( uint id, bool is_deleted );
-    void        DeleteItem( ItemHex* item, bool destroy_item = true, ItemHexVec::iterator* it_hex_items = nullptr );
-    void        PushItem( ItemHex* item );
-    ItemHex*    GetItem( ushort hx, ushort hy, hash pid );
-    ItemHex*    GetItemById( ushort hx, ushort hy, uint id );
-    ItemHex*    GetItemById( uint id );
-    void        GetItems( ushort hx, ushort hy, ItemHexVec& items );
-    ItemHexVec& GetItems() { return hexItems; }
-    Rect        GetRectForText( ushort hx, ushort hy );
-    void        ProcessItems();
-    void        SkipItemsFade();
+    uint            AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
+    void            FinishItem( uint id, bool is_deleted );
+    void            DeleteItem( ItemHexView* item, bool destroy_item = true, ItemHexViewVec::iterator* it_hex_items = nullptr );
+    void            PushItem( ItemHexView* item );
+    ItemHexView*    GetItem( ushort hx, ushort hy, hash pid );
+    ItemHexView*    GetItemById( ushort hx, ushort hy, uint id );
+    ItemHexView*    GetItemById( uint id );
+    void            GetItems( ushort hx, ushort hy, ItemHexViewVec& items );
+    ItemHexViewVec& GetItems() { return hexItems; }
+    Rect            GetRectForText( ushort hx, ushort hy );
+    void            ProcessItems();
+    void            SkipItemsFade();
 
     // Light
 private:
@@ -363,10 +363,10 @@ public:
 
     // Pixel get
 public:
-    bool       GetHexPixel( int x, int y, ushort& hx, ushort& hy );
-    ItemHex*   GetItemPixel( int x, int y, bool& item_egg ); // With transparent egg
-    CritterCl* GetCritterPixel( int x, int y, bool ignore_dead_and_chosen );
-    void       GetSmthPixel( int x, int y, ItemHex*& item, CritterCl*& cr );
+    bool         GetHexPixel( int x, int y, ushort& hx, ushort& hy );
+    ItemHexView* GetItemPixel( int x, int y, bool& item_egg );   // With transparent egg
+    CritterView* GetCritterPixel( int x, int y, bool ignore_dead_and_chosen );
+    void         GetSmthPixel( int x, int y, ItemHexView*& item, CritterView*& cr );
 
     // Effects
 public:

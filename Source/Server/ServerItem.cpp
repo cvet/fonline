@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Server.h"
 
 Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks )

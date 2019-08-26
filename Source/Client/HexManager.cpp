@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "HexManager.h"
 #include "ResourceManager.h"
 #include "LineTracer.h"
@@ -18,7 +17,7 @@ Field::~Field()
     SAFEDEL( BlockLinesItems );
 }
 
-void Field::AddItem( ItemHex* item, ItemHex* block_lines_item )
+void Field::AddItem( ItemHexView* item, ItemHexView* block_lines_item )
 {
     RUNTIME_ASSERT( item || block_lines_item );
 
@@ -28,20 +27,20 @@ void Field::AddItem( ItemHex* item, ItemHex* block_lines_item )
         item->HexScrY = &ScrY;
 
         if( !Items )
-            Items = new ItemHexVec();
+            Items = new ItemHexViewVec();
         Items->push_back( item );
     }
     if( block_lines_item )
     {
         if( !BlockLinesItems )
-            BlockLinesItems = new ItemHexVec();
+            BlockLinesItems = new ItemHexViewVec();
         BlockLinesItems->push_back( block_lines_item );
     }
 
     ProcessCache();
 }
 
-void Field::EraseItem( ItemHex* item, ItemHex* block_lines_item )
+void Field::EraseItem( ItemHexView* item, ItemHexView* block_lines_item )
 {
     RUNTIME_ASSERT( item || block_lines_item );
 
@@ -134,15 +133,15 @@ Field::Tile& Field::GetTile( uint index, bool is_roof )
     return tiles_vec->at( index - ( stile ? 1 : 0 ) );
 }
 
-void Field::AddDeadCrit( CritterCl* cr )
+void Field::AddDeadCrit( CritterView* cr )
 {
     if( !DeadCrits )
-        DeadCrits = new CrClVec();
+        DeadCrits = new CritterViewVec();
     if( std::find( DeadCrits->begin(), DeadCrits->end(), cr ) == DeadCrits->end() )
         DeadCrits->push_back( cr );
 }
 
-void Field::EraseDeadCrit( CritterCl* cr )
+void Field::EraseDeadCrit( CritterView* cr )
 {
     if( !DeadCrits )
         return;
@@ -168,7 +167,7 @@ void Field::ProcessCache()
 
     if( Items )
     {
-        for( ItemHex* item :* Items )
+        for( ItemHexView* item :* Items )
         {
             hash pid = item->GetProtoId();
             if( item->IsWall() )
@@ -194,7 +193,7 @@ void Field::ProcessCache()
 
     if( BlockLinesItems )
     {
-        for( ItemHex* item :* BlockLinesItems )
+        for( ItemHexView* item :* BlockLinesItems )
         {
             Flags.IsNotPassed = true;
             if( !item->GetIsShootThru() )
@@ -380,7 +379,7 @@ void HexManager::ReloadSprites()
     SetRainAnimation( nullptr, nullptr );
 }
 
-void HexManager::AddFieldItem( ushort hx, ushort hy, ItemHex* item )
+void HexManager::AddFieldItem( ushort hx, ushort hy, ItemHexView* item )
 {
     GetField( hx, hy ).AddItem( item, nullptr );
     if( item->IsNonEmptyBlockLines() )
@@ -391,7 +390,7 @@ void HexManager::AddFieldItem( ushort hx, ushort hy, ItemHex* item )
     }
 }
 
-void HexManager::EraseFieldItem( ushort hx, ushort hy, ItemHex* item )
+void HexManager::EraseFieldItem( ushort hx, ushort hy, ItemHexView* item )
 {
     GetField( hx, hy ).EraseItem( item, nullptr );
     if( item->IsNonEmptyBlockLines() )
@@ -430,7 +429,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     }
 
     // Change
-    ItemHex* item_old = GetItemById( id );
+    ItemHexView* item_old = GetItemById( id );
     if( item_old )
     {
         if( item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy )
@@ -449,8 +448,8 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     }
 
     // Parse
-    Field&   f = GetField( hx, hy );
-    ItemHex* item = new ItemHex( id, proto, data, hx, hy, &f.ScrX, &f.ScrY );
+    Field&       f = GetField( hx, hy );
+    ItemHexView* item = new ItemHexView( id, proto, data, hx, hy, &f.ScrX, &f.ScrY );
     if( is_added )
         item->SetShowAnim();
     PushItem( item );
@@ -486,7 +485,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
         return;
     }
 
-    ItemHex* item = GetItemById( id );
+    ItemHexView* item = GetItemById( id );
     if( !item )
     {
         WriteLog( "Item '{}' not found.\n", _str().parseHash( id ) );
@@ -502,7 +501,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     #endif
 }
 
-void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, ItemHexVec::iterator* it_hex_items /* = nullptr */ )
+void HexManager::DeleteItem( ItemHexView* item, bool destroy_item /* = true */, ItemHexViewVec::iterator* it_hex_items /* = nullptr */ )
 {
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
@@ -533,7 +532,7 @@ void HexManager::ProcessItems()
 {
     for( auto it = hexItems.begin(); it != hexItems.end();)
     {
-        ItemHex* item = *it;
+        ItemHexView* item = *it;
         item->Process();
 
         if( item->IsDynamicEffect() && !item->IsFinishing() )
@@ -585,9 +584,9 @@ void HexManager::SkipItemsFade()
         item->SkipFade();
 }
 
-bool ItemCompScen( ItemHex* o1, ItemHex* o2 ) { return o1->IsScenery() && !o2->IsScenery(); }
-bool ItemCompWall( ItemHex* o1, ItemHex* o2 ) { return o1->IsWall() && !o2->IsWall(); }
-void HexManager::PushItem( ItemHex* item )
+bool ItemCompScen( ItemHexView* o1, ItemHexView* o2 ) { return o1->IsScenery() && !o2->IsScenery(); }
+bool ItemCompWall( ItemHexView* o1, ItemHexView* o2 ) { return o1->IsWall() && !o2->IsWall(); }
+void HexManager::PushItem( ItemHexView* item )
 {
     hexItems.push_back( item );
 
@@ -601,46 +600,46 @@ void HexManager::PushItem( ItemHex* item )
     std::sort( f.Items->begin(), f.Items->end(), ItemCompWall );
 }
 
-ItemHex* HexManager::GetItem( ushort hx, ushort hy, hash pid )
+ItemHexView* HexManager::GetItem( ushort hx, ushort hy, hash pid )
 {
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
         return nullptr;
 
     for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
-        ItemHex* item = *it;
+        ItemHexView* item = *it;
         if( item->GetProtoId() == pid )
             return item;
     }
     return nullptr;
 }
 
-ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
+ItemHexView* HexManager::GetItemById( ushort hx, ushort hy, uint id )
 {
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
         return nullptr;
 
     for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
-        ItemHex* item = *it;
+        ItemHexView* item = *it;
         if( item->GetId() == id )
             return item;
     }
     return nullptr;
 }
 
-ItemHex* HexManager::GetItemById( uint id )
+ItemHexView* HexManager::GetItemById( uint id )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
-        ItemHex* item = *it;
+        ItemHexView* item = *it;
         if( item->GetId() == id )
             return item;
     }
     return nullptr;
 }
 
-void HexManager::GetItems( ushort hx, ushort hy, ItemHexVec& items )
+void HexManager::GetItems( ushort hx, ushort hy, ItemHexViewVec& items )
 {
     if( !IsMapLoaded() )
         return;
@@ -707,12 +706,12 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         return false;
     }
 
-    Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( 0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY );
+    Field&       f = GetField( from_hx, from_hy );
+    ItemHexView* item = new ItemHexView( 0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY );
 
-    float    sx = 0;
-    float    sy = 0;
-    uint     dist = 0;
+    float        sx = 0;
+    float        sy = 0;
+    uint         dist = 0;
 
     if( from_hx != to_hx || from_hy != to_hy )
     {
@@ -818,7 +817,7 @@ void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
         cursorX = f.ScrX + 1 - 1;
         cursorY = f.ScrY - 1 - 1;
 
-        CritterCl* chosen = GetChosen();
+        CritterView* chosen = GetChosen();
         if( !chosen )
         {
             drawCursorX = -1;
@@ -1007,7 +1006,7 @@ void HexManager::RebuildMap( int rx, int ry )
         {
             for( auto it = f.Items->begin(), end = f.Items->end(); it != end; ++it )
             {
-                ItemHex* item = *it;
+                ItemHexView* item = *it;
 
                 if( !mapperMode )
                 {
@@ -1048,7 +1047,7 @@ void HexManager::RebuildMap( int rx, int ry )
         }
 
         // Critters
-        CritterCl* cr = f.Crit;
+        CritterView* cr = f.Crit;
         if( cr && GameOpt.ShowCrit && cr->Visible )
         {
             Sprite& spr = mainTree.AddSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
@@ -1073,7 +1072,7 @@ void HexManager::RebuildMap( int rx, int ry )
         {
             for( auto it = f.DeadCrits->begin(), end = f.DeadCrits->end(); it != end; ++it )
             {
-                CritterCl* cr = *it;
+                CritterView* cr = *it;
                 if( !cr->Visible )
                     continue;
 
@@ -1252,7 +1251,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
         {
             for( auto it = f.Items->begin(), end = f.Items->end(); it != end; ++it )
             {
-                ItemHex* item = *it;
+                ItemHexView* item = *it;
 
                 if( !mapperMode )
                 {
@@ -1293,7 +1292,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
         }
 
         // Critters
-        CritterCl* cr = f.Crit;
+        CritterView* cr = f.Crit;
         if( cr && GameOpt.ShowCrit && cr->Visible )
         {
             Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
@@ -1318,7 +1317,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
         {
             for( auto it = f.DeadCrits->begin(), end = f.DeadCrits->end(); it != end; ++it )
             {
-                CritterCl* cr = *it;
+                CritterView* cr = *it;
                 if( !cr->Visible )
                     continue;
 
@@ -1863,11 +1862,11 @@ void HexManager::CollectLightSources()
     // Items in critters slots
     for( auto& kv : allCritters )
     {
-        CritterCl* cr = kv.second;
-        bool       added = false;
+        CritterView* cr = kv.second;
+        bool         added = false;
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
-            ItemCl* item = *it_;
+            ItemView* item = *it_;
             if( item->GetIsLight() && item->GetCritSlot() )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
@@ -2047,7 +2046,7 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
     return !( top > GameOpt.ScreenHeight * GameOpt.SpritesZoom || bottom < 0 || left > GameOpt.ScreenWidth * GameOpt.SpritesZoom || right < 0 );
 }
 
-bool HexManager::ProcessHexBorders( ItemHex* item )
+bool HexManager::ProcessHexBorders( ItemHexView* item )
 {
     return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
 }
@@ -2468,14 +2467,14 @@ bool HexManager::Scroll()
     // Check critter scroll lock
     if( AutoScroll.HardLockedCritter && !is_scroll )
     {
-        CritterCl* cr = GetCritter( AutoScroll.HardLockedCritter );
+        CritterView* cr = GetCritter( AutoScroll.HardLockedCritter );
         if( cr && ( cr->GetHexX() != screenHexX || cr->GetHexY() != screenHexY ) )
             ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.02f, true );
     }
 
     if( AutoScroll.SoftLockedCritter && !is_scroll )
     {
-        CritterCl* cr = GetCritter( AutoScroll.SoftLockedCritter );
+        CritterView* cr = GetCritter( AutoScroll.SoftLockedCritter );
         if( cr && ( cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY ) )
         {
             int ox, oy;
@@ -2773,7 +2772,7 @@ void HexManager::ScrollOffset( int ox, int oy, float speed, bool can_stop )
     AutoScroll.OffsY += -oy;
 }
 
-void HexManager::SetCritter( CritterCl* cr )
+void HexManager::SetCritter( CritterView* cr )
 {
     if( !IsMapLoaded() )
         return;
@@ -2821,7 +2820,7 @@ void HexManager::SetCritter( CritterCl* cr )
     f.ProcessCache();
 }
 
-void HexManager::RemoveCritter( CritterCl* cr )
+void HexManager::RemoveCritter( CritterView* cr )
 {
     if( !IsMapLoaded() )
         return;
@@ -2847,7 +2846,7 @@ void HexManager::RemoveCritter( CritterCl* cr )
     f.ProcessCache();
 }
 
-CritterCl* HexManager::GetCritter( uint crid )
+CritterView* HexManager::GetCritter( uint crid )
 {
     if( !crid )
         return nullptr;
@@ -2855,7 +2854,7 @@ CritterCl* HexManager::GetCritter( uint crid )
     return it != allCritters.end() ? it->second : nullptr;
 }
 
-CritterCl* HexManager::GetChosen()
+CritterView* HexManager::GetChosen()
 {
     if( !chosenId )
         return nullptr;
@@ -2863,7 +2862,7 @@ CritterCl* HexManager::GetChosen()
     return it != allCritters.end() ? it->second : nullptr;
 }
 
-void HexManager::AddCritter( CritterCl* cr )
+void HexManager::AddCritter( CritterView* cr )
 {
     if( allCritters.count( cr->GetId() ) )
         return;
@@ -2878,7 +2877,7 @@ void HexManager::DeleteCritter( uint crid )
     auto it = allCritters.find( crid );
     if( it == allCritters.end() )
         return;
-    CritterCl* cr = it->second;
+    CritterView* cr = it->second;
     if( cr->IsChosen() )
         chosenId = 0;
     RemoveCritter( cr );
@@ -2893,7 +2892,7 @@ void HexManager::DeleteCritters()
 {
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
-        CritterCl* cr = it->second;
+        CritterView* cr = it->second;
         RemoveCritter( cr );
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
@@ -2904,7 +2903,7 @@ void HexManager::DeleteCritters()
     chosenId = 0;
 }
 
-void HexManager::GetCritters( ushort hx, ushort hy, CrClVec& crits, int find_type )
+void HexManager::GetCritters( ushort hx, ushort hy, CritterViewVec& crits, int find_type )
 {
     Field* f = &GetField( hx, hy );
     if( f->Crit && f->Crit->CheckFind( find_type ) )
@@ -2921,7 +2920,7 @@ void HexManager::SetCritterContour( uint crid, int contour )
 {
     if( critterContourCrId )
     {
-        CritterCl* cr = GetCritter( critterContourCrId );
+        CritterView* cr = GetCritter( critterContourCrId );
         if( cr && cr->SprDrawValid )
         {
             if( !cr->IsDead() && !cr->IsChosen() )
@@ -2934,7 +2933,7 @@ void HexManager::SetCritterContour( uint crid, int contour )
     critterContour = contour;
     if( crid )
     {
-        CritterCl* cr = GetCritter( crid );
+        CritterView* cr = GetCritter( crid );
         if( cr && cr->SprDrawValid )
             cr->SprDraw->SetContour( contour );
     }
@@ -2949,13 +2948,13 @@ void HexManager::SetCrittersContour( int contour )
 
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; it++ )
     {
-        CritterCl* cr = it->second;
+        CritterView* cr = it->second;
         if( !cr->IsChosen() && cr->SprDrawValid && !cr->IsDead() && cr->GetId() != critterContourCrId )
             cr->SprDraw->SetContour( contour );
     }
 }
 
-bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bool force )
+bool HexManager::TransitCritter( CritterView* cr, int hx, int hy, bool animate, bool force )
 {
     if( !IsMapLoaded() || hx < 0 || hx >= maxHexX || hy < 0 || hy >= maxHexY )
         return false;
@@ -3096,20 +3095,20 @@ bool HexManager::GetHexPixel( int x, int y, ushort& hx, ushort& hy )
     return false;
 }
 
-ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
+ItemHexView* HexManager::GetItemPixel( int x, int y, bool& item_egg )
 {
     if( !IsMapLoaded() )
         return nullptr;
 
-    ItemHexVec pix_item;
-    ItemHexVec pix_item_egg;
-    bool       is_egg = SprMngr.IsEggTransp( x, y );
+    ItemHexViewVec pix_item;
+    ItemHexViewVec pix_item_egg;
+    bool           is_egg = SprMngr.IsEggTransp( x, y );
 
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
-        ItemHex* item = *it;
-        ushort   hx = item->GetHexX();
-        ushort   hy = item->GetHexY();
+        ItemHexView* item = *it;
+        ushort       hx = item->GetHexX();
+        ushort       hy = item->GetHexY();
 
         if( item->IsFinishing() || !item->SprDrawValid )
             continue;
@@ -3168,8 +3167,8 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
     // Sorters
     struct Sorter
     {
-        static bool ByTreeIndex( ItemHex* o1, ItemHex* o2 )   { return o1->SprTemp->TreeIndex > o2->SprTemp->TreeIndex; }
-        static bool ByTransparent( ItemHex* o1, ItemHex* o2 ) { return !o1->IsTransparent() && o2->IsTransparent(); }
+        static bool ByTreeIndex( ItemHexView* o1, ItemHexView* o2 )   { return o1->SprTemp->TreeIndex > o2->SprTemp->TreeIndex; }
+        static bool ByTransparent( ItemHexView* o1, ItemHexView* o2 ) { return !o1->IsTransparent() && o2->IsTransparent(); }
     };
 
     // Egg items
@@ -3196,15 +3195,15 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
     return pix_item[ 0 ];
 }
 
-CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chosen )
+CritterView* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chosen )
 {
     if( !IsMapLoaded() || !GameOpt.ShowCrit )
         return nullptr;
 
-    CrClVec crits;
+    CritterViewVec crits;
     for( auto it = allCritters.begin(); it != allCritters.end(); it++ )
     {
-        CritterCl* cr = it->second;
+        CritterView* cr = it->second;
         if( !cr->Visible || cr->IsFinishing() || !cr->SprDrawValid )
             continue;
         if( ignore_dead_and_chosen && ( cr->IsDead() || cr->IsChosen() ) )
@@ -3222,13 +3221,13 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
         return nullptr;
     struct Sorter
     {
-        static bool ByTreeIndex( CritterCl* cr1, CritterCl* cr2 ) { return cr1->SprDraw->TreeIndex > cr2->SprDraw->TreeIndex; } };
+        static bool ByTreeIndex( CritterView* cr1, CritterView* cr2 ) { return cr1->SprDraw->TreeIndex > cr2->SprDraw->TreeIndex; } };
     if( crits.size() > 1 )
         std::sort( crits.begin(), crits.end(), Sorter::ByTreeIndex );
     return crits[ 0 ];
 }
 
-void HexManager::GetSmthPixel( int x, int y, ItemHex*& item, CritterCl*& cr )
+void HexManager::GetSmthPixel( int x, int y, ItemHexView*& item, CritterView*& cr )
 {
     bool item_egg;
     item = GetItemPixel( x, y, item_egg );
@@ -3243,7 +3242,7 @@ void HexManager::GetSmthPixel( int x, int y, ItemHex*& item, CritterCl*& cr )
     }
 }
 
-bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut )
+bool HexManager::FindPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut )
 {
     // Static data
     #define GRID( x, y )    grid[ ( ( MAX_FIND_PATH + 1 ) + ( y ) - grid_oy ) * ( MAX_FIND_PATH * 2 + 2 ) + ( ( MAX_FIND_PATH + 1 ) + ( x ) - grid_ox ) ]
@@ -3752,14 +3751,14 @@ label_FindOk:
     return true;
 }
 
-bool HexManager::CutPath( CritterCl* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut )
+bool HexManager::CutPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut )
 {
     static UCharVec dummy;
     return FindPath( cr, start_x, start_y, end_x, end_y, dummy, cut );
 }
 
-bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterCl* find_cr, bool find_cr_safe,
-                              CrClVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed )
+bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe,
+                              CritterViewVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed )
 {
     if( IsShowTrack() )
         ClearHexTrack();
@@ -3797,7 +3796,7 @@ bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint d
             GetCritters( cx, cy, *critters, find_type );
         if( find_cr != nullptr && f.Crit )
         {
-            CritterCl* cr = f.Crit;
+            CritterView* cr = f.Crit;
             if( cr && cr == find_cr )
                 return true;
             if( find_cr_safe )
@@ -4031,7 +4030,7 @@ bool HexManager::LoadMap( hash map_pid )
                 fm.CopyMem( &props_data[ i ][ 0 ], data_size );
             }
         }
-        Properties props( ItemCl::PropertiesRegistrator );
+        Properties props( ItemView::PropertiesRegistrator );
         props.RestoreData( props_data );
 
         GenerateItem( id, proto_id, props );
@@ -4210,8 +4209,8 @@ void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     RUNTIME_ASSERT( proto );
 
-    ItemHex* scenery = new ItemHex( id, proto, props );
-    Field&   f = GetField( scenery->GetHexX(), scenery->GetHexY() );
+    ItemHexView* scenery = new ItemHexView( id, proto, props );
+    Field&       f = GetField( scenery->GetHexX(), scenery->GetHexY() );
     scenery->HexScrX = &f.ScrX;
     scenery->HexScrY = &f.ScrY;
 
@@ -4332,20 +4331,20 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     {
         if( entity->Type == EntityType::Item )
         {
-            ItemCl* entity_item = (ItemCl*) entity;
+            ItemView* entity_item = (ItemView*) entity;
             if( entity_item->GetAccessory() == ITEM_ACCESSORY_HEX )
             {
                 GenerateItem( entity_item->Id, entity_item->GetProtoId(), entity_item->Props );
             }
             else if( entity_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
             {
-                CritterCl* cr = GetCritter( entity_item->GetCritId() );
+                CritterView* cr = GetCritter( entity_item->GetCritId() );
                 if( cr )
                     cr->AddItem( entity_item->Clone() );
             }
             else if( entity_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
             {
-                ItemCl* cont = GetItemById( entity_item->GetContainerId() );
+                ItemView* cont = GetItemById( entity_item->GetContainerId() );
                 if( cont )
                     cont->ContSetItem( entity_item->Clone() );
             }
@@ -4354,10 +4353,10 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 RUNTIME_ASSERT( !"Unreachable place" );
             }
         }
-        else if( entity->Type == EntityType::CritterCl )
+        else if( entity->Type == EntityType::CritterView )
         {
-            CritterCl* entity_cr = (CritterCl*) entity;
-            CritterCl* cr = new CritterCl( entity_cr->Id, (ProtoCritter*) entity_cr->Proto );
+            CritterView* entity_cr = (CritterView*) entity;
+            CritterView* cr = new CritterView( entity_cr->Id, (ProtoCritter*) entity_cr->Proto );
             cr->Props = entity_cr->Props;
             cr->Init();
             AddCritter( cr );
@@ -4389,10 +4388,10 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
     std::function< void(Entity*) > fill_recursively = [ &fill_recursively, &pmap ] ( Entity * entity )
     {
         Entity* store_entity = nullptr;
-        if( entity->Type == EntityType::ItemHex || entity->Type == EntityType::Item )
-            store_entity = new ItemCl( entity->Id, (ProtoItem*) entity->Proto );
-        else if( entity->Type == EntityType::CritterCl )
-            store_entity = new CritterCl( entity->Id, (ProtoCritter*) entity->Proto );
+        if( entity->Type == EntityType::ItemHexView || entity->Type == EntityType::Item )
+            store_entity = new ItemView( entity->Id, (ProtoItem*) entity->Proto );
+        else if( entity->Type == EntityType::CritterView )
+            store_entity = new CritterView( entity->Id, (ProtoCritter*) entity->Proto );
         else
             RUNTIME_ASSERT( !"Unreachable place" );
         store_entity->Props = entity->Props;

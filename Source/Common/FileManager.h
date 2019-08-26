@@ -1,7 +1,7 @@
 #ifndef __FILE_MANAGER__
 #define __FILE_MANAGER__
 
-#include "Defines.h"
+#include "Common.h"
 #include "Log.h"
 #include "DataFile.h"
 

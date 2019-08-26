@@ -157,12 +157,12 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const DataBase::Documen
     return true;
 }
 
-void CritterManager::GetCritters( CrVec& critters )
+void CritterManager::GetCritters( CritterVec& critters )
 {
-    CrVec all_critters;
+    CritterVec all_critters;
     EntityMngr.GetCritters( all_critters );
 
-    CrVec find_critters;
+    CritterVec find_critters;
     find_critters.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         find_critters.push_back( *it );
@@ -172,7 +172,7 @@ void CritterManager::GetCritters( CrVec& critters )
 
 void CritterManager::GetNpcs( PcVec& npcs )
 {
-    CrVec all_critters;
+    CritterVec all_critters;
     EntityMngr.GetCritters( all_critters );
 
     PcVec find_npcs;
@@ -189,7 +189,7 @@ void CritterManager::GetNpcs( PcVec& npcs )
 
 void CritterManager::GetClients( ClVec& players, bool on_global_map /* = false */ )
 {
-    CrVec all_critters;
+    CritterVec all_critters;
     EntityMngr.GetCritters( all_critters );
 
     ClVec find_players;
@@ -204,12 +204,12 @@ void CritterManager::GetClients( ClVec& players, bool on_global_map /* = false *
     players = find_players;
 }
 
-void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CrVec& critters )
+void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters )
 {
-    CrVec all_critters;
+    CritterVec all_critters;
     EntityMngr.GetCritters( all_critters );
 
-    CrVec find_critters;
+    CritterVec find_critters;
     find_critters.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {

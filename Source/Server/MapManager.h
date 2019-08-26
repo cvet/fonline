@@ -19,7 +19,7 @@ struct TraceData
     bool        LastPassedSkipCritters;
     void        ( * HexCallback )( Map*, Critter*, ushort, ushort, ushort, ushort, uchar );
     // Output
-    CrVec*      Critters;
+    CritterVec* Critters;
     UShortPair* PreBlock;
     UShortPair* Block;
     UShortPair* LastPassed;
@@ -108,7 +108,7 @@ public:
     Location* GetLocationByMap( uint map_id );
     Location* GetLocation( uint loc_id );
     Location* GetLocationByPid( hash loc_pid, uint skip_count );
-    void      GetLocations( LocVec& locs );
+    void      GetLocations( LocationVec& locs );
     uint      GetLocationsCount();
     void      LocationGarbager();
     void      DeleteLocation( Location* loc, ClVec* gmap_players );

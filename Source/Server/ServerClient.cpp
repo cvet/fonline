@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Server.h"
 
 void FOServer::ProcessCritter( Critter* cr )
@@ -810,7 +809,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         cl->Send_AllAutomapsInfo();
 
         // Send current critters
-        CrVec critters = cl->VisCrSelf;
+        CritterVec critters = cl->VisCrSelf;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
             cl->Send_AddCritter( *it );
 
