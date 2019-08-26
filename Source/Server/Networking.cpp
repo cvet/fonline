@@ -9,11 +9,11 @@
 #define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_
 #define _WEBSOCKETPP_CPP11_MEMORY_
 #define _WEBSOCKETPP_CPP11_STL_
-#pragma warning(push)
-#pragma warning(disable: 4267)
+#pragma warning( push )
+#pragma warning( disable: 4267 )
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
-#pragma warning(pop)
+#pragma warning( pop )
 using web_sockets_tls = websocketpp::server< websocketpp::config::asio_tls >;
 using web_sockets_no_tls = websocketpp::server< websocketpp::config::asio >;
 using ssl_context = websocketpp::lib::asio::ssl::context;

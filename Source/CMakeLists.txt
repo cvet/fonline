@@ -331,8 +331,8 @@ if( WIN32 )
 endif()
 
 # Assimp
+set( ASSIMP_DIR "ThirdParty/Assimp" )
 if( NOT BUILD_ONLY_CLIENT )
-	set( ASSIMP_DIR "ThirdParty/Assimp" )
 	set( BUILD_SHARED_LIBS OFF CACHE STRING "" FORCE )
 	set( ASSIMP_NO_EXPORT ON CACHE STRING "" FORCE )
 	set( ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE STRING "" FORCE )
