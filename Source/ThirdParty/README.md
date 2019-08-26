@@ -1,22 +1,21 @@
 # Package versions
 
-asio-1.10.8
-assimp-4.1.0
-curl-7.61.1
-distorm3.3-package
-fltk-1.3.4-1
-fmt-4.0.0
-imgui-docking-150819
-json-nlohmann
-libtheora-1.1.1
-lpng1616
-OpenSSL_1_0_1e-cmake
-SDL2-2.0.9
-unqlite-1.1.9
-variant-1.1.5
-websocketpp_0.7.0
-zlib128
-libogg-1.3.1
-libvorbis-1.3.3
-mongo-c-driver-1.8.2
-mbedtls-2.13.0-apache
+* [asio-1.10.8](https://think-async.com/Asio/)
+* [assimp-4.1.0](http://www.assimp.org/)([2](https://github.com/assimp/assimp))
+* [curl-7.61.1](https://curl.haxx.se/)
+* [distorm3.3-package](https://github.com/gdabah/distorm)
+* [fmt-4.0.0](https://fmt.dev/latest/index.html)([2](https://github.com/fmtlib/fmt))
+* [imgui-docking-150819](https://github.com/ocornut/imgui)
+* [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
+* [libtheora-1.1.1](https://www.theora.org/downloads/)
+* [lpng1616](http://www.libpng.org/pub/png/libpng.html)
+* [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
+* [SDL2-2.0.9](https://www.libsdl.org/download-2.0.php)([2](https://github.com/spurious/SDL-mirror))
+* [unqlite-1.1.9](https://unqlite.org/)
+* [variant-1.1.5](https://github.com/mapbox/variant)
+* [websocketpp_0.7.0](https://github.com/zaphoyd/websocketpp)
+* [zlib128](https://www.zlib.net/)
+* [libogg-1.3.1](https://xiph.org/ogg/)
+* [libvorbis-1.3.3](https://xiph.org/vorbis/)
+* [mongo-c-driver-1.8.2](https://github.com/mongodb/mongo-c-driver)
+* [mbedtls-2.13.0-apache](https://tls.mbed.org/)
