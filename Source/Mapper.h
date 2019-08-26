@@ -474,6 +474,8 @@ public:
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
 
+        static void Global_SetPropertyGetCallback( asIScriptGeneric* gen );
+
         static Map*          ClientCurMap;
         static Location*     ClientCurLocation;
     };
