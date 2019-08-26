@@ -205,7 +205,7 @@ CreateResources( "Applications/EmbeddedResources" "Applications/EmbeddedResource
 
 function( DisableLibWarnings lib )
 	target_compile_options( ${lib} PRIVATE
-		$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-Wall>
+		$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
 		$<$<CXX_COMPILER_ID:MSVC>:/W0> )
 endfunction()
 
@@ -623,12 +623,12 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	if( NOT WIN32 )
 		set( SERVER_SOURCE_NO_GUI ${SERVER_SOURCE} )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Common/GraphicApi.h" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Common/GraphicApi.cpp" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGui.h" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGui.cpp" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGuiDX.cpp" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${GLEW_SOURCE}" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Common/GraphicApi.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Common/GraphicApi.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Server/AppGui.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Server/AppGui.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Server/AppGuiDX.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI ${GLEW_SOURCE} )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "Applications/MainServer.cpp" "Applications/Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DFO_SERVER_DAEMON" )
