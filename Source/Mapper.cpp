@@ -5055,7 +5055,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, string sub_tab, C
         ProtoCritterVec cr_protos;
         for( int i = 0, j = critter_pids->GetSize(); i < j; i++ )
         {
-            ushort        pid = *(ushort*) critter_pids->At( i );
+            hash          pid = *(hash*) critter_pids->At( i );
             ProtoCritter* cr_data = ProtoMngr.GetProtoCritter( pid );
             if( cr_data )
                 cr_protos.push_back( cr_data );
