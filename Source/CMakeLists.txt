@@ -280,6 +280,7 @@ list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/t
 include_directories( "${VORBIS_DIR}/include" )
 include_directories( "${VORBIS_DIR}/lib" )
 add_library( Vorbis ${VORBIS_SOURCE} )
+target_link_libraries( Vorbis Ogg )
 DisableLibWarnings( Vorbis )
 
 # Theora
