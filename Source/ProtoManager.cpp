@@ -1,4 +1,6 @@
 #include "ProtoManager.h"
+#include "Crypt.h"
+#include "FileManager.h"
 
 ProtoManager ProtoMngr;
 

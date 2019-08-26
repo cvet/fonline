@@ -2,6 +2,7 @@
 #define __BUFFER_MANAGER__
 
 #include "Common.h"
+#include "Threading.h"
 
 class BufferManager
 {
@@ -12,9 +13,7 @@ public:
 
 private:
     bool   isError;
-    #ifndef NO_THREADING
     Mutex  bufLocker;
-    #endif
     uchar* bufData;
     uint   bufLen;
     uint   bufEndPos;

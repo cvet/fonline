@@ -338,7 +338,7 @@ void FOServer::LogicTick()
 
     // Sleep
     if( ServerGameSleep >= 0 )
-        Thread_Sleep( ServerGameSleep );
+        Thread::Sleep( ServerGameSleep );
 }
 
 void FOServer::DrawGui()

@@ -7,7 +7,6 @@
 #include "SHA/sha2.h"
 #include <time.h>
 
-#ifdef MEMORY_DEBUG
 static bool                 ASDbgMemoryCanWork = false;
 static THREAD bool          ASDbgMemoryInUse = false;
 static map< void*, string > ASDbgMemoryPtr;
@@ -50,7 +49,6 @@ static void ASDeepDebugFree( void* ptr )
 
     free( ptr_ );
 }
-#endif
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                  \
@@ -1567,7 +1565,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
                         WriteLog( "Proxy answer timeout.\n" ); \
                         return false;                          \
                     }                                          \
-                    Thread_Sleep( 1 );                         \
+                    Thread::Sleep( 1 );                        \
                 }                                              \
             }                                                  \
             while( 0 )
@@ -5248,9 +5246,8 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
-    #ifdef MEMORY_DEBUG
-    asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-    #endif
+    if( MemoryDebugLevel > 1 )
+        asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
 
     // Finish previous
     Script::Finish();
@@ -5397,9 +5394,8 @@ bool FOClient::ReloadScripts()
     if( errors )
         return false;
 
-    #ifdef MEMORY_DEBUG
-    ASDbgMemoryCanWork = true;
-    #endif
+    if( MemoryDebugLevel > 1 )
+        ASDbgMemoryCanWork = true;
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );

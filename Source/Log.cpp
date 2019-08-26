@@ -1,6 +1,7 @@
 #include "Log.h"
 #include "Timer.h"
 #include "FileSystem.h"
+#include "Threading.h"
 #include <stdarg.h>
 #include <time.h>
 
@@ -8,9 +9,7 @@
 # include <android/log.h>
 #endif
 
-#ifndef NO_THREADING
 static Mutex                  LogLocker;
-#endif
 static bool                   LogDisableTimestamp;
 static void*                  LogFileHandle;
 static map< string, LogFunc > LogFunctions;
@@ -19,18 +18,14 @@ static string*                LogBufferStr;
 
 void LogWithoutTimestamp()
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     LogDisableTimestamp = true;
 }
 
 void LogToFile( const string& fname )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     if( LogFileHandle )
         FileClose( LogFileHandle );
@@ -42,9 +37,7 @@ void LogToFile( const string& fname )
 
 void LogToFunc( const string& key, LogFunc func, bool enable )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     if( func )
     {
@@ -61,9 +54,7 @@ void LogToFunc( const string& key, LogFunc func, bool enable )
 
 void LogToBuffer( bool enable )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     SAFEDEL( LogBufferStr );
     if( enable )
@@ -72,9 +63,7 @@ void LogToBuffer( bool enable )
 
 void LogGetBuffer( std::string& buf )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     if( LogBufferStr && !LogBufferStr->empty() )
     {
@@ -85,9 +74,7 @@ void LogGetBuffer( std::string& buf )
 
 void WriteLogMessage( const string& message )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
-    #endif
 
     // Avoid recursive calls
     if( LogFunctionsInProcess )

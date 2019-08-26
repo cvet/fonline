@@ -1448,12 +1448,12 @@ void FOMapper::MainLoop()
             {
                 double sleep = need_elapsed - elapsed + balance;
                 balance = fmod ( sleep, 1.0 );
-                Thread_Sleep( (uint) floor( sleep) );
+                Thread::Sleep( (uint) floor( sleep) );
             }
         }
         else
         {
-            Thread_Sleep( -GameOpt.FixedFPS );
+            Thread::Sleep( -GameOpt.FixedFPS );
         }
     }
 }
@@ -1917,7 +1917,7 @@ void FOMapper::ObjDraw()
     if( !entity )
         return;
 
-    Item*      item = ( entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex ? (Item*) entity : nullptr );
+    ItemCl*    item = ( entity->Type == EntityType::ItemCl || entity->Type == EntityType::ItemHex ? (ItemCl*) entity : nullptr );
     CritterCl* cr = ( entity->Type == EntityType::CritterCl ? (CritterCl*) entity : nullptr );
     Rect       r = Rect( ObjWWork, ObjX, ObjY );
     int        x = r.L;
@@ -2376,8 +2376,8 @@ void FOMapper::IntLMouseDown()
                     to_slot %= 256;
 
                     for( auto& child : cr->GetChildren() )
-                        if( ( (Item*) child )->GetCritSlot() == to_slot )
-                            ( (Item*) child )->SetCritSlot( 0 );
+                        if( ( (ItemCl*) child )->GetCritSlot() == to_slot )
+                            ( (ItemCl*) child )->SetCritSlot( 0 );
 
                     InContItem->SetCritSlot( to_slot );
 
@@ -4321,21 +4321,21 @@ bool FOMapper::InitScriptSystem()
     SAFEDEL( Globals );
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
-    Item::SetPropertyRegistrator( registrators[ 2 ] );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    ItemCl::SetPropertyRegistrator( registrators[ 2 ] );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    ItemCl::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     MapCl::SetPropertyRegistrator( registrators[ 3 ] );
     LocationCl::SetPropertyRegistrator( registrators[ 4 ] );
 
@@ -4389,20 +4389,20 @@ void FOMapper::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, 
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         bool     rebuild_cache = false;
-        if( prop == Item::PropertyIsColorize )
+        if( prop == ItemCl::PropertyIsColorize )
             hex_item->RefreshAlpha();
-        else if( prop == Item::PropertyIsBadItem )
+        else if( prop == ItemCl::PropertyIsBadItem )
             hex_item->SetSprite( nullptr );
-        else if( prop == Item::PropertyIsShootThru )
+        else if( prop == ItemCl::PropertyIsShootThru )
             rebuild_cache = true;
-        else if( prop == Item::PropertyIsLightThru )
+        else if( prop == ItemCl::PropertyIsLightThru )
             Self->HexMngr.RebuildLight(), rebuild_cache = true;
-        else if( prop == Item::PropertyIsNoBlock )
+        else if( prop == ItemCl::PropertyIsNoBlock )
             rebuild_cache = true;
         if( rebuild_cache )
             Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
@@ -4419,7 +4419,7 @@ void FOMapper::OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_val
 
 void FOMapper::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
@@ -4432,7 +4432,7 @@ void FOMapper::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 {
     // OffsetX, OffsetY
 
-    Item* item = (Item*) entity;
+    ItemCl* item = (ItemCl*) entity;
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
@@ -4444,9 +4444,9 @@ void FOMapper::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 
 void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) entity;
-    bool  cur = *(bool*) cur_value;
-    bool  old = *(bool*) old_value;
+    ItemCl* item = (ItemCl*) entity;
+    bool    cur = *(bool*) cur_value;
+    bool    old = *(bool*) old_value;
 
     if( item->GetIsCanOpen() )
     {

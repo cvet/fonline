@@ -260,7 +260,7 @@ static int SystemCall( string command, std::function< void(const string&) > log_
     string log;
     while( true )
     {
-        Thread_Sleep( 1 );
+        Thread::Sleep( 1 );
 
         DWORD bytes;
         while( PeekNamedPipe( out_read, nullptr, 0, nullptr, &bytes, nullptr ) && bytes > 0 )

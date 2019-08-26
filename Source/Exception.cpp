@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "Exception.h"
 #include "Script.h"
+#include "Threading.h"
 
 static char DumpMess[] =
 {
@@ -71,13 +72,8 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     string        dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    # ifdef FONLINE_SERVER
-    string        dump_path_dir = FileManager::GetWritePath( "Dumps/" );
-    # else
-    string        dump_path_dir = "./";
-    # endif
-    string        dump_path = _str( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
-                                    dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string        dump_path = _str( "{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                                    dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
@@ -209,12 +205,8 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         {
             DWORD       tid = threads_ids[ i ];
             HANDLE      t = OpenThread( THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid );
-            # ifndef NO_THREADING
             const char* tname = Thread::FindName( tid );
             fprintf( f, "Thread '%s' (%u%s)\n", tname ? tname : "Unknown", tid, !i ? ", current" : "" );
-            # else
-            fprintf( f, "Thread %u (%s)\n", tid, !i ? ", current" : "" );
-            # endif
 
             CONTEXT context;
             memset( &context, 0, sizeof( context ) );
@@ -539,13 +531,8 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
     string dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
-    # ifdef FONLINE_SERVER
-    string dump_path_dir = FileManager::GetWritePath( "Dumps/" );
-    # else
-    string dump_path_dir = "./";
-    # endif
-    string dump_path = _str( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
-                             dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string dump_path = _str( "{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                             dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
@@ -600,11 +587,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         DumpAngelScript( f );
 
         // Threads
-        # ifndef NO_THREADING
         fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
-        # else
-        fprintf( f, "Thread %s\n", ", current" );
-        # endif
 
         // Stack
         int skip = 0;

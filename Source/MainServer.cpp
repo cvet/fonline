@@ -19,13 +19,13 @@ static void InitAdminManager();
 static void ServerEntry( void* )
 {
     while( !StartServer )
-        Thread_Sleep( 10 );
+        Thread::Sleep( 10 );
 
     GetServerOptions();
 
     // Memory debugging
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
-    if( MemoryDebugLevel >= 3 )
+    if( MemoryDebugLevel > 2 )
         Debugger::StartTraceMemory();
 
     // Admin manager
@@ -97,7 +97,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Server loop in separate thread
     ServerThread.Start( ServerEntry, "Main" );
     while( StartServer && !Server )
-        Thread_Sleep( 0 );
+        Thread::Sleep( 0 );
 
     // Gui loop
     while( !StartServer || Server )
@@ -122,7 +122,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
                 {
                     StartServer = true;
                     while( !Server )
-                        Thread_Sleep( 0 );
+                        Thread::Sleep( 0 );
                 }
             }
             ImGui::End();
@@ -238,7 +238,7 @@ static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
     StartServer = true;
     ServerThread.Start( ServerEntry, "Main" );
     while( !Server || !Server->Started() || !Server->Stopped() )
-        Thread_Sleep( 10 );
+        Thread::Sleep( 10 );
 
     if( Server->Started() )
         SetFOServiceStatus( SERVICE_RUNNING );
@@ -345,7 +345,7 @@ int main( int argc, char** argv )
 
     // Memory debugging
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
-    if( MemoryDebugLevel >= 3 )
+    if( MemoryDebugLevel > 2 )
         Debugger::StartTraceMemory();
 
     // Logging
@@ -368,7 +368,7 @@ static void DaemonLoop()
 
     // Daemon loop
     while( !GameOpt.Quit )
-        Thread_Sleep( 100 );
+        Thread::Sleep( 100 );
     ServerThread.Wait();
 }
 
@@ -528,7 +528,7 @@ static void AdminManager( void* port_ )
         }
 
         // Sleep to prevent panel DDOS or keys brute force
-        Thread_Sleep( 1000 );
+        Thread::Sleep( 1000 );
     }
 }
 

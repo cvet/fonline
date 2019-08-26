@@ -967,8 +967,6 @@ MapperScriptFunctions MapperFunctions;
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 
 int  ServerGameSleep = 10;
-int  MemoryDebugLevel = 10;
-uint VarsGarbageTime = 3600000;
 bool AllowServerNativeCalls = false;
 bool AllowClientNativeCalls = false;
 

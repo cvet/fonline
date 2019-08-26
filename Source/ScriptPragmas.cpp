@@ -1310,7 +1310,7 @@ public:
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Critter.h"
 #endif
-#ifdef FONLINE_CLIENT
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "Client.h"
 #endif
 class RpcPragma
@@ -1458,7 +1458,6 @@ public:
     {
         uint errors = 0;
 
-        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
         for( auto& func_desc : inFuncDesc )
         {
             string decl = _str( "void {}({}{}{})", "%s", pragmaType == PRAGMA_SERVER ? "Critter" : "",
@@ -1475,14 +1474,12 @@ public:
                 errors++;
             }
         }
-        #endif
 
         return errors == 0;
     }
 
     static void Rpc( asIScriptGeneric* gen )
     {
-        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
         uint msg = NETMSG_RPC;
         uint func_index = *(uint*) gen->GetAuxiliary();
         uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( func_index );
@@ -1502,7 +1499,7 @@ public:
                 SCRIPT_ERROR_R( "Some of argument is too large (more than 65535 bytes length)" );
         }
 
-        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Critter* cr = (Critter*) gen->GetObject();
         if( !cr->IsPlayer() )
         {
@@ -1512,13 +1509,13 @@ public:
 
         Client* cl = (Client*) cr;
         BufferManager& net_buf = cl->Connection->Bout;
-        # else
+        #else
         BufferManager& net_buf = FOClient::Self->Bout;
-        # endif
+        #endif
 
-        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         BOUT_BEGIN( cl );
-        # endif
+        #endif
         net_buf << NETMSG_RPC;
         net_buf << msg_len;
         net_buf << func_index;
@@ -1529,21 +1526,19 @@ public:
             if( len )
                 net_buf.Push( &args[ i ][ 0 ], len );
         }
-        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         BOUT_END( cl );
-        # endif
         #endif
     }
 
     void HandleRpc( void* context )
     {
-        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
-        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Client* cl = (Client*) context;
         BufferManager& net_buf = cl->Connection->Bin;
-        # else
+        #else
         BufferManager& net_buf = *(BufferManager*) context;
-        # endif
+        #endif
 
         uint msg_len;
         uint func_index;
@@ -1568,13 +1563,13 @@ public:
         asIScriptFunction* func = inFunc[ func_index ];
         for( asUINT i = 0; i < func->GetParamCount(); i++ )
         {
-            # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+            #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
             if( i == 0 )
             {
                 Script::SetArgEntity( cl );
                 continue;
             }
-            # endif
+            #endif
 
             ushort len;
             net_buf >> len;
@@ -1619,7 +1614,6 @@ public:
         }
 
         Script::RunPrepared();
-        #endif
     }
 };
 

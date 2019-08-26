@@ -1,5 +1,5 @@
-#include "Common.h"
 #include "Debugger.h"
+#include "Threading.h"
 
 #define MAX_BLOCKS       ( 25 )
 #define MAX_ENTRY        ( 2000 )
@@ -8,6 +8,8 @@ static double Ticks[ MAX_BLOCKS ][ MAX_ENTRY ][ MAX_PROCESS ];
 static int    Identifiers[ MAX_BLOCKS ][ MAX_ENTRY ][ MAX_PROCESS ];
 static uint   CurTick[ MAX_BLOCKS ][ MAX_ENTRY ];
 static int    CurEntry[ MAX_BLOCKS ];
+
+int           MemoryDebugLevel = 0;
 
 void Debugger::BeginCycle()
 {
@@ -109,38 +111,28 @@ const char* MemBlockNames[ MAX_MEM_NODES ] =
     "Angel Script ",
 };
 
-#ifndef NO_THREADING
-static Mutex* MemLocker = nullptr;
-#endif
+static Mutex MemLocker;
 
 void Debugger::Memory( int block, int value )
 {
-    #ifndef NO_THREADING
-    if( !MemLocker )
-        MemLocker = new Mutex();
-    MemLocker->Lock();
-    #endif
+    if( !value )
+        return;
 
-    if( value )
+    SCOPE_LOCK( MemLocker );
+
+    MemNode& node = MemNodes[ block ];
+    if( value > 0 )
     {
-        MemNode& node = MemNodes[ block ];
-        if( value > 0 )
-        {
-            node.AllocMem += value;
-            if( !node.MinAlloc || value < node.MinAlloc )
-                node.MinAlloc = value;
-            if( value > node.MaxAlloc )
-                node.MaxAlloc = value;
-        }
-        else
-        {
-            node.DeallocMem -= value;
-        }
+        node.AllocMem += value;
+        if( !node.MinAlloc || value < node.MinAlloc )
+            node.MinAlloc = value;
+        if( value > node.MaxAlloc )
+            node.MaxAlloc = value;
     }
-
-    #ifndef NO_THREADING
-    MemLocker->Unlock();
-    #endif
+    else
+    {
+        node.DeallocMem -= value;
+    }
 }
 
 struct MemNodeStr
@@ -157,58 +149,46 @@ static MemNodeStrVec MemNodesStr;
 
 void Debugger::MemoryStr( const char* block, int value )
 {
-    #ifndef NO_THREADING
-    if( !MemLocker )
-        MemLocker = new Mutex();
-    MemLocker->Lock();
-    #endif
+    if( !block || !value )
+        return;
 
-    if( block && value )
+    SCOPE_LOCK( MemLocker );
+
+    MemNodeStr* node;
+    auto        it = std::find( MemNodesStr.begin(), MemNodesStr.end(), block );
+    if( it == MemNodesStr.end() )
     {
-        MemNodeStr* node;
-        auto        it = std::find( MemNodesStr.begin(), MemNodesStr.end(), block );
-        if( it == MemNodesStr.end() )
-        {
-            MemNodeStr node_;
-            Str::Copy( node_.Name, block );
-            node_.AllocMem = 0;
-            node_.DeallocMem = 0;
-            node_.MinAlloc = 0;
-            node_.MaxAlloc = 0;
-            MemNodesStr.push_back( node_ );
-            node = &MemNodesStr.back();
-        }
-        else
-        {
-            node = &( *it );
-        }
-
-        if( value > 0 )
-        {
-            node->AllocMem += value;
-            if( !node->MinAlloc || value < node->MinAlloc )
-                node->MinAlloc = value;
-            if( value > node->MaxAlloc )
-                node->MaxAlloc = value;
-        }
-        else
-        {
-            node->DeallocMem -= value;
-        }
+        MemNodeStr node_;
+        Str::Copy( node_.Name, block );
+        node_.AllocMem = 0;
+        node_.DeallocMem = 0;
+        node_.MinAlloc = 0;
+        node_.MaxAlloc = 0;
+        MemNodesStr.push_back( node_ );
+        node = &MemNodesStr.back();
+    }
+    else
+    {
+        node = &( *it );
     }
 
-    #ifndef NO_THREADING
-    MemLocker->Unlock();
-    #endif
+    if( value > 0 )
+    {
+        node->AllocMem += value;
+        if( !node->MinAlloc || value < node->MinAlloc )
+            node->MinAlloc = value;
+        if( value > node->MaxAlloc )
+            node->MaxAlloc = value;
+    }
+    else
+    {
+        node->DeallocMem -= value;
+    }
 }
 
 const char* Debugger::GetMemoryStatistics()
 {
-    #ifndef NO_THREADING
-    if( !MemLocker )
-        MemLocker = new Mutex();
-    MemLocker->Lock();
-    #endif
+    SCOPE_LOCK( MemLocker );
 
     #pragma MESSAGE("Exclude static var.")
     static string result;
@@ -240,7 +220,7 @@ const char* Debugger::GetMemoryStatistics()
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     int64 all_alloc = 0, all_dealloc = 0;
 
-    if( MemoryDebugLevel >= 1 )
+    if( MemoryDebugLevel > 0 )
     {
         result += "\n  Level 1            Memory        Alloc         Free    Min block    Max block\n";
         for( int i = 0; i < MAX_MEM_NODES; i++ )
@@ -263,7 +243,7 @@ const char* Debugger::GetMemoryStatistics()
         result += buf;
     }
 
-    if( MemoryDebugLevel >= 2 )
+    if( MemoryDebugLevel > 1 )
     {
         all_alloc = all_dealloc = 0;
         result += "\n  Level 2                                                  Memory        Alloc         Free    Min block    Max block\n";
@@ -287,7 +267,7 @@ const char* Debugger::GetMemoryStatistics()
         result += buf;
     }
 
-    if( MemoryDebugLevel >= 3 )
+    if( MemoryDebugLevel > 2 )
     {
         result += "\n  Level 3\n";
         result += GetTraceMemory();
@@ -297,9 +277,6 @@ const char* Debugger::GetMemoryStatistics()
         result += "\n  Disabled\n";
     #endif
 
-    #ifndef NO_THREADING
-    MemLocker->Unlock();
-    #endif
     return result.c_str();
 }
 
@@ -316,9 +293,7 @@ static bool                         MemoryTrace;
 typedef pair< StackInfo*, size_t > StackInfoSize;
 static map< size_t, StackInfoSize > PtrStackInfoSize;
 static map< size_t, StackInfo* >    StackHashStackInfo;
-#ifndef NO_THREADING
 static Mutex                        MemoryAllocLocker;
-#endif
 static uint                         MemoryAllocRecursion;
 
 #define ALLOCATE_PTR( ptr, size, param )                                                       \
@@ -516,9 +491,8 @@ DECLARE_PATCH( LPVOID, HeapAlloc, ( HANDLE hHeap, DWORD dwFlags, DWORD_PTR dwByt
 {
     if( MemoryTrace )
     {
-        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
-        # endif
+
         MemoryAllocRecursion++;
         void* ptr = Patch_HeapAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, dwBytes );
         MemoryAllocRecursion--;
@@ -537,9 +511,8 @@ DECLARE_PATCH( LPVOID, HeapReAlloc, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem,
 {
     if( MemoryTrace )
     {
-        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
-        # endif
+
         MemoryAllocRecursion++;
         void* ptr = Patch_HeapReAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem, dwBytes );
         MemoryAllocRecursion--;
@@ -559,9 +532,8 @@ DECLARE_PATCH( BOOL, HeapFree, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem ) )
 {
     if( MemoryTrace )
     {
-        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
-        # endif
+
         MemoryAllocRecursion++;
         BOOL result = Patch_HeapFree.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem );
         MemoryAllocRecursion--;
@@ -581,6 +553,7 @@ bool PatchWindowsAlloc()
     HMODULE hkernel32 = GetModuleHandleW( L"kernel32" );
     if( !hkernel32 )
         return false;
+
     INSTALL_PATCH( HeapCreate );
     INSTALL_PATCH( HeapDestroy );
     INSTALL_PATCH( HeapAlloc );
@@ -629,19 +602,15 @@ StackInfo* GetStackInfo( const void* caller )
 
 # include <malloc.h>
 
-# ifndef NO_THREADING
 static Mutex HookLocker;
-# endif
 
-void* malloc_hook( size_t size, const void* caller );
-void* realloc_hook( void* ptr, size_t size, const void* caller );
-void  free_hook( void* ptr, const void* caller );
+static void* malloc_hook( size_t size, const void* caller );
+static void* realloc_hook( void* ptr, size_t size, const void* caller );
+static void  free_hook( void* ptr, const void* caller );
 
-void* malloc_hook( size_t size, const void* caller )
+static void* malloc_hook( size_t size, const void* caller )
 {
-    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
-    # endif
 
     __malloc_hook = nullptr;
     void* ptr = malloc( size );
@@ -651,11 +620,9 @@ void* malloc_hook( size_t size, const void* caller )
     return ptr;
 }
 
-void* realloc_hook( void* ptr, size_t size, const void* caller )
+static void* realloc_hook( void* ptr, size_t size, const void* caller )
 {
-    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
-    # endif
 
     __realloc_hook = nullptr;
     if( MemoryTrace )
@@ -667,11 +634,9 @@ void* realloc_hook( void* ptr, size_t size, const void* caller )
     return ptr;
 }
 
-void free_hook( void* ptr, const void* caller )
+static void free_hook( void* ptr, const void* caller )
 {
-    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
-    # endif
 
     __free_hook = nullptr;
     free( ptr );
@@ -713,9 +678,8 @@ struct ChunkSorter
 };
 string Debugger::GetTraceMemory()
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( MemoryAllocLocker );
-    #endif
+
     MemoryAllocRecursion++;
 
     // Sort by chunks count

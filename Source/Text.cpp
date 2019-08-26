@@ -2,8 +2,9 @@
 #include "Text.h"
 #include "Crypt.h"
 #include "UcsTables.h"
-#include <sstream>
 #include "FileSystem.h"
+#include "Threading.h"
+#include <sstream>
 
 uint _str::length()
 {
@@ -483,9 +484,7 @@ std::wstring _str::toWideChar()
 # include "DataBase.h"
 #endif
 
-#ifndef NO_THREADING
 static Mutex               HashNamesLocker;
-#endif
 static map< hash, string > HashNames;
 
 hash _str::toHash()
@@ -504,9 +503,7 @@ hash _str::toHash()
         return 0;
 
     // Add hash
-    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
-    #endif
 
     auto ins = HashNames.insert( std::make_pair( h, "" ) );
     if( ins.second )
@@ -531,9 +528,7 @@ hash _str::toHash()
 
 _str& _str::parseHash( hash h )
 {
-    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
-    #endif
 
     if( h )
     {
@@ -549,9 +544,7 @@ void _str::loadHashes()
 {
     WriteLog( "Load hashes...\n" );
 
-    # ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
-    # endif
 
     UIntVec db_hashes = DbStorage->GetAllIds( "Hashes" );
     for( uint hash_id : db_hashes )

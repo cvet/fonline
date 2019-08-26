@@ -1,5 +1,6 @@
 #include "AppGui.h"
 #include "GraphicApi.h"
+#include "Threading.h"
 
 struct ImGuiViewportDataSDL2
 {
@@ -556,9 +557,7 @@ void AppGui::EndFrame()
 
     SDL_GL_SwapWindow( SdlWindow );
 
-    #ifdef FO_WINDOWS
-    Thread_Sleep( 10 );
-    #endif
+    Thread::Sleep( 10 );
 }
 
 static const char* GetClipboardText( void* )

@@ -1,21 +1,15 @@
-#ifndef __DEBUGGER__
-#define __DEBUGGER__
+#pragma once
 
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-# define MEMORY_DEBUG
-#endif
+#include "Common.h"
 
-#ifdef MEMORY_DEBUG
-# define MEMORY_PROCESS( block, memory ) \
-    if( MemoryDebugLevel >= 1 )          \
+extern int MemoryDebugLevel;
+
+#define MEMORY_PROCESS( block, memory ) \
+    if( MemoryDebugLevel > 0 )          \
         Debugger::Memory( block, memory )
-# define MEMORY_PROCESS_STR( block, memory ) \
-    if( MemoryDebugLevel >= 2 )              \
+#define MEMORY_PROCESS_STR( block, memory ) \
+    if( MemoryDebugLevel > 1 )              \
         Debugger::MemoryStr( block, memory )
-#else
-# define MEMORY_PROCESS( block, memory )
-# define MEMORY_PROCESS_STR( block, memory )
-#endif
 
 #define MEMORY_STATIC          ( 0 )
 #define MEMORY_NPC             ( 1 )
@@ -44,5 +38,3 @@ namespace Debugger
     void   StartTraceMemory();
     string GetTraceMemory();
 };
-
-#endif // __DEBUGGER__

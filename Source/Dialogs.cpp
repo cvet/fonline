@@ -2,17 +2,14 @@
 #include "Dialogs.h"
 #include "FileManager.h"
 #include "IniParser.h"
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-# include "Script.h"
-# include "Critter.h"
-# include "Map.h"
-#endif
+#include "Script.h"
+#include "Critter.h"
+#include "Map.h"
 
 DialogManager DlgMngr;
 
 int GetPropEnumIndex( const string& str, bool is_demand, int& type, bool& is_hash )
 {
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
     Property* prop_critter = Critter::PropertiesRegistrator->Find( str );
     Property* prop_item = Item::PropertiesRegistrator->Find( str );
@@ -73,9 +70,6 @@ int GetPropEnumIndex( const string& str, bool is_demand, int& type, bool& is_has
 
     is_hash = prop->IsHash();
     return prop->GetRegIndex();
-    #else
-    return 0;
-    #endif
 }
 
 bool DialogManager::LoadDialogs()
@@ -515,13 +509,12 @@ DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_dem
             fail = true;
         }
 
-        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         // Bind function
-        # define BIND_D_FUNC( params )                                                         \
+        #define BIND_D_FUNC( params )                                                          \
             do {                                                                               \
                 id = Script::BindByFuncName( name, "bool %s(Critter, Critter" params, false ); \
             } while( 0 )
-        # define BIND_R_FUNC( params )                                                                            \
+        #define BIND_R_FUNC( params )                                                                             \
             do {                                                                                                  \
                 if( ( id = Script::BindByFuncName( name, "uint %s(Critter, Critter" params, false, true ) ) > 0 ) \
                     ret_value = true;                                                                             \
@@ -572,7 +565,6 @@ DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_dem
             WriteLog( "Script '{}' bind error.\n", name );
             return nullptr;
         }
-        #endif
     }
     break;
     case DR_OR:
@@ -625,17 +617,14 @@ uint DialogManager::GetNotAnswerAction( const string& str, bool& ret_val )
     if( str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None" )
         return 0;
 
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     uint id = Script::BindByFuncName( str, "uint %s(Critter, Critter, string)", false, true );
     if( id )
     {
         ret_val = true;
         return id;
     }
-    return Script::BindByFuncName( str, "void %s(Critter, Critter, string)", false );
-    #endif
 
-    return 0;
+    return Script::BindByFuncName( str, "void %s(Critter, Critter, string)", false );
 }
 
 char DialogManager::GetDRType( const string& str )

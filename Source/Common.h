@@ -90,24 +90,19 @@
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
 
-#if defined ( FONLINE_CLIENT )
-# define NO_THREADING
-#endif
-#include "Threading.h"
-
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )
 #define MESSAGE( desc )                   message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
 
 #define SAFEREL( x ) \
     { if( x )        \
-          ( x )->Release(); ( x ) = NULL; }
+          ( x )->Release(); ( x ) = nullptr; }
 #define SAFEDEL( x ) \
     { if( x )        \
-          delete ( x ); ( x ) = NULL; }
+          delete ( x ); ( x ) = nullptr; }
 #define SAFEDELA( x ) \
     { if( x )         \
-          delete[] ( x ); ( x ) = NULL; }
+          delete[] ( x ); ( x ) = nullptr; }
 
 #define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -252,7 +247,6 @@ struct MapperScriptFunctions
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 
 extern int  ServerGameSleep;
-extern int  MemoryDebugLevel;
 extern bool AllowServerNativeCalls;
 extern bool AllowClientNativeCalls;
 

@@ -33,7 +33,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Hard restart, need wait before event dissapeared
     #ifdef FO_WINDOWS
     if( wcsstr( GetCommandLineW(), L" --restart" ) )
-        Thread_Sleep( 500 );
+        Thread::Sleep( 500 );
     #endif
 
     // Options
@@ -83,12 +83,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
                 {
                     double sleep = need_elapsed - elapsed + balance;
                     balance = fmod ( sleep, 1.0 );
-                    Thread_Sleep( (uint) floor( sleep ) );
+                    Thread::Sleep( (uint) floor( sleep ) );
                 }
             }
             else
             {
-                Thread_Sleep( -GameOpt.FixedFPS );
+                Thread::Sleep( -GameOpt.FixedFPS );
             }
         }
     }
@@ -102,9 +102,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
 
     // Memory stats
-    #ifdef MEMORY_DEBUG
-    WriteLog( "{}", Debugger::GetMemoryStatistics() );
-    #endif
+    if( MemoryDebugLevel > 1 )
+        WriteLog( "{}", Debugger::GetMemoryStatistics() );
 
     // Just kill process
     // System automatically clean up all resources

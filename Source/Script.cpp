@@ -1001,7 +1001,7 @@ void Script::Watcher( void* )
             }
         }
 
-        Thread_Sleep( 100 );
+        Thread::Sleep( 100 );
     }
     #endif
 }

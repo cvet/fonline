@@ -91,15 +91,13 @@ bool FOServer::InitScriptSystem()
     WriteLog( "Script system initialization...\n" );
 
     // Memory debugging
-    #ifdef MEMORY_DEBUG
     asThreadCleanup();
-    if( MemoryDebugLevel >= 2 )
+    if( MemoryDebugLevel > 1 )
         asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-    else if( MemoryDebugLevel >= 1 )
+    else if( MemoryDebugLevel > 0 )
         asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
     else
         asSetGlobalMemoryFunctions( malloc, free );
-    #endif
 
     // Profiler settings
     uint sample_time = MainConfig->GetInt( "", "ProfilerSampleInterval", 0 );
@@ -284,10 +282,11 @@ bool FOServer::ReloadClientScripts()
     WriteLog( "Reload client scripts...\n" );
 
     // Disable debug allocators
-    #ifdef MEMORY_DEBUG
-    asThreadCleanup();
-    asSetGlobalMemoryFunctions( malloc, free );
-    #endif
+    if( MemoryDebugLevel > 0 )
+    {
+        asThreadCleanup();
+        asSetGlobalMemoryFunctions( malloc, free );
+    }
 
     // Swap engine
     asIScriptEngine*      old_engine = Script::GetEngine();
@@ -313,15 +312,14 @@ bool FOServer::ReloadClientScripts()
             WriteLog( "Bind fail, errors {}.\n", bind_errors );
         Script::FinishEngine( engine );
 
-        #ifdef MEMORY_DEBUG
         asThreadCleanup();
-        if( MemoryDebugLevel >= 2 )
+        if( MemoryDebugLevel > 1 )
             asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-        else if( MemoryDebugLevel >= 1 )
+        else if( MemoryDebugLevel > 0 )
             asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
         else
             asSetGlobalMemoryFunctions( malloc, free );
-        #endif
+
         return false;
     }
 
@@ -407,15 +405,14 @@ bool FOServer::ReloadClientScripts()
     Script::Define( "__SERVER" );
     Script::SetLoadLibraryCompiler( false );
 
-    #ifdef MEMORY_DEBUG
     asThreadCleanup();
-    if( MemoryDebugLevel >= 2 )
+    if( MemoryDebugLevel > 1 )
         asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-    else if( MemoryDebugLevel >= 1 )
+    else if( MemoryDebugLevel > 0 )
         asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
     else
         asSetGlobalMemoryFunctions( malloc, free );
-    #endif
+
     Script::SetEngine( old_engine );
 
     // Add config text and pragmas

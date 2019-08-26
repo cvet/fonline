@@ -2,24 +2,12 @@
 
 #include "Common.h"
 
-#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID )
-void Thread_Sleep( uint ms );
-#endif
-
-#ifndef NO_THREADING
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
 
 # include <mutex>
 # include <thread>
 
-// TLS
-# if defined ( FO_MSVC )
-#  define THREAD    __declspec( thread )
-# elif defined ( FO_GCC )
-#  define THREAD    __thread
-# else
-#  error No TLS
-# endif
-
+# define THREAD    thread_local
 # define SCOPE_LOCK( mutex )    volatile MutexLocker scope_lock_ ## mutex( mutex )
 
 class Mutex
@@ -71,6 +59,54 @@ public:
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();
     static const char* FindName( size_t thread_id );
+    static void        Sleep( uint ms );
+};
+
+#else
+
+# define THREAD
+# define SCOPE_LOCK( mutex )
+
+class Mutex
+{
+public:
+    Mutex() = default;
+    Mutex( const Mutex& ) = delete;
+    Mutex& operator=( const Mutex& ) = delete;
+
+    void Lock()    {}
+    bool TryLock() {}
+    void Unlock()  {}
+};
+
+class MutexLocker
+{
+public:
+    MutexLocker() = delete;
+    MutexLocker( const MutexLocker& ) = delete;
+    MutexLocker& operator=( const MutexLocker& ) = delete;
+    MutexLocker( Mutex& mutex ) {}
+    ~MutexLocker() {}
+};
+
+class Thread
+{
+public:
+    using ThreadFunc = std::function< void(void*) >;
+
+    Thread() = default;
+    ~Thread() = default;
+    Thread( const Thread& ) = delete;
+    Thread& operator=( const Thread& ) = delete;
+
+    void Start( ThreadFunc func, const string& name, void* arg = nullptr );
+    void Wait();
+
+    static size_t      GetCurrentId();
+    static void        SetCurrentName( const char* name );
+    static const char* GetCurrentName();
+    static const char* FindName( size_t thread_id );
+    static void        Sleep( uint ms );
 };
 
 #endif
