@@ -1,13 +1,23 @@
 @echo off
 
-FOR /F "tokens=*" %%G IN ('DIR /B .\*.h') DO (
-echo Indenting file "%%G"
-"SourceTools\uncrustify.exe" -f "%%G" -c "SourceTools\uncrustify.cfg" -o indentoutput.tmp
-move /Y indentoutput.tmp "%%G"
-)
+call :IndentFile Common, *.h
+call :IndentFile Common, *.cpp
+call :IndentFile Common\AngelScriptExt, *.h
+call :IndentFile Common\AngelScriptExt, *.cpp
+call :IndentFile Server, *.h
+call :IndentFile Server, *.cpp
+call :IndentFile Client, *.h
+call :IndentFile Client, *.cpp
+call :IndentFile Mapper, *.h
+call :IndentFile Mapper, *.cpp
+call :IndentFile Applications, *.cpp
 
-FOR /F "tokens=*" %%G IN ('DIR /B .\*.cpp') DO (
-echo Indenting file "%%G"
-"SourceTools\uncrustify.exe" -f "%%G" -c "SourceTools\uncrustify.cfg" -o indentoutput.tmp
-move /Y indentoutput.tmp "%%G"
-)
+exit /B 0
+
+:IndentFile
+	for /F "tokens=*" %%G in ('dir /B .\%~1\%~2') do (
+		echo Indenting file "%~1\%%G"
+		"SourceTools\uncrustify.exe" -f "%~1\%%G" -c "SourceTools\uncrustify.cfg" -o indentoutput.tmp
+		move /Y indentoutput.tmp "%~1\%%G"
+	)
+exit /B 0

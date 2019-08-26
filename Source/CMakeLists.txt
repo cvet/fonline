@@ -35,7 +35,7 @@ if( WIN32 )
 	endif()
 	set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
 	set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
-	link_directories( "${CMAKE_CURRENT_SOURCE_DIR}/Lib/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
+	link_directories( "ThirdParty/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
 	set( USE_GLEW YES )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( OS "Linux" )
@@ -53,7 +53,7 @@ elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "GL" )
 	set( USE_GLEW YES )
-	link_directories( "${CMAKE_CURRENT_SOURCE_DIR}/Lib/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
+	link_directories( "ThirdParty/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
 elseif( APPLE AND NOT IOS_PLATFORM )
 	set( OS "Mac" )
 	set( BUILD_ONLY_CLIENT YES )
@@ -175,9 +175,6 @@ if( MSVC_IDE )
 	set( CMAKE_VS_PLATFORM_TOOLSET "v120_xp" CACHE STRING "Platform toolset" FORCE )
 else()
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
-	if( CMAKE_COMPILER_IS_GNUCXX )
-		set_source_files_properties( "${CMAKE_CURRENT_SOURCE_DIR}/Debugger.cpp" PROPERTIES COMPILE_FLAGS "-Wdeprecated-declarations" )
-	endif()
 endif()
 
 string( TOUPPER "${OS}" OS_UPPER )
@@ -186,7 +183,7 @@ set( CLIENT_DEFINES "-DFONLINE_CLIENT -DFO_${OS_UPPER}" )
 set( EDITOR_DEFINES "-DFONLINE_EDITOR -DFO_${OS_UPPER}" )
 
 #
-# Resources generation
+# Embedded resources generation
 #
 
 function( CreateResources dir output)
@@ -200,15 +197,20 @@ function( CreateResources dir output)
 		file( APPEND ${output} "const unsigned char Resource_${filename}[] = { ${filedata}};\n" )
 	endforeach()
 endfunction()
-CreateResources( "Resources" "Resources/Resources.h" )
+CreateResources( "Applications/EmbeddedResources" "Applications/EmbeddedResources/Resources.h" )
 
 #
 # Sources
 #
 
-set( SKIP_INSTALL_ALL ON )
+function( DisableLibWarnings lib )
+	target_compile_options( ${lib} PRIVATE
+		$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-Wall>
+		$<$<CXX_COMPILER_ID:MSVC>:/W0> )
+endfunction()
 
-set( SDL_DIR "SDL2" ) # SDL2-2.0.3
+# SDL2
+set( SDL_DIR "ThirdParty/SDL2" )
 set( SDL_SHARED OFF CACHE STRING "" FORCE )
 set( SDL_STATIC ON CACHE STRING "" FORCE )
 set( RENDER_D3D OFF CACHE STRING "" FORCE )
@@ -239,65 +241,98 @@ endif()
 add_definitions( "-DGL_GLEXT_PROTOTYPES" )
 add_subdirectory( "${SDL_DIR}" )
 include_directories( "${SDL_DIR}/include" )
+DisableLibWarnings( SDL2main )
+DisableLibWarnings( SDL2-static )
 
-set( ZLIB_DIR "zlib" ) # zlib-1.2.8
+# Zlib
+set( ZLIB_DIR "ThirdParty/zlib" )
 add_subdirectory( "${ZLIB_DIR}" )
 include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
+DisableLibWarnings( zlibstatic )
 
+# PNG
 if( NOT BUILD_ONLY_CLIENT )
+	set( PNG_DIR "ThirdParty/PNG" )
+	set( SKIP_INSTALL_ALL ON CACHE STRING "" FORCE )
 	set( PNG16 "png16_static" )
-	set( PNG_DIR "PNG" ) # lpng1616
 	set( ZLIB_LIBRARY "zlibstatic" CACHE STRING "" FORCE )
 	set( ZLIB_INCLUDE_DIR "../${ZLIB_DIR}" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" CACHE STRING "" FORCE )
 	set( PNG_SHARED OFF CACHE STRING "" FORCE )
 	set( PNG_STATIC ON CACHE STRING "" FORCE )
 	add_subdirectory( "${PNG_DIR}" )
 	include_directories( "${PNG_DIR}" "${CMAKE_BINARY_DIR}/${PNG_DIR}" )
+	DisableLibWarnings( png16_static )
 endif()
 
-set( OGG_DIR "ogg" ) # libogg-1.3.1
+# Ogg
+set( OGG_DIR "ThirdParty/ogg" )
 file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
-source_group( "ThirdParty\\ogg" FILES ${OGG_SOURCE} )
 include_directories( "${OGG_DIR}/include" )
+add_library( Ogg ${OGG_SOURCE} )
+DisableLibWarnings( Ogg )
 
-set( VORBIS_DIR "Vorbis" ) # libvorbis-1.3.3
+# Vorbis
+set( VORBIS_DIR "ThirdParty/Vorbis" )
 file( GLOB VORBIS_SOURCE "${VORBIS_DIR}/lib/*.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/barkmel.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/psytune.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/tone.c" )
-source_group( "ThirdParty\\vorbis" FILES ${VORBIS_SOURCE} )
 include_directories( "${VORBIS_DIR}/include" )
 include_directories( "${VORBIS_DIR}/lib" )
+add_library( Vorbis ${VORBIS_SOURCE} )
+DisableLibWarnings( Vorbis )
 
-set( THEORA_DIR "Theora" ) # libtheora-1.1.1
+# Theora
+set( THEORA_DIR "ThirdParty/Theora" )
 file( GLOB THEORA_SOURCE "${THEORA_DIR}/lib/*.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/analyze.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encode.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encapiwrapper.c" )
 source_group( "ThirdParty\\theora" FILES ${THEORA_SOURCE} )
 include_directories( "${THEORA_DIR}/include" )
+add_library( Theora ${THEORA_SOURCE} )
+DisableLibWarnings( Theora )
 
+# AngelScript
+set( ANGEL_SCRIPT_DIR "ThirdParty/AngelScript" )
 add_definitions( "-DAS_NO_EXCEPTIONS -DAS_NO_THREADS" )
-set( ANGEL_SCRIPT_DIR "AngelScript" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
-add_subdirectory( "${ANGEL_SCRIPT_DIR}" )
-include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}" )
+include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}/sdk/angelscript/source" "${ANGEL_SCRIPT_DIR}/sdk/add_on" )
+DisableLibWarnings( Angelscript )
 
-add_subdirectory( "Acm" )
-add_subdirectory( "SHA" )
+# AngelScriptExt
+set( ANGEL_SCRIPT_EXT_DIR "Common/AngelScriptExt" )
+add_subdirectory( "${ANGEL_SCRIPT_EXT_DIR}" )
 
+# Acm
+set( ACM_DIR "ThirdParty/Acm" )
+add_subdirectory( "${ACM_DIR}" )
+DisableLibWarnings( Acm )
+
+# SHA
+set( SHA_DIR "ThirdParty/SHA" )
+add_subdirectory( "${SHA_DIR}" )
+DisableLibWarnings( SHA )
+
+# GLEW
 if( USE_GLEW )
-	file( GLOB GLEW_SOURCE "GL/*.*" )
+	set( GLEW_DIR "ThirdParty/GL" )
+	file( GLOB GLEW_SOURCE "${GLEW_DIR}/*.*" )
 	source_group( "ThirdParty\\GLEW" FILES ${GLEW_SOURCE} )
 	add_definitions( "-DGLEW_STATIC" )
 endif()
 
+# NCodeHook
 if( WIN32 )
-	add_subdirectory( "NCodeHook" )
+	set( NCODE_HOOK_DIR "ThirdParty/NCodeHook" )
+	add_subdirectory( "${NCODE_HOOK_DIR}" )
 	set( NCODEHOOK "NCodeHook" )
+	DisableLibWarnings( NCodeHook )
 endif()
 
+# Assimp
 if( NOT BUILD_ONLY_CLIENT )
+	set( ASSIMP_DIR "ThirdParty/Assimp" )
 	set( BUILD_SHARED_LIBS OFF CACHE STRING "" FORCE )
 	set( ASSIMP_NO_EXPORT ON CACHE STRING "" FORCE )
 	set( ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE STRING "" FORCE )
@@ -306,12 +341,16 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( ASSIMP_BUILD_TESTS OFF CACHE STRING "" FORCE )
 	set( ASSIMP_OPT_BUILD_PACKAGES OFF CACHE STRING "" FORCE )
 	set( ASSIMP_INSTALL_PDB OFF CACHE STRING "" FORCE )
-	add_subdirectory( "Assimp" )
-	include_directories( "${CMAKE_BINARY_DIR}/Assimp/include" )
+	add_subdirectory( "${ASSIMP_DIR}" )
+	include_directories( "${CMAKE_BINARY_DIR}/${ASSIMP_DIR}/include" )
+	DisableLibWarnings( assimp )
+	DisableLibWarnings( IrrXML )
 endif()
-include_directories( "Assimp/include" )
+include_directories( "${ASSIMP_DIR}/include" )
 
-file( GLOB fbxsdk_SOURCE "fbxsdk/*.*" )
+# Fbx SDK
+set( FBXSDK_DIR "ThirdParty/fbxsdk" )
+file( GLOB fbxsdk_SOURCE "${FBXSDK_DIR}/*.*" )
 source_group( "ThirdParty\\fbxsdk" FILES ${fbxsdk_SOURCE} )
 if( WIN32 )
 	set( FBXSDK "libfbxsdk-mt" )
@@ -319,206 +358,243 @@ else()
 	set( FBXSDK "libfbxsdk.a")
 endif()
 
+# cURL & mbedTLS
 if( NOT BUILD_ONLY_CLIENT )
-	# mbed TLS 2.13.0
+	set( MBED_TLS_DIR "ThirdParty/mbedTLS" )
 	set( USE_STATIC_MBEDTLS_LIBRARY ON CACHE STRING "" FORCE )
 	set( ENABLE_PROGRAMS OFF CACHE STRING "" FORCE )
 	set( ENABLE_TESTING OFF CACHE STRING "" FORCE )
-	add_subdirectory( "mbedTLS" )
+	add_subdirectory( "${MBED_TLS_DIR}" )
+	DisableLibWarnings( mbedcrypto )
+	DisableLibWarnings( mbedx509 )
+	DisableLibWarnings( mbedtls )
 
-	set( CURL_DIR "cURL" ) # curl-7.57.0
+	set( CURL_DIR "ThirdParty/cURL" )
 	set( CURL_STATICLIB ON CACHE STRING "" FORCE )
 	set( CURL_CA_PATH "none" CACHE STRING "" FORCE )
 	set( BUILD_CURL_EXE OFF CACHE STRING "" FORCE )
 	set( BUILD_TESTING OFF CACHE STRING "" FORCE )
 	set( CMAKE_USE_MBEDTLS ON CACHE STRING "" FORCE )
 	set( MBEDTLS_LIBRARIES "mbedcrypto;mbedtls;mbedx509" CACHE STRING "" FORCE )
-	set( MBEDTLS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/mbedTLS/include" CACHE STRING "" FORCE )
+	set( MBEDTLS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${MBED_TLS_DIR}/include" CACHE STRING "" FORCE )
 	add_definitions( "-DCURL_STATICLIB" )
-	add_subdirectory( "cURL" )
+	add_subdirectory( "${CURL_DIR}" )
 	include_directories( "${CURL_DIR}/include" )
+	DisableLibWarnings( libcurl )
 endif()
 
-file( GLOB Json_SOURCE "Json/*.*" )
+# Nlohmann Json
+set( JSON_DIR "ThirdParty/Json" )
+file( GLOB Json_SOURCE "${JSON_DIR}/*.*" )
 source_group( "ThirdParty\\Json" FILES ${Json_SOURCE} )
 
-file( GLOB fmt_SOURCE "fmt/fmt/*.*" )
+# Fmt
+set( FMT_DIR "ThirdParty/fmt" )
+file( GLOB fmt_SOURCE "${FMT_DIR}/fmt/*.*" )
 source_group( "ThirdParty\\fmt" FILES ${fmt_SOURCE} )
 
+# Asio & Websockets
 if( NOT BUILD_ONLY_CLIENT )
-	include_directories( "Asio/include" )
-	include_directories( "websocketpp" )
+	set( ASIO_DIR "ThirdParty/Asio" )
+	include_directories( "${ASIO_DIR}/include" )
+
+	set( WEBSOCKETS_DIR "ThirdParty/websocketpp" )
+	include_directories( "${WEBSOCKETS_DIR}" )
 endif()
 
-# MongoDB C driver
+# MongoDB C driver & Bson
 if( NOT BUILD_ONLY_CLIENT )
+	set( BSON_DIR "ThirdParty/libbson" )
 	set( ENABLE_STATIC ON CACHE STRING "" FORCE )
 	set( BSON_ENABLE_STATIC ON CACHE STRING "" FORCE )
-	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/libbson" )
-	set( BSON_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libbson/src/bson"
-		"${CMAKE_CURRENT_SOURCE_DIR}/libbson/src/bson" CACHE STRING "" FORCE )
+	add_subdirectory( "${BSON_DIR}" )
+	set( BSON_INCLUDE_DIR "${CMAKE_BINARY_DIR}/${BSON_DIR}/src/bson"
+		"${CMAKE_CURRENT_SOURCE_DIR}/${BSON_DIR}/src/bson" CACHE STRING "" FORCE )
 	set( BSON_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	set( BSON_STATIC_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	include_directories( "${BSON_INCLUDE_DIR}" )
 	target_compile_definitions( bson_static PUBLIC BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN )
+	DisableLibWarnings( bson_static )
 
+	set( MONGODB_DIR "ThirdParty/mongo-c-driver" )
 	set( ENABLE_SASL "OFF" CACHE STRING "" FORCE )
 	set( MONGOC_ENABLE_STATIC ON CACHE STRING "" FORCE )
-	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver" )
-	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/mongo-c-driver/src/mongoc"
-		"${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver/src/mongoc" CACHE STRING "" FORCE )
+	add_subdirectory( "${MONGODB_DIR}" )
+	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/${MONGODB_DIR}/src/mongoc"
+		"${CMAKE_CURRENT_SOURCE_DIR}/${MONGODB_DIR}/src/mongoc" CACHE STRING "" FORCE )
 	include_directories( "${MONGOC_INCLUDE_DIR}" )
+	DisableLibWarnings( mongoc_static )
 endif()
 
+# Unqlite
 if( NOT EMSCRIPTEN )
-	add_subdirectory( "unqlite" )
-	include_directories( "unqlite" )
+	set( UNQLITE_DIR "ThirdParty/unqlite" )
+	add_subdirectory( "${UNQLITE_DIR}" )
+	include_directories( "${UNQLITE_DIR}" )
 	set( UNQLITE "unqlite" )
+	DisableLibWarnings( unqlite )
 endif()
 
+# Variant
 if( NOT BUILD_ONLY_CLIENT )
-	include_directories( "variant/include" )
+	set( VARIANT_DIR "ThirdParty/variant" )
+	include_directories( "${VARIANT_DIR}/include" )
 endif()
 
+# OpenSSL
 if( NOT BUILD_ONLY_CLIENT )
+	set( OPENSSL_DIR "ThirdParty/openssl" )
 	set( BUILD_OBJECT_LIBRARY_ONLY ON CACHE BOOL "" FORCE )
-	add_subdirectory( "openssl" )
-	include_directories( "${CMAKE_BINARY_DIR}/openssl/crypto" )
-	include_directories( "${CMAKE_BINARY_DIR}/openssl/ssl" )
+	add_subdirectory( "${OPENSSL_DIR}" )
+	include_directories( "${CMAKE_BINARY_DIR}/${OPENSSL_DIR}/crypto" )
+	include_directories( "${CMAKE_BINARY_DIR}/${OPENSSL_DIR}/ssl" )
+	DisableLibWarnings( crypto )
+	DisableLibWarnings( ssl )
 endif()
 
-set( IMGUI_DIR "imgui" )
-file( GLOB IMGUI_SOURCE "${IMGUI_DIR}/*.cpp" "${IMGUI_DIR}/*.h" )
-#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.cpp" )
-#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${IMGUI_DIR}/imgui_demo.h" )
+# Dear ImGui
+set( DEAR_IMGUI_DIR "ThirdParty/imgui" )
+file( GLOB IMGUI_SOURCE "${DEAR_IMGUI_DIR}/*.cpp" "${DEAR_IMGUI_DIR}/*.h" )
+#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${DEAR_IMGUI_DIR}/imgui_demo.cpp" )
+#list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${DEAR_IMGUI_DIR}/imgui_demo.h" )
 source_group( "ThirdParty\\imgui" FILES ${IMGUI_SOURCE} )
-include_directories( "imgui" )
+include_directories( "${DEAR_IMGUI_DIR}" )
 add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 
+# Common source
 set( COMMON_SOURCE
 	${IMGUI_SOURCE}
 	${fmt_SOURCE}
 
-	Common.cpp Common.h # Clean up from different things
-	Entity.cpp Entity.h
-	ProtoMap.cpp # Remove
-	Exception.cpp Exception.h
-	Debugger.cpp Debugger.h # Delete?
-	Log.cpp Log.h
-	IniParser.cpp IniParser.h # Rename (IniFile)
-	MsgFiles.cpp MsgFiles.h
+	Common/Common.cpp Common/Common.h # Clean up from different things
+	Common/Entity.cpp Common/Entity.h
+	Common/ProtoMap.cpp # Remove
+	Common/Exception.cpp Common/Exception.h
+	Common/Debugger.cpp Common/Debugger.h # Delete?
+	Common/Log.cpp Common/Log.h
+	Common/IniParser.cpp Common/IniParser.h # Rename (IniFile)
+	Common/MsgFiles.cpp Common/MsgFiles.h
 
-	FileSystem.cpp FileSystem.h
-	FileManager.cpp FileManager.h # Rename (File)
+	Common/FileSystem.cpp Common/FileSystem.h
+	Common/FileManager.cpp Common/FileManager.h # Rename (File)
 	# FilesCollection -> ProjectFiles?
-	DataFile.cpp DataFile.h
+	Common/DataFile.cpp Common/DataFile.h
 
-	GraphicApi.cpp GraphicApi.h
-	GraphicStructures.cpp GraphicStructures.h
+	Common/GraphicApi.cpp Common/GraphicApi.h
+	Common/GraphicStructures.cpp Common/GraphicStructures.h
 
-	Properties.cpp Properties.h
-	ProtoManager.cpp ProtoManager.h
+	Common/Properties.cpp Common/Properties.h
+	Common/ProtoManager.cpp Common/ProtoManager.h
 
-	ScriptBind.h
-	ScriptFunctions.h
-	Script.cpp Script.h
-	ScriptExtensions.cpp
-	ScriptInvoker.cpp ScriptInvoker.h
-	ScriptPragmas.cpp ScriptPragmas.h
-	ScriptProfiler.cpp ScriptProfiler.h
-	DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
+	Common/ScriptBind.h
+	Common/ScriptFunctions.h
+	Common/Script.cpp Common/Script.h
+	Common/ScriptExtensions.cpp
+	Common/ScriptInvoker.cpp Common/ScriptInvoker.h
+	Common/ScriptPragmas.cpp Common/ScriptPragmas.h
+	Common/ScriptProfiler.cpp Common/ScriptProfiler.h
+	Common/DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
 
-	NetProtocol.h # Include to NetBuffer?
-	BufferManager.cpp BufferManager.h # Rename (NetBuffer)
-	UcsTables.h
-	Text.cpp Text.h # Rename (GameTexts, StringExt)
-	Threading.cpp Threading.h # Use C++ threads lib?
-	Timer.cpp Timer.h # Rename (Timing)
-	LineTracer.h LineTracer.cpp
+	Common/NetProtocol.h # Include to NetBuffer?
+	Common/BufferManager.cpp Common/BufferManager.h # Rename (NetBuffer)
+	Common/UcsTables.h
+	Common/Text.cpp Common/Text.h # Rename (GameTexts, StringExt)
+	Common/Threading.cpp Common/Threading.h # Use C++ threads lib?
+	Common/Timer.cpp Common/Timer.h # Rename (Timing)
+	Common/LineTracer.h Common/LineTracer.cpp
 
 	# Refactor
 	${GLEW_SOURCE} # Remove, use dynamic binding
-	Crypt.cpp Crypt.h # Split to DataStorage/LocalStorage
-	Access.h # To NetProtocol.h?
-	MsgStr.h # To Common.h?
-	3dAnimation.h # To Graphic...?
-	PlatformSpecific.h # To Common.h
-	Types.h # To Common.h
-	Randomizer.h # To Common.h
-	DataMask.h # To Common.h?
-	Defines.h # To Common.h
+	Common/Crypt.cpp Common/Crypt.h # Split to DataStorage/LocalStorage
+	Common/Access.h # To NetProtocol.h?
+	Common/MsgStr.h # To Common.h?
+	Common/3dAnimation.h # To Graphic...?
+	Common/PlatformSpecific.h # To Common.h
+	Common/Types.h # To Common.h
+	Common/Randomizer.h # To Common.h
+	Common/DataMask.h # To Common.h?
+	Common/Defines.h # To Common.h
 )
+
+# Server source
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
 	${Json_SOURCE}
 	${fbxsdk_SOURCE}
 
 	# Location
-	Map.cpp Map.h
-	Critter.cpp Critter.h
-	Item.cpp Item.h
+	Server/Map.cpp Server/Map.h
+	Server/Critter.cpp Server/Critter.h
+	Server/Item.cpp Server/Item.h
 
 	# To Server.h?
-	EntityManager.cpp EntityManager.h
+	Server/EntityManager.cpp Server/EntityManager.h
 	# LocationManager
-	MapManager.cpp MapManager.h
-	CritterManager.cpp CritterManager.h
-	ItemManager.cpp ItemManager.h
+	Server/MapManager.cpp Server/MapManager.h
+	Server/CritterManager.cpp Server/CritterManager.h
+	Server/ItemManager.cpp Server/ItemManager.h
 
-	AppGui.cpp AppGuiDX.cpp AppGui.h
-	ResourceConverter.cpp ResourceConverter.h
-	DataBase.cpp DataBase.h
-	Dialogs.cpp Dialogs.h
-	Networking.cpp Networking.h
+	Server/AppGui.cpp Server/AppGuiDX.cpp Server/AppGui.h
+	Server/ResourceConverter.cpp Server/ResourceConverter.h
+	Server/DataBase.cpp Server/DataBase.h
+	Server/Dialogs.cpp Server/Dialogs.h
+	Server/Networking.cpp Server/Networking.h
 
-	Server.cpp Server.h
-	ServerClient.cpp # Refactor
-	ServerItem.cpp # Refactor
-	ServerNpc.cpp # Refactor
-	ServerScript.cpp
+	Server/Server.cpp Server/Server.h
+	Server/ServerClient.cpp # Refactor
+	Server/ServerItem.cpp # Refactor
+	Server/ServerNpc.cpp # Refactor
+	Server/ServerScript.cpp
 )
+
+# Client source
 set( CLIENT_SOURCE
 	${COMMON_SOURCE}
-	${OGG_SOURCE}
-	${VORBIS_SOURCE}
-	${THEORA_SOURCE}
 
-	Client.cpp Client.h
-	ClientInterface.cpp # Remove
-	SoundManager.cpp SoundManager.h
+	Client/Client.cpp Client/Client.h
+	Client/ClientInterface.cpp # Remove
+	Client/SoundManager.cpp Client/SoundManager.h
 
 	# Cl to View?
-	MapCl.cpp MapCl.h
-	CritterCl.cpp CritterCl.h
-	ItemCl.cpp ItemCl.h
-	ItemHex.cpp ItemHex.h # Merge with ItemCl or ItemHexView
+	Client/MapCl.cpp Client/MapCl.h
+	Client/CritterCl.cpp Client/CritterCl.h
+	Client/ItemCl.cpp Client/ItemCl.h
+	Client/ItemHex.cpp Client/ItemHex.h # Merge with ItemCl or ItemHexView
 
-	Keyboard.cpp Keyboard.h
-	HexManager.cpp HexManager.h
-	ResourceManager.cpp ResourceManager.h
-	GraphicLoader.cpp GraphicLoader.h # Refactor, merge with ResourceManager?
+	Client/Keyboard.cpp Client/Keyboard.h
+	Client/HexManager.cpp Client/HexManager.h
+	Client/ResourceManager.cpp Client/ResourceManager.h
+	Client/GraphicLoader.cpp Client/GraphicLoader.h # Refactor, merge with ResourceManager?
 
-	3dStuff.cpp 3dStuff.h
-	F2Palette.h
-	SpriteManager.cpp SpriteManager.h # Refactor, split loaders
-	SpriteManagerFont.cpp
-	Sprites.cpp Sprites.h
+	Client/3dStuff.cpp Client/3dStuff.h
+	Client/F2Palette.h
+	Client/SpriteManager.cpp Client/SpriteManager.h # Refactor, split loaders
+	Client/SpriteManagerFont.cpp
+	Client/Sprites.cpp Client/Sprites.h
 
-	GluStuff.cpp GluStuff.h # Remove
-	FlexRect.h # Move to Common?
+	Client/GluStuff.cpp Client/GluStuff.h # Remove
+	Client/FlexRect.h # Move to Common?
 )
+
+# Editor source
 set( EDITOR_SOURCE
 	${CLIENT_SOURCE}
 	${SERVER_SOURCE}
-	Mapper.cpp Mapper.h
+	Mapper/Mapper.cpp Mapper/Mapper.h
 )
 list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
-#
-# Builds
-#
+# Basic includes
+include_directories( "Common" )
+include_directories( "Server" )
+include_directories( "Client" )
+include_directories( "Mapper" )
+include_directories( "ThirdParty" )
+include_directories( "Applications" )
 
-include_directories( "${CMAKE_CURRENT_SOURCE_DIR}" )
+#
+# Applications
+#
 
 set( RO0 RUNTIME_OUTPUT_DIRECTORY )
 set( RO1 RUNTIME_OUTPUT_DIRECTORY_DEBUG )
@@ -527,43 +603,43 @@ set( RO3 RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO )
 set( RO4 RUNTIME_OUTPUT_DIRECTORY_RELEASE )
 
 if( NOT BUILD_CLIENT_LIBRARY )
-	add_executable( FOnline WIN32 ${CLIENT_SOURCE} "MainClient.cpp" "Client.rc" )
+	add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Applications/MainClient.cpp" "Applications/Client.rc" )
 	# Todo: Make bundles for Mac and maybe iOS
 	# add_executable( FOnline MACOSX_BUNDLE ${CLIENT_SOURCE} "Client.rc" )
 	set_target_properties( FOnline PROPERTIES ${RO0} ${CLIENT_OUTPUT} ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 else()
-	add_library( FOnline SHARED ${CLIENT_SOURCE} "MainClient.cpp" )
+	add_library( FOnline SHARED ${CLIENT_SOURCE} "Applications/MainClient.cpp" )
 	set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CLIENT_OUTPUT} )
 endif()
 set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
-	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "MainServer.cpp" "Server.rc" )
+	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Applications/MainServer.cpp" "Applications/Server.rc" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES}" )
 	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
 		set( SERVER_SOURCE_NO_GUI ${SERVER_SOURCE} )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/GraphicApi.h" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/GraphicApi.cpp" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGui.h" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGui.cpp" )
-		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/AppGuiDX.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Common/GraphicApi.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Common/GraphicApi.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGui.h" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGui.cpp" )
+		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${CMAKE_CURRENT_SOURCE_DIR}/Server/AppGuiDX.cpp" )
 		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "${GLEW_SOURCE}" )
-		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "MainServer.cpp" "Server.rc" )
+		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "Applications/MainServer.cpp" "Applications/Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DFO_SERVER_DAEMON" )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${UNQLITE}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 	endif()
 
-	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "MainEditor.cpp" "Editor.rc" )
+	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "Applications/MainEditor.cpp" "Applications/Editor.rc" )
 	set_target_properties( FOnlineEditor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
-	target_link_libraries( FOnlineEditor "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineEditor "Angelscript" "AngelscriptExt" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${UNQLITE}" "${FBXSDK}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries" )
-	set_property( TARGET Acm Angelscript AngelscriptExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
+	set_property( TARGET Acm Angelscript AngelscriptExt Ogg Vorbis Theora ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
 endif()
