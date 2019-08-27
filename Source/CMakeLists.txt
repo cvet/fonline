@@ -496,11 +496,11 @@ set( COMMON_SOURCE
 	Common/ScriptProfiler.cpp Common/ScriptProfiler.h
 	Common/DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
 
-	Common/NetProtocol.h # Include to NetBuffer?
-	Common/BufferManager.cpp Common/BufferManager.h # Rename (NetBuffer)
+	Common/NetProtocol.h
+	Common/NetBuffer.cpp Common/NetBuffer.h
 	Common/UcsTables.h
 	Common/Text.cpp Common/Text.h # Rename (GameTexts, StringExt)
-	Common/Threading.cpp Common/Threading.h # Use C++ threads lib?
+	Common/Threading.cpp Common/Threading.h
 	Common/Timer.cpp Common/Timer.h # Rename (Timing)
 	Common/LineTracer.h Common/LineTracer.cpp
 

@@ -30,7 +30,7 @@ NetConnection::~NetConnection() {}
 class NetConnectionImpl: public NetConnection
 {
     z_stream* zStream;
-    uchar     outBuf[ BufferManager::DefaultBufSize ];
+    uchar     outBuf[ NetBuffer::DefaultBufSize ];
 
 public:
     NetConnectionImpl()
@@ -170,7 +170,7 @@ class NetConnectionAsio: public NetConnectionImpl
 {
     asio::ip::tcp::socket* socket;
     volatile long          writePending;
-    uchar                  inBuf[ BufferManager::DefaultBufSize ];
+    uchar                  inBuf[ NetBuffer::DefaultBufSize ];
     asio::error_code       dummyError;
 
     void NextAsyncRead()

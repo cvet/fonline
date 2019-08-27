@@ -121,7 +121,7 @@ FOClient::FOClient()
 
     InitCalls = 0;
     DoRestart = false;
-    ComLen = BufferManager::DefaultBufSize;
+    ComLen = NetBuffer::DefaultBufSize;
     ComBuf = new uchar[ ComLen ];
     ZStreamOk = false;
     Sock = INVALID_SOCKET;
@@ -2020,7 +2020,7 @@ int FOClient::NetInput( bool unpack )
 
         while( ZStream.avail_in )
         {
-            Bin.GrowBuf( BufferManager::DefaultBufSize );
+            Bin.GrowBuf( NetBuffer::DefaultBufSize );
 
             ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
             ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();

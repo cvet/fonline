@@ -1,10 +1,9 @@
-#ifndef __BUFFER_MANAGER__
-#define __BUFFER_MANAGER__
+#pragma once
 
 #include "Common.h"
 #include "Threading.h"
 
-class BufferManager
+class NetBuffer
 {
 public:
     static const uint DefaultBufSize = 4096;
@@ -26,8 +25,8 @@ private:
     void  CopyBuf( const void* from, void* to, uchar crypt_key, uint len );
 
 public:
-    BufferManager();
-    ~BufferManager();
+    NetBuffer();
+    ~NetBuffer();
 
     void   SetEncryptKey( uint seed );
     void   Lock();
@@ -55,21 +54,21 @@ public:
 
     // Generic specification
     template< typename T >
-    BufferManager& operator<<( const T& i )
+    NetBuffer& operator<<( const T& i )
     {
         Push( &i, sizeof( T ) );
         return *this;
     }
 
     template< typename T >
-    BufferManager& operator>>( T& i )
+    NetBuffer& operator>>( T& i )
     {
         Pop( &i, sizeof( T ) );
         return *this;
     }
 
     // String specification
-    BufferManager& operator<<( const string& i )
+    NetBuffer& operator<<( const string& i )
     {
         RUNTIME_ASSERT( i.length() <= 65535 );
         ushort len = (ushort) i.length();
@@ -78,7 +77,7 @@ public:
         return *this;
     }
 
-    BufferManager& operator>>( string& i )
+    NetBuffer& operator>>( string& i )
     {
         ushort len = 0;
         Pop( &len, sizeof( len ) );
@@ -88,16 +87,14 @@ public:
     }
 
     // Disable copying
-    BufferManager( const BufferManager& other ) = delete;
-    BufferManager& operator=( const BufferManager& other ) = delete;
+    NetBuffer( const NetBuffer& other ) = delete;
+    NetBuffer& operator=( const NetBuffer& other ) = delete;
 
     // Disable transferring of some types
-    BufferManager& operator<<( const uint64& i ) = delete;
-    BufferManager& operator>>( uint64& i ) = delete;
-    BufferManager& operator<<( const float& i ) = delete;
-    BufferManager& operator>>( float& i ) = delete;
-    BufferManager& operator<<( const double& i ) = delete;
-    BufferManager& operator>>( double& i ) = delete;
+    NetBuffer& operator<<( const uint64& i ) = delete;
+    NetBuffer& operator>>( uint64& i ) = delete;
+    NetBuffer& operator<<( const float& i ) = delete;
+    NetBuffer& operator>>( float& i ) = delete;
+    NetBuffer& operator<<( const double& i ) = delete;
+    NetBuffer& operator>>( double& i ) = delete;
 };
-
-#endif // __BUFFER_MANAGER__

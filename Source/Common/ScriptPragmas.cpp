@@ -1507,9 +1507,9 @@ public:
         }
 
         Client* cl = (Client*) cr;
-        BufferManager& net_buf = cl->Connection->Bout;
+        NetBuffer& net_buf = cl->Connection->Bout;
         #else
-        BufferManager& net_buf = FOClient::Self->Bout;
+        NetBuffer& net_buf = FOClient::Self->Bout;
         #endif
 
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
@@ -1534,9 +1534,9 @@ public:
     {
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
         Client* cl = (Client*) context;
-        BufferManager& net_buf = cl->Connection->Bin;
+        NetBuffer& net_buf = cl->Connection->Bin;
         #else
-        BufferManager& net_buf = *(BufferManager*) context;
+        NetBuffer& net_buf = *(NetBuffer*) context;
         #endif
 
         uint msg_len;

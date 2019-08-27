@@ -2,20 +2,20 @@
 #define __NETWORKING__
 
 #include "Common.h"
-#include "BufferManager.h"
+#include "NetBuffer.h"
 #include "zlib/zlib.h"
 #include <functional>
 
 class NetConnection
 {
 public:
-    uint          Ip;
-    string        Host;
-    ushort        Port;
-    BufferManager Bin;
-    BufferManager Bout;
-    bool          IsDisconnected;
-    uint          DisconnectTick;
+    uint      Ip;
+    string    Host;
+    ushort    Port;
+    NetBuffer Bin;
+    NetBuffer Bout;
+    bool      IsDisconnected;
+    uint      DisconnectTick;
 
     virtual ~NetConnection() = 0;
     virtual void DisableCompression() = 0;

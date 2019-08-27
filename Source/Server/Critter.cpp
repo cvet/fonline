@@ -2610,7 +2610,7 @@ void Client::Send_TextEx( uint from_id, const string& text, uchar how_say, bool 
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( from_id ) + sizeof( how_say ) +
-                   BufferManager::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
+                   NetBuffer::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_CRITTER_TEXT;
@@ -2718,7 +2718,7 @@ void Client::Send_MapText( ushort hx, ushort hy, uint color, const string& text,
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( hx ) + sizeof( hy ) + sizeof( color ) +
-                   BufferManager::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
+                   NetBuffer::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_MAP_TEXT;
@@ -2906,7 +2906,7 @@ void Client::Send_PlaySound( uint crid_synchronize, const string& sound_name )
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( crid_synchronize ) +
-                   BufferManager::StringLenSize + (uint) sound_name.length();
+                   NetBuffer::StringLenSize + (uint) sound_name.length();
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_PLAY_SOUND;

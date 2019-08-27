@@ -945,14 +945,14 @@ void FOServer::Process_Text( Client* cl )
     }
 }
 
-void FOServer::Process_Command( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
+void FOServer::Process_Command( NetBuffer& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
     LogToFunc( "Process_Command", logcb, true );
     Process_CommandReal( buf, logcb, cl_, admin_panel );
     LogToFunc( "Process_Command", logcb, false );
 }
 
-void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
+void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
     uint  msg_len = 0;
     uchar cmd = 0;

@@ -2,7 +2,7 @@
 #include "Server.h"
 #include "Exception.h"
 #include "Access.h"
-#include "BufferManager.h"
+#include "NetBuffer.h"
 #include <locale.h>
 
 #ifndef FO_SERVER_DAEMON
@@ -712,7 +712,7 @@ static void AdminWork( void* session_ )
                     }
                 };
 
-                BufferManager buf;
+                NetBuffer buf;
                 PackCommand( cmd.substr( 1 ), buf, func, "" );
                 if( !buf.IsEmpty() )
                 {

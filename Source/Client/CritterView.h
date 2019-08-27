@@ -3,7 +3,6 @@
 #include "Common.h"
 #include "NetProtocol.h"
 #include "SpriteManager.h"
-#include "BufferManager.h"
 #include "ItemView.h"
 #include "3dStuff.h"
 #include "Entity.h"

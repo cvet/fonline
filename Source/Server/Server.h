@@ -47,8 +47,8 @@ public:
     static void Process_LogIn( Client*& cl );
     static void Process_Dir( Client* cl );
     static void Process_Text( Client* cl );
-    static void Process_Command( BufferManager& buf, LogFunc logcb, Client* cl, const string& admin_panel );
-    static void Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl, const string& admin_panel );
+    static void Process_Command( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
+    static void Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
     static void Process_Dialog( Client* cl );
     static void Process_GiveMap( Client* cl );
     static void Process_Ping( Client* cl );

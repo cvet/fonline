@@ -85,7 +85,7 @@ const CmdDef cmdlist[] =
     { "gvar", CMD_DEV_GVAR },
 };
 
-inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, const string& name )
+inline bool PackCommand( const string& str, NetBuffer& buf, LogFunc logcb, const string& name )
 {
     string args = _str( str ).trim();
     string cmd_str = args;
@@ -147,7 +147,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             logcb( "Invalid arguments. Example: id name." );
             break;
         }
-        msg_len += BufferManager::StringLenSize;
+        msg_len += NetBuffer::StringLenSize;
 
         buf << msg;
         buf << msg_len;
@@ -208,7 +208,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             logcb( "Invalid arguments. Example: prop crid prop_name value." );
             break;
         }
-        msg_len += sizeof( uint ) + BufferManager::StringLenSize + (uint) property_name.length() + sizeof( int );
+        msg_len += sizeof( uint ) + NetBuffer::StringLenSize + (uint) property_name.length() + sizeof( int );
 
         buf << msg;
         buf << msg_len;
@@ -229,7 +229,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         }
         name_access = _str( name_access ).replace( '*', ' ' );
         pasw_access = _str( pasw_access ).replace( '*', ' ' );
-        msg_len += BufferManager::StringLenSize * 2 + (uint) ( name_access.length() + pasw_access.length() );
+        msg_len += NetBuffer::StringLenSize * 2 + (uint) ( name_access.length() + pasw_access.length() );
         buf << msg;
         buf << msg_len;
         buf << cmd;
@@ -346,7 +346,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             logcb( "Invalid arguments. Example: runscript module::func param0 param1 param2." );
             break;
         }
-        msg_len += BufferManager::StringLenSize + (uint) func_name.length() + sizeof( uint ) * 3;
+        msg_len += NetBuffer::StringLenSize + (uint) func_name.length() + sizeof( uint ) * 3;
 
         buf << msg;
         buf << msg_len;
@@ -386,7 +386,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             logcb( "Invalid arguments. Example: loaddialog name." );
             break;
         }
-        msg_len += BufferManager::StringLenSize + (uint) dlg_name.length();
+        msg_len += NetBuffer::StringLenSize + (uint) dlg_name.length();
 
         buf << msg;
         buf << msg_len;
@@ -450,7 +450,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         }
         name = _str( name ).replace( '*', ' ' ).trim();
         info = _str( info ).replace( '$', '*' ).trim();
-        msg_len += BufferManager::StringLenSize * 3 + (uint) ( name.length() + params.length() + info.length() ) + sizeof( ban_hours );
+        msg_len += NetBuffer::StringLenSize * 3 + (uint) ( name.length() + params.length() + info.length() ) + sizeof( ban_hours );
 
         buf << msg;
         buf << msg_len;
@@ -530,7 +530,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             logcb( "Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all." );
             break;
         }
-        msg_len += BufferManager::StringLenSize + (uint) flags.length();
+        msg_len += NetBuffer::StringLenSize + (uint) flags.length();
 
         buf << msg;
         buf << msg_len;
@@ -545,7 +545,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         if( args.empty() )
             break;
 
-        msg_len += BufferManager::StringLenSize + (uint) args.length();
+        msg_len += NetBuffer::StringLenSize + (uint) args.length();
 
         buf << msg;
         buf << msg_len;

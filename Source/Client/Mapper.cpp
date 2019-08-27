@@ -4,6 +4,7 @@
 #include "FileSystem.h"
 #include "SHA/sha1.h"
 #include "SHA/sha2.h"
+#include "Threading.h"
 #include <time.h>
 
 bool          FOMapper::SpritesCanDraw = false;
@@ -1446,7 +1447,7 @@ void FOMapper::MainLoop()
             if( need_elapsed > elapsed )
             {
                 double sleep = need_elapsed - elapsed + balance;
-                balance = fmod ( sleep, 1.0 );
+                balance = fmod( sleep, 1.0 );
                 Thread::Sleep( (uint) floor( sleep) );
             }
         }

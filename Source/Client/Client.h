@@ -8,6 +8,7 @@
 #include "HexManager.h"
 #include "ItemView.h"
 #include "CritterView.h"
+#include "NetBuffer.h"
 #include "NetProtocol.h"
 #include "Text.h"
 #include "ResourceManager.h"
@@ -136,26 +137,26 @@ public:
     void UpdateFilesAbort( uint num_str, const string& num_str_str );
 
     // Network
-    uchar*        ComBuf;
-    uint          ComLen;
-    BufferManager Bin;
-    BufferManager Bout;
-    z_stream      ZStream;
-    bool          ZStreamOk;
-    uint          BytesReceive, BytesRealReceive, BytesSend;
-    sockaddr_in   SockAddr, ProxyAddr;
-    SOCKET        Sock;
-    fd_set        SockSet;
-    ItemView*     SomeItem;
-    bool          IsConnecting;
-    bool          IsConnected;
-    bool          InitNetBegin;
-    int           InitNetReason;
-    bool          InitialItemsSend;
-    UCharVecVec   GlovalVarsPropertiesData;
-    UCharVecVec   TempPropertiesData;
-    UCharVecVec   TempPropertiesDataExt;
-    UCharVec      TempPropertyData;
+    uchar*      ComBuf;
+    uint        ComLen;
+    NetBuffer   Bin;
+    NetBuffer   Bout;
+    z_stream    ZStream;
+    bool        ZStreamOk;
+    uint        BytesReceive, BytesRealReceive, BytesSend;
+    sockaddr_in SockAddr, ProxyAddr;
+    SOCKET      Sock;
+    fd_set      SockSet;
+    ItemView*   SomeItem;
+    bool        IsConnecting;
+    bool        IsConnected;
+    bool        InitNetBegin;
+    int         InitNetReason;
+    bool        InitialItemsSend;
+    UCharVecVec GlovalVarsPropertiesData;
+    UCharVecVec TempPropertiesData;
+    UCharVecVec TempPropertiesDataExt;
+    UCharVec    TempPropertyData;
 
     bool CheckSocketStatus( bool for_write );
     bool NetConnect( const char* host, ushort port );

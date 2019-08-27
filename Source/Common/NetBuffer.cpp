@@ -1,10 +1,10 @@
-#include "BufferManager.h"
+#include "NetBuffer.h"
 #include "NetProtocol.h"
 #include "Randomizer.h"
 
-BufferManager::BufferManager()
+NetBuffer::NetBuffer()
 {
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, DefaultBufSize + sizeof( BufferManager ) );
+    MEMORY_PROCESS( MEMORY_NET_BUFFER, DefaultBufSize + sizeof( NetBuffer ) );
     isError = false;
     bufLen = DefaultBufSize;
     bufEndPos = 0;
@@ -16,13 +16,13 @@ BufferManager::BufferManager()
     memzero( encryptKeys, sizeof( encryptKeys ) );
 }
 
-BufferManager::~BufferManager()
+NetBuffer::~NetBuffer()
 {
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, -(int) ( bufLen + sizeof( BufferManager ) ) );
+    MEMORY_PROCESS( MEMORY_NET_BUFFER, -(int) ( bufLen + sizeof( NetBuffer ) ) );
     SAFEDELA( bufData );
 }
 
-void BufferManager::SetEncryptKey( uint seed )
+void NetBuffer::SetEncryptKey( uint seed )
 {
     if( !seed )
     {
@@ -37,7 +37,7 @@ void BufferManager::SetEncryptKey( uint seed )
     encryptActive = true;
 }
 
-uchar BufferManager::EncryptKey( int move )
+uchar NetBuffer::EncryptKey( int move )
 {
     uchar key = 0;
     if( encryptActive )
@@ -54,17 +54,17 @@ uchar BufferManager::EncryptKey( int move )
     return key;
 }
 
-void BufferManager::Lock()
+void NetBuffer::Lock()
 {
     bufLocker.Lock();
 }
 
-void BufferManager::Unlock()
+void NetBuffer::Unlock()
 {
     bufLocker.Unlock();
 }
 
-void BufferManager::Refresh()
+void NetBuffer::Refresh()
 {
     if( isError )
         return;
@@ -82,7 +82,7 @@ void BufferManager::Refresh()
     }
 }
 
-void BufferManager::Reset()
+void NetBuffer::Reset()
 {
     bufEndPos = 0;
     bufReadPos = 0;
@@ -97,14 +97,14 @@ void BufferManager::Reset()
     }
 }
 
-void BufferManager::LockReset()
+void NetBuffer::LockReset()
 {
     Lock();
     Reset();
     Unlock();
 }
 
-void BufferManager::GrowBuf( uint len )
+void NetBuffer::GrowBuf( uint len )
 {
     if( bufEndPos + len < bufLen )
         return;
@@ -119,13 +119,13 @@ void BufferManager::GrowBuf( uint len )
     bufData = new_buf;
 }
 
-void BufferManager::MoveReadPos( int val )
+void NetBuffer::MoveReadPos( int val )
 {
     bufReadPos += val;
     EncryptKey( val );
 }
 
-void BufferManager::Push( const void* buf, uint len, bool no_crypt /* = false */ )
+void NetBuffer::Push( const void* buf, uint len, bool no_crypt /* = false */ )
 {
     if( isError || !len )
         return;
@@ -135,7 +135,7 @@ void BufferManager::Push( const void* buf, uint len, bool no_crypt /* = false */
     bufEndPos += len;
 }
 
-void BufferManager::Pop( void* buf, uint len )
+void NetBuffer::Pop( void* buf, uint len )
 {
     if( isError || !len )
         return;
@@ -148,7 +148,7 @@ void BufferManager::Pop( void* buf, uint len )
     bufReadPos += len;
 }
 
-void BufferManager::Cut( uint len )
+void NetBuffer::Cut( uint len )
 {
     if( isError || !len )
         return;
@@ -163,7 +163,7 @@ void BufferManager::Cut( uint len )
     bufEndPos -= len;
 }
 
-void BufferManager::CopyBuf( const void* from, void* to, uchar crypt_key, uint len )
+void NetBuffer::CopyBuf( const void* from, void* to, uchar crypt_key, uint len )
 {
     const uchar* from_ = (const uchar*) from;
     uchar*       to_ = (uchar*) to;
@@ -171,7 +171,7 @@ void BufferManager::CopyBuf( const void* from, void* to, uchar crypt_key, uint l
         *to_ = *from_ ^ crypt_key;
 }
 
-bool BufferManager::NeedProcess()
+bool NetBuffer::NeedProcess()
 {
     uint msg = 0;
     if( bufReadPos + sizeof( msg ) > bufEndPos )
@@ -358,7 +358,7 @@ bool BufferManager::NeedProcess()
     return false;
 }
 
-void BufferManager::SkipMsg( uint msg )
+void NetBuffer::SkipMsg( uint msg )
 {
     bufReadPos -= sizeof( msg );
     EncryptKey( -(int) sizeof( msg ) );
