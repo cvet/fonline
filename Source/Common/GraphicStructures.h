@@ -4,7 +4,6 @@
 #include "Common.h"
 #include "GraphicApi.h"
 #include "FileManager.h"
-#include "FlexRect.h"
 #include "Timer.h"
 #include "assimp/types.h"
 #include "assimp/scene.h"
@@ -423,8 +422,9 @@ struct CombinedMesh
     void Encapsulate( MeshInstance& mesh_instance, int anim_layer );
     void Finalize();
 
-    CombinedMesh(): EncapsulatedMeshCount( 0 ), CurBoneMatrix( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 )
+    CombinedMesh(): EncapsulatedMeshCount( 0 ), CurBoneMatrix( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ), DrawEffect( nullptr )
     {
+        memzero( Textures, sizeof( Textures ) );
         SkinBones.resize( Effect::MaxBones );
         SkinBoneOffsets.resize( Effect::MaxBones );
     }

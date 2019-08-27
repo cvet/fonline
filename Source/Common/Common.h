@@ -54,9 +54,9 @@
 
 // Function name
 #if defined ( FO_MSVC )
-# define _FUNC_    __FUNCTION__
+# define _FUNC_            __FUNCTION__
 #elif defined ( FO_GCC )
-# define _FUNC_    __PRETTY_FUNCTION__
+# define _FUNC_            __PRETTY_FUNCTION__
 #endif
 
 // Disable deprecated notification in GCC
@@ -69,12 +69,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#if !defined( FO_WINDOWS )
+#if !defined ( FO_WINDOWS )
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>
 # define ERRORSTR          strerror( errno )
-# define ExitProcess( code )              exit( code )
+# define ExitProcess( code )    exit( code )
 #endif
 
 #if defined ( FO_MAC ) || defined ( FO_IOS )
@@ -85,7 +85,7 @@
 # include <emscripten/html5.h>
 #endif
 
-#if !defined( FO_WINDOWS )
+#if !defined ( FO_WINDOWS )
 # include <signal.h>
 #endif
 
@@ -211,16 +211,16 @@ using UIntHashVecMap = map< uint, HashVec >;
 
 // DLL
 #ifdef FO_WINDOWS
-# define DLL_Load( name )                 (void*) LoadLibraryA( fmt::format( "{}", name ).c_str() )
-# define DLL_Free( h )                    FreeLibrary( (HMODULE) h )
-# define DLL_GetAddress( h, name )        (size_t*) GetProcAddress( (HMODULE) h, fmt::format( "{}", name ).c_str() )
-# define DLL_Error()                      fmt::format( "{}", GetLastError() )
+# define DLL_Load( name )                     (void*) LoadLibraryA( fmt::format( "{}", name ).c_str() )
+# define DLL_Free( h )                        FreeLibrary( (HMODULE) h )
+# define DLL_GetAddress( h, name )            (size_t*) GetProcAddress( (HMODULE) h, fmt::format( "{}", name ).c_str() )
+# define DLL_Error()                          fmt::format( "{}", GetLastError() )
 #else
 # include <dlfcn.h>
-# define DLL_Load( name )                 (void*) dlopen( fmt::format( "{}", name ).c_str(), RTLD_NOW | RTLD_LOCAL )
-# define DLL_Free( h )                    dlclose( h )
-# define DLL_GetAddress( h, name )        (size_t*) dlsym( h, fmt::format( "{}", name ).c_str() )
-# define DLL_Error()                      fmt::format( "{}", dlerror() )
+# define DLL_Load( name )                     (void*) dlopen( fmt::format( "{}", name ).c_str(), RTLD_NOW | RTLD_LOCAL )
+# define DLL_Free( h )                        dlclose( h )
+# define DLL_GetAddress( h, name )            (size_t*) dlsym( h, fmt::format( "{}", name ).c_str() )
+# define DLL_Error()                          fmt::format( "{}", dlerror() )
 #endif
 
 // Network
@@ -236,26 +236,26 @@ using UIntHashVecMap = map< uint, HashVec >;
 # include <netinet/tcp.h>
 # include <arpa/inet.h>
 # include <netdb.h>
-# define SOCKET            int
-# define INVALID_SOCKET    ( -1 )
-# define SOCKET_ERROR      ( -1 )
-# define closesocket       close
-# define SD_RECEIVE        SHUT_RD
-# define SD_SEND           SHUT_WR
-# define SD_BOTH           SHUT_RDWR
+# define SOCKET                      int
+# define INVALID_SOCKET              ( -1 )
+# define SOCKET_ERROR                ( -1 )
+# define closesocket                 close
+# define SD_RECEIVE                  SHUT_RD
+# define SD_SEND                     SHUT_WR
+# define SD_BOTH                     SHUT_RDWR
 #endif
 
 // Generic helpers
-#define STATIC_ASSERT( a )                static_assert( a, # a )
-#define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
-#define UNUSED_VARIABLE( x )              (void) ( x )
-#define memzero( ptr, size )              memset( ptr, 0, size )
-#define CLEAN_CONTAINER( cont )           { decltype( cont ) __ ## cont; __ ## cont.swap( cont ); }
-#define PI_VALUE           ( 3.141592654f )
+#define STATIC_ASSERT( a )                    static_assert( a, # a )
+#define OFFSETOF( s, m )                      ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
+#define UNUSED_VARIABLE( x )                  (void) ( x )
+#define memzero( ptr, size )                  memset( ptr, 0, size )
+#define CLEAN_CONTAINER( cont )               { decltype( cont ) __ ## cont; __ ## cont.swap( cont ); }
+#define PI_VALUE                     ( 3.141592654f )
 
-#define ___MSG1( x )                      # x
-#define ___MSG0( x )                      ___MSG1( x )
-#define MESSAGE( desc )                   message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
+#define ___MSG1( x )                          # x
+#define ___MSG0( x )                          ___MSG1( x )
+#define MESSAGE( desc )                       message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
 
 #define SAFEREL( x ) \
     { if( x )        \
@@ -267,20 +267,20 @@ using UIntHashVecMap = map< uint, HashVec >;
     { if( x )         \
           delete[] ( x ); ( x ) = nullptr; }
 
-#define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
-#define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#define MAX( a, b )                           ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#define MIN( a, b )                           ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 
-#define PACKUINT64( u32hi, u32lo )        ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
-#define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
+#define PACKUINT64( u32hi, u32lo )            ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
+#define MAKEUINT( ch0, ch1, ch2, ch3 )        ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
 
 #ifdef SHOW_DEPRECATED
-# define DEPRECATED        MESSAGE( "Deprecated" )
+# define DEPRECATED                  MESSAGE( "Deprecated" )
 #else
 # define DEPRECATED
 #endif
 
 #ifdef SHOW_ANDROID_TODO
-# define ANDROID_TODO      MESSAGE( "Android todo" )
+# define ANDROID_TODO                MESSAGE( "Android todo" )
 #else
 # define ANDROID_TODO
 #endif
@@ -654,7 +654,7 @@ using UIntHashVecMap = map< uint, HashVec >;
 
 class IniFile;
 extern IniFile* MainConfig;
-extern StrVec     ProjectFiles;
+extern StrVec   ProjectFiles;
 extern void InitialSetup( const string& app_name, uint argc, char** argv );
 
 extern int  Random( int minimum, int maximum );
@@ -676,7 +676,7 @@ extern void ShowMessage( const string& message );
 extern int  ConvertParamValue( const string& str, bool& fail );
 
 // Hex offsets
-#define MAX_HEX_OFFSET     ( 50 )                        // Must be not odd
+#define MAX_HEX_OFFSET               ( 50 )              // Must be not odd
 extern void GetHexOffsets( bool odd, short*& sx, short*& sy );
 extern void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -1124,6 +1124,184 @@ inline T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
     return size ? &vec[ pos - size ] : nullptr;
 }
 
+// Two bit mask
+class TwoBitMask
+{
+public:
+    TwoBitMask();
+    TwoBitMask( uint width_2bit, uint height_2bit, uchar* ptr );
+    ~TwoBitMask();
+    void   Set2Bit( uint x, uint y, int val );
+    int    Get2Bit( uint x, uint y );
+    void   Fill( int fill );
+    uchar* GetData();
+
+private:
+    bool   isAlloc;
+    uchar* data;
+    uint   width;
+    uint   height;
+    uint   widthBytes;
+};
+
+// Mersenne Twist pseudorandom number generator
+class Randomizer
+{
+    static const int periodN = 624;
+    static const int periodM = 397;
+    unsigned int     rndNumbers[ periodN ];
+    int              rndIter;
+
+    void GenerateState();
+
+public:
+    Randomizer();
+    Randomizer( unsigned int seed );
+    void Generate();
+    void Generate( unsigned int seed );
+    int  Random( int minimum, int maximum );
+};
+
+// Flex rect
+template< typename Ty >
+struct FlexRect
+{
+    Ty L, T, R, B;
+
+    FlexRect(): L( 0 ), T( 0 ), R( 0 ), B( 0 ) {}
+    template< typename Ty2 > FlexRect( const FlexRect< Ty2 >& fr ): L( ( Ty )fr.L ), T( ( Ty )fr.T ), R( ( Ty )fr.R ), B( ( Ty )fr.B ) {}
+    FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ), T( t ), R( r ), B( b ) {}
+    FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ), T( t + oy ), R( r + ox ), B( b + oy ) {}
+    FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ), T( fr.T + oy ), R( fr.R + ox ), B( fr.B + oy ) {}
+
+    template< typename Ty2 >
+    FlexRect& operator=( const FlexRect< Ty2 >& fr )
+    {
+        L = (Ty) fr.L;
+        T = (Ty) fr.T;
+        R = (Ty) fr.R;
+        B = (Ty) fr.B;
+        return *this;
+    }
+
+    void Clear()
+    {
+        L = 0;
+        T = 0;
+        R = 0;
+        B = 0;
+    }
+
+    bool IsZero() const { return !L && !T && !R && !B; }
+    Ty   W()      const { return R - L + 1; }
+    Ty   H()      const { return B - T + 1; }
+    Ty   CX()     const { return L + W() / 2; }
+    Ty   CY()     const { return T + H() / 2; }
+
+    Ty& operator[]( int index )
+    {
+        switch( index )
+        {
+        case 0:
+            return L;
+        case 1:
+            return T;
+        case 2:
+            return R;
+        case 3:
+            return B;
+        default:
+            break;
+        }
+        return L;
+    }
+
+    FlexRect& operator()( Ty l, Ty t, Ty r, Ty b )
+    {
+        L = l;
+        T = t;
+        R = r;
+        B = b;
+        return *this;
+    }
+
+    FlexRect& operator()( Ty ox, Ty oy )
+    {
+        L += ox;
+        T += oy;
+        R += ox;
+        B += oy;
+        return *this;
+    }
+
+    FlexRect< Ty > Interpolate( const FlexRect< Ty >& to, int procent )
+    {
+        FlexRect< Ty > result( L, T, R, B );
+        result.L += (Ty) ( (int) ( to.L - L ) * procent / 100 );
+        result.T += (Ty) ( (int) ( to.T - T ) * procent / 100 );
+        result.R += (Ty) ( (int) ( to.R - R ) * procent / 100 );
+        result.B += (Ty) ( (int) ( to.B - B ) * procent / 100 );
+        return result;
+    }
+};
+using Rect = FlexRect< int >;
+using RectF = FlexRect< float >;
+using IntRectVec = std::vector< Rect >;
+using FltRectVec = std::vector< RectF >;
+
+template< typename Ty >
+struct FlexPoint
+{
+    Ty X, Y;
+
+    FlexPoint(): X( 0 ), Y( 0 ) {}
+    template< typename Ty2 > FlexPoint( const FlexPoint< Ty2 >& r ): X( ( Ty )r.X ), Y( ( Ty )r.Y ) {}
+    FlexPoint( Ty x, Ty y ): X( x ), Y( y ) {}
+    FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ), Y( fp.Y + oy ) {}
+
+    template< typename Ty2 >
+    FlexPoint& operator=( const FlexPoint< Ty2 >& fp )
+    {
+        X = (Ty) fp.X;
+        Y = (Ty) fp.Y;
+        return *this;
+    }
+
+    void Clear()
+    {
+        X = 0;
+        Y = 0;
+    }
+
+    bool IsZero()
+    {
+        return !X && !Y;
+    }
+
+    Ty& operator[]( int index )
+    {
+        switch( index )
+        {
+        case 0:
+            return X;
+        case 1:
+            return Y;
+        default:
+            break;
+        }
+        return X;
+    }
+
+    FlexPoint& operator()( Ty x, Ty y )
+    {
+        X = x;
+        Y = y;
+        return *this;
+    }
+};
+using Point = FlexPoint< int >;
+using PointF = FlexPoint< float >;
+
 // Net command helper
 class NetBuffer;
-extern bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function< void(const string&) > logcb, const string& name);
+extern bool PackNetCommand( const string& str, NetBuffer* pbuf, std::function< void(const string&) > logcb, const string& name );

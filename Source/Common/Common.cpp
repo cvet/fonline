@@ -7,7 +7,6 @@
 #include "StringUtils.h"
 #include "FileManager.h"
 #include "IniFile.h"
-#include "Randomizer.h"
 #include "NetBuffer.h"
 #include "SDL.h"
 
@@ -975,6 +974,8 @@ GameOptions::GameOptions()
     FullSecondStart = 0;
     FullSecond = 0;
     GameTimeTick = 0;
+    YearStartFTHi = 0;
+    YearStartFTLo = 0;
 
     DisableTcpNagle = false;
     DisableZlibCompression = false;
@@ -1237,13 +1238,149 @@ GameOptions::GameOptions()
     AddPropertyCallback = &::AddPropertyCallback;
 }
 
+TwoBitMask::TwoBitMask()
+{
+    memset( this, 0, sizeof( TwoBitMask ) );
+}
+
+TwoBitMask::TwoBitMask( uint width_2bit, uint height_2bit, uchar* ptr )
+{
+    if( !width_2bit )
+        width_2bit = 1;
+    if( !height_2bit )
+        height_2bit = 1;
+
+    width = width_2bit;
+    height = height_2bit;
+    widthBytes = width / 4;
+
+    if( width % 4 )
+        widthBytes++;
+
+    if( ptr )
+    {
+        isAlloc = false;
+        data = ptr;
+    }
+    else
+    {
+        isAlloc = true;
+        data = new uchar[ widthBytes * height ];
+        Fill( 0 );
+    }
+}
+
+TwoBitMask::~TwoBitMask()
+{
+    if( isAlloc )
+        delete[] data;
+    data = nullptr;
+}
+
+void TwoBitMask::Set2Bit( uint x, uint y, int val )
+{
+    if( x >= width || y >= height )
+        return;
+
+    uchar& b = data[ y * widthBytes + x / 4 ];
+    int    bit = ( x % 4 * 2 );
+
+    UNSETFLAG( b, 3 << bit );
+    SETFLAG( b, ( val & 3 ) << bit );
+}
+
+int TwoBitMask::Get2Bit( uint x, uint y )
+{
+    if( x >= width || y >= height )
+        return 0;
+
+    return ( data[ y * widthBytes + x / 4 ] >> ( x % 4 * 2 ) ) & 3;
+}
+
+void TwoBitMask::Fill( int fill )
+{
+    memset( data, fill, widthBytes * height );
+}
+
+uchar* TwoBitMask::GetData()
+{
+    return data;
+}
+
+void Randomizer::GenerateState()
+{
+    static unsigned int mag01[ 2 ] = { 0x0, 0x9908B0DF };
+    unsigned int        num;
+    int                 i = 0;
+
+    for( ; i < periodN - periodM; i++ )
+    {
+        num = ( rndNumbers[ i ] & 0x80000000 ) | ( rndNumbers[ i + 1 ] & 0x7FFFFFFF );
+        rndNumbers[ i ] = rndNumbers[ i + periodM ] ^ ( num >> 1 ) ^ mag01[ num & 0x1 ];
+    }
+
+    for( ; i < periodN - 1; i++ )
+    {
+        num = ( rndNumbers[ i ] & 0x80000000 ) | ( rndNumbers[ i + 1 ] & 0x7FFFFFFF );
+        rndNumbers[ i ] = rndNumbers[ i + ( periodM - periodN ) ] ^ ( num >> 1 ) ^ mag01[ num & 0x1 ];
+    }
+
+    num = ( rndNumbers[ periodN - 1 ] & 0x80000000 ) | ( rndNumbers[ 0 ] & 0x7FFFFFFF );
+    rndNumbers[ periodN - 1 ] = rndNumbers[ periodM - 1 ] ^ ( num >> 1 ) ^ mag01[ num & 0x1 ];
+
+    rndIter = 0;
+}
+
+Randomizer::Randomizer()
+{
+    Generate();
+}
+
+Randomizer::Randomizer( unsigned int seed )
+{
+    Generate( seed );
+}
+
+void Randomizer::Generate()
+{
+    Generate( (unsigned int) time( nullptr ) );
+}
+
+void Randomizer::Generate( unsigned int seed )
+{
+    rndNumbers[ 0 ] = seed;
+
+    for( int i = 1; i < periodN; i++ )
+        rndNumbers[ i ] = ( 1812433253 * ( rndNumbers[ i - 1 ] ^ ( rndNumbers[ i - 1 ] >> 30 ) ) + i );
+
+    GenerateState();
+}
+
+int Randomizer::Random( int minimum, int maximum )
+{
+    if( rndIter >= periodN )
+        GenerateState();
+
+    unsigned int num = rndNumbers[ rndIter++ ];
+    num ^= ( num >> 11 );
+    num ^= ( num << 7 ) & 0x9D2C5680;
+    num ^= ( num << 15 ) & 0xEFC60000;
+    num ^= ( num >> 18 );
+
+    #ifdef FO_X86
+    return minimum + (int) ( (double) num * (double) ( 1.0 / 4294967296.0 ) * (double) ( maximum - minimum + 1 ) );
+    #else // FO_X64
+    return minimum + (int) ( (int64) num * (int64) ( maximum - minimum + 1 ) / (int64) 0x100000000 );
+    #endif
+}
+
 struct CmdDef
 {
-    char  cmd[ 20 ];
-    uchar id;
+    char  Name[ 20 ];
+    uchar Id;
 };
 
-static const CmdDef cmdlist[] =
+static const CmdDef CmdList[] =
 {
     { "exit", CMD_EXIT },
     { "myinfo", CMD_MYINFO },
@@ -1293,9 +1430,9 @@ bool PackNetCommand( const string& str, NetBuffer* pbuf, std::function< void(con
     istringstream args_str( args );
 
     uchar         cmd = 0;
-    for( uint cur_cmd = 0; cur_cmd < sizeof( cmdlist ) / sizeof( CmdDef ); cur_cmd++ )
-        if( _str( cmd_str ).compareIgnoreCase( cmdlist[ cur_cmd ].cmd ) )
-            cmd = cmdlist[ cur_cmd ].id;
+    for( uint cur_cmd = 0; cur_cmd < sizeof( CmdList ) / sizeof( CmdDef ); cur_cmd++ )
+        if( _str( cmd_str ).compareIgnoreCase( CmdList[ cur_cmd ].Name ) )
+            cmd = CmdList[ cur_cmd ].Id;
     if( !cmd )
         return false;
 

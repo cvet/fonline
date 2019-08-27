@@ -4,9 +4,8 @@
 #include "Timer.h"
 #include "IniFile.h"
 #include "Crypt.h"
-#include "F2Palette.h"
 #include "StringUtils.h"
-#include <time.h>
+#include "F2Palette_Include.h"
 
 #ifdef FO_WEB
 # define SDL_GL_SwapWindow( a )    (void) 0

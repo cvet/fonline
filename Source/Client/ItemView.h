@@ -110,16 +110,16 @@ public:
 
     // Colorize
     bool  IsColorize()  { return GetIsColorize(); }
-    uint  GetColor()    { return ( GetLightColor() ? GetLightColor() : GetLightColor() ) & 0xFFFFFF; }
-    uchar GetAlpha()    { return ( GetLightColor() ? GetLightColor() : GetLightColor() ) >> 24; }
-    uint  GetInvColor() { return GetIsColorizeInv() ? ( GetLightColor() ? GetLightColor() : GetLightColor() ) : 0; }
+    uint  GetColor()    { return GetLightColor() & 0xFFFFFF; }
+    uchar GetAlpha()    { return GetLightColor() >> 24; }
+    uint  GetInvColor() { return GetIsColorizeInv() ? GetLightColor() : 0; }
 
     // Light
     uint LightGetHash()      { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
-    int  LightGetIntensity() { return GetLightIntensity() ? GetLightIntensity() : GetLightIntensity(); }
-    int  LightGetDistance()  { return GetLightDistance() ? GetLightDistance() : GetLightDistance(); }
-    int  LightGetFlags()     { return GetLightFlags() ? GetLightFlags() : GetLightFlags(); }
-    uint LightGetColor()     { return ( GetLightColor() ? GetLightColor() : GetLightColor() ) & 0xFFFFFF; }
+    int  LightGetIntensity() { return GetLightIntensity(); }
+    int  LightGetDistance()  { return GetLightDistance(); }
+    int  LightGetFlags()     { return GetLightFlags(); }
+    uint LightGetColor()     { return GetLightColor() & 0xFFFFFF; }
 
     // Radio
     bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }

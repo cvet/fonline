@@ -11,14 +11,12 @@
 #include "CritterView.h"
 #include "NetBuffer.h"
 #include "ResourceManager.h"
-#include "DataMask.h"
 #include "Script.h"
 #include "zlib.h"
 #include "MsgFiles.h"
 #include "MapView.h"
 #include "ProtoManager.h"
 #include "theora/theoradec.h"
-#include "FlexRect.h"
 
 // Fonts
 #ifndef FONT_DEFAULT

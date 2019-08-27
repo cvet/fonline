@@ -4256,7 +4256,7 @@ namespace MapperBind
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
     #define BIND_ASSERT( x )                      if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
-    #include "ScriptBind.h"
+    #include "ScriptBind_Include.h"
 }
 
 bool FOMapper::InitScriptSystem()

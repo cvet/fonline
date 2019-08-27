@@ -7,7 +7,6 @@
 #include "LineTracer.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
-#include "FlexRect.h"
 #include "StringUtils.h"
 
 MapManager MapMngr;

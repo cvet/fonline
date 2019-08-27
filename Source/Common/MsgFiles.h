@@ -1,8 +1,7 @@
-#ifndef ___MSG_FILES___
-#define ___MSG_FILES___
+#pragma once
 
 #include "Common.h"
-#include "MsgStr.h"
+#include "MsgStr_Include.h"
 
 #define TEXTMSG_TEXT         ( 0 )
 #define TEXTMSG_DLG          ( 1 )
@@ -83,5 +82,3 @@ public:
     bool operator==( const uint& other ) { return Name == other; }
 };
 typedef vector< LanguagePack > LangPackVec;
-
-#endif // ___MSG_FILES___

@@ -1,9 +1,10 @@
 #include "Crypt.h"
 #include "Log.h"
 #include "Exception.h"
-#include "zlib.h"
-#include "SHA/sha2.h"
 #include "FileManager.h"
+#include "StringUtils.h"
+#include "SHA/sha2.h"
+#include "zlib.h"
 
 CryptManager Crypt;
 

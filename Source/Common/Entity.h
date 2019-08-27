@@ -187,7 +187,7 @@ public:
         uchar  Layer;
         bool   IsRoof;
         #ifdef FONLINE_EDITOR
-        bool   IsSelected;
+        bool   IsSelected = false;
         #endif
 
         Tile() { memzero( this, sizeof( Tile ) ); }

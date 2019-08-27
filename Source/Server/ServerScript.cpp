@@ -85,7 +85,7 @@ namespace ServerBind
     #define BIND_SERVER
     #define BIND_CLASS    FOServer::SScriptFunc::
     #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); return false; }
-    #include "ScriptBind.h"
+    #include "ScriptBind_Include.h"
 }
 
 bool FOServer::InitScriptSystem()
@@ -276,7 +276,7 @@ namespace ClientBind
     #define BIND_CLASS    BindClass::
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
     #define BIND_DUMMY_DATA
-    #include "ScriptBind.h"
+    #include "ScriptBind_Include.h"
 }
 
 bool FOServer::ReloadClientScripts()

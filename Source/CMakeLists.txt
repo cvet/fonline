@@ -471,34 +471,31 @@ set( COMMON_SOURCE
 	Common/Entity.cpp Common/Entity.h
 	Common/ProtoMap.cpp # Remove
 	Common/Exception.cpp Common/Exception.h
-	Common/Debugger.cpp Common/Debugger.h # Delete?
+	Common/Debugger.cpp Common/Debugger.h
 	Common/Log.cpp Common/Log.h
 	Common/IniFile.cpp Common/IniFile.h
 	Common/MsgFiles.cpp Common/MsgFiles.h
-
+	Common/MsgStr_Include.h
 	Common/FileSystem.cpp Common/FileSystem.h
-	Common/FileManager.cpp Common/FileManager.h # Rename (File)
-	# FilesCollection -> ProjectFiles?
+	Common/FileManager.cpp Common/FileManager.h # Rename (File), FilesCollection -> ProjectFiles?
 	Common/DataFile.cpp Common/DataFile.h
-
 	Common/GraphicApi.cpp Common/GraphicApi.h
 	Common/GraphicStructures.cpp Common/GraphicStructures.h
-
+	Common/3dAnimation.cpp Common/3dAnimation.h
 	Common/Properties.cpp Common/Properties.h
 	Common/ProtoManager.cpp Common/ProtoManager.h
-
 	Common/Script.cpp Common/Script.h
 	Common/ScriptExtensions.cpp
 	Common/ScriptInvoker.cpp Common/ScriptInvoker.h
 	Common/ScriptPragmas.cpp Common/ScriptPragmas.h
 	Common/ScriptProfiler.cpp Common/ScriptProfiler.h
-	# Header only
-	Common/ScriptBind.h
-	Common/ScriptFunctions.h
-	Common/DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
-
+	Common/ScriptBind_Include.h
+	Common/ScriptFunctions_Include.h
+	Common/ScriptReference_Include.h
 	Common/NetBuffer.cpp Common/NetBuffer.h
+	Common/NetProtocol_Include.h
 	Common/StringUtils.cpp Common/StringUtils.h
+	Common/UcsTables_Include.h
 	Common/Threading.cpp Common/Threading.h
 	Common/Timer.cpp Common/Timer.h # Rename (Timing)
 	Common/LineTracer.h Common/LineTracer.cpp
@@ -506,12 +503,6 @@ set( COMMON_SOURCE
 	# Refactor
 	${GLEW_SOURCE} # Remove, use dynamic binding
 	Common/Crypt.cpp Common/Crypt.h # Split to DataStorage/LocalStorage
-	# Header only
-	Common/MsgStr.h # To Common.h?
-	Common/3dAnimation.h # To Graphic...?
-	Common/Randomizer.h # To Common.h
-	Common/DataMask.h # To Common.h?
-	Common/UcsTables.h
 )
 
 # Server source
@@ -527,7 +518,6 @@ set( SERVER_SOURCE
 
 	# To Server.h?
 	Server/EntityManager.cpp Server/EntityManager.h
-	# LocationManager
 	Server/MapManager.cpp Server/MapManager.h
 	Server/CritterManager.cpp Server/CritterManager.h
 	Server/ItemManager.cpp Server/ItemManager.h
@@ -564,13 +554,12 @@ set( CLIENT_SOURCE
 	Client/GraphicLoader.cpp Client/GraphicLoader.h # Refactor, merge with ResourceManager?
 
 	Client/3dStuff.cpp Client/3dStuff.h
-	Client/F2Palette.h
 	Client/SpriteManager.cpp Client/SpriteManager.h # Refactor, split loaders
 	Client/SpriteManagerFont.cpp
+	Client/F2Palette_Include.h
 	Client/Sprites.cpp Client/Sprites.h
 
 	Client/GluStuff.cpp Client/GluStuff.h # Remove
-	Client/FlexRect.h # Move to Common?
 )
 
 # Editor source

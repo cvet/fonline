@@ -5344,7 +5344,7 @@ namespace ClientBind
     #define BIND_CLASS        FOClient::SScriptFunc::
     #define BIND_CLASS_EXT    FOClient::Self->
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
-    #include "ScriptBind.h"
+    #include "ScriptBind_Include.h"
 }
 
 MapView*      FOClient::SScriptFunc::ClientCurMap;

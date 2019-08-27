@@ -1,5 +1,5 @@
 #ifdef BIND_DUMMY_DATA
-# include "DummyData.h"
+# include "ScriptReference_Include.h"
 # pragma push_macro( "SCRIPT_FUNC" )
 # pragma push_macro( "SCRIPT_FUNC_THIS" )
 # pragma push_macro( "SCRIPT_METHOD" )
@@ -21,7 +21,7 @@
 static void DummyFunc( asIScriptGeneric* gen ) {}
 #endif
 
-#include "ScriptFunctions.h"
+#include "ScriptFunctions_Include.h"
 
 #ifndef BIND_CLASS_EXT
 # define BIND_CLASS_EXT           BIND_CLASS

@@ -6,7 +6,6 @@
 #include "Networking.h"
 #include "Item.h"
 #include "Dialogs.h"
-#include "DataMask.h"
 #include "Entity.h"
 
 // Client game states
