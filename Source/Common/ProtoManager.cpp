@@ -2,7 +2,7 @@
 #include "Log.h"
 #include "Exception.h"
 #include "Crypt.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "StringUtils.h"
 #include "IniFile.h"
 
@@ -93,13 +93,13 @@ static int ParseProtos( const string& ext, const string& app_name, map< hash, T*
     int errors = 0;
 
     // Collect data
-    FilesCollection                    files( ext );
+    FileCollection                     files( ext );
     map< hash, StrMap >                files_protos;
     map< hash, map< string, StrMap > > files_texts;
     while( files.IsNextFile() )
     {
-        string       proto_name;
-        FileManager& file = files.GetNextFile( &proto_name );
+        string proto_name;
+        File&  file = files.GetNextFile( &proto_name );
         if( !file.IsLoaded() )
         {
             WriteLog( "Unable to open file '{}'.\n", proto_name );

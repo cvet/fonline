@@ -21,25 +21,25 @@ struct GuiWindow
 
 struct ProjectFilesWindow: GuiWindow
 {
-    string           SelectedTree;
-    int              SelectedItem = -1;
-    FilesCollection* Scripts;
-    FilesCollection* Locations;
-    FilesCollection* Maps;
-    FilesCollection* Critters;
-    FilesCollection* Items;
-    FilesCollection* Dialogs;
-    FilesCollection* Texts;
+    string          SelectedTree;
+    int             SelectedItem = -1;
+    FileCollection* Scripts;
+    FileCollection* Locations;
+    FileCollection* Maps;
+    FileCollection* Critters;
+    FileCollection* Items;
+    FileCollection* Dialogs;
+    FileCollection* Texts;
 
     ProjectFilesWindow(): GuiWindow( "Project Files" )
     {
-        Scripts = new FilesCollection( "fos" );
-        Locations = new FilesCollection( "foloc" );
-        Maps = new FilesCollection( "fomap" );
-        Critters = new FilesCollection( "focr" );
-        Items = new FilesCollection( "foitem" );
-        Dialogs = new FilesCollection( "fodlg" );
-        Texts = new FilesCollection( "msg" );
+        Scripts = new FileCollection( "fos" );
+        Locations = new FileCollection( "foloc" );
+        Maps = new FileCollection( "fomap" );
+        Critters = new FileCollection( "focr" );
+        Items = new FileCollection( "foitem" );
+        Dialogs = new FileCollection( "fodlg" );
+        Texts = new FileCollection( "msg" );
     }
 
     virtual bool Draw() override
@@ -54,7 +54,7 @@ struct ProjectFilesWindow: GuiWindow
         return true;
     }
 
-    void DrawFiles( const string& tree_name, FilesCollection* files )
+    void DrawFiles( const string& tree_name, FileCollection* files )
     {
         if( ImGui::TreeNode( tree_name.c_str() ) )
         {
@@ -166,14 +166,14 @@ struct MapperWindow: GuiWindow
         }
 
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
-        FileManager::SetCurrentDir( MapperInstance->ServerWritePath, "./" );
+        File::SetCurrentDir( MapperInstance->ServerWritePath, "./" );
         if( !pmap->Load() )
         {
             MapperInstance->AddMess( "File not found or truncated." );
-            FileManager::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+            File::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
             return;
         }
-        FileManager::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+        File::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
 
         if( MapperInstance->ActiveMap )
             MapperInstance->HexMngr.GetProtoMap( *(ProtoMap*) MapperInstance->ActiveMap->Proto );

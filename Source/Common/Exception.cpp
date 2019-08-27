@@ -30,7 +30,7 @@ static string ManualDumpMessage;
 # pragma comment(lib, "Psapi.lib")
 # include <tlhelp32.h>
 # include "Timer.h"
-# include "FileManager.h"
+# include "FileUtils.h"
 
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 
@@ -70,14 +70,14 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     LONG   retval = EXCEPTION_CONTINUE_SEARCH;
     string mess;
 
-    FileManager::ResetCurrentDir();
+    File::ResetCurrentDir();
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     string        dump_str = except ? "CrashDump" : ManualDumpAppendix;
     string        dump_path = _str( "{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
                                     dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
-    FileManager::CreateDirectoryTree( dump_path );
+    File::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
     if( f )
     {
@@ -196,7 +196,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // Set exe dir for PDB symbols
-        SetCurrentDirectoryW( _str( FileManager::GetExePath() ).extractDir().toWideChar().c_str() );
+        SetCurrentDirectoryW( _str( File::GetExePath() ).extractDir().toWideChar().c_str() );
 
         // Init symbols
         SymInitialize( process, nullptr, TRUE );
@@ -456,7 +456,7 @@ void CreateDump( const string& appendix, const string& message )
 
 #elif !defined ( FO_ANDROID ) && !defined ( FO_WEB )
 
-# include "FileManager.h"
+# include "FileUtils.h"
 # include <execinfo.h>
 # include <cxxabi.h>
 # include <sys/utsname.h>
@@ -528,14 +528,14 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
     string mess;
 
-    FileManager::ResetCurrentDir();
+    File::ResetCurrentDir();
     DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
     string dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     string dump_path = _str( "{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
                              dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
-    FileManager::CreateDirectoryTree( dump_path );
+    File::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
     if( f )
     {

@@ -2,7 +2,7 @@
 #include "Log.h"
 #include "Exception.h"
 #include "Crypt.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "StringUtils.h"
 
 string TextMsgFileName[ TEXTMSG_COUNT ] =
@@ -252,7 +252,7 @@ bool FOMsg::LoadFromFile( const string& fname )
 {
     Clear();
 
-    FileManager file;
+    File file;
     if( !file.LoadFile( fname ) )
         return false;
 
@@ -325,10 +325,10 @@ bool FOMsg::SaveToFile( const string& fname, bool to_data )
     for( auto it = strData.begin(), end = strData.end(); it != end; it++ )
         str += _str( "{{{}}}{{}}{{{}}}", it->first, it->second );
 
-    char*       buf = (char*) str.c_str();
-    uint        buf_len = (uint) str.length();
+    char* buf = (char*) str.c_str();
+    uint  buf_len = (uint) str.length();
 
-    FileManager fm;
+    File  fm;
     fm.SetData( buf, buf_len );
     return fm.SaveFile( fname );
 }
@@ -374,13 +374,13 @@ bool LanguagePack::LoadFromFiles( const string& lang_name )
     RUNTIME_ASSERT( lang_name.length() == 4 );
     memcpy( NameStr, lang_name.c_str(), 4 );
     NameStr[ 4 ] = 0;
-    bool            fail = false;
+    bool           fail = false;
 
-    FilesCollection msg_files( "msg" );
+    FileCollection msg_files( "msg" );
     while( msg_files.IsNextFile() )
     {
-        string       name, path;
-        FileManager& msg_file = msg_files.GetNextFile( &name, &path );
+        string name, path;
+        File&  msg_file = msg_files.GetNextFile( &name, &path );
 
         // Check pattern '...Texts/lang/file'
         StrVec dirs = _str( path ).split( '/' );

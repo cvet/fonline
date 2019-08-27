@@ -1,7 +1,7 @@
 #include "Crypt.h"
 #include "Log.h"
 #include "Exception.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "StringUtils.h"
 #include "SHA/sha2.h"
 #include "zlib.h"
@@ -287,8 +287,8 @@ bool CryptManager::InitCache()
 {
     RUNTIME_ASSERT( !CacheDb );
 
-    string path = FileManager::GetWritePath( "/Cache.bin" );
-    FileManager::CreateDirectoryTree( path );
+    string path = File::GetWritePath( "/Cache.bin" );
+    File::CreateDirectoryTree( path );
 
     if( unqlite_open( &CacheDb, path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING ) != UNQLITE_OK )
     {
@@ -427,7 +427,7 @@ bool CryptManager::GetCache( const string& data_name, UCharVec& data )
 
 static string MakeCachePath( const string& data_name )
 {
-    return FileManager::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
+    return File::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
 }
 
 bool CryptManager::InitCache()

@@ -3,7 +3,7 @@
 #include "Timer.h"
 #include "ResourceManager.h"
 #include "StringUtils.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include <functional>
 
 // Manager instance
@@ -255,7 +255,7 @@ Sound* SoundManager::Load( const string& fname, bool is_music )
 
 bool SoundManager::LoadWAV( Sound* sound, const string& fname )
 {
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return false;
 
@@ -356,7 +356,7 @@ bool SoundManager::LoadWAV( Sound* sound, const string& fname )
 
 bool SoundManager::LoadACM( Sound* sound, const string& fname, bool is_music )
 {
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return false;
 
@@ -385,13 +385,13 @@ bool SoundManager::LoadACM( Sound* sound, const string& fname, bool is_music )
 
 static size_t Ogg_read_func( void* ptr, size_t size, size_t nmemb, void* datasource )
 {
-    FileManager* fm = (FileManager*) datasource;
+    File* fm = (File*) datasource;
     return fm->CopyMem( ptr, (uint) size ) ? size : 0;
 }
 
 static int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
 {
-    FileManager* fm = (FileManager*) datasource;
+    File* fm = (File*) datasource;
     switch( whence )
     {
     case SEEK_SET:
@@ -411,20 +411,20 @@ static int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
 
 static int Ogg_close_func( void* datasource )
 {
-    FileManager* fm = (FileManager*) datasource;
+    File* fm = (File*) datasource;
     delete fm;
     return 0;
 }
 
 static long Ogg_tell_func( void* datasource )
 {
-    FileManager* fm = (FileManager*) datasource;
+    File* fm = (File*) datasource;
     return fm->GetCurPos();
 }
 
 bool SoundManager::LoadOGG( Sound* sound, const string& fname )
 {
-    FileManager* fm = new FileManager();
+    File* fm = new File();
     if( !fm->LoadFile( fname ) )
     {
         SAFEDEL( fm );

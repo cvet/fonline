@@ -327,7 +327,7 @@ static uint                         MemoryAllocRecursion;
 # pragma warning( disable : 4996 )
 # include <DbgHelp.h>
 # pragma comment( lib, "Dbghelp.lib" )
-# include "FileManager.h"
+# include "FileUtils.h"
 
 // Hooks
 # include "NCodeHook/NCodeHookInstantiation.h"

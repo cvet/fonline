@@ -1,5 +1,4 @@
-#ifndef __FILE_MANAGER__
-#define __FILE_MANAGER__
+#pragma once
 
 #include "Common.h"
 #include "DataFile.h"
@@ -18,15 +17,15 @@ struct FindData
 };
 typedef vector< FindData > FindDataVec;
 
-class FileManager
+class File
 {
 public:
     static void InitDataFiles( const string& path, bool set_write_dir = true );
     static bool LoadDataFile( const string& path, bool skip_inner = false );
     static void ClearDataFiles();
 
-    FileManager( const string& path, bool no_read = false );
-    FileManager( const uchar* stream, uint length );
+    File( const string& path, bool no_read = false );
+    File( const uchar* stream, uint length );
 
     bool   LoadFile( const string& path, bool no_read = false );
     bool   LoadStream( const uchar* stream, uint length );
@@ -94,8 +93,8 @@ public:
     static void         GetFolderFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
     static void         GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result );
 
-    FileManager();
-    ~FileManager();
+    File();
+    ~File();
 
 private:
     static DataFileVec dataFiles;
@@ -116,22 +115,20 @@ private:
     static void RecursiveDirLook( const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs );
 };
 
-class FilesCollection
+class FileCollection
 {
 public:
-    FilesCollection( const string& ext, const string& fixed_dir = "" );
-    bool         IsNextFile();
-    FileManager& GetNextFile( string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
-    FileManager& FindFile( const string& name, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
-    uint         GetFilesCount();
-    void         ResetCounter();
+    FileCollection( const string& ext, const string& fixed_dir = "" );
+    bool  IsNextFile();
+    File& GetNextFile( string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
+    File& FindFile( const string& name, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
+    uint  GetFilesCount();
+    void  ResetCounter();
 
 private:
-    StrVec      fileNames;
-    StrVec      filePaths;
-    StrVec      fileRelativePaths;
-    uint        curFileIndex;
-    FileManager curFile;
+    StrVec fileNames;
+    StrVec filePaths;
+    StrVec fileRelativePaths;
+    uint   curFileIndex;
+    File   curFile;
 };
-
-#endif // __FILE_MANAGER__

@@ -1436,7 +1436,7 @@ bool Animation3dEntity::Load( const string& name )
     if( ext == "fo3d" )
     {
         // Load main fo3d file
-        FileManager fo3d;
+        File fo3d;
         if( !fo3d.LoadFile( name ) )
             return false;
 
@@ -1522,8 +1522,8 @@ bool Animation3dEntity::Load( const string& name )
                     templates[ i ] = _str( "%{}%", templates[ i ] );
 
                 // Include file path
-                string      fname = _str( name ).combinePath( templates[ 0 ] );
-                FileManager fo3d_ex;
+                string fname = _str( name ).combinePath( templates[ 0 ] );
+                File   fo3d_ex;
                 if( !fo3d_ex.LoadFile( fname ) )
                 {
                     WriteLog( "Include file '{}' not found.\n", fname );

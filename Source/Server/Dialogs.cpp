@@ -1,6 +1,6 @@
 #include "Dialogs.h"
 #include "Log.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "IniFile.h"
 #include "Script.h"
 #include "Critter.h"
@@ -80,12 +80,12 @@ bool DialogManager::LoadDialogs()
     while( !dialogPacks.empty() )
         EraseDialog( dialogPacks.begin()->second->PackId );
 
-    FilesCollection files( "fodlg" );
-    uint            files_loaded = 0;
+    FileCollection files( "fodlg" );
+    uint           files_loaded = 0;
     while( files.IsNextFile() )
     {
-        string       name;
-        FileManager& file = files.GetNextFile( &name );
+        string name;
+        File&  file = files.GetNextFile( &name );
         if( !file.IsLoaded() )
         {
             WriteLog( "Unable to open file '{}'.\n", name );

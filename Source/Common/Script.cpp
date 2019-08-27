@@ -3,7 +3,7 @@
 #include "Exception.h"
 #include "Timer.h"
 #include "StringUtils.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "IniFile.h"
 #include "AngelScriptExt/reflection.h"
 #include "AngelScriptExt/preprocessor.h"
@@ -382,11 +382,11 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
     // Server path fixes
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     # ifdef FO_WINDOWS
-    FilesCollection dlls( "dll" );
+    FileCollection dlls( "dll" );
     # else
-    FilesCollection dlls( "so" );
+    FileCollection dlls( "so" );
     # endif
-    bool            founded = false;
+    bool           founded = false;
     while( dlls.IsNextFile() )
     {
         string name, path;
@@ -510,14 +510,14 @@ bool Script::ReloadScripts( const string& target )
     EngineData* edata = (EngineData*) Engine->GetUserData();
 
     // Combine scripts
-    FilesCollection fos_files( "fos" );
-    int             file_index = 0;
-    int             errors = 0;
-    ScriptEntryVec  scripts;
+    FileCollection fos_files( "fos" );
+    int            file_index = 0;
+    int            errors = 0;
+    ScriptEntryVec scripts;
     while( fos_files.IsNextFile() )
     {
-        string       name, path;
-        FileManager& file = fos_files.GetNextFile( &name, &path );
+        string name, path;
+        File&  file = fos_files.GetNextFile( &name, &path );
         if( !file.IsLoaded() )
         {
             WriteLog( "Unable to open file '{}'.\n", path );

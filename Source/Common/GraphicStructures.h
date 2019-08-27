@@ -3,7 +3,7 @@
 
 #include "Common.h"
 #include "GraphicApi.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "Timer.h"
 #include "assimp/types.h"
 #include "assimp/scene.h"
@@ -375,8 +375,8 @@ struct MeshData
     BoneVec        SkinBones;
     EffectInstance DrawEffect;
 
-    void Save( FileManager& file );
-    void Load( FileManager& file );
+    void Save( File& file );
+    void Load( File& file );
 };
 typedef vector< MeshData* > MeshDataVec;
 
@@ -450,8 +450,8 @@ struct Bone
     Matrix      CombinedTransformationMatrix;
 
     Bone*       Find( uint name_hash );
-    void        Save( FileManager& file );
-    void        Load( FileManager& file );
+    void        Save( File& file );
+    void        Load( File& file );
     void        FixAfterLoad( Bone* root_bone );
     static uint GetHash( const string& name );
 };

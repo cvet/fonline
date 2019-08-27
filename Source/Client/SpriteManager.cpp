@@ -1473,8 +1473,8 @@ AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const string& fname 
 AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /* = false */ )
 {
     // Load file
-    FileManager fm;
-    AnyFrames*  fast_anim;
+    File       fm;
+    AnyFrames* fast_anim;
     if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) && fm.IsLoaded() )
         return fast_anim;
 
@@ -1569,9 +1569,9 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
         AnyFrames* anim = base_anim->GetDir( dir );
 
         // Make palette
-        uint*       palette = (uint*) FoPalette;
-        uint        palette_entry[ 256 ];
-        FileManager fm_palette;
+        uint* palette = (uint*) FoPalette;
+        uint  palette_entry[ 256 ];
+        File  fm_palette;
         if( fm_palette.LoadFile( _str( fname ).eraseFileExtension() + ".pal" ) )
         {
             for( uint i = 0; i < 256; i++ )
@@ -1756,7 +1756,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
 
 AnyFrames* SpriteManager::LoadAnimationRix( const string& fname )
 {
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return nullptr;
 
@@ -1794,8 +1794,8 @@ AnyFrames* SpriteManager::LoadAnimationRix( const string& fname )
 AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 {
     // Load file
-    FileManager fm;
-    AnyFrames*  fast_anim;
+    File       fm;
+    AnyFrames* fast_anim;
     if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
@@ -1934,8 +1934,8 @@ AnyFrames* SpriteManager::LoadAnimation3d( const string& fname )
         return nullptr;
 
     // Load file
-    FileManager fm;
-    AnyFrames*  fast_anim;
+    File       fm;
+    AnyFrames* fast_anim;
     if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
@@ -2119,7 +2119,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
         if( !file_name[ 0 ] )
             return nullptr;
 
-        FileManager fm;
+        File fm;
         if( !fm.LoadFile( file_name ) )
             return nullptr;
 
@@ -2448,7 +2448,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         struct SprCache
         {
             string      fileName;
-            FileManager fm;
+            File fm;
         } static* cached[ SPR_CACHED_COUNT + 1 ] = { 0 };         // Last index for last loaded
 
         // Find already opened
@@ -2467,7 +2467,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         // Open new
         if( index == -1 )
         {
-            FileManager fm;
+            File fm;
             if( !fm.LoadFile( file_name ) )
                 return nullptr;
 
@@ -2512,7 +2512,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
             }
         }
 
-        FileManager& fm = cached[ index ]->fm;
+        File& fm = cached[ index ]->fm;
         fm.SetCurPos( 0 );
 
         // Read header
@@ -2637,7 +2637,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                 return nullptr;
             data_len = unpacked_len;
         }
-        FileManager fm_images;
+        File fm_images;
         fm_images.LoadStream( data, data_len );
         if( packed )
             delete[] data;
@@ -2853,7 +2853,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 AnyFrames* SpriteManager::LoadAnimationZar( const string& fname )
 {
     // Open file
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return nullptr;
 
@@ -2949,7 +2949,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const string& fname )
 AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
 {
     // Open file
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return nullptr;
 
@@ -3067,7 +3067,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
 
 AnyFrames* SpriteManager::LoadAnimationMos( const string& fname )
 {
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return nullptr;
 
@@ -3198,7 +3198,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
         return nullptr;
 
     // Load file
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( file_name ) )
         return nullptr;
 
@@ -3324,7 +3324,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
 AnyFrames* SpriteManager::LoadAnimationOther( const string& fname, uchar* ( *loader )( const uchar *, uint, uint &, uint & ) )
 {
     // Load file
-    FileManager fm;
+    File fm;
     AnyFrames*  fast_anim;
     if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
@@ -3474,7 +3474,7 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
 
 bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const string& fname )
 {
-    FileManager fm;
+    File fm;
     fm.SetBEUInt( FAST_FORMAT_SIGNATURE );
     fm.SetBEUShort( anim->CntFrm );
     fm.SetBEUInt( anim->Ticks );
@@ -3497,7 +3497,7 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const string& fn
     return fm.SaveFile( fname );
 }
 
-bool SpriteManager::TryLoadAnimationInFastFormat( const string& fname, FileManager& fm, AnyFrames*& anim )
+bool SpriteManager::TryLoadAnimationInFastFormat( const string& fname, File& fm, AnyFrames*& anim )
 {
     // Null result
     anim = nullptr;

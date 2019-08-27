@@ -135,7 +135,7 @@ static string Global_EncodeUTF8( uint ucs )
 static CScriptArray* Global_GetFolderFileNames( string path, string ext, bool include_subdirs )
 {
     StrVec files;
-    FileManager::GetFolderFileNames( path, include_subdirs, ext, files );
+    File::GetFolderFileNames( path, include_subdirs, ext, files );
 
     CScriptArray* result = Script::CreateArray( "string[]" );
     for( string f : files )
@@ -145,12 +145,12 @@ static CScriptArray* Global_GetFolderFileNames( string path, string ext, bool in
 
 static bool Global_DeleteFile( string filename )
 {
-    return FileManager::DeleteFile( filename );
+    return File::DeleteFile( filename );
 }
 
 static void Global_CreateDirectoryTree( string path )
 {
-    FileManager::CreateDirectoryTree( _str( path ).formatPath() );
+    File::CreateDirectoryTree( _str( path ).formatPath() );
 }
 
 static void Global_Yield( uint time )

@@ -2,7 +2,7 @@
 #define __GRAPHIC_LOADER__
 
 #include "Common.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "GraphicStructures.h"
 
 class AnimSet;
@@ -40,7 +40,7 @@ public:
 private:
     static EffectVec loadedEffects;
 
-    static bool LoadEffectPass( Effect* effect, const string& fname, FileManager& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count );
+    static bool LoadEffectPass( Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count );
 
     // Images
     // All input/output data is in RGBA format

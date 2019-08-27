@@ -1,6 +1,6 @@
 #include "IniFile.h"
 #include "Crypt.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "StringUtils.h"
 #include "Exception.h"
 
@@ -16,7 +16,7 @@ void IniFile::AppendStr( const string& buf )
 
 bool IniFile::AppendFile( const string& fname )
 {
-    FileManager fm;
+    File fm;
     if( !fm.LoadFile( fname ) )
         return false;
 
@@ -164,7 +164,7 @@ bool IniFile::SaveFile( const string& fname )
         str += "\n";
     }
 
-    FileManager f;
+    File f;
     f.LoadStream( (uchar*) str.c_str(), (uint) str.length() );
     f.SwitchToWrite();
     return f.SaveFile( fname );

@@ -982,9 +982,9 @@ bool ProtoMap::BindScripts( EntityVec& entities )
 bool ProtoMap::Load()
 {
     // Find file
-    FilesCollection maps( "fomap" );
+    FileCollection maps( "fomap" );
     string path;
-    FileManager& map_file = maps.FindFile( GetName(), &path );
+    File& map_file = maps.FindFile( GetName(), &path );
     if( !map_file.IsLoaded() )
     {
         WriteLog( "Map '{}' not found.\n", GetName() );

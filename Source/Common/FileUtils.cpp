@@ -1,4 +1,4 @@
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "Log.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
@@ -6,10 +6,10 @@
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 
-DataFileVec FileManager::dataFiles;
-string      FileManager::writeDir;
+DataFileVec File::dataFiles;
+string      File::writeDir;
 
-FileManager::FileManager()
+File::File()
 {
     fileLoaded = false;
     curPos = 0;
@@ -22,22 +22,22 @@ FileManager::FileManager()
     lenOutBuf = 0;
 }
 
-FileManager::FileManager( const string& path, bool no_read /* = false */ ): FileManager()
+File::File( const string& path, bool no_read /* = false */ ): File()
 {
     LoadFile( path, no_read );
 }
 
-FileManager::FileManager( const uchar* stream, uint length ): FileManager()
+File::File( const uchar* stream, uint length ): File()
 {
     LoadStream( stream, length );
 }
 
-FileManager::~FileManager()
+File::~File()
 {
     UnloadFile();
 }
 
-void FileManager::InitDataFiles( const string& path, bool set_write_dir /* = true */ )
+void File::InitDataFiles( const string& path, bool set_write_dir /* = true */ )
 {
     // Format path
     string fixed_path = _str( path ).formatPath();
@@ -82,7 +82,7 @@ void FileManager::InitDataFiles( const string& path, bool set_write_dir /* = tru
         RUNTIME_ASSERT( !"Unable to load files in folder." );
 }
 
-bool FileManager::LoadDataFile( const string& path, bool skip_inner /* = false */ )
+bool File::LoadDataFile( const string& path, bool skip_inner /* = false */ )
 {
     DataFile* data_file = nullptr;
 
@@ -132,14 +132,14 @@ bool FileManager::LoadDataFile( const string& path, bool skip_inner /* = false *
     return true;
 }
 
-void FileManager::ClearDataFiles()
+void File::ClearDataFiles()
 {
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
         delete *it;
     dataFiles.clear();
 }
 
-void FileManager::UnloadFile()
+void File::UnloadFile()
 {
     fileLoaded = false;
     SAFEDELA( fileBuf );
@@ -152,7 +152,7 @@ void FileManager::UnloadFile()
     endOutBuf = 0;
 }
 
-uchar* FileManager::ReleaseBuffer()
+uchar* File::ReleaseBuffer()
 {
     fileLoaded = false;
     uchar* tmp = fileBuf;
@@ -162,7 +162,7 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
+bool File::LoadFile( const string& path, bool no_read /* = false */ )
 {
     UnloadFile();
 
@@ -243,7 +243,7 @@ bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
     return false;
 }
 
-bool FileManager::LoadStream( const uchar* stream, uint length )
+bool File::LoadStream( const uchar* stream, uint length )
 {
     UnloadFile();
     if( !length )
@@ -258,25 +258,25 @@ bool FileManager::LoadStream( const uchar* stream, uint length )
     return true;
 }
 
-void FileManager::SetCurPos( uint pos )
+void File::SetCurPos( uint pos )
 {
     RUNTIME_ASSERT( fileBuf );
     curPos = pos;
 }
 
-void FileManager::GoForward( uint offs )
+void File::GoForward( uint offs )
 {
     RUNTIME_ASSERT( fileBuf );
     curPos += offs;
 }
 
-void FileManager::GoBack( uint offs )
+void File::GoBack( uint offs )
 {
     RUNTIME_ASSERT( fileBuf );
     curPos -= offs;
 }
 
-bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint begin_offs )
+bool File::FindFragment( const uchar* fragment, uint fragment_len, uint begin_offs )
 {
     RUNTIME_ASSERT( fileBuf );
     if( fragment_len > fileSize )
@@ -306,7 +306,7 @@ bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint b
     return false;
 }
 
-string FileManager::GetNonEmptyLine()
+string File::GetNonEmptyLine()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos >= fileSize )
@@ -342,7 +342,7 @@ string FileManager::GetNonEmptyLine()
     return "";
 }
 
-bool FileManager::CopyMem( void* ptr, uint size )
+bool File::CopyMem( void* ptr, uint size )
 {
     RUNTIME_ASSERT( fileBuf );
     if( !size )
@@ -355,7 +355,7 @@ bool FileManager::CopyMem( void* ptr, uint size )
     return true;
 }
 
-string FileManager::GetStrNT()
+string File::GetStrNT()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + 1 > fileSize )
@@ -370,7 +370,7 @@ string FileManager::GetStrNT()
     return str;
 }
 
-uchar FileManager::GetUChar()
+uchar File::GetUChar()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uchar ) > fileSize )
@@ -381,7 +381,7 @@ uchar FileManager::GetUChar()
     return res;
 }
 
-ushort FileManager::GetBEUShort()
+ushort File::GetBEUShort()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( ushort ) > fileSize )
@@ -394,7 +394,7 @@ ushort FileManager::GetBEUShort()
     return res;
 }
 
-ushort FileManager::GetLEUShort()
+ushort File::GetLEUShort()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( ushort ) > fileSize )
@@ -407,7 +407,7 @@ ushort FileManager::GetLEUShort()
     return res;
 }
 
-uint FileManager::GetBEUInt()
+uint File::GetBEUInt()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uint ) > fileSize )
@@ -420,7 +420,7 @@ uint FileManager::GetBEUInt()
     return res;
 }
 
-uint FileManager::GetLEUInt()
+uint File::GetLEUInt()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uint ) > fileSize )
@@ -433,7 +433,7 @@ uint FileManager::GetLEUInt()
     return res;
 }
 
-uint FileManager::GetLE3UChar()
+uint File::GetLE3UChar()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uchar ) * 3 > fileSize )
@@ -446,7 +446,7 @@ uint FileManager::GetLE3UChar()
     return res;
 }
 
-float FileManager::GetBEFloat()
+float File::GetBEFloat()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( float ) > fileSize )
@@ -459,7 +459,7 @@ float FileManager::GetBEFloat()
     return res;
 }
 
-float FileManager::GetLEFloat()
+float File::GetLEFloat()
 {
     RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( float ) > fileSize )
@@ -472,7 +472,7 @@ float FileManager::GetLEFloat()
     return res;
 }
 
-void FileManager::SwitchToRead()
+void File::SwitchToRead()
 {
     RUNTIME_ASSERT( dataOutBuf );
     fileLoaded = true;
@@ -485,7 +485,7 @@ void FileManager::SwitchToRead()
     posOutBuf = 0;
 }
 
-void FileManager::SwitchToWrite()
+void File::SwitchToWrite()
 {
     RUNTIME_ASSERT( fileBuf );
     fileLoaded = false;
@@ -498,7 +498,7 @@ void FileManager::SwitchToWrite()
     curPos = 0;
 }
 
-bool FileManager::ResizeOutBuf()
+bool File::ResizeOutBuf()
 {
     if( !lenOutBuf )
     {
@@ -517,7 +517,7 @@ bool FileManager::ResizeOutBuf()
     return true;
 }
 
-void FileManager::SetPosOutBuf( uint pos )
+void File::SetPosOutBuf( uint pos )
 {
     if( pos > lenOutBuf )
     {
@@ -528,7 +528,7 @@ void FileManager::SetPosOutBuf( uint pos )
     posOutBuf = pos;
 }
 
-bool FileManager::SaveFile( const string& fname )
+bool File::SaveFile( const string& fname )
 {
     RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
 
@@ -547,7 +547,7 @@ bool FileManager::SaveFile( const string& fname )
     return true;
 }
 
-void FileManager::SetData( const void* data, uint len )
+void File::SetData( const void* data, uint len )
 {
     if( !len )
         return;
@@ -564,17 +564,17 @@ void FileManager::SetData( const void* data, uint len )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetStr( const string& str )
+void File::SetStr( const string& str )
 {
     SetData( str.c_str(), (uint) str.length() );
 }
 
-void FileManager::SetStrNT( const string& str )
+void File::SetStrNT( const string& str )
 {
     SetData( str.c_str(), (uint) str.length() + 1 );
 }
 
-void FileManager::SetUChar( uchar data )
+void File::SetUChar( uchar data )
 {
     if( posOutBuf + sizeof( uchar ) > lenOutBuf && !ResizeOutBuf() )
         return;
@@ -583,7 +583,7 @@ void FileManager::SetUChar( uchar data )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetBEUShort( ushort data )
+void File::SetBEUShort( ushort data )
 {
     if( posOutBuf + sizeof( ushort ) > lenOutBuf && !ResizeOutBuf() )
         return;
@@ -594,7 +594,7 @@ void FileManager::SetBEUShort( ushort data )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetLEUShort( ushort data )
+void File::SetLEUShort( ushort data )
 {
     if( posOutBuf + sizeof( ushort ) > lenOutBuf && !ResizeOutBuf() )
         return;
@@ -605,7 +605,7 @@ void FileManager::SetLEUShort( ushort data )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetBEUInt( uint data )
+void File::SetBEUInt( uint data )
 {
     if( posOutBuf + sizeof( uint ) > lenOutBuf && !ResizeOutBuf() )
         return;
@@ -618,7 +618,7 @@ void FileManager::SetBEUInt( uint data )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetLEUInt( uint data )
+void File::SetLEUInt( uint data )
 {
     if( posOutBuf + sizeof( uint ) > lenOutBuf && !ResizeOutBuf() )
         return;
@@ -631,7 +631,7 @@ void FileManager::SetLEUInt( uint data )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::ResetCurrentDir()
+void File::ResetCurrentDir()
 {
     #ifdef FO_WINDOWS
     SetCurrentDirectoryW( _str( GameOpt.WorkDir ).toWideChar().c_str() );
@@ -640,7 +640,7 @@ void FileManager::ResetCurrentDir()
     #endif
 }
 
-void FileManager::SetCurrentDir( const string& dir, const string& write_dir )
+void File::SetCurrentDir( const string& dir, const string& write_dir )
 {
     string resolved_dir = _str( dir ).formatPath().resolvePath();
     #ifdef FO_WINDOWS
@@ -654,17 +654,17 @@ void FileManager::SetCurrentDir( const string& dir, const string& write_dir )
         writeDir += "/";
 }
 
-string FileManager::GetWritePath( const string& fname )
+string File::GetWritePath( const string& fname )
 {
     return _str( writeDir + fname ).formatPath();
 }
 
-bool FileManager::IsFileExists( const string& fname )
+bool File::IsFileExists( const string& fname )
 {
     return FileExist( fname );
 }
 
-bool FileManager::CopyFile( const string& from, const string& to )
+bool File::CopyFile( const string& from, const string& to )
 {
     string dir = _str( to ).extractDir();
     if( !dir.empty() )
@@ -673,7 +673,7 @@ bool FileManager::CopyFile( const string& from, const string& to )
     return FileCopy( from, to );
 }
 
-bool FileManager::RenameFile( const string& from, const string& to )
+bool File::RenameFile( const string& from, const string& to )
 {
     string dir = _str( to ).extractDir();
     if( !dir.empty() )
@@ -682,14 +682,14 @@ bool FileManager::RenameFile( const string& from, const string& to )
     return FileRename( from, to );
 }
 
-bool FileManager::DeleteFile( const string& fname )
+bool File::DeleteFile( const string& fname )
 {
     return FileDelete( fname );
 }
 
-void FileManager::DeleteDir( const string& dir )
+void File::DeleteDir( const string& dir )
 {
-    FilesCollection files( "", dir.c_str() );
+    FileCollection files( "", dir.c_str() );
     while( files.IsNextFile() )
     {
         string path;
@@ -704,12 +704,12 @@ void FileManager::DeleteDir( const string& dir )
     #endif
 }
 
-void FileManager::CreateDirectoryTree( const string& path )
+void File::CreateDirectoryTree( const string& path )
 {
     MakeDirectoryTree( path );
 }
 
-string FileManager::GetExePath()
+string File::GetExePath()
 {
     #ifdef FO_WINDOWS
     wchar_t exe_path[ MAX_FOPATH ];
@@ -722,7 +722,7 @@ string FileManager::GetExePath()
     #endif
 }
 
-void FileManager::RecursiveDirLook( const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
+void File::RecursiveDirLook( const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
 {
     FindData fd;
     void*    h = FileFindFirst( base_dir + cur_dir, "", &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory );
@@ -760,18 +760,18 @@ void FileManager::RecursiveDirLook( const string& base_dir, const string& cur_di
         FileFindClose( h );
 }
 
-void FileManager::GetFolderFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files /* = NULL */, StrVec* dirs_path /* = NULL */, FindDataVec* dirs /* = NULL */ )
+void File::GetFolderFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files /* = NULL */, StrVec* dirs_path /* = NULL */, FindDataVec* dirs /* = NULL */ )
 {
     RecursiveDirLook( _str( path ).formatPath(), "", include_subdirs, ext, files_path, files, dirs_path, dirs );
 }
 
-void FileManager::GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result )
+void File::GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
     for( DataFile* dataFile : dataFiles )
         dataFile->GetFileNames( _str( path ).formatPath(), include_subdirs, ext, result );
 }
 
-FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* = "" */ )
+FileCollection::FileCollection( const string& ext, const string& fixed_dir /* = "" */ )
 {
     curFileIndex = 0;
 
@@ -784,7 +784,7 @@ FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* 
     for( const string& find_dir : find_dirs )
     {
         StrVec paths;
-        FileManager::GetFolderFileNames( find_dir, true, ext, paths );
+        File::GetFolderFileNames( find_dir, true, ext, paths );
         for( size_t i = 0; i < paths.size(); i++ )
         {
             string path = find_dir + paths[ i ];
@@ -793,7 +793,7 @@ FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* 
             // Link to another file
             if( _str( path ).getFileExtension() == "link" )
             {
-                FileManager link;
+                File link;
                 if( !link.LoadFile( path ) )
                 {
                     WriteLog( "Can't read link file '{}'.\n", path );
@@ -812,12 +812,12 @@ FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* 
     }
 }
 
-bool FilesCollection::IsNextFile()
+bool FileCollection::IsNextFile()
 {
     return curFileIndex < fileNames.size();
 }
 
-FileManager& FilesCollection::GetNextFile( string* name /* = nullptr */, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
+File& FileCollection::GetNextFile( string* name /* = nullptr */, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
     curFile.LoadFile( filePaths[ curFileIndex - 1 ], no_read_data );
@@ -831,7 +831,7 @@ FileManager& FilesCollection::GetNextFile( string* name /* = nullptr */, string*
     return curFile;
 }
 
-FileManager& FilesCollection::FindFile( const string& name, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
+File& FileCollection::FindFile( const string& name, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
 {
     curFile.UnloadFile();
     for( size_t i = 0; i < fileNames.size(); i++ )
@@ -850,12 +850,12 @@ FileManager& FilesCollection::FindFile( const string& name, string* path /* = nu
     return curFile;
 }
 
-uint FilesCollection::GetFilesCount()
+uint FileCollection::GetFilesCount()
 {
     return (uint) fileNames.size();
 }
 
-void FilesCollection::ResetCounter()
+void FileCollection::ResetCounter()
 {
     curFileIndex = 0;
 }

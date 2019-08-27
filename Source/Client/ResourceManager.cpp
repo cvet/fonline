@@ -1,6 +1,6 @@
 #include "ResourceManager.h"
 #include "Log.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "DataFile.h"
 #include "Script.h"
 #include "Crypt.h"
@@ -11,7 +11,7 @@ ResourceManager ResMngr;
 void ResourceManager::Refresh()
 {
     // Dat files, packed data
-    DataFileVec& data_files = FileManager::GetDataFiles();
+    DataFileVec& data_files = File::GetDataFiles();
     for( auto it = data_files.begin(), end = data_files.end(); it != end; ++it )
     {
         DataFile* data_file = *it;

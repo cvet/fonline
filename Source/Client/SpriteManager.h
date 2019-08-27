@@ -4,7 +4,7 @@
 #include "Common.h"
 #include "GraphicApi.h"
 #include "Sprites.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 #include "SDL_video.h"
@@ -170,7 +170,7 @@ public:
     void         RefreshPure3dAnimationSprite( Animation3d* anim3d );
     void         FreePure3dAnimation( Animation3d* anim3d );
     bool         SaveAnimationInFastFormat( AnyFrames* anim, const string& fname );
-    bool         TryLoadAnimationInFastFormat( const string& fname, FileManager& fm, AnyFrames*& anim );
+    bool         TryLoadAnimationInFastFormat( const string& fname, File& fm, AnyFrames*& anim );
 
 private:
     SprInfoVec     sprData;

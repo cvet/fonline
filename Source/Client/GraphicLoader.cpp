@@ -51,7 +51,7 @@ Bone* GraphicLoader::LoadModel( const string& fname )
     processedFiles.push_back( fname );
 
     // Load file data
-    FileManager file;
+    File file;
     if( !file.LoadFile( fname ) )
     {
         WriteLog( "3d file '{}' not found.\n", fname );
@@ -179,8 +179,8 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
     fname += ".glsl";
 
     // Load text file
-    FileManager file;
-    string      path = _str( model_path ).extractDir() + fname;
+    File   file;
+    string path = _str( model_path ).extractDir() + fname;
     if( !file.LoadFile( path ) )
     {
         WriteLog( "Effect file '{}' not found.\n", path );
@@ -326,7 +326,7 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
     return loadedEffects.back();
 }
 
-bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileManager& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count )
+bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count )
 {
     EffectPass effect_pass;
     memzero( &effect_pass, sizeof( effect_pass ) );
@@ -355,7 +355,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
     }
 
     // Load from binary
-    FileManager file_binary;
+    File file_binary;
     if( GL_HAS( get_program_binary ) )
     {
         UCharVec data;
@@ -917,7 +917,7 @@ void GraphicLoader::SavePNG( const string& fname, uchar* data, uint width, uint 
     delete[] row_pointers;
 
     // Write to disk
-    FileManager fm;
+    File fm;
     fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
     fm.SaveFile( fname );
     #endif

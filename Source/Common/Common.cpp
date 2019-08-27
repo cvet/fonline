@@ -5,7 +5,7 @@
 #include "Crypt.h"
 #include "Script.h"
 #include "StringUtils.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "IniFile.h"
 #include "NetBuffer.h"
 #include "SDL.h"
@@ -823,20 +823,20 @@ void GetClientOptions()
     # define READ_CFG_STR_DEF( cfg, key, def_val )    buf = MainConfig->GetStr( "", key, def_val )
 
     // Data files
-    FileManager::ClearDataFiles();
-    FileManager::InitDataFiles( "$Basic" );
+    File::ClearDataFiles();
+    File::InitDataFiles( "$Basic" );
     # ifndef FONLINE_EDITOR
     #  if defined ( FO_IOS )
-    FileManager::InitDataFiles( "../../Documents/" );
+    File::InitDataFiles( "../../Documents/" );
     #  elif defined ( FO_ANDROID )
-    FileManager::InitDataFiles( "$Bundle" );
-    FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
-    FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
+    File::InitDataFiles( "$Bundle" );
+    File::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
+    File::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
     #  elif defined ( FO_WEB )
-    FileManager::InitDataFiles( "./Data/" );
-    FileManager::InitDataFiles( "./PersistentData/" );
+    File::InitDataFiles( "./Data/" );
+    File::InitDataFiles( "./PersistentData/" );
     #  else
-    FileManager::InitDataFiles( CLIENT_DATA );
+    File::InitDataFiles( CLIENT_DATA );
     #  endif
     # endif
 

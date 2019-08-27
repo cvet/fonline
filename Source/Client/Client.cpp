@@ -472,7 +472,7 @@ void FOClient::Finish()
     SAFEDELA( ComBuf );
     SAFEDEL( GmapFog );
 
-    FileManager::ClearDataFiles();
+    File::ClearDataFiles();
 
     Self = nullptr;
 
@@ -495,22 +495,22 @@ void FOClient::UpdateBinary()
 {
     #ifdef FO_WINDOWS
     // Copy binaries
-    string exe_path = FileManager::GetExePath();
+    string exe_path = File::GetExePath();
     string to_dir = _str( exe_path ).extractDir();
     string base_name = _str( exe_path ).extractFileName().eraseFileExtension();
-    string from_dir = FileManager::GetWritePath( "" );
-    bool   copy_to_new = FileManager::CopyFile( from_dir + base_name + ".exe", to_dir + base_name + ".new.exe" );
+    string from_dir = File::GetWritePath( "" );
+    bool   copy_to_new = File::CopyFile( from_dir + base_name + ".exe", to_dir + base_name + ".new.exe" );
     RUNTIME_ASSERT( copy_to_new );
-    FileManager::DeleteDir( to_dir + base_name + ".old.exe" );
-    bool rename_to_old = FileManager::RenameFile( to_dir + base_name + ".exe", to_dir + base_name + ".old.exe" );
+    File::DeleteDir( to_dir + base_name + ".old.exe" );
+    bool rename_to_old = File::RenameFile( to_dir + base_name + ".exe", to_dir + base_name + ".old.exe" );
     RUNTIME_ASSERT( rename_to_old );
-    bool rename_to_new = FileManager::RenameFile( to_dir + base_name + ".new.exe", to_dir + base_name + ".exe" );
+    bool rename_to_new = File::RenameFile( to_dir + base_name + ".new.exe", to_dir + base_name + ".exe" );
     RUNTIME_ASSERT( rename_to_new );
-    if( FileManager::CopyFile( from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb" ) )
+    if( File::CopyFile( from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb" ) )
     {
-        FileManager::DeleteFile( to_dir + base_name + ".old.pdb" );
-        FileManager::RenameFile( to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb" );
-        FileManager::RenameFile( to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb" );
+        File::DeleteFile( to_dir + base_name + ".old.pdb" );
+        File::RenameFile( to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb" );
+        File::RenameFile( to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb" );
     }
 
     // Restart client
@@ -633,7 +633,7 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesFilesChanged = false;
             SAFEDEL( UpdateFilesList );
             UpdateFileDownloading = false;
-            FileManager::DeleteFile( FileManager::GetWritePath( "Update.bin" ) );
+            File::DeleteFile( File::GetWritePath( "Update.bin" ) );
             UpdateFilesTick = Timer::FastTick();
 
             Net_SendUpdate();
@@ -668,7 +668,7 @@ void FOClient::UpdateFilesLoop()
 
                 if( update_file.Name[ 0 ] == '$' )
                 {
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "Update.bin" ), true );
+                    UpdateFileTemp = FileOpen( File::GetWritePath( "Update.bin" ), true );
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -682,8 +682,8 @@ void FOClient::UpdateFilesLoop()
                     return;
                     #endif
 
-                    FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name ) );
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "Update.bin" ), true );
+                    File::DeleteFile( File::GetWritePath( update_file.Name ) );
+                    UpdateFileTemp = FileOpen( File::GetWritePath( "Update.bin" ), true );
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -4085,9 +4085,9 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR;
 
-    uint        cache_len;
-    uchar*      cache = Crypt.GetCache( map_name, cache_len );
-    FileManager fm;
+    uint   cache_len;
+    uchar* cache = Crypt.GetCache( map_name, cache_len );
+    File   fm;
 
     if( cache && fm.LoadStream( cache, cache_len ) )
     {
@@ -4315,7 +4315,7 @@ void FOClient::Net_OnUpdateFilesList()
 
     CHECK_IN_BUFF_ERROR;
 
-    FileManager fm;
+    File fm;
     fm.LoadStream( &data[ 0 ], (uint) data.size() );
 
     SAFEDEL( UpdateFilesList );
@@ -4327,7 +4327,7 @@ void FOClient::Net_OnUpdateFilesList()
     bool   have_exe = false;
     string exe_name;
     if( outdated )
-        exe_name = _str( FileManager::GetExePath() ).extractFileName();
+        exe_name = _str( File::GetExePath() ).extractFileName();
     #endif
 
     for( uint file_index = 0; ; file_index++ )
@@ -4362,7 +4362,7 @@ void FOClient::Net_OnUpdateFilesList()
         if( name[ 0 ] != '$' )
         {
             // Real file, human can disturb file consistency, make base recheck
-            FileManager file;
+            File file;
             if( file.LoadFile( name, true ) && file.GetFsize() == size )
             {
                 if( cached_hash_same || ( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) ) )
@@ -4433,7 +4433,7 @@ void FOClient::Net_OnUpdateFileData()
         // Cache
         if( update_file.Name[ 0 ] == '$' )
         {
-            void* temp_file = FileOpen( FileManager::GetWritePath( "Update.bin" ), false );
+            void* temp_file = FileOpen( File::GetWritePath( "Update.bin" ), false );
             if( !temp_file )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update file!" );
@@ -4452,15 +4452,15 @@ void FOClient::Net_OnUpdateFileData()
 
             Crypt.SetCache( update_file.Name, &buf[ 0 ], len );
             Crypt.SetCache( update_file.Name + ".hash", (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
-            FileManager::DeleteFile( FileManager::GetWritePath( "Update.bin" ) );
+            File::DeleteFile( File::GetWritePath( "Update.bin" ) );
         }
         // File
         else
         {
-            string from_path = FileManager::GetWritePath( "Update.bin" );
-            string to_path = FileManager::GetWritePath( update_file.Name );
-            FileManager::DeleteFile( to_path );
-            if( !FileManager::RenameFile( from_path, to_path ) )
+            string from_path = File::GetWritePath( "Update.bin" );
+            string to_path = File::GetWritePath( update_file.Name );
+            File::DeleteFile( to_path );
+            if( !File::RenameFile( from_path, to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ) );
                 return;
@@ -5411,7 +5411,7 @@ bool FOClient::ReloadScripts()
             break;
 
         // Save to cache
-        FileManager dll;
+        File dll;
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
@@ -7223,7 +7223,7 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
-    if( FileManager::LoadDataFile( dat_name ) )
+    if( File::LoadDataFile( dat_name ) )
     {
         ResMngr.Refresh();
         return true;
@@ -7873,7 +7873,7 @@ void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 
 void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
 {
-    FileManager cfg_user;
+    File cfg_user;
     for( asUINT i = 0; i < key_values->GetSize() - 1; i += 2 )
     {
         string& key = *(string*) key_values->At( i );

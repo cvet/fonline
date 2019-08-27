@@ -1,7 +1,7 @@
 #include "DataBase.h"
 #include "Log.h"
 #include "Exception.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "unqlite.h"
@@ -429,7 +429,7 @@ class DbJson: public DataBase
 public:
     static DbJson* Create( const string& storage_dir )
     {
-        FileManager::CreateDirectoryTree( storage_dir + "/" );
+        File::CreateDirectoryTree( storage_dir + "/" );
 
         DbJson* db_json = new DbJson();
         db_json->storageDir = storage_dir;
@@ -440,7 +440,7 @@ public:
     {
         UIntVec ids;
         StrVec  paths;
-        FileManager::GetFolderFileNames( storageDir + "/" + collection_name + "/", false, "json", paths );
+        File::GetFolderFileNames( storageDir + "/" + collection_name + "/", false, "json", paths );
         ids.reserve( paths.size() );
         for( const string& path : paths )
         {
@@ -455,7 +455,7 @@ public:
 protected:
     virtual Document GetRecord( const string& collection_name, uint id ) override
     {
-        string path = FileManager::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
+        string path = File::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
         void*  f = FileOpen( path.c_str(), false );
         if( !f )
             return Document();
@@ -485,7 +485,7 @@ protected:
     {
         RUNTIME_ASSERT( !doc.empty() );
 
-        string path = FileManager::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
+        string path = File::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
         void*  f_check = FileOpen( path.c_str(), false );
         RUNTIME_ASSERT( !f_check );
 
@@ -515,7 +515,7 @@ protected:
     {
         RUNTIME_ASSERT( !doc.empty() );
 
-        string path = FileManager::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
+        string path = File::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
         void*  f_read = FileOpen( path.c_str(), false );
         RUNTIME_ASSERT( f_read );
 
@@ -555,7 +555,7 @@ protected:
 
     virtual void DeleteRecord( const string& collection_name, uint id ) override
     {
-        string path = FileManager::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
+        string path = File::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
         bool   file_deleted = FileDelete( path );
         RUNTIME_ASSERT( file_deleted );
     }
@@ -574,7 +574,7 @@ class DbUnQLite: public DataBase
 public:
     static DbUnQLite* Create( const string& storage_dir )
     {
-        FileManager::CreateDirectoryTree( storage_dir + "/" );
+        File::CreateDirectoryTree( storage_dir + "/" );
 
         unqlite* ping_db;
         string   ping_db_path = storage_dir + "/Ping.unqlite";
@@ -593,7 +593,7 @@ public:
         }
 
         unqlite_close( ping_db );
-        FileManager::DeleteFile( ping_db_path );
+        File::DeleteFile( ping_db_path );
 
         DbUnQLite* db_unqlite = new DbUnQLite();
         db_unqlite->storageDir = storage_dir;

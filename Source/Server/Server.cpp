@@ -90,7 +90,7 @@ void FOServer::Finish()
     DlgMngr.Finish();
     FinishScriptSystem();
     LangPacks.clear();
-    FileManager::ClearDataFiles();
+    File::ClearDataFiles();
 
     // Statistics
     WriteLog( "Server stopped.\n" );
@@ -445,11 +445,11 @@ void FOServer::DrawGui()
         {
             DateTimeStamp dt;
             Timer::GetCurrentDateTime( dt );
-            string        log_name_dir = FileManager::GetWritePath( "Logs/" );
+            string        log_name_dir = File::GetWritePath( "Logs/" );
             string        log_name = _str( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
                                            log_name_dir, "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-            FileManager::CreateDirectoryTree( log_name );
-            FileManager log_file;
+            File::CreateDirectoryTree( log_name );
+            File log_file;
             log_file.SetStr( Gui.WholeLog );
             log_file.SaveFile( log_name );
         }
@@ -1453,8 +1453,8 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
 
         CHECK_ALLOW_COMMAND;
 
-        FilesCollection dialogs( "fodlg" );
-        FileManager&    fm = dialogs.FindFile( dlg_name );
+        FileCollection dialogs( "fodlg" );
+        File&          fm = dialogs.FindFile( dlg_name );
         if( fm.IsLoaded() )
         {
             DialogPack* pack = DlgMngr.ParseDialog( dlg_name, (char*) fm.GetBuf() );
@@ -1762,8 +1762,8 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
         asIScriptModule* mod = engine->GetModule( console_name.c_str() );
         if( !mod )
         {
-            string      base_code;
-            FileManager dev_file;
+            string base_code;
+            File   dev_file;
             if( dev_file.LoadFile( "Scripts/__dev.fos" ) )
                 base_code = (char*) dev_file.GetBuf();
             else
@@ -1874,16 +1874,16 @@ bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ***\n" );
 
-    FileManager::InitDataFiles( "./" );
+    File::InitDataFiles( "./" );
 
     // Delete intermediate files if engine have been updated
-    FileManager fm;
-    if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || _str( fm.GetCStr() ).toInt() != FONLINE_VERSION || GameOpt.ForceRebuildResources )
+    File fm;
+    if( !fm.LoadFile( File::GetWritePath( "Version.txt" ) ) || _str( fm.GetCStr() ).toInt() != FONLINE_VERSION || GameOpt.ForceRebuildResources )
     {
         fm.SetStr( _str( "{}", FONLINE_VERSION ) );
         fm.SaveFile( "Version.txt" );
-        FileManager::DeleteDir( "Update/" );
-        FileManager::DeleteDir( "Binaries/" );
+        File::DeleteDir( "Update/" );
+        File::DeleteDir( "Binaries/" );
     }
 
     // Generic
@@ -2267,7 +2267,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
 {
     SCOPE_LOCK( BannedLocker );
 
-    FileManager fm;
+    File        fm;
     const char* fname = ( expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE );
     if( !fm.LoadFile( fname ) )
     {
@@ -2297,7 +2297,7 @@ void FOServer::SaveBans()
 {
     SCOPE_LOCK( BannedLocker );
 
-    FileManager fm;
+    File fm;
     for( auto it = Banned.begin(), end = Banned.end(); it != end; ++it )
     {
         ClientBanned& ban = *it;
@@ -2420,10 +2420,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Fill files
     StrVec file_paths;
-    FileManager::GetFolderFileNames( "Update/", true, "", file_paths );
+    File::GetFolderFileNames( "Update/", true, "", file_paths );
     for( const string& file_path : file_paths )
     {
-        FileManager file;
+        File file;
         if( !file.LoadFile( "Update/" + file_path ) )
         {
             WriteLog( "Can't load file 'Update/{}'.\n", file_path );
@@ -2449,10 +2449,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Append binaries
     StrVec binary_paths;
-    FileManager::GetFolderFileNames( "Binaries/", true, "", binary_paths );
+    File::GetFolderFileNames( "Binaries/", true, "", binary_paths );
     for( const string& file_path : binary_paths )
     {
-        FileManager file;
+        File file;
         if( !file.LoadFile( "Binaries/" + file_path ) )
         {
             WriteLog( "Can't load file 'Binaries/{}'.\n", file_path );

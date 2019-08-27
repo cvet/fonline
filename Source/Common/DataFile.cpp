@@ -2,7 +2,7 @@
 #include "Log.h"
 #include "Exception.h"
 #include "minizip/unzip.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "FileSystem.h"
 #include "EmbeddedResources/Resources.h"
 #include "StringUtils.h"
@@ -220,7 +220,7 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
 
     StrVec      files;
     FindDataVec find_data;
-    FileManager::GetFolderFileNames( basePath, true, "", files, &find_data );
+    File::GetFolderFileNames( basePath, true, "", files, &find_data );
 
     for( size_t i = 0, j = files.size(); i < j; i++ )
     {

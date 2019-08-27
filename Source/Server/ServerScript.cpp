@@ -382,7 +382,7 @@ bool FOServer::ReloadClientScripts()
                 fname.erase( 0, 2 );
 
             // Load dll
-            FileManager dll;
+            File dll;
             if( !dll.LoadFile( fname ) )
             {
                 if( !d )
@@ -3561,7 +3561,7 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 bool FOServer::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
-    return FileManager::LoadDataFile( dat_name );
+    return File::LoadDataFile( dat_name );
 }
 
 struct ServerImage
@@ -3599,8 +3599,8 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uin
         SCRIPT_ERROR_R0( "Wrong extension. Allowed only PNG." );
 
     // Load file to memory
-    FilesCollection images( "png" );
-    FileManager&    fm = images.FindFile( image_name.substr( 0, image_name.find_last_of( '.' ) ) );
+    FileCollection images( "png" );
+    File&          fm = images.FindFile( image_name.substr( 0, image_name.find_last_of( '.' ) ) );
     if( !fm.IsLoaded() )
         SCRIPT_ERROR_R0( "File '{}' not found.", image_name );
 

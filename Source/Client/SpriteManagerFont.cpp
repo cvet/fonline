@@ -303,8 +303,8 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
         return true;
 
     // Load font data
-    string      fname = _str( "Fonts/{}.fofnt", font_name );
-    FileManager fm;
+    string fname = _str( "Fonts/{}.fofnt", font_name );
+    File   fm;
     if( !fm.LoadFile( fname ) )
     {
         WriteLog( "File '{}' not found.\n", fname );
@@ -513,9 +513,9 @@ bool SpriteManager::LoadFontBMF( int index, const string& font_name )
         return false;
     }
 
-    FontData    font;
-    FileManager fm;
-    FileManager fm_tex;
+    FontData font;
+    File     fm;
+    File     fm_tex;
 
     if( !fm.LoadFile( _str( "Fonts/{}.fnt", font_name ) ) )
     {

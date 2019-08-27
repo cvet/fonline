@@ -477,7 +477,7 @@ set( COMMON_SOURCE
 	Common/MsgFiles.cpp Common/MsgFiles.h
 	Common/MsgStr_Include.h
 	Common/FileSystem.cpp Common/FileSystem.h
-	Common/FileManager.cpp Common/FileManager.h # Rename (File), FilesCollection -> ProjectFiles?
+	Common/FileUtils.cpp Common/FileUtils.h
 	Common/DataFile.cpp Common/DataFile.h
 	Common/GraphicApi.cpp Common/GraphicApi.h
 	Common/GraphicStructures.cpp Common/GraphicStructures.h

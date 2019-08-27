@@ -2,7 +2,7 @@
 
 #include "Common.h"
 #include "GraphicStructures.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 
 class AnimSet
 {
@@ -35,8 +35,8 @@ public:
     uint          GetBoneOutputCount();
     float         GetDuration();
     HashVecVec& GetBonesHierarchy();
-    void        Save( FileManager& file );
-    void        Load( FileManager& file );
+    void        Save( File& file );
+    void        Load( File& file );
 };
 typedef vector< AnimSet* > AnimSetVec;
 

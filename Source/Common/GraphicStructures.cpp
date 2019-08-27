@@ -145,7 +145,7 @@ TextureAtlas::~TextureAtlas()
 // MeshData
 //
 
-void MeshData::Save( FileManager& file )
+void MeshData::Save( File& file )
 {
     uint len = (uint) Vertices.size();
     file.SetData( &len, sizeof( len ) );
@@ -164,7 +164,7 @@ void MeshData::Save( FileManager& file )
     file.SetData( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
 }
 
-void MeshData::Load( FileManager& file )
+void MeshData::Load( File& file )
 {
     uint len = 0;
     file.CopyMem( &len, sizeof( len ) );
@@ -347,7 +347,7 @@ Bone* Bone::Find( uint name_hash )
     return nullptr;
 }
 
-void Bone::Save( FileManager& file )
+void Bone::Save( File& file )
 {
     file.SetData( &NameHash, sizeof( NameHash ) );
     file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
@@ -361,7 +361,7 @@ void Bone::Save( FileManager& file )
         Children[ i ]->Save( file );
 }
 
-void Bone::Load( FileManager& file )
+void Bone::Load( File& file )
 {
     file.CopyMem( &NameHash, sizeof( NameHash ) );
     file.CopyMem( &TransformationMatrix, sizeof( TransformationMatrix ) );

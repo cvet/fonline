@@ -20,8 +20,8 @@ static void  ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone,
 class FbxStreamImpl: public FbxStream
 {
 private:
-    FileManager* fm;
-    EState       curState;
+    File*  fm;
+    EState curState;
 
 public:
     FbxStreamImpl(): FbxStream()
@@ -37,7 +37,7 @@ public:
 
     virtual bool Open( void* stream )
     {
-        fm = (FileManager*) stream;
+        fm = (File*) stream;
         fm->SetCurPos( 0 );
         curState = FbxStream::eOpen;
         return true;
@@ -140,7 +140,7 @@ static void FixTexCoord( float& x, float& y )
         y = fmodf( y, 1.0f );
 }
 
-FileManager* ResourceConverter::Convert( const string& name, FileManager& file )
+File* ResourceConverter::Convert( const string& name, File& file )
 {
     string ext = _str( name ).getFileExtension();
     if( ext == "png" || ext == "tga" )
@@ -151,7 +151,7 @@ FileManager* ResourceConverter::Convert( const string& name, FileManager& file )
     return &file;
 }
 
-FileManager* ResourceConverter::ConvertImage( const string& name, FileManager& file )
+File* ResourceConverter::ConvertImage( const string& name, File& file )
 {
     uchar* data;
     uint   width, height;
@@ -163,7 +163,7 @@ FileManager* ResourceConverter::ConvertImage( const string& name, FileManager& f
     if( !data )
         return nullptr;
 
-    FileManager* converted_file = new FileManager();
+    File* converted_file = new File();
     converted_file->SetLEUInt( width );
     converted_file->SetLEUInt( height );
     converted_file->SetData( data, width * height * 4 );
@@ -173,7 +173,7 @@ FileManager* ResourceConverter::ConvertImage( const string& name, FileManager& f
     return converted_file;
 }
 
-FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file )
+File* ResourceConverter::Convert3d( const string& name, File& file )
 {
     // Result bone
     Bone*      root_bone = nullptr;
@@ -436,7 +436,7 @@ FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file
     }
 
     // Make new file
-    FileManager* converted_file = new FileManager();
+    File* converted_file = new File();
     root_bone->Save( *converted_file );
     converted_file->SetBEUInt( (uint) loaded_animations.size() );
     for( size_t i = 0; i < loaded_animations.size(); i++ )
@@ -1122,7 +1122,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     {
         StrVec dummy_vec;
         StrVec check_dirs;
-        FileManager::GetFolderFileNames( project_path, true, "", dummy_vec, nullptr, &check_dirs );
+        File::GetFolderFileNames( project_path, true, "", dummy_vec, nullptr, &check_dirs );
         check_dirs.insert( check_dirs.begin(), "" );
 
         for( const string& check_dir : check_dirs )
@@ -1132,11 +1132,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
             string      resources_root = project_path + check_dir;
             FindDataVec resources_dirs;
-            FileManager::GetFolderFileNames( resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs );
+            File::GetFolderFileNames( resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs );
             for( const FindData& resource_dir : resources_dirs )
             {
-                const string&   res_name = resource_dir.FileName;
-                FilesCollection resources( "", resources_root + res_name + "/" );
+                const string&  res_name = resource_dir.FileName;
+                FileCollection resources( "", resources_root + res_name + "/" );
                 if( !resources.GetFilesCount() )
                     continue;
 
@@ -1146,10 +1146,10 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     string zip_path = (string) "Update/" + res_name_zip;
                     bool   skip_making_zip = true;
 
-                    FileManager::CreateDirectoryTree( zip_path );
+                    File::CreateDirectoryTree( zip_path );
 
                     // Check if file available
-                    FileManager zip_file;
+                    File zip_file;
                     if( !zip_file.LoadFile( zip_path, true ) )
                         skip_making_zip = false;
 
@@ -1166,8 +1166,8 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     // Check timestamps of inner resources
                     while( resources.IsNextFile() )
                     {
-                        string       relative_path;
-                        FileManager& file = resources.GetNextFile( nullptr, nullptr, &relative_path, true );
+                        string relative_path;
+                        File&  file = resources.GetNextFile( nullptr, nullptr, &relative_path, true );
                         if( resource_names )
                             resource_names->push_back( relative_path );
 
@@ -1186,9 +1186,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             resources.ResetCounter();
                             while( resources.IsNextFile() )
                             {
-                                string       relative_path;
-                                FileManager& file = resources.GetNextFile( nullptr, nullptr, &relative_path );
-                                FileManager* converted_file = Convert( relative_path, file );
+                                string relative_path;
+                                File&  file = resources.GetNextFile( nullptr, nullptr, &relative_path );
+                                File*  converted_file = Convert( relative_path, file );
                                 if( !converted_file )
                                 {
                                     WriteLog( "File '{}' conversation error.\n", relative_path );
@@ -1214,8 +1214,8 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                             zipClose( zip, nullptr );
 
-                            FileManager::DeleteFile( zip_path );
-                            if( !FileManager::RenameFile( zip_path + ".tmp", zip_path ) )
+                            File::DeleteFile( zip_path );
+                            if( !File::RenameFile( zip_path + ".tmp", zip_path ) )
                                 WriteLog( "Can't rename file '{}' to '{}'.\n", zip_path + ".tmp", zip_path );
 
                             something_changed = true;
@@ -1233,10 +1233,10 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     bool log_shown = false;
                     while( resources.IsNextFile() )
                     {
-                        string       path, relative_path;
-                        FileManager& file = resources.GetNextFile( nullptr, &path, &relative_path );
-                        string       fname = "Update/" + relative_path;
-                        FileManager  update_file;
+                        string path, relative_path;
+                        File&  file = resources.GetNextFile( nullptr, &path, &relative_path );
+                        string fname = "Update/" + relative_path;
+                        File   update_file;
                         if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
                             if( !log_shown )
@@ -1245,7 +1245,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 WriteLog( "Copy resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
                             }
 
-                            FileManager* converted_file = Convert( fname, file );
+                            File* converted_file = Convert( fname, file );
                             if( !converted_file )
                             {
                                 WriteLog( "File '{}' conversation error.\n", fname );
@@ -1286,14 +1286,14 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     }
 
     // Delete unnecessary update files
-    FilesCollection update_files( "", "Update/" );
+    FileCollection update_files( "", "Update/" );
     while( update_files.IsNextFile() )
     {
         string path, relative_path;
         update_files.GetNextFile( nullptr, &path, &relative_path, true );
         if( !update_file_names.count( relative_path ) )
         {
-            FileManager::DeleteFile( path );
+            File::DeleteFile( path );
             something_changed = true;
         }
     }

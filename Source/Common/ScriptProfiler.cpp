@@ -4,7 +4,7 @@
 #include "Timer.h"
 #include "Script.h"
 #include "FileSystem.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 #include "StringUtils.h"
 
 ScriptProfiler::ScriptProfiler()
@@ -34,8 +34,8 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
 
-        string dump_file = FileManager::GetWritePath( _str( "Profiler/Profiler_{}.{}.{}_{}-{}-{}.foprof",
-                                                            dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second ) );
+        string dump_file = File::GetWritePath( _str( "Profiler/Profiler_{}.{}.{}_{}-{}-{}.foprof",
+                                                     dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second ) );
 
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )

@@ -3,7 +3,7 @@
 
 #include "Common.h"
 #include "SpriteManager.h"
-#include "FileManager.h"
+#include "FileUtils.h"
 
 #define RES_ATLAS_STATIC           ( 1 )
 #define RES_ATLAS_DYNAMIC          ( 2 )

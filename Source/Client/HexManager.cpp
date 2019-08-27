@@ -3937,7 +3937,7 @@ bool HexManager::LoadMap( hash map_pid )
         return false;
     }
 
-    FileManager fm;
+    File fm;
     if( !fm.LoadStream( cache, cache_len ) )
     {
         WriteLog( "Load map '{}' from stream fail.\n", map_name );
@@ -4163,7 +4163,7 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
         return;
     }
 
-    FileManager fm;
+    File fm;
     if( !fm.LoadStream( cache, cache_len ) )
     {
         WriteLog( "Load map '{}' from stream fail.\n", map_name );

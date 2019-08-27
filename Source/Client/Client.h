@@ -281,7 +281,7 @@ public:
             bool              StreamsState[ COUNT ];
             int               MainIndex;
         } SS;
-        FileManager   RawData;
+        File          RawData;
         RenderTarget* RT;
         uchar*        TextureData;
         uint          CurFrame;

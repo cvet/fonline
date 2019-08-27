@@ -48,7 +48,7 @@ HashVecVec& AnimSet::GetBonesHierarchy()
     return bonesHierarchy;
 }
 
-void AnimSet::Save( FileManager& file )
+void AnimSet::Save( File& file )
 {
     uint len = (uint) animFileName.length();
     file.SetData( &len, sizeof( len ) );
@@ -87,7 +87,7 @@ void AnimSet::Save( FileManager& file )
     }
 }
 
-void AnimSet::Load( FileManager& file )
+void AnimSet::Load( File& file )
 {
     uint len = 0;
     file.CopyMem( &len, sizeof( len ) );

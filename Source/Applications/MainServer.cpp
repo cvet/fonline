@@ -193,7 +193,7 @@ static void ServiceMain( bool as_service )
     SC_HANDLE service = OpenServiceW( manager, L"FOnlineServer", SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START );
 
     // Compile service path
-    string path = _str( "\"{}\" --service {}", FileManager::GetExePath(), GameOpt.CommandLine );
+    string path = _str( "\"{}\" --service {}", File::GetExePath(), GameOpt.CommandLine );
 
     // Change executable path, if changed
     if( service )
