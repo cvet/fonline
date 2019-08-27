@@ -1,6 +1,6 @@
 #include "NetBuffer.h"
-#include "NetProtocol.h"
 #include "Randomizer.h"
+#include "Debugger.h"
 
 NetBuffer::NetBuffer()
 {

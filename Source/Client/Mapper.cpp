@@ -1,11 +1,13 @@
 #include "Mapper.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Script.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
 #include "SHA/sha1.h"
 #include "SHA/sha2.h"
 #include "Threading.h"
-#include <time.h>
+#include "StringUtils.h"
 
 bool          FOMapper::SpritesCanDraw = false;
 FOMapper*     FOMapper::Self = nullptr;
@@ -323,7 +325,7 @@ int FOMapper::InitIface()
 {
     WriteLog( "Init interface.\n" );
 
-    IniParser&  ini = IfaceIni;
+    IniFile&    ini = IfaceIni;
     const char* int_file = "mapper_default.ini";
 
     if( !ini.AppendFile( int_file ) )
@@ -1447,7 +1449,7 @@ void FOMapper::MainLoop()
             if( need_elapsed > elapsed )
             {
                 double sleep = need_elapsed - elapsed + balance;
-                balance = fmod( sleep, 1.0 );
+                balance = fmod ( sleep, 1.0 );
                 Thread::Sleep( (uint) floor( sleep) );
             }
         }

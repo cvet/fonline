@@ -1,7 +1,10 @@
 #include "ItemView.h"
+#include "Timer.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "SpriteManager.h"
+#include "Exception.h"
+#include "Debugger.h"
 
 PROPERTIES_IMPL( ItemView );
 CLASS_PROPERTY_IMPL( ItemView, PicMap );

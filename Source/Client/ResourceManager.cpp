@@ -1,8 +1,10 @@
 #include "ResourceManager.h"
+#include "Log.h"
 #include "FileManager.h"
 #include "DataFile.h"
 #include "Script.h"
 #include "Crypt.h"
+#include "StringUtils.h"
 
 ResourceManager ResMngr;
 

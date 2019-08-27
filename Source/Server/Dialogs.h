@@ -2,8 +2,8 @@
 #define __DIALOGS__
 
 #include "Common.h"
-#include "Text.h"
 #include "MsgFiles.h"
+#include "Debugger.h"
 
 // Dialog flags
 #define DIALOG_FLAG_NO_SHUFFLE    ( 1 )

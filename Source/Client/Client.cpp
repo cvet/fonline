@@ -1,10 +1,14 @@
 ﻿#include "Client.h"
-#include "Access.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "FileSystem.h"
-#include <fcntl.h>
+#include "StringUtils.h"
+#include "IniFile.h"
+#include "Debugger.h"
 #include "SHA/sha1.h"
 #include "SHA/sha2.h"
-#include <time.h>
+#include <fcntl.h>
 
 static bool                 ASDbgMemoryCanWork = false;
 static THREAD bool          ASDbgMemoryInUse = false;
@@ -6170,7 +6174,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         str = _str( str ).trim();
 
         string buf;
-        if( !PackCommand( str, Self->Bout, [ &buf, &separator ] ( auto s ) { buf += s + separator; }, Self->Chosen->Name ) )
+        if( !PackNetCommand( str, &Self->Bout, [ &buf, &separator ] ( auto s ) { buf += s + separator; }, Self->Chosen->Name ) )
             return "UNKNOWN";
 
         return buf;

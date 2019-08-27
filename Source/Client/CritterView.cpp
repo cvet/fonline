@@ -1,8 +1,11 @@
 #include "CritterView.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "ResourceManager.h"
 #include "ProtoManager.h"
 #include "SoundManager.h"
 #include "Script.h"
+#include "StringUtils.h"
 
 bool CritterView::SlotEnabled[ 0x100 ];
 

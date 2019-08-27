@@ -1,8 +1,11 @@
 #include "CritterManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Script.h"
 #include "MapManager.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
+#include "StringUtils.h"
 
 CritterManager CrMngr;
 

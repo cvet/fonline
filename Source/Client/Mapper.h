@@ -2,18 +2,18 @@
 #define __MAPPER__
 
 #include "Common.h"
+#include "Timer.h"
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "HexManager.h"
 #include "ItemView.h"
 #include "MapView.h"
 #include "CritterView.h"
-#include "Text.h"
 #include "ResourceManager.h"
 #include "Script.h"
 #include "MsgFiles.h"
-#include "IniParser.h"
 #include "ProtoManager.h"
+#include "IniFile.h"
 
 // Fonts
 #define FONT_FO                        ( 0 )
@@ -28,12 +28,16 @@
 # define FONT_DEFAULT                  ( 5 )
 #endif
 
+class CScriptDictionary;
+class CScriptDict;
+class CScriptArray;
+
 class FOMapper
 {
 public:
     static FOMapper* Self;
     HexManager       HexMngr;
-    IniParser        IfaceIni;
+    IniFile          IfaceIni;
     bool             IsMapperStarted;
     static string    ServerWritePath;
     static string    ClientWritePath;

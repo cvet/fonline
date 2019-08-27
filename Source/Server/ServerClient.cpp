@@ -1,4 +1,7 @@
 #include "Server.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 
 void FOServer::ProcessCritter( Critter* cr )
 {

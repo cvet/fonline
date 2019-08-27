@@ -5,7 +5,6 @@
 #include "GraphicApi.h"
 #include "Sprites.h"
 #include "FileManager.h"
-#include "Text.h"
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 #include "SDL_video.h"

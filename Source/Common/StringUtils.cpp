@@ -1,9 +1,10 @@
-#include "Text.h"
+#include "StringUtils.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Crypt.h"
 #include "UcsTables.h"
 #include "FileSystem.h"
 #include "Threading.h"
-#include <sstream>
 
 uint _str::length()
 {

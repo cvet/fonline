@@ -2,7 +2,7 @@
 #define __CRITTER__
 
 #include "Common.h"
-#include "NetProtocol.h"
+#include "Timer.h"
 #include "Networking.h"
 #include "Item.h"
 #include "Dialogs.h"

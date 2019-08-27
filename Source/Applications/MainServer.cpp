@@ -1,9 +1,10 @@
 #include "Common.h"
 #include "Server.h"
 #include "Exception.h"
-#include "Access.h"
+#include "Timer.h"
 #include "NetBuffer.h"
-#include <locale.h>
+#include "IniFile.h"
+#include "StringUtils.h"
 
 #ifndef FO_SERVER_DAEMON
 # include "AppGui.h"
@@ -713,7 +714,7 @@ static void AdminWork( void* session_ )
                 };
 
                 NetBuffer buf;
-                PackCommand( cmd.substr( 1 ), buf, func, "" );
+                PackNetCommand( cmd.substr( 1 ), &buf, func, "" );
                 if( !buf.IsEmpty() )
                 {
                     uint msg;

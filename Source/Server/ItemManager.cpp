@@ -1,9 +1,12 @@
 #include "ItemManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "ProtoManager.h"
 #include "CritterManager.h"
 #include "MapManager.h"
 #include "EntityManager.h"
 #include "Script.h"
+#include "StringUtils.h"
 
 ItemManager ItemMngr;
 

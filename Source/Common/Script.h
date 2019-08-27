@@ -6,9 +6,10 @@
 #include "ScriptInvoker.h"
 #include "ScriptProfiler.h"
 #include "angelscript.h"
+#include "scriptarray/scriptarray.h"
+#include "scriptdictionary/scriptdictionary.h"
 #include "AngelScriptExt/preprocessor.h"
-#include <vector>
-#include <string>
+#include "AngelScriptExt/scriptdict.h"
 
 #ifdef AS_MAX_PORTABILITY
 # include "autowrapper/aswrappedcall.h"

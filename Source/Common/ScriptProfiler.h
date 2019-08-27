@@ -3,6 +3,9 @@
 
 #include "Common.h"
 
+class asIScriptEngine;
+class asIScriptContext;
+
 struct Call
 {
     Call(): Id( 0 ), Line( 0 ) {}

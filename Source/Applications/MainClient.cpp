@@ -1,8 +1,12 @@
 #include "Common.h"
-#include "Client.h"
+#include "Log.h"
 #include "Exception.h"
+#include "Timer.h"
+#include "Debugger.h"
+#include "Client.h"
 #include "Keyboard.h"
 #include <locale.h>
+
 #ifdef FO_IOS
 extern SDL_Window* SprMngr_MainWindow;
 #endif

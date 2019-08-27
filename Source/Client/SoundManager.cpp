@@ -1,6 +1,8 @@
 #include "SoundManager.h"
+#include "Log.h"
+#include "Timer.h"
 #include "ResourceManager.h"
-#include "Text.h"
+#include "StringUtils.h"
 #include "FileManager.h"
 #include <functional>
 

@@ -1,9 +1,11 @@
 #include "Entity.h"
+#include "Log.h"
+#include "Exception.h"
 #include "ProtoManager.h"
 #include "Crypt.h"
-#include <strstream>
-#include "IniParser.h"
+#include "IniFile.h"
 #include "Script.h"
+#include "StringUtils.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"
@@ -74,7 +76,7 @@ ProtoMap::~ProtoMap()
 }
 
 #ifdef FONLINE_EDITOR
-void ProtoMap::SaveTextFormat( IniParser& file )
+void ProtoMap::SaveTextFormat( IniFile& file )
 {
     # if 0
     // Header
@@ -1034,7 +1036,7 @@ void ProtoMap::GenNew()
 bool ProtoMap::Save( const string& custom_name )
 {
     // Fill data
-    IniParser file;
+    IniFile file;
     SaveTextFormat( file );
 
     // Save
@@ -1056,7 +1058,7 @@ bool ProtoMap::IsMapFile( const string& fname )
     if( ext == "fomap" )
     {
         // Check text format
-        IniParser txt;
+        IniFile txt;
         if( !txt.AppendFile( fname ) )
             return false;
 

@@ -1,7 +1,11 @@
 #include "SpriteManager.h"
-#include "IniParser.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
+#include "IniFile.h"
 #include "Crypt.h"
 #include "F2Palette.h"
+#include "StringUtils.h"
 #include <time.h>
 
 #ifdef FO_WEB
@@ -1799,7 +1803,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
         return nullptr;
 
     // Load ini parser
-    IniParser fofrm;
+    IniFile fofrm;
     fofrm.AppendStr( fm.GetCStr() );
 
     ushort frm_fps = fofrm.GetInt( "", "fps", 0 );

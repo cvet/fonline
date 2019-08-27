@@ -2,7 +2,6 @@
 #define __FILE_MANAGER__
 
 #include "Common.h"
-#include "Log.h"
 #include "DataFile.h"
 
 #ifdef FO_MSVC

@@ -1,4 +1,6 @@
 #include "MapManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Script.h"
@@ -6,6 +8,7 @@
 #include "EntityManager.h"
 #include "ProtoManager.h"
 #include "FlexRect.h"
+#include "StringUtils.h"
 
 MapManager MapMngr;
 

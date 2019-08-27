@@ -3,10 +3,11 @@
 
 #include "Common.h"
 #include "GraphicApi.h"
-#include "assimp/types.h"
-#include "assimp/scene.h"
 #include "FileManager.h"
 #include "FlexRect.h"
+#include "Timer.h"
+#include "assimp/types.h"
+#include "assimp/scene.h"
 
 #define EFFECT_TEXTURES         ( 10 )
 #define BONES_PER_VERTEX        ( 4 )

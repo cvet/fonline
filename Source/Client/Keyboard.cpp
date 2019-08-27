@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "SpriteManager.h"
-#include <strstream>
+#include "StringUtils.h"
 
 static uchar  KeysMap[ 0x200 ] = { 0 };
 static ushort KeysMapRevert[ 0x100 ] = { 0 };

@@ -1,6 +1,9 @@
 #include "Exception.h"
+#include "Log.h"
 #include "Script.h"
 #include "Threading.h"
+#include "StringUtils.h"
+#include "Timer.h"
 
 static char DumpMess[] =
 {
@@ -454,7 +457,6 @@ void CreateDump( const string& appendix, const string& message )
 #elif !defined ( FO_ANDROID ) && !defined ( FO_WEB )
 
 # include "FileManager.h"
-# include <signal.h>
 # include <execinfo.h>
 # include <cxxabi.h>
 # include <sys/utsname.h>

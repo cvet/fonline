@@ -2,6 +2,7 @@
 #define __SCRIPT_INVOKER__
 
 #include "Common.h"
+#include "scriptarray/scriptarray.h"
 
 struct DeferredCall
 {

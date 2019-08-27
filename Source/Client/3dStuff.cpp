@@ -1,7 +1,10 @@
 #include "3dStuff.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "3dAnimation.h"
 #include "GraphicLoader.h"
-#include "Text.h"
+#include "StringUtils.h"
 #include "Script.h"
 
 static int       ModeWidth = 0, ModeHeight = 0;

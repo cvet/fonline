@@ -473,7 +473,7 @@ set( COMMON_SOURCE
 	Common/Exception.cpp Common/Exception.h
 	Common/Debugger.cpp Common/Debugger.h # Delete?
 	Common/Log.cpp Common/Log.h
-	Common/IniParser.cpp Common/IniParser.h # Rename (IniFile)
+	Common/IniFile.cpp Common/IniFile.h
 	Common/MsgFiles.cpp Common/MsgFiles.h
 
 	Common/FileSystem.cpp Common/FileSystem.h
@@ -487,19 +487,18 @@ set( COMMON_SOURCE
 	Common/Properties.cpp Common/Properties.h
 	Common/ProtoManager.cpp Common/ProtoManager.h
 
-	Common/ScriptBind.h
-	Common/ScriptFunctions.h
 	Common/Script.cpp Common/Script.h
 	Common/ScriptExtensions.cpp
 	Common/ScriptInvoker.cpp Common/ScriptInvoker.h
 	Common/ScriptPragmas.cpp Common/ScriptPragmas.h
 	Common/ScriptProfiler.cpp Common/ScriptProfiler.h
+	# Header only
+	Common/ScriptBind.h
+	Common/ScriptFunctions.h
 	Common/DummyData.h # Rename (ScriptReference) or include to ScriptBind.h
 
-	Common/NetProtocol.h
 	Common/NetBuffer.cpp Common/NetBuffer.h
-	Common/UcsTables.h
-	Common/Text.cpp Common/Text.h # Rename (GameTexts, StringExt)
+	Common/StringUtils.cpp Common/StringUtils.h
 	Common/Threading.cpp Common/Threading.h
 	Common/Timer.cpp Common/Timer.h # Rename (Timing)
 	Common/LineTracer.h Common/LineTracer.cpp
@@ -507,14 +506,12 @@ set( COMMON_SOURCE
 	# Refactor
 	${GLEW_SOURCE} # Remove, use dynamic binding
 	Common/Crypt.cpp Common/Crypt.h # Split to DataStorage/LocalStorage
-	Common/Access.h # To NetProtocol.h?
+	# Header only
 	Common/MsgStr.h # To Common.h?
 	Common/3dAnimation.h # To Graphic...?
-	Common/PlatformSpecific.h # To Common.h
-	Common/Types.h # To Common.h
 	Common/Randomizer.h # To Common.h
 	Common/DataMask.h # To Common.h?
-	Common/Defines.h # To Common.h
+	Common/UcsTables.h
 )
 
 # Server source

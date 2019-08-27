@@ -1,4 +1,8 @@
 #include "Networking.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
+#include "StringUtils.h"
 #include <stdexcept>
 
 #define ASIO_STANDALONE

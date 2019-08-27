@@ -1,5 +1,8 @@
 #include "SpriteManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Crypt.h"
+#include "StringUtils.h"
 
 #define FONT_BUF_LEN          ( 0x5000 )
 #define FONT_MAX_LINES        ( 1000 )

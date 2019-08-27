@@ -1,4 +1,7 @@
 #include "AppGui.h"
+#include "Log.h"
+#include "StringUtils.h"
+#include "Exception.h"
 
 #ifdef FO_HAVE_DX
 

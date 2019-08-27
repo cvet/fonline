@@ -1,9 +1,12 @@
 #include "EntityManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "ItemManager.h"
 #include "CritterManager.h"
 #include "MapManager.h"
 #include "Script.h"
 #include "DataBase.h"
+#include "StringUtils.h"
 
 EntityManager EntityMngr;
 

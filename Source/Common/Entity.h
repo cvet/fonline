@@ -78,6 +78,8 @@ class ProtoItem;
 using ProtoItemVec = vector< ProtoItem* >;
 using ProtoItemMap = map< hash, ProtoItem* >;
 
+class CScriptArray;
+
 class Entity
 {
 protected:
@@ -196,7 +198,7 @@ public:
 
 private:
     #ifdef FONLINE_EDITOR
-    void SaveTextFormat( IniParser& file );
+    void SaveTextFormat( IniFile& file );
     #endif
     bool LoadTextFormat( const char* buf );
     bool LoadOldTextFormat( const char* buf );

@@ -1,8 +1,6 @@
-#ifndef ___TEXT___
-#define ___TEXT___
+#pragma once
 
 #include "Common.h"
-#include <strstream>
 
 #define MAX_FOTEXT      UTF8_BUF_SIZE( 2048 )
 #define BIG_BUF_SIZE    ( 0x100000 )       // 1mb
@@ -124,5 +122,3 @@ namespace fmt
         f.writer().write( "{}", s.str() );
     }
 }
-
-#endif // ___TEXT___

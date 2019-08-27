@@ -1,4 +1,7 @@
 #include "Server.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include <random>
 
 void FOServer::ProcessMove( Critter* cr )

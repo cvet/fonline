@@ -1,8 +1,11 @@
 #include "Map.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Script.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "MapManager.h"
+#include "StringUtils.h"
 
 /************************************************************************/
 /* Map                                                                  */

@@ -2,7 +2,8 @@
 #define __SERVER__
 
 #include "Common.h"
-#include "NetProtocol.h"
+#include "Log.h"
+#include "Timer.h"
 #include "Networking.h"
 #include "Script.h"
 #include "Item.h"
@@ -12,10 +13,10 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Dialogs.h"
-#include "Access.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
 #include "DataBase.h"
+#include "StringUtils.h"
 #include "imgui.h"
 
 // Check buffer for error
@@ -28,6 +29,10 @@
         client->Disconnect();                                                                       \
         after_disconnect;                                                                           \
     }
+
+class CScriptDictionary;
+class CScriptDict;
+class CScriptArray;
 
 class FOServer
 {

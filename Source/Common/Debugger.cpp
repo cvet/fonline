@@ -1,5 +1,8 @@
 #include "Debugger.h"
+#include "Log.h"
 #include "Threading.h"
+#include "StringUtils.h"
+#include "Timer.h"
 
 #define MAX_BLOCKS       ( 25 )
 #define MAX_ENTRY        ( 2000 )

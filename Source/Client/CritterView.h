@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common.h"
-#include "NetProtocol.h"
 #include "SpriteManager.h"
 #include "ItemView.h"
 #include "3dStuff.h"

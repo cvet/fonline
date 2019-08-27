@@ -2,6 +2,9 @@
 #define __PROPERTIES__
 
 #include "Common.h"
+#include "Exception.h"
+#include "angelscript.h"
+#include "scriptarray/scriptarray.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
@@ -11,6 +14,7 @@
     static PropertyRegistrator * PropertiesRegistrator;              \
     static vector< pair< const char*, Property** > > PropertiesList; \
     static void SetPropertyRegistrator( PropertyRegistrator * registrator )
+
 #define PROPERTIES_IMPL( class_name )                                             \
     PropertyRegistrator * class_name::PropertiesRegistrator;                      \
     vector< pair< const char*, Property** > > class_name::PropertiesList;         \
@@ -30,6 +34,7 @@
     inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); }                  \
     inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); } \
     inline bool      IsNonEmpty ## prop() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; }
+
 #define CLASS_PROPERTY_IMPL( class_name, prop )                                                              \
     Property * class_name::Property ## prop;                                                                 \
     struct _ ## class_name ## Property ## prop ## Initializer                                                \
@@ -39,6 +44,11 @@
             class_name::PropertiesList.push_back( std::make_pair( # prop, &class_name::Property ## prop ) ); \
         }                                                                                                    \
     } _ ## class_name ## Property ## prop ## Initializer
+
+class asITypeInfo;
+class CScriptDictionary;
+class CScriptDict;
+class CScriptArray;
 
 extern string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep );
 extern void*  ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error );

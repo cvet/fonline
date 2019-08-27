@@ -1,5 +1,8 @@
 #include "ScriptInvoker.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Script.h"
+#include "StringUtils.h"
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif

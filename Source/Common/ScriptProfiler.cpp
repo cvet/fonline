@@ -1,7 +1,11 @@
 #include "ScriptProfiler.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "Script.h"
 #include "FileSystem.h"
 #include "FileManager.h"
+#include "StringUtils.h"
 
 ScriptProfiler::ScriptProfiler()
 {

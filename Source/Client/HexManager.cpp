@@ -1,8 +1,12 @@
 #include "HexManager.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "ResourceManager.h"
 #include "LineTracer.h"
 #include "ProtoManager.h"
 #include "Script.h"
+#include "StringUtils.h"
 
 /************************************************************************/
 /* FIELD                                                                */

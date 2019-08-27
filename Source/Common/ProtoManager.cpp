@@ -1,6 +1,10 @@
 #include "ProtoManager.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Crypt.h"
 #include "FileManager.h"
+#include "StringUtils.h"
+#include "IniFile.h"
 
 ProtoManager ProtoMngr;
 
@@ -103,7 +107,7 @@ static int ParseProtos( const string& ext, const string& app_name, map< hash, T*
             continue;
         }
 
-        IniParser fopro;
+        IniFile fopro;
         fopro.AppendStr( file.GetCStr() );
 
         PStrMapVec protos_data;

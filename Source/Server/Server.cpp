@@ -1,8 +1,12 @@
 #include "Server.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "scripthelper/scripthelper.h"
 #include "minizip/zip.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
+#include "IniFile.h"
 #include <chrono>
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
@@ -2321,7 +2325,7 @@ void FOServer::LoadBans()
 
     Banned.clear();
     Banned.reserve( 1000 );
-    IniParser bans_txt;
+    IniFile bans_txt;
     if( !bans_txt.AppendFile( BANS_FNAME_ACTIVE ) )
         return;
 

@@ -1,9 +1,11 @@
 #include "Dialogs.h"
+#include "Log.h"
 #include "FileManager.h"
-#include "IniParser.h"
+#include "IniFile.h"
 #include "Script.h"
 #include "Critter.h"
 #include "Map.h"
+#include "StringUtils.h"
 
 DialogManager DlgMngr;
 
@@ -167,7 +169,7 @@ void DialogManager::Finish()
 
 DialogPack* DialogManager::ParseDialog( const string& pack_name, const string& data )
 {
-    IniParser fodlg;
+    IniFile fodlg;
     fodlg.CollectContent();
     fodlg.AppendStr( data );
 

@@ -1,6 +1,9 @@
 #include "MsgFiles.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Crypt.h"
 #include "FileManager.h"
+#include "StringUtils.h"
 
 string TextMsgFileName[ TEXTMSG_COUNT ] =
 {

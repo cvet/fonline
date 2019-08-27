@@ -1,5 +1,8 @@
 #include "FileManager.h"
+#include "Log.h"
 #include "FileSystem.h"
+#include "StringUtils.h"
+#include "Exception.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 

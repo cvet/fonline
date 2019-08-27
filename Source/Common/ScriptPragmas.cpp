@@ -1,7 +1,10 @@
 #include "ScriptPragmas.h"
+#include "Log.h"
+#include "Exception.h"
 #include "angelscript.h"
 #include "Script.h"
 #include "ProtoManager.h"
+#include "StringUtils.h"
 
 // #pragma ignore "other_pragma"
 // #pragma other_pragma "arguments" <- not processed

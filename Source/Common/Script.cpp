@@ -1,6 +1,10 @@
 #include "Script.h"
-#include "Text.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
+#include "StringUtils.h"
 #include "FileManager.h"
+#include "IniFile.h"
 #include "AngelScriptExt/reflection.h"
 #include "AngelScriptExt/preprocessor.h"
 #include "scriptstdstring/scriptstdstring.h"
@@ -11,7 +15,6 @@
 #include "scriptmath/scriptmath.h"
 #include "weakref/weakref.h"
 #include "scripthelper/scripthelper.h"
-#include <strstream>
 
 #pragma MESSAGE("Rework native calls.")
 #if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false

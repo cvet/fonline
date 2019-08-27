@@ -1,6 +1,9 @@
 #include "AppGui.h"
+#include "Log.h"
+#include "Exception.h"
 #include "GraphicApi.h"
 #include "Threading.h"
+#include "StringUtils.h"
 
 struct ImGuiViewportDataSDL2
 {

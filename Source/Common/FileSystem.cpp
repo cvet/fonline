@@ -1,4 +1,5 @@
 #include "FileSystem.h"
+#include "StringUtils.h"
 
 #ifdef FO_WINDOWS
 # include <io.h>

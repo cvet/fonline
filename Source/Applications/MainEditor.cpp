@@ -1,8 +1,11 @@
 #include "Common.h"
+#include "Log.h"
+#include "Exception.h"
 #include "Server.h"
 #include "Client.h"
 #include "Mapper.h"
 #include "AppGui.h"
+#include "IniFile.h"
 
 static void DockSpaceBegin();
 static void DockSpaceEnd();

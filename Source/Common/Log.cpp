@@ -1,9 +1,7 @@
 #include "Log.h"
-#include "Timer.h"
 #include "FileSystem.h"
 #include "Threading.h"
-#include <stdarg.h>
-#include <time.h>
+#include "StringUtils.h"
 
 #ifdef FO_ANDROID
 # include <android/log.h>

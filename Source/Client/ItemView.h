@@ -2,7 +2,6 @@
 
 #include "Common.h"
 #include "FileManager.h"
-#include "Text.h"
 #include "Crypt.h"
 #include "MsgFiles.h"
 #include "Entity.h"

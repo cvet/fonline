@@ -1,11 +1,10 @@
-#ifndef ___INI_PARSER___
-#define ___INI_PARSER___
+#pragma once
 
 #include "Common.h"
 
 #define CONFIG_NAME    "FOnline.cfg"
 
-class IniParser
+class IniFile
 {
 private:
     using ValuesMap = multimap< string, StrMap >;
@@ -19,7 +18,7 @@ private:
     string* GetRawValue( const string& app_name, const string& key_name );
 
 public:
-    IniParser();
+    IniFile();
     void CollectContent() { collectContent = true; }
     void AppendStr( const string& buf );
     bool AppendFile( const string& fname );
@@ -45,5 +44,3 @@ public:
     const StrMap* GetAppKeyValues( const string& app_name );
     string        GetAppContent( const string& app_name );
 };
-
-#endif // ___INI_PARSER___

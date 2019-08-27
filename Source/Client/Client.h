@@ -2,6 +2,7 @@
 #define __CLIENT__
 
 #include "Common.h"
+#include "Exception.h"
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "SoundManager.h"
@@ -9,13 +10,10 @@
 #include "ItemView.h"
 #include "CritterView.h"
 #include "NetBuffer.h"
-#include "NetProtocol.h"
-#include "Text.h"
 #include "ResourceManager.h"
 #include "DataMask.h"
 #include "Script.h"
 #include "zlib.h"
-#include "IniParser.h"
 #include "MsgFiles.h"
 #include "MapView.h"
 #include "ProtoManager.h"
@@ -49,6 +47,10 @@
 #define INIT_NET_REASON_REG       ( 2 )
 #define INIT_NET_REASON_LOAD      ( 3 )
 #define INIT_NET_REASON_CUSTOM    ( 4 )
+
+class CScriptDictionary;
+class CScriptDict;
+class CScriptArray;
 
 class FOClient
 {

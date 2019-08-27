@@ -1,4 +1,7 @@
 #include "ItemHexView.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "ResourceManager.h"
 
 ItemHexView::ItemHexView( uint id, ProtoItem* proto ): ItemView( id, proto )

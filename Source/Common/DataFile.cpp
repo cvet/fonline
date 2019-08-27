@@ -1,8 +1,11 @@
 #include "DataFile.h"
+#include "Log.h"
+#include "Exception.h"
 #include "minizip/unzip.h"
 #include "FileManager.h"
 #include "FileSystem.h"
 #include "EmbeddedResources/Resources.h"
+#include "StringUtils.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # define DISABLE_FOLDER_CACHING

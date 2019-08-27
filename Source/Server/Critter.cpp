@@ -1,10 +1,13 @@
 #include "Critter.h"
+#include "Log.h"
+#include "Exception.h"
+#include "Timer.h"
 #include "Script.h"
 #include "MapManager.h"
 #include "ItemManager.h"
-#include "Access.h"
 #include "CritterManager.h"
 #include "ProtoManager.h"
+#include "StringUtils.h"
 
 /************************************************************************/
 /*                                                                      */
