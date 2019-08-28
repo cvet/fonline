@@ -1,10 +1,10 @@
-# Package versions
+# Packages description
 
 * Acm - ACM sound format reader
 * AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
 * Asio - [asio-1.10.8](https://think-async.com/Asio/)
 * Assimp - [assimp-4.1.0](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
-* GL - [GLEW](http://glew.sourceforge.net/)
+* GLEW - [GLEW library](http://glew.sourceforge.net/)
 * Json - [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
 * NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
@@ -13,7 +13,6 @@
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * cURL - [curl-7.61.1](https://curl.haxx.se/)
-* fbxsdk-libs - static libs for FBX SDK
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
 * fmt - [fmt-4.0.0](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-docking-150819](https://github.com/ocornut/imgui)
