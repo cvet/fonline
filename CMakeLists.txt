@@ -638,7 +638,7 @@ if( NOT BUILD_ONLY_CLIENT )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "Source/Applications/ServerApp.cpp" "Resources/Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DFO_SERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServerDaemon "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "Source/Applications/EditorApp.cpp" "Resources/Editor.rc" )
