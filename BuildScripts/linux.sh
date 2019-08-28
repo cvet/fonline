@@ -28,7 +28,7 @@ rm -rf ASCompiler/*
 
 mkdir -p x64
 cd x64
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux64.cache.cmake" "$ROOT_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux64.cache.cmake" "$ROOT_FULL_PATH"
 make -j4
 cd ../
 
@@ -45,6 +45,6 @@ cd ../
 
 #mkdir -p x86
 #cd x86
-#cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux32.cache.cmake" "$ROOT_FULL_PATH/Source"
+#cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux32.cache.cmake" "$ROOT_FULL_PATH"
 #make -j4
 #cd ../

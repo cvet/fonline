@@ -3,8 +3,7 @@
 
 #include "Common.h"
 #include "NetBuffer.h"
-#include "zlib/zlib.h"
-#include <functional>
+#include "zlib.h"
 
 class NetConnection
 {

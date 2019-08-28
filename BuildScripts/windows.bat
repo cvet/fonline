@@ -16,12 +16,12 @@ IF EXIST windows\ASCompiler RD windows\ASCompiler /S /Q
 
 MKDIR windows\x86
 PUSHD windows\x86
-cmake -G "Visual Studio 15 2017" "%ROOT_FULL_PATH%\Source"
+cmake -G "Visual Studio 15 2017" "%ROOT_FULL_PATH%"
 POPD
 
 MKDIR windows\x64
 PUSHD windows\x64
-cmake -G "Visual Studio 15 2017 Win64" "%ROOT_FULL_PATH%\Source"
+cmake -G "Visual Studio 15 2017 Win64" "%ROOT_FULL_PATH%"
 POPD
 
 cmake --build windows\x64 --config RelWithDebInfo --target FOnlineServer

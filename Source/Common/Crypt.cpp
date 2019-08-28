@@ -3,7 +3,7 @@
 #include "Exception.h"
 #include "FileUtils.h"
 #include "StringUtils.h"
-#include "SHA/sha2.h"
+#include "sha2.h"
 #include "zlib.h"
 
 CryptManager Crypt;

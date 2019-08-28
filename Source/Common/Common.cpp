@@ -31,7 +31,7 @@ STATIC_ASSERT( sizeof( size_t ) == sizeof( void* ) );
 STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 
 // Some checks from AngelScript config
-#include "AngelScript/sdk/angelscript/source/as_config.h"
+#include "as_config.h"
 #ifdef AS_BIG_ENDIAN
 # error "Big Endian architectures not supported."
 #endif

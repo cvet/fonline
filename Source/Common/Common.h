@@ -107,7 +107,7 @@
 #include <tuple>
 
 // String formatting
-#include "fmt/fmt/format.h"
+#include "fmt/format.h"
 
 // Types
 #if defined ( FO_MSVC )

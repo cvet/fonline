@@ -2,13 +2,13 @@
 #include "Log.h"
 #include "Exception.h"
 #include "Timer.h"
-#include "AngelScriptExt/preprocessor.h"
+#include "preprocessor.h"
 #include "IniFile.h"
 #include "GraphicStructures.h"
 #include "curl/curl.h"
-#include "SHA/sha1.h"
-#include "SHA/sha2.h"
-#include "PNG/png.h"
+#include "sha1.h"
+#include "sha2.h"
+#include "png.h"
 
 static void* ASDebugMalloc( size_t size )
 {

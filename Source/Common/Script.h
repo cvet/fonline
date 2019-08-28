@@ -8,7 +8,7 @@
 #include "angelscript.h"
 #include "scriptarray/scriptarray.h"
 #include "scriptdictionary/scriptdictionary.h"
-#include "AngelScriptExt/preprocessor.h"
+#include "preprocessor.h"
 #include "AngelScriptExt/scriptdict.h"
 
 #ifdef AS_MAX_PORTABILITY

@@ -10,7 +10,7 @@
 SoundManager SndMngr;
 
 // ACM
-#include "Acm/acmstrm.h"
+#include "acmstrm.h"
 
 // OGG
 #include "vorbis/codec.h"

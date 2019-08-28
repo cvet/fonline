@@ -6,8 +6,8 @@
 #include "StringUtils.h"
 #include "IniFile.h"
 #include "Debugger.h"
-#include "SHA/sha1.h"
-#include "SHA/sha2.h"
+#include "sha1.h"
+#include "sha2.h"
 #include <fcntl.h>
 
 static bool                 ASDbgMemoryCanWork = false;

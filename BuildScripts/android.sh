@@ -47,13 +47,13 @@ cd $ANDROID_ABI
 
 pwd
 
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH"
 make -j4
 cd ../
 
 export ANDROID_ABI=x86
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH"
 make -j4
 cd ../

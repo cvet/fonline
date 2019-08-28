@@ -330,7 +330,7 @@ static uint                         MemoryAllocRecursion;
 # include "FileUtils.h"
 
 // Hooks
-# include "NCodeHook/NCodeHookInstantiation.h"
+# include "NCodeHookInstantiation.h"
 
 static HANDLE        ProcessHandle;
 static NCodeHookIA32 CodeHooker;

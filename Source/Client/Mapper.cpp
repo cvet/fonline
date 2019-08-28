@@ -4,8 +4,8 @@
 #include "Script.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
-#include "SHA/sha1.h"
-#include "SHA/sha2.h"
+#include "sha1.h"
+#include "sha2.h"
 #include "Threading.h"
 #include "StringUtils.h"
 

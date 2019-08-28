@@ -4,7 +4,7 @@
 #include "minizip/unzip.h"
 #include "FileUtils.h"
 #include "FileSystem.h"
-#include "EmbeddedResources/Resources.h"
+#include "EmbeddedResources.h"
 #include "StringUtils.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )

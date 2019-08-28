@@ -4,7 +4,7 @@
 #include "Common.h"
 #include "Entity.h"
 #include "angelscript.h"
-#include "AngelScriptExt/preprocessor.h"
+#include "preprocessor.h"
 #include <set>
 #include <string>
 

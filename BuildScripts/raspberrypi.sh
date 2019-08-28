@@ -25,7 +25,7 @@ if [ ! -d "./tools" ]; then
 fi
 export PI_TOOLS_HOME=$PWD/tools
 
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$ROOT_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$ROOT_FULL_PATH"
 make -j4
 
 if [ -n "$FO_FTP_DEST" ]; then
