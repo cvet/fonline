@@ -1,26 +1,26 @@
-# FOnline Engine v.0.5
+# FOnline Engine
 
 ![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)
 
 ## Goal
 
-Friendly engine for fallout-like icometric games
+Friendly engine for fallout-like icometric games for develop/play alone or with friends
 
-## About (not all ready, marked as *)
+## About (not actually ready marked as *)
 
 * Editor and Server target platforms
-** Windows
-** Linux
-** macOS*
+  * Windows
+  * Linux
+  * macOS*
 * Client
-** Windows
-** Linux
-** macOS
-** iOS
-** Android
-** Web
-** PS4*
-* Online or singleplayer
+  * Windows
+  * Linux
+  * macOS
+  * iOS
+  * Android
+  * Web
+  * PS4*
+* Online or singleplayer*
 * Supporting of Fallout 1/2/Tactics, Arcanum, Boldur's Gate asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal / Square map tiling
@@ -37,13 +37,13 @@ Friendly engine for fallout-like icometric games
 
 ## Repository structure
 
-* BuildScripts - scripts for automatical build in command line or any ci/cd system
-* Other - historical stuff, deprecated and not used
-* Resources - resources for build applications but not related to code
-* SdkPlaceholder - all this stuff merged with build output in resulted sdk zip
-* Source - fonline specific code
-* SourceTools - some tools for formatting code or count it
-* ThirdParty - external dependecies of engine, included in repository
+* *BuildScripts* - scripts for automatical build in command line or any ci/cd system
+* *Other* - historical stuff, deprecated and not used
+* *Resources* - resources for build applications but not related to code
+* *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
+* *Source* - fonline specific code
+* *SourceTools* - some tools for formatting code or count it
+* *ThirdParty* - external dependecies of engine, included in repository
 
 ## Git LFS
 
@@ -52,5 +52,5 @@ https://git-lfs.github.com/
 
 ## Help and support
 
-* [English speaking community](https://fodev.net)
-* [Russian speaking community](https://fonline.ru)
+* [English-speaking community](https://fodev.net)
+* [Russian-speaking community](https://fonline.ru)
