@@ -464,8 +464,8 @@ add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 
 # Common source
 set( COMMON_SOURCE
-	${IMGUI_SOURCE}
-	${fmt_SOURCE}
+	${IMGUI_SOURCE} # Make lib
+	${fmt_SOURCE} # Make lib
 
 	Common/Common.cpp Common/Common.h # Clean up from different things
 	Common/Entity.cpp Common/Entity.h
@@ -501,15 +501,15 @@ set( COMMON_SOURCE
 	Common/LineTracer.h Common/LineTracer.cpp
 
 	# Refactor
-	${GLEW_SOURCE} # Remove, use dynamic binding
+	${GLEW_SOURCE} # Remove, use dynamic binding / or fix sources to skip unnessesary bindings
 	Common/Crypt.cpp Common/Crypt.h # Split to DataStorage/LocalStorage
 )
 
 # Server source
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
-	${Json_SOURCE}
-	${fbxsdk_SOURCE}
+	${Json_SOURCE} # Make lib
+	${fbxsdk_SOURCE} # Remove, add only include
 
 	# Location
 	Server/Map.cpp Server/Map.h
@@ -549,7 +549,7 @@ set( CLIENT_SOURCE
 	Client/ItemHexView.cpp Client/ItemHexView.h
 
 	Client/Keyboard.cpp Client/Keyboard.h
-	Client/HexManager.cpp Client/HexManager.h
+	Client/HexManager.cpp Client/HexManager.h # MapView
 	Client/ResourceManager.cpp Client/ResourceManager.h
 	Client/GraphicLoader.cpp Client/GraphicLoader.h # Refactor, merge with ResourceManager?
 
@@ -574,8 +574,8 @@ list( REMOVE_DUPLICATES EDITOR_SOURCE )
 include_directories( "Common" )
 include_directories( "Server" )
 include_directories( "Client" )
-include_directories( "ThirdParty" )
-include_directories( "Applications" )
+include_directories( "ThirdParty" ) # Remove
+include_directories( "Applications" ) # Remove
 
 #
 # Applications

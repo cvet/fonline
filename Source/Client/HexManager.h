@@ -1,7 +1,7 @@
-#ifndef __HEX_MANAGER__
-#define __HEX_MANAGER__
+#pragma once
 
 #include "Common.h"
+#include "Entity.h"
 #include "SpriteManager.h"
 #include "ItemView.h"
 #include "CritterView.h"
@@ -438,5 +438,3 @@ public:
     void MarkPassedHexes();
     #endif
 };
-
-#endif     // __HEX_MANAGER__

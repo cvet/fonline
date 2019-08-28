@@ -24,7 +24,7 @@ ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, EntityType::MapProto, ProtoMap
     MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
     #endif
 
-    #ifdef FONLINE_EDITOR
+    #if defined ( FONLINE_EDITOR )
     LastEntityId = 0;
     #endif
 }
@@ -58,7 +58,8 @@ ProtoMap::~ProtoMap()
     #endif
 
     Tiles.clear();
-    #ifdef FONLINE_EDITOR
+
+    #if defined ( FONLINE_EDITOR )
     for( auto& entity : AllEntities )
         entity->Release();
     AllEntities.clear();
@@ -75,17 +76,17 @@ ProtoMap::~ProtoMap()
     #endif
 }
 
-#ifdef FONLINE_EDITOR
-void ProtoMap::SaveTextFormat( IniFile& file )
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static void SaveTextFormat( ProtoMap& pmap, IniFile& file )
 {
-    # if 0
     // Header
-    Props.SaveToText( file.SetApp( "ProtoMap" ), nullptr );
+    pmap.Props.SaveToText( file.SetApp( "ProtoMap" ), nullptr );
 
+    #if defined ( FONLINE_EDITOR )
     // Critters
-    for( auto& entity : AllEntities )
+    for( auto& entity : pmap.AllEntities )
     {
-        if( entity->Type == MUTUAL_CRITTER_TYPE )
+        if( entity->Type == CritterEntityType )
         {
             StrMap& kv = file.SetApp( "Critter" );
             kv[ "$Id" ] = _str( "{}", entity->Id );
@@ -95,9 +96,9 @@ void ProtoMap::SaveTextFormat( IniFile& file )
     }
 
     // Items
-    for( auto& entity : AllEntities )
+    for( auto& entity : pmap.AllEntities )
     {
-        if( entity->Type == EntityType::Item )
+        if( entity->Type == ItemEntityType )
         {
             StrMap& kv = file.SetApp( "Item" );
             kv[ "$Id" ] = _str( "{}", entity->Id );
@@ -105,9 +106,10 @@ void ProtoMap::SaveTextFormat( IniFile& file )
             entity->Props.SaveToText( kv, &entity->Proto->Props );
         }
     }
+    #endif
 
     // Tiles
-    for( auto& tile : Tiles )
+    for( auto& tile : pmap.Tiles )
     {
         StrMap& kv = file.SetApp( "Tile" );
         kv[ "PicMap" ] = _str().parseHash( tile.Name );
@@ -122,25 +124,237 @@ void ProtoMap::SaveTextFormat( IniFile& file )
         if( tile.IsRoof )
             kv[ "IsRoof" ] = _str( "{}", tile.IsRoof );
     }
+}
+
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool BindScripts( ProtoMap& pmap, EntityVec& entities )
+{
+    int errors = 0;
+
+    // Map script
+    if( pmap.GetScriptId() )
+    {
+        hash func_num = Script::BindScriptFuncNumByFuncName( _str().parseHash( pmap.GetScriptId() ), "void %s(Map, bool)" );
+        if( !func_num )
+        {
+            WriteLog( "Map '{}', can't bind map function '{}'.\n", pmap.GetName(), _str().parseHash( pmap.GetScriptId() ) );
+            errors++;
+        }
+    }
+
+    // Entities scripts
+    for( auto& entity : entities )
+    {
+        if( entity->Type == CritterEntityType && ( (CritterType*) entity )->GetScriptId() )
+        {
+            string func_name = _str().parseHash( ( (CritterType*) entity )->GetScriptId() );
+            hash   func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter, bool)" );
+            if( !func_num )
+            {
+                WriteLog( "Map '{}', can't bind critter function '{}'.\n", pmap.GetName(), func_name );
+                errors++;
+            }
+        }
+        else if( entity->Type == ItemEntityType && !( (ItemType*) entity )->IsStatic() && ( (ItemType*) entity )->GetScriptId() )
+        {
+            string func_name = _str().parseHash( ( (ItemType*) entity )->GetScriptId() );
+            hash   func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item, bool)" );
+            if( !func_num )
+            {
+                WriteLog( "Map '{}', can't bind item function '{}'.\n", pmap.GetName(), func_name );
+                errors++;
+            }
+        }
+        else if( entity->Type == ItemEntityType && ( (ItemType*) entity )->IsStatic() && ( (ItemType*) entity )->GetScriptId() )
+        {
+            Item*  item = (ItemType*) entity;
+            string func_name = _str().parseHash( item->GetScriptId() );
+            uint   bind_id = 0;
+            if( item->GetIsTrigger() || item->GetIsTrap() )
+                bind_id = Script::BindByFuncName( func_name, "void %s(Critter, const Item, bool, uint8)", false );
+            else
+                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );
+            if( !bind_id )
+            {
+                WriteLog( "Map '{}', can't bind static item function '{}'.\n", pmap.GetName(), func_name );
+                errors++;
+            }
+            item->SceneryScriptBindId = bind_id;
+        }
+    }
+    return errors == 0;
+}
+
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool OnAfterLoad( ProtoMap& pmap, EntityVec& entities )
+{
+    // Bind scripts
+    if( !BindScripts< CritterType, CritterEntityType, ItemType, ItemEntityType >( pmap, entities ) )
+        return false;
+
+    // Parse objects
+    ushort maxhx = pmap.GetWidth();
+    ushort maxhy = pmap.GetHeight();
+    pmap.HexFlags = new uchar[ maxhx * maxhy ];
+    memzero( pmap.HexFlags, maxhx * maxhy );
+
+    uint     scenery_count = 0;
+    UCharVec scenery_data;
+    for( auto& entity : entities )
+    {
+        if( entity->Type == CritterEntityType )
+        {
+            entity->AddRef();
+            pmap.CrittersVec.push_back( (CritterType*) entity );
+            continue;
+        }
+
+        RUNTIME_ASSERT( entity->Type == ItemEntityType );
+        ItemType* item = (ItemType*) entity;
+        hash      pid = item->GetProtoId();
+
+        if( !item->IsStatic() )
+        {
+            entity->AddRef();
+            if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+                pmap.HexItemsVec.push_back( (ItemType*) entity );
+            else
+                pmap.ChildItemsVec.push_back( (ItemType*) entity );
+            continue;
+        }
+
+        RUNTIME_ASSERT( item->GetAccessory() == ITEM_ACCESSORY_HEX );
+
+        ushort hx = item->GetHexX();
+        ushort hy = item->GetHexY();
+        if( hx >= maxhx || hy >= maxhy )
+        {
+            WriteLog( "Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), pmap.GetName(), hx, hy );
+            continue;
+        }
+
+        if( !item->GetIsHiddenInStatic() )
+        {
+            item->AddRef();
+            pmap.StaticItemsVec.push_back( item );
+        }
+
+        if( !item->GetIsNoBlock() )
+            SETFLAG( pmap.HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+
+        if( !item->GetIsShootThru() )
+        {
+            SETFLAG( pmap.HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+            SETFLAG( pmap.HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
+        }
+
+        if( item->GetIsScrollBlock() )
+        {
+            // Block around
+            for( int k = 0; k < 6; k++ )
+            {
+                ushort hx_ = hx, hy_ = hy;
+                MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
+                SETFLAG( pmap.HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+            }
+        }
+
+        if( item->GetIsTrigger() || item->GetIsTrap() )
+        {
+            item->AddRef();
+            pmap.TriggerItemsVec.push_back( item );
+
+            SETFLAG( pmap.HexFlags[ hy * maxhx + hx ], FH_STATIC_TRIGGER );
+        }
+
+        if( item->IsNonEmptyBlockLines() )
+        {
+            ushort hx_ = hx, hy_ = hy;
+            bool   raked = item->GetIsShootThru();
+            FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
+                                      SETFLAG( pmap.HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+                                      if( !raked )
+                                          SETFLAG( pmap.HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
+                                      );
+        }
+
+        // Data for client
+        if( !item->GetIsHidden() )
+        {
+            scenery_count++;
+            WriteData( scenery_data, item->Id );
+            WriteData( scenery_data, item->GetProtoId() );
+            PUCharVec* all_data;
+            UIntVec*   all_data_sizes;
+            item->Props.StoreData( false, &all_data, &all_data_sizes );
+            WriteData( scenery_data, (uint) all_data->size() );
+            for( size_t i = 0; i < all_data->size(); i++ )
+            {
+                WriteData( scenery_data, all_data_sizes->at( i ) );
+                WriteDataArr( scenery_data, all_data->at( i ), all_data_sizes->at( i ) );
+            }
+        }
+    }
+
+    pmap.SceneryData.clear();
+    WriteData( pmap.SceneryData, scenery_count );
+    if( !scenery_data.empty() )
+        WriteDataArr( pmap.SceneryData, &scenery_data[ 0 ], (uint) scenery_data.size() );
+
+    for( auto& entity : entities )
+        entity->Release();
+    entities.clear();
+
+    // Generate hashes
+    pmap.HashTiles = maxhx * maxhy;
+    if( pmap.Tiles.size() )
+        pmap.HashTiles = Crypt.MurmurHash2( (uchar*) &pmap.Tiles[ 0 ], (uint) pmap.Tiles.size() * sizeof( ProtoMap::Tile ) );
+    pmap.HashScen = maxhx * maxhy;
+    if( pmap.SceneryData.size() )
+        pmap.HashScen = Crypt.MurmurHash2( (uchar*) &pmap.SceneryData[ 0 ], (uint) pmap.SceneryData.size() );
+
+    // Shrink the vector capacities to fit their contents and reduce memory use
+    UCharVec( pmap.SceneryData ).swap( pmap.SceneryData );
+    CritterVec( pmap.CrittersVec ).swap( pmap.CrittersVec );
+    ItemVec( pmap.HexItemsVec ).swap( pmap.HexItemsVec );
+    ItemVec( pmap.ChildItemsVec ).swap( pmap.ChildItemsVec );
+    ItemVec( pmap.StaticItemsVec ).swap( pmap.StaticItemsVec );
+    ItemVec( pmap.TriggerItemsVec ).swap( pmap.TriggerItemsVec );
+    ProtoMap::TileVec( pmap.Tiles ).swap( pmap.Tiles );
+
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) pmap.SceneryData.capacity() );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) pmap.GetWidth() * pmap.GetHeight() );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) pmap.Tiles.capacity() * sizeof( ProtoMap::Tile ) );
+
+    # if defined ( FONLINE_EDITOR )
+    // Get lower id
+    pmap.LastEntityId = 0;
+    for( auto& entity : entities )
+        if( !pmap.LastEntityId || entity->Id < pmap.LastEntityId )
+            pmap.LastEntityId = entity->Id;
+
+    pmap.AllEntities = std::move( entities );
     # endif
+
+    return true;
 }
 #endif
 
-bool ProtoMap::LoadTextFormat( const char* buf )
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool LoadTextFormat( ProtoMap& pmap, const char* buf, EntityVec& entities )
 {
-    #if 0
-    int       errors = 0;
-    EntityVec entities;
+    int errors = 0;
 
     // Header
-    IniParser map_data;
+    IniFile map_data;
     map_data.AppendStr( buf );
     if( !map_data.IsApp( "ProtoMap" ) )
     {
         WriteLog( "Invalid map format.\n" );
         return false;
     }
-    Props.LoadFromText( map_data.GetApp( "ProtoMap" ) );
+    pmap.Props.LoadFromText( map_data.GetApp( "ProtoMap" ) );
 
     // Critters
     PStrMapVec npc_data;
@@ -165,11 +379,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-        Npc*       npc = new Npc( id, proto );
-        # else
-        CritterCl* npc = new CritterCl( id, proto );
-        # endif
+        CritterType* npc = new CritterType( id, proto );
         if( !npc->Props.LoadFromText( kv ) )
         {
             WriteLog( "Unable to load critter '{}' properties.\n", _str().parseHash( proto_id ) );
@@ -203,7 +413,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        Item* item = new Item( id, proto );
+        ItemType* item = new ItemType( id, proto );
         if( !item->Props.LoadFromText( kv ) )
         {
             WriteLog( "Unable to load item '{}' properties.\n", _str().parseHash( proto_id ) );
@@ -234,7 +444,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         int  oy = ( kv.count( "OffsetY" ) ? _str( kv[ "OffsetY" ] ).toUInt() : 0 );
         int  layer = ( kv.count( "Layer" ) ? _str( kv[ "Layer" ] ).toUInt() : 0 );
         bool is_roof = ( kv.count( "IsRoof" ) ? _str( kv[ "IsRoof" ] ).toBool() : false );
-        if( hx < 0 || hx >= GetWidth() || hy < 0 || hy > GetHeight() )
+        if( hx < 0 || hx >= pmap.GetWidth() || hy < 0 || hy > pmap.GetHeight() )
         {
             WriteLog( "Tile '{}' have wrong hex position {} {}.\n", _str().parseHash( name ), hx, hy );
             errors++;
@@ -247,31 +457,27 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        Tiles.push_back( Tile( name, hx, hy, ox, oy, layer, is_roof ) );
+        pmap.Tiles.push_back( ProtoMap::Tile( name, hx, hy, ox, oy, layer, is_roof ) );
     }
 
-    if( errors )
-        return false;
-    return OnAfterLoad( entities );
-    #endif
-    return 0;
+    return errors == 0;
 }
 
-bool ProtoMap::LoadOldTextFormat( const char* buf )
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool LoadOldTextFormat( ProtoMap& pmap, const char* buf, EntityVec& entities )
 {
-    #if 0
-    # define MAP_OBJECT_CRITTER                   ( 0 )
-    # define MAP_OBJECT_ITEM                      ( 1 )
-    # define MAP_OBJECT_SCENERY                   ( 2 )
-    # define FO_MAP_VERSION_TEXT1                 ( 1 )
-    # define FO_MAP_VERSION_TEXT2                 ( 2 )
-    # define FO_MAP_VERSION_TEXT3                 ( 3 )
-    # define FO_MAP_VERSION_TEXT4                 ( 4 )
-    # define FO_MAP_VERSION_TEXT5                 ( 5 )
-    # define FO_MAP_VERSION_TEXT6                 ( 6 )
-    # define FO_MAP_VERSION_TEXT7                 ( 7 )
+    #define MAP_OBJECT_CRITTER                   ( 0 )
+    #define MAP_OBJECT_ITEM                      ( 1 )
+    #define MAP_OBJECT_SCENERY                   ( 2 )
+    #define FO_MAP_VERSION_TEXT1                 ( 1 )
+    #define FO_MAP_VERSION_TEXT2                 ( 2 )
+    #define FO_MAP_VERSION_TEXT3                 ( 3 )
+    #define FO_MAP_VERSION_TEXT4                 ( 4 )
+    #define FO_MAP_VERSION_TEXT5                 ( 5 )
+    #define FO_MAP_VERSION_TEXT6                 ( 6 )
+    #define FO_MAP_VERSION_TEXT7                 ( 7 )
 
-    IniParser map_ini;
+    IniFile map_ini;
     map_ini.CollectContent();
     map_ini.AppendStr( buf );
 
@@ -296,26 +502,26 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 {
                     version = ivalue;
                     uint old_version = ( ivalue << 20 );
-                    # define FO_MAP_VERSION_V6    ( 0xFE000000 )
-                    # define FO_MAP_VERSION_V7    ( 0xFF000000 )
-                    # define FO_MAP_VERSION_V8    ( 0xFF100000 )
-                    # define FO_MAP_VERSION_V9    ( 0xFF200000 )
+                    #define FO_MAP_VERSION_V6    ( 0xFE000000 )
+                    #define FO_MAP_VERSION_V7    ( 0xFF000000 )
+                    #define FO_MAP_VERSION_V8    ( 0xFF100000 )
+                    #define FO_MAP_VERSION_V9    ( 0xFF200000 )
                     if( old_version == FO_MAP_VERSION_V6 || old_version == FO_MAP_VERSION_V7 ||
                         old_version == FO_MAP_VERSION_V8 || old_version == FO_MAP_VERSION_V9 )
                         version = FO_MAP_VERSION_TEXT1;
                 }
                 else if( field == "MaxHexX" )
-                    SetWidth( ivalue );
+                    pmap.SetWidth( ivalue );
                 else if( field == "MaxHexY" )
-                    SetHeight( ivalue );
+                    pmap.SetHeight( ivalue );
                 else if( field == "WorkHexX" || field == "CenterX" )
-                    SetWorkHexX( ivalue );
+                    pmap.SetWorkHexX( ivalue );
                 else if( field == "WorkHexY" || field == "CenterY" )
-                    SetWorkHexY( ivalue );
+                    pmap.SetWorkHexY( ivalue );
                 else if( field == "Time" )
-                    SetCurDayTime( ivalue );
+                    pmap.SetCurDayTime( ivalue );
                 else if( field == "NoLogOut" )
-                    SetIsNoLogOut( ivalue != 0 );
+                    pmap.SetIsNoLogOut( ivalue != 0 );
                 else if( ( field == "ScriptModule" || field == "ScriptName" ) && value != "-" )
                     script_name += value;
                 else if( field == "ScriptFunc" && value != "-" )
@@ -362,20 +568,20 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             }
         }
         if( !script_name.empty() )
-            SetScriptId( _str( script_name ).toHash() );
+            pmap.SetScriptId( _str( script_name ).toHash() );
         CScriptArray* arr = Script::CreateArray( "int[]" );
         Script::AppendVectorToArray( vec, arr );
-        SetDayTime( arr );
+        pmap.SetDayTime( arr );
         arr->Release();
         CScriptArray* arr2 = Script::CreateArray( "uint8[]" );
         Script::AppendVectorToArray( vec2, arr2 );
-        SetDayColor( arr2 );
+        pmap.SetDayColor( arr2 );
         arr2->Release();
     }
     if( ( version != FO_MAP_VERSION_TEXT1 && version != FO_MAP_VERSION_TEXT2 && version != FO_MAP_VERSION_TEXT3 &&
           version != FO_MAP_VERSION_TEXT4 && version != FO_MAP_VERSION_TEXT5 && version != FO_MAP_VERSION_TEXT6 &&
           version != FO_MAP_VERSION_TEXT7 ) ||
-        GetWidth() < 1 || GetHeight() < 1 )
+        pmap.GetWidth() < 1 || pmap.GetHeight() < 1 )
         return false;
 
     // Tiles
@@ -393,18 +599,18 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             {
                 int hx, hy;
                 istr >> type >> hx >> hy >> name;
-                if( !istr.fail() && hx >= 0 && hx < GetWidth() && hy >= 0 && hy < GetHeight() )
+                if( !istr.fail() && hx >= 0 && hx < pmap.GetWidth() && hy >= 0 && hy < pmap.GetHeight() )
                 {
                     hx *= 2;
                     hy *= 2;
                     if( type == "tile" )
-                        Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, false ) );
+                        pmap.Tiles.push_back( ProtoMap::Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, false ) );
                     else if( type == "roof" )
-                        Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, true ) );
+                        pmap.Tiles.push_back( ProtoMap::Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, true ) );
                     else if( type == "0" )
-                        Tiles.push_back( Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, false ) );
+                        pmap.Tiles.push_back( ProtoMap::Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
-                        Tiles.push_back( Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, true ) );
+                        pmap.Tiles.push_back( ProtoMap::Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, true ) );
                 }
             }
         }
@@ -419,7 +625,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             while( !istr.eof() && !istr.fail() )
             {
                 istr >> type >> hx >> hy;
-                if( !istr.fail() && hx >= 0 && hx < GetWidth() && hy >= 0 && hy < GetHeight() )
+                if( !istr.fail() && hx >= 0 && hx < pmap.GetWidth() && hy >= 0 && hy < pmap.GetHeight() )
                 {
                     if( !type.compare( 0, 4, "tile" ) )
                         is_roof = false;
@@ -462,7 +668,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     std::getline( istr, name, '\n' );
                     name = _str( name ).trim();
 
-                    Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, ox, oy, layer, is_roof ) );
+                    pmap.Tiles.push_back( ProtoMap::Tile( _str( name ).toHash(), hx, hy, ox, oy, layer, is_roof ) );
                 }
             }
         }
@@ -478,7 +684,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         string FuncName;
     };
     vector< AdditionalFields > entities_addon;
-    EntityVec entities;
     string objects_str = map_ini.GetAppContent( "Objects" );
     if( !objects_str.empty() )
     {
@@ -536,18 +741,14 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
                     if( is_critter )
                     {
-                        # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-                        Npc* cr = new Npc( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                        # else
-                        CritterCl* cr = new CritterCl( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                        # endif
+                        CritterType* cr = new CritterType( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
                         cr->SetCond( COND_LIFE );
                         entities.push_back( cr );
                         entities_addon.push_back( AdditionalFields() );
                     }
                     else
                     {
-                        Item* item = new Item( auto_id--, ProtoMngr.GetProtoItem( proto_id ) );
+                        ItemType* item = new ItemType( auto_id--, ProtoMngr.GetProtoItem( proto_id ) );
                         entities.push_back( item );
                         entities_addon.push_back( AdditionalFields() );
                     }
@@ -555,17 +756,17 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     continue;
                 }
 
-                # define SET_FIELD_CRITTER( field_name, prop )                        \
-                    if( field == field_name && is_critter )                           \
-                    {                                                                 \
-                        ( (MUTUAL_CRITTER*) entities.back() )->Set ## prop( ivalue ); \
-                        continue;                                                     \
+                #define SET_FIELD_CRITTER( field_name, prop )                      \
+                    if( field == field_name && is_critter )                        \
+                    {                                                              \
+                        ( (CritterType*) entities.back() )->Set ## prop( ivalue ); \
+                        continue;                                                  \
                     }
-                # define SET_FIELD_ITEM( field_name, prop )                 \
-                    if( field == field_name && !is_critter )                \
-                    {                                                       \
-                        ( (Item*) entities.back() )->Set ## prop( ivalue ); \
-                        continue;                                           \
+                #define SET_FIELD_ITEM( field_name, prop )                      \
+                    if( field == field_name && !is_critter )                    \
+                    {                                                           \
+                        ( (ItemType*) entities.back() )->Set ## prop( ivalue ); \
+                        continue;                                               \
                     }
                 SET_FIELD_CRITTER( "MapX", HexX );
                 SET_FIELD_CRITTER( "MapY", HexY );
@@ -579,9 +780,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     entities_addon.back().ParentUID = ivalue;
                 SET_FIELD_ITEM( "LightColor", LightColor );
                 if( field == "LightDay" )
-                    ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
+                    ( (ItemType*) entities.back() )->SetLightFlags( ( (ItemType*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
                 if( field == "LightDirOff" )
-                    ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ivalue );
+                    ( (ItemType*) entities.back() )->SetLightFlags( ( (ItemType*) entities.back() )->GetLightFlags() | ivalue );
                 SET_FIELD_ITEM( "LightDistance", LightDistance );
                 SET_FIELD_ITEM( "LightIntensity", LightIntensity );
                 if( field == "ScriptName" )
@@ -601,7 +802,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     {
                         if( field.substr( 13, 5 ) == "Index" )
                         {
-                            cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue.c_str() );
+                            cur_prop = CritterType::PropertiesRegistrator->Find( svalue.c_str() );
                             if( !cur_prop )
                             {
                                 WriteLog( "Critter property '{}' not found.\n", svalue );
@@ -634,11 +835,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
                     if( field == "PicMapName" )
                     {
-                        ( (Item*) entities.back() )->SetPicMap( _str( svalue ).toHash() );
+                        ( (ItemType*) entities.back() )->SetPicMap( _str( svalue ).toHash() );
                     }
                     else if( field == "PicInvName" )
                     {
-                        ( (Item*) entities.back() )->SetPicInv( _str( svalue ).toHash() );
+                        ( (ItemType*) entities.back() )->SetPicInv( _str( svalue ).toHash() );
                     }
                     else
                     {
@@ -649,7 +850,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                             entities_addon.back().ContainerUID = ivalue;
 
                         if( field == "Scenery_CanTalk" )
-                            ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
+                            ( (ItemType*) entities.back() )->SetIsCanTalk( ivalue != 0 );
                         SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
                     }
                 }
@@ -671,10 +872,10 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 script_name += "@";
             script_name += entity_addon.FuncName;
 
-            if( entity->Type == MUTUAL_CRITTER_TYPE )
-                ( (MUTUAL_CRITTER*) entity )->SetScriptId( _str( script_name ).toHash() );
-            else if( entity->Type == EntityType::Item )
-                ( (Item*) entity )->SetScriptId( _str( script_name ).toHash() );
+            if( entity->Type == CritterEntityType )
+                ( (CritterType*) entity )->SetScriptId( _str( script_name ).toHash() );
+            else if( entity->Type == ItemEntityType )
+                ( (ItemType*) entity )->SetScriptId( _str( script_name ).toHash() );
         }
     }
 
@@ -682,8 +883,8 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     for( size_t i = 0; i < entities.size(); i++ )
     {
         Entity* entity = entities[ i ];
-        if( entity->Type == EntityType::Item )
-            ( (Item*) entities[ i ] )->SetAccessory( ITEM_ACCESSORY_HEX );
+        if( entity->Type == ItemEntityType )
+            ( (ItemType*) entities[ i ] )->SetAccessory( ITEM_ACCESSORY_HEX );
     }
 
     // Deprecated, add UIDs
@@ -696,11 +897,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             AdditionalFields& entity_addon = entities_addon[ i ];
 
             // Find item in container
-            if( entity->Type != EntityType::Item )
+            if( entity->Type != ItemEntityType )
                 continue;
 
             // Find container
-            Item* entity_item = (Item*) entities[ i ];
+            ItemType* entity_item = (ItemType*) entities[ i ];
             ushort hx = entity_item->GetHexX();
             ushort hy = entity_item->GetHexY();
             for( size_t j = 0; j < entities.size(); j++ )
@@ -709,9 +910,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 AdditionalFields& entity_cont_addon = entities_addon[ j ];
                 if( entity_cont == entity )
                     continue;
-                if( entity_cont->Type == EntityType::Item && ( ( (Item*) entity_cont )->GetHexX() != hx || ( (Item*) entity_cont )->GetHexY() != hy ) )
+                if( entity_cont->Type == ItemEntityType && ( ( (ItemType*) entity_cont )->GetHexX() != hx || ( (ItemType*) entity_cont )->GetHexY() != hy ) )
                     continue;
-                if( entity_cont->Type == MUTUAL_CRITTER_TYPE && ( ( (MUTUAL_CRITTER*) entity_cont )->GetHexX() != hx || ( (MUTUAL_CRITTER*) entity_cont )->GetHexY() != hy ) )
+                if( entity_cont->Type == CritterEntityType && ( ( (CritterType*) entity_cont )->GetHexX() != hx || ( (CritterType*) entity_cont )->GetHexY() != hy ) )
                     continue;
                 if( !entity_cont_addon.UID )
                     entity_cont_addon.UID = ++uid;
@@ -728,8 +929,8 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         if( !entity_addon.ContainerUID )
             continue;
 
-        RUNTIME_ASSERT( entity->Type == EntityType::Item );
-        Item* entity_item = (Item*) entity;
+        RUNTIME_ASSERT( entity->Type == ItemEntityType );
+        ItemType* entity_item = (ItemType*) entity;
         entity_item->SetHexX( 0 );
         entity_item->SetHexY( 0 );
 
@@ -740,12 +941,12 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             if( !entity_parent_addon.UID || entity_parent_addon.UID != entity_addon.ContainerUID || entity_parent == entity )
                 continue;
 
-            if( entity_parent->Type == EntityType::CritterView )
+            if( entity_parent->Type == CritterEntityType )
             {
                 entity_item->SetAccessory( ITEM_ACCESSORY_CRITTER );
                 entity_item->SetCritId( entity_parent->Id );
             }
-            else if( entity_parent->Type == EntityType::Item )
+            else if( entity_parent->Type == ItemEntityType )
             {
                 entity_item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
                 entity_item->SetContainerId( entity_parent->Id );
@@ -754,264 +955,83 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         }
     }
 
-    return OnAfterLoad( entities );
-    #endif
-    return 0;
-}
-
-bool ProtoMap::OnAfterLoad( EntityVec& entities )
-{
-    #if 0
-    # if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    // Bind scripts
-    if( !BindScripts( entities ) )
-        return false;
-
-    // Parse objects
-    ushort maxhx = GetWidth();
-    ushort maxhy = GetHeight();
-    HexFlags = new uchar[ maxhx * maxhy ];
-    memzero( HexFlags, maxhx * maxhy );
-
-    uint scenery_count = 0;
-    UCharVec scenery_data;
-    for( auto& entity : entities )
-    {
-        if( entity->Type == MUTUAL_CRITTER_TYPE )
-        {
-            entity->AddRef();
-            // CrittersVec.push_back( (MUTUAL_CRITTER*) entity );
-            continue;
-        }
-
-        RUNTIME_ASSERT( entity->Type == EntityType::Item );
-        Item* item = (Item*) entity;
-        hash pid = item->GetProtoId();
-
-        if( !item->IsStatic() )
-        {
-            entity->AddRef();
-            if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
-                HexItemsVec.push_back( (Item*) entity );
-            else
-                ChildItemsVec.push_back( (Item*) entity );
-            continue;
-        }
-
-        RUNTIME_ASSERT( item->GetAccessory() == ITEM_ACCESSORY_HEX );
-
-        ushort hx = item->GetHexX();
-        ushort hy = item->GetHexY();
-        if( hx >= maxhx || hy >= maxhy )
-        {
-            WriteLog( "Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), GetName(), hx, hy );
-            continue;
-        }
-
-        if( !item->GetIsHiddenInStatic() )
-        {
-            item->AddRef();
-            StaticItemsVec.push_back( item );
-        }
-
-        if( !item->GetIsNoBlock() )
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-
-        if( !item->GetIsShootThru() )
-        {
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
-        }
-
-        if( item->GetIsScrollBlock() )
-        {
-            // Block around
-            for( int k = 0; k < 6; k++ )
-            {
-                ushort hx_ = hx, hy_ = hy;
-                MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
-                SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
-            }
-        }
-
-        if( item->GetIsTrigger() || item->GetIsTrap() )
-        {
-            item->AddRef();
-            TriggerItemsVec.push_back( item );
-
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_STATIC_TRIGGER );
-        }
-
-        if( item->IsNonEmptyBlockLines() )
-        {
-            ushort hx_ = hx, hy_ = hy;
-            bool raked = item->GetIsShootThru();
-            FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
-                                      SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
-                                      if( !raked )
-                                          SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
-                                      );
-        }
-
-        // Data for client
-        if( !item->GetIsHidden() )
-        {
-            scenery_count++;
-            WriteData( scenery_data, item->Id );
-            WriteData( scenery_data, item->GetProtoId() );
-            PUCharVec* all_data;
-            UIntVec* all_data_sizes;
-            item->Props.StoreData( false, &all_data, &all_data_sizes );
-            WriteData( scenery_data, (uint) all_data->size() );
-            for( size_t i = 0; i < all_data->size(); i++ )
-            {
-                WriteData( scenery_data, all_data_sizes->at( i ) );
-                WriteDataArr( scenery_data, all_data->at( i ), all_data_sizes->at( i ) );
-            }
-        }
-    }
-    SceneryData.clear();
-    WriteData( SceneryData, scenery_count );
-    if( !scenery_data.empty() )
-        WriteDataArr( SceneryData, &scenery_data[ 0 ], (uint) scenery_data.size() );
-
-    for( auto& entity : entities )
-        entity->Release();
-    entities.clear();
-
-    // Generate hashes
-    HashTiles = maxhx * maxhy;
-    if( Tiles.size() )
-        HashTiles = Crypt.MurmurHash2( (uchar*) &Tiles[ 0 ], (uint) Tiles.size() * sizeof( Tile ) );
-    HashScen = maxhx * maxhy;
-    if( SceneryData.size() )
-        HashScen = Crypt.MurmurHash2( (uchar*) &SceneryData[ 0 ], (uint) SceneryData.size() );
-
-    // Shrink the vector capacities to fit their contents and reduce memory use
-    UCharVec( SceneryData ).swap( SceneryData );
-    CrVec( CrittersVec ).swap( CrittersVec );
-    ItemVec( HexItemsVec ).swap( HexItemsVec );
-    ItemVec( ChildItemsVec ).swap( ChildItemsVec );
-    ItemVec( StaticItemsVec ).swap( StaticItemsVec );
-    ItemVec( TriggerItemsVec ).swap( TriggerItemsVec );
-    TileVec( Tiles ).swap( Tiles );
-
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryData.capacity() );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GetWidth() * GetHeight() );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
-    # endif
-
-    # ifdef FONLINE_EDITOR
-    // Get lower id
-    LastEntityId = 0;
-    for( auto& entity : entities )
-        if( !LastEntityId || entity->Id < LastEntityId )
-            LastEntityId = entity->Id;
-
-    AllEntities = std::move( entities );
-    # endif
-
     return true;
-    #endif
-    return 0;
 }
 
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-bool ProtoMap::BindScripts( EntityVec& entities )
-{
-    # if 0
-    int errors = 0;
-
-    // Map script
-    if( GetScriptId() )
-    {
-        hash func_num = Script::BindScriptFuncNumByFuncName( _str().parseHash( GetScriptId() ), "void %s(Map, bool)" );
-        if( !func_num )
-        {
-            WriteLog( "Map '{}', can't bind map function '{}'.\n", GetName(), _str().parseHash( GetScriptId() ) );
-            errors++;
-        }
-    }
-
-    // Entities scripts
-    for( auto& entity : entities )
-    {
-        if( entity->Type == MUTUAL_CRITTER_TYPE && ( (MUTUAL_CRITTER*) entity )->GetScriptId() )
-        {
-            string func_name = _str().parseHash( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter, bool)" );
-            if( !func_num )
-            {
-                WriteLog( "Map '{}', can't bind critter function '{}'.\n", GetName(), func_name );
-                errors++;
-            }
-        }
-        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsStatic() && ( (Item*) entity )->GetScriptId() )
-        {
-            string func_name = _str().parseHash( ( (Item*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item, bool)" );
-            if( !func_num )
-            {
-                WriteLog( "Map '{}', can't bind item function '{}'.\n", GetName(), func_name );
-                errors++;
-            }
-        }
-        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsStatic() && ( (Item*) entity )->GetScriptId() )
-        {
-            Item* item = (Item*) entity;
-            string func_name = _str().parseHash( item->GetScriptId() );
-            uint bind_id = 0;
-            if( item->GetIsTrigger() || item->GetIsTrap() )
-                bind_id = Script::BindByFuncName( func_name, "void %s(Critter, const Item, bool, uint8)", false );
-            else
-                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );
-            if( !bind_id )
-            {
-                WriteLog( "Map '{}', can't bind static item function '{}'.\n", GetName(), func_name );
-                errors++;
-            }
-            item->SceneryScriptBindId = bind_id;
-        }
-    }
-    return errors == 0;
-    # endif
-    return 0;
-}
-#endif
-
-bool ProtoMap::Load()
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool LoadProtoMap( ProtoMap& pmap, EntityVec& entities )
 {
     // Find file
     FileCollection maps( "fomap" );
     string path;
-    File& map_file = maps.FindFile( GetName(), &path );
+    File& map_file = maps.FindFile( pmap.GetName(), &path );
     if( !map_file.IsLoaded() )
     {
-        WriteLog( "Map '{}' not found.\n", GetName() );
+        WriteLog( "Map '{}' not found.\n", pmap.GetName() );
         return false;
     }
 
     // Store path
-    SetFileDir( _str( path ).extractDir() );
+    pmap.SetFileDir( _str( path ).extractDir() );
 
     // Load from file
     const char* data = map_file.GetCStr();
     bool is_old_format = ( strstr( data, "[Header]" ) && strstr( data, "[Tiles]" ) && strstr( data, "[Objects]" ) );
-    if( is_old_format && !LoadOldTextFormat( data ) )
+    if( is_old_format && !LoadOldTextFormat< CritterType, CritterEntityType, ItemType, ItemEntityType >( pmap, data, entities ) )
     {
-        WriteLog( "Unable to load map '{}' from old map format.\n", GetName() );
+        WriteLog( "Unable to load map '{}' from old map format.\n", pmap.GetName() );
         return false;
     }
-    else if( !is_old_format && !LoadTextFormat( data ) )
+    else if( !is_old_format && !LoadTextFormat< CritterType, CritterEntityType, ItemType, ItemEntityType >( pmap, data, entities ) )
     {
-        WriteLog( "Unable to load map '{}'.\n", GetName() );
+        WriteLog( "Unable to load map '{}'.\n", pmap.GetName() );
         return false;
     }
 
     return true;
 }
 
-#ifdef FONLINE_EDITOR
+template< class CritterType, EntityType CritterEntityType, class ItemType, EntityType ItemEntityType >
+static bool SaveProtoMap( ProtoMap& pmap, const string& custom_name )
+{
+    // Fill data
+    IniFile file;
+    SaveTextFormat< CritterType, CritterEntityType, ItemType, ItemEntityType >( pmap, file );
+
+    // Save
+    string save_fname = pmap.GetFileDir() + ( !custom_name.empty() ? custom_name : pmap.GetName() ) + ".fomap";
+    if( !file.SaveFile( save_fname ) )
+    {
+        WriteLog( "Unable write file '{}' in modules.\n", save_fname );
+        return false;
+    }
+    return true;
+}
+
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+bool ProtoMap::Load_Server()
+{
+    EntityVec entities;
+    if( !LoadProtoMap< Npc, EntityType::Npc, Item, EntityType::Item >( *this, entities ) )
+        return false;
+    return OnAfterLoad< Npc, EntityType::Npc, Item, EntityType::Item >( *this, entities );
+}
+#endif
+
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
+bool ProtoMap::Load_Client()
+{
+    EntityVec entities;
+    return LoadProtoMap< CritterView, EntityType::CritterView, ItemView, EntityType::ItemView >( *this, entities );
+}
+
+bool ProtoMap::Save_Client( const string& custom_name )
+{
+    return SaveProtoMap< CritterView, EntityType::CritterView, ItemView, EntityType::ItemView >( *this, custom_name );
+}
+#endif
+
+#if defined ( FONLINE_EDITOR )
 void ProtoMap::GenNew()
 {
     SetWidth( MAXHEX_DEF );
@@ -1031,22 +1051,6 @@ void ProtoMap::GenNew()
     Script::AppendVectorToArray( vec2, arr2 );
     SetDayColor( arr2 );
     arr2->Release();
-}
-
-bool ProtoMap::Save( const string& custom_name )
-{
-    // Fill data
-    IniFile file;
-    SaveTextFormat( file );
-
-    // Save
-    string save_fname = GetFileDir() + ( !custom_name.empty() ? custom_name : GetName() ) + ".fomap";
-    if( !file.SaveFile( save_fname ) )
-    {
-        WriteLog( "Unable write file '{}' in modules.\n", save_fname );
-        return false;
-    }
-    return true;
 }
 
 bool ProtoMap::IsMapFile( const string& fname )

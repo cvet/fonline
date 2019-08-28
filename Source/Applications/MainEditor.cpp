@@ -167,7 +167,7 @@ struct MapperWindow: GuiWindow
 
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
         File::SetCurrentDir( MapperInstance->ServerWritePath, "./" );
-        if( !pmap->Load() )
+        if( !pmap->Load_Client() )
         {
             MapperInstance->AddMess( "File not found or truncated." );
             File::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );

@@ -376,7 +376,7 @@ bool ProtoManager::LoadProtosFromFiles()
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     for( auto& kv : mapProtos )
     {
-        if( !kv.second->Load() )
+        if( !kv.second->Load_Server() )
         {
             WriteLog( "Load proto map '{}' fail.\n", kv.second->GetName() );
             errors++;

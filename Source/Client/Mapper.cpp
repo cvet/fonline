@@ -245,7 +245,7 @@ bool FOMapper::Init()
 
         string    map_name = MainConfig->GetStr( "", "Map" );
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
-        bool      initialized = pmap->Load();
+        bool      initialized = pmap->Load_Client();
 
         File::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
@@ -928,7 +928,7 @@ void FOMapper::ParseKeyboard()
                 {
                     HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
                     File::SetCurrentDir( ServerWritePath, "./" );
-                    if( ( (ProtoMap*) ActiveMap->Proto )->Save( "" ) )
+                    if( ( (ProtoMap*) ActiveMap->Proto )->Save_Client( "" ) )
                     {
                         AddMess( "Map saved." );
                         RunMapSaveScript( ActiveMap );
@@ -3948,7 +3948,7 @@ void FOMapper::ParseCommand( const string& command )
 
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
         File::SetCurrentDir( ServerWritePath, "./" );
-        if( !pmap->Load() )
+        if( !pmap->Load_Client() )
         {
             AddMess( "File not found or truncated." );
             File::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -3995,7 +3995,7 @@ void FOMapper::ParseCommand( const string& command )
         HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
 
         File::SetCurrentDir( ServerWritePath, "./" );
-        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name ) )
+        if( ( (ProtoMap*) ActiveMap->Proto )->Save_Client( map_name ) )
         {
             AddMess( "Save map success." );
             RunMapSaveScript( ActiveMap );
@@ -4745,7 +4745,7 @@ MapView* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
     File::SetCurrentDir( ServerWritePath, "./" );
-    if( !pmap->Load() )
+    if( !pmap->Load_Client() )
     {
         File::SetCurrentDir( ClientWritePath, CLIENT_DATA );
         return nullptr;
@@ -4784,7 +4784,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap( MapView* map, string custom_name )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
 
     File::SetCurrentDir( ServerWritePath, "./" );
-    bool result = ( (ProtoMap*) map->Proto )->Save( custom_name );
+    bool result = ( (ProtoMap*) map->Proto )->Save_Client( custom_name );
     File::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     if( result )
         Self->RunMapSaveScript( map );

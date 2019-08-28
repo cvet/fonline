@@ -35,32 +35,35 @@ class Entity;
 using EntityVec = vector< Entity* >;
 using EntityMap = map< uint, Entity* >;
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-class Location;
-using LocationVec = vector< Location* >;
-using LocationMap = map< uint, Location* >;
-class Map;
-using MapVec = vector< Map* >;
-using MapMap = map< uint, Map* >;
-class Critter;
-using CritterMap = map< uint, Critter* >;
-using CritterVec = vector< Critter* >;
 class Item;
 using ItemVec = vector< Item* >;
 using ItemMap = map< uint, Item* >;
+class Critter;
+using CritterMap = map< uint, Critter* >;
+using CritterVec = vector< Critter* >;
+class Map;
+using MapVec = vector< Map* >;
+using MapMap = map< uint, Map* >;
+class Location;
+using LocationVec = vector< Location* >;
+using LocationMap = map< uint, Location* >;
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-class LocationView;
-using LocationViewVec = vector< LocationView* >;
-using LocationViewMap = map< uint, LocationView* >;
-class MapView;
-using MapViewVec = vector< MapView* >;
-using MapViewMap = map< uint, MapView* >;
-class CritterView;
-using CritterViewMap = map< uint, CritterView* >;
-using CritterViewVec = vector< CritterView* >;
 class ItemView;
 using ItemViewVec = vector< ItemView* >;
 using ItemViewMap = map< uint, ItemView* >;
+class ItemHexView;
+using ItemHexViewVec = vector< ItemHexView* >;
+using ItemHexViewMap = map< uint, ItemHexView* >;
+class CritterView;
+using CritterViewMap = map< uint, CritterView* >;
+using CritterViewVec = vector< CritterView* >;
+class MapView;
+using MapViewVec = vector< MapView* >;
+using MapViewMap = map< uint, MapView* >;
+class LocationView;
+using LocationViewVec = vector< LocationView* >;
+using LocationViewMap = map< uint, LocationView* >;
 #endif
 class ProtoEntity;
 using ProtoEntityVec = vector< ProtoEntity* >;
@@ -196,16 +199,15 @@ public:
     typedef vector< Tile > TileVec;
     TileVec Tiles;
 
-private:
-    #ifdef FONLINE_EDITOR
-    void SaveTextFormat( IniFile& file );
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+    bool Load_Server();
     #endif
-    bool LoadTextFormat( const char* buf );
-    bool LoadOldTextFormat( const char* buf );
-    bool OnAfterLoad( EntityVec& entities );
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
+    bool Load_Client();
+    bool Save_Client( const string& custom_name );
+    #endif
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-public:
     UCharVec   SceneryData;
     hash       HashTiles;
     hash       HashScen;
@@ -216,17 +218,10 @@ public:
     ItemVec    StaticItemsVec;
     ItemVec    TriggerItemsVec;
     uchar*     HexFlags;
-
-private:
-    bool BindScripts( EntityVec& entities );
     #endif
 
-public:
-    bool Load();
-
-    #ifdef FONLINE_EDITOR
+    #if defined ( FONLINE_EDITOR )
     void        GenNew();
-    bool        Save( const string& custom_name );
     static bool IsMapFile( const string& fname );
     #endif
 

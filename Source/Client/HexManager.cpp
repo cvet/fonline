@@ -3937,8 +3937,8 @@ bool HexManager::LoadMap( hash map_pid )
         return false;
     }
 
-    File fm;
-    if( !fm.LoadStream( cache, cache_len ) )
+    File cache_file;
+    if( !cache_file.LoadStream( cache, cache_len ) )
     {
         WriteLog( "Load map '{}' from stream fail.\n", map_name );
         delete[] cache;
@@ -3947,45 +3947,45 @@ bool HexManager::LoadMap( hash map_pid )
     delete[] cache;
 
     // Header
-    uint   buf_len = fm.GetFsize();
-    uchar* buf = Crypt.Uncompress( fm.GetBuf(), buf_len, 50 );
+    uint   buf_len = cache_file.GetFsize();
+    uchar* buf = Crypt.Uncompress( cache_file.GetBuf(), buf_len, 50 );
     if( !buf )
     {
         WriteLog( "Uncompress map fail.\n" );
         return false;
     }
 
-    fm.UnloadFile();
-    fm.LoadStream( buf, buf_len );
+    cache_file.UnloadFile();
+    cache_file.LoadStream( buf, buf_len );
     delete[] buf;
 
-    if( fm.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
+    if( cache_file.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
     {
         WriteLog( "Map format is deprecated.\n" );
         return false;
     }
 
-    if( fm.GetBEUInt() != map_pid )
+    if( cache_file.GetBEUInt() != map_pid )
     {
         WriteLog( "Data truncated.\n" );
         return false;
     }
 
     // Data
-    ushort maxhx = fm.GetBEUShort();
-    ushort maxhy = fm.GetBEUShort();
-    uint   tiles_len = fm.GetBEUInt();
-    uint   scen_len = fm.GetBEUInt();
+    ushort maxhx = cache_file.GetBEUShort();
+    ushort maxhy = cache_file.GetBEUShort();
+    uint   tiles_len = cache_file.GetBEUInt();
+    uint   scen_len = cache_file.GetBEUInt();
 
     // Create field
     ResizeField( maxhx, maxhy );
 
     // Tiles
-    curHashTiles = ( tiles_len ? Crypt.MurmurHash2( fm.GetCurBuf(), tiles_len ) : maxhx * maxhy );
+    curHashTiles = ( tiles_len ? Crypt.MurmurHash2( cache_file.GetCurBuf(), tiles_len ) : maxhx * maxhy );
     for( uint i = 0; i < tiles_len / sizeof( ProtoMap::Tile ); i++ )
     {
         ProtoMap::Tile tile;
-        if( !fm.CopyMem( &tile, sizeof( tile ) ) )
+        if( !cache_file.CopyMem( &tile, sizeof( tile ) ) )
         {
             WriteLog( "Unable to read tile.\n" );
             continue;
@@ -4017,21 +4017,21 @@ bool HexManager::LoadMap( hash map_pid )
     }
 
     // Scenery
-    curHashScen = ( scen_len ? Crypt.MurmurHash2( fm.GetCurBuf(), scen_len ) : maxhx * maxhy );
-    uint scen_count = fm.GetLEUInt();
+    curHashScen = ( scen_len ? Crypt.MurmurHash2( cache_file.GetCurBuf(), scen_len ) : maxhx * maxhy );
+    uint scen_count = cache_file.GetLEUInt();
     for( uint i = 0; i < scen_count; i++ )
     {
-        uint        id = fm.GetLEUInt();
-        hash        proto_id = fm.GetLEUInt();
-        uint        datas_size = fm.GetLEUInt();
+        uint        id = cache_file.GetLEUInt();
+        hash        proto_id = cache_file.GetLEUInt();
+        uint        datas_size = cache_file.GetLEUInt();
         UCharVecVec props_data( datas_size );
         for( uint i = 0; i < datas_size; i++ )
         {
-            uint data_size = fm.GetLEUInt();
+            uint data_size = cache_file.GetLEUInt();
             if( data_size )
             {
                 props_data[ i ].resize( data_size );
-                fm.CopyMem( &props_data[ i ][ 0 ], data_size );
+                cache_file.CopyMem( &props_data[ i ][ 0 ], data_size );
             }
         }
         Properties props( ItemView::PropertiesRegistrator );
@@ -4163,8 +4163,8 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
         return;
     }
 
-    File fm;
-    if( !fm.LoadStream( cache, cache_len ) )
+    File cache_file;
+    if( !cache_file.LoadStream( cache, cache_len ) )
     {
         WriteLog( "Load map '{}' from stream fail.\n", map_name );
         delete[] cache;
@@ -4172,38 +4172,38 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
     }
     delete[] cache;
 
-    uint   buf_len = fm.GetFsize();
-    uchar* buf = Crypt.Uncompress( fm.GetBuf(), buf_len, 50 );
+    uint   buf_len = cache_file.GetFsize();
+    uchar* buf = Crypt.Uncompress( cache_file.GetBuf(), buf_len, 50 );
     if( !buf )
     {
         WriteLog( "Uncompress map fail.\n" );
         return;
     }
 
-    fm.LoadStream( buf, buf_len );
+    cache_file.LoadStream( buf, buf_len );
     delete[] buf;
 
-    if( fm.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
+    if( cache_file.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
     {
         WriteLog( "Map format is not supported.\n" );
         return;
     }
 
-    if( fm.GetBEUInt() != map_pid )
+    if( cache_file.GetBEUInt() != map_pid )
     {
         WriteLog( "Invalid proto number.\n" );
         return;
     }
 
     // Data
-    ushort maxhx = fm.GetBEUShort();
-    ushort maxhy = fm.GetBEUShort();
-    uint   tiles_len = fm.GetBEUInt();
-    uint   scen_len = fm.GetBEUInt();
+    ushort maxhx = cache_file.GetBEUShort();
+    ushort maxhy = cache_file.GetBEUShort();
+    uint   tiles_len = cache_file.GetBEUInt();
+    uint   scen_len = cache_file.GetBEUInt();
 
-    hash_tiles = ( tiles_len ? Crypt.MurmurHash2( fm.GetCurBuf(), tiles_len ) : maxhx * maxhy );
-    fm.GoForward( tiles_len );
-    hash_scen = ( scen_len ? Crypt.MurmurHash2( fm.GetCurBuf(), scen_len ) : maxhx * maxhy );
+    hash_tiles = ( tiles_len ? Crypt.MurmurHash2( cache_file.GetCurBuf(), tiles_len ) : maxhx * maxhy );
+    cache_file.GoForward( tiles_len );
+    hash_scen = ( scen_len ? Crypt.MurmurHash2( cache_file.GetCurBuf(), scen_len ) : maxhx * maxhy );
 
     WriteLog( "complete.\n" );
 }

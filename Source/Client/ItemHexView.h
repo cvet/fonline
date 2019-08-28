@@ -109,6 +109,4 @@ public: // Move some specific types to end
     UShortPairVec EffSteps;
 };
 
-using ItemHexViewVec = vector< ItemHexView* >;
-
 #endif // __ITEM_HEX__
