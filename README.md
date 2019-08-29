@@ -92,3 +92,4 @@ Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
 * Telegram @aka_cvet
 * Skype cvet___
 * Phone/WhatsApp/Telegram/Viber +7 981 9028150
+* E-mail cvet@tut.by
