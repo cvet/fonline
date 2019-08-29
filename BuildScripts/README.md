@@ -1,4 +1,4 @@
-# FOnline Engine : build scripts
+# FOnline Engine : Build scripts
 
 Following environment variables must be set before starting build scripts:
 
