@@ -1,4 +1,4 @@
-# FOnline Engine
+# FOnline Engine (version 0.6 WIP, unstable)
 
 [![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)](https://ci.fonline.ru/blue/organizations/jenkins/fonline/activity)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
@@ -30,7 +30,7 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 ## WIP features
 
-* Multifunctional editor
+* Multifunctional editor (currently developed in master branch)
 * C# as scripting language (Mono)
 * Singleplayer mode
 * Parallelism for server
@@ -47,9 +47,9 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependecies of engine, included in repository
 
-# Third-party packages
+## Third-party packages
 
-* ACM sound format reader by Abel
+* ACM reader by Abel
 * [AngelScript](https://www.angelcode.com/angelscript/)
 * [Asio](https://think-async.com/Asio/)
 * [Assimp](http://www.assimp.org/)
@@ -58,7 +58,8 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * [diStorm3](https://github.com/gdabah/distorm)
 * [PNG](http://www.libpng.org/pub/png/libpng.html)
 * [SDL2](https://www.libsdl.org/download-2.0.php)
-* SHA1 by Steve Reid and SHA2 by Olivier Gay hash generators
+* SHA1 generator by Steve Reid
+* SHA2 generator by Olivier Gay
 * [Theora](https://www.theora.org/downloads/)
 * [Vorbis](https://xiph.org/vorbis/)
 * [cURL](https://curl.haxx.se/)
