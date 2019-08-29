@@ -1,6 +1,6 @@
 # FOnline Engine
 
-![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)
+[![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)](https://ci.fonline.ru/blue/organizations/jenkins/fonline/activity)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
 
 ## Goal
@@ -9,11 +9,12 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 ## About (not actually ready marked as *)
 
+* C++14
 * Editor and Server target platforms
   * Windows
   * Linux
   * macOS*
-* Client
+* Client target platforms
   * Windows
   * Linux
   * macOS
@@ -22,7 +23,7 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
   * Web
   * PS4*
 * Online or singleplayer*
-* Supporting of Fallout 1/2/Tactics, Arcanum, Boldur's Gate asset formats
+* Supporting of Fallout 1/2/Tactics, Arcanum, Boldur's Gate and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal / Square map tiling
 * ...write more
