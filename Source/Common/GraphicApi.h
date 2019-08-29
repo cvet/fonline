@@ -1,0 +1,118 @@
+#pragma once
+
+#include "Common.h"
+#include "SDL.h"
+#include "SDL_syswm.h"
+#include "GluStuff.h"
+#ifndef FO_OGL_ES
+# include "GL/glew.h"
+# include "SDL_opengl.h"
+#else
+# include "SDL_opengles2.h"
+#endif
+#include "SDL_vulkan.h"
+
+#ifdef FO_MSVC
+# pragma comment( lib, "opengl32.lib" )
+# pragma comment( lib, "glu32.lib" )
+# pragma comment( lib, "Version.lib" )
+# pragma comment( lib, "Winmm.lib" )
+# pragma comment( lib, "Imm32.lib" )
+#endif
+
+#ifdef FO_HAVE_DX
+# include <d3d9.h>
+# ifdef FO_MSVC
+#  pragma comment(lib, "d3d9")
+#  pragma comment(lib, "gdi32")
+# endif
+#endif
+
+#ifndef FO_OGL_ES
+# ifdef FO_MAC
+#  undef glGenVertexArrays
+#  undef glBindVertexArray
+#  undef glDeleteVertexArrays
+#  define glGenVertexArrays                      glGenVertexArraysAPPLE
+#  define glBindVertexArray                      glBindVertexArrayAPPLE
+#  define glDeleteVertexArrays                   glDeleteVertexArraysAPPLE
+# endif
+#else
+# define glGenVertexArrays                       glGenVertexArraysOES
+# define glBindVertexArray                       glBindVertexArrayOES
+# define glDeleteVertexArrays                    glDeleteVertexArraysOES
+# define glGenFramebuffersEXT                    glGenFramebuffers
+# define glBindFramebufferEXT                    glBindFramebuffer
+# define glFramebufferTexture2DEXT               glFramebufferTexture2D
+# define glRenderbufferStorageEXT                glRenderbufferStorage
+# define glGenRenderbuffersEXT                   glGenRenderbuffers
+# define glBindRenderbufferEXT                   glBindRenderbuffer
+# define glFramebufferRenderbufferEXT            glFramebufferRenderbuffer
+# define glCheckFramebufferStatusEXT             glCheckFramebufferStatus
+# define glDeleteRenderbuffersEXT                glDeleteRenderbuffers
+# define glDeleteFramebuffersEXT                 glDeleteFramebuffers
+# define glProgramBinary( a, b, c, d )
+# define glGetProgramBinary( a, b, c, d, e )
+# define glProgramParameteri                     glProgramParameteriEXT
+# define GL_PROGRAM_BINARY_RETRIEVABLE_HINT      0
+# define GL_PROGRAM_BINARY_LENGTH                0
+# define GL_FRAMEBUFFER_COMPLETE_EXT             GL_FRAMEBUFFER_COMPLETE
+# define GL_FRAMEBUFFER_EXT                      GL_FRAMEBUFFER
+# define GL_COLOR_ATTACHMENT0_EXT                GL_COLOR_ATTACHMENT0
+# define GL_RENDERBUFFER_EXT                     GL_RENDERBUFFER
+# define GL_DEPTH_ATTACHMENT_EXT                 GL_DEPTH_ATTACHMENT
+# define GL_RENDERBUFFER_BINDING_EXT             GL_RENDERBUFFER_BINDING
+# define GL_CLAMP                                GL_CLAMP_TO_EDGE
+# define GL_DEPTH24_STENCIL8                     GL_DEPTH24_STENCIL8_OES
+# define GL_DEPTH24_STENCIL8_EXT                 GL_DEPTH24_STENCIL8_OES
+# define GL_STENCIL_ATTACHMENT_EXT               GL_STENCIL_ATTACHMENT
+# define glGetTexImage( a, b, c, d, e )
+# define glDrawBuffer( a )
+# ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
+#  define GL_MAX_COLOR_TEXTURE_SAMPLES           0
+#  define GL_TEXTURE_2D_MULTISAMPLE              0
+# endif
+# ifndef GL_MAX
+#  define GL_MAX                                 GL_MAX_EXT
+#  define GL_MIN                                 GL_MIN_EXT
+# endif
+# if defined ( FO_IOS )
+#  define glTexImage2DMultisample( a, b, c, d, e, f )
+#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
+#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
+# elif defined ( FO_ANDROID )
+#  define glGenVertexArraysOES                   glGenVertexArraysOES_
+#  define glBindVertexArrayOES                   glBindVertexArrayOES_
+#  define glDeleteVertexArraysOES                glDeleteVertexArraysOES_
+#  define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
+#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
+#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
+extern PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
+extern PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
+extern PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
+extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
+extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
+# elif defined ( FO_WEB )
+#  define glTexImage2DMultisample( a, b, c, d, e, f )
+#  define glRenderbufferStorageMultisample( a, b, c, d, e )
+#  define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
+# endif
+#endif
+
+#define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, _str( # expr " error {:#X}", err__ ) ); } }
+
+extern bool OGL_version_2_0;
+extern bool OGL_vertex_buffer_object;
+extern bool OGL_framebuffer_object;
+extern bool OGL_framebuffer_object_ext;
+extern bool OGL_framebuffer_multisample;
+extern bool OGL_packed_depth_stencil;
+extern bool OGL_texture_multisample;
+extern bool OGL_vertex_array_object;
+extern bool OGL_get_program_binary;
+#define GL_HAS( extension )    ( OGL_ ## extension )
+
+namespace GraphicApi
+{
+    bool Init();
+}

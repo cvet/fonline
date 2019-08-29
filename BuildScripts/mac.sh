@@ -14,5 +14,5 @@ rm -rf Mac/*
 
 pwd
 
-/Applications/CMake.app/Contents/bin/cmake -G Xcode "$ROOT_FULL_PATH/Source"
+/Applications/CMake.app/Contents/bin/cmake -G Xcode "$ROOT_FULL_PATH"
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline

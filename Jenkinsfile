@@ -120,7 +120,7 @@ pipeline {
         }
       }
       steps {
-        dir('SDK')
+        dir('SdkPlaceholder')
         {
           sh 'rm -rf ./Binaries/ReadMe.txt'
           unstash 'android'
@@ -134,7 +134,7 @@ pipeline {
       }
       post {
         success {
-          dir('SDK') {
+          dir('SdkPlaceholder') {
             archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
           }
         }

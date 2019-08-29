@@ -1,0 +1,7 @@
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Server\.NETFramework,Version=v4.5.AssemblyAttribute.cs
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Server\FOnline.BuildSystem.pdb
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Server\FOnline.BuildSystem.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Server\FOnline.BuildSystem.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Server\FOnline.BuildSystem.pdb
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Server\FOnline.Core.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Server\FOnline.Core.pdb

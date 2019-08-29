@@ -34,21 +34,3 @@ Path to directory where binary files will be copied after build.
 Automatically install packages needed for build.
  
 `FO_INSTALL_PACKAGES=1`
-
-### Optional: GoCD
-Additional documentation describing integratation with GoCD continuous delivery system can be found here: [GoCD documentation](https://docs.gocd.org/).
-
-#### Windows setup
-- Install GoCD
-- Install CMake
-- Create user go/password (admin), assign to Go services. Needs additional permissions.
-
-#### Linux setup
-- Install GoCD
-
-#### Mac setup
-- Install GoCD
-- Install CMake
-- Install Xcode
-
-If everything is set correctly, all what's required is to run a proper build script; see [example](gocd_example.png).

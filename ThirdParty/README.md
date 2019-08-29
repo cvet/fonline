@@ -1,0 +1,27 @@
+# Packages description
+
+* Acm - ACM sound format reader
+* AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
+* Asio - [asio-1.10.8](https://think-async.com/Asio/)
+* Assimp - [assimp-4.1.0](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
+* GLEW - [GLEW library](http://glew.sourceforge.net/)
+* Json - [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
+* NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)
+* PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
+* SDL2 - [SDL2-2.0.9](https://www.libsdl.org/download-2.0.php) ([2](https://github.com/spurious/SDL-mirror))
+* SHA - SHA-1 & SHA-2 hash generators
+* Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
+* Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
+* cURL - [curl-7.61.1](https://curl.haxx.se/)
+* fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
+* fmt - [fmt-4.0.0](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
+* imgui - [imgui-docking-150819](https://github.com/ocornut/imgui)
+* libbson - [libbson-1.8.2](http://mongoc.org/libbson/current/index.html)
+* mbedTLS - [mbedtls-2.13.0-apache](https://tls.mbed.org/)
+* mongo-c-driver - [mongo-c-driver-1.8.2](https://github.com/mongodb/mongo-c-driver)
+* ogg - [libogg-1.3.1](https://xiph.org/ogg/)
+* openssl - [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
+* unqlite - [unqlite-1.1.9](https://unqlite.org/)
+* variant - [variant-1.1.5](https://github.com/mapbox/variant)
+* websocketpp - [websocketpp_0.7.0](https://github.com/zaphoyd/websocketpp)
+* zlib - [zlib128](https://www.zlib.net/)
