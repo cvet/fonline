@@ -3506,7 +3506,8 @@ void PropertyRegistrator::SetDefaults(
 
 void PropertyRegistrator::FinishRegistration()
 {
-    RUNTIME_ASSERT( !registrationFinished );
+    if( registrationFinished )
+        return;
     registrationFinished = true;
 
     // Fix POD data offsets

@@ -53,7 +53,9 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
 
-...write about build with CMake
+...write about build with cmake
+...write about make sdk
+...write about how setup own test environment
 
 ## Third-party packages
 
@@ -86,10 +88,10 @@ Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
 
 ## Help and support
 
-* [English-speaking community](https://fodev.net)
-* [Russian-speaking community](https://fonline.ru)
-* [Discord invite](https://discord.gg/xa6TbqU)
+* E-mail cvet@tut.by
 * Telegram @aka_cvet
 * Skype cvet___
 * Phone/WhatsApp/Telegram/Viber +7 981 9028150
-* E-mail cvet@tut.by
+* [English-speaking community](https://fodev.net)
+* [Russian-speaking community](https://fonline.ru)
+* [Discord invite](https://discord.gg/xa6TbqU)

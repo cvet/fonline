@@ -16,7 +16,7 @@
 
 ProtoEntity::ProtoEntity( hash proto_id, EntityType type, PropertyRegistrator* registrator ): Entity( 0, type, registrator, nullptr ), ProtoId( proto_id )
 {
-    //
+    RUNTIME_ASSERT( ProtoId );
 }
 
 bool ProtoEntity::HaveComponent( hash name ) const
@@ -58,6 +58,17 @@ hash Entity::GetProtoId() const
 
 string Entity::GetName() const
 {
+    switch( Type )
+    {
+    case EntityType::EntityProto:
+    case EntityType::ItemProto:
+    case EntityType::CritterProto:
+    case EntityType::MapProto:
+    case EntityType::LocationProto:
+        return _str().parseHash( ( (ProtoEntity*) this )->ProtoId );
+    default:
+        break;
+    }
     return Proto ? _str().parseHash( Proto->ProtoId ) : "Unnamed";
 }
 

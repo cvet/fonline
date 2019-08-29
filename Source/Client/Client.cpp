@@ -5517,9 +5517,11 @@ bool FOClient::ReloadScripts()
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
     Globals = new GlobalVars();
     CritterView::SetPropertyRegistrator( registrators[ 1 ] );
+    ProtoCritter::SetPropertyRegistrator( registrators[ 1 ] );
     CritterView::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
     CritterView::PropertiesRegistrator->SetNativeSetCallback( "ModelName", OnSetCritterModelName );
     ItemView::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
     ItemView::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
@@ -5536,8 +5538,10 @@ bool FOClient::ReloadScripts()
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     MapView::SetPropertyRegistrator( registrators[ 3 ] );
+    ProtoMap::SetPropertyRegistrator( registrators[ 3 ] );
     MapView::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
     LocationView::SetPropertyRegistrator( registrators[ 4 ] );
+    ProtoLocation::SetPropertyRegistrator( registrators[ 4 ] );
     LocationView::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
     Globals->Props.RestoreData( GlovalVarsPropertiesData );

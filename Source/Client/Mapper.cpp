@@ -4323,7 +4323,9 @@ bool FOMapper::InitScriptSystem()
     SAFEDEL( Globals );
     Globals = new GlobalVars();
     CritterView::SetPropertyRegistrator( registrators[ 1 ] );
+    ProtoCritter::SetPropertyRegistrator( registrators[ 1 ] );
     ItemView::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
@@ -4339,7 +4341,9 @@ bool FOMapper::InitScriptSystem()
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
     ItemView::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     MapView::SetPropertyRegistrator( registrators[ 3 ] );
+    ProtoMap::SetPropertyRegistrator( registrators[ 3 ] );
     LocationView::SetPropertyRegistrator( registrators[ 4 ] );
+    ProtoLocation::SetPropertyRegistrator( registrators[ 4 ] );
 
     if( !Script::PostInitScriptSystem() )
     {

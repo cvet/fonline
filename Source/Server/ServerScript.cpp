@@ -202,8 +202,10 @@ bool FOServer::InitScriptSystem()
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
     Globals = new GlobalVars();
     Critter::SetPropertyRegistrator( registrators[ 1 ] );
+    ProtoCritter::SetPropertyRegistrator( registrators[ 1 ] );
     Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsHidden", OnSetItemChangeView );
@@ -219,8 +221,10 @@ bool FOServer::InitScriptSystem()
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
+    ProtoMap::SetPropertyRegistrator( registrators[ 3 ] );
     Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
+    ProtoLocation::SetPropertyRegistrator( registrators[ 4 ] );
     Location::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
     WriteLog( "Script system initialization complete.\n" );
