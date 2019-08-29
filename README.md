@@ -10,7 +10,7 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 ## About (not actually ready marked as *)
 
 * C++14 *(not all refactored but wip)*
-* OpenGL/ES/WebGL or DirectX *(wip)* rendering
+* OpenGL/ES/WebGL and DirectX *(wip)* rendering
 * AngelScript and C# *(wip)* scripting languages
 * Editor and Server target platforms
   * Windows
@@ -57,32 +57,32 @@ Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
 
 ## Third-party packages
 
-* ACM reader by Abel
-* [AngelScript](https://www.angelcode.com/angelscript/)
-* [Asio](https://think-async.com/Asio/)
-* [Assimp](http://www.assimp.org/)
-* [GLEW](http://glew.sourceforge.net/)
-* [Json](https://github.com/azadkuh/nlohmann_json_release)
-* [diStorm3](https://github.com/gdabah/distorm)
-* [PNG](http://www.libpng.org/pub/png/libpng.html)
-* [SDL2](https://www.libsdl.org/download-2.0.php)
-* SHA1 generator by Steve Reid
-* SHA2 generator by Olivier Gay
-* [Theora](https://www.theora.org/downloads/)
-* [Vorbis](https://xiph.org/vorbis/)
-* [cURL](https://curl.haxx.se/)
-* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
-* [{fmt}](https://fmt.dev/latest/index.html)
-* [Dear ImGui](https://github.com/ocornut/imgui)
-* [libbson](http://mongoc.org/libbson/current/index.html)
-* [mbedTLS](https://tls.mbed.org/)
-* [MongoC Driver](https://github.com/mongodb/mongo-c-driver)
-* [libogg](https://xiph.org/ogg/)
-* [openssl](https://www.openssl.org/)
-* [unqlite](https://unqlite.org/)
-* [variant](https://github.com/mapbox/variant)
-* [websocketpp](https://github.com/zaphoyd/websocketpp)
-* [zlib](https://www.zlib.net/)
+* ACM by Abel - sound file format reader
+* [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
+* [Asio](https://think-async.com/Asio/) - networking library
+* [Assimp](http://www.assimp.org/) - 3d models/animations loading library
+* [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
+* [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
+* [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
+* [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
+* [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
+* SHA1 by Steve Reid - hash generator
+* SHA2 by Olivier Gay - hash generator
+* [Theora](https://www.theora.org/downloads/) - video library
+* [Vorbis](https://xiph.org/vorbis/) - audio library
+* [cURL](https://curl.haxx.se/) - transferring data via different network protocols
+* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
+* [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
+* [Dear ImGui](https://github.com/ocornut/imgui) - gui library
+* [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
+* [mbedTLS](https://tls.mbed.org/) - library for network transport security
+* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
+* [libogg](https://xiph.org/ogg/) - audio library
+* [openssl](https://www.openssl.org/) - library for network transport security
+* [unqlite](https://unqlite.org/) - nosql database engine
+* [variant](https://github.com/mapbox/variant) - c++17 std::variant implementation in c++11/14
+* [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
+* [zlib](https://www.zlib.net/) - compression library
 
 ## Help and support
 
