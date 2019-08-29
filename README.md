@@ -9,11 +9,13 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 ## About (not actually ready marked as *)
 
-* C++14
+* C++14 *(not all refactored but wip)*
+* OpenGL/ES/WebGL or DirectX *(wip)* rendering
+* AngelScript and C# *(wip)* scripting languages
 * Editor and Server target platforms
   * Windows
   * Linux
-  * macOS*
+  * macOS *(wip)*
 * Client target platforms
   * Windows
   * Linux
@@ -21,14 +23,14 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
   * iOS
   * Android
   * Web
-  * PS4*
-* Online or singleplayer*
+  * PS4 *(wip)*
+* Online or singleplayer *(wip)* modes
 * Supporting of Fallout 1/2/Tactics, Arcanum, Boldur's Gate and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
-* Hexagonal / Square map tiling
+* Hexagonal/square map tiling
 * ...write more
 
-## WIP features
+## Milestones
 
 * Multifunctional editor (currently developed in master branch)
 * C# as scripting language (Mono)
@@ -46,6 +48,12 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * *Source* - fonline engine specific code
 * *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependecies of engine, included in repository
+
+## Build
+
+Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
+
+...write about build with CMake
 
 ## Third-party packages
 
@@ -76,12 +84,11 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * [websocketpp](https://github.com/zaphoyd/websocketpp)
 * [zlib](https://www.zlib.net/)
 
-## Git LFS
-
-Before clone make sure that you install Git LFS
-https://git-lfs.github.com/
-
 ## Help and support
 
 * [English-speaking community](https://fodev.net)
 * [Russian-speaking community](https://fonline.ru)
+* [Discord invite](https://discord.gg/xa6TbqU)
+* Telegram @aka_cvet
+* Skype cvet___
+* Phone/WhatsApp/Telegram/Viber +7 981 9028150
