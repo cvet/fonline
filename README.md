@@ -43,9 +43,37 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * *Other* - historical stuff, deprecated and not used
 * *Resources* - resources for build applications but not related to code
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
-* *Source* - fonline specific code
+* *Source* - fonline engine specific code
 * *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependecies of engine, included in repository
+
+# Third-party packages
+
+* ACM sound format reader by Abel
+* [AngelScript](https://www.angelcode.com/angelscript/)
+* [Asio](https://think-async.com/Asio/)
+* [Assimp](http://www.assimp.org/)
+* [GLEW](http://glew.sourceforge.net/)
+* [Json](https://github.com/azadkuh/nlohmann_json_release)
+* [diStorm3](https://github.com/gdabah/distorm)
+* [PNG](http://www.libpng.org/pub/png/libpng.html)
+* [SDL2](https://www.libsdl.org/download-2.0.php)
+* SHA1 by Steve Reid and SHA2 by Olivier Gay hash generators
+* [Theora](https://www.theora.org/downloads/)
+* [Vorbis](https://xiph.org/vorbis/)
+* [cURL](https://curl.haxx.se/)
+* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
+* [{fmt}](https://fmt.dev/latest/index.html)
+* [Dear ImGui](https://github.com/ocornut/imgui)
+* [libbson](http://mongoc.org/libbson/current/index.html)
+* [mbedTLS](https://tls.mbed.org/)
+* [MongoC Driver](https://github.com/mongodb/mongo-c-driver)
+* [libogg](https://xiph.org/ogg/)
+* [openssl](https://www.openssl.org/)
+* [unqlite](https://unqlite.org/)
+* [variant](https://github.com/mapbox/variant)
+* [websocketpp](https://github.com/zaphoyd/websocketpp)
+* [zlib](https://www.zlib.net/)
 
 ## Git LFS
 
