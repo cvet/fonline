@@ -420,10 +420,9 @@ struct BindClass
     static void DataRef_Index() {}
     static void DataVal_Index() {}
 
-    static void Global_GetTime()                                       {}
-    static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
-    static void Global_AddPropertySetCallback( asIScriptGeneric* gen ) {}
-    static void Global_GetGlobalMapRelief()                            {}
+    static void Global_GetTime()                {}
+    static void Global_AddPropertySetCallback() {}
+    static void Global_GetGlobalMapRelief()     {}
     #endif
 
     #ifdef BIND_MAPPER
@@ -531,11 +530,12 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_LoadDataFile()  {}
-    static void Global_AllowSlot()     {}
-    static void Global_GetProtoItem()  {}
-    static void Global_GetDistantion() {}
-    static void Global_GetUnixTime()   {}
+    static void Global_LoadDataFile()           {}
+    static void Global_AllowSlot()              {}
+    static void Global_GetProtoItem()           {}
+    static void Global_GetDistantion()          {}
+    static void Global_GetUnixTime()            {}
+    static void Global_SetPropertyGetCallback() {}
 };
 
 #ifdef BIND_CLIENT

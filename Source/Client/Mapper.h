@@ -413,6 +413,7 @@ public:
         static void   Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name );
 
         static void          Global_AllowSlot( uchar index, bool enable_send );
+        static void          Global_SetPropertyGetCallback( asIScriptGeneric* gen );
         static MapView*      Global_LoadMap( string file_name );
         static void          Global_UnloadMap( MapView* pmap );
         static bool          Global_SaveMap( MapView* pmap, string custom_name );

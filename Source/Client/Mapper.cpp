@@ -4741,6 +4741,29 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
+void FOMapper::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
+{
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    gen->SetReturnByte( 0 );
+    RUNTIME_ASSERT( ref );
+
+    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : CritterView::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : ItemView::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : MapView::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : LocationView::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    if( !prop )
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
+
+    string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
+    if( result != "" )
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
+}
+
 MapView* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
@@ -5059,7 +5082,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, string sub_tab, C
         ProtoCritterVec cr_protos;
         for( int i = 0, j = critter_pids->GetSize(); i < j; i++ )
         {
-            ushort        pid = *(ushort*) critter_pids->At( i );
+            hash          pid = *(hash*) critter_pids->At( i );
             ProtoCritter* cr_data = ProtoMngr.GetProtoCritter( pid );
             if( cr_data )
                 cr_protos.push_back( cr_data );
