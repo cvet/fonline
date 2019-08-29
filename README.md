@@ -5,7 +5,7 @@
 
 ## Goal
 
-Friendly engine for fallout-like icometric games for develop/play alone or with friends
+Friendly engine for fallout-like icometric games for develop/play alone or with friends.
 
 ## About (not actually ready marked as *)
 
@@ -51,10 +51,9 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 ## Build
 
-Before clone make sure that you install [Git LFS](https://git-lfs.github.com/)
-
-...write about build with cmake
-...write about make sdk
+Before clone make sure that you install [Git LFS](https://git-lfs.github.com/).\
+...write about build with cmake\
+...write about make sdk\
 ...write about how setup own test environment
 
 ## Third-party packages
