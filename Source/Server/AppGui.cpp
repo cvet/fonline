@@ -1,6 +1,6 @@
 #include "AppGui.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "GraphicApi.h"
 #include "Threading.h"
 #include "StringUtils.h"
@@ -22,7 +22,7 @@ struct ImGuiViewportDataSDL2
 
     ~ImGuiViewportDataSDL2()
     {
-        RUNTIME_ASSERT( Window == nullptr && GLContext == nullptr );
+        RUNTIME_ASSERT( ( Window == nullptr && GLContext == nullptr ) );
     }
 };
 
@@ -405,7 +405,7 @@ bool AppGui::BeginFrame()
         case SDL_KEYUP:
         {
             int key = event.key.keysym.scancode;
-            RUNTIME_ASSERT( key >= 0 && key < IM_ARRAYSIZE( io.KeysDown ) );
+            RUNTIME_ASSERT( ( key >= 0 && key < IM_ARRAYSIZE( io.KeysDown ) ) );
 
             io.KeysDown[ key ] = ( event.type == SDL_KEYDOWN );
             io.KeyShift = ( ( SDL_GetModState() & KMOD_SHIFT ) != 0 );

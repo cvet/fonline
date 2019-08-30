@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "Crypt.h"
 #include "Script.h"
@@ -41,6 +41,11 @@ StrVec   ProjectFiles;
 
 void InitialSetup( const string& app_name, uint argc, char** argv )
 {
+    // Run unit tests as soon as possible
+    #ifdef FO_TESTING
+    RunTestCases( argc, argv );
+    #endif
+
     // Exceptions catcher
     CatchExceptions( app_name, FONLINE_VERSION );
 

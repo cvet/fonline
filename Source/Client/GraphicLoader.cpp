@@ -1,6 +1,6 @@
 #include "GraphicLoader.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "3dAnimation.h"
 #include "StringUtils.h"

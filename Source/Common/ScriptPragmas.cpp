@@ -1,6 +1,6 @@
 #include "ScriptPragmas.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "angelscript.h"
 #include "Script.h"
 #include "ProtoManager.h"

@@ -2,7 +2,7 @@
 #define __CLIENT__
 
 #include "Common.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "SoundManager.h"

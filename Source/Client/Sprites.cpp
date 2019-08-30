@@ -1,6 +1,6 @@
 #include "Sprites.h"
 #include "SpriteManager.h"
-#include "Exception.h"
+#include "Testing.h"
 
 void Sprite::Unvalidate()
 {

@@ -1,6 +1,6 @@
 #include "Entity.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "ProtoManager.h"
 #include "Crypt.h"
 #include "IniFile.h"
@@ -713,7 +713,7 @@ static bool LoadOldTextFormat( ProtoMap& pmap, const char* buf, EntityVec& entit
                 }
                 else
                 {
-                    RUNTIME_ASSERT( ivalue == MAP_OBJECT_ITEM || ivalue == MAP_OBJECT_SCENERY );
+                    RUNTIME_ASSERT( ( ivalue == MAP_OBJECT_ITEM || ivalue == MAP_OBJECT_SCENERY ) );
                     is_critter = false;
                 }
             }

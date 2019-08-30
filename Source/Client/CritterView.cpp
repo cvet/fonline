@@ -1,5 +1,5 @@
 #include "CritterView.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "ResourceManager.h"
 #include "ProtoManager.h"

@@ -1,6 +1,6 @@
 #include "Threading.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
 

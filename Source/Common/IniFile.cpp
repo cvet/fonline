@@ -2,7 +2,7 @@
 #include "Crypt.h"
 #include "FileUtils.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 IniFile::IniFile()
 {

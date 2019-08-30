@@ -1,6 +1,6 @@
 #include "GraphicApi.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 
 bool OGL_version_2_0 = false;
 bool OGL_vertex_buffer_object = false;

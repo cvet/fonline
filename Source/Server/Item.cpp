@@ -1,6 +1,6 @@
 #include "Item.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "ProtoManager.h"
 #include "Script.h"
 #include "MapManager.h"

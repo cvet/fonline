@@ -1,6 +1,6 @@
 #include "MapManager.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Script.h"
@@ -1317,7 +1317,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
 
     if( map )
     {
-        RUNTIME_ASSERT( hx < map->GetWidth() && hy < map->GetHeight() );
+        RUNTIME_ASSERT( ( hx < map->GetWidth() && hy < map->GetHeight() ) );
 
         cr->SetMapId( map->GetId() );
         cr->SetRefMapId( map->GetId() );

@@ -3,7 +3,7 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "SpriteManager.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Debugger.h"
 
 PROPERTIES_IMPL( ItemView );

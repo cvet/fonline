@@ -1,6 +1,6 @@
 #include "ResourceConverter.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "GraphicStructures.h"
 #include "3dAnimation.h"
 #include "StringUtils.h"

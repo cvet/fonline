@@ -1,6 +1,6 @@
 #include "Script.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "StringUtils.h"
 #include "FileUtils.h"
@@ -1723,7 +1723,7 @@ void Script::SetArgObject( void* value )
 
 void Script::SetArgEntity( Entity* value )
 {
-    RUNTIME_ASSERT( !value || !value->IsDestroyed );
+    RUNTIME_ASSERT( ( !value || !value->IsDestroyed ) );
 
     if( ScriptCall && value )
     {

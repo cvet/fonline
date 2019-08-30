@@ -2,7 +2,7 @@
 #define __PROPERTIES__
 
 #include "Common.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "angelscript.h"
 #include "scriptarray/scriptarray.h"
 

@@ -1,6 +1,6 @@
 #include "DataBase.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "FileUtils.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
@@ -617,7 +617,7 @@ public:
         RUNTIME_ASSERT( kv_cursor_init == UNQLITE_OK );
 
         int kv_cursor_first_entry = unqlite_kv_cursor_first_entry( cursor );
-        RUNTIME_ASSERT( kv_cursor_first_entry == UNQLITE_OK || kv_cursor_first_entry == UNQLITE_DONE );
+        RUNTIME_ASSERT( ( kv_cursor_first_entry == UNQLITE_OK || kv_cursor_first_entry == UNQLITE_DONE ) );
 
         UIntVec ids;
         while( unqlite_kv_cursor_valid_entry( cursor ) )
@@ -636,7 +636,7 @@ public:
             ids.push_back( id );
 
             int kv_cursor_next_entry = unqlite_kv_cursor_next_entry( cursor );
-            RUNTIME_ASSERT( kv_cursor_next_entry == UNQLITE_OK || kv_cursor_next_entry == UNQLITE_DONE );
+            RUNTIME_ASSERT( ( kv_cursor_next_entry == UNQLITE_OK || kv_cursor_next_entry == UNQLITE_DONE ) );
         }
 
         return ids;
@@ -661,7 +661,7 @@ protected:
 
                                                                     return UNQLITE_OK;
                                                                 }, &doc );
-        RUNTIME_ASSERT( kv_fetch_callback == UNQLITE_OK || kv_fetch_callback == UNQLITE_NOTFOUND );
+        RUNTIME_ASSERT( ( kv_fetch_callback == UNQLITE_OK || kv_fetch_callback == UNQLITE_NOTFOUND ) );
 
         return doc;
     }

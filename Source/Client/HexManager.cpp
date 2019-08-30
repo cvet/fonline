@@ -1,6 +1,6 @@
 #include "HexManager.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "ResourceManager.h"
 #include "LineTracer.h"
@@ -23,7 +23,7 @@ Field::~Field()
 
 void Field::AddItem( ItemHexView* item, ItemHexView* block_lines_item )
 {
-    RUNTIME_ASSERT( item || block_lines_item );
+    RUNTIME_ASSERT( ( item || block_lines_item ) );
 
     if( item )
     {
@@ -46,7 +46,7 @@ void Field::AddItem( ItemHexView* item, ItemHexView* block_lines_item )
 
 void Field::EraseItem( ItemHexView* item, ItemHexView* block_lines_item )
 {
-    RUNTIME_ASSERT( item || block_lines_item );
+    RUNTIME_ASSERT( ( item || block_lines_item ) );
 
     if( item )
     {
@@ -1102,8 +1102,8 @@ void HexManager::RebuildMap( int rx, int ry )
 void HexManager::RebuildMapOffset( int ox, int oy )
 {
     RUNTIME_ASSERT( viewField );
-    RUNTIME_ASSERT( ox == 0 || ox == -1 || ox == 1 );
-    RUNTIME_ASSERT( oy == 0 || oy == -2 || oy == 2 );
+    RUNTIME_ASSERT( ( ox == 0 || ox == -1 || ox == 1 ) );
+    RUNTIME_ASSERT( ( oy == 0 || oy == -2 || oy == 2 ) );
 
     auto hide_hex = [ this ] ( ViewField & vf )
     {

@@ -1,6 +1,6 @@
 #include "SpriteManager.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "IniFile.h"
 #include "Crypt.h"
@@ -88,7 +88,7 @@ bool SpriteManager::Init()
     {
         SDL_DisplayMode mode;
         int             r = SDL_GetCurrentDisplayMode( 0, &mode );
-        RUNTIME_ASSERT( !r && "SDL_GetCurrentDisplayMode" );
+        RUNTIME_ASSERT_STR( !r, "SDL_GetCurrentDisplayMode" );
         GameOpt.ScreenWidth = MAX( mode.w, mode.h );
         GameOpt.ScreenHeight = MIN( mode.w, mode.h );
         float ratio = (float) GameOpt.ScreenWidth / (float) GameOpt.ScreenHeight;
@@ -505,7 +505,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
 
     // Zero data
     memzero( rt, sizeof( RenderTarget ) );
-    RUNTIME_ASSERT( screen_size || ( width && height ) );
+    RUNTIME_ASSERT( ( screen_size || ( width && height ) ) );
     rt->ScreenSize = screen_size;
     rt->Width = width;
     rt->Height = height;
@@ -3512,7 +3512,7 @@ bool SpriteManager::TryLoadAnimationInFastFormat( const string& fname, File& fm,
         ushort frames_count = fm.GetBEUShort();
         uint   ticks = fm.GetBEUInt();
         ushort dirs = fm.GetBEUShort();
-        RUNTIME_ASSERT( dirs == 1 || dirs == DIRS_COUNT );
+        RUNTIME_ASSERT( ( dirs == 1 || dirs == DIRS_COUNT ) );
 
         anim = AnyFrames::Create( frames_count, ticks );
         if( dirs > 1 )

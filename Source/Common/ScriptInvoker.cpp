@@ -1,6 +1,6 @@
 #include "ScriptInvoker.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Script.h"
 #include "StringUtils.h"
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
@@ -39,7 +39,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         call.Value = *value;
         int value_type_id = 0;
         func->GetParam( 0, &value_type_id );
-        RUNTIME_ASSERT( value_type_id == asTYPEID_INT32 || value_type_id == asTYPEID_UINT32 );
+        RUNTIME_ASSERT( ( value_type_id == asTYPEID_INT32 || value_type_id == asTYPEID_UINT32 ) );
         call.ValueSigned = ( value_type_id == asTYPEID_INT32 );
     }
     else
@@ -53,7 +53,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     {
         call.IsValues = true;
         Script::AssignScriptArrayInVector( call.Values, values );
-        RUNTIME_ASSERT( values->GetElementTypeId() == asTYPEID_INT32 || values->GetElementTypeId() == asTYPEID_UINT32 );
+        RUNTIME_ASSERT( ( values->GetElementTypeId() == asTYPEID_INT32 || values->GetElementTypeId() == asTYPEID_UINT32 ) );
         call.ValuesSigned = ( values->GetElementTypeId() == asTYPEID_INT32 );
     }
     else

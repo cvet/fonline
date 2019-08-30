@@ -1,6 +1,6 @@
 #include "Server.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "scripthelper/scripthelper.h"
 #include "minizip/zip.h"
@@ -1832,13 +1832,13 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
 
 void FOServer::SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second )
 {
-    RUNTIME_ASSERT( multiplier >= 1 && multiplier <= 50000 );
-    RUNTIME_ASSERT( Globals->GetYearStart() == 0 || ( year >= Globals->GetYearStart() && year <= Globals->GetYearStart() + 130 ) );
-    RUNTIME_ASSERT( month >= 1 && month <= 12 );
-    RUNTIME_ASSERT( day >= 1 && day <= 31 );
-    RUNTIME_ASSERT( hour >= 0 && hour <= 23 );
-    RUNTIME_ASSERT( minute >= 0 && minute <= 59 );
-    RUNTIME_ASSERT( second >= 0 && second <= 59 );
+    RUNTIME_ASSERT( ( multiplier >= 1 && multiplier <= 50000 ) );
+    RUNTIME_ASSERT( ( Globals->GetYearStart() == 0 || ( year >= Globals->GetYearStart() && year <= Globals->GetYearStart() + 130 ) ) );
+    RUNTIME_ASSERT( ( month >= 1 && month <= 12 ) );
+    RUNTIME_ASSERT( ( day >= 1 && day <= 31 ) );
+    RUNTIME_ASSERT( ( hour >= 0 && hour <= 23 ) );
+    RUNTIME_ASSERT( ( minute >= 0 && minute <= 59 ) );
+    RUNTIME_ASSERT( ( second >= 0 && second <= 59 ) );
 
     Globals->SetTimeMultiplier( multiplier );
     Globals->SetYear( year );

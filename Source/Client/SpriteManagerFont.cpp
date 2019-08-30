@@ -1,6 +1,6 @@
 #include "SpriteManager.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Crypt.h"
 #include "StringUtils.h"
 

@@ -1,6 +1,6 @@
 #include "Mapper.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Script.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
@@ -2045,7 +2045,7 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
 void FOMapper::ObjKeyDownApply( Entity* entity )
 {
     const int start_line = 3;
-    RUNTIME_ASSERT( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView );
+    RUNTIME_ASSERT( ( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView ) );
     if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() )
     {
         Property* prop = ShowProps[ ObjCurLine - start_line ];
@@ -2078,7 +2078,7 @@ void FOMapper::SelectEntityProp( int line )
     Entity* entity = GetInspectorEntity();
     if( entity )
     {
-        RUNTIME_ASSERT( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView );
+        RUNTIME_ASSERT( ( entity->Type == EntityType::CritterView || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHexView ) );
         if( ObjCurLine - start_line >= (int) ShowProps.size() )
             ObjCurLine = (int) ShowProps.size() + start_line - 1;
         if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() && ShowProps[ ObjCurLine - start_line ] )

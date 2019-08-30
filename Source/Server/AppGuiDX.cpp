@@ -1,7 +1,7 @@
 #include "AppGui.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 #ifdef FO_HAVE_DX
 
@@ -1072,7 +1072,7 @@ static void Platform_SetWindowAlpha( ImGuiViewport* viewport, float alpha )
 {
     ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*) viewport->PlatformUserData;
     RUNTIME_ASSERT( data->Hwnd != 0 );
-    RUNTIME_ASSERT( alpha >= 0.0f && alpha <= 1.0f );
+    RUNTIME_ASSERT( ( alpha >= 0.0f && alpha <= 1.0f ) );
     if( alpha < 1.0f )
     {
         DWORD style = GetWindowLongW( data->Hwnd, GWL_EXSTYLE ) | WS_EX_LAYERED;

@@ -2,7 +2,7 @@
 #include "Log.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 
@@ -530,7 +530,7 @@ void File::SetPosOutBuf( uint pos )
 
 bool File::SaveFile( const string& fname )
 {
-    RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
+    RUNTIME_ASSERT( ( dataOutBuf || !endOutBuf ) );
 
     string fpath = GetWritePath( fname );
     void*  file = FileOpen( fpath, true );

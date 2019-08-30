@@ -1,6 +1,6 @@
 #include "Map.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Script.h"
 #include "CritterManager.h"
 #include "ItemManager.h"

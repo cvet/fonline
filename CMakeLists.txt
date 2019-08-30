@@ -8,6 +8,7 @@ project( FOnlineProject )
 # set( FO_DEBUG YES )
 set( BUILD_ONLY_CLIENT NO )
 set( BUILD_CLIENT_LIBRARY NO )
+set( BUILD_TEST_CASES NO )
 set( CMAKE_VERBOSE_MAKEFILE ON CACHE STRING "" FORCE )
 
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
@@ -35,8 +36,9 @@ if( WIN32 )
 	endif()
 	set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
 	set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
-	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
 	set( USE_GLEW YES )
+	set( BUILD_TEST_CASES YES )
+	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( OS "Linux" )
 	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}" )
@@ -53,6 +55,7 @@ elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "GL" )
 	set( USE_GLEW YES )
+	set( BUILD_TEST_CASES YES )
 	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
 elseif( APPLE AND NOT IOS_PLATFORM )
 	set( OS "Mac" )
@@ -151,12 +154,14 @@ endif()
 
 set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server" )
 set( EDITOR_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Editor" )
+set( TESTS_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Tests" )
 
 set( FO_OUTPUT_BINARIES_PATH "" CACHE PATH "Fixed output path" )
 if( NOT "${FO_OUTPUT_BINARIES_PATH}" STREQUAL "" )
 	set( CLIENT_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Client/${OS}" )
 	set( SERVER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Server" )
 	set( EDITOR_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Editor" )
+	set( TESTS_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Tests" )
 	message( STATUS "Output binaries: ${FO_OUTPUT_BINARIES_PATH}" )
 endif()
 
@@ -495,12 +500,16 @@ add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 add_library( ImGui ${IMGUI_SOURCE} )
 DisableLibWarnings( ImGui )
 
+# Catch2
+set( CATCH2_DIR "ThirdParty/Catch2" )
+include_directories( "${CATCH2_DIR}/single_include/catch2" )
+
 # Common source
 set( COMMON_SOURCE
 	Source/Common/Common.cpp Source/Common/Common.h # Clean up from different things
 	Source/Common/Entity.cpp Source/Common/Entity.h
 	Source/Common/ProtoMap.cpp # Remove
-	Source/Common/Exception.cpp Source/Common/Exception.h
+	Source/Common/Testing.cpp Source/Common/Testing.h
 	Source/Common/Debugger.cpp Source/Common/Debugger.h
 	Source/Common/Log.cpp Source/Common/Log.h
 	Source/Common/IniFile.cpp Source/Common/IniFile.h
@@ -646,7 +655,14 @@ if( NOT BUILD_ONLY_CLIENT )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES}" )
 	target_link_libraries( FOnlineEditor "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
 
+	if( BUILD_TEST_CASES )
+		add_executable( FOnlineTest ${EDITOR_SOURCE} "Source/Applications/ServerApp.cpp" "Resources/Server.rc" )
+		set_target_properties( FOnlineTest PROPERTIES ${RO0} ${TESTS_OUTPUT} ${RO1} ${TESTS_OUTPUT} ${RO2} ${TESTS_OUTPUT} ${RO3} ${TESTS_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
+		set_target_properties( FOnlineTest PROPERTIES OUTPUT_NAME "FOnlineTest${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${EDITOR_DEFINES} -DFO_TESTING" )
+		target_link_libraries( FOnlineTest "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
+	endif()
+
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
-	set_property( TARGET FOnlineServer FOnline FOnlineEditor PROPERTY FOLDER "Binaries" )
+	set_property( TARGET FOnlineServer FOnline FOnlineEditor FOnlineTest PROPERTY FOLDER "Binaries" )
 	set_property( TARGET ImGui fmt Acm Angelscript AngelscriptExt ${GLEW_LIB} Ogg Vorbis Theora ${NCODEHOOK_LIB} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE_LIB} mbedcrypto mbedtls mbedx509 ssl crypto PROPERTY FOLDER "Libraries" )
 endif()

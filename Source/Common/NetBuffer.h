@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "NetProtocol_Include.h"
 #include "Threading.h"
-#include "Exception.h"
+#include "Testing.h"
 
 class NetBuffer
 {

@@ -1,6 +1,6 @@
 #include "MsgFiles.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Crypt.h"
 #include "FileUtils.h"
 #include "StringUtils.h"

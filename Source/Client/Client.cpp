@@ -1,6 +1,6 @@
 ﻿#include "Client.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "FileSystem.h"
 #include "StringUtils.h"

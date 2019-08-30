@@ -1,6 +1,6 @@
 #include "Critter.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "Script.h"
 #include "MapManager.h"
@@ -2563,8 +2563,8 @@ void Client::Send_GameInfo( Map* map )
     uchar         day_color[ 12 ];
     CScriptArray* day_time_arr = ( map ? map->GetDayTime() : nullptr );
     CScriptArray* day_color_arr = ( map ? map->GetDayColor() : nullptr );
-    RUNTIME_ASSERT( !day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4 );
-    RUNTIME_ASSERT( !day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12 );
+    RUNTIME_ASSERT( ( !day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4 ) );
+    RUNTIME_ASSERT( ( !day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12 ) );
     if( day_time_arr && day_time_arr->GetSize() > 0 )
         memcpy( day_time, day_time_arr->At( 0 ), sizeof( day_time ) );
     else

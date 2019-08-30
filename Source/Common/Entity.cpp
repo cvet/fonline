@@ -1,6 +1,6 @@
 #include "Entity.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"

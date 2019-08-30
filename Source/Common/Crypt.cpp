@@ -1,6 +1,6 @@
 #include "Crypt.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "FileUtils.h"
 #include "StringUtils.h"
 #include "sha2.h"
@@ -323,7 +323,7 @@ bool CryptManager::IsCache( const string& data_name )
                                        {
                                            return UNQLITE_OK;
                                        }, nullptr );
-    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+    RUNTIME_ASSERT( ( r == UNQLITE_OK || r == UNQLITE_NOTFOUND ) );
 
     return r == UNQLITE_OK;
 }
@@ -333,7 +333,7 @@ void CryptManager::EraseCache( const string& data_name )
     RUNTIME_ASSERT( CacheDb );
 
     int r = unqlite_kv_delete( CacheDb, data_name.c_str(), (int) data_name.length() );
-    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+    RUNTIME_ASSERT( ( r == UNQLITE_OK || r == UNQLITE_NOTFOUND ) );
 
     if( r == UNQLITE_OK )
     {
@@ -373,7 +373,7 @@ uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
 
     unqlite_int64 size;
     int           r = unqlite_kv_fetch( CacheDb, data_name.c_str(), (int) data_name.length(), nullptr, &size );
-    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+    RUNTIME_ASSERT( ( r == UNQLITE_OK || r == UNQLITE_NOTFOUND ) );
 
     if( r == UNQLITE_NOTFOUND )
         return nullptr;
@@ -536,3 +536,8 @@ bool CryptManager::GetCache( const string& data_name, UCharVec& data )
     return true;
 }
 #endif
+
+TEST_CASE()
+{
+    RUNTIME_ASSERT( Crypt.MurmurHash2( (uchar*) "abcdef", 6 ) == 1271458169 );
+}

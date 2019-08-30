@@ -1,5 +1,5 @@
 #include "MapView.h"
-#include "Exception.h"
+#include "Testing.h"
 
 MapView::MapView( uint id, ProtoMap* proto ): Entity( id, EntityType::MapView, PropertiesRegistrator, proto )
 {

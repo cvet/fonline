@@ -1,6 +1,6 @@
 #include "Properties.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Entity.h"
 #include "IniFile.h"
 #include "Script.h"
@@ -1237,7 +1237,7 @@ void Properties::RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes )
     // Restore POD data
     uint publicSize = (uint) registrator->publicPodDataSpace.size();
     uint protectedSize = (uint) registrator->protectedPodDataSpace.size();
-    RUNTIME_ASSERT( all_data_sizes[ 0 ] == publicSize || all_data_sizes[ 0 ] == publicSize + protectedSize );
+    RUNTIME_ASSERT( ( all_data_sizes[ 0 ] == publicSize || all_data_sizes[ 0 ] == publicSize + protectedSize ) );
     if( all_data_sizes[ 0 ] )
         memcpy( podData, all_data[ 0 ], all_data_sizes[ 0 ] );
 
@@ -1678,7 +1678,7 @@ bool Properties::LoadFromText( const StrMap& key_values )
 
 void Properties::SaveToText( StrMap& key_values, Properties* base )
 {
-    RUNTIME_ASSERT( !base || registrator == base->registrator );
+    RUNTIME_ASSERT( ( !base || registrator == base->registrator ) );
 
     for( auto& prop : registrator->registeredProperties )
     {
@@ -1731,7 +1731,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 DataBase::Document Properties::SaveToDbDocument( Properties* base )
 {
-    RUNTIME_ASSERT( !base || registrator == base->registrator );
+    RUNTIME_ASSERT( ( !base || registrator == base->registrator ) );
 
     DataBase::Document doc;
     for( auto& prop : registrator->registeredProperties )
@@ -2434,7 +2434,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
 
 DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
 {
-    RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
+    RUNTIME_ASSERT( ( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) ) );
     RUNTIME_ASSERT( !prop->isTemporary );
 
     uint data_size;
@@ -2735,7 +2735,7 @@ bool Properties::LoadPropertyFromText( Property* prop, const string& text )
 {
     RUNTIME_ASSERT( prop );
     RUNTIME_ASSERT( registrator == prop->registrator );
-    RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
+    RUNTIME_ASSERT( ( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) ) );
     bool is_error = false;
 
     // Parse
@@ -2767,7 +2767,7 @@ string Properties::SavePropertyToText( Property* prop )
 {
     RUNTIME_ASSERT( prop );
     RUNTIME_ASSERT( registrator == prop->registrator );
-    RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
+    RUNTIME_ASSERT( ( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) ) );
 
     uint data_size;
     void* data = prop->GetPropRawData( this, data_size );

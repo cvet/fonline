@@ -1,6 +1,6 @@
 #include "ItemHexView.h"
 #include "Log.h"
-#include "Exception.h"
+#include "Testing.h"
 #include "Timer.h"
 #include "ResourceManager.h"
 

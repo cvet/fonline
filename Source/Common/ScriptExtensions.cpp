@@ -1,6 +1,6 @@
 #include "Script.h"
 #include "StringUtils.h"
-#include "Exception.h"
+#include "Testing.h"
 
 static void CScriptArray_InsertFirst( CScriptArray* arr, void* value )
 {
