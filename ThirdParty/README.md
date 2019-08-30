@@ -4,6 +4,7 @@
 * AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
 * Asio - [asio-1.10.8](https://think-async.com/Asio/)
 * Assimp - [assimp-4.1.0](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
+* Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * Json - [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
 * NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)

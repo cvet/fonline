@@ -62,6 +62,7 @@ Before clone make sure that you install [Git LFS](https://git-lfs.github.com/).\
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
 * [Asio](https://think-async.com/Asio/) - networking library
 * [Assimp](http://www.assimp.org/) - 3d models/animations loading library
+* [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
