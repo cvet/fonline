@@ -1,7 +1,7 @@
 #!/bin/bash -ex
 
-[ "$FO_ROOT" ] || { echo "FO_ROOT variable is not set"; exit 1; }
-[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST variable is not set"; exit 1; }
+[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
+[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
