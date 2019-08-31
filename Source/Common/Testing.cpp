@@ -1,5 +1,5 @@
 #ifdef FO_TESTING
-# define CATCH_CONFIG_RUNNER
+# define CATCH_CONFIG_MAIN
 #endif
 
 #include "Testing.h"
@@ -20,16 +20,6 @@ static string AppName;
 static string AppVer;
 static string ManualDumpAppendix;
 static string ManualDumpMessage;
-
-void RunTestCases( int argc, char** argv )
-{
-    #ifdef FO_TESTING
-    int exit_code = Catch::Session().run( argc, argv );
-    ExitProcess( exit_code );
-    #else
-    RUNTIME_ASSERT( !"Invalid call" );
-    #endif
-}
 
 #if defined ( FO_WINDOWS )
 
@@ -691,6 +681,16 @@ bool RaiseAssert( const string& message, const string& file, int line )
     // Shut down
     ExitProcess( 1 );
     return true;
+}
+
+TEST_CASE()
+{
+    RUNTIME_ASSERT( 1 == 1 );
+
+    TEST_SECTION()
+    {
+        RUNTIME_ASSERT( 2 == 2 );
+    }
 }
 
 TEST_CASE()

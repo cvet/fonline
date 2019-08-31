@@ -66,6 +66,7 @@ ProtoMap::~ProtoMap()
     #endif
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+    # define CLEAN_CONTAINER( cont )    { decltype( cont ) __ ## cont; __ ## cont.swap( cont ); }
     CLEAN_CONTAINER( SceneryData );
     CLEAN_CONTAINER( CrittersVec );
     CLEAN_CONTAINER( HexItemsVec );
@@ -73,6 +74,7 @@ ProtoMap::~ProtoMap()
     CLEAN_CONTAINER( StaticItemsVec );
     CLEAN_CONTAINER( TriggerItemsVec );
     CLEAN_CONTAINER( Tiles );
+    # undef CLEAN_CONTAINER
     #endif
 }
 

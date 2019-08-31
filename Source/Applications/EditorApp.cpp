@@ -1,6 +1,6 @@
 #include "Common.h"
-#include "Log.h"
 #include "Testing.h"
+#include "Log.h"
 #include "Server.h"
 #include "Client.h"
 #include "Mapper.h"

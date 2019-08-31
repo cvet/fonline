@@ -1,6 +1,6 @@
 #include "Common.h"
-#include "Server.h"
 #include "Testing.h"
+#include "Server.h"
 #include "Timer.h"
 #include "NetBuffer.h"
 #include "IniFile.h"
