@@ -239,7 +239,7 @@ bool EntityManager::LoadEntities()
             DataBase::Document doc = DbStorage->Get( collection_name, id );
             auto               proto_it = doc.find( "_Proto" );
             RUNTIME_ASSERT( proto_it != doc.end() );
-            RUNTIME_ASSERT( proto_it->second.which() == DataBase::StringValue );
+            RUNTIME_ASSERT( ( proto_it->second.which() == DataBase::StringValue ) );
 
             hash proto_id = ( !proto_it->second.get< string >().empty() ?
                               _str( proto_it->second.get< string >() ).toHash() : 0 );

@@ -1,3 +1,4 @@
+#include "SDL_main.h"
 #include "Common.h"
 #include "Testing.h"
 #include "Log.h"

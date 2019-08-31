@@ -1,4 +1,5 @@
 #ifdef FO_TESTING
+# include "SDL_main.h"
 # define CATCH_CONFIG_MAIN
 #endif
 

@@ -1,3 +1,6 @@
+#ifndef FO_SERVER_DAEMON
+# include "SDL_main.h"
+#endif
 #include "Common.h"
 #include "Testing.h"
 #include "Server.h"
