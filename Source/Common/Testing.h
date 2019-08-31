@@ -7,7 +7,7 @@
 # include "catch.hpp"
 # define RUNTIME_ASSERT( expr )             CATCH_REQUIRE( expr )
 # define RUNTIME_ASSERT_STR( expr, str )    CATCH_REQUIRE( expr )
-# define TEST_CASE()                        CATCH_TEST_CASE( MERGE_ARGS( __FILE__, STRINGIZE_INT( __LINE__ ) ) )
+# define TEST_CASE()                        CATCH_ANON_TEST_CASE()
 # define TEST_SECTION()                     CATCH_SECTION( STRINGIZE_INT( __LINE__ ) )
 # define SDL_main( argc, argv )             UNIQUE_FUNCTION_NAME( MERGE_ARGS( main_test_hook_, __LINE__ ), argc, argv )
 #else
