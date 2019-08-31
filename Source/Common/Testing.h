@@ -12,7 +12,7 @@
 #else
 # define RUNTIME_ASSERT( expr )             ( !!( expr ) || RaiseAssert( # expr, __FILE__, __LINE__ ) )
 # define RUNTIME_ASSERT_STR( expr, str )    ( !!( expr ) || RaiseAssert( str, __FILE__, __LINE__ ) )
-# define TEST_CASE()                        static void Test_ ## __LINE__ ## ( )
+# define TEST_CASE()                        static void Test_ ## __LINE__()
 # define TEST_SECTION()                     if( !!( __LINE__ ) )
 #endif
 
