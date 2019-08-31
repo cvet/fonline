@@ -8,7 +8,7 @@
 # define RUNTIME_ASSERT( expr )             CATCH_REQUIRE( expr )
 # define RUNTIME_ASSERT_STR( expr, str )    RUNTIME_ASSERT( expr )
 # define TEST_CASE()                        CATCH_TEST_CASE( __FILE__ )
-# define TEST_SECTION()                     CATCH_SECTION( _FUNC_ "__" ___MSG0( __LINE__ ) )
+# define TEST_SECTION()                     CATCH_SECTION( ___MSG0( __LINE__ ) )
 #else
 # define RUNTIME_ASSERT( expr )             ( !!( expr ) || RaiseAssert( # expr, __FILE__, __LINE__ ) )
 # define RUNTIME_ASSERT_STR( expr, str )    ( !!( expr ) || RaiseAssert( str, __FILE__, __LINE__ ) )
