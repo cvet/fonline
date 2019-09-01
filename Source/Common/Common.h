@@ -250,12 +250,13 @@ using UIntHashVecMap = map< uint, HashVec >;
 #define OFFSETOF( s, m )                      ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )                  (void) ( x )
 #define memzero( ptr, size )                  memset( ptr, 0, size )
-#define CLEAN_CONTAINER( cont )               { decltype( cont ) __ ## cont; __ ## cont.swap( cont ); }
-#define PI_VALUE                     ( 3.141592654f )
-
-#define ___MSG1( x )                          # x
-#define ___MSG0( x )                          ___MSG1( x )
-#define MESSAGE( desc )                       message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
+#define UNIQUE_FUNCTION_NAME( name, ... )     UNIQUE_FUNCTION_NAME2( MERGE_ARGS( name, __COUNTER__ ), __VA_ARGS__ )
+#define UNIQUE_FUNCTION_NAME2( name, ... )    name( __VA_ARGS__ )
+#define STRINGIZE_INT( x )                    STRINGIZE_INT2( x )
+#define STRINGIZE_INT2( x )                   # x
+#define MERGE_ARGS( a, b )                    MERGE_ARGS2( a, b )
+#define MERGE_ARGS2( a, b )                   a ## b
+#define MESSAGE( desc )                       message( __FILE__ "(" STRINGIZE_INT( __LINE__ ) "):" # desc )
 
 #define SAFEREL( x ) \
     { if( x )        \
@@ -286,6 +287,7 @@ using UIntHashVecMap = map< uint, HashVec >;
 #endif
 
 // Floats
+#define PI_VALUE                     ( 3.14159265f )
 #define PI_FLOAT                     ( 3.14159265f )
 #define SQRT3T2_FLOAT                ( 3.4641016151f )
 #define SQRT3_FLOAT                  ( 1.732050807568877f )
@@ -319,7 +321,7 @@ using UIntHashVecMap = map< uint, HashVec >;
 #define EFFECT_SCRIPT_VALUES         ( 10 )
 #define ABC_SIZE                     ( 26 )
 #define DIRS_COUNT                   ( GameOpt.MapHexagonal ? 6 : 8 )
-#define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 ) // 1, 3, 5, 7
+#define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 )         // 1, 3, 5, 7
 #define UTF8_BUF_SIZE( count )                ( ( count ) * 4 )
 #define DLGID_MASK                   ( 0xFFFFC000 )
 #define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
@@ -582,7 +584,7 @@ using UIntHashVecMap = map< uint, HashVec >;
 #define RADIO_BROADCAST_WORLD        ( 0 )
 #define RADIO_BROADCAST_MAP          ( 20 )
 #define RADIO_BROADCAST_LOCATION     ( 40 )
-#define RADIO_BROADCAST_ZONE( x )             ( 100 + CLAMP( x, 1, 100 ) ) // 1..100
+#define RADIO_BROADCAST_ZONE( x )             ( 100 + CLAMP( x, 1, 100 ) )         // 1..100
 #define RADIO_BROADCAST_FORCE_ALL    ( 250 )
 
 // Light flags

@@ -1928,7 +1928,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 uchar* data = new uchar[ data_size ];
                 for( size_t i = 0; i < arr.size(); i++ )
                 {
-                    RUNTIME_ASSERT( arr[ i ].which() == DataBase::StringValue );
+                    RUNTIME_ASSERT( ( arr[ i ].which() == DataBase::StringValue ) );
 
                     hash h = _str( arr[ i ].get< string >() ).toHash();
                     *(hash*) ( data + i * sizeof( hash ) ) = h;
@@ -1951,7 +1951,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 uchar* data = new uchar[ data_size ];
                 for( size_t i = 0; i < arr.size(); i++ )
                 {
-                    RUNTIME_ASSERT( arr[ i ].which() == DataBase::StringValue );
+                    RUNTIME_ASSERT( ( arr[ i ].which() == DataBase::StringValue ) );
 
                     int e = Script::GetEnumValue( enum_name, arr[ i ].get< string >(), is_error );
                     *(int*) ( data + i * sizeof( int ) ) = e;
@@ -2038,7 +2038,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 uint data_size = sizeof( uint );
                 for( size_t i = 0; i < arr.size(); i++ )
                 {
-                    RUNTIME_ASSERT( arr[ i ].which() == DataBase::StringValue );
+                    RUNTIME_ASSERT( ( arr[ i ].which() == DataBase::StringValue ) );
 
                     const string& str = arr[ i ].get< string >();
                     data_size += sizeof( uint ) + (uint) str.length();

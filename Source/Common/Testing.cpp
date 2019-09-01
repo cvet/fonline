@@ -1,4 +1,5 @@
 #ifdef FO_TESTING
+# include "SDL_main.h"
 # define CATCH_CONFIG_RUNNER
 #endif
 
@@ -21,15 +22,12 @@ static string AppVer;
 static string ManualDumpAppendix;
 static string ManualDumpMessage;
 
-void RunTestCases( int argc, char** argv )
+#ifdef FO_TESTING
+extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    #ifdef FO_TESTING
-    int exit_code = Catch::Session().run( argc, argv );
-    ExitProcess( exit_code );
-    #else
-    RUNTIME_ASSERT( !"Invalid call" );
-    #endif
+    return Catch::Session().run( argc, argv );
 }
+#endif
 
 #if defined ( FO_WINDOWS )
 
@@ -691,6 +689,16 @@ bool RaiseAssert( const string& message, const string& file, int line )
     // Shut down
     ExitProcess( 1 );
     return true;
+}
+
+TEST_CASE()
+{
+    RUNTIME_ASSERT( 1 == 1 );
+
+    TEST_SECTION()
+    {
+        RUNTIME_ASSERT( 2 == 2 );
+    }
 }
 
 TEST_CASE()

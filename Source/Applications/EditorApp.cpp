@@ -1,6 +1,7 @@
+#include "SDL_main.h"
 #include "Common.h"
-#include "Log.h"
 #include "Testing.h"
+#include "Log.h"
 #include "Server.h"
 #include "Client.h"
 #include "Mapper.h"
@@ -224,7 +225,11 @@ static vector< GuiWindow* > Windows;
 static vector< GuiWindow* > NewWindows;
 static vector< GuiWindow* > CloseWindows;
 
+#ifndef FO_TESTING
 extern "C" int main( int argc, char** argv ) // Handled by SDL
+#else
+static int main_disabled( int argc, char** argv )
+#endif
 {
     InitialSetup( "FOnlineEditor", argc, argv );
 
