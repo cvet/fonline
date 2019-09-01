@@ -7,7 +7,7 @@
 
 Friendly engine for fallout-like icometric games for develop/play alone or with friends.
 
-## About (not actually ready marked as *)
+## Features
 
 * C++14 *(not all refactored but wip)*
 * OpenGL/ES/WebGL and DirectX *(wip)* rendering
@@ -32,7 +32,7 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 
 ## Milestones
 
-* Multifunctional editor (currently developed in master branch)
+* Multifunctional editor
 * C# as scripting language (Mono)
 * Singleplayer mode
 * Parallelism for server
@@ -49,11 +49,11 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
 * *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependecies of engine, included in repository
 
-## Build
+## Clone / Build / Setup
 
 Before clone make sure that you install [Git LFS](https://git-lfs.github.com/).\
 ...write about build with cmake\
-...write about make sdk\
+...write about how make sdk\
 ...write about how setup own test environment
 
 ## Third-party packages
