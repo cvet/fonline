@@ -9,7 +9,6 @@
 # define RUNTIME_ASSERT_STR( expr, str )    CATCH_REQUIRE( expr )
 # define TEST_CASE()                        CATCH_ANON_TEST_CASE()
 # define TEST_SECTION()                     CATCH_SECTION( STRINGIZE_INT( __LINE__ ) )
-# define SDL_main( argc, argv )             UNIQUE_FUNCTION_NAME( MERGE_ARGS( main_test_hook_, __LINE__ ), argc, argv )
 #else
 # define RUNTIME_ASSERT( expr )             ( !!( expr ) || RaiseAssert( # expr, __FILE__, __LINE__ ) )
 # define RUNTIME_ASSERT_STR( expr, str )    ( !!( expr ) || RaiseAssert( str, __FILE__, __LINE__ ) )

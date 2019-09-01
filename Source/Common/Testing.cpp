@@ -1,6 +1,6 @@
 #ifdef FO_TESTING
 # include "SDL_main.h"
-# define CATCH_CONFIG_MAIN
+# define CATCH_CONFIG_RUNNER
 #endif
 
 #include "Testing.h"
@@ -21,6 +21,13 @@ static string AppName;
 static string AppVer;
 static string ManualDumpAppendix;
 static string ManualDumpMessage;
+
+#ifdef FO_TESTING
+extern "C" int main( int argc, char** argv ) // Handled by SDL
+{
+    return Catch::Session().run( argc, argv );
+}
+#endif
 
 #if defined ( FO_WINDOWS )
 

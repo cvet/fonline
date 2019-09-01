@@ -69,7 +69,11 @@ static void ServerEntry( void* )
 static void ServiceMain( bool as_service );
 # endif
 
+# ifndef FO_TESTING
 extern "C" int main( int argc, char** argv ) // Handled by SDL
+# else
+static int main_disabled( int argc, char** argv )
+# endif
 {
     InitialSetup( "FOnlineServer", argc, argv );
 
