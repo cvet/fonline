@@ -26,19 +26,29 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
   * Web
   * PS4 *(wip)*
 * Online or singleplayer *(wip)* modes
-* Supporting of Fallout 1/2/Tactics, Arcanum, Boldur's Gate and other isometric games asset formats
+* Supporting of Fallout 1/2/Tactics, Arcanum and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal/square map tiling
 * ...write more
 
-## Milestones
+## Work in progress
 
-* Multifunctional editor
-* C# as scripting language (Mono)
-* Singleplayer mode
-* Parallelism for server
+Bugs, performance cases and feature requests see at [Issues page](https://github.com/cvet/fonline/issues/12).
+
+#### Some major issues
+
+* [Multifunctional editor](https://github.com/cvet/fonline/issues/31)
+* [C# as scripting language (Mono)](https://github.com/cvet/fonline/issues/37)
+* [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
+* [Parallelism for server](https://github.com/cvet/fonline/issues/32)
 * Documentation
-* First release with fixed API and further backward comparability
+
+#### Some minor issues
+
+* [Supporting of UDP](https://github.com/cvet/fonline/issues/14)
+* [Direct X rendering](https://github.com/cvet/fonline/issues/47)
+* [Exclude FBX SDK from dependecies](https://github.com/cvet/fonline/issues/22)
+* [Steam integration](https://github.com/cvet/fonline/issues/38)
 
 ## Repository structure
 
