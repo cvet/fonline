@@ -41,7 +41,7 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * [C# as scripting language (Mono)](https://github.com/cvet/fonline/issues/37)
 * [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
 * [Parallelism for server](https://github.com/cvet/fonline/issues/32)
-* Documentation
+* [Documentation](https://github.com/cvet/fonline/issues/49)
 
 #### Some minor issues
 
@@ -62,7 +62,7 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 ## Clone / Build / Setup
 
-Before clone make sure that you install [Git LFS](https://git-lfs.github.com/).\
+Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).\
 ...write about build with cmake\
 ...write about how make sdk\
 ...write about how setup own test environment
