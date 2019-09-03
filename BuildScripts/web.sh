@@ -12,7 +12,7 @@ if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y install build-essential
 	sudo apt-get -y install cmake
 	sudo apt-get -y install wput
-	sudo apt-get -y install python2.7
+	sudo apt-get -y install python
 	sudo apt-get -y install nodejs
 	sudo apt-get -y install default-jre
 	sudo apt-get -y install git-core
