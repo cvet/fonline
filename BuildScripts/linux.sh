@@ -15,6 +15,7 @@ if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y install libssl-dev
 	sudo apt-get -y install libevent-dev
 	sudo apt-get -y install libxi-dev
+	sudo apt-get -y install curl
 fi
 
 mkdir -p $FO_BUILD_DEST
@@ -29,7 +30,7 @@ rm -rf ASCompiler/*
 mkdir -p x64
 cd x64
 cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux64.cache.cmake" "$ROOT_FULL_PATH"
-make -j6
+make -j$(nproc)
 cd ../
 
 # x86 (Temporarily disabled)
@@ -46,5 +47,5 @@ cd ../
 #mkdir -p x86
 #cd x86
 #cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/linux32.cache.cmake" "$ROOT_FULL_PATH"
-#make -j6
+#make -j$(nproc)
 #cd ../

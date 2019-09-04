@@ -5,8 +5,17 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "unqlite.h"
-#include "mongoc.h"
 #include "json.hpp"
+
+// Temporary workaround cause segfault before main on linux
+#ifdef FO_LINUX
+# define REMOVE_MONGO
+#endif
+
+#ifndef REMOVE_MONGO
+# include "mongoc.h"
+#endif
+#include "bson.h"
 
 DataBase* DbStorage;
 DataBase* DbHistory;
@@ -762,6 +771,7 @@ private:
     }
 };
 
+#ifndef REMOVE_MONGO
 class DbMongo: public DataBase
 {
     mongoc_client_t*                    client;
@@ -999,6 +1009,7 @@ private:
         return collection;
     }
 };
+#endif
 
 class DbMemory: public DataBase
 {
@@ -1077,8 +1088,10 @@ DataBase* GetDataBase( const string& connection_info )
         return DbJson::Create( options[ 1 ] );
     else if( options[ 0 ] == "UnQLite" && options.size() == 2 )
         return DbUnQLite::Create( options[ 1 ] );
+    #ifndef REMOVE_MONGO
     else if( options[ 0 ] == "Mongo" && options.size() == 3 )
         return DbMongo::Create( options[ 1 ], options[ 2 ] );
+    #endif
     else if( options[ 0 ] == "Memory" && options.size() == 1 )
         return DbMemory::Create();
 

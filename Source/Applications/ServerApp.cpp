@@ -113,7 +113,7 @@ static int main_disabled( int argc, char** argv )
         if( !AppGui::BeginFrame() )
         {
             // Immediate finish
-            if( !StartServer || !Server || Server->Starting() )
+            if( !StartServer || !Server || ( !Server->Started() && !Server->Stopping() ) )
                 ExitProcess( 0 );
 
             // Graceful finish

@@ -183,7 +183,6 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
 
     // Cache project files
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "ProjectFiles" ), "'ProjectFiles' not found in config file" );
     string project_files = MainConfig->GetStr( "", "ProjectFiles" );
     for( string project_path : _str( project_files ).split( ';' ) )
     {
