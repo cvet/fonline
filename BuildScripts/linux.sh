@@ -15,6 +15,7 @@ if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y install libssl-dev
 	sudo apt-get -y install libevent-dev
 	sudo apt-get -y install libxi-dev
+	sudo apt-get -y install curl
 fi
 
 mkdir -p $FO_BUILD_DEST
