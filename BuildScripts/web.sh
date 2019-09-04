@@ -39,11 +39,11 @@ emcc -v
 mkdir -p release
 cd release
 cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" "$ROOT_FULL_PATH"
-make -j6
+make -j$(nproc)
 cd ../
 
 mkdir -p debug
 cd debug
 cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$ROOT_FULL_PATH"
-make -j6
+make -j$(nproc)
 cd ../
