@@ -190,16 +190,27 @@ set( EDITOR_DEFINES "-DFONLINE_EDITOR -DFO_${OS_UPPER}" )
 # Embedded resources generation
 #
 
-function( CreateResources dir output)
-	file( WRITE ${output} "" )
+function( CreateResources dir output )
+	# Generate file content
+	set( outputString "" )
 	file( GLOB bins ${dir}/*.zip )
 	foreach( bin ${bins} )
 		string( REGEX MATCH "([^/]+)$" filename ${bin} )
 		string( REGEX REPLACE "\\.| " "_" filename ${filename} )
 		file( READ ${bin} filedata HEX )
 		string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
-		file( APPEND ${output} "const unsigned char Resource_${filename}[] = { ${filedata}};\n" )
+		string( APPEND outputString "const unsigned char Resource_${filename}[] = { ${filedata}};\n" )
 	endforeach()
+
+	# Write if content different
+	set( outputHash "" )
+	if( EXISTS ${output} )
+		file( MD5 ${output} outputHash )
+	endif()
+	string( MD5 outputStringHash "${outputString}" )
+	if( NOT "${outputStringHash}" STREQUAL "${outputHash}" )
+		file( WRITE ${output} "${outputString}" )
+	endif()
 endfunction()
 CreateResources( "Resources/Embedded" "${CMAKE_BINARY_DIR}/EmbeddedResources/EmbeddedResources.h" )
 include_directories( "${CMAKE_BINARY_DIR}/EmbeddedResources" )
