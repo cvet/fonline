@@ -506,6 +506,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/${MONGODB_DIR}/src/mongoc"
 		"${CMAKE_CURRENT_SOURCE_DIR}/${MONGODB_DIR}/src/mongoc" CACHE STRING "" FORCE )
 	include_directories( "${MONGOC_INCLUDE_DIR}" )
+	target_compile_definitions( mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
 	DisableLibWarnings( mongoc_static )
 endif()
 
