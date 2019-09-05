@@ -18,7 +18,7 @@ pipeline {
           }
           steps {
             sh './BuildScripts/android.sh'
-            dir('Build/android/') {
+            dir('Build/') {
               stash name: 'android', includes: 'Binaries/**'
             }
           }
@@ -33,7 +33,7 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/linux.sh'
-              dir('Build/linux/') {
+              dir('Build/') {
                 stash name: 'linux', includes: 'Binaries/**'
               }
             }
@@ -49,7 +49,7 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/web.sh'
-              dir('Build/web/') {
+              dir('Build/') {
                 stash name: 'web', includes: 'Binaries/**'
               }
             }
@@ -63,7 +63,7 @@ pipeline {
           }
           steps {
             bat 'BuildScripts\\windows.bat'
-            dir('Build/windows/') {
+            dir('Build/') {
               stash name: 'windows', includes: 'Binaries/**'
             }
           }
@@ -81,7 +81,7 @@ pipeline {
           }
           steps {
             sh './BuildScripts/mac.sh'
-            dir('Build/mac/') {
+            dir('Build/') {
               stash name: 'mac', includes: 'Binaries/**'
             }
           }
@@ -99,7 +99,7 @@ pipeline {
           }
           steps {
             sh './BuildScripts/ios.sh'
-            dir('Build/ios/') {
+            dir('Build/') {
               stash name: 'ios', includes: 'Binaries/**'
             }
           }

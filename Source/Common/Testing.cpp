@@ -606,30 +606,30 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         int skip = 0;
         void* callstack[ BACKTRACE_BUFFER_COUNT ];
         const int max_frames = sizeof( callstack ) / sizeof( callstack[ 0 ] );
-        char buf[ 1024 ];
         int frames = backtrace( callstack, max_frames );
         char** symbols = backtrace_symbols( callstack, frames );
 
         for( int i = skip; i < frames; i++ )
         {
+            char buf[ 1024 ];
             Dl_info info;
             if( dladdr( callstack[ i ], &info ) && info.dli_sname )
             {
                 char* demangled = nullptr;
-                int status = -1;
+                int demangled_status = -1;
                 if( info.dli_sname[ 0 ] == '_' )
-                    demangled = abi::__cxa_demangle( info.dli_sname, nullptr, 0, &status );
-                snprintf( buf, sizeof( buf ), "%-3d %*p %s + %zd",
-                          i, int(2 + sizeof( void* ) * 2), callstack[ i ],
-                          status == 0 ? demangled : info.dli_sname == 0 ? symbols[ i ] : info.dli_sname,
+                    demangled = abi::__cxa_demangle( info.dli_sname, nullptr, 0, &demangled_status );
+
+                snprintf( buf, sizeof( buf ), "%s + %zd",
+                          demangled_status == 0 ? demangled : info.dli_sname,
                           (char*) callstack[ i ] - (char*) info.dli_saddr );
 
-                free( demangled );
+                if( demangled )
+                    free( demangled );
             }
             else
             {
-                snprintf( buf, sizeof( buf ), "%-3d %*p %s",
-                          i, int(2 + sizeof( void* ) * 2), callstack[ i ], symbols[ i ] );
+                snprintf( buf, sizeof( buf ), "*%s (raw)", symbols[ i ] );
             }
             fprintf( f, "\t%s\n", buf );
         }
