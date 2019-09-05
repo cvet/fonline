@@ -78,6 +78,7 @@ Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
+* [rapidyaml](https://github.com/biojppm/rapidyaml) - YAML parser
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
 * SHA1 by Steve Reid - hash generator
 * SHA2 by Olivier Gay - hash generator

@@ -1,0 +1,7 @@
+\#*\#
+*~
+.ci/.vagrant
+build/
+Testing/
+CMakeLists.txt.user*
+compile_commands.json
