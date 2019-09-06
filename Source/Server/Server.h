@@ -157,15 +157,15 @@ public:
     static bool InitLangPacksItems( LangPackVec& lang_packs );
 
     // Init/Finish
-    static bool Init();
-    static bool InitReal();
-    static void Finish();
-    static bool Starting() { return Active && ActiveInProcess; }
-    static bool Started()  { return Active && !ActiveInProcess; }
-    static bool Stopping() { return !Active && ActiveInProcess; }
-    static bool Stopped()  { return !Active && !ActiveInProcess; }
-
-    static void LogicTick();
+    int  Run();
+    bool Init();
+    bool InitReal();
+    void Finish();
+    bool Starting() { return Active && ActiveInProcess; }
+    bool Started()  { return Active && !ActiveInProcess; }
+    bool Stopping() { return !Active && ActiveInProcess; }
+    bool Stopped()  { return !Active && !ActiveInProcess; }
+    void LogicTick();
 
     // Gui
     struct

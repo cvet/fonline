@@ -7,6 +7,7 @@
 #include "ResourceConverter.h"
 #include "FileSystem.h"
 #include "IniFile.h"
+#include "AdminPanel.h"
 #include <chrono>
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
@@ -47,6 +48,39 @@ FOServer::FOServer()
 FOServer::~FOServer()
 {
     //
+}
+
+int FOServer::Run()
+{
+    GetServerOptions();
+
+    WriteLog( "FOnline Server, version {}.\n", FONLINE_VERSION );
+    if( !GameOpt.CommandLine.empty() )
+        WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
+
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
+    if( MemoryDebugLevel > 2 )
+        Debugger::StartTraceMemory();
+
+    ushort port = MainConfig->GetInt( "", "AdminPanelPort", 0 );
+    if( port )
+        InitAdminManager( this, (ushort) port );
+
+    if( !Init() )
+    {
+        WriteLog( "Initialization failed!\n" );
+        return 1;
+    }
+
+    WriteLog( "***   Starting game loop   ***\n" );
+
+    while( !GameOpt.Quit )
+        LogicTick();
+
+    WriteLog( "***   Finishing game loop  ***\n" );
+
+    Finish();
+    return 0;
 }
 
 void FOServer::Finish()
