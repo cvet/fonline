@@ -330,18 +330,18 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
                             fprintf( f, "\t%s, %s + %lld", entry.moduleName, entry.name, entry.offsetFromSmybol );
                             if( is_current_thread )
-                                traceback += _str( "{}, {} + {}", entry.moduleName, entry.name, entry.offsetFromSmybol );
+                                traceback += _str( "    {}, {}", entry.moduleName, entry.name );
                             if( entry.lineFileName[ 0 ] != 0 )
                             {
-                                fprintf( f, ", %s (%d)\n", entry.lineFileName, entry.lineNumber );
+                                fprintf( f, ", %s (line %d)\n", entry.lineFileName, entry.lineNumber );
                                 if( is_current_thread )
-                                    traceback += _str( ", {} ({})\n", entry.lineFileName, entry.lineNumber );
+                                    traceback += _str( ", {} at line {}\n", entry.lineFileName, entry.lineNumber );
                             }
                             else
                             {
                                 fprintf( f, "\n" );
                                 if( is_current_thread )
-                                    traceback += "\n";
+                                    traceback += _str( "+ {}\n", entry.offsetFromSmybol );
                             }
                         }
                     }
