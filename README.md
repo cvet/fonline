@@ -50,6 +50,15 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * [Exclude FBX SDK from dependecies](https://github.com/cvet/fonline/issues/22)
 * [Steam integration](https://github.com/cvet/fonline/issues/38)
 
+#### Code refactoring plans
+
+* Exclude singletons
+* Preprocessor defines to constants
+* Eliminate raw pointers, use only smart
+* Hide implementation from headers by pimpl or abstraction
+* Fix all warnings from PVS Studio and other static analyzer tools
+* Improve more unit tests and gain code coverage to at least 80%
+
 ## Repository structure
 
 * *BuildScripts* - scripts for automatical build in command line or any ci/cd system
