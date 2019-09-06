@@ -415,10 +415,10 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
     GetCurrentDirectoryW( MAX_FOPATH, prev_path );
     SetCurrentDirectoryW( _str( new_path ).toWideChar().c_str() );
     #else
-    char prev_path[ MAX_FOPATH ];
+    char  prev_path[ MAX_FOPATH ];
     char* r1 = getcwd( prev_path, MAX_FOPATH );
     UNUSED_VARIABLE( r1 );
-    int r2 = chdir( new_path.c_str() );
+    int   r2 = chdir( new_path.c_str() );
     UNUSED_VARIABLE( r2 );
     #endif
 

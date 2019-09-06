@@ -549,6 +549,7 @@ include_directories( "${CATCH2_DIR}/single_include/catch2" )
 
 # Backward-cpp
 if( NOT WIN32 )
+	StatusMessage( "+ Backward-cpp" )
 	set( BACKWARDCPP_DIR "ThirdParty/backward-cpp" )
 	include_directories( "${BACKWARDCPP_DIR}" )
 	if( "${OS}" STREQUAL "Linux" )

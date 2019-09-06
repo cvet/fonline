@@ -91,7 +91,7 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
     GetCurrentDirectoryW( TEMP_BUF_SIZE, buf );
     GameOpt.WorkDir = _str().parseWideChar( buf );
     #else
-    char buf[ TEMP_BUF_SIZE ];
+    char  buf[ TEMP_BUF_SIZE ];
     char* r = getcwd( buf, sizeof( buf ) );
     UNUSED_VARIABLE( r );
     GameOpt.WorkDir = buf;
@@ -571,7 +571,7 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 void ShowErrorMessage( const string& message, const string& traceback )
 {
     #ifndef FO_SERVER_DAEMON
-    # if defined( FO_WEB ) || defined( FO_ANDROID ) || defined( FO_IOS )
+    # if defined ( FO_WEB ) || defined ( FO_ANDROID ) || defined ( FO_IOS )
     SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr );
 
     # else
@@ -592,7 +592,7 @@ void ShowErrorMessage( const string& message, const string& traceback )
     close_button.text = "Close";
 
     const SDL_MessageBoxButtonData buttons[] = { copy_button, close_button };
-    SDL_MessageBoxData data;
+    SDL_MessageBoxData             data;
     SDL_zero( data );
     data.flags = SDL_MESSAGEBOX_ERROR;
     data.title = "FOnline Error";

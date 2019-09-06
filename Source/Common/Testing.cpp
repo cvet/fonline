@@ -476,10 +476,10 @@ void CreateDump( const string& appendix, const string& message )
     TopLevelFilterReadableDump( nullptr );
 }
 
-#elif !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && !defined( FO_IOS )
+#elif !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && !defined ( FO_IOS )
 
 # ifdef FO_LINUX
-#  define BACKWARD_HAS_BFD 1
+#  define BACKWARD_HAS_BFD    1
 # endif
 # include "backward.hpp"
 
@@ -551,19 +551,19 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     // Additional description
     static const char* str_SIGSEGV[] =
     {
-        "Address not mapped to object", // SEGV_MAPERR
+        "Address not mapped to object",          // SEGV_MAPERR
         "Invalid permissions for mapped object", // SEGV_ACCERR
     };
     static const char* str_SIGFPE[] =
     {
-        "Integer divide by zero", // FPE_INTDIV
-        "Integer overflow", // FPE_INTOVF
-        "Floating-point divide by zero", // FPE_FLTDIV
-        "Floating-point overflow", // FPE_FLTOVF
-        "Floating-point underflow", // FPE_FLTUND
-        "Floating-point inexact result", // FPE_FLTRES
+        "Integer divide by zero",           // FPE_INTDIV
+        "Integer overflow",                 // FPE_INTOVF
+        "Floating-point divide by zero",    // FPE_FLTDIV
+        "Floating-point overflow",          // FPE_FLTOVF
+        "Floating-point underflow",         // FPE_FLTUND
+        "Floating-point inexact result",    // FPE_FLTRES
         "Invalid floating-point operation", // FPE_FLTINV
-        "Subscript out of range", // FPE_FLTSUB
+        "Subscript out of range",           // FPE_FLTSUB
     };
 
     const char* sig_desc = nullptr;
@@ -684,7 +684,7 @@ bool RaiseAssert( const string& message, const string& file, int line )
 
     // Show message
     string traceback = "";
-    #if defined( FO_LINUX ) || defined( FO_MAC )
+    # if defined ( FO_LINUX ) || defined ( FO_MAC )
     backward::StackTrace st;
     st.load_here( 42 );
     backward::Printer st_printer;
@@ -692,7 +692,7 @@ bool RaiseAssert( const string& message, const string& file, int line )
     std::stringstream ss;
     st_printer.print( st, ss );
     traceback = ss.str();
-    #endif
+    # endif
 
     ShowErrorMessage( _str( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ), traceback );
     #endif
