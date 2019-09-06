@@ -674,7 +674,7 @@ extern void ChangeStepsXY( float& sx, float& sy, float deq );
 extern bool MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
 extern void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
 extern bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
-extern void ShowMessage( const string& message );
+extern void ShowErrorMessage( const string& message, const string& traceback );
 extern int  ConvertParamValue( const string& str, bool& fail );
 
 // Hex offsets

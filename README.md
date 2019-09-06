@@ -50,6 +50,15 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * [Exclude FBX SDK from dependecies](https://github.com/cvet/fonline/issues/22)
 * [Steam integration](https://github.com/cvet/fonline/issues/38)
 
+#### Code refactoring plans
+
+* Exclude singletons
+* Preprocessor defines to constants
+* Eliminate raw pointers, use only smart
+* Hide implementation from headers by pimpl or abstraction
+* Fix all warnings from PVS Studio and other static analyzer tools
+* Improve more unit tests and gain code coverage to at least 80%
+
 ## Repository structure
 
 * *BuildScripts* - scripts for automatical build in command line or any ci/cd system
@@ -73,6 +82,7 @@ Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
 * [Asio](https://think-async.com/Asio/) - networking library
 * [Assimp](http://www.assimp.org/) - 3d models/animations loading library
+* [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
