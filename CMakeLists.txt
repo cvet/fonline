@@ -199,7 +199,7 @@ function( CreateResources dir output )
 		string( REGEX REPLACE "\\.| " "_" filename ${filename} )
 		file( READ ${bin} filedata HEX )
 		string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
-		string( APPEND outputString "const unsigned char Resource_${filename}[] = { ${filedata}};\n" )
+		string( APPEND outputString "const unsigned char Resource_${filename}[] = { ${filedata}};" )
 	endforeach()
 
 	# Write if content different
