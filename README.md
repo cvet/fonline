@@ -1,12 +1,12 @@
 # FOnline Engine
 
-[![Build Status](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)](https://ci.fonline.ru/blue/organizations/jenkins/fonline/activity)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
+[![appveyor](https://ci.appveyor.com/api/projects/status/kyjfx4w9xiu67oep?svg=true)](https://ci.appveyor.com/project/cvet/fonline-lqwem)
 [![codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
+[![codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
 
 ## Goal
 
-Friendly engine for fallout-like icometric games for develop/play alone or with friends.
+Friendly engine for fallout-like isometric games for develop/play alone or with friends.
 
 ## Features
 
@@ -25,7 +25,7 @@ Friendly engine for fallout-like icometric games for develop/play alone or with 
   * Android
   * Web
   * PS4 *(wip)*
-* Online or singleplayer *(wip)* modes
+* Online and singleplayer *(wip)* modes
 * Supporting of Fallout 1/2/Tactics, Arcanum and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal/square map tiling
@@ -47,7 +47,7 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 * [Supporting of UDP](https://github.com/cvet/fonline/issues/14)
 * [Direct X rendering](https://github.com/cvet/fonline/issues/47)
-* [Exclude FBX SDK from dependecies](https://github.com/cvet/fonline/issues/22)
+* [Exclude FBX SDK from dependencies](https://github.com/cvet/fonline/issues/22)
 * [Steam integration](https://github.com/cvet/fonline/issues/38)
 
 #### Code refactoring plans
@@ -67,13 +67,27 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
 * *SourceTools* - some tools for formatting code or count it
-* *ThirdParty* - external dependecies of engine, included in repository
+* *ThirdParty* - external dependencies of engine, included to repository
 
 ## Clone / Build / Setup
 
 Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).\
+You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.\
+In any way first you must install CMake version equal or higher then 3.5.
+
+For build just run from repository root one of the following scripts:
+* BuildScripts\windows.bat - build Windows binaries (windows only)
+* BuildScripts/linux.sh - build Linux binaries (Unix platforms)
+* BuildScripts/web.sh - build Web binaries (Unix platforms)
+* BuildScripts/android.sh - build Android binaries (Unix platforms)
+* BuildScripts/mac.sh - build macOS binaries (macOS only)
+* BuildScripts/ios.sh - build iOS binaries (macOS only)
+
+All output binaries you can find in Build/Binaries directory.
+
+Todo:\
 ...write about build with cmake\
-...write about how make sdk\
+...write about how make final sdk\
 ...write about how setup own test environment
 
 ## Third-party packages
