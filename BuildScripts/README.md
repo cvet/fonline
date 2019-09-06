@@ -12,30 +12,16 @@ Default behaviour is build in repository in 'Build' directory which is already p
 
 ### FO_ROOT *(default: . or ../ automatic detection)*
 
-Path to root directory of FOnline repository.
+Path to root directory of FOnline repository.\
+If you try run build script from root (e.g. BuildScripts/linux.sh) then current directory taked.\
+If you try run build script from BuildScripts directory (e.g. ./linux.sh) then one level outside directory taked.\
+This behaviour determined by exition of CMakeLists.txt file in current directory.
 
 `FO_ROOT=c:/fonline-repo`
 
 ### FO_INSTALL_PACKAGES *(default: 1)*
 
-Automatically install packages needed for build.
+Automatically install packages needed for build.\
+Needed sudo permissions.
  
 `FO_INSTALL_PACKAGES=0`
-
-### FO_FTP_DEST *(default: not specified)*
-
-Address of FTP server where binary files will be uploaded after build.
-
-`FO_FTP_DEST=127.0.0.1`
-
-### FO_FTP_USER *(default: not specified)*
-
-FTP user name and password, separated by colon. This variable is required if **FO_FTP_DEST** is set.
-
-`FO_FTP_USER=user:password`
-
-### FO_COPY_DEST *(default: not specified)*
-
-Path to directory where binary files will be copied after build.
- 
-`FO_COPY_DEST=c:/fonline-bin`

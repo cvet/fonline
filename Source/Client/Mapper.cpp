@@ -4273,8 +4273,8 @@ bool FOMapper::InitScriptSystem()
     Script::SetExceptionCallback([] ( const string &str )
                                  {
                                      CreateDump( "ScriptException", str );
-                                     ShowMessage( str );
-                                     ExitProcess( 0 );
+                                     ShowErrorMessage( str, "" );
+                                     ExitProcess( 1 );
                                  } );
 
     // Bind vars and functions, look bind.h

@@ -82,7 +82,8 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
         #ifdef FO_WINDOWS
         SetCurrentDirectoryW( _str( GameOpt.WorkDir ).toWideChar().c_str() );
         #else
-        chdir( GameOpt.WorkDir.c_str() );
+        int r = chdir( GameOpt.WorkDir.c_str() );
+        UNUSED_VARIABLE( r );
         #endif
     }
     #ifdef FO_WINDOWS
@@ -90,8 +91,9 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
     GetCurrentDirectoryW( TEMP_BUF_SIZE, buf );
     GameOpt.WorkDir = _str().parseWideChar( buf );
     #else
-    char buf[ TEMP_BUF_SIZE ];
-    getcwd( buf, sizeof( buf ) );
+    char  buf[ TEMP_BUF_SIZE ];
+    char* r = getcwd( buf, sizeof( buf ) );
+    UNUSED_VARIABLE( r );
     GameOpt.WorkDir = buf;
     #endif
 
@@ -566,15 +568,41 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
     return a + b + c < 0;
 }
 
-void ShowMessage( const string& message )
+void ShowErrorMessage( const string& message, const string& traceback )
 {
-    #if defined ( FO_CLIENT ) || defined ( FO_MAPPER )
-    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message.c_str(), nullptr );
-    #else
-    # ifdef FO_WINDOWS
-    MessageBoxW( nullptr, _str( message ).toWideChar().c_str(), L"FOnline", MB_OK );
+    #ifndef FO_SERVER_DAEMON
+    # if defined ( FO_WEB ) || defined ( FO_ANDROID ) || defined ( FO_IOS )
+    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr );
+
     # else
-    // Todo: Linux
+    string verb_message = message;
+    if( !traceback.empty() )
+        verb_message += _str( "\nTraceback:\n{}", traceback );
+
+    SDL_MessageBoxButtonData copy_button;
+    SDL_zero( copy_button );
+    copy_button.buttonid = 0;
+    copy_button.text = "Copy";
+
+    SDL_MessageBoxButtonData close_button;
+    SDL_zero( close_button );
+    close_button.buttonid = 1;
+    close_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+    close_button.text = "Close";
+
+    const SDL_MessageBoxButtonData buttons[] = { copy_button, close_button };
+    SDL_MessageBoxData             data;
+    SDL_zero( data );
+    data.flags = SDL_MESSAGEBOX_ERROR;
+    data.title = "FOnline Error";
+    data.message = verb_message.c_str();
+    data.numbuttons = 2;
+    data.buttons = buttons;
+
+    int buttonid;
+    while( SDL_ShowMessageBox( &data, &buttonid ) >= 0 && buttonid == 0 )
+        SDL_SetClipboardText( verb_message.c_str() );
     # endif
     #endif
 }

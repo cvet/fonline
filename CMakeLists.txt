@@ -1,74 +1,94 @@
 cmake_minimum_required( VERSION 3.5 )
 project( FOnlineProject )
 
-#
-# Preprocessor definitions
-#
+# Options
+set( FONLINE_VERBOSE_BUILD OFF CACHE BOOL "Verbose build mode" )
+set( FONLINE_OUTPUT_BINARIES_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "Binaries output path" )
+set( FONLINE_WEB_DEBUG OFF CACHE BOOL "Web debug build" )
 
-# set( FO_DEBUG YES )
+# Quiet all non-error messages instead ourself
+function( message mode )
+	if( ${mode} STREQUAL "FATAL_ERROR" )
+		_message( FATAL_ERROR ${ARGN} )
+	elseif( ${mode} STREQUAL "SEND_ERROR" )
+		_message( SEND_ERROR ${ARGN} )
+	elseif( FONLINE_VERBOSE_BUILD )
+		_message( ${mode} ${ARGN} )
+	endif()
+endfunction()
+function( StatusMessage )
+	_message( STATUS ${ARGN} )
+endfunction()
+function( AbortMessage )
+	_message( FATAL_ERROR ${ARGN} )
+endfunction()
+if( FONLINE_VERBOSE_BUILD )
+	StatusMessage( "Verbose build mode" )
+	set( CMAKE_VERBOSE_MAKEFILE ON CACHE STRING "" FORCE )
+else()
+	set( CMAKE_VERBOSE_MAKEFILE OFF CACHE STRING "" FORCE )
+endif()
+
+# Build options
+StatusMessage( "Start project generation" )
+
+set( BUILD_CONFIGURATION "Release" )
 set( BUILD_ONLY_CLIENT NO )
 set( BUILD_CLIENT_LIBRARY NO )
 set( BUILD_TEST_CASES NO )
 set( BUILD_CODE_COVERAGE NO )
-set( CMAKE_VERBOSE_MAKEFILE ON CACHE STRING "" FORCE )
+set( BUILD_OPTIONS "" )
+set( BUILD_DEFINES "UNICODE;_UNICODE" )
 
+# Architecture configuration
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 	set( ARCH_STR "x64" )
 else()
 	set( ARCH_STR "x86" )
 endif()
-if( NOT FO_DEBUG )
-	set( CONFIGURATION_NAME "Release" )
-	set( CONFIGURATION_NAME_DESKTOP "RelWithDebInfo" )
-else()
-	set( CONFIGURATION_NAME "Debug" )
-	set( CONFIGURATION_NAME_DESKTOP "Debug" )
-endif()
-set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME}" CACHE STRING "" FORCE )
-set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME}" CACHE STRING "" FORCE )
+StatusMessage( "CPU architecture: ${ARCH_STR}" )
 
 if( WIN32 )
 	set( OS "Windows" )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}" )
+	set( BUILD_CONFIGURATION "RelWithDebInfo" )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( CLIENT_POSTFIX "64" )
 	else()
 		set( NON_CLIENT_POSTFIX "32" )
 	endif()
-	set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
-	set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
 	set( USE_GLEW YES )
 	set( BUILD_TEST_CASES YES )
-	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
+	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/Release/${ARCH_STR}" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};/MT;/MP" )
+	# Debug: /MTd /MP /RTCc /RTCsu
+	set( BUILD_DEFINES "${BUILD_DEFINES};_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_WINSOCK_DEPRECATED_NO_WARNINGS" )
+	set( CMAKE_VS_PLATFORM_TOOLSET "v120_xp" CACHE STRING "Platform toolset" FORCE )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( OS "Linux" )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}" )
+	set( BUILD_CONFIGURATION "RelWithDebInfo" )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 4 )
 		set( CLIENT_POSTFIX "32" )
 		set( NON_CLIENT_POSTFIX "32" )
 	endif()
-	set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
-	set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
 	find_package( X11 REQUIRED )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "GL" )
 	set( USE_GLEW YES )
 	set( BUILD_TEST_CASES YES )
 	set( BUILD_CODE_COVERAGE YES )
-	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/${CONFIGURATION_NAME}/${ARCH_STR}" )
+	link_directories( "ThirdParty/fbxsdk/fbxsdk-libs/${OS}/Release/${ARCH_STR}" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-no-pie;-O2;-g;-rdynamic" )
 elseif( APPLE AND NOT IOS_PLATFORM )
 	set( OS "Mac" )
+	set( BUILD_CONFIGURATION "RelWithDebInfo" )
 	set( BUILD_ONLY_CLIENT YES )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/Binaries/Client/${OS}" )
-	set( CMAKE_CONFIGURATION_TYPES "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
-	set( CMAKE_BUILD_TYPE "${CONFIGURATION_NAME_DESKTOP}" CACHE STRING "" FORCE )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "${OPENGL_LIBRARIES}" )
 	set( USE_GLEW YES )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-no-pie;-O2;-g;-rdynamic" )
 elseif( APPLE AND IOS_PLATFORM )
 	set( OS "iOS" )
 	set( BUILD_ONLY_CLIENT YES )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/Binaries/Client/${OS}" )
 	find_library( OPENGLES OpenGLES )
 	find_library( METAL Metal )
 	find_library( COREGRAPGHICS CoreGraphics )
@@ -78,118 +98,121 @@ elseif( APPLE AND IOS_PLATFORM )
 	find_library( GAMECONTROLLER GameController )
 	find_library( COREMOTION CoreMotion )
 	set( CLIENT_LIBS ${OPENGLES} ${METAL} ${COREGRAPGHICS} ${QUARTZCORE} ${UIKIT} ${AVFOUNDATION} ${GAMECONTROLLER} ${COREMOTION} )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-no-pie;-O3" )
 elseif( ANDROID )
 	set( OS "Android" )
 	set( BUILD_ONLY_CLIENT YES )
 	set( BUILD_CLIENT_LIBRARY YES )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}/libs/${ANDROID_ABI}" )
 	set( RENDER_LIBS "GLESv1_CM" "GLESv2" )
 	set( CLIENT_LIBS "android" "log" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-pie;-O3" )
 elseif( EMSCRIPTEN )
 	set( OS "Web" )
 	set( BUILD_ONLY_CLIENT YES )
-	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Client/${OS}" )
 	set( CMAKE_EXECUTABLE_SUFFIX ".js" )
-	set( WEB_OPTIONS "-s TOTAL_MEMORY=268435456" ) # 256 Mb
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s ALLOW_MEMORY_GROWTH=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s USE_WEBGL2=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s FORCE_FILESYSTEM=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s ENVIRONMENT='web'" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s DISABLE_EXCEPTION_CATCHING=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s NO_DYNAMIC_EXECUTION=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s USE_SDL_IMAGE=0" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s USE_SDL_TTF=0" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s USE_SDL_NET=0" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s NO_EXIT_RUNTIME=1" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s EXPORTED_RUNTIME_METHODS=\"['FS_createPath', 'FS_createDataFile']\"" )
-	set( WEB_OPTIONS "${WEB_OPTIONS} -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['Pointer_stringify', 'intArrayFromString', 'UTF8ToString', 'addRunDependency', 'removeRunDependency', 'stackTrace', 'getMemory']\"" )
-	if( FO_DEBUG )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -O0" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -g3" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} --memory-init-file 1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s WASM=0" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s SAFE_HEAP=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s ASSERTIONS=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s STACK_OVERFLOW_CHECK=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s GL_DEBUG=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s GL_ASSERTIONS=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s GL_TESTING=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s FS_LOG=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s WARN_UNALIGNED=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s ERROR_ON_UNDEFINED_SYMBOLS=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s ERROR_ON_MISSING_LIBRARIES=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s DEMANGLE_SUPPORT=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s EXCEPTION_DEBUG=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s BINARYEN_TRAP_MODE='allow'" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s PRECISE_F32=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s TOTAL_MEMORY=268435456" ) # 256 Mb
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s ALLOW_MEMORY_GROWTH=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s USE_WEBGL2=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s FORCE_FILESYSTEM=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s ENVIRONMENT='web'" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s DISABLE_EXCEPTION_CATCHING=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s NO_DYNAMIC_EXECUTION=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s USE_SDL_IMAGE=0" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s USE_SDL_TTF=0" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s USE_SDL_NET=0" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s NO_EXIT_RUNTIME=1" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s EXPORTED_RUNTIME_METHODS=\"['FS_createPath', 'FS_createDataFile']\"" )
+	set( BUILD_OPTIONS "${BUILD_OPTIONS};-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['Pointer_stringify', 'intArrayFromString', 'UTF8ToString', 'addRunDependency', 'removeRunDependency', 'stackTrace', 'getMemory']\"" )
+	if( FONLINE_WEB_DEBUG )
+		set( BUILD_CONFIGURATION "Debug" )
+		set( CLIENT_POSTFIX "${CLIENT_POSTFIX}_Debug" )
+		set( NON_CLIENT_POSTFIX "${NON_CLIENT_POSTFIX}_Debug" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-O0" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-g3" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};--memory-init-file 1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s WASM=0" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s SAFE_HEAP=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s ASSERTIONS=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s STACK_OVERFLOW_CHECK=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s GL_DEBUG=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s GL_ASSERTIONS=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s GL_TESTING=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s FS_LOG=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s WARN_UNALIGNED=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s ERROR_ON_UNDEFINED_SYMBOLS=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s ERROR_ON_MISSING_LIBRARIES=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s DEMANGLE_SUPPORT=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s EXCEPTION_DEBUG=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s BINARYEN_TRAP_MODE='allow'" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s PRECISE_F32=1" )
 	else()
-		set( WEB_OPTIONS "${WEB_OPTIONS} -Oz" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -fno-rtti" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -fno-exceptions" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} --no-heap-copy" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s DISABLE_EXCEPTION_CATCHING=1" )
-		set( WEB_OPTIONS "${WEB_OPTIONS} -s BINARYEN_TRAP_MODE='clamp'" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-Oz" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-fno-rtti" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-fno-exceptions" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};--no-heap-copy" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s DISABLE_EXCEPTION_CATCHING=1" )
+		set( BUILD_OPTIONS "${BUILD_OPTIONS};-s BINARYEN_TRAP_MODE='clamp'" )
 		# Uncomment these optimizations later, they may give side effects
-		# set( WEB_OPTIONS "${WEB_OPTIONS} --closure 1" ) - conflicts with NO_DYNAMIC_EXECUTION
-		# set( WEB_OPTIONS "${WEB_OPTIONS} --llvm-lto 1" )
-		# set( WEB_OPTIONS "${WEB_OPTIONS} -s INLINING_LIMIT=1" )
+		# set( BUILD_OPTIONS "${BUILD_OPTIONS};--closure 1" ) - conflicts with NO_DYNAMIC_EXECUTION
+		# set( BUILD_OPTIONS "${BUILD_OPTIONS};--llvm-lto 1" )
+		# set( BUILD_OPTIONS "${BUILD_OPTIONS};-s INLINING_LIMIT=1" )
 	endif()
-	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${WEB_OPTIONS}" )
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${WEB_OPTIONS}" )
-	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WEB_OPTIONS}" )
-	add_definitions( "-DAS_MAX_PORTABILITY" )
-	add_definitions( "-DWIP_16BYTE_ALIGN" )
+	set( BUILD_DEFINES "${BUILD_DEFINES};AS_MAX_PORTABILITY;WIP_16BYTE_ALIGN" )
 else()
-	message( FATAL_ERROR "Unknown OS!" )
+	AbortMessage( "Unknown OS!" )
 endif()
 
-add_definitions( "-DUNICODE" )
-add_definitions( "-D_UNICODE" )
-
-if( FO_DEBUG )
-	set( CLIENT_POSTFIX "${CLIENT_POSTFIX}_Debug" )
-	set( NON_CLIENT_POSTFIX "${NON_CLIENT_POSTFIX}_Debug" )
-endif()
-
-set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Server" )
-set( EDITOR_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Editor" )
-set( TESTS_OUTPUT "${CMAKE_BINARY_DIR}/../Binaries/Tests" )
-
-set( FO_OUTPUT_BINARIES_PATH "" CACHE PATH "Fixed output path" )
-if( NOT "${FO_OUTPUT_BINARIES_PATH}" STREQUAL "" )
-	set( CLIENT_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Client/${OS}" )
-	set( SERVER_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Server" )
-	set( EDITOR_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Editor" )
-	set( TESTS_OUTPUT "${FO_OUTPUT_BINARIES_PATH}/Tests" )
-	message( STATUS "Output binaries: ${FO_OUTPUT_BINARIES_PATH}" )
-endif()
-
-if( MSVC_IDE )
-	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++14" )
-	set( COMPILER_DEFINES "-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE -D_WINSOCK_DEPRECATED_NO_WARNINGS" )
-	set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${COMPILER_DEFINES} /MTd /MP /RTCc /RTCsu" )
-	set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMPILER_DEFINES} /MTd /MP /RTCc /RTCsu" )
-	set( CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${COMPILER_DEFINES} /MT /MP" )
-	set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
-	set( CMAKE_VS_PLATFORM_TOOLSET "v120_xp" CACHE STRING "Platform toolset" FORCE )
-else()
-	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -no-pie" )
-endif()
-
+StatusMessage( "Operating system: ${OS}" )
 string( TOUPPER "${OS}" OS_UPPER )
-set( SERVER_DEFINES "-DFONLINE_SERVER -DFO_${OS_UPPER}" )
-set( CLIENT_DEFINES "-DFONLINE_CLIENT -DFO_${OS_UPPER}" )
-set( EDITOR_DEFINES "-DFONLINE_EDITOR -DFO_${OS_UPPER}" )
+set( BUILD_DEFINES "${BUILD_DEFINES};FO_${OS_UPPER}" )
 
-#
+StatusMessage( "Configuration: ${BUILD_CONFIGURATION}" )
+set( CMAKE_CONFIGURATION_TYPES "${BUILD_CONFIGURATION}" CACHE STRING "" FORCE )
+set( CMAKE_BUILD_TYPE "${BUILD_CONFIGURATION}" CACHE STRING "" FORCE )
+
+StatusMessage( "Binaries output path: ${FONLINE_OUTPUT_BINARIES_PATH}" )
+set( OUTPUT_BINARIES_PATH "${FONLINE_OUTPUT_BINARIES_PATH}/Binaries" )
+file( MAKE_DIRECTORY "${OUTPUT_BINARIES_PATH}" )
+if( ANDROID )
+	set( CLIENT_OUTPUT "${OUTPUT_BINARIES_PATH}/Client/${OS}/libs/${ANDROID_ABI}" )
+else()
+	set( CLIENT_OUTPUT "${OUTPUT_BINARIES_PATH}/Client/${OS}" )
+endif()
+set( SERVER_OUTPUT "${OUTPUT_BINARIES_PATH}/Server" )
+set( EDITOR_OUTPUT "${OUTPUT_BINARIES_PATH}/Editor" )
+set( TESTS_OUTPUT "${OUTPUT_BINARIES_PATH}/Tests" )
+
+# Compiler options
+set( BUILD_OPTIONS "${BUILD_OPTIONS}" )
+string( REPLACE ";" " " BUILD_OPTIONS "${BUILD_OPTIONS}" )
+string( STRIP "${BUILD_OPTIONS}" BUILD_OPTIONS )
+if( MSVC )
+	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++14 ${BUILD_OPTIONS}" )
+else()
+	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${BUILD_OPTIONS}" )
+endif()
+string( STRIP "${CMAKE_CXX_FLAGS}" CMAKE_CXX_FLAGS )
+StatusMessage( "Compiler flags: ${CMAKE_CXX_FLAGS}" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${BUILD_OPTIONS}" )
+if( MSVC )
+	set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${BUILD_OPTIONS}" )
+	set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} ${BUILD_OPTIONS}" )
+	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${BUILD_OPTIONS}" )
+	set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${BUILD_OPTIONS}" )
+	set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${BUILD_OPTIONS}" )
+	set( CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} ${BUILD_OPTIONS}" )
+	set( CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${BUILD_OPTIONS}" )
+	set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${BUILD_OPTIONS}" )
+	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /INCREMENTAL:NO" )
+	set( CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /INCREMENTAL:NO" )
+	set( CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} /INCREMENTAL:NO" )
+	set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
+	set( CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /INCREMENTAL:NO" )
+else()
+	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BUILD_OPTIONS}" )
+endif()
+
 # Embedded resources generation
-#
-
 function( CreateResources dir output )
 	# Generate file content
 	set( outputString "" )
@@ -209,15 +232,15 @@ function( CreateResources dir output )
 	endif()
 	string( MD5 outputStringHash "${outputString}" )
 	if( NOT "${outputStringHash}" STREQUAL "${outputHash}" )
+		StatusMessage( "Generate embedded resources" )
 		file( WRITE ${output} "${outputString}" )
 	endif()
 endfunction()
 CreateResources( "Resources/Embedded" "${CMAKE_BINARY_DIR}/EmbeddedResources/EmbeddedResources.h" )
 include_directories( "${CMAKE_BINARY_DIR}/EmbeddedResources" )
 
-#
-# Sources
-#
+# Third-party libs
+StatusMessage( "Third-party libs:" )
 
 function( DisableLibWarnings lib )
 	target_compile_options( ${lib} PRIVATE
@@ -226,6 +249,7 @@ function( DisableLibWarnings lib )
 endfunction()
 
 # SDL2
+StatusMessage( "+ SDL2" )
 set( SDL_DIR "ThirdParty/SDL2" )
 set( SDL_SHARED OFF CACHE STRING "" FORCE )
 set( SDL_STATIC ON CACHE STRING "" FORCE )
@@ -254,19 +278,23 @@ if( APPLE AND IOS_PLATFORM )
 	set( SDL_JOYSTICK ON CACHE STRING "" FORCE )
 	set( SDL_HAPTIC ON CACHE STRING "" FORCE )
 endif()
-add_definitions( "-DGL_GLEXT_PROTOTYPES" )
 add_subdirectory( "${SDL_DIR}" )
 include_directories( "${SDL_DIR}/include" )
+set( BUILD_DEFINES "${BUILD_DEFINES};GL_GLEXT_PROTOTYPES" )
+target_compile_definitions( SDL2main PRIVATE "GL_GLEXT_PROTOTYPES" )
+target_compile_definitions( SDL2-static PRIVATE "GL_GLEXT_PROTOTYPES" )
 DisableLibWarnings( SDL2main )
 DisableLibWarnings( SDL2-static )
 
 # Zlib
+StatusMessage( "+ Zlib" )
 set( ZLIB_DIR "ThirdParty/zlib" )
 add_subdirectory( "${ZLIB_DIR}" )
 include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
 DisableLibWarnings( zlibstatic )
 
 # PNG
+StatusMessage( "+ PNG" )
 if( NOT BUILD_ONLY_CLIENT )
 	set( PNG_DIR "ThirdParty/PNG" )
 	set( SKIP_INSTALL_ALL ON CACHE STRING "" FORCE )
@@ -281,6 +309,7 @@ if( NOT BUILD_ONLY_CLIENT )
 endif()
 
 # Ogg
+StatusMessage( "+ Ogg" )
 set( OGG_DIR "ThirdParty/ogg" )
 file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
 include_directories( "${OGG_DIR}/include" )
@@ -288,6 +317,7 @@ add_library( Ogg ${OGG_SOURCE} )
 DisableLibWarnings( Ogg )
 
 # Vorbis
+StatusMessage( "+ Vorbis" )
 set( VORBIS_DIR "ThirdParty/Vorbis" )
 file( GLOB VORBIS_SOURCE "${VORBIS_DIR}/lib/*.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/barkmel.c" )
@@ -300,6 +330,7 @@ target_link_libraries( Vorbis Ogg )
 DisableLibWarnings( Vorbis )
 
 # Theora
+StatusMessage( "+ Theora" )
 set( THEORA_DIR "ThirdParty/Theora" )
 file( GLOB THEORA_SOURCE "${THEORA_DIR}/lib/*.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/analyze.c" )
@@ -310,13 +341,16 @@ add_library( Theora ${THEORA_SOURCE} )
 DisableLibWarnings( Theora )
 
 # AngelScript
+StatusMessage( "+ AngelScript" )
 set( ANGEL_SCRIPT_DIR "ThirdParty/AngelScript" )
-add_definitions( "-DAS_NO_EXCEPTIONS -DAS_NO_THREADS" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
 include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}/sdk/angelscript/source" "${ANGEL_SCRIPT_DIR}/sdk/add_on" )
+set( BUILD_DEFINES "${BUILD_DEFINES};AS_NO_EXCEPTIONS;AS_NO_THREADS" )
+target_compile_definitions( Angelscript PRIVATE "AS_NO_EXCEPTIONS;AS_NO_THREADS" )
 DisableLibWarnings( Angelscript )
 
 # AngelScriptExt
+StatusMessage( "+ AngelScriptExt" )
 set( ANGEL_SCRIPT_EXT_DIR "Source/Common/AngelScriptExt" )
 set( ANGEL_SCRIPT_SDK_DIR "ThirdParty/AngelScript/sdk" )
 include_directories( "${ANGEL_SCRIPT_EXT_DIR}" )
@@ -347,12 +381,14 @@ add_library( AngelscriptExt ${AS_SOURCE} ${AS_PREPROCESSOR_SOURCE} ${AS_MATH_SOU
 DisableLibWarnings( AngelscriptExt )
 
 # Acm
+StatusMessage( "+ Acm" )
 set( ACM_DIR "ThirdParty/Acm" )
 add_subdirectory( "${ACM_DIR}" )
 include_directories( "${ACM_DIR}" )
 DisableLibWarnings( Acm )
 
 # SHA
+StatusMessage( "+ SHA" )
 set( SHA_DIR "ThirdParty/SHA" )
 add_subdirectory( "${SHA_DIR}" )
 include_directories( "${SHA_DIR}" )
@@ -360,17 +396,20 @@ DisableLibWarnings( SHA )
 
 # GLEW
 if( USE_GLEW )
+	StatusMessage( "+ GLEW" )
 	set( GLEW_DIR "ThirdParty/GLEW" )
 	file( GLOB GLEW_SOURCE "${GLEW_DIR}/GL/*.*" )
-	add_definitions( "-DGLEW_STATIC" )
 	include_directories( "${GLEW_DIR}" )
 	add_library( GLEW ${GLEW_SOURCE} )
+	set( BUILD_DEFINES "${BUILD_DEFINES};GLEW_STATIC" )
+	target_compile_definitions( GLEW PRIVATE "GLEW_STATIC" )
 	set( GLEW_LIB "GLEW" )
 	DisableLibWarnings( GLEW )
 endif()
 
 # NCodeHook
 if( WIN32 )
+	StatusMessage( "+ NCodeHook" )
 	set( NCODE_HOOK_DIR "ThirdParty/NCodeHook" )
 	add_subdirectory( "${NCODE_HOOK_DIR}" )
 	include_directories( "${NCODE_HOOK_DIR}" )
@@ -381,6 +420,7 @@ endif()
 # Assimp
 set( ASSIMP_DIR "ThirdParty/Assimp" )
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ Assimp" )
 	set( BUILD_SHARED_LIBS OFF CACHE STRING "" FORCE )
 	set( ASSIMP_NO_EXPORT ON CACHE STRING "" FORCE )
 	set( ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE STRING "" FORCE )
@@ -393,10 +433,13 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "${CMAKE_BINARY_DIR}/${ASSIMP_DIR}/include" )
 	DisableLibWarnings( assimp )
 	DisableLibWarnings( IrrXML )
+else()
+	StatusMessage( "+ Assimp headers" )
 endif()
 include_directories( "${ASSIMP_DIR}/include" )
 
 # Fbx SDK
+StatusMessage( "+ Fbx SDK" )
 set( FBXSDK_DIR "ThirdParty/fbxsdk" )
 include_directories( "${FBXSDK_DIR}" )
 if( WIN32 )
@@ -407,6 +450,7 @@ endif()
 
 # cURL & mbedTLS
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ cURL" )
 	set( MBED_TLS_DIR "ThirdParty/mbedTLS" )
 	set( USE_STATIC_MBEDTLS_LIBRARY ON CACHE STRING "" FORCE )
 	set( ENABLE_PROGRAMS OFF CACHE STRING "" FORCE )
@@ -416,7 +460,9 @@ if( NOT BUILD_ONLY_CLIENT )
 	DisableLibWarnings( mbedx509 )
 	DisableLibWarnings( mbedtls )
 
+	StatusMessage( "+ mbedTLS" )
 	set( CURL_DIR "ThirdParty/cURL" )
+	set( HAVE_POLL_FINE_EXITCODE 0 CACHE STRING "" FORCE )
 	set( CURL_STATICLIB ON CACHE STRING "" FORCE )
 	set( CURL_CA_PATH "none" CACHE STRING "" FORCE )
 	set( BUILD_CURL_EXE OFF CACHE STRING "" FORCE )
@@ -424,17 +470,20 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( CMAKE_USE_MBEDTLS ON CACHE STRING "" FORCE )
 	set( MBEDTLS_LIBRARIES "mbedcrypto;mbedtls;mbedx509" CACHE STRING "" FORCE )
 	set( MBEDTLS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${MBED_TLS_DIR}/include" CACHE STRING "" FORCE )
-	add_definitions( "-DCURL_STATICLIB" )
 	add_subdirectory( "${CURL_DIR}" )
 	include_directories( "${CURL_DIR}/include" )
+	set( BUILD_DEFINES "${BUILD_DEFINES};CURL_STATICLIB" )
+	target_compile_definitions( libcurl PRIVATE "CURL_STATICLIB" )
 	DisableLibWarnings( libcurl )
 endif()
 
 # Nlohmann Json
+StatusMessage( "+ Nlohmann Json" )
 set( JSON_DIR "ThirdParty/Json" )
 include_directories( "${JSON_DIR}" )
 
 # Fmt
+StatusMessage( "+ Fmt" )
 set( FMT_DIR "ThirdParty/fmt" )
 add_subdirectory( "${FMT_DIR}" )
 include_directories( "${FMT_DIR}" )
@@ -442,15 +491,18 @@ DisableLibWarnings( fmt )
 
 # Asio & Websockets
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ Asio" )
 	set( ASIO_DIR "ThirdParty/Asio" )
 	include_directories( "${ASIO_DIR}/include" )
 
+	StatusMessage( "+ Websockets" )
 	set( WEBSOCKETS_DIR "ThirdParty/websocketpp" )
 	include_directories( "${WEBSOCKETS_DIR}" )
 endif()
 
 # MongoDB C driver & Bson
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ Bson" )
 	set( BSON_DIR "ThirdParty/libbson" )
 	set( ENABLE_STATIC ON CACHE STRING "" FORCE )
 	set( BSON_ENABLE_STATIC ON CACHE STRING "" FORCE )
@@ -460,9 +512,11 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( BSON_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	set( BSON_STATIC_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	include_directories( "${BSON_INCLUDE_DIR}" )
-	target_compile_definitions( bson_static PUBLIC BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN )
+	set( BUILD_DEFINES "${BUILD_DEFINES};BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
+	target_compile_definitions( bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
 	DisableLibWarnings( bson_static )
 
+	StatusMessage( "+ MongoDB C driver" )
 	set( MONGODB_DIR "ThirdParty/mongo-c-driver" )
 	set( ENABLE_SASL "OFF" CACHE STRING "" FORCE )
 	set( MONGOC_ENABLE_STATIC ON CACHE STRING "" FORCE )
@@ -470,11 +524,13 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/${MONGODB_DIR}/src/mongoc"
 		"${CMAKE_CURRENT_SOURCE_DIR}/${MONGODB_DIR}/src/mongoc" CACHE STRING "" FORCE )
 	include_directories( "${MONGOC_INCLUDE_DIR}" )
+	target_compile_definitions( mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
 	DisableLibWarnings( mongoc_static )
 endif()
 
 # Unqlite
 if( NOT EMSCRIPTEN )
+	StatusMessage( "+ Unqlite" )
 	set( UNQLITE_DIR "ThirdParty/unqlite" )
 	add_subdirectory( "${UNQLITE_DIR}" )
 	include_directories( "${UNQLITE_DIR}" )
@@ -484,12 +540,14 @@ endif()
 
 # Variant
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ Variant" )
 	set( VARIANT_DIR "ThirdParty/variant" )
 	include_directories( "${VARIANT_DIR}/include" )
 endif()
 
 # OpenSSL
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ OpenSSL" )
 	set( OPENSSL_DIR "ThirdParty/openssl" )
 	set( BUILD_OBJECT_LIBRARY_ONLY ON CACHE BOOL "" FORCE )
 	add_subdirectory( "${OPENSSL_DIR}" )
@@ -501,18 +559,31 @@ if( NOT BUILD_ONLY_CLIENT )
 endif()
 
 # Dear ImGui
+StatusMessage( "+ Dear ImGui" )
 set( DEAR_IMGUI_DIR "ThirdParty/imgui" )
 file( GLOB IMGUI_SOURCE "${DEAR_IMGUI_DIR}/*.cpp" "${DEAR_IMGUI_DIR}/*.h" )
 #list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${DEAR_IMGUI_DIR}/imgui_demo.cpp" )
 #list( REMOVE_ITEM IMGUI_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${DEAR_IMGUI_DIR}/imgui_demo.h" )
 include_directories( "${DEAR_IMGUI_DIR}" )
-add_definitions( "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 add_library( ImGui ${IMGUI_SOURCE} )
+set( BUILD_DEFINES "${BUILD_DEFINES};IMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
+target_compile_definitions( ImGui PRIVATE "IMGUI_DISABLE_OBSOLETE_FUNCTIONS" )
 DisableLibWarnings( ImGui )
 
 # Catch2
+StatusMessage( "+ Catch2" )
 set( CATCH2_DIR "ThirdParty/Catch2" )
 include_directories( "${CATCH2_DIR}/single_include/catch2" )
+
+# Backward-cpp
+if( NOT WIN32 )
+	StatusMessage( "+ Backward-cpp" )
+	set( BACKWARDCPP_DIR "ThirdParty/backward-cpp" )
+	include_directories( "${BACKWARDCPP_DIR}" )
+	if( "${OS}" STREQUAL "Linux" )
+		set( BACKWARDCPP_LIBS "bfd" )
+	endif()
+endif()
 
 # Common source
 set( COMMON_SOURCE
@@ -554,24 +625,20 @@ set( COMMON_SOURCE
 # Server source
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
-
 	# Location
 	Source/Server/Map.cpp Source/Server/Map.h
 	Source/Server/Critter.cpp Source/Server/Critter.h
 	Source/Server/Item.cpp Source/Server/Item.h
-
 	# To Server.h?
 	Source/Server/EntityManager.cpp Source/Server/EntityManager.h
 	Source/Server/MapManager.cpp Source/Server/MapManager.h
 	Source/Server/CritterManager.cpp Source/Server/CritterManager.h
 	Source/Server/ItemManager.cpp Source/Server/ItemManager.h
-
 	Source/Server/AppGui.cpp Source/Server/AppGuiDX.cpp Source/Server/AppGui.h
 	Source/Server/ResourceConverter.cpp Source/Server/ResourceConverter.h
 	Source/Server/DataBase.cpp Source/Server/DataBase.h
 	Source/Server/Dialogs.cpp Source/Server/Dialogs.h
 	Source/Server/Networking.cpp Source/Server/Networking.h
-
 	Source/Server/Server.cpp Source/Server/Server.h
 	Source/Server/ServerClient.cpp # Refactor
 	Source/Server/ServerItem.cpp # Refactor
@@ -582,27 +649,22 @@ set( SERVER_SOURCE
 # Client source
 set( CLIENT_SOURCE
 	${COMMON_SOURCE}
-
 	Source/Client/Client.cpp Source/Client/Client.h
 	Source/Client/ClientInterface.cpp # Remove
 	Source/Client/SoundManager.cpp Source/Client/SoundManager.h
-
 	Source/Client/MapView.cpp Source/Client/MapView.h
 	Source/Client/CritterView.cpp Source/Client/CritterView.h
 	Source/Client/ItemView.cpp Source/Client/ItemView.h
 	Source/Client/ItemHexView.cpp Source/Client/ItemHexView.h
-
 	Source/Client/Keyboard.cpp Source/Client/Keyboard.h
 	Source/Client/HexManager.cpp Source/Client/HexManager.h # MapView
 	Source/Client/ResourceManager.cpp Source/Client/ResourceManager.h
 	Source/Client/GraphicLoader.cpp Source/Client/GraphicLoader.h # Refactor, merge with ResourceManager?
-
 	Source/Client/3dStuff.cpp Source/Client/3dStuff.h
 	Source/Client/SpriteManager.cpp Source/Client/SpriteManager.h # Refactor, split loaders
 	Source/Client/SpriteManagerFont.cpp
 	Source/Client/F2Palette_Include.h
 	Source/Client/Sprites.cpp Source/Client/Sprites.h
-
 	Source/Client/GluStuff.cpp Source/Client/GluStuff.h # Remove
 )
 
@@ -619,9 +681,8 @@ include_directories( "Source/Common" )
 include_directories( "Source/Server" )
 include_directories( "Source/Client" )
 
-#
 # Applications
-#
+StatusMessage( "Applications:" )
 
 set( RO0 RUNTIME_OUTPUT_DIRECTORY )
 set( RO1 RUNTIME_OUTPUT_DIRECTORY_DEBUG )
@@ -630,26 +691,30 @@ set( RO3 RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO )
 set( RO4 RUNTIME_OUTPUT_DIRECTORY_RELEASE )
 
 if( NOT BUILD_CLIENT_LIBRARY )
+	StatusMessage( "+ FOnline" )
 	add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Source/Applications/ClientApp.cpp" "Resources/Client.rc" )
 	# Todo: Make bundles for Mac and maybe iOS
 	# add_executable( FOnline MACOSX_BUNDLE ${CLIENT_SOURCE} "Client.rc" )
 	set_target_properties( FOnline PROPERTIES ${RO0} ${CLIENT_OUTPUT} ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 else()
+	StatusMessage( "+ FOnline (shared library)" )
 	add_library( FOnline SHARED ${CLIENT_SOURCE} "Source/Applications/ClientApp.cpp" )
 	set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CLIENT_OUTPUT} )
 endif()
 set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" )
-set_target_properties( FOnline PROPERTIES COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
+set_target_properties( FOnline PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_CLIENT" )
+target_link_libraries( FOnline "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${BACKWARDCPP_LIBS}" "${CLIENT_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
+	StatusMessage( "+ FOnlineServer" )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Source/Applications/ServerApp.cpp" "Resources/Server.rc" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" )
-	set_target_properties( FOnlineServer PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES}" )
-	target_link_libraries( FOnlineServer "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
+	set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER" )
+	target_link_libraries( FOnlineServer "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
+		StatusMessage( "+ FOnlineServerDaemon" )
 		set( SERVER_SOURCE_NO_GUI ${SERVER_SOURCE} )
 		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Source/Common/GraphicApi.h" )
 		list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Source/Common/GraphicApi.cpp" )
@@ -659,29 +724,33 @@ if( NOT BUILD_ONLY_CLIENT )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "Source/Applications/ServerApp.cpp" "Resources/Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" )
-		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES} -DFO_SERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${CMAKE_DL_LIBS}" )
+		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER;FO_SERVER_DAEMON" )
+		target_link_libraries( FOnlineServerDaemon "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 	endif()
 
+	StatusMessage( "+ FOnlineEditor" )
 	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "Source/Applications/EditorApp.cpp" "Resources/Editor.rc" )
 	set_target_properties( FOnlineEditor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" )
-	set_target_properties( FOnlineEditor PROPERTIES COMPILE_FLAGS "${EDITOR_DEFINES}" )
-	target_link_libraries( FOnlineEditor "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
+	set_target_properties( FOnlineEditor PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR" )
+	target_link_libraries( FOnlineEditor "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	if( BUILD_TEST_CASES )
+		StatusMessage( "+ FOnlineTest" )
 		add_executable( FOnlineTest ${EDITOR_SOURCE} "Source/Applications/ServerApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/EditorApp.cpp" )
 		set_target_properties( FOnlineTest PROPERTIES ${RO0} ${TESTS_OUTPUT} ${RO1} ${TESTS_OUTPUT} ${RO2} ${TESTS_OUTPUT} ${RO3} ${TESTS_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 		set_target_properties( FOnlineTest PROPERTIES OUTPUT_NAME "FOnlineTest${NON_CLIENT_POSTFIX}" )
-		set_target_properties( FOnlineTest PROPERTIES COMPILE_FLAGS "${EDITOR_DEFINES} -DFO_TESTING" )
-		target_link_libraries( FOnlineTest "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
+		set_target_properties( FOnlineTest PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR;FO_TESTING" )
+		target_link_libraries( FOnlineTest "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 	endif()
 	if( BUILD_CODE_COVERAGE )
+		StatusMessage( "+ FOnlineCodeCoverage" )
 		add_executable( FOnlineCodeCoverage ${EDITOR_SOURCE} "Source/Applications/ServerApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/EditorApp.cpp" )
 		set_target_properties( FOnlineCodeCoverage PROPERTIES ${RO0} ${TESTS_OUTPUT} ${RO1} ${TESTS_OUTPUT} ${RO2} ${TESTS_OUTPUT} ${RO3} ${TESTS_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 		set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage${NON_CLIENT_POSTFIX}" )
-		set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_FLAGS "${EDITOR_DEFINES} -DFO_TESTING -g -O0 -fprofile-arcs -ftest-coverage" )
-		target_link_libraries( FOnlineCodeCoverage "gcov" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${CMAKE_DL_LIBS}" )
+		set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR;FO_TESTING" )
+		set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_OPTIONS "-O0;-fprofile-arcs;-ftest-coverage" )
+		target_link_libraries( FOnlineCodeCoverage "gcov" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
