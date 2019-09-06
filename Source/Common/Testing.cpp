@@ -315,7 +315,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                         CHAR    loadedImageName[ STACKWALK_MAX_NAMELEN ];
                     };
 
-                    static void OnCallstackEntry( FILE* f, int frame_num, CallstackEntry& entry )
+                    static void OnCallstackEntry( bool is_current_thread, string& traceback, FILE* f, int frame_num, CallstackEntry& entry )
                     {
                         if( frame_num >= 0 && entry.offset != 0 )
                         {
@@ -329,18 +329,18 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                                 strcpy_s( entry.moduleName, "???" );
 
                             fprintf( f, "\t%s, %s + %lld", entry.moduleName, entry.name, entry.offsetFromSmybol );
-                            if( !i )
+                            if( is_current_thread )
                                 traceback += _str( "{}, {} + {}", entry.moduleName, entry.name, entry.offsetFromSmybol );
                             if( entry.lineFileName[ 0 ] != 0 )
                             {
                                 fprintf( f, ", %s (%d)\n", entry.lineFileName, entry.lineNumber );
-                                if( !i )
+                                if( is_current_thread )
                                     traceback += _str( ", {} ({})\n", entry.lineFileName, entry.lineNumber );
                             }
                             else
                             {
                                 fprintf( f, "\n" );
-                                if( !i )
+                                if( is_current_thread )
                                     traceback += "\n";
                             }
                         }
@@ -425,7 +425,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                     }
                 }
 
-                CSE::OnCallstackEntry( f, frame_num, callstack );
+                CSE::OnCallstackEntry( i == 0, traceback, f, frame_num, callstack );
                 if( stack.AddrReturn.Offset == 0 )
                     break;
 
@@ -456,10 +456,6 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         CloseHandle( process );
 
         fclose( f );
-    }
-    else
-    {
-        message = _str( mess, "Error while create dump file '{}', error {}.", dump_path, GetLastError() );
     }
 
     if( except )
