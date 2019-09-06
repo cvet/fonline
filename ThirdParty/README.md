@@ -5,6 +5,7 @@
 * Asio - [asio-1.10.8](https://think-async.com/Asio/)
 * Assimp - [assimp-4.1.0](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
+* backward-cpp - [backward-cpp-master-050919](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * Json - [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
 * NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)

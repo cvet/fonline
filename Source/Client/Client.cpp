@@ -5378,7 +5378,7 @@ bool FOClient::ReloadScripts()
     }
     Script::SetExceptionCallback([ this ] ( const string &str )
                                  {
-                                     ShowMessage( str );
+                                     ShowErrorMessage( str, "" );
                                      DoRestart = true;
                                  } );
 

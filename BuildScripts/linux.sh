@@ -16,6 +16,7 @@ if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	sudo apt-get -y install libevent-dev
 	sudo apt-get -y install libxi-dev
 	sudo apt-get -y install curl
+	sudo apt-get -y install binutils-dev
 fi
 
 mkdir -p $FO_BUILD_DEST
