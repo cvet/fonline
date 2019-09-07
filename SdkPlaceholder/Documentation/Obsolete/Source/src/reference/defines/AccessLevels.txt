@@ -1,0 +1,19 @@
+/**
+ * @defgroup AccessLevels Access levels
+ * @ingroup Defines
+ *
+ * \~russian Уровни доступа.
+ * \~english Access levels.
+ *
+ * \~
+ * @see Critter::GetAccess
+ *
+ */
+/*@{*/
+
+#define ACCESS_CLIENT              (0)
+#define ACCESS_TESTER              (1)
+#define ACCESS_MODER               (2)
+#define ACCESS_ADMIN               (3)
+
+/*@}*/

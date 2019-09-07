@@ -1,0 +1,10 @@
+/** \~russian @page page_mrfixitcfg MrFixit.cfg
+
+Настройки редактора крафта.
+\b Ключи:
+
+<table>
+<tr><td>ServerPath</td><td>Путь к папке сервера</td></tr>
+</table>
+
+*/

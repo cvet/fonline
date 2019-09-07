@@ -1,0 +1,171 @@
+/** \~russian Класс, предназначенный для чтения и записи текстовых файлов.
+ *
+ * @par Пример:
+ * @include file.fos
+ *
+ ** \~english This class provides support for reading and writing text files.
+ *
+ * @par Example:
+ * @include file.fos
+ *
+ ** \~ @ingroup std
+ */
+class file
+{
+	/** \~russian Открывает файл для работы с ним в указанном режиме.
+	 *
+	 * @param  filename  Путь к файлу.
+	 * @param  mode      Режим работы с файлом. Возможные значения:
+	 *                   <table>
+	 *                    <tr><td>"r"</td><td>Открыть файл для чтения.</td></tr>
+	 *                    <tr><td>"w"</td><td>Открыть файл для записи. Существующий файл перезаписывается.</td></tr>
+	 *                    <tr><td>"a"</td><td>Открыть файл для записи с конца (существующий файл не перезаписывается).</td></tr>
+	 *                   </table>
+	 *
+	 * @return 0, если файл открыт успешно; -1 – в противном случае.
+	 *
+	 ** \~english Opens file.
+	 *
+	 * @param filename  Path to the file.
+	 * @param mode      String containing a file access mode. It can be:
+	 *                   <table>
+	 *                    <tr><td>"r"</td><td>Open the file for reading.</td></tr>
+	 *                    <tr><td>"w"</td><td>Open the file for writing (overwrites existing files).</td></tr>
+	 *                    <tr><td>"a"</td><td>Open the file for appending.</td></tr>
+	 *                   </table>
+	 *
+	 * @return If the file is successfully opened, a zero value is returned.
+	 *         Otherwise, -1 is returned.
+	 *
+	 */
+	int open(const string &in filename, const string &in mode);
+
+	/** \~russian Закрывает файл.
+	 *
+	 * @return 0, если файл закрыт успешно; -1 – в противном случае.
+	 *
+	 ** \~english Closes file.
+	 *
+	 * @return If the file is successfully closed, a zero value is returned.
+     *         On failure, -1 is returned.
+	 */
+	int close();
+
+	/** \~russian Возвращает размер файла. */
+	/** \~english Returns the size of the file. */
+	int getSize() const;
+
+	/** \~russian Возвращает значение @c true, если был достигнут конец файла. */
+	/** \~english Returns @c true if the end of the file has been reached. */
+	bool isEndOfFile() const;
+
+	/** \~russian Выполняет чтение из файла указанного количества символов.
+	 *
+	 * @param         length  Количество считываемых символов.
+	 * @param  [out]  str     Строка, в которую будут записаны считанные символы.
+	 *
+	 * @return Количество успешно считанных символов.
+	 *         Если это число отличается от аргумента @a length, то это означает,
+	 *         что либо при чтении произошла ошибка, либо был достигнут конец файла.
+	 *
+	 * @see    #isEndOfFile
+	 *
+	 ** \~english Reads a specified number of bytes into the string.
+	 */
+	int readString(uint length, string &out str);
+
+	/** \~russian Выполняет чтение строки символов.
+	 *
+	 * Строка определяется как последовательность символов, за которыми
+	 * следует символ символ перевода строки или EOF.
+	 *
+	 * @param  [out]  str Строка, в которую будут записаны считанная строка символов.
+	 *
+	 * @return Количество символов в считанной строке.
+	 *
+	 ** \~english Reads to the next new-line character.
+	 */
+	int readLine(string &out str);
+
+	/** \~russian Записывает строку в файл.
+	 *
+	 * @param   string  Записываемая строка.
+	 *
+	 * @return  Количество записанных символов.
+	 *          Если это число меньше, чем длина строки, то это говорит об ошибке.
+	 *
+	 ** \~english Writes a string to the file.
+	 *
+	 * @param   string  String to be written.
+	 *
+	 * @return  The total number of characters successfully written.
+	 *          If this number differs from the length of the input string,
+	 *          it indicates an error.
+	 */
+	int writeString(const string &in string);
+
+	/** \~russian Возвращает текущую позицию файла.
+	 *
+	 * @return Текущая позиция в файле. -1 – в случае ошибки.
+	 *
+	 ** \~english Returns the current position of the file.
+	 *
+	 * @return On success, the current value of the position is returned.
+	 *         If an error occurs, -1 is returned.
+	 *
+	 */
+	int getPos() const;
+
+	/** \~russian Устанавливает текущую позицию файла.
+	 *
+	 * @param  pos Новая позиция.
+	 *
+	 * @return 0 в случае успеха; -1 – в противном случае.
+	 *
+	 ** \~english Sets the current position of the file.
+	 *
+	 * @param  pos  New position.
+	 *
+	 * @return If successful, the function returns a zero value.
+     *         Otherwise, it returns -1.
+	 */
+	int setPos(int pos);
+
+	/** \~russian Смещает текущую позицию файла на указанное количество байт.
+	 *
+	 * @param  delta  Количество байт, на которую смещается текущая позиция.
+	 *
+	 * @return 0 в случае успеха; -1 – в противном случае.
+	 *
+	 ** \~english Changes current position of the file by adding @a delta to the current position.
+	 *
+	 * @param  delta  Number of bytes to offset from the current position.
+	 *
+	 * @return If successful, the function returns a zero value.
+     *         Otherwise, it returns -1.
+	 */
+	int movePos(int delta);
+
+	/** \~russian Выполняет чтение следующего слова (последовательности символов без разделителей) из файла. */
+	/** \~english Reads next word (character sequence without whitespaces) from the file. */
+	string@ readWord();
+
+	/** \~russian Выполняет чтение следующего числа из файла. */
+	/** \~english Reads next integer number from the file. */
+	int readNumber();
+	uint8 readUint8();
+	uint16 readUint16();
+	uint32 readUint32();
+	uint64 readUint64();
+	/** \~russian Если data == 0, то программа читает все данные до конца файла с текущей позиции.
+	 * Прочтенные данные добавляются в конец массива.
+	 * Возвращаемое значение указывает на реально прочтенное число байт.
+	 */
+	uint readData(uint count, uint8[]& data);
+	bool writeUint8(uint8 data);
+	bool writeUint16(uint16 data);
+	bool writeUint32(uint32 data);
+	bool writeUint64(uint64 data);
+	/** \~russian При count == 0 записывает все данные из массива. */
+	bool writeData(uint8[]& data, uint count);
+}

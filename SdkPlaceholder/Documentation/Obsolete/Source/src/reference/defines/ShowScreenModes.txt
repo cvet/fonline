@@ -1,0 +1,158 @@
+/**
+ * @defgroup ShowScreenModes Show screen modes
+ * @ingroup Defines
+ *
+ * \~russian Типы клиентских окон.
+ *
+ * Данная константа используется как аргумент @a screenType в методе Critter::ShowScreen.
+ *
+ * Создаваемое окно можно параметризовать с помощью аргумента @a param в методе
+ * Critter::ShowScreen. Ввод пользователя, если он есть, передаётся в функции-ответе,
+ * имя которой указывается в параметре @a funcName, в её параметрах @a answerI и @a answerS.
+ *
+ * Эффект передаваемого параметра и интерпретация данных, введенных пользователем,
+ * зависят от типа окна.
+ *
+ * \~english Client window types.
+ *
+ * Ouput: it is @a param in Critter::ShowScreen.
+ *
+ * Input: I – integer value @a answerI, S – string value @a answerS in 'answer_' function.
+ *
+ * \~
+ * @see Critter::ShowScreen
+ *
+ */
+/*@{*/
+
+/**
+ * \~russian Закрыть верхнее окно.
+ * \~english Close top window.
+ */
+#define SCREEN_CLOSE                (0)
+
+/**
+ * \~russian Окно таймера.
+ *
+ * @par Параметр
+ * Индекс картинки в @b INVEN.LST.
+ *
+ * @par Ввод пользователя
+ * @a answerI Время в игровых минутах (1..599).
+ *
+ * \~english Timer box.
+ *
+ * Output: picture index in INVEN.LST.
+ *
+ * Input I: time in game minutes (1..599).
+ *
+ */
+#define SCREEN_TIMER                (1)
+
+/**
+ * \~russian Окно диалога.
+ *
+ * @par Параметр
+ * Количество кнопок (0..20). Кнопка выхода добавляется автоматически.
+ *
+ * @par Ввод пользователя
+ * @a answerI Выбранная кнопка (0..19).
+ *
+ * \~english Dialog box.
+ *
+ * Output: buttons count - 0..20 (exit button added automatically).
+ *
+ * Input I: Choosed button - 0..19.
+ *
+ */
+#define SCREEN_DIALOGBOX            (2)
+
+/**
+ * \~russian Окно использования навыка.
+ *
+ * @par Ввод пользователя
+ * @a answerI Выбранный навык. См. @link Skills Навыки@endlink.
+ *
+ * \~english Skill box. Input I: selected skill.
+ */
+#define SCREEN_SKILLBOX             (3)
+
+/**
+ * \~russian Окно инвентаря.
+ *
+ * @par Ввод пользователя
+ * @a answerI Идентификатор выбранного предмета.
+ *
+ * \~english Bag box. Input I: id of selected item.
+ */
+#define SCREEN_BAG                  (4)
+
+/**
+ * \~russian Окно ввода текста.
+ *
+ * @par Параметр
+ * Указывает способ ввода текста:
+ * - 0 позволяет ввод любого текста,
+ * - любое другое значение – ввод только цифр.
+ *
+ * @par Ввод пользователя
+ * @a answerS Введенный текст.
+ *
+ * \~english Say box.
+ *
+ * Output: all symbols - 0 or only numbers - any other number.
+ *
+ * Input S: typed string.
+ *
+ */
+#define SCREEN_SAY                  (5)
+
+/**
+ * \~russian Интерфейс лифта.
+ *
+ * @par Параметр
+ * См. @link Elevators@endlink.
+ *
+ * @par Ввод пользователя
+ * @a answerI Выбранный этаж.
+ *
+ * \~english Elevator.
+ *
+ * Output: look ELEVATOR_* macro.
+ *
+ * Input I: Choosed level button.
+ *
+ */
+#define SCREEN_ELEVATOR             (6)
+
+/**
+ * \~russian Окно инвентаря.
+ * \~english Inventory.
+ */
+#define SCREEN_INVENTORY            (7)
+
+/**
+ * \~russian Окно персонажа.
+ * \~english Character.
+ */
+#define SCREEN_CHARACTER            (8)
+
+/**
+ * \~russian Окно фикс-боя.
+ * \~english Fix-boy.
+ */
+#define SCREEN_FIXBOY               (9)
+
+/**
+ * \~russian Пип-бой.
+ * \~english Pip-boy.
+ */
+#define SCREEN_PIPBOY               (10)
+
+/**
+ * \~russian Миникарта.
+ * \~english Mini-map.
+ */
+#define SCREEN_MINIMAP              (11)
+
+/*@}*/

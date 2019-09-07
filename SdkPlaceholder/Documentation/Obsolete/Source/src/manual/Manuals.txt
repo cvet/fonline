@@ -1,0 +1,13 @@
+/** \~russian @page page_manuals Пособия
+
+@subpage page_manualdialogue
+
+@subpage page_creatingmap
+
+@subpage page_creatinglocation
+
+@subpage page_manualinterface
+
+@subpage page_manualinterface2
+
+*/

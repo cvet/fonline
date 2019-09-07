@@ -1,0 +1,61 @@
+/** \~russian Класс для работы со строками.
+ *
+ ** \~english String class.
+ *
+ ** \~ @ingroup std
+ */
+class string
+{
+    /**
+     * \~russian @name Конструкторы
+     * \~english @name Constructors
+     */
+    //@{
+
+    string();
+    string(const string &in other);
+
+    //@}
+
+    /** \~russian Возвращает длину строки. */
+    /** \~english Returns the length of the string. */
+    uint length() const;
+
+    /**
+     * \~russian @name Перегруженные операторы
+     * \~english @name Operator overloads
+     */
+     //@{
+
+    // Assignment and concatenation
+    string &opAssign(const string &in other);
+    string &opAddAssign(const string &in other);
+    string @opAdd(const string &in right) const;
+
+    // Comparison operators
+    bool opEquals(const string &in right) const;
+    int  opCmp(const string &in right) const;
+
+    // Automatic conversion from number types to string type
+    string &opAssign(double val);
+    string &opAddAssign(double val);
+    string @opAdd(double val) const;
+    string @opAdd_r(double val) const;
+
+    string &opAssign(float val);
+    string &opAddAssign(float val);
+    string @opAdd(float val) const;
+    string @opAdd_r(float val) const;
+
+    string &opAssign(int val);
+    string &opAddAssign(int val);
+    string @opAdd(int val) const;
+    string @opAdd_r(int val) const;
+
+    string &opAssign(uint val);
+    string &opAddAssign(uint val);
+    string @opAdd(uint val) const;
+    string @opAdd_r(uint val) const;
+
+    //@}
+}

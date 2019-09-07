@@ -1,0 +1,75 @@
+/**
+
+\~russian @page critters_time_events Временные события персонажей
+
+@section сte_info Общая информация
+Скриптовый механизм работает примерно так же, как и при использовании обычных @ref time_events "временных событий", но, в отличие от них, событие происходит не в определенную указанную игровую секунду, а через некоторый промежуток времени, причем данный промежуток отсчитывает только тогда, когда персонаж, для которого установлено событие, находится в онлайне. Например, данный механизм может быть использован для реализации действия наркотиков на игроков.
+
+Для создания события необходимо вызвать один из следующих методов класса @ref Critter
+@code
+bool AddTimeEvent(string& funcName, uint duration, int identifier)
+bool AddTimeEvent(string& funcName, uint duration, int identifier, uint rate)
+@endcode
+
+@param  funcName  @ref term_func_link.
+@param  duration  Игровое время (в игровых секундах) через которое должно произойти событие.
+@param  identifier  Идентификатор, для удобного поиска событий в общем списке.
+@param  rate  Дополнительный параметр, можно использовать для любых целей, если использован метод без указания значения rate, то данный параметр в функции обработчике будет равен нулю.
+
+По оформлению функции читайте @ref specialized_functions.
+Функция-событие должна возвращать полную секунду, которая определяет, через какой промежуток времени событие повторится (0 – не повторять событие, удалить).
+Функция AddTimeEvent, в случае успешного создания события, возвратит true. 
+
+@section сte_ext_methods Дополнительные методы для работы с временными событиями персонажей.
+    
+\~russian Получение количесва событий с указанным идентификатором.
+@code
+uint GetTimeEvents(int identifier, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates) const
+@endcode
+@param  identifier  Идентификатор, указанный при создании события.
+@param  indexes  Индексы событий.
+@param  durations  Временные промежутки событий.
+@param  rates  Значения параметра rate событий.
+@return  Количество найденных событий.
+
+\~russian Получение количества событий с указанными идентификаторами.
+@code
+uint GetTimeEvents(int[]& findIdentifiers, int[]@+ identifiers, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates) const
+@endcode
+@param  findIdentifiers  Идентификаторы найденных событий.
+@param  identifiers  Идентификаторы, указанные при создании событий.
+@param  indexes  Индексы событий.
+@param  durations  Временные промежутки событий.
+@param  rates  Значения параметра rate событий.
+@return  Количество найденных событий.
+
+\~russian Изменяет время до запуска и параметр rate указанного события
+@code
+void ChangeTimeEvent(uint index, uint newDuration, uint newRate)
+@endcode
+@param  index  Индекс события, которое необходимо изменить.
+@param  newDuration  Новый интервал до возникновения события.
+@param  newRate  Новое значение параметра rate.
+
+\~russian Удаляет событие по индексу
+@code
+void EraseTimeEvent(uint index)
+@endcode
+@param  index  Индекс события, которое следует удалить
+
+\~russian Удаляет события по идентификатору
+@code
+uint EraseTimeEvents(int identifier)
+@endcode
+@param  identifier  Идентификатор, указанный при создании, тех событий, которые следует удалить.
+@return  Количество удаленных событий
+
+\~russian Удаляет события с заданными идентификаторами
+@code
+uint EraseTimeEvents(int[]& identifiers)
+@endcode
+@param  identifiers  Массив идентификаторов тех событий, которые нужно удалить.
+@return  Количество удаленных событий.
+
+
+ */

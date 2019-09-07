@@ -1,0 +1,71 @@
+#encoding Windows-1251
+#
+#if len($labels) > 0
+#labels #for $l in $labels #$l #end for #
+#end if
+#
+#if len($brief_description) > 0
+$brief_description
+#end if
+#if len($detailed_description) > 0
+$detailed_description
+#end if
+
+== Поля ==
+#
+#for $s in $generated_sections
+#if $s.variables
+
+$vars($s)
+#end if
+#end for
+#
+#for $s in $user_sections
+#if $s.variables
+
+=== $s.name ===
+
+$vars($s)
+#end if
+#end for
+
+== Методы ==
+#
+#for $s in $generated_sections
+#if $s.functions
+$funcs($s)
+#end if
+#end for
+#
+#for $s in $user_sections
+#if $s.functions
+
+=== $s.name ===
+$funcs($s)#
+#end if
+#end for
+#
+
+[[Category:Скрипты]]
+[[Category:Скрипты:Справочник]]
+#
+#def funcs($section)
+#if $section.functions
+#for function in $section.functions
+
+$(function.doc)
+#end for
+#end if
+#end def
+#
+#
+#def vars($section)
+#if $section.variables
+{|class="memberlist"
+#for $v in $section.variables
+$v.doc
+#if $v != $section.variables[-1]:  |-
+#end for
+ |}#
+#end if
+#end def

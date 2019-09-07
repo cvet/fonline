@@ -1,0 +1,12 @@
+/** \~russian @page page_mappercfg Mapper.cfg
+
+Настройки редактора диалогов.
+\b Ключи:
+
+<table>
+<tr><td>ServerPath</td><td>Путь к папке сервера</td></tr>
+<tr><td>ClientPath</td><td>Путь к папке клиента</td></tr>
+<tr><td>MapperInterface</td><td>Имя файла, определяющего интерфейс окна маппера</td></tr>
+</table>
+
+*/

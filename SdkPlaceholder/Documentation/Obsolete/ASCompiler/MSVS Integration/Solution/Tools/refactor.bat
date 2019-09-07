@@ -1,0 +1,1 @@
+@for %%i in (..\..\..\..\..\Server\scripts\*.fos) do ScriptsRefactorer.exe %%i %%i

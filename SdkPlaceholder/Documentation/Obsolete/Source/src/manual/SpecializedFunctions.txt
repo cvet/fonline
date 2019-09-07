@@ -1,0 +1,161 @@
+/**
+
+\~russian @page specialized_functions Оформление специализированных функций
+\~english @page specialized_functions Making specialized functions
+
+\~russian @section specialized_functions_whole Оформление специализированных функций
+\~english @section specialized_functions_whole Оформление специализированных функций
+
+\~russian @par Временные события
+\~english @par Time event
+\~
+@code
+uint e_FuncName(uint[]@ values)
+uint e_FuncName(int[]@ values)
+@endcode
+
+\~russian @par Временные события персонажа
+\~english @par Critter time event
+\~
+@code
+uint cte_FuncName(Critter& cr, int identifier, uint& rate)
+@endcode
+
+\~russian @par Сценери
+\~english @par Scenery
+\~
+@code
+bool s_FuncName(Critter& cr, Scenery& scen, int skill, Item@ item)
+@endcode
+
+\~russian @par Trigger
+\~english @par Триггер
+\~
+@code
+void t_FuncName(Critter& cr, Scenery& trigger, bool entered, uint8 dir)
+@endcode
+
+\~russian @par Диалог
+\~english @par Dialog
+\~
+@code
+void dlg_FuncName(Critter& player, Critter@ npc, string@ text)
+uint dlg_FuncName(Critter& player, Critter@ npc, string@ text)
+@endcode
+
+\~russian @par Условие диалога
+\~english @par Dialog demand
+\~
+@code
+bool d_FuncName(Critter& master, Critter@ slave)
+bool d_FuncName(Critter& master, Critter@ slave, int val)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+bool d_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+@endcode
+
+\~russian @par Результат диалога
+\~english @par Dialog result
+\~
+@code
+void r_FuncName(Critter& master, Critter@ slave)
+uint r_FuncName(Critter& master, Critter@ slave)
+void r_FuncName(Critter& master, Critter@ slave, int val)
+uint r_FuncName(Critter& master, Critter@ slave, int val)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1,)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3)
+void r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+uint r_FuncName(Critter& master, Critter@ slave, int val0, int val1, int val2, int val3, int val4)
+@endcode
+
+\~russian @par Прослушка текста
+\~english @par Text listener
+\~
+@code
+void listen_FuncName(Critter& player, string& text)
+@endcode
+
+\~russian @par Комманда ~runscript
+\~english @par ~runscript command
+\~
+@code
+void _FuncName(Critter& player, int param0, int param1, int param2)
+@endcode
+
+\~russian @par Функция крафта FixBoy
+\~english @par FixBoy craft function
+\~
+@code
+int fix_FuncName(Critter& cr, int stage)
+@endcode
+
+\~russian @par Входы в локацию (Town/World)
+\~english @par Location entrances (Town/World)
+\~
+@code
+bool entrance_FuncName(Critter@[]& crters, uint8 entrance)
+@endcode
+
+\~russian @par Показать окно вопроса, используется в Critter::ShowScreen
+\~english @par Show screen answer, used in Critter::ShowScreen
+\~
+@code
+void answer_FuncName(Critter& player, uint answerI, string& answerS)
+@endcode
+
+\~russian @par Скрипт Misc плана НПЦ
+\~english @par Npc misc plane script
+\~
+@code
+void plane_FuncName(Critter& npc)
+@endcode
+
+\~russian @par Лексема \@script funcName\@, сторона клиента
+\~english @par @script funcName@ lexem, client side
+\~
+@code
+string _FuncName(string& lexems)
+@endcode
+
+\~russian @par Метод void Critter::RunClientScript, сторона клиента
+\~english @par void Critter::RunClientScript method, client side
+\~
+@code
+void _FuncName(int param0, int param1, int param2, string@ param3, int[]@ param4)
+@endcode
+
+\~russian @par Функция void RunServerScript, с проверкой уровня доступа, не ниже ACCESS_ADMIN
+\~english @par void RunServerScript function, with hardcoded access check on server side, level not less than ACCESS_ADMIN
+\~
+@code
+void _FuncName(Critter& player, int param0, int param1, int param2, string@ param3, int[]@ param4)
+@endcode
+
+\~russian @par Функция void RunServerScriptUnsafe, без проверки уровня доступа, префикс "unsafe_" обязателен
+\~english @par void RunServerScriptUnsafe function, without access checks, "unsafe_" prefix required
+\~
+@code
+void unsafe_FuncName(Critter& player, int param0, int param1, int param2, string@ param3, int[]@ param4)
+@endcode
+
+\~russian @par Событие взятия значения параметра персонажа
+\~english @par Critter param get behaviour
+\~
+@code
+int _FuncName(Critter& cr, uint index)
+@endcode
+
+\~russian @par Событие изменения параметра персонажа
+\~english @par Critter param change behaviour
+\~
+@code
+void _FuncName(Critter& cr, uint index, int oldValue)
+@endcode
+
+
+ */

@@ -1,0 +1,9 @@
+#ifdef __SERVER
+#pragma bindfunc "void dummy2() -> IntellisenseCreator.dll Dummy"
+#endif
+#ifdef __CLIENT
+#pragma bindfunc "void dummy2() -> IntellisenseCreator_client.dll Dummy"
+#endif
+#ifdef __MAPPER
+#pragma bindfunc "void dummy2() -> IntellisenseCreator_mapper.dll Dummy"
+#endif

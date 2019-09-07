@@ -1,0 +1,108 @@
+/** \~russian Игровая переменная.
+ *
+ * Для этого типа перегружены следующие операторы:
+ * - >, <, ==, >=, <=, != – логические операторы. Тип возвращаемого значения – @c bool.
+ * - +=, -=, *=, /=, = – операторы присваивания. Тип возвращаемого значения – GameVar.
+ * - +, -, *, / – арифметические операторы. Тип возвращаемого значения – @c int.
+ *
+ * \~english Represents game variable.
+ *
+ * For the GameVar class following types of the operations are overloaded:
+ * - >, <, ==, >=, <=, != – logical operators. The type of returning value – @c bool.
+ * - +=, -=, *=, /=, = – operators of appropriation. The type of returning value – GameVar.
+ * - +, -, *, / – arithmetic operators. The type of returning value – @c int.
+ *
+ * \~ @ingroup Server
+ */
+
+class GameVar
+{
+public:
+    /** \~russian Возвращает значение игровой переменной.
+     *
+     * @return Значение игровой переменной.
+     */
+    int GetValue();
+
+    /** \~russian Возвращает минимальное значение игровой переменной.
+     *
+     * @return Минимальное значение игровой переменной.
+     */
+    int GetMin();
+
+    /** \~russian Возвращает максимальное значение игровой переменной.
+     *
+     * @return Максимальное значение игровой переменной.
+     */
+    int GetMax();
+
+    /** \~russian Определяет, является ли переменная квестовой.
+     *
+     * @return @c true – если переменная квестовая; @c false – если нет.
+     */
+    bool IsQuest();
+
+    /** \~russian Для квестовой переменной возвращает номер строки, которая находится в файле @b FOQUEST.MSG.
+     *
+     * @return Номер строки в файле @b FOQUEST.MSG, соответствующей значению квестовой переменной.
+     */
+    uint GetQuestStr();
+
+    /**
+     * \~russian @name Перегруженные операторы сравнения
+     * \~english @name Overloaded equality operators
+     */
+    //@{
+
+    int opCmp(const GameVar&);
+    int opCmp(const int);
+
+    bool opEquals(const GameVar&);
+    bool opEquals(const int);
+
+    //@}
+
+    /**
+     * \~russian @name Перегруженные операторы присваивания
+     * \~english @name Overloaded assignment operators
+     */
+    //@{
+
+    GameVar& opAssign(const GameVar&);
+    GameVar& opAssign(const int);
+
+    GameVar& opDivAssign(const GameVar&);
+    GameVar& opDivAssign(const int);
+
+    GameVar& opMulAssign(const GameVar&);
+    GameVar& opMulAssign(const int);
+
+    GameVar& opSubAssign(const GameVar&);
+    GameVar& opSubAssign(const int);
+
+    GameVar& opAddAssign(const GameVar&);
+    GameVar& opAddAssign(const int);
+
+    //@}
+
+    /**
+     * \~russian @name Перегруженные арифметические операторы
+     * \~english @name Overloaded arithmetic operators
+     */
+    //@{
+
+    int opAdd(const GameVar&);
+    int opAdd(const int);
+
+    int opSub(const GameVar&);
+    int opSub(const int);
+
+    int opDiv(const GameVar&);
+    int opDiv(const int);
+
+    int opMul(const GameVar&);
+    int opMul(const int);
+
+    //@}
+}
+

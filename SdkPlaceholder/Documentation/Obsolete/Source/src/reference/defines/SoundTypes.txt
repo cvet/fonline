@@ -1,0 +1,32 @@
+/**
+ * @defgroup SoundTypes Sound types
+ * @ingroup Defines
+ *
+ * \~russian Виды звуков
+ *
+ * \~english Sound types
+ *
+ * - Generic %<Type Subtype SoundId SoundIdExt X X X X%>
+ * - Weapon %<Type Subtype SoundId SoundIdExt X X X [Random 1 or 2]%>
+ * - Door %<Type Subtype D O O R S SoundId%>
+ *
+ * \~
+ * @see  ::PlaySound
+ *       Critter::PlaySound
+ *
+ */
+/*@{*/
+
+#define SOUND_WEAPON                'W'
+#define SOUND_WEAPON_USE             'A'
+#define SOUND_WEAPON_FLY             'F'
+#define SOUND_WEAPON_MISS            'H'
+#define SOUND_WEAPON_EMPTY           'O'
+#define SOUND_WEAPON_RELOAD          'R'
+#define SOUND_DOOR                  'S'
+#define SOUND_DOOR_OPEN              'O'
+#define SOUND_DOOR_LOCK              'L'
+#define SOUND_DOOR_CLOSE             'C'
+#define SOUND_DOOR_NOT_OPEN          'N'
+
+/*@}*/

@@ -1,0 +1,22 @@
+/** \~russian CraftItem.
+ *
+ ** \~english CraftItem.
+ *
+ * \~ @ingroup Server
+ */
+
+class CraftItem
+{
+    public:
+        const uint Num;
+        const uint Name;
+        const string Info;
+        const uint Experience;
+        const string Script;
+ 
+        uint GetShowParams(array<uint>@ nums, array<int>@ values, array<bool>@ ors);
+        uint GetNeedParams(array<uint>@ nums, array<int>@ values, array<bool>@ ors);
+        uint GetNeedTools(array<uint16>@ pids, array<uint>@ values, array<bool>@ ors);
+        uint GetNeedItems(array<uint16>@ pids, array<uint>@ values, array<bool>@ ors);
+        uint GetOutItems(array<uint16>@ pids, array<uint>@ values);
+}

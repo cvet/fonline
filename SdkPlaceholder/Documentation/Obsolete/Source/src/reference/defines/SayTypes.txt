@@ -1,0 +1,89 @@
+/**
+ * @defgroup SayTypes Say types
+ * @ingroup Defines
+ *
+ * \~
+ * @see     Critter::Say
+ *          Critter::SayMsg
+ *          AddTextListener
+ *          #out_message
+ *          #in_message
+ *
+ */
+/*@{*/
+
+/** \~russian Нормальное произношение фразы, при котором текст отображается в окне сообщений от имени криттера. */
+#define SAY_NORM                    (1)
+
+/** \~russian Нормальное произношение фразы, при котором текст отображается только над головой криттера. */
+#define SAY_NORM_ON_HEAD            (2)
+
+/** \~russian Крик, при котором текст отображается в окне сообщений от имени криттера. */
+#define SAY_SHOUT                   (3)
+
+/** \~russian Крик, при котором текст отображается только над головой криттера. */
+#define SAY_SHOUT_ON_HEAD           (4)
+
+/** \~russian */
+#define SAY_EMOTE                   (5)
+
+/** \~russian */
+#define SAY_EMOTE_ON_HEAD           (6)
+
+/** \~russian Шёпот, при котором текст отображается в окне сообщений от имени криттера. */
+#define SAY_WHISP                   (7)
+
+/** \~russian Шёпот, при котором текст отображается только над головой криттера. */
+#define SAY_WHISP_ON_HEAD           (8)
+
+/** \~russian (?) */
+#define SAY_SOCIAL                  (9)
+
+/** \~russian Сказать по радио.
+ * Будет работать только в случае, если радио находится в одной из рук.
+ */
+#define SAY_RADIO                   (10)
+
+/** \~russian Показать текст в окне сообщений криттера. */
+#define SAY_NETMSG                  (11)
+
+/** \~russian (?) */
+#define SAY_DIALOG                  (12)
+
+/** \~russian (?) */
+#define SAY_APPEND                  (13)
+
+/** \~russian Активирует диалог перед энкаутером на глобальной карте с возиожностью выбора между пошаговым и реальным режимами. */
+/** \~english Activate dialog box on global map, using before encounter. */
+#define SAY_ENCOUNTER_ANY           (14)
+
+/** \~russian Активирует диалог перед энкаутером на глобальной карте с возиожностью выбора режима боя только в реальном времени. */
+/** \~english Activate dialog box on global map, using before encounter. */
+#define SAY_ENCOUNTER_RT            (15)
+
+/** \~russian Активирует диалог перед энкаутером на глобальной карте с возиожностью выбора только пошагового режима боя. */
+/** \~english Activate dialog box on global map, using before encounter. */
+#define SAY_ENCOUNTER_TB            (16)
+
+/** \~russian Направление текста в экран результата крафта. */
+#define SAY_FIX_RESULT              (17)
+
+/** \~russian Позволяет изменить текст в диалоговом окне типа #SCREEN_DIALOGBOX, открываемого с помощью метода Critter::ShowScreen. */
+#define SAY_DIALOGBOX_TEXT          (18)
+
+/** \~russian Позволяет добавить кнопку в окно типа #SCREEN_DIALOGBOX под порядковыми номером @a b с определенным текстом.
+ * Максимум можно добавить 20 кнопок (0..19).
+ */
+#define SAY_DIALOGBOX_BUTTON #(b)   (19+(b)) // Max 20 buttons (0..19)
+
+/** \~russian Добавить заголовок окна типа #SCREEN_SAY. */
+#define SAY_SAY_TITLE               (39)
+
+/** \~russian Добавить текст в окно типа #SCREEN_SAY. */
+#define SAY_SAY_TEXT                (40)
+
+/** \~russian Инициирует моргание окна мгры в панели задач и подаёт звуковой сигнал. */
+/** \~english Only flash window in tray and beep. */
+#define SAY_FLASH_WINDOW            (41)
+
+/*@}*/

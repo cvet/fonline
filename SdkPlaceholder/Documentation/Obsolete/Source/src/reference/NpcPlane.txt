@@ -1,0 +1,178 @@
+/** \~russian План NPC.
+ *
+ ** \~english Reprsents NPC plan.
+ *
+ ** \~
+ * @ingroup Server
+ * @nosubgrouping
+ */
+
+class NpcPlane
+{
+public:
+    /**
+     * \~russian @name Общие поля
+     * \~english @name General fields
+     * \~ @weight 300
+     */
+    //@{
+
+    /** \~russian Идентификатор плана. */
+    /** \~english Plane identifier. */
+    int Identifier;
+
+    /** \~russian Дополнительный идентификатор плана. */
+    /** \~english Extended plane identifier. */
+    uint IdentifierExt;
+
+    /** \~russian Тип плана. См. @link PlanesTypes Planes types@endlink. */
+    int Type;
+
+    /** \~russian Приоритет плана.
+     *
+     * Для установки дефолтных значений для различных типов планов используйте
+     * константы @link PlanesDefaultPriority Planes default priority@endlink.
+     */
+    uint Priority;
+
+    /** \~russian Дочерний план. */
+    NpcPlane@ Child;
+
+    /** \~russian Указывает, бежать ли криттеру при выполнении плана (@c true) или идти (@c false). */
+    bool Run;
+
+    //@}
+
+    /** @name AI_PLANE_ATTACK
+     * @weight 200
+     */
+    //@{
+
+    /** \~russian Уникальный ID атакуемого криттера. */
+    uint Attack_TargId;
+
+    /** \~russian Минимальное количество очков жизни у атакуемого криттера.
+     *
+     * Если у атакуемого криттера очки жизни упали до Attack_MinHp,
+     * то NPC перестает атаковать его.
+     */
+    int Attack_MinHp;
+
+    /** (?) */
+    bool Attack_IsGag;
+
+    /** (?) */
+    uint16 Attack_GagHexX;
+
+    /** (?) */
+    uint16 Attack_GagHexY;
+
+    /** (?) */
+    uint16 Attack_LastHexX;
+
+    /** (?) */
+    uint16 Attack_LastHexY;
+
+    //@}
+
+    /** @name AI_PLANE_WALK
+     * @weight 190
+     */
+    //@{
+
+    /** \~russian Х-координата гексагона, к которому должен идти криттер. */
+    uint16 Walk_HexX;
+
+    /** \~russian Y-координата гексагона, к которому должен идти криттер. */
+    uint16 Walk_HexY;
+
+    /** \~russian Направление, в которое криттер повернется после того, как дойдет до указанного места.
+     *
+     * Возможные значения: 0 – вверх-право, 1 – вправо, 2 – вниз-право и т.д.
+     */
+    uint8 Walk_Dir;
+
+    /** \~russian Определяет, за сколько гексагонов до указанного гексагона должен остановиться криттер.
+     *
+     * Если стоит – 0, то криттер встанет на указанный гексагон.
+     */
+    uint Walk_Cut;
+
+    //@}
+
+    /** @name AI_PLANE_PICK
+     * @weight 180
+     */
+    //@{
+
+    /** \~russian Х-координата гексагона, на котором находится предмет. */
+    uint16 Pick_HexX;
+
+    /** \~russian Y-координата гексагона, на котором находится предмет. */
+    uint16 Pick_HexY;
+
+    /** \~russian ID прототипа предмета.
+     *
+     * См. файл @b ITEMPID.H.
+     */
+    uint16 Pick_Pid;
+
+    /** (?) */
+    uint Pick_UseItemId;
+
+    /** \~russian Указывает, бежать ли криттеру при выполнении плана (@c true) или идти (@c false). */
+    bool Pick_ToOpen;
+
+    //@}
+
+    /** @name AI_PLANE_MISC
+     * @weight 170
+     */
+    //@{
+
+    /** \~russian Определяет, до какой игровой секунды ждать. */
+    uint Misc_WaitSecond;
+
+    /** \~russian Номер скрипта.
+     *
+     * См. @b scripts.lst или @b _scripts.fos.
+     */
+    int Misc_ScriptId;
+
+    /** \~russian Устанавливает имя вызываемой после ожидания функции.
+     *
+     * Спецификация функции (см. @b template.fos):
+     * @code
+     * void plane_FuncName(Critter& npc);
+     * @endcode
+     *
+     * @param  funcName  Имя функции.
+     *
+     * @return @c true – если функция успешно установлена;
+     *         @c false – в противном случае.
+     */
+    bool Misc_SetScript(string& funcName);
+
+    //@}
+
+    /**
+     * \~russian @name Общие методы
+     * \~english @name General methods
+     * \~ @weight 100
+     */
+    //@{
+
+    /** \~russian Создаёт копию плана. */
+    NpcPlane@ GetCopy();
+
+    /** \~russian Добавляет наследника плана.
+     *
+     * @param  child
+     *
+     * @return (?)
+     *
+     */
+    NpcPlane@+ SetChild(NpcPlane& child);
+
+    //@}
+}

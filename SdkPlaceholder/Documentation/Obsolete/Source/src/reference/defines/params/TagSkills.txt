@@ -1,0 +1,13 @@
+/**
+ * \~russian @defgroup TagSkills Профильные навыки
+ * \~english @defgroup TagSkills Tagged skills
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define TAG_SKILL1                  (226) // Used in engine
+#define TAG_SKILL2                  (227) // Used in engine
+#define TAG_SKILL3                  (228) // Used in engine
+#define TAG_SKILL4                  (229) // Used in engine
+
+/*@}*/

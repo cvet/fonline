@@ -1,0 +1,7 @@
+/** \~russian @page page_dialoguewriting Диалогописание
+
+@subpage page_dialogeditor
+
+@subpage page_dialogvars
+
+*/

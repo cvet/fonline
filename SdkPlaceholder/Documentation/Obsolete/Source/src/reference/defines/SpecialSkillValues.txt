@@ -1,0 +1,40 @@
+/**
+ * @defgroup SpecialSkillValues Special skill values
+ * @ingroup Defines
+ *
+ * \~russian Константы, использующиеся в обработчиках событий, #ITEM_EVENT_SKILL, #CRITTER_EVENT_SMTH_USE_SKILL,
+ *           #CRITTER_EVENT_USE_SKILL, глобальном обработчике #critter_use_skill и
+ *           обработчике сценери для определения того, что именно сделал криттер
+ *           при взаимодействии.
+ *
+ * \~
+ * @see      CRITTER_EVENT_USE_SKILL
+ *           CRITTER_EVENT_SMTH_USE_SKILL
+ *           ITEM_EVENT_SKILL
+ *           critter_use_skill
+ *           Обработчик сценери
+ */
+/*@{*/
+
+/** \~russian Использование объекта на карте */
+#define SKILL_PICK_ON_GROUND       (-1)
+
+/** \~russian Перемещение предмета из инвентаря в контейнер */
+#define SKILL_PUT_CONT             (-2)
+
+/** \~russian Перемещение предмета из контейнера в инвентарь */
+#define SKILL_TAKE_CONT            (-3)
+
+/** \~russian Перемещение всех предметов из контейнера в инвентарь */
+#define SKILL_TAKE_ALL_CONT        (-4)
+
+/** \~russian Обыск трупа криттера */
+#define SKILL_LOOT_CRITTER         (-5)
+
+/** \~russian Отталкивание криттера */
+#define SKILL_PUSH_CRITTER         (-6)
+
+/** \~russian Попытка разговора */
+#define SKILL_TALK                 (-7)
+
+/*@}*/

@@ -1,0 +1,14 @@
+/**
+ * @defgroup CarFlags Car flags
+ * @ingroup Defines
+ *
+ * \~russian Флаги машин.
+ * \~english Car flags.
+ *
+ */
+/*@{*/
+
+#define CAR_BIO_ENGINE              (0x0001)
+#define CAR_NO_LOCKPICK             (0x0002)
+
+/*@}*/

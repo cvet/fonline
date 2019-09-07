@@ -1,0 +1,159 @@
+/**
+ * @defgroup ItemEvents Item events
+ * @ingroup Events
+ *
+ * \~russian События для предметов.
+ *
+ * @remarks Первым параметром любого обработчика является ссылка на предмет,
+ *          для которого вызвано событие.
+ *
+ * \~english Event list for class Item
+ *
+ * \~ @see Item
+ *         Item::SetEvent
+ *
+ */
+/*@{*/
+
+/** \~russian Вызывается при удалении предмета.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Item& item, bool deleted)
+ * @endcode
+ *
+ * @param   deleted  @c true - предмет полностью удаляется из игры, @c false - событие вызвано остановкой сервера.
+ *
+ * @remarks  Полного удаления предмета можно избежать, переместив куда-нибудь данный предмет.
+ * \~ @see  Item::EventFinish
+ */
+#define ITEM_EVENT_FINISH             (0)
+
+/** \~russian Вызывается при атаке данным предметом криттера.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Item& item, Critter& crit, Critter& target)
+ * @endcode
+ *
+ * @param   crit    Атакующий криттер.
+ * @param   target  Атакуемый криттер.
+ *
+ * @return  Если возвращается @c true, то обработка атаки не произойдет.
+ *          При @c false вызывается обработчик криттера.
+ *
+ * \~ @see  Item::EventAttack
+ *          #CRITTER_EVENT_ATTACK
+ */
+#define ITEM_EVENT_ATTACK           (1)
+
+/** \~russian Вызывается при использовании предмета на что-либо.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Item& item, Critter& crit, Critter@ onCritter, Item@ onItem, Scenery@ onScenery)
+ * @endcode
+ *
+ * @param   crit       Криттер, использующий предмет.
+ * @param   onCritter  Если предмет используется на криттере, то аргумент содержит указатель на этого криттера.
+ * @param   onItem     Если предмет используется на другом предмете,
+ *                        то аргумент содержит указатель на этот (другой) предмет.
+ * @param   onScenery  Если предмет используется на сценери, то аргумент содержит указатель на это сценери.
+ *
+ * @return  При @c false вызывается обработчик криттера, потом глобальный #critter_use_item.
+ *          При @c true – выход.
+ *
+ * \~ @see  Item::EventUse
+ *          #CRITTER_EVENT_USE_ITEM
+ *          #critter_use_item
+ */
+#define ITEM_EVENT_USE              (2)
+
+/** \~russian Вызывается при использовании предмета на данный предмет.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Item& item, Critter& crit, Item@ usedItem)
+ * @endcode
+ *
+ * @param   crit      Криттер, использующий предмет.
+ * @param   usedItem  Используемый предмет.
+ *
+ * @return  При @c false вызывается обработчик криттера, потом глобальный #critter_use_item.
+ *          При @c true – выход.
+ *
+ * \~ @see  Item::EventUseOnMe
+ */
+#define ITEM_EVENT_USE_ON_ME        (3)
+
+/** \~russian Вызывается при использовании навыка на предмете.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * bool _FuncName(Item& item, Critter& crit, int skill)
+ * @endcode
+ *
+ * @param   crit   Криттер, применяющий навык.
+ * @param   skill  Используемый навык.
+ *                 (см. @link Skills Навыки@endlink и @link SpecialSkillValues Special Skill Values@endlink).
+ *
+ * @return  При @c false вызывается обработчик криттера, потом глобальный #critter_use_skill.
+ *          При @c true – выход.
+ *
+ * \~ @see  Item::EventSkill
+ *          #CRITTER_EVENT_USE_SKILL
+ *          #critter_use_skill
+ */
+#define ITEM_EVENT_SKILL            (4)
+
+/** \~russian Вызывается при выкидывании предмета из инвентаря.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Item& item, Critter& crit)
+ * @endcode
+ *
+ * @param  crit  Криттер, выкидывающий предмет.
+ *
+ * \~ @see Item::EventDrop
+ *         #CRITTER_EVENT_DROP_ITEM
+ */
+#define ITEM_EVENT_DROP             (5)
+
+/** \~russian Вызывается при перемещении предмета в инвентаре.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Item& item, Critter& crit, uint8 fromSlot)
+ * @endcode
+ *
+ * @param  crit      Криттер, переместивший предмет.
+ * @param  fromSlot  Слот, в котором предмет находился до перемещения
+ *                   (см. @link Slots Слоты инвентаря@endlink).
+ *
+ * \~ @see Item::EventMove
+ *         #CRITTER_EVENT_MOVE_ITEM
+ *
+ */
+#define ITEM_EVENT_MOVE             (6)
+
+/** \~russian Вызывается при хождении по предмету на карте.
+ *
+ * Одно из основных предназначений этого события: реализация различных ловушек, мин.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Item& item, Critter& crit, bool entered, uint8 dir)
+ * @endcode
+ *
+ * @param  crit     Криттер, прошедшийся по предмету.
+ * @param  entered  Принимает значение @c true в том случае, если криттер встал на предмет;
+ *                  @c false – если криттер ушел с предмета.
+ * @param  dir      Направление движения.
+ *
+ * \~ @see Item::EventWalk
+ *
+ */
+#define ITEM_EVENT_WALK             (7)
+
+/*@}*/

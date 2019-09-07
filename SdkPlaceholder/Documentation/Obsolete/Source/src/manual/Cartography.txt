@@ -1,0 +1,13 @@
+/** \~russian @page page_cartography Картография
+
+@subpage page_localmaps
+
+@subpage page_spechexes
+
+@subpage page_locationscfg
+
+@subpage page_globalmap
+
+@subpage page_encounters
+
+*/

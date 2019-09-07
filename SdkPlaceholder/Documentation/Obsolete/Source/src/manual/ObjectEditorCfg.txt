@@ -1,0 +1,11 @@
+/** \~russian @page page_objecteditorcfg ObjectEditor.cfg
+
+Настройки редактора крафта.
+\b Ключи:
+
+<table>
+<tr><td>NamesFolder</td><td>Путь к папке, содержащей файл ItemNames.lst (данный файл находится в папке Data в директории сервера)</td></tr>
+<tr><td>FoobjMsg</td><td>Путь к файлу foobj.msg (находится в директории текстов сервера каждого из языков)</td></tr>
+</table>
+
+*/

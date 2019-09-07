@@ -1,0 +1,54 @@
+Исходники:
+  https://doxygen.svn.sourceforge.net/svnroot/doxygen/trunk
+Ревизия:
+  716
+
+Изменения:
+- Распознаёт исходники с расширением fos как исходники на AngelScript.
+- Слегка подточенный под AngelScript парсер:
+  - распознаёт @, @+ и их комбинации с & и [] в типах,
+  - все члены класса (поля и методы) -- публичные.
+- Добавлена команда @weight <number>, используемая совместно с @name, для
+  задания весов групп (member groups).
+  - При использовании опции SORT_BRIEF_DOCS производится сортировка групп по весу
+    (по убыванию) и, только затем, по алфавиту. Члены групп сортируются по
+    алфавиту. Группы с одним весом сортируется так же, как в doxygen по-умолчанию:
+    по имени первого члена группы.
+  - Вес отражается в выводе xml как атрибут weight для элемента sectiondef.
+  - Вес по-умолчанию: 100.
+- Добавлена опция OPTIMIZE_FOR_FONLINE, при использовании которой сейчас
+  будут расставляться пробелы после хэндлов и указателей, а не до.
+- Добавлены опции TOC_ADD_*, которые используются вместе с опцией TOC_EXPAND,
+  и позволяют точно указать какого типа подгруппы будут включены в индекс.
+  
+TODO:
+- Опция SORT_BY_WEIGHT (?)
+- Опция DEFAULT_WEIGHT
+
+-------------------------------------------------------------------------------
+
+Source:
+  https://doxygen.svn.sourceforge.net/svnroot/doxygen/trunk
+Revision:
+  716
+
+Changes:
+- Identifies *.fos files as AngelScript sources.
+- Slightly modified parser which supports some AngelScript features:
+  - Recoginizes handles (@, @+) and its combinitions with & and [] in types,
+  - all class members are public,
+- Command @weight <number> added. Use it with @name command to declare member groups weight,
+  which is used:
+  - If SORT_BRIEF_DOCS option is enabled then member groups are sorted by weight
+    (in descending order). Group members sorted by names. Groups which have one weight
+    sorted by first member name as in the original doxygen.
+  - Attribute weight added to sectiondef element in the doxygen xml output.
+  - Default weight: 100
+- OPTIMIZE_FOR_FONLINE option. Forces to insert spaces after AS handlers and pointers,
+  not before.
+- TOC_ADD_* options. Allow to specify which types of member groups will be included in
+  the expanded index (see TOC_EXPAND option).
+  
+TODO:
+- SORT_BY_WEIGHT (?) option
+- DEFAULT_WEIGHT option

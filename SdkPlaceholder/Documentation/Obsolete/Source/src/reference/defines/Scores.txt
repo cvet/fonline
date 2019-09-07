@@ -1,0 +1,44 @@
+/**
+ * @defgroup Scores Scores
+ * @ingroup Defines
+ *
+ * \~
+ * @see     Critter::AddScore
+ *          ::SetBestScore
+ */
+/*@{*/
+
+#define SCORE_EVIL_OF_HOUR          (0)
+#define SCORE_HERO_OF_HOUR          (1)
+#define SCORE_KARMA_ON_HOUR         (2)
+#define SCORE_SPEAKER               (3)
+#define SCORE_TRADER                (4)
+#define SCORE_ZOMBY                 (5)
+#define SCORE_PATY                  (6)
+#define SCORE_MANIAC                (7)
+#define SCORE_SCAUT                 (8)
+#define SCORE_DOCTOR                (9)
+#define SCORE_SHOOTER               (10)
+#define SCORE_MELEE                 (11)
+#define SCORE_UNARMED               (12)
+#define SCORE_THIEF                 (13)
+#define SCORE_DRIVER                (14)
+#define SCORE_KILLER                (15)
+#define SCORE_SNIPER                (16)
+#define SCORE_ADVENTURER            (17)
+#define SCORE_CRACKER               (18)
+#define SCORE_UNARMED_DAMAGE        (19)
+#define SCORE_RITCH                 (20)
+#define SCORE_CHOSEN_ONE            (21)
+#define SCORE_SIERRA_CUR            (40)
+#define SCORE_MARIPOSA_CUR          (41)
+#define SCORE_CATHEDRAL_CUR         (42)
+#define SCORE_SIERRA_BEST           (43)
+#define SCORE_MARIPOSA_BEST         (44)
+#define SCORE_CATHEDRAL_BEST        (45)
+#define SCORE_SIERRA_ORG            (46)
+#define SCORE_MARIPOSA_ORG          (47)
+#define SCORE_CATHEDRAL_ORG         (48)
+#define SCORE_BASE_BEST_ORG         (49)
+
+/*@}*/

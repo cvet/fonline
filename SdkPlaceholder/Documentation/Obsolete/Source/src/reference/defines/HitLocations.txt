@@ -1,0 +1,21 @@
+/**
+ * @defgroup HitLocations Hit locations
+ * @ingroup Defines
+ *
+ * \~
+ * @see     #CRITTER_EVENT_PLANE_RUN
+ */
+/*@{*/
+
+#define HIT_LOCATION_NONE           (0)
+#define HIT_LOCATION_HEAD           (1)
+#define HIT_LOCATION_LEFT_ARM       (2)
+#define HIT_LOCATION_RIGHT_ARM      (3)
+#define HIT_LOCATION_TORSO          (4)
+#define HIT_LOCATION_RIGHT_LEG      (5)
+#define HIT_LOCATION_LEFT_LEG       (6)
+#define HIT_LOCATION_EYES           (7)
+#define HIT_LOCATION_GROIN          (8)
+#define HIT_LOCATION_UNCALLED       (9)
+
+/*@}*/

@@ -1,0 +1,9 @@
+file f;
+// Open the file in 'read' mode
+if( f.open("file.txt", "r") >= 0 ) 
+{
+    // Read the whole file into the string buffer
+    string str;
+    f.readString(f.getSize(), str); 
+    f.close();
+}

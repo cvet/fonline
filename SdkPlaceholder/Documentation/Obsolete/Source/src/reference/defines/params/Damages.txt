@@ -1,0 +1,16 @@
+/**
+ * \~russian @defgroup Damages Травмы/болезни
+ * \~english @defgroup Damages Damages
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define DAMAGE_POISONED             (500) // Used in engine
+#define DAMAGE_RADIATED             (501) // Used in engine
+#define DAMAGE_EYE                  (502) // Used in engine
+#define DAMAGE_RIGHT_ARM            (503) // Used in engine
+#define DAMAGE_LEFT_ARM             (504) // Used in engine
+#define DAMAGE_RIGHT_LEG            (505) // Used in engine
+#define DAMAGE_LEFT_LEG             (506) // Used in engine
+
+/*@}*/

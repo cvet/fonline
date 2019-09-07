@@ -1,0 +1,7 @@
+/** \~russian @page page_proto Прототипы
+
+@subpage page_protocritters
+
+@subpage page_protoitems
+
+*/

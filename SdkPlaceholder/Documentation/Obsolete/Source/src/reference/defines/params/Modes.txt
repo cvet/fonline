@@ -1,0 +1,108 @@
+/**
+ * \~russian @defgroup Modes Специальные параметры
+ * \~english @defgroup Modes Modes
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+/** \~russian Состояние скрытности. */
+#define MODE_HIDE                   (510) // Used in engine
+
+/** \~russian Режим, запрещающий воровство у криттера. */
+#define MODE_NO_STEAL               (511) // Used in engine
+
+/** \~russian Режим, при котором невозможна торговля. */
+#define MODE_NO_BARTER              (512) // Used in engine
+
+/** \~russian Режим, при включении которого NPC не запоминает игроков. */
+#define MODE_NO_ENEMY_STACK         (513) // Used in engine
+
+/** \~russian Режим, запрещающий PvP для игрока. */
+#define MODE_NO_PVP                 (514) // Used in engine
+
+/** \~russian Согласен ли игрок закончить пошаговый бой. */
+#define MODE_END_COMBAT             (515) // Used in engine
+
+/** \~russian Режим боя по-умолчанию. */
+#define MODE_DEFAULT_COMBAT         (516) // Used in engine
+
+/** \~russian Режим, при включении которого NPC не будет возвращаться в домашнюю позицию автоматически. */
+#define MODE_NO_HOME                (517) // Used in engine
+
+/** \~russian Режим, который позволяет предотвратить удаление локации, на которой находится NPC. */
+#define MODE_GECK                   (518) // Used in engine
+
+/** \~russian Режим, в котором с нпц нельзя начать диалог. */
+#define MODE_NO_TALK                (541) // Npc can't talk
+
+/** \~russian Режим установки предметов по-умолчанию.
+ *
+ * \~
+ * @see Critter::GetFavoriteItem
+ * @see Critter::SetFavoriteItem
+ */
+#define MODE_NO_FAVORITE_ITEM       (519) // Used in engine
+
+/** \~russian Позволяет отключить механизм автоматической продажи негруппируемых предметов.
+ *
+ * Продажа происходит следующим образом: если количество негруппируемых предметов больше,
+ * чем <code>Random(2, 4)</code>, тогда избыток удаляется, а количество денег увеличивается
+ * на стоимость, прописанную в прототипе.
+ *
+ * Продажа совершается в момент обновления сумки (см. #__BagRefreshTime).
+ *
+ */
+#define MODE_NO_ITEM_GARBAGER       (520) // Used in engine
+
+/** \~russian Возможно торговать при активном скрипте на диалоге. */
+#define MODE_DLG_SCRIPT_BARTER      (521) // Used in engine
+
+/** \~russian Бесконечные патроны. */
+#define MODE_UNLIMITED_AMMO         (522) // Used in engine
+
+/** \~russian Невозможность сбрасывать предметы. */
+#define MODE_NO_DROP                (523)
+
+/** \~russian Невозможность терять конечности. */
+#define MODE_NO_LOOSE_LIMBS         (524)
+
+/** \~russian Мёртвое тело не исчезает. */
+#define MODE_DEAD_AGES              (525)
+
+/** \~russian Очки жизней не восстанавливаются с течением времени. */
+#define MODE_NO_HEAL                (526) // Used in engine
+
+/** \~russian Режим неуязвимости. */
+#define MODE_INVULNERABLE           (527) // Used in engine
+
+/** \~russian Не помещать труп на задний план после смерти. */
+#define MODE_NO_FLATTEN             (528) // Used in engine
+
+/** \~russian Есть особый вид смерти. */
+#define MODE_SPECIAL_DEAD           (529)
+
+/** \~russian Возможна рукопашная атака на расстоянии. */
+#define MODE_RANGE_HTH              (530) // Used in engine
+
+/** \~russian Не может быть сбит с ног. */
+#define MODE_NO_KNOCK               (531)
+
+/** \~russian Режим, запрещающий обыск при смерти криттера. */
+#define MODE_NO_LOOT                (532) // Used in engine
+
+/** \~russian Не приходят охотники за головами при смерти NPC. */
+#define MODE_NO_SUPPLUY             (533)
+
+/** \~russian При смерти не производится перерасчета кармы игрока-убийцы. */
+#define MODE_NO_KARMA_ON_KILL       (534)
+
+/** \~russian При бартере нпц принимает оплату только наличными. */
+#define MODE_BARTER_ONLY_CASH       (535)
+
+/** \~russian Не быть оттолкнут. */
+#define MODE_NO_PUSH                (536) // Used in engine
+
+/** \~russian Не имеет безоружных атак. */
+#define MODE_NO_UNARMED             (537) // Used in engine
+
+/*@}*/

@@ -1,0 +1,47 @@
+#encoding Windows-1251
+#if $anchor: {{anchor|$anchor}}
+<code as>$f.sig</code>
+<ul>
+<u>Описание</u>:
+<dl>
+ <dd>$brief_description
+#if len($detailed_description) > 0
+ <dd>$detailed_description
+#end if
+</dl>
+#if len($f.param_groups) > 0
+<u>Аргументы функции</u>:
+<dl>
+#for param_group in $f.param_groups
+<dd><code as short>#slurp
+#for param in $param_group.params
+#if len(param.direction) > 0: [$(param.direction)] #slurp
+#if len(param.type) > 0: $(param.type) #slurp
+#if len(param.name) > 0: $(param.name)#slurp
+#if param is not param_group.params[-1]: , #slurp
+#end for
+</code> – $(param_group.description)
+#end for
+</dl>
+#end if
+#if len($returns) > 0
+<u>Возвращаемое значение</u>:
+<dl>
+#for r in $returns
+<dd>$r
+#end for
+</dl>
+#end if
+#if len($remarks) > 0
+<u>Примечания</u>:
+#for r in $remarks
+:*$r
+#end for
+#end if
+#if len($see) > 0
+<u>См. также</u>:
+#for i in $see
+:*$i
+#end for
+#end if
+</ul>

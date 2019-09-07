@@ -1,0 +1,66 @@
+/**
+ * @defgroup LookChecks Look checks
+ * @ingroup Defines
+ *
+ * \~russian Типы проверок видимости.
+ * \~english Look checks.
+ *
+ * \~
+ * @see      ::__LookChecks
+ */
+/*@{*/
+
+/** \~russian Штраф к радиусу видимости в зависимости от относительного направления.
+ ** \~english Nerfe look by direction of look.
+ ** \~
+ * @see __LookDir3
+ *      __LookDir0
+ *      __LookDir1
+ *      __LookDir2
+ */
+#define LOOK_CHECK_DIR              (0x01)
+
+/** \~russian Штраф к навыку скрытности в зависимости от относительного направления.
+ ** \~english Nerfe opponent sneak by direction of look.
+ ** \~
+ * @see __LookSneakDir0
+ *      __LookSneakDir1
+ *      __LookSneakDir2
+ *      __LookSneakDir3
+ */
+#define LOOK_CHECK_SNEAK_DIR        (0x02)
+
+/** \~russian Штраф к навыку скрытности в зависимости от веса переносимых предметов.
+ ** \~english Nerfe sneak by current weight.
+ ** \~
+ * @see __LookWeight
+ */
+#define LOOK_CHECK_SNEAK_WEIGHT     (0x04)
+
+/** \~russian Видимость в зависимости от наличия стен. */
+/** \~english Tracing for wall aviablility. */
+#define LOOK_CHECK_TRACE            (0x08)
+
+/** \~russian Использовать для проверки видимости скриптовую функцию #check_look.
+ *
+ * При использовании данного флага все остальные флаги игнорируются.
+ *
+ ** \~english Use #check_look function in @b main.fos for look checks.
+ *
+ * All other defines are ignored when this flag is set.
+ *
+ */
+#define LOOK_CHECK_SCRIPT           (0x10)
+
+/** \~russian Использовать для проверки видимости скриптовую функцию #check_trap_look.
+ *
+ * При использовании данного флага все остальные флаги игнорируются.
+ *
+ ** \~english Use #check_trap_look function in @b main.fos for look checks.
+ *
+ * All other defines are ignored when this flag is set.
+ *
+ */
+#define LOOK_CHECK_ITEM_SCRIPT      (0x20)
+
+/*@}*/

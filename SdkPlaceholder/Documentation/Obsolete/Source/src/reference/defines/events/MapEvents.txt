@@ -1,0 +1,170 @@
+/**
+ * @defgroup MapEvents Map events
+ * @ingroup Events
+ *
+ * \~russian События для карт
+ *
+ * @remarks Первым параметром любого обработчика является ссылка на карту,
+ *          для которой вызвано событие.
+ *
+ * \~english Event list for Item class
+ *
+ * \~ @see  Map
+ *          Map::SetEvent
+ *
+ */
+/*@{*/
+
+/** \~russian Вызывается при удалении карты из игры.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map, bool deleted)
+ * @endcode
+ *
+ * @param  deleted  @c true - карта полностью удаляется из игры, @c false - событие вызвано остановкой сервера
+ *
+ * \~ @see Map::EventFinish
+ */
+#define MAP_EVENT_FINISH            (0)
+
+/** \~russian Нулевой цикл. Для изменения периодичности вызова используйте метод Map::SetLoopTime.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventLoop0
+ *         Map::SetLoopTime
+ */
+#define MAP_EVENT_LOOP_0            (1)
+
+/** \~russian Первый цикл. Для изменения периодичности вызова используйте метод Map::SetLoopTime.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventLoop1
+ *         Map::SetLoopTime
+ */
+#define MAP_EVENT_LOOP_1            (2)
+
+/** \~russian Второй цикл. Для изменения периодичности вызова используйте метод Map::SetLoopTime.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventLoop2
+ *         Map::SetLoopTime
+ */
+#define MAP_EVENT_LOOP_2            (3)
+
+/** \~russian Третий цикл. Для изменения периодичности вызова используйте метод Map::SetLoopTime.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventLoop3
+ *         Map::SetLoopTime
+ */
+#define MAP_EVENT_LOOP_3            (4)
+
+/** \~russian Четвертый цикл. Для изменения периодичности вызова используйте метод Map::SetLoopTime.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventLoop4
+ *         Map::SetLoopTime
+ */
+#define MAP_EVENT_LOOP_4            (5)
+
+/** \~russian Вызывается при заходе криттера на данную карту.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map, Critter& cr)
+ * @endcode
+ *
+ * @param  cr  Криттер, зашедший на карту.
+ *
+ * \~ @see Map::EventInCritter
+ *         #map_critter_in
+ */
+#define MAP_EVENT_IN_CRITTER        (6)
+
+/** \~russian Вызывается при выходе криттера с данной карты.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map, Critter& cr)
+ * @endcode
+ *
+ * @param  cr  Криттер, вышедший с карты.
+ *
+ * \~ @see Map::EventOutCritter
+ *         #map_critter_out
+ */
+#define MAP_EVENT_OUT_CRITTER       (7)
+
+/** \~russian Вызывается при смерти криттера на данной карте.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map, Critter& cr, Critter@ killer)
+ * @endcode
+ *
+ * @param  cr      Умерший криттер.
+ * @param  killer  Если криттер был убит другим криттером, то аргумент содержит указатель на убившего криттера.
+ *
+ * \~ @see Map::EventCritterDead
+ *         #critter_dead
+ */
+#define MAP_EVENT_CRITTER_DEAD      (8)
+
+/** \~russian Вызывается в начале пошагового боя.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventTurnBasedBegin
+ */
+#define MAP_EVENT_TURN_BASED_BEGIN    (9)
+
+/** \~russian Вызывается в конце пошагового боя.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map)
+ * @endcode
+ *
+ * \~ @see Map::EventTurnBasedEnd
+ */
+#define MAP_EVENT_TURN_BASED_END      (10)
+
+/** \~russian Вызывается в начале и конце хода каждого персонажа участвующего в бою.
+ *
+ * @par Сигнатура обработчика:
+ * @code
+ * void _FuncName(Map& map, Critter& cr, bool beginTurn)
+ * @endcode
+ *
+ * @param  cr         Персонаж, для которого вызвано событие.
+ * @param  beginTurn  @c true - событие вызвано в начале хода персонажа, @c false - событие вызвано в конце хода персонажа.
+ *
+ * \~ @see Map::EventTurnBasedProcess
+ */
+#define MAP_EVENT_TURN_BASED_PROCESS  (11)
+
+/*@}*/

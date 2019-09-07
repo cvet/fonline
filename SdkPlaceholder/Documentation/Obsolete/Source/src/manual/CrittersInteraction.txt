@@ -1,0 +1,145 @@
+/**
+
+\~russian @page critters_interaction Взаимодействие между персонажами
+\~english @page critters_interaction Взаимодействие между персонажами
+
+\~russian @section critters_interaction_whole Взаимодействие между НПЦ и другими персонажами
+\~english @section critters_interaction_whole Взаимодействие между НПЦ и другими персонажами
+\~
+Для взаимодействия между персонажами используется метод – @ref Critter::SendMessage. В параметрах функции необходимо указать: 
+- Уникальный номер сообщения. Номер сообщения устанавливается по усмотрению разработчика скрипта и используется для идентификации этого сообщения.
+@remarks Если номера сообщений, относящихся к разным скриптам, будут совпадать, то это может привести к некорректной работе этих скриптов. 
+- Передаваемое значение. Например, ID персонажа, которого следует атаковать. 
+- Кому отсылается сообщение. 
+
+Когда персонаж принимает сообщение, у него происходит событие @ref CRITTER_EVENT_MESSAGE. При инициализации персонажа необходимо задать функцию, срабатываемую при данном событии, в ней необходимо выполнять ответные действия. Сообщение принимается в момент его отправки. 
+
+При организации сложной ситуации, в которой участвует множество персонажей и у каждого есть своя роль, используйте поле @ref Critter::NpcRole. 
+
+Пример написания скрипта с использованием функции @ref Critter::SendMessage. В этом примере организован диалог между двумя НПЦ, который будет происходить каждый день ровно в 12 часов.
+@code
+
+// Один скрипт на обоих НПЦ, в принципе, можно посадить на него и большее количество НПЦ
+#include "_macros.fos"
+
+#define NUM_OF_MSG                (300) // Номер сообщения
+#define ROLE_NPCA                 (150)
+#define ROLE_NPCB                 (151)
+
+// StatBase[ST_VAR0] - Индекс фразы
+// StatBase[ST_VAR1] - Callback для подтверждения готовности к разговору
+
+// Фразы для обоих НПЦ
+// В идеале, это должны были быть массивы номеров фраз, которые находятся в файле с текстами
+string[] DialogsForNpcA = {"О! Привет.","Как дела?","А чего так?","Уууу...",
+                           "Да уж, бывает...", "Ну ладно, пойду я."};
+string[] DialogsForNpcB = {"Привет.","Ой, плохи мои дела. Совсем плохи.",
+                           "Да опять в казино все свои деньги продул.","","", "Пока."};
+bool DialogsProcess = false;
+
+void _CritterAInit(Critter& npc, bool firstTime)
+{
+	npc.StatBase[ST_NPC_ROLE] = ROLE_NPCA;
+	npc.SetEvent(CRITTER_EVENT_MESSAGE, "_NpcOnMessage");
+
+	// Начинаем через минуту после инициализации
+	CreateTimeEvent(__FullSecond+REAL_MINUTE(1), "e_StartDialog", npc, false);
+}
+
+void _CritterBInit(Critter& npc, bool firstTime)
+{
+	npc.StatBase[ST_NPC_ROLE] = ROLE_NPCB;
+	npc.SetEvent(CRITTER_EVENT_MESSAGE, "_NpcOnMessage");
+}
+
+void _NpcOnMessage(Critter& npcB, Critter& npcA, int num, int val)
+{
+    // Если принятое сообщение не относится к диалогу, то завершаем выполнение функции
+    if(num != NUM_OF_MSG) return;
+
+    // Проверяем, совпадают ли роли обоих НПЦ
+    if(npcA.StatBase[ST_NPC_ROLE] != ROLE_NPCA || npcB.StatBase[ST_NPC_ROLE] != ROLE_NPCB) return;
+
+    // Проверяем готов ли NPC "B" произнести фразу
+    if(not npcB.IsLife() || not npcB.IsNoPlanes()) return;
+
+    // Начинаем вести беседу
+    npcA.StatBase[ST_VAR1] = 0; // Callback НПЦ_A что бы понял что все нормально
+    npcA.StatBase[ST_VAR0] = 0;
+    npcB.StatBase[ST_VAR0] = 0;
+    DialogsProcess = true;
+
+    // Создаем события в которых и будем общаться
+    CreateTimeEvent(__FullSecond+REAL_SECOND(2), "e_SayDialog", npcA, false);
+    CreateTimeEvent(__FullSecond+REAL_SECOND(4), "e_SayDialog", npcB, false);
+}
+
+uint e_StartDialog(uint[]@ values)
+{
+    Critter@ npcA = GetCritter(values[0]);
+    if(not valid(npcA)) return 0; // НПЦ больше не существует, удаляем событие
+
+	// Если НПЦ_А не готов к началу диалога, то откладываем событие на 20 игровых минут
+	if(not npcA.IsLife() || not npcA.IsNoPlanes()) return 20*60;
+
+	// Перед началом диалога проверяем, готов ли собеседник к диалогу
+	npcA.StatBase[ST_VAR1] = -1;
+	npcA.SendMessage(NUM_OF_MSG, 0, MESSAGE_TO_I_SEE);
+
+	// Если после отправки сообщения НПЦ_B не поменял значение переменной StatBase[ST_VAR1],
+	// то это значит что он не готов к диалогу
+	if(npcA.StatBase[ST_VAR1] == -1) return 20*60;
+
+    // Переносим событие на следующие 12 часов
+    return  12*60*60;
+}
+
+uint e_SayDialog(uint[]@ values)
+{
+    // Смотрим не прекратился ли диалог досрочно
+	Critter@ npc = GetCritter(values[0]);
+	if(not valid(npc)) return 0;
+    if(not DialogsProcess) return 0;
+
+    // Проверим, не появились ли новые планы у НПЦ
+    if(not npc.IsNoPlanes())
+    {
+        DialogsProcess=false;
+        return 0;
+    }
+
+    // Выберем нужные строки диалога
+    string[]@ dialogs;
+    if(npc.StatBase[ST_NPC_ROLE] == ROLE_NPCA) @dialogs = @DialogsForNpcA;
+    else if(npc.StatBase[ST_NPC_ROLE] == ROLE_NPCB) @dialogs = @DialogsForNpcB;
+    else return 0;
+
+    // Проверим до и после на предмет окончания диалогов, между этим говорим
+    if(uint(npc.StatBase[ST_VAR0]) >= dialogs.length()) return 0;
+    if(dialogs[npc.StatBase[ST_VAR0]] != "") npc.Say(SAY_NORM_ON_HEAD, dialogs[npc.StatBase[ST_VAR0]]);
+	npc.StatBase[ST_VAR0]++;
+    if(uint(npc.StatBase[ST_VAR0]) >= dialogs.length()) return 0;
+
+    // Следующая фраза произойдет через 4 секунды (через 2 секунды будет говорить оппонент)
+    return REAL_SECOND(4);
+}
+@endcode
+
+При этом, диалог между НПЦ будет выглядеть так: <br />
+A: О! Привет. <br />
+B: Привет. <br />
+A: Как дела? <br />
+B: Ой, плохи мои дела. Совсем плохи. <br />
+A: А чего так? <br />
+B: Да опять в казино все свои деньги продул. <br />
+A: Уууу... <br />
+A: Да уж, бывает... <br />
+A: Ну ладно, пойду я. <br />
+B: Пока. 
+
+Диалог будет происходить при условии, что: 
+- НПЦ видят друг друга; 
+- Во время начала диалога контекст обоих НПЦ будет свободен; 
+
+Если во время начала диалога оба NPC будут мертвы или будут выполнять запланированные действия, то начало диалога будет отложено на 20 игровых минут.
+ */

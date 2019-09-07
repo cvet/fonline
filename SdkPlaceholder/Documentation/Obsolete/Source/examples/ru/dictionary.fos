@@ -1,0 +1,18 @@
+dictionary dict;
+obj object;
+obj @handle;
+
+dict.set("one", 1);
+dict.set("object", object);
+dict.set("handle", @handle);
+
+if( dict.exists("one") )
+{
+  bool found = dict.get("handle", @handle);
+  if( found )
+  {
+    dict.delete("object");
+  }
+}
+
+dict.deleteAll();

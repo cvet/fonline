@@ -1,0 +1,26 @@
+/**
+ * \~russian @defgroup Traits Трейты
+ * \~english @defgroup Traits Traits
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define TRAIT_FAST_METABOLISM       (550)
+#define TRAIT_BRUISER               (551)
+#define TRAIT_SMALL_FRAME           (552) // Used in engine
+#define TRAIT_ONE_HANDER            (553)
+#define TRAIT_FINESSE               (554)
+#define TRAIT_KAMIKAZE              (555)
+#define TRAIT_HEAVY_HANDED          (556)
+#define TRAIT_FAST_SHOT             (557) // Used in engine
+#define TRAIT_BLOODY_MESS           (558)
+#define TRAIT_JINXED                (559)
+#define TRAIT_GOOD_NATURED          (560)
+#define TRAIT_CHEM_RELIANT          (561)
+#define TRAIT_CHEM_RESISTANT        (562)
+#define TRAIT_SEX_APPEAL            (563) // Used in engine
+#define TRAIT_SKILLED               (564)
+#define TRAIT_NIGHT_PERSON          (565) // Used in engine
+//#define TRAIT_GIFTED                (566)
+
+/*@}*/

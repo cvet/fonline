@@ -1,0 +1,25 @@
+/** \~russian @page manual Учебник
+
+Подразделы:
+
+@subpage about
+
+@subpage server_gui
+
+@subpage terms
+
+@subpage tools
+
+@subpage commands
+
+@subpage page_scripts
+
+@subpage page_content
+
+@subpage page_cartography
+
+@subpage page_dialoguewriting
+
+@subpage page_manuals
+
+ */

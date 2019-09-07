@@ -1,0 +1,32 @@
+/** \~russian Сценери.
+ *
+ ** \~english Represents scenery object.
+ *
+ ** \~
+ * @ingroup Server
+ */
+
+class Scenery
+{
+public:
+    /** \~russian Координата месторасположения по оси X. */
+    const uint16 HexX;
+
+    /** \~russian Координата месторасположения по оси Y. */
+    const uint16 HexY;
+
+    /** \~russian ID прототипа. */
+    const uint16 ProtoId;
+    
+    /** \~russian Вызывает функцию сценери ассоциированную с указанным Scenery объектом.
+     *
+     * @param  cr     Криттер запустивший функцию.
+     * @param  skill  Скилл который использует криттер.
+     * @param  item   Предмет который использует криттер.
+     *
+     ** \~english Calling the scenery handler associated with the scenery instance.
+     *
+     *
+     */
+    bool CallSceneryFunction(Critter& cr, int skill, Item@ item);
+}

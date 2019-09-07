@@ -1,54 +1,27 @@
-# FOnline Engine : build scripts
+# FOnline Engine : Build scripts
 
-Following environment variables must be set before starting build scripts:
+Build scripts (sh/bat) may be called both from current directory or repository root (e.g. BuildScripts/linux.sh).\
+Following environment variables optionally may be set before starting build scripts:
 
-### Required: FO_BUILD_DEST
-Path to build directory, where all required configuration (_.sln_/_Makefile_/etc.) and compiled binaries will be stored.
-It is adviced to keep build directory outside of repository, and avoid in-source builds.
+### FO_BUILD_DEST *(default: Build)*
 
-`FO_BUILD_DEST=FOnlineBuild`
+Path to build directory, where all required configuration (_.sln_/_Makefile_/etc.) and compiled binaries will be stored.\
+Default behaviour is build in repository in 'Build' directory which is already placed to gitignore and not follow to futher commit.
 
-Additional documentation describing build process can be found here: [CMake documentation](https://cmake.org/documentation).
+`FO_BUILD_DEST=c:/fonline-build`
 
-### Required: FO_ROOT
-Path to root directory of FOnline repository.
+### FO_ROOT *(default: . or ../ automatic detection)*
 
-`FO_ROOT=FOnlineSource`
+Path to root directory of FOnline repository.\
+If you try run build script from root (e.g. BuildScripts/linux.sh) then current directory taked.\
+If you try run build script from BuildScripts directory (e.g. ./linux.sh) then one level outside directory taked.\
+This behaviour determined by exition of CMakeLists.txt file in current directory.
 
-### Optional: FO_FTP_DEST
-Address of FTP server where binary files will be uploaded after build.
+`FO_ROOT=c:/fonline-repo`
 
-`FO_FTP_DEST=127.0.0.1`
+### FO_INSTALL_PACKAGES *(default: 1)*
 
-### Optional: FO_FTP_USER
-FTP user name and password, separated by colon. This variable is required if **FO_FTP_DEST** is set.
-
-`FO_FTP_USER=user:password`
-
-### Optional: FO_COPY_DEST
-Path to directory where binary files will be copied after build.
+Automatically install packages needed for build.\
+Needed sudo permissions.
  
-`FO_COPY_DEST=C:\FONLINE-COPY`
-
-### Optional: FO_INSTALL_PACKAGES
-Automatically install packages needed for build.
- 
-`FO_INSTALL_PACKAGES=1`
-
-### Optional: GoCD
-Additional documentation describing integratation with GoCD continuous delivery system can be found here: [GoCD documentation](https://docs.gocd.org/).
-
-#### Windows setup
-- Install GoCD
-- Install CMake
-- Create user go/password (admin), assign to Go services. Needs additional permissions.
-
-#### Linux setup
-- Install GoCD
-
-#### Mac setup
-- Install GoCD
-- Install CMake
-- Install Xcode
-
-If everything is set correctly, all what's required is to run a proper build script; see [example](gocd_example.png).
+`FO_INSTALL_PACKAGES=0`

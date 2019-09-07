@@ -1,0 +1,9 @@
+file f;
+// открываем файл для чтения
+if( f.open("file.txt", "r") >= 0 ) 
+{
+    // считываем всё содержимое файла в строку
+    string str;
+    f.readString(f.getSize(), str); 
+    f.close();
+}

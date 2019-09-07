@@ -1,0 +1,62 @@
+/**
+ * \~russian @defgroup Skills Навыки
+ * \~english @defgroup Skills Skills
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+/** \~russian Легкое оружие. */
+#define SK_SMALL_GUNS               (200)
+
+/** \~russian Тяжелое оружие. */
+#define SK_BIG_GUNS                 (201)
+
+/** \~russian Энергетическое оружие. */
+#define SK_ENERGY_WEAPONS           (202)
+
+/** \~russian Навык рукопашного боя. */
+#define SK_UNARMED                  (203)
+
+/** \~russian Рукопашное оружие. */
+#define SK_MELEE_WEAPONS            (204)
+
+/** \~russian Метательное оружие. */
+#define SK_THROWING                 (205)
+
+/** \~russian Первая помощь. */
+#define SK_FIRST_AID                (206)
+
+/** \~russian Доктор. */
+#define SK_DOCTOR                   (207)
+
+/** \~russian Скрытность. */
+#define SK_SNEAK                    (208)
+
+/** \~russian Взлом. */
+#define SK_LOCKPICK                 (209)
+
+/** \~russian Воровство. */
+#define SK_STEAL                    (210)
+
+/** \~russian Ловушки. */
+#define SK_TRAPS                    (211)
+
+/** \~russian Наука. */
+#define SK_SCIENCE                  (212)
+
+/** \~russian Ремонт. */
+#define SK_REPAIR                   (213)
+
+/** \~russian Речь. */
+#define SK_SPEECH                   (214)
+
+/** \~russian Торговля. */
+#define SK_BARTER                   (215)
+
+/** \~russian Азартные игры. */
+#define SK_GAMBLING                 (216)
+
+/** \~russian Скиталец. */
+#define SK_OUTDOORSMAN              (217)
+
+/*@}*/

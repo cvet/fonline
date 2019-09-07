@@ -1,0 +1,52 @@
+/**
+ * \~russian @defgroup std Стандартные классы и функции
+ *
+ * Список стандартных классов и функций.
+ *
+ * Представленные здесь классы и функции доступны при скриптинге
+ * как клиентской, так и серверной части FOnline.
+ *
+ * \~english @defgroup std Standard classes and functions
+ *
+ * List of standard classes and functions.
+ *
+ * These functions and classes are available for scripting
+ * in the both client and server parts of FOnline.
+ */
+
+/**
+ * \~russian @defgroup Server API сервера
+ * \~english @defgroup Server Server API
+ */
+
+/**
+ * \~russian @defgroup Client API клиента
+ * \~english @defgroup Client Client API
+ */
+
+/**
+ * \~russian @defgroup Mapper API маппера
+ * \~english @defgroup Mapper Mapper API
+ */
+
+/**
+ * \~russian @defgroup Defines Константы
+ * \~english @defgroup Defines Defines
+ */
+
+    /**
+     * \~russian @defgroup Events События
+     * \~english @defgroup Events Events
+     * \~ @ingroup Defines
+     */
+
+    /**
+     * \~russian @defgroup Params Параметры криттеров
+     * \~english @defgroup Params Critter parameters
+     *
+     * \~
+     * @ingroup Defines
+     *
+     * @see     Critter::Param
+     *          Critter::ParamBase
+     */

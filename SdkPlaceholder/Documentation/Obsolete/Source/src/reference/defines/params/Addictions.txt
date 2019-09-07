@@ -1,0 +1,16 @@
+/**
+ * \~russian @defgroup Addictions Привыкания
+ * \~english @defgroup Addictions Addictions
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define ADDICTION_NUKA_COLA         (470)
+#define ADDICTION_BUFFOUT           (471)
+#define ADDICTION_MENTATS           (472)
+#define ADDICTION_PSYCHO            (473)
+#define ADDICTION_RADAWAY           (474)
+#define ADDICTION_JET               (475)
+#define ADDICTION_TRAGIC            (476)
+
+/*@}*/

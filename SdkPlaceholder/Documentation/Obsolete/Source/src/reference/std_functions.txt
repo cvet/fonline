@@ -1,0 +1,728 @@
+/** @addtogroup std */
+/*@{*/
+
+/**
+ * \~russian @name Игровые функции
+ * \~english @name Standard game functions
+ */
+//@{
+
+/** \~russian Разрешает использование дополнительного слота с указанным номером.
+ *
+ * @param  index      Номер слота. Должен быть больше 3
+ *                    (слоты с номерами 0-3 являются стандартными).
+ * @param  iniOption  Обозначение региона слота в ini-файлах интерфейса.
+ *
+ * @see  @ref Slots
+ * @see  ProtoItem::Slot
+ */
+void AllowSlot(uint8 index, string& iniOption);
+
+/** \~russian Позволяет определить параметры, которые отсылаются серверу при регистрации.
+ * @remarks Все остальные параметры будут равны нулю.
+ * @remarks Работает по принципу функции Critter::SetSendParam.
+ */
+void SetRegistrationParameter(uint index, bool enabled);
+
+//@}
+
+/**
+ * \~russian @name Математические функции
+ * \~english @name Math functions
+ */
+//@{
+
+/** \~russian Возвращает косинус указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Косинус @a x.
+ *
+ ** \~english Returns the cosine of the specified angle.
+ *
+ * @param  x  Floating point value representing an angle expressed in radians.
+ * @return Cosine of @a x.
+ *
+ */
+float cos(float x);
+
+/** \~russian Возвращает синус указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Синус @a x.
+ *
+ ** \~english Returns the sine of the specified angle.
+ *
+ * @param  x  Floating point value representing an angle expressed in radians.
+ * @return Sine of @a x.
+ *
+ */
+float sin(float x);
+
+/** \~russian Возвращает тангенс указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Тангенс @a x.
+ *
+ ** \~english Returns the tangent of the specified angle.
+ *
+ * @param  x  Floating point value representing an angle expressed in radians.
+ * @return Tangent of @a x.
+ *
+ */
+float tan(float x);
+
+/** \~russian Возвращает угол, косинус которого равен указанному числу.
+ *
+ * @param  x  Число в интервале <code>[-1,+1]</code>, представляющее косинус.
+ * @return Угол, измеренный в радианах, в интервале <code>[0,pi]</code> радиан.
+ *
+ ** \~english Returns the principal value of the arc cosine of the specified angle.
+ *
+ * @param  x  Floating point value in the interval <code>[-1,+1]</code>.
+ * @return Principal arc cosine of @a x, in the interval <code>[0,pi]</code> radians.
+ *
+ */
+float acos(float x);
+
+/** \~russian Возвращает угол, синус которого равен указанному числу.
+ *
+ * @param  x  Число в интервале <code>[-1,+1]</code>, представляющее синус.
+ * @return Угол, измеренный в радианах, в интервале <code>[-pi/2,+pi/2]</code> радиан.
+ *
+ ** \~english Returns the principal value of the arc sine of the specified angle.
+ *
+ * @param  x  Floating point value in the interval <code>[-1,+1]</code>.
+ * @return Principal arc sine of @a x, in the interval <code>[-pi/2,+pi/2]</code> radians.
+ *
+ */
+float asin(float x);
+
+/** \~russian Возвращает угол, тангенс которого равен указанному числу.
+ *
+ * @param  x  Число представляющее тангенс.
+ * @return Угол, измеренный в радианах, в интервале <code>[-pi/2,+pi/2]</code> радиан.
+ *
+ ** \~english Returns the principal value of the arc tangent of the specified angle.
+ *
+ * @param  x  Floating point value.
+ * @return Principal arc tangent of @a x, in the interval [-pi/2,+pi/2] radians.
+ *
+ */
+float atan(float x);
+
+/** \~russian Возвращает угол, тангенс которого равен отношению двух указанных чисел.
+ *
+ * @param  y  Координата y точки.
+ * @param  x  Координата х точки.
+ * @return Угол, измеренный в радианах, в интервале <code>[-pi,+pi]</code> радиан,
+ *         и тангенс которого равен <code>y/x</code>, где <code>(x, y)</code> –
+ *         это точка в декартовой системе координат.
+ *
+ ** \~english Returns the principal value of the arc tangent of <code>y/x</code>, expressed in radians.
+ *
+ * @param  y  Floating point value representing an y-coordinate.
+ * @param  x  Floating point value representing an x-coordinate.
+ * @return Principal arc tangent of <code>y/x</code>, in the interval <code>[-pi,+pi]</code> radians.
+ *
+ */
+float atan2(float y, float x);
+
+/** \~russian Возвращает гиперболический косинус указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Гиперболический косинус @a x.
+ *
+ ** \~english Returns the hyperbolic cosine of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return Hyperbolic cosine of @a x.
+ *
+ */
+float cosh(float x);
+
+/** \~russian Возвращает гиперболический синус указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Гиперболический синус @a x.
+ *
+ ** \~english Returns the hyperbolic sine of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return Hyperbolic sine of @a x.
+ *
+ */
+float sinh(float x);
+
+/** \~russian Возвращает гиперболический тангенс указанного угла.
+ *
+ * @param  x  Угол, измеряемый в радианах.
+ * @return Гиперболический тангенс @a x.
+ *
+ ** \~english Returns the hyperbolic tangent of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return Hyperbolic tangent of @a x.
+ *
+ */
+float tanh(float x);
+
+/** \~russian Возвращает натуральный логарифм указанного числа.
+ *
+ * @param  x  Число, логарифм которого должен быть найден.
+ * @return Натуральный логарифм @a x.
+ *
+ ** \~english Returns the natural logarithm of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return Natural logarithm of @a x.
+ *
+ */
+float log(float x);
+
+/** \~russian Возвращает десятичный логарифм указанного числа.
+ *
+ * @param  x  Число, логарифм которого должен быть найден.
+ * @return Десятичный логарифм @a x.
+ *
+ ** \~english Returns the common (base-10) logarithm of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return Common logarithm of @a x, for values of @a x greater than zero.
+ *
+ */
+float log10(float x);
+
+/** \~russian Возвращает указанное число, возведенное в указанную степень.
+ *
+ * @param  base      Число, возводимое в степень.
+ * @param  exponent  Число, задающее степень.
+ * @return Число @a base, возведенное в степень @a exponent.
+ *
+ ** \~english Returns @a base raised to the power @a exponent:  base<sup>exponent</sup>.
+ *
+ * @param  base      Floating point value.
+ * @param  exponent  Floating point value.
+ * @return The result of raising @a base to the power @a exponent.
+ *
+ */
+float pow(float base, float exponent);
+
+/** \~russian Возвращает квадратный корень из указанного числа.
+ *
+ * @param  x  Число (<code>x>=0</code>).
+ * @return Квадратный корень из @a x.
+ *
+ ** \~english Returns the square root of @a x.
+ *
+ * @param  x Floating point value (<code>x>=0</code>).
+ * @return Square root of @a x.
+ *
+ */
+float sqrt(float x);
+
+/** \~russian Возвращает наименьшее целое число, которое больше или равно заданному числу.
+ *
+ * @param  x  Число.
+ * @return Наименьшее целое число, большее или равное @a x.
+ *
+ ** \~english Returns the smallest integral value that is not less than @a x.
+ *
+ * @param  x  Floating point value.
+ * @return The smallest integral value not less than @a x.
+ *
+ */
+float ceil(float x);
+
+/** \~russian Возвращает абсолютное значение указанного числа.
+ *
+ * @param  x  Число.
+ * @return Абсолютное значение @a x.
+ *
+ ** \~english Returns the absolute value of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return The absolute value of @a x.
+ *
+ */
+float abs(float x);
+
+/** \~russian Возвращает наибольшее целое число, которое меньше или равно указанному числу.
+ *
+ * @param  x  Число.
+ * @return Наибольшее целое число, меньшее или равное @a x.
+ *
+ ** \~english Returns the largest integral value that is not greater than @a x.
+ *
+ * @param  x  Floating point value.
+ * @return The largest integral value not greater than @a x.
+ *
+ */
+float floor(float x);
+
+/** \~russian Возвращает дробную часть указанного числа.
+ *
+ * @param  x  Число.
+ * @return Дробная часть числа @a x, с тем же знаком.
+ *
+ ** \~english Returns the fractional part of @a x.
+ *
+ * @param  x  Floating point value.
+ * @return The fractional part of x, with the same sign.
+ *
+ */
+float fraction(float x);
+
+//@}
+
+/**
+ * \~russian @name Функции для работы со строками
+ * \~english @name String functions
+ */
+//@{
+
+/** \~russian Возвращает подстроку указанной строки.
+ *
+ * @param  str     Входная строка.
+ * @param  start   Позиция первого символа подстроки во входной строке (с нуля).
+ * @param  length  Число символов в подстроке.
+ *
+ * @return Подстрока указанной входной строки.
+ *
+ ** \~english Returns a substring of the specified string.
+ *
+ * @param  str     Input string.
+ * @param  start   Position of a character in the input string to be used as starting character for the substring.
+ * @param  length  Length of the substring.
+ *
+ * @return String containing the substring of the input string.
+ *
+ */
+string@ substring(const string &in str, int start, int length);
+
+/** \~russian Возвращает индекс первого вхождения указанной подстроки в указанной входной строке.
+ *
+ * @param  str  Входная строка.
+ * @param  sub  Подстрока, поиск которой осуществляется во входной строке.
+ *
+ * @return Индекс, с которого начинается первое вхождение подстроки в исходной строке,
+ *         если эта подстрока найдена, или значение -1, если она не найдена.
+ *
+ ** \~english Searches the input string for the specified substring and returns the position of the first occurrence in the string.
+ *
+ * @param  str  Input string.
+ * @param  sub  String to be searched for in the input string.
+ *              The entire content of @a sub must be matched in some part of the string to be considered a match.
+ *
+ * @return The position of the first occurrence in the string of the searched substring.
+ *         If the substring doesn't exist in the input string, -1 is returned.
+ *
+ */
+int findFirst(const string &in str, const string &in sub);
+
+/** \~russian Возвращает индекс первого вхождения указанной подстроки в указанной входной строке.
+ *
+ * @param  str      Входная строка.
+ * @param  sub      Подстрока, поиск которой осуществляется во входной строке.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс, с которого начинается первое вхождение подстроки в исходной строке,
+ *         если эта подстрока найдена, или значение -1, если она не найдена.
+ *
+ ** \~english Searches the input string for the specified substring and returns the position of the first occurrence in the string.
+ *
+ * @param  str      Input string.
+ * @param  sub      String to be searched for in the input string.
+ *                  The entire content of @a sub must be matched in some part of the string to be considered a match.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the first occurrence in the string of the searched substring.
+ *         If the substring doesn't exist in the input string, -1 is returned.
+ */
+int findFirst(const string &in str, const string &in sub, int startAt);
+
+/** \~russian Возвращает индекс последнего вхождения указанной подстроки в указанной входной строке.
+ *
+ * @param  str  Входная строка.
+ * @param  sub  Подстрока, поиск которой осуществляется во входной строке.
+ *
+ * @return Индекс, с которого начинается последнее вхождение подстроки в исходной строке,
+ *         если эта подстрока найдена, или значение -1, если она не найдена.
+ *
+ ** \~english Searches the input string for the specified substring and returns the position of the last occurrence in the string.
+ *
+ * @param  str  Input string.
+ * @param  sub  String to be searched for in the input string.
+ *              The entire content of @a sub must be matched in some part of the string to be considered a match.
+ *
+ * @return The position of the last occurrence in the string of the searched substring.
+ *         If the substring doesn't exist in the input string, -1 is returned.
+ *
+ */
+int findLast(const string &in str, const string &in sub);
+
+/** \~russian Возвращает индекс последнего вхождения указанной подстроки в указанной входной строке.
+ *
+ * @param  str      Входная строка.
+ * @param  sub      Подстрока, поиск которой осуществляется во входной строке.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс, с которого начинается последнее вхождение подстроки в исходной строке,
+ *         если эта подстрока найдена, или значение -1, если она не найдена.
+ *
+ ** \~english Searches the input string for the specified substring and returns the position of the last occurrence in the string.
+ *
+ * @param  str      Input string.
+ * @param  sub      String to be searched for in the input string.
+ *                  The entire content of @a sub must be matched in some part of the string to be considered a match.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the last occurrence in the string of the searched substring.
+ *         If the substring doesn't exist in the input string, -1 is returned.
+ */
+int findLast(const string &in str, const string &in sub, int startAt);
+
+/** \~russian Возвращает индекс первого встретившегося символа во входной строке,
+ *            принадлежащего указанному множеству символов.
+ *
+ * @param  str  Входная строка.
+ * @param  set  Строка, задающая множество символов.
+ *
+ * @return Индекс первого встретившегося символа во входной строке, содержащегося
+ *         и в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches the input string for @b any of the characters that are part of @a set and returns the position of the first occurrence.
+ *
+ * @param  str  Input string.
+ * @param  set  String containing the characters to search for.
+ *              The first character in the input string that compares equal
+ *              to any of the characters in @a str is considered a match.
+ *
+ * @return The position of the first occurrence in the string of any of the characters searched for.
+ *         If such character isn't found, -1 is returned.
+ *
+ */
+int findFirstOf(const string &in str, const string &in set);
+
+/** \~russian Возвращает индекс первого встретившегося символа во входной строке,
+ *            принадлежащего указанному множеству символов.
+ *
+ * @param  str      Входная строка.
+ * @param  set      Строка, задающая множество символов.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс первого встретившегося символа во входной строке, содержащегося
+ *         и в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches the input string for @b any of the characters that are part of @a set and returns the position of the first occurrence.
+ *
+ * @param  str      Input string.
+ * @param  set      String containing the characters to search for.
+ *                  The first character in the input string that compares equal
+ *                  to any of the characters in @a str is considered a match.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the first occurrence in the string of any of the characters searched for.
+ *         If such character isn't found, -1 is returned.
+ *
+ */
+int findFirstOf(const string &in str, const string &in set, int startAt);
+
+/** \~russian Возвращает индекс первого встретившегося символа во входной строке,
+ *            @b не принадлежащего указанному множеству символов.
+ *
+ * @param  str      Входная строка.
+ * @param  set      Строка, задающая множество символов.
+ *
+ * @return Индекс первого встретившегося символа во входной строке, не содержащегося
+ *         в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches for the first character in the input string which is not part of @a set and returns its position.
+ *
+ * @param  str      Input string.
+ * @param  set      String containing the characters to match against in the input string.
+ *
+ * @return The position of the first character in the input string that is not part
+ *         of characters it is being matched against. If such character isn't found, -1 is returned.
+ *
+ */
+int findFirstNotOf(const string &in str, const string &in set);
+
+/** \~russian Возвращает индекс первого встретившегося символа во входной строке,
+ *            @b не принадлежащего указанному множеству символов.
+ *
+ * @param  str      Входная строка.
+ * @param  set      Строка, задающая множество символов.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс первого встретившегося символа во входной строке, не содержащегося
+ *         в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches for the first character in the input string which is not part of @a set and returns its position.
+ *
+ * @param  str      Input string.
+ * @param  set      String containing the characters to match against in the input string.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the first character in the input string that is not part
+ *         of characters it is being matched against. If such character isn't found, -1 is returned.
+ *
+ */
+int findFirstNotOf(const string &in str, const string &in set, int startAt);
+
+/** \~russian Возвращает индекс последнего встретившегося символа во входной строке,
+ *            принадлежащего указанному множеству символов.
+ *
+ * @param  str  Входная строка.
+ * @param  set  Строка, задающая множество символов.
+ *
+ * @return Индекс последнего встретившегося символа во входной строке, содержащегося
+ *         и в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches the input string for @b any of the characters that are part of @a set and returns the position of the last occurrence.
+ *
+ * @param  str  Input string.
+ * @param  set  String containing the characters to search for.
+ *              The last character in the input string that compares equal
+ *              to any of the characters in @a str is considered a match.
+ *
+ * @return The position of the last occurrence in the string of any of the characters searched for.
+ *         If such character isn't found, -1 is returned.
+ *
+ */
+int findLastOf(const string &in str, const string &in set);
+
+/** \~russian Возвращает индекс последнего встретившегося символа во входной строке,
+ *            принадлежащего указанному множеству символов.
+ *
+ * @param  str  Входная строка.
+ * @param  set  Строка, задающая множество символов.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс последнего встретившегося символа во входной строке, содержащегося
+ *         и в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches the input string for @b any of the characters that are part of @a set and returns the position of the last occurrence.
+ *
+ * @param  str  Input string.
+ * @param  set  String containing the characters to search for.
+ *              The last character in the input string that compares equal
+ *              to any of the characters in @a str is considered a match.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the last occurrence in the string of any of the characters searched for.
+ *         If such character isn't found, -1 is returned.
+ *
+ */
+int findLastOf(const string &in str, const string &in set, int startAt);
+
+/** \~russian Возвращает индекс последнего встретившегося символа во входной строке,
+ *            @b не принадлежащего указанному множеству символов.
+ *
+ * @param  str      Входная строка.
+ * @param  set      Строка, задающая множество символов.
+ *
+ * @return Индекс последнего встретившегося символа во входной строке, не содержащегося
+ *         в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches for the last character in the input string which is not part of @a set and returns its position.
+ *
+ * @param  str      Input string.
+ * @param  set      String containing the characters to match against in the input string.
+ *
+ * @return The position of the last character in the input string that is not part
+ *         of characters it is being matched against. If such character isn't found, -1 is returned.
+ *
+ */
+int findLastNotOf(const string &in str, const string &in set);
+
+/** \~russian Возвращает индекс последнего встретившегося символа во входной строке,
+ *            @b не принадлежащего указанному множеству символов.
+ *
+ * @param  str      Входная строка.
+ * @param  set      Строка, задающая множество символов.
+ * @param  startAt  Позиция во входной строке, с которой начинается поиск.
+ *
+ * @return Индекс последнего встретившегося символа во входной строке, не содержащегося
+ *         в строке @a set. Если таких символов не встретилось, то возвращается -1.
+ *
+ ** \~english Searches for the last character in the input string which is not part of @a set and returns its position.
+ *
+ * @param  str      Input string.
+ * @param  set      String containing the characters to match against in the input string.
+ * @param  startAt  The search starting position in the input string.
+ *
+ * @return The position of the last character in the input string that is not part
+ *         of characters it is being matched against. If such character isn't found, -1 is returned.
+ *
+ */
+int findLastNotOf(const string &in str, const string &in set, int startAt);
+
+/** \~russian Разбивает указанную строку на подстроки, используя указанный разделитель.
+ *
+ * @param  str        Разбиваемая строка.
+ * @param  delimiter  Строка, которая используется в качестве разделителя.
+ *
+ * @return Массив, элементы которого содержат подстроки данной строки,
+ *         разделенные строкой @a delimiter.
+ *
+ ** \~english Splits the string into an array of substrings.
+ *
+ * @param  str        String to split.
+ * @param  delimiter  String that delimit the substrings in the splitted string.
+ *
+ * @return An array whose elements contain the substrings of the string @a str
+ *         that are delimited by the @a delimiter.
+ *
+ */
+string@[]@ split(const string &in str, const string &in delimiter);
+
+/** \~russian Разбивает указанную строку на подстроки, используя указанный разделитель.
+ *
+ * @param  str        Разбиваемая строка.
+ * @param  delimiter  Строка, которая используется в качестве разделителя.
+ *
+ * @return Массив, элементы которого содержат подстроки данной строки,
+ *         разделенные строкой @a delimiter. В итоговый массив не включаются пустые элементы, а так же убираются пробелы/табы/перенос_строки из итоговых элементов.
+ *
+ */
+string@[]@ splitEx(const string &in str, const string &in delimiter);
+
+/** \~russian Объединяет строки из заданного массива в одну строку, разделяя их при этом указанной строкой.
+ *
+ * @param  str        Массив объединяемых строк.
+ * @param  delimiter  Строка, которая вставляется между отдельными элементами
+ *                    массива при их объединении.
+ *
+ * @return Строка, состоящая из элементов @a str, перемежаемых строками @a delimiter.
+ *
+ ** \~english Joins an array of strings into a larger string separated by a delimiter.
+ *
+ * @param  str        An array of strings.
+ * @param  delimiter  A string.
+ *
+ * @return A string consisting of the elements of @a str interspersed
+ *         with the @a delimiter string.
+ *
+ */
+string@ join(const string@[] &in str, const string &in delimiter);
+
+/** \~russian Переводит строку в нижний регистр.
+ *
+ * @param  str  Входная строка.
+ * @return Строка @a str в нижнем регистре.
+ *
+ ** \~english Converts the specified string to lowercase.
+ *
+ * @param  str  Input string.
+ * @return String @a str in lowercase.
+ */
+string@ strlwr(const string &in str);
+
+/** \~russian Переводит строку в верхний регистр.
+ *
+ * @param  str  Входная строка.
+ * @return Строка @a str в верхнем регистре.
+ *
+ ** \~english Converts the specified string to uppercase.
+ *
+ * @param  str  Input string.
+ * @return String @a str in uppercase.
+ */
+string@ strupr(const string &in str);
+
+/** \~russian Высчитывает хэш строки. Основное назначение - высчитывать хэш пути к файлу изображения
+ * 
+ * @param  str  Cтрока от которой высчитывается хэш (символ "/" в исходной строке будет автоматически заменен на "\"). Регистр значения не имеет.
+ * @return Хэш строки
+ * 
+ ** \~english 
+ * 
+ * @param  str  Strings of which is calculated hash ("/" character in the original string will be automatically replaced by "\"). Function is case-insensitive.
+ * @return String hash
+ * 
+ ** \~
+ * @see Item::PicMap
+ * @see ItemCl::PicMap
+ * @see Item::PicInv
+ * @see ItemCl::PicInv
+ */
+uint GetStrHash(string@ str);
+
+//@}
+
+/**
+ * \~russian @name Прочее
+ */
+//@{
+
+/** \~russian Возвращает вид криттера (Fallout, Tactics, Arcanum, etc) по номеру CritterType
+ * 
+ * @param  crType  номер типа криттера.
+ * @return вид криттера. Значения в Anim types _animation.fos.
+ *
+ */
+int GetCritterAnimType(uint crType);
+
+/** \~russian возвращает значение Alias из CritterTypes.fos */
+uint GetCritterAlias(uint crType)
+
+/** \~russian возвращает значение TypeName из CritterTypes.fos */
+string@ GetCritterTypeName(uint crType)
+
+/** \~russian возвращает значение SoundName из CritterTypes.fos */
+string@ GetCritterSoundName(uint crType)
+
+/** \~russian возвращает возможность смены брони для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ *
+ * @return @c true – в случае если тип криттера может носить броню; @c false – в противном случае.
+ */
+bool IsCritterCanArmor(uint crType);
+
+/** \~russian возвращает возможность перемещения для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ *
+ * @return @c true – в случае если тип криттера может ходить; @c false – в противном случае.
+ */
+bool IsCritterCanWalk(uint crType);
+
+/** \~russian возвращает возможность перемещения бегом для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ *
+ * @return @c true – в случае если тип криттера может бегать; @c false – в противном случае.
+ */
+bool IsCritterCanRun(uint crType);
+
+/** \~russian возвращает возможность изменения направления для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ *
+ * @return @c true – в случае если тип криттера может поворачиваться; @c false – в противном случае.
+ */
+bool IsCritterCanRotate(uint crType);
+
+/** \~russian возвращает возможность прицельной атаки для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ *
+ * @return @c true – в случае если тип криттера может носить броню; @c false – в противном случае.
+ * @remarks аналогичная функция bool Critter::IsCanAim в добавок учитывает еще и трейт Fast Shot
+ * @see Critter::IsCanAim
+ */
+bool IsCritterCanAim(uint crType);
+
+/** \~russian возвращает возможность анимации(?) для заданного типа криттера.
+ *
+ * @param  crType -  Тип криттера (см. CritterTypes.cfg).
+ * @param  anim1  -  (?)
+ *
+ * @return @c true – (?) @c false – в противном случае.
+ */
+bool IsCritterAnim1(uint crType, uint anim1);
+
+//@}
+
+/*!@}*/

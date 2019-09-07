@@ -1,0 +1,10 @@
+/** \~russian @page page_fointernalmsg FOINTERNAL.MSG
+
+FOINTERNAL.MSG - используется для внутренних нужд движка.
+\b Формат:
+
+@code
+{Номер строки}{}{текст}
+@endcode
+
+*/

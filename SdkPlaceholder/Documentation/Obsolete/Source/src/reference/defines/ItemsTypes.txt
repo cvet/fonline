@@ -1,0 +1,57 @@
+/**
+ * @defgroup ItemsTypes Items types
+ * @ingroup Defines
+ *
+ * \~russian Типы предметов.
+ * \~english Item types.
+ *
+ * \~
+ * @see      Item::GetType()
+ *           ItemCl::GetType()
+ *           ProtoItem::GetType()
+ *           Critter::GetItemsByType
+ *           CritterCl::GetItemsByType
+ *
+ */
+/*@{*/
+
+/** \~russian Тайлы */
+#define ITEM_TYPE_TILE                   (0)
+
+/** \~russian Броня */
+#define ITEM_TYPE_ARMOR                  (1)
+
+/** \~russian Наркотик */
+#define ITEM_TYPE_DRUG                   (2)
+
+/** \~russian Оружие */
+#define ITEM_TYPE_WEAPON                 (3)
+
+/** \~russian Патроны */
+#define ITEM_TYPE_AMMO                   (4)
+
+/** \~russian Разное */
+#define ITEM_TYPE_MISC                   (5)
+
+/** \~russian Разное2 */
+#define ITEM_TYPE_MISC2                  (6)
+
+/** \~russian Ключ */
+#define ITEM_TYPE_KEY                    (7)
+
+/** \~russian Контейнер */
+#define ITEM_TYPE_CONTAINER              (8)
+
+/** \~russian Дверь */
+#define ITEM_TYPE_DOOR                   (9)
+
+/** \~russian Порталы */
+#define ITEM_TYPE_GRID                   (10)
+
+/** \~russian Сценери */
+#define ITEM_TYPE_GENERIC                (11)
+
+/** \~russian Стены */
+#define ITEM_TYPE_WALL                   (12)
+
+/*@}*/

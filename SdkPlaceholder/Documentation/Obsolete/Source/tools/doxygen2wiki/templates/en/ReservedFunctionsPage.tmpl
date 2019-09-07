@@ -1,0 +1,49 @@
+#if len($labels) > 0
+#labels #for $l in $labels #$l #end for #
+#end if
+#
+#if len($briefdescription) > 0
+$briefdescription
+#end if
+#if len($detaileddescription) > 0
+$detaileddescription
+#end if
+
+#
+#for $s in $generatedsections
+#if $s.functions
+$funcs($s)
+#end if
+#end for
+#
+#for $s in $usersections
+#if $s.functions
+
+=== $s.name ===
+$funcs($s)#
+#end if
+#end for
+#
+#
+#def funcs($section)
+#if $section.functions
+#for $f in $section.functions
+
+$f.doc
+#end for
+#end if
+#end def
+#
+
+[[Category:Scripting]]
+#
+#def vars($section)
+#if $section.variables
+{|class="memberlist"
+#for $v in $section.variables
+$v.doc
+#if $v != $section.variables[-1]:  |-
+#end for
+ |}#
+#end if
+#end def

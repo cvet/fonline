@@ -1,0 +1,29 @@
+/**
+ * @defgroup TransferTypes Transfer types
+ * @ingroup Defines
+ *
+ * \~russian Типы трансфера
+ *
+ * \~english Transfer types
+ *
+ * \~
+ * @see      Critter::ShowContainer
+ *
+ */
+/*@{*/
+
+#define TRANSFER_CLOSE              (0)
+#define TRANSFER_HEX_CONT_UP        (1)
+#define TRANSFER_HEX_CONT_DOWN      (2)
+#define TRANSFER_SELF_CONT          (3)
+#define TRANSFER_CRIT_LOOT          (4)
+#define TRANSFER_CRIT_STEAL         (5)
+#define TRANSFER_CRIT_BARTER        (6)
+
+/** \~russian Позволяет обмен с контейнером на любой дистанции. */
+#define TRANSFER_FAR_CONT           (7)
+
+/** \~russian Позволяет обмен с криттером на любой дистанции. */
+#define TRANSFER_FAR_CRIT           (8)
+
+/*@}*/

@@ -1,0 +1,23 @@
+/**
+ * @defgroup DrawPrimitiveTypes Draw primitive types
+ * @ingroup Defines
+ *
+ * \~russian Типы примитивов.
+ *
+ * Подробнее о типах примитивов читайте здесь:
+ * - http://www.firststeps.ru/mfc/directx/dxhelp/r.php?33 (rus)
+ * - <a href="http://msdn.microsoft.com/en-us/library/bb172589(VS.85).aspx">D3DPRIMITIVETYPE</a> (eng)
+ *
+ * \~
+ * @see      ::DrawPrimitive
+ */
+/*@{*/
+
+#define DRAW_PRIMITIVE_POINTLIST     (0)
+#define DRAW_PRIMITIVE_LINELIST      (1)
+#define DRAW_PRIMITIVE_LINESTRIP     (2)
+#define DRAW_PRIMITIVE_TRIANGLELIST  (3)
+#define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
+#define DRAW_PRIMITIVE_TRIANGLEFAN   (5)
+
+/*@}*/

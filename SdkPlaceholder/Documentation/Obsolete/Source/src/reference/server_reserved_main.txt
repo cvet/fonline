@@ -1,0 +1,495 @@
+/**
+ * \~russian @defgroup ServerReservedMain Зарезервированные скриптовые функции
+ *
+ * Используются только в скрипте @b main.fos. Должны быть обязательно объявлены, иначе сервер не запустится.
+ *
+ * \~english @defgroup ServerReservedMain Reserved script functions
+ *
+ * Used only in the script @b main.fos. Required to be defined for server to start.
+ *
+ * \~ @ingroup Server
+ */
+/*@{*/
+
+/**
+ * \~russian @name Сервер
+ * \~english @name Server
+ * \~ @weight 200
+ */
+//@{
+
+/** \~russian Вызывается при старте сервера.
+ *
+ * @return Показывает удачно ли прошла инициализация.
+ *         @c true – если удачно; @c false – в противном случае.
+ */
+bool start();
+
+/** \~russian Вызывается при старте сервера раньше, чем start(), когда мир еще не сгенерирован. */
+void init();
+
+/** \~russian Вызывается при остановке сервера. */
+void finish();
+
+/** \~russian Функция, вызываемая движком с задаваемой периодичностью.
+ *
+ * Период задается с помощью возвращаемого значения.
+ *
+ * @return Время в миллисекундах, через которое функцию следует вызвать снова.
+ *         Если будет возвращен ноль, то функция больше не будет вызываться.
+ */
+uint loop();
+
+/** \~russian Функция, устанавливающая стартовое время сервера.
+ *
+ * Вызывается единожды при создании мира.
+ *
+ * @param [out] multiplier  Коэффициент ускорения времени (1..99).
+ * @param [out] year        Стартовый год (1700..30000).
+ * @param [out] month       Стартовый месяц (1..12).
+ * @param [out] day         Стартовый день (1..31).
+ * @param [out] hour        Стартовый час час (0..23).
+ * @param [out] minute      Стартовая минута (0..59)
+ */
+void get_start_time(uint16& multiplier,
+    uint16& year, uint16& month, uint16& day, uint16& hour, uint16& minute);
+
+//@}
+
+/**
+ * \~russian @name Глобальная карта
+ * \~english @name Worldmap
+ * \~ @weight 190
+ */
+//@{
+
+/** \~russian Вызывается при различных событиях, связанных с перемещением и различными действиями группы криттеров на глобальной карте мира.
+ *
+ * Типы событий, при которых вызывается данная функция (возможные значения параметра @a type):
+ * - @c GLOBAL_PROCESS_MOVE – при передвижении по глобальной карте, каждые 5 секунд.
+ * - @c GLOBAL_PROCESS_ENTER – при попытке входа на пустую карту.
+ * - @c GLOBAL_PROCESS_START_FAST – сразу при выходе на глобал или отсоединении от группы.
+ * - @c GLOBAL_PROCESS_START – при прошествии 20 секунд от выхода на глобал или при первой попытке передвижения.
+ * - @c GLOBAL_PROCESS_SET_MOVE – при изменении направления движения.
+ * - @c GLOBAL_PROCESS_STOPPED – при остановке группы на глобале.
+ * - @c GLOBAL_PROCESS_NPC_IDLE – при простое NPC на глобале
+ *      (промежуток вызова определяется переменной  #__CritterIdleTick).
+ *
+ * Для открытия диалогового окна с вопросом о входе на энкаунтер используются
+ * методы <code>Say*</code> класса Critter, с типами:
+ * - @c SAY_ENCOUNTER_ANY – возможность выбора между боем в реальном времени,
+ *      пошаговым режимом боя и отказом от захода на энкаутер.
+ * - @c SAY_ENCOUNTER_RT – предлагается только бой в реальном времени и отказ.
+ * - @c SAY_ENCOUNTER_TB – предлагается только бой в пошаговом режиме и отказ.
+ *
+ * @param [in]      type                 Тип вызова.
+ * @param [in]      cr                   Криттер, для которого вызван обработчик.
+ * @param [in]      group                Группа тех, кто двигается.
+ * @param [in]      car                  Указатель на машину, используемую группой.
+ * @param [in, out] x, y                 Текущая позиция.
+ * @param [in, out] toX, toY             Позиция, куда двигается группа.
+ * @param [out]     speed                Служит для установки скорости перемещения по глобалу.
+ * @param [out]     encounterDescriptor  Если в результате вызова данный параметр принимает
+ *                                       ненулевое значение, то он впоследствии отправится в функцию #global_invite,
+ *                                       в которой уже и надо выставить конкретно номер карты и позицию входа.
+ *                                       Если @a encounterDescriptor равен 0, то функция #global_invite не вызывается.
+ * @param [out]     waitForAnswer        Если в результате вызова данный параметр принимает
+ *                                       значение @c true, то перед последующим вызовом функции #global_invite лидер группы
+ *                                       должен подтвердить приглашение. Если @c false, то функция #global_invite
+ *                                       вызывается сразу. Каким образом показать сообщение лидеру см. в Примечаниях.
+ *
+ * @remarks Можно менять переменные @a x, @a y, @a toX, @a toY, чтобы изменить точки:
+ *          текущую или назначения, соответственно. Чтобы остановить группу просто
+ *          присвойте точке назначения текущую.
+ *
+ * @remarks Первым криттером в списке @a group является лидер группы.
+ *
+ * @see     global_invite
+ * @see     Critter::Say
+ * @see     Critter::SayMsg
+ * @see     CRITTER_EVENT_GLOBAL_PROCESS
+ */
+void global_process(int type, Critter& cr, Critter@[]& group, Item@ car,
+                    uint& x, uint& y,
+                    uint& toX, uint& toY,
+                    uint& speed, uint& encounterDescriptor, bool& waitForAnswer);
+
+/** \~russian Вызывается, когда группа криттеров заходит на энкаутер.
+ *
+ * @param [in]  group                Группа криттеров, заходящих на энкаутер.
+ * @param [in]  car                  Указатель на машину, используемую группой.
+ * @param [in]  encounterDescriptor  Переданный из функции #global_process номер.
+ * @param [in]  combatMode           Выбранный (игроком или движком) режим боя
+ *                                   (см. @link CombatModes Combat modes@endlink).
+ * @param [out] mapId                Уникальный идентификатор карты энкаутера.
+ *                                   Если в результате вызова данный параметр принимает ненулевое значение,
+ *                                   то группа заходит на указанную карту.
+ * @param [out] hexX, hexY           Начальная позиция криттеров на карте.
+ * @param [out] dir                  Начальное направление криттеров на карте.
+ *
+ * @see   global_process
+ * @see   CRITTER_EVENT_GLOBAL_INVITE
+ */
+void global_invite(Critter@[]& group, Item@ car, uint encounterDescriptor, int combatMode,
+                   uint& mapId, uint16& hexX, uint16& hexY, uint8& dir);
+
+//@}
+
+/**
+ * \~russian @name Карты
+ * \~english @name Map event handlers
+ * \~ @weight 190
+ */
+//@{
+
+/** \~russian Вызывается при заходе криттера на карту.
+ *
+ * @param  map  Карта, на которую осуществляется вход.
+ * @param  cr   Игрок, который входит.
+ *
+ * @see    MAP_EVENT_CRITTER_IN
+ */
+void map_critter_in(Map& map, Critter& cr);
+
+/** \~russian Вызывается при выходе криттера с карты.
+ *
+ * @param  map  Карта, с которой осуществляется выход.
+ * @param  cr   Игрок, который выходит.
+ *
+ * @see    MAP_EVENT_CRITTER_OUT
+ */
+void map_critter_out(Map& map, Critter& cr);
+
+//@}
+
+/**
+ * \~russian @name Криттеры
+ * \~english @name Critter event handlers
+ * \~ @weight 180
+ */
+//@{
+
+/** \~russian Вызывается при регистрации/логине игрока или создании/загрузке NPC.
+ *
+ * @param   cr            Игрок.
+ * @param   registration  При логине равен @c false; при регистрации (первом входе) – @c true.
+ *
+ * @remarks По умолчанию, стартовой позицией игроков считается центр глобальной карты.
+ */
+void critter_init(Critter& cr, bool registration);
+
+/** \~russian Вызывается при простое криттера.
+ *
+ * Периодичность вызова определяется глобальной переменной #__CritterIdleTick.
+ *
+ * @param  cr  Криттер, для которого вызывается функция.
+ *
+ * @see    CRITTER_EVENT_IDLE
+ */
+void critter_idle(Critter& cr);
+
+/** \~russian Вызывается при выходе криттера из игры.
+ *
+ * @param  cr  Криттер, для которого вызывается функция.
+ *
+ * @see    CRITTER_EVENT_FINISH
+ */
+void critter_finish(Critter& cr);
+
+/** \~russian Вызывается при смерти любого криттера.
+ *
+ * @param  cr      Убитый или погибший криттер.
+ * @param  killer  Указатель на криттера-убийцу.
+ *
+ * @see    CRITTER_EVENT_DEAD
+ *         MAP_EVENT_CRITTER_DEAD
+ */
+void critter_dead(Critter& cr, Critter@ killer);
+
+/** \~russian Вызывается при респауне криттера.
+ *
+ * @param  cr  Криттер, для которого вызывается событие.
+ *
+ * @see    CRITTER_EVENT_RESPAWN
+ */
+void critter_respawn(Critter& cr);
+
+/** \~russian Глобальный обработчик атаки, который вызывается каждый раз при атаке одного криттера другим.
+ *
+ * @param  cr          Атакующий криттер.
+ * @param  target      Атакуемый криттер.
+ * @param  weapon      Используемый прототип оружия, уже настроенный на нужный тип атаки.
+ * @param  weaponMode  Режим атаки оружия.
+ * старшие четыре бита - прицел (см. @link HitLocations Hit Locations@endlink),
+ * младшие четыре бита - тип использования (0 – primary, 1 – secondary, 2 – third).
+ * @param  ammo        Используемая амуниция.
+ *
+ * @see    Critter::SendCombatResult
+ * @see    CRITTER_EVENT_ATTACK
+ * @see    CRITTER_EVENT_SMTH_ATTACK
+ */
+void critter_attack(Critter& cr, Critter& target, ProtoItem& weapon, uint8 weaponMode, ProtoItem@ ammo);
+
+/** \~russian Глобальный обработчик атаки, который вызывается каждый раз при атаке одного криттера другим.
+ *
+ * @param  cr        Атакуемый криттер.
+ * @param  attacker  Атакующий криттер.
+ *
+ * @see    CRITTER_EVENT_ATTACKED
+ * @see    CRITTER_EVENT_SMTH_ATTACKED
+ */
+void critter_attacked(Critter& cr, Critter& attacker);
+
+/** \~russian Глобальный обработчик попытки воровства.
+ *
+ * @param  cr     Обворовываемый криттер.
+ * @param  thief  Вор.
+ * @param  item   Воруемый предмет.
+ * @param  count  Количество воруемых предметов.
+ *
+ * @return Попадает в параметр @a success в обработчиках
+ *         #CRITTER_EVENT_STEALING и #CRITTER_EVENT_SMTH_STEALING,
+ *         которые, в свою очередь, уже не возвращают никакого значения.
+ *
+ * @see    CRITTER_EVENT_STEALING
+ * @see    CRITTER_EVENT_SMTH_STEALING
+ */
+bool critter_stealing(Critter& cr, Critter& thief, Item& item, uint count);
+
+/** \~russian Глобальный обработчик использования предметов.
+ *
+ * @param  cr          Криттер, который использует предмет.
+ * @param  item        Используемый предмет.
+ * @param  targetCr    Указатель на криттера, на котором используется предмет.
+ * @param  targetItem  Указатель на предмет, на котором используется предмет.
+ * @param  targetScen  Указатель на сценери, на котором используется предмет.
+ * @param  param       (?).
+ *
+ * @return @c true, если обработка полностью выполнена скриптом;
+ *         @c false, если обработка должна быть выполнена движком.
+ *
+ * @see    CRITTER_EVENT_USE_ITEM
+ */
+bool critter_use_item(Critter& cr, Item& item, Critter@ targetCr, Item@ targetItem, Scenery@ targetScen, uint param);
+
+/** \~russian Глобальный обработчик использования скиллов.
+ *
+ * @param  cr          Криттер, использующий скилл.
+ * @param  skill       Используемый скилл
+ *                     (см. @link Skills Навыки@endlink и @link SpecialSkillValues Special Skill Values@endlink).
+ * @param  targetCr    Указатель на криттера, на котором используется скилл.
+ * @param  targetItem  Указатель на предмет, на котором используется скилл.
+ * @param  targetScen  Указатель на сценери, на котором используется скилл.
+ *
+ * @return @c true, если обработка полностью выполнена скриптом;
+ *         @c false, если обработка должна быть выполнена движком.
+ *
+ * @see    CRITTER_EVENT_USE_SKILL
+ */
+bool critter_use_skill(Critter& cr, int skill, Critter@ targetCr, Item@ targetItem, Scenery@ targetScen);
+
+/** \~russian Глобальный обработчик, вызываемый при смене криттером предмета в активном слоте (в руках и при смене брони).
+ *
+ * @param  cr        Криттер, меняющий предмет.
+ * @param  item      Предмет.
+ * @param  fromSlot  Слот (см. @link Slots@endlink).
+ */
+void critter_move_item(Critter& cr, Item& item, int fromSlot);
+
+/** \~russian Вызывается при перезарядке или разрядке оружия криттером.
+ *
+ * @param  cr      Криттер, который выполняет перезарядку.
+ * @param  weapon  Оружие.
+ * @param  ammo    Указатель на предмет, представляющий патроны. Если передан @c null,
+ *                 то это значит, что криттер разряжает оружие.
+ */
+void critter_reload_weapon(Critter& cr, Item& weapon, Item@ ammo);
+
+/** \~russian Вызызывается при смене предмета в активном слоте (того, что в руках или смене брони) у криттера.
+ *
+ * @param  cr        Криттер, который меняет предмет.
+ * @param  item      Предмет, который меняется.
+ * @param  fromSlot  Слот, из которого берется предмет.
+ */
+void critter_move_item(Critter& cr, Item& item, uint8 fromSlot);
+
+/** \~russian Вызызывается перед каждым перемещением предмета у криттера.
+ *
+ * @param  cr        Криттер, который меняет предмет;
+ * @param  item      Предмет, который перемещается;
+ * @param  toSlot    Слот, из которого берется предмет;
+ * @param  itemSwap  предмет, который уже находится в слоте назначения и который переместится в слот перемещаемого предмета при успешной транзакции.
+ *
+ * @return Если возвратить @c false, то предмет не переместится; если @c true, то переместится.
+ */
+bool critter_check_move_item(Critter& cr, Item& item, uint8 toSlot, Item@ itemSwap);
+
+//@}
+
+/**
+ * \~russian @name Планы
+ *
+ * Глобальные обработчики событий для планов. Вызываются они только для тех NPC,
+ * у которых не определены соответствующие индивидуальные события.
+ *
+ * \~english @name Global plan event handlers
+ *
+ * \~ @weight 170
+ */
+//@{
+
+/** \~russian Вызывается перед добавлением плана (которого еще нет в списках у NPC).
+ *
+ * @param  npc         NPC, для которого вызвана функция.
+ * @param  plane       Добавляемый план.
+ * @param  childIndex  Номер плана в цепочке наследников.
+ * @param  reason      Указывает причину начала плана
+ *                     (см. @link PlanesReasons Plane begin reasons@endlink).
+ * @param  someCr      (?)
+ * @param  someItem    (?)
+ *
+ * @return Если возвратить @c false, то план не добавится; если @c true, то добавится.
+ */
+bool npc_plane_begin(Critter& npc, NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem);
+
+/** \~russian Вызывается перед удалением плана (который еще присутствует в списках планов).
+ *
+ * @param  npc         NPC, для которого вызвана функция.
+ * @param  plane       Удаляемый план.
+ * @param  childIndex  Номер плана в цепочке наследников.
+ * @param  reason      Указывает причину завершения плана
+ *                     (см. @link PlanesReasons Plane end reasons@endlink).
+ * @param  someCr      (?)
+ * @param  someItem    (?)
+ *
+ * @return Если возвратить @c false, то план станет последним по текущей приоритетности;
+ *         если @c true, то удалится.
+ */
+bool npc_plane_end(Critter& npc, NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem);
+
+/** \~russian Вызывается во время выполнения некоторых планов.
+ *
+ * @param            npc NPC, для которого вызвана функцмя-обработчик.
+ * @param            plane План, для которого вызвана функция-обработчик.
+ * @param            childIndex Номер плана в цепочке наследников.
+ * @param            reason Причина, по которой была вызвана функция обработчик (см. @link PlanesReasons Plane run reasons@endlink).
+ * @param  [in, out] result0, result1, result2 Аргументы, интерпретация которых зависит от
+ *                   аргумента @a reason.
+ *
+ * @return Показывает, было ли обработано событие в скрипте.
+ */
+bool npc_plane_run(Critter& npc, NpcPlane& plane, uint childIndex, int reason,
+                   uint& result0, uint& result1, uint& result2);
+
+//@}
+
+/** \~russian Вызывается при смене кармы одним игроком другому.
+ *
+ * @param  crFrom  Игрок, меняющий карму.
+ * @param  crTo    Игрок, которому меняется карма.
+ * @param  valUp   Повышается ли карма (@c true) или понижается (@c false).
+ */
+void karma_voting(Critter& crFrom, Critter& crTo, bool valUp);
+
+/** \~russian Обработчик, позволяющий проверять в скрипте видимость одного криттера другим.
+ *
+ * Чтобы эта функция использовалась при расчётах видимости,
+ * установите флаг @c LOOK_CHECK_SCRIPT глобальной переменной #__LookChecks.
+ *
+ * @param   cr        Криттер, относительно которого определяется видимость другого криттера.
+ * @param   opponent  Криттер, видимость которого проверяется.
+ *
+ * @return  @c true, в случае, если один криттер видит другого;
+ *          @c false – в противном случае.
+ *
+ * @remarks События @c CRITTER_EVENT_SHOW_CRITTER_X и @c CRITTER_EVENT_HIDE_CRITTER_X
+ *          при этом не вызываются.
+ */
+bool check_look(Critter& cr, Critter& opponent);
+
+/** \~russian Обработчик, позволяющий проверять в скрипте видимость предмета криттером.
+ *
+ * Чтобы эта функция использовалась при расчётах видимости,
+ * установите флаг @c LOOK_CHECK_ITEM_SCRIPT глобальной переменной #__LookChecks.
+ *
+ * @param   map       Карта, на которой проверяется видимость.
+ * @param   cr        Криттер, относительно которого определяется видимость предмета.
+ * @param   item      Предмет, видимость которого проверяется.
+ *
+ * @return  @c true, в случае, если один криттер видит другого;
+ *          @c false – в противном случае.
+ *
+ */
+bool check_trap_look(Map& map, Critter& cr, Item& item);
+
+/** \~russian Обработчик, позволяющий определять в скрипте цену предметов.
+ *
+ * Чтобы эта функция использовалась при расчётах цен предметов,
+ * необходимо установить глобальной переменной #__CustomItemCost значение @c true.
+ *
+ * @param    item  Предмет, для которого определяется цена.
+ * @param    cr    Игрок, участвующий в обмене.
+ * @param    npc   NPC, участвующий в обмене.
+ * @param    sell  Указывает, продается ли (@c true) предмет игроком или покупается (@c false).
+ *
+ * @remarks  Не забудьте определить эту функцию в клиентском скрипте.
+ * @remarks  Помните, что надо возвращать цену за один предмет, а не за все.
+ *
+ * @return   Цена одного предмета.
+ *
+ * @see      ClientReserved#item_cost
+ */
+uint item_cost(Item& item, Critter& cr, Critter& npc, bool sell);
+
+/** \~russian Вызывается при крафте игроком новых предметов.
+ *
+ * @param  items       Созданные предметы.
+ * @param  itemsCount  Количество созданных предметов (для определения количества группируемых предметов).
+ * @param  resources   Предметы-ресурсы.
+ * @param  crafter     Игрок, скрафтивший предметы.
+ *
+ * @remarks Ресурсы @a resources в функции не имеют какой-либо принадлежности
+ *          (<code>Item::Accessory == ACCESSORY_NONE</code>) и будут удалены
+ *          после выхода из функции, если никому не будут присвоены.
+ *
+ */
+void items_crafted(Item@[]& items, uint[]& itemsCount, Item@[]& resources, Critter& crafter);
+
+/** \~russian Вызывается при попытке совершения бартера между игроком и NPC.
+ *
+ * @param  saleItems       Продаваемые игроком предметы.
+ * @param  saleItemsCount  Массив с количеством продаваемых предметов, соответсвующий @a saleItems.
+ * @param  buyItems        Покупаемые игроком предметы.
+ * @param  buyItemsCount   Массив с количеством покупаемых предметов, соответствующий @a buyItems.
+ * @param  player          Игрок, участвующий в бартере.
+ * @param  npc             NPC, участвующий в бартере.
+ *
+ * @return Если возвращается @c false, то бартер не будет совершен.
+ *
+ ** \~english Call on barter transaction.
+ *
+ * @return Return false to cancel transaction.
+ */
+bool items_barter(Item@[]& saleItems, uint[]& saleItemsCount, Item@[]& buyItems, uint[]& buyItemsCount, Critter& player, Critter& npc);
+
+/** Вызывается при распределении скиллпоинтов или выборе перка игроком.
+ *
+ * @param  player      Игрок.
+ * @param  skillIndex  Номер навыка, на который распределяются скиллпоинты (см. @link Skills Навыки@endlink).
+ * @param  skillUp     Количество затраченных скиллпоинтов.
+ * @param  perkIndex   Номер выбранного перка (см. @link Perks Перки@endlink).
+ */
+void player_levelup(Critter& player, uint skillIndex, uint skillUp, uint perkIndex);
+
+/** Вызывается перед каждым новым раундом в пошаговом бое.
+ *
+ * @param  map               Карта боя.
+ * @param  critters          Все игроки с карты.
+ * @param  firstTurnCrit     Игрок, который ходит первым. Данный аргумент берется из Map::BeginTurnBased.
+ *
+ * @remark Отсортированная очередь возвращается в переданном массиве Critter@[]& critters.
+ */
+void turn_based_sequence( Map& map, Critter@[]& critters, Critter@ firstTurnCrit );
+
+/*@}*/
+

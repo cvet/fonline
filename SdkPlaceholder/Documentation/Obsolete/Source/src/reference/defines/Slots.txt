@@ -1,0 +1,38 @@
+/**
+ * \~russian @defgroup Slots Слоты
+ * \~english @defgroup Slots Slots
+ * \~ @ingroup Defines
+ *
+ * \~russian Слоты инвентаря криттера
+ *
+ * Перечисленные здесь слоты являются стандартными.
+ *
+ * Реализована возможность поддержки дополнительных слотов. В прототипе предмета
+ * можно проставить принадлежность к определенному слоту (см. ProtoItem::Slot).
+ * Разрешение использования слота происходит с помощью универсальной
+ * (выполняющиейся как на сервере, так и на клиенте) функцией #AllowSlot.
+ *
+ * \~english Inventory slots
+ *
+ * \~ @see  #AllowSlot
+ *    @see  ProtoItem::Slot
+ */
+/*@{*/
+
+/** \~russian Рюкзак. */
+#define SLOT_INV                    (0)
+
+/** \~russian Оружейный слот #1. */
+#define SLOT_HAND1                  (1)
+
+/** \~russian Оружейный слот #2. */
+#define SLOT_HAND2                  (2)
+
+/** \~russian Слот брони. */
+#define SLOT_ARMOR                  (3)
+
+/** \~russian Слот, используемый когда криттер подбирает/выбрасывает какой-либо предмет. */
+/** \~english Ground slot, used when critter drop/pick item. */
+#define SLOT_GROUND                 (255)
+
+/*@}*/

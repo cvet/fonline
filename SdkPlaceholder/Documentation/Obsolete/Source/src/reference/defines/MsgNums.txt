@@ -1,0 +1,38 @@
+/**
+ * @defgroup MsgNums Msg nums
+ * @ingroup Defines
+ *
+ * \~russian Номера файлов *.msg с текстами игры.
+ * \~english Identity numbers of game *.msg files.
+ *
+ * \~
+ * @see      ::RadioMessageMsg
+ *           ::Message(int, uint)
+ *           Critter::SayMsg
+ *           Map::SetTextMsg
+ *
+ */
+/*@{*/
+
+/** FOTEXT.MSG */
+#define TEXTMSG_TEXT                (0)
+/** FODLG.MSG */
+#define TEXTMSG_DLG                 (1)
+/** FOOBJ.MSG */
+#define TEXTMSG_ITEM                (2)
+/** FOGAME.MSG */
+#define TEXTMSG_GAME                (3)
+/** FOGM.MSG */
+#define TEXTMSG_GM                  (4)
+/** FOCOMBAT.MSG */
+#define TEXTMSG_COMBAT              (5)
+/** FOQUEST.MSG */
+#define TEXTMSG_QUEST               (6)
+/** FOHOLO.MSG */
+#define TEXTMSG_HOLO                (7)
+/** FOCRAFT.MSG */
+#define TEXTMSG_CRAFT               (8)
+/** FOINTERNAL.MSG */
+#define TEXTMSG_INTERNAL            (9)
+
+/*@}*/

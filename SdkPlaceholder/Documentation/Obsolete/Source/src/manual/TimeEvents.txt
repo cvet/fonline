@@ -1,0 +1,79 @@
+/**
+
+\~russian @page time_events Временные события
+
+@section te_info Общая информация
+Скриптовый механизм позволяет создавать события, которые произойдут в указанное игровое время. В событиях могут участвовать как персонажи, так и итемы, причем это могут быть целые массивы персонажей или итемов.
+
+Для создания события необходимо вызвать одну из функций CreateTimeEvent:
+@code
+uint CreateTimeEvent(uint beginSecond, string& funcName, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, int value, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, uint value, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, uint[]& values, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, int[]& values, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, Critter& cr, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, Item& item, bool save)
+uint CreateTimeEvent(uint beginSecond, string& funcName, Critter@[]@+ critters, Item@[]@+ items, bool save)
+@endcode
+
+@param  beginSecond  Игровое время (в полных секундах), когда должно произойти событие. Чтобы получить полную секунду, можно воспользоваться функцией #GetFullSecond и глобальными переменными #__FullSecond, #__Year, #__Month, #__Day, #__Hour, #__Minute, #__Second. Если игровое время заданно некорректно, то будет взято текущее игровое время.
+@param  funcName  @ref term_func_link.
+@param  cr, item, value, values...  @ref term_critter или @ref term_item (либо @ref term_array), который будет участвовать в событии.
+@param  save  Флаг, который определяет, необходимо ли сохранять событие в базе данных сервера.
+Важные события (например, связанные с квестами) лучше сохранять, потому как любой рестарт сервера прекратит существование события, которое не сохраняется в базе данных и его будет необходимо создавать заново при инициализации сервера (функции инициализации у @ref term_map "карт", @ref term_critter "персонажей", @ref term_item "предметов").
+
+По оформлению функции читайте @ref specialized_functions.
+Такая функция должна иметь один параметр – массив переданных при создании события данных (uint[]@ values). В процессе работы этот @ref term_array "массив" можно модифицировать - изменять значения элементов, размерность массива. Если при создании события данные не передавались, то values будет равен null.
+Тип возвращаемого значения - uint.
+Функция-событие должна возвращать полную секунду, которая определяет, через какой промежуток времени событие повторится (0 – не повторять событие, удалить).
+Функция CreateTimeEvent, в случае успешного создания события, возвратит его номер. Впоследствии по этому номеру можно удалить это событие, вызвав функцию EraseTimeEvent.
+
+Пример скрипта, с использованием событий:
+@code
+#include "_macros.fos"
+
+import uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second) from "time";
+ 
+// Инициализация НПЦ
+void _BoyInit(Critter@ boy, bool firstTime)
+{    
+    // Создаем событие, в котором мальчик зазывает покупать у него рации
+    // Событие произойдет через 10-50 минут
+    CreateTimeEvent(__FullSecond+Random(10, 50)*60, "e_Announcement", boy, false);
+
+    // Создаем событие, в котором мальчик приветствует с добрым утром
+    // Событие произойдет в ближайшие 8 часов утра
+    CreateTimeEvent(GetNearFullSecond(0, 0, 0, 8, 0, 0), "e_AnnouncementMorning", boy, false);
+}
+ 
+// Событие 1
+uint e_Announcement(uint[]@ values)
+{
+    // Ночью не говорим, ждем до утра
+    if(__Hour > 20 || __Hour < 8) return GetNearFullSecond(0, 0, 0, 8, Random(20, 40), 0) - __FullSecond;
+ 
+    // Зазываем
+    Critter@ boy = GetCritter(values[0]);
+    if(valid(boy)) boy.Say(SAY_NORM_ON_HEAD, "Рации, кому рации...");
+
+    // Ждем около часа
+    return Random(50, 70)*60;
+}
+ 
+// Событие 2
+uint e_AnnouncementMorning(uint[]@ values)
+{
+    // Приветствуем
+    Critter@ boy = GetCritter(values[0]);
+    if(valid(boy)) boy.Say(SAY_NORM_ON_HEAD, "С добрым утром!");
+
+    // Ждем сутки
+    return 24*60*60;
+}
+@endcode
+В этом примере организованны два события.
+В первом, мальчик зазывает покупать у него рации, каждые 50-70 минут, строго с 8 до 20 часов.
+Во втором, мальчик приветствует всех с добрым утром каждый день в 8 часов утра.
+
+ */

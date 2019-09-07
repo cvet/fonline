@@ -1,0 +1,1783 @@
+/** @addtogroup Server */
+/*@{*/
+
+/**
+ * \~russian @name Время и дата
+ * \~english @name Time and data
+ * \~ @weight 500
+ */
+//@{
+
+/** \~russian Текущий год.
+ *
+ * Устанавливается в предопределенной функции сервера #get_start_time.
+ *
+ * @see get_start_time
+ */
+const uint16 __Year;
+
+/** \~russian Текущий месяц.
+ *
+ * @par Возможные значения
+ * 1 – 12.
+ */
+const uint16 __Month;
+
+/** \~russian Текущий день.
+ *
+ * @par Возможные значения
+ * 1 – (в зависимости от месяца). Также учитываются високосные года.
+ */
+const uint16 __Day;
+
+/** \~russian Текущий час.
+ *
+ * @par Возможные значения
+ * 0 – 23.
+ */
+const uint16 __Hour;
+
+/** \~russian Текущая минута.
+ *
+ * @par Возможные значения
+ * 0 – 59.
+ */
+const uint16 __Minute;
+
+/** \~russian Текущая секунда.
+ *
+ * @par Возможные значения
+ * 0 – 59.
+ */
+const uint16 __Second;
+
+/** \~russian Полная текущая секунда, учитывающая текущие год, месяц, день, час, минуту и секнуду. */
+const uint16 __FullSecond;
+
+/** \~russian Коэффициент ускорения времени.
+ *
+ * Устанавливается в предопределенной функции сервера #get_start_time.
+ * @see get_start_time
+ */
+const uint16 __TimeMultiplier;
+
+//@}
+
+/**
+ * \~russian @name Бой
+ *
+ * Глобальные переменные, с помощью которых можно изменять параметры боя.
+ *
+ ** \~english @name Combat
+ *
+ * List of global variables that can be used to tweak combat.
+ *
+ * \~ @weight 490
+ */
+//@{
+
+/** (?) */
+uint __Breaktime;
+
+/** (?) */
+uint __TimeoutTransfer;
+
+/** (?) */
+uint __TimeoutBattle;
+
+/** (?) */
+uint __ApRegeneration;
+
+/** \~russian Величина штрафа AP в боевом режиме при ходьбе. */
+uint __RtApCostCritterWalk;
+
+/** \~russian Величина штрафа AP в боевом режиме при беге. */
+uint __RtApCostCritterRun;
+
+/** (?) */
+uint __RtApCostMoveItemContainer;
+
+/** (?) */
+uint __RtApCostMoveItemInventory;
+
+/** (?) */
+uint __RtApCostPickItem;
+
+/** (?) */
+uint __RtApCostDropItem;
+
+/** (?) */
+uint __RtApCostReloadWeapon;
+
+/** (?) */
+uint __RtApCostPickCritter;
+
+/** (?) */
+uint __RtApCostUseItem;
+
+/** (?) */
+uint __RtApCostUseSkill;
+
+/** (?) */
+uint __TbApCostCritterMove;
+
+/** (?) */
+uint __TbApCostMoveItemContainer;
+
+/** (?) */
+uint __TbApCostMoveItemInventory;
+
+/** (?) */
+uint __TbApCostPickItem;
+
+/** (?) */
+uint __TbApCostDropItem;
+
+/** (?) */
+uint __TbApCostReloadWeapon;
+
+/** (?) */
+uint __TbApCostPickCritter;
+
+/** (?) */
+uint __TbApCostUseItem;
+
+/** (?) */
+uint __TbApCostUseSkill;
+
+/** (?) */
+uint __ApCostAimEyes;
+
+/** (?) */
+uint __ApCostAimHead;
+
+/** (?) */
+uint __ApCostAimGroin;
+
+/** (?) */
+uint __ApCostAimTorso;
+
+/** (?) */
+uint __ApCostAimArms;
+
+/** (?) */
+uint __ApCostAimLegs;
+
+/** (?) */
+uint __HitAimEyes;
+
+/** (?) */
+uint __HitAimHead;
+
+/** (?) */
+uint __HitAimGroin;
+
+/** (?) */
+uint __HitAimTorso;
+
+/** (?) */
+uint __HitAimArms;
+
+/** (?) */
+uint __HitAimLegs;
+
+bool __RtAlwaysRun;
+
+bool __TbAlwaysRun;
+
+/** \~russian Всегда бежать, по-умолчанию false */
+bool __AlwaysRun;
+
+/** \~russian бежать при клике, при расстоянии больше-равно, чем данное значение */
+uint __AlwaysRunMoveDist;
+
+/** \~russian бежать при использовании/разговоре/etc, при расстоянии больше-равно, чем данное значение */
+uint __AlwaysRunUseDist;
+
+//@}
+
+/**
+ * \~russian @name Параметры глобальной карты
+ * \~english @name Worldmap
+ * \~ @weight 480
+ */
+//@{
+
+/** \~russian Ширина глобальной карты мира.
+ *
+ * @par Максимальное значение
+ * 100.
+ */
+uint __GlobalMapWidth;
+
+/** \~russian Высота глобальной карты мира.
+ *
+ * @par Максимальное значение
+ * 100.
+ */
+uint __GlobalMapHeight;
+
+/** \~russian Длина зоны на глобальной карте.
+ *
+ * @par Максимальное значение
+ * 500.
+ */
+uint __GlobalMapZoneLength;
+
+/** \~russian Максимальная численность группы. */
+uint __GlobalMapMaxGroupCount;
+
+/** \~russian Указывает на то как часто вызывать обработчик глобальной карты GLOBAL_PROCESS_MOVE. */
+uint __GlobalMapMoveTime;
+//@}
+
+/**
+ * \~russian @name Геомертия игровой сетки
+ * \~english @name Grid geometry
+ * \~ @weight 475
+ * В скрипте config.fos, в функции InitializeGeometry(), добавлены необходимые настройки для трех игр: Fallout1/2, Fallout Tactics и Arcanum. Данная функция вызывается в скриптах сервера, клиента и маппера, т.к. информация о геометрии нужна всем трем.
+ * Четырехугольная изометрия использует восемь направлений, гексогональная шесть.\n
+ * Рабочие спрайты для геометрии находятся в art/geometry/.\n
+ */
+//@{
+
+/** \~russian Тип изометрии true - гексогональная, false - четырехугольная. */
+bool __MapHexagonal;
+
+/** \~russian Ширина гекса */
+int __MapHexWidth;
+
+/** \~russian Высота гекса */
+int __MapHexHeight;
+
+/** \~russian Высота линии гексов */
+int __MapHexLineHeight;
+
+/** \~russian Смещение тайлов земли по горизонтали */
+int __MapTileOffsX;
+
+/** \~russian Смещение тайлов земли по вертикали */
+int __MapTileOffsY;
+
+/** \~russian Смещение тайлов крыши по горизонтали */
+int __MapRoofOffsX;
+
+/** \~russian Смещение тайлов крыши по вертикали */
+int __MapRoofOffsY;
+
+/** \~russian Кол-во гексов на один тайл крыши (нужно для его корректного скрывания) */
+int __MapRoofSkipSize;
+
+/** \~russian Угол для рендеринга трехмерных моделей */
+float __MapCameraAngle;
+
+/** \~russian Сглаживание пути при перемещениях */
+bool __MapSmoothPath;
+
+/** \~russian Путь и префикс для файлов геометрии */
+string __MapDataPrefix;
+
+//@}
+
+/**
+ * \~russian @name Другие
+ * \~english @name Miscellaneous
+ * \~ @weight 470
+ */
+//@{
+
+/** \~russian Опыт, даваемый за крафт по умолчанию. */
+uint __FixBoyDefaultExperience;
+
+/** \~russian Делитель для режима скрытности.
+ *
+ * @par Формула
+ * <code>(20 + Perception * 3) - (Sneak / __SneakDivider)</code>.
+ */
+uint __SneakDivider;
+
+/** \~russian Запрет перемешивания вариантов диалога. */
+bool __NoAnswerShuffle;
+
+/** \~russian Возможность бегать в битве (для пошагового режима не актуально). */
+bool __RunOnCombat;
+
+/** \~russian Возможность бегать при таймауте на переходы. */
+bool __RunOnTransfer;
+
+/** \~russian Задаёт периодичность вызова предопределенной функции #critter_idle. */
+uint __CritterIdleTick;
+
+/** \~russian Ограничение по уровню. */
+uint __LevelCap;
+
+/** \~russian Будет ли начисляться опыт при достижении игроком #__LevelCap (просто опыт, без перков, скиллпоинтов). */
+bool __LevelCapAddExperience;
+
+/** \~russian Нормальный радиус обзора криттера.
+ *
+ * @par Полная формула
+ * <code>critter.LookRadius = __LookNormal + critter.Perception * 3 - opponent.Sneak / __SneakDivider + critter.BonusLook</code>
+ */
+uint __LookNormal;
+
+/** \~russian Минимальная видимость криттера.
+ *
+ * Актуальна при ситуациях, когда модификатор скрытности превышает видимость.
+ */
+uint __LookMinimum;
+
+/** \~russian Количество хит-поинтов, при котором наступает смерть криттера. */
+int __DeadHitPoints;
+
+/** \~russian Время обновления сумок, используемое по-умолчанию.
+ *
+ * \~
+ * @see Critter::GetBagRefreshTime
+ * @see Critter::SetBagRefreshTime
+ */
+uint __BagRefreshTime;
+
+/** \~russian Определяет дистанцию в гексагонах, на которой слышен шепот. */
+uint __WisperDist;
+
+/** \~russian Указывает, использовать ли для определения цен предметов скриптовую функцию #item_cost. */
+bool __CustomItemCost;
+
+/** \~russian Минимальное время игры за один аккаунт.
+ *
+ * Указывается в реальных минутах. Чтобы отключить этот механизм, присвойте переменной 0.
+ *
+ */
+uint __AccountPlayTime;
+
+/** \~russian минимальное время оффлайна, после которого клиент полностью выйдет из игры */
+uint __MinimumOfflineTime;
+
+/** \~russian Позволяет отключить повторную проверку диалоговых условий в функциях диалоговых условий.
+ *
+ * @remarks При повторном вызове диалогового условия переменная равна @c true; при первом – @c false.
+ *
+ */
+bool __DialogDemandRecheck;
+
+/** \~russian максимальное количество одновременно запущенных для нпц диалогов по-умолчанию */
+uint __NpcMaxTalkers;
+
+/**
+ * \~russian Максимальная дистанция ведения диалога.
+ *
+ * \~ @see #ST_TALK_DISTANCE
+ */
+uint __TalkDistance;
+
+/** \~russian Определяет дистанцию в гексагонах, на которой слышен крик. */
+uint __ShoutDist;
+
+/** \~russian Текущее увеличение в клиенте */ 
+float __SpritesZoom;
+
+/** \~russian Максимальное увеличение в клиенте
+ *
+ * \~russian @remarks Максимальное значение 10.0f
+ */
+float __SpritesZoomMax;
+
+/** \~russian Минимальное увеличение в клиенте
+ *
+ * \~russian @remarks Минимальное значение 0.2f
+ */
+float __SpritesZoomMin;
+
+/** \~russian Минимальное время диалога */
+uint __DlgTalkMinTime;
+
+/** \~russian Минимальное время бартера */
+uint __DlgBarterMinTime;
+
+//@}
+
+/**
+ * \~russian @name Модификаторы видимости
+ * \~english @name Look modifiers
+ * \~ @weight 475
+ */
+//@{
+
+/** \~russian Позволяет задать проверки, используемые при расчете видимости одного криттера другим.
+ *
+ * См. @link LookChecks Look checks@endlink.
+ */
+int __LookChecks;
+
+/** \~russian Процентный штраф к радиусу видимости при прямом взгляде. */
+uint __LookDir0;
+
+/** \~russian Процентный штраф к радиусу видимости при взгяде сбоку. */
+uint __LookDir1;
+
+/** \~russian Процентный штраф к радиусу видимости при нахождении сбоку за пределами взгляда. */
+uint __LookDir2;
+
+/** \~russian Процентный штраф к радиусу видимости при нахождении сзади. */
+uint __LookDir3;
+
+/** \~russian Дополнительная переменная для восьминаправленной геометрии */
+uint __LookDir4;
+
+/** \~russian Процентный штраф к навыку скрытности при прямом взгляде. */
+uint __LookSneakDir0;
+
+/** \~russian Процентный штраф к навыку скрытности при взгяде сбоку. */
+uint __LookSneakDir1;
+
+/** \~russian Процентный штраф к навыку скрытности при нахождении сбоку за пределами взгляда. */
+uint __LookSneakDir2;
+
+/** \~russian Процентный штраф к навыку скрытности при нахождении сзади. */
+uint __LookSneakDir3;
+
+/** \~russian Дополнительная переменная для восьминаправленной геометрии. */
+uint __LookSneakDir4;
+
+/** \~russian Вес (в граммах), за который который навык скрытности уменьшается на 1%. */
+uint __LookWeight;
+
+/** \~russian Текущая позиция мыши. */
+int __MouseX;
+int __MouseY;
+
+/** \~russian частоты вызова @ref GLOBAL_PROCESS_MOVE . */
+uint __EncounterTime;
+
+int __StartSpecialPoints;
+int __StartTagSkillPoints;
+int __SkillMaxValue;
+int __SkillModAdd2;
+int __SkillModAdd3;
+int __SkillModAdd4;
+int __SkillModAdd5;
+int __SkillModAdd6;
+
+
+
+//@{
+
+
+/**
+ * \~russian @name Общие функции
+ * \~english @name General functions
+ * \~ @weight 300
+ */
+//@{
+
+/** \~russian Заносит запись в лог-файл.
+ *
+ * @param  text  Текст записи.
+ */
+void Log(string& text);
+
+/** \~russian Возвращает рандомное значение.
+ *
+ * @param  minimum  Минимальное значение.
+ * @param  maximum  Максимальное значение.
+ *
+ * @return Рандом в пределах @a minimum и @a maximum, включительно.
+ */
+int Random(int minimum, int maximum);
+
+/** \~russian Конвертирует текст в число.
+ *
+ * Понимает отрицательные значения. Пробелы, стоящие впереди, игнорируются.
+ * Данные после числа, после первого пробела, игнорируются.
+ *
+ * @param  text    Строка, содержащая число.
+ * @param  result  Переменная, в которую записывается результат преобразования.
+ *
+ * @return @c true – в случае удачного преобразования;
+ *         @c false – в противном случае.
+ */
+bool StrToInt(string& text, int& result);
+
+/** \~russian Возвращает описание последней ошибки.
+ *
+ * Строка не очищается, так что будьте внимательны: возможно вы увидите ошибку,
+ * которая произошла ранее. Все ошибки записываются в лог-файл, с указанием имени контекста,
+ * функции, ошибки.
+ *
+ * @return Описание ошибки.
+ */
+string@ GetLastError();
+
+/** \~russian Открывает диалог у игрока.
+ *
+ * @param  player         Игрок, у которого откроется диалог.
+ * @param  npc            NPC, который должен заговорить с игроком.
+ * @param  ignoreDistance Если true, то диалог запустится на любом растоянии от игрока
+ *
+ * @return @c true – в случае удачного начала диалога;
+ *         @c false – в случае провала.
+ */
+bool RunDialog(Critter& player, Critter& npc, bool ignoreDistance);
+
+/** \~russian Открывает диалог у игрока.
+ *
+ * @param  player         Игрок, у которого откроется диалог.
+ * @param  dialogId       Номер открываемого диалога.
+ * @param  hexX, hexY     Позиция привязки диалога к карте.
+ * @param  ignoreDistance Если true, то диалог запустится на любом растоянии от игрока
+ *
+ * @return @c true – в случае удачного начала диалога;
+ *         @c false – в случае провала.
+ */
+bool RunDialog(Critter& player, uint16 dialogId, uint16 hexX, uint16 hexY, bool ignoreDistance);
+
+/** \~russian Посылает сообщение по радио.
+ *
+ * @param  channel  Номер канала.
+ * @param  text     Сообщение.
+ */
+void RadioMessage(uint16 channel, string& text);
+
+/** \~russian Посылает сообщение по радио.
+ *
+ * Строка берется из MSG-файлов.
+ *
+ * @param  channel  Номер канала.
+ * @param  textMsg  Номер MSG-файла (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки.
+ */
+void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum);
+
+/** \~russian Посылает сообщение по радио с обработкой лексем.
+ *
+ * Строка берется из MSG-файлов.
+ *
+ * @param  channel  Номер канала.
+ * @param  textMsg  Номер MSG-файла (см. @link MsgNums Msg nums@endlink).
+ * @param  strNum   Номер строки.
+ * @param  lexems   лексемы.
+ */
+void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum, string@+ lexems);
+
+/** \~russian Установка текста в таблице статистики.
+ *
+ * @param  score   Номер статистики (см. @link Scores@endlink).
+ * @param  player  Игрок, имя которого будет вписано в статистику.
+ * @param  name    Если @a player равен @c null,
+ *                 то значение текста для статистики берется из этого аргумента.
+ *
+ */
+void SetBestScore(int score, Critter@+ player, string& name);
+
+/** \~russian Создаёт прослушку текста игрока.
+ *
+ * Функция прослушки имеет следующий вид:
+ * @code
+ * void listen_Func(Critter& player, string& text);
+ * @endcode
+ * - @a player – игрок, подходящий под все требования прослушки;
+ * - @a text – его текст.
+ * Префикс @b listen_ для функции пишите для удобства,
+ * чтобы не путаться в будущем (как и с dlg_, d_, r_...).
+ *
+ * @param   sayType     См. в @link SayTypes Say types@endlink.
+ * @param   firstStr    Строка, с которой должно начинаться перехватывамое сообщение. Регистр не учитывается.
+ * @param   parameter   Дополнительный параметр для проверки.
+ *                      Для @c SAY_RADIO это номер канала,
+ *                      для остальных – это номер прототипа карты (см. @b MAPS.TXT).
+ * @param   scriptName  Имя функции.
+ *
+ * @return  @c true – в случае успеха; @c false – в случае провала.
+ *
+ * @remarks Минимальное значение для параметра @c firstStr – 5, максимальное – 63.
+ *
+ * @see     EraseTextListener
+ */
+bool AddTextListener(int sayType, string& firstStr, uint16 parameter, string& scriptName);
+
+/** \~russian Удаляет прослушку текста игрока.
+ *
+ * Для снятия прослушки аргументы этой функции должны быть идентичны с аргументами
+ * ранее вызванной функции #AddTextListener.
+ *
+ * @see AddTextListener
+ */
+void EraseTextListener(int sayType, string& firstStr, uint16 parameter);
+
+/** \~russian Создаёт новый план, все переменные которого инициализированы нулем. */
+NpcPlane@+ CreatePlane();
+
+/** \~russian Возвращает текущее время работы компьютера в миллисекундах. */
+uint GetTick();
+
+/** \~russian Позволяет просмотреть определенную точку на карте.
+ *
+ * Механизм аналогичен просмотру карты с глобальной карты.
+ *
+ * @param  map     Просматриваемая карта.
+ * @param  look    Радиус области просмотра.
+ * @param  hx, hy  Координаты гексагона просмотра.
+ * @param  dir     Направление взгляда.
+ *
+ */
+void ViewMap(Map& map, uint look, uint16 hx, uint16 hy, uint8 dir);
+
+/** \~russian Возвращает идентификатор скриптовой функции по её имени.
+ *
+ * @param  scriptName        Имя функции.
+ * @param  funcDeclaration   Полная сигнатура функции.
+ *
+ * @return Идентификатор скрипта.
+ *
+ * @see    GetScriptName
+ *
+ */
+uint GetScriptId(string& scriptName, string& funcDeclaration);
+
+/** \~russian Возвращает имя скриптовой функции по её идентификатору.
+ *
+ * @param  scriptId  Идентификатор функции.
+ *
+ * @return Имя функции.
+ *
+ * @see    GetScriptId
+ */
+string@ GetScriptName(uint scriptId);
+
+//@}
+
+/**
+ * \~russian @name Для гексагонов
+ * \~english @name Coordinates system
+ * \~ @weight 280
+ */
+//@{
+
+/** \~russian Определяет дистанцию между двумя криттерами.
+ *
+ * @param  cr1  Первый криттер.
+ * @param  cr2  Второй криттер.
+ *
+ * @return Дистанция между криттерами в гексагонах.
+ */
+uint GetCrittersDistantion(Critter& cr1, Critter& cr2);
+
+/** \~russian Определяет дистанцию между двумя гексагонами.
+ *
+ * @param  hexX1, hexY1  Координаты 1-го гексагона.
+ * @param  hexX2, hexY2  Координаты 2-го гексагона.
+ *
+ * @return Дистанция между гексагонами в гексагонах.
+ */
+uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2);
+
+/** \~russian Определяет направление, в котором находится гексагон №2 относительно гексагона №1.
+ *
+ * @param  fromX, fromY  Координаты 1-го гексагона.
+ * @param  toX, toY      Координаты 2-го гексагона.
+ *
+ * @return Направление. Возможные значения: 0 – верх-право, 1 – право, 2 – низ-право, 3 – низ-лево и т.д.
+ */
+uint8 GetDirection(uint16 fromX, uint16 fromY, uint16 toX, uint16 toY);
+
+uint8 GetOffsetDir(uint16 hx, uint16 hy, uint16 tx, uint16 ty, float offset);
+
+//@}
+
+/**
+ * \~russian @name Для карт и локаций
+ * \~english @name For maps and locations
+ * \~ @weight 280
+ */
+//@{
+
+/** \~russian Создает локацию.
+ *
+ * @param  protoId         ID прототипа локации (см. файл @b _maps.fos).
+ * @param  worldX, worldY  Координаты локации на глобальной карте.
+ * @param  critters        Массив указателей на криттеров, которым откроется новая локация.
+ *
+ * @return Уникальный ID новой локации. В случае провала функция возвращает 0.
+ */
+uint CreateLocation(uint16 protoId, uint16 worldX, uint16 worldY, Critter@[]@+ critters);
+
+/** \~russian Удаляет указанную локацию.
+ *
+ * @param  locationId  Уникальный ID локации.
+ */
+void DeleteLocation(uint16 locationId);
+
+/** \~russian Ищет локацию по её уникальному идентификатору.
+ *
+ * @param  locId  Уникальный идентификатор локации.
+ *
+ * @return Указатель на экземпляр класса Location. При провале – @c null.
+ */
+Location@+ GetLocation(uint locId);
+
+/** \~russian Ищет локацию по ее прототипу.
+ *
+ * @param  locPid     Номер прототипа локации (см. @b CITIES.TXT).
+ * @param  skipCount  Количество пропусков при поиске.
+ *                    Для случая если если попадаются локации, имеющие один прототип.
+ *
+ * @return Указатель на экземпляр класса Location. При провале – @c null.
+ */
+Location@+ GetLocationByPid(uint16 locPid, uint skipCount);
+
+/** \~russian Ищет локации, находящиеся в указанной точке.
+ *
+ * @param  worldX, worldY  Координаты точки на глобальной карте мира.
+ * @param  radius          Дополнительный радиус для поиска.
+ * @param  locations       Массив, в конец которого будут записаны найденный локации.
+ *
+ * @return Количество найденных локаций.
+ */
+uint GetLocations(uint16 worldX, uint16 worldY, uint radius, Location@[]@+ locations);
+
+/** \~russian Ищет карту по её уникальному идентификатору.
+ *
+ * @param  mapId  Уникальный идентификатор карты.
+ *
+ * @return Указатель на экземпляр класса Map. При провале – @c null.
+ */
+Map@+ GetMap(uint mapId);
+
+/** \~russian Ищет карту по ее прототипу.
+ *
+ * @param  mapProtoId  Номер прототипа карты (см. @b _maps.fos, @b MAPS.TXT).
+ * @param  skipCount   Количество пропусков при поиске.
+ *                     Для случая если если попадаются карты, имеющие один прототип.
+ *
+ * @return Указатель на экземпляр класса Map. При провале – @c null.
+ */
+Map@+ GetMapByPid(uint16 mapProtoId, uint skipCount);
+
+/** \~russian Позволяет найти в игре все локации с указанным прототипом.
+ *
+ * @param   pid        Номер прототипа локации (см. @b CITY.TXT).
+ * @param   locations  Массив, в который будут записаны все найденные локации.
+ *
+ * @return  Количество найденных локаций.
+ */
+uint GetAllLocations(uint16 pid, Location@[]@+ locations);
+
+/** \~russian Позволяет найти в игре все карты с указанным прототипом.
+ *
+ * @param   pid   Номер прототипа карты (см. @b MAPS.TXT).
+ * @param   maps  Массив, в который будут записаны все найденные карты.
+ *
+ * @return  Количество найденных карт.
+ */
+uint GetAllMaps(uint16 pid, Map@[]@+ maps);
+
+//@}
+
+/**
+ * \~russian @name Для игроков и криттеров
+ * \~english @name For players and critters
+ * \~ @weight 270
+ */
+//@{
+
+/** \~russian Позволяет найти в игре всех NPC с указанным прототипом.
+ *
+ * @param   pid  Номер прототипа NPC.
+ * @param   npc  Массив, в который будут записаны все найденные NPC.
+ *
+ * @return  Количество найденных NPC.
+ *
+ */
+uint GetAllNpc(uint16 pid, Critter@[]@+ npc);
+
+/** \~russian Ищет криттера по его уникальному номеру.
+ *
+ * @param  critterId  Уникальный номер криттера.
+ *
+ * @return Указатель на экземпляр класса Critter. В том случае, если криттера
+ *         с заданным номером не существует или при попытке получить криттера-игрока,
+ *         находящегося оффлайн – возвращается @c null.
+ */
+Critter@+ GetCritter(uint critterId);
+
+/** \~russian Ищет игрока по его имени.
+ *
+ * @param   playerName  Имя (логин) игрока.
+ *
+ * @return  Указатель на экземпляр класса Critter, при провале – @c null.
+ *
+ * @remarks Если игрок не в игре (в оффлайне), то поиск не даст результатов.
+ */
+Critter@+ GetPlayer(string& playerName);
+
+/** \~russian Позволяет получить идентификатор игрока по его имени.
+ *
+ * Информация берется из базы данных.
+ *
+ * @param  name  Имя (логин) игрока.
+ *
+ * @return Идентификатор игрока.
+ */
+uint GetPlayerId(string& name);
+
+/** \~russian Позволяет получить имя игрока по его идентификатору.
+ *
+ * Информация берется из базы данных.
+ *
+ * @param  playerId  Идентификатор игрока.
+ *
+ * @return Имя игрока.
+ */
+string@+ GetPlayerName(uint playerId);
+
+/** \~russian Позволяет получить указатели на всех игроков, а так же их количество
+ *
+ * @param  players  В данный массив поместятся указатели на игроков.
+ *
+ * @return Количество игроков.
+ */
+uint GetAllPlayers(Critter@[]@ players);
+
+/** \~russian Позволяет получить идентификаторы всех игроков, зарегистрированных на сервере, а так же их количество
+ *
+ * @param  ids    Массив идентификаторов.
+ * @param  names  Массив имен.
+ *
+ * @return Количество игроков.
+ */
+uint GetRegisteredPlayers( array<uint>& ids, array<string>& names );
+
+/** \~russian Удаляет из игры указанного NPC в конце игрового цикла.
+ *
+ * @param  npc  NPC, которого необходимо удалить.
+ *
+ */
+void DeleteNpc(Critter& npc);
+
+/** \~russian (?)
+ *
+ * @param   cr1
+ * @param   cr2
+ * @param   withInventory
+ * @param   withVars
+ *
+ * @return
+ */
+bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory, bool withVars);
+
+/** \~russian Возвращает видимые локации в определенном радиусе, если задан параметр visibleBy, то будет так же учитываться видит ли локацию данный криттер.
+ *
+ * @param  worldX     Координата X.
+ * @param  worldY     Координата Y.
+ * @param  radius     Радиус.
+ * @param  visibleBy  Если параметр задан, то будет так же учитываться видит ли локацию данный криттер.
+ * @param  locations  Массив локаций.
+ *
+ * @return количество
+ *
+ */
+uint GetVisibleLocations(uint16 worldX, uint16 worldY, uint radius, Critter@+ visibleBy, Location@[]@+ locations);
+
+/** \~russian  Для выборки криттеров с глобальной карты */
+uint GetGlobalMapCritters(uint16 worldX, uint16 worldY, uint radius, int findType, Critter@[]@+ critters);
+
+/** \~russian Позволяет определить собственную функцию
+ *            определения значения для указанного параметра криттера.
+ *
+ * Сигнатура функции:
+ * @code
+ * int _FuncName(Critter& cr, uint index)
+ * @endcode
+ *
+ * @param  index     Индекс параметра (см. @link Params Параметры криттеров@endlink).
+ * @param  funcName  Имя функции.
+ *
+ * @return @c true – в случае успешной установки обработчика;
+ *         @c false – в противном случае.
+ *
+ * @see    Critter::Param
+ * @see    SetParameterChangeBehaviour
+ *
+ */
+bool SetParameterGetBehaviour(uint index, string& funcName);
+
+/** \~russian Позволяет определить собственную функцию-обработчик установки
+ *            нового значения для указанного параметра криттера.
+ *
+ * Сигнатура функции:
+ * @code
+ * void _FuncName(Critter& cr, uint index, int oldValue)
+ * @endcode
+ *
+ * @param   index     Индекс параметра (см. @link Params Параметры криттеров@endlink).
+ * @param   funcName  Имя функции.
+ *
+ * @return  @c true – в случае успешной установки обработчика;
+ *          @c false – в противном случае.
+ *
+ * @see     Critter::Param
+ * @see     Critter::ParamBase
+ * @see     SetParameterGetBehaviour
+ *
+ */
+bool SetParameterChangeBehaviour(uint index, string& funcName);
+
+/** \~russian Позволяет определить собственную функцию-обработчик 
+ *            значения для указанного параметра криттера для последующей проверки данного параметра в диалоге.
+ *
+ * Сигнатура функции:
+ * @code
+ * void _FuncName(Critter@ master, Critter@ slave, uint index)
+ * @endcode
+ *
+ * @param   index     Индекс параметра (см. @link Params Параметры криттеров@endlink).
+ * @param   funcName  Имя функции.
+ *
+ * @return  @c true – в случае успешной установки обработчика;
+ *          @c false – в противном случае.
+ *
+ * @see     Critter::Param
+ * @see     Critter::ParamBase
+ *
+ */
+bool SetParameterDialogGetBehaviour(uint index, string& funcName);
+
+/** \~russian Позволяет разрешить пересылку клиенту параметров других персонажей,
+ *            по-умолчанию отправка всех параметров выключена.
+ *
+ * @see     Critter::Param
+ * @see     Critter::ParamBase
+ *
+ */
+void SetSendParameter(int index, bool enabled);
+
+/** \~russian Позволяет запретить пересылку клиенту параметров активного персонажа,
+ *            по-умолчанию отправка всех параметров включена.
+ *
+ * @see     Critter::Param
+ * @see     Critter::ParamBase
+ *
+ */
+void SetChosenSendParameter(int index, bool enabled);
+
+//@}
+
+/**
+ * \~russian @name Для переменных
+ * \~english @name Game Variables
+ * \~ @weight 260
+ */
+//@{
+
+/** \~russian Возвращает глобальную переменную.
+ *
+ * @param  varId  ID переменной (см. <b>GVAR_...</b> в файле @b _vars.fos).
+ *
+ * @return Указатель на экземпляр класса GameVar. При провале – @c null.
+ */
+GameVar@+ GetGlobalVar(uint16 varId);
+
+/** \~russian Возвращает локальную переменную.
+ *
+ * @param  varId     ID переменной (см. <b>LVAR_...</b> в файле @b _vars.fos).
+ * @param  masterId  ID криттера.
+ *
+ * @return Указатель на экземпляр класса GameVar. При провале – @c null.
+ */
+GameVar@+ GetLocalVar(uint16 varId, uint masterId);
+
+/** \~russian Возвращает уникальную переменную.
+ *
+ * @param  varId     ID переменной (см. <b>UVAR_...</b> в файле @b _vars.fos).
+ * @param  masterId  ID криттера.
+ * @param  slaveId   ID второстепенного криттера.
+ *
+ * @return Указатель на экземпляр класса GameVar. При провале – @c null.
+ */
+GameVar@+ GetUnicumVar(uint16 varId, uint masterId, uint slaveId);
+
+//@}
+
+/**
+ * \~russian @name Для предметов
+ * \~english @name Items related
+ * \~ @weight 250
+ */
+//@{
+
+/** \~russian Позволяет найти в игре все предметы с указанным номером прототипа.
+ *
+ * @param   pid    Номер прототипа (см. файл @b ITEMPID.H).
+ * @param   items  Массив, в который будут записаны все найденные предметы.
+ *
+ * @return  Количество найденных предметов.
+ *
+ */
+uint GetAllItems(uint16 pid, Item@[]@+ items);
+
+/** \~russian Ищет прототип предмета, имеющий указанный ID.
+ *
+ * @param  protoId  ID Прототипа предмета (см. файл @b ITEMPID.H).
+ *
+ * @return Указатель на экземпляр класса ProtoItem. При провале – @c null.
+ */
+ProtoItem@+ GetProtoItem(uint16 protoId);
+
+/** \~russian Позволяет получить содержимое сумки с указанным номером.
+ *
+ * @param  bagId      Номер сумки (см. @b _bags.fos).
+ * @param  pids       Массив, к которому будут дописаны номера прототипов предметов в сумке.
+ * @param  minCounts  Массив, к которому будут дописано минимальное количество предметов для каждого прототипа.
+ * @param  maxCounts  Массив, к которому будут дописано максимальное количество предметов для каждого прототипа.
+ * @param  slots      Массив, к которому будут дописаны номера слотов размещения для каждого прототипа.
+ *
+ * @return Общее количество предметов в сумке.
+ *
+ * @see    #ST_BAG_ID
+ */
+uint GetBagItems(uint bagId,
+    uint16[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots);
+
+/** \~russian Перемещает указанный предмет в инвентарь указанного криттера.
+ *
+ * @param  item    Перемещаемый предмет.
+ * @param  count   Количество перемещаемых предметов.
+ * @param  toCr    Криттер, к которому перемещают предмет.
+ *
+ * @see    MoveItems(Item@[]&, Critter&)
+ * @see    MoveItem(Item&, uint, Item&, uint)
+ * @see    MoveItem(Item&, uint, Map&, uint16, uint16)
+ */
+void MoveItem(Item& item, uint count, Critter& toCr);
+
+/** \~russian Перемещает предмет в предмет-контейнер, присваивая ему указанный специальный ID.
+ *
+ * Специальный ID предмета позволяет в дальнейшем идентифицировать перекладываемый
+ * предмет среди других предметов в контейнере.
+ *
+ * Эта функция используется, например, в хранилищах,
+ * где игрок оставляет свои вещи. Как правило, для хранения предметов в них используется
+ * единственный предмет-контейнер, в который складываются вещи всех игроков. В качестве @a stackId
+ * используется идентификатор криттера.
+ *
+ * @param  item     Перемещаемый предмет.
+ * @param  count    Количество перемещаемых предметов.
+ * @param  toCont   Предмет-контейнер, в который перемещают предмет.
+ * @param  stackId  Новый специальный ID предмета (см. Item::SpecialId).
+ *
+ * @see    Item::SpecialId
+ * @see    MoveItems(Item@[]&, Item&, uint)
+ * @see    MoveItem(Item&, uint, Critter&)
+ * @see    MoveItem(Item&, uint, Map&, uint16, uint16)
+ */
+void MoveItem(Item& item, uint count, Item& toCont, uint stackId);
+
+/** \~russian Перемещает указанный предмет на карту.
+ *
+ * @param  item        Перемещаемый предмет.
+ * @param  count       Количество перемещаемых предметов.
+ * @param  toMap       Карта, на которую должен быть перемещен предмет.
+ * @param  toHx, toHy  Координаты гексагона карты, на который следует переместить предмет.
+ *
+ * @see    Item::SpecialId
+ * @see    MoveItems(Item@[]&, Map&, uint16, uint16)
+ * @see    MoveItem(Item&, uint, Critter&)
+ * @see    MoveItem(Item&, uint, Item&, uint)
+ */
+void MoveItem(Item& item, uint count, Map& toMap, uint16 toHx, uint16 toHy);
+
+/** \~russian Перемещает предметы в передаваемом массиве в инвентарь указанного криттера.
+ *
+ * @param  items  Массив перемещаемых предметов.
+ * @param  toCr   Криттер, к которому должны быть перемещены предметы.
+ *
+ * @see    MoveItem(Item&, uint, Critter&)
+ */
+void MoveItems(Item@[]& items, Critter& toCr);
+
+/** \~russian Перемещает предметы в передаваемом массиве в предмет-контейнер, присваивая им указанный специальный ID.
+ *
+ * @param  items    Массив перемещаемых предметов.
+ * @param  toCont   Предмет-контейнер, в который должны быть перемещены предметы.
+ * @param  stackId  Новый специальный ID предмета (см. Item::SpecialId).
+ *
+ * @see    Item::SpecialId
+ * @see    MoveItem(Item&, uint, Item&, uint)
+ */
+void MoveItem(Item@[]& items, Item& toCont, uint stackId);
+
+/** \~russian Перемещает предметы в передаваемом массиве на карту.
+ *
+ * @param  items       Массив перемещаемых предметов.
+ * @param  toMap       Карта, на которую должны быть перемещены предметы.
+ * @param  toHx, toHy  Координаты гексагона карты, на который следует переместить предметы.
+ *
+ * @see    Item::SpecialId
+ * @see    MoveItem(Item&, uint, Map&, uint16, uint16)
+ */
+void MoveItems(Item@[]& items, Map& toMap, uint16 toHx, uint16 toHy);
+
+/** \~russian Удаляет из игры указанный предмет, независимо от того, где он находится.
+ *
+ * @param  item  Предмет, который необходимо удалить.
+ *
+ * @see    DeleteItems
+ */
+void DeleteItem(Item& item);
+
+/** \~russian Удаляет из игры все предметы из переданного массива.
+ *
+ * @param    items  Массив предметов, которые необходимо удалить.
+ *
+ * @remarks  Допускается @c null в элементах массива @a items.
+ *
+ * @see      DeleteItem
+ */
+void DeleteItems(Item@[]& items);
+
+/** \~russian Статистика количества предметов в игре.
+ *
+ * @param  protoId  Прототип предмета.
+ *
+ * @return Общее количество предметов с указанным прототипом.
+ */
+uint WorldItemCount(uint16 protoId);
+
+//@}
+
+/**
+ * \~russian @name Для работы с временем/временными событиями
+ * \~english @name Time and time events
+ * \~ @weight 240
+ */
+//@{
+
+/** \~russian Позволяет получить текущее локальное время.
+ *
+ * @param  [out]  year           Год
+ * @param  [out]  month          Месяц
+ * @param  [out]  day_of_week    День недели
+ * @param  [out]  day            День
+ * @param  [out]  hour           Час
+ * @param  [out]  minute         Минута
+ * @param  [out]  second         Секунда
+ * @param  [out]  milliseconds   Миллисекунда
+ *
+ */
+void GetTime(uint16& year, uint16& month, uint16& day_of_week, uint16& day,
+             uint16& hour, uint16& minute, uint16& second, uint16& milliseconds);
+
+/** \~russian возвращает время и дату по указанной полной секунде.
+ *
+ * @param  [in]   fullSecond  Игровое время в полных секундах.
+ * @param  [out]  year        Год, полученный по полной секунде.
+ * @param  [out]  month       Месяц, полученный по полной секунде.
+ * @param  [out]  dayOfWeek   День недели, полученный по полной секунде.
+ * @param  [out]  day         День месяца, полученный по полной секунде.
+ * @param  [out]  hour        Час, полученный по полной секунде.
+ * @param  [out]  minute      Минута, полученная по полной секунде.
+ * @param  [out]  second      Секунда, полученная по полной секунде.
+ *
+ * @see    GetFullSecond
+ */
+void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& dayOfWeek, uint16& day, uint16& hour, uint16& minute, uint16& second);
+
+/** \~russian Возвращает значение года, месяца, дня, часа и минуты в полных минутах.
+ *
+ * @param   year                              Год.
+ * @param   month, day, hour, minute, second  Месяц, день, час, минута и секунда соответственно.
+ *
+ * @return  Полная секунда.
+ *
+ * @remarks При некорректных значениях берутся текущие значения.
+ *
+ * @see     GetGameTime
+ */
+uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * Сигнатура функции-обработчика события:
+ * @code
+ * uint e_FuncName(uint[]@ values);
+ * @endcode
+ * @arg @a values Хранит переданные параметры.
+ *
+ * Если передавались криттеры или предметы, то в массиве @a values хранятся их идентификаторы.
+ *
+ * Если не было передано ни одного параметра, то <code>values == null</code>.
+ *
+ * В конец массива @a values записывается количество переданных криттеров и предметов:
+ * @code
+ * uint len = values.length();
+ * crLen = values[len-2]; // количество криттеров
+ * itemLen = values[len-1]; // количество предметов
+ * @endcode
+ *
+ * @param  beginSecond  Время, в полных минутах, когда произойдет событие.
+ * @param  funcName     Имя функции-события.
+ *                      Поддерживает два формата указания имени функции:
+ *                      - @b func_name – берется текущий модуль,
+ *                      - <b>module_name\@func_name</b> – берется модуль указанный в @b module_name.
+ * @param  save         Флаг, который определяет, необходимо ли сохранять запись о событии в базе данных сервера.
+ *                      @c true – да, необходимо, @c false – нет.
+ *
+ * @return Номер события. В случае провала функция возвращает 0.
+ */
+uint CreateTimeEvent(uint beginSecond, string& funcName, bool save);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  beginSecond  Время, в полных минутах, когда произойдет событие.
+ * @param  funcName     Имя функции-события (см. CreateTimeEvent(uint, string&, bool)).
+ * @param  value        Значение, передаваемое вместе с событием.
+ * @param  save         Флаг, который определяет, необходимо ли сохранять запись о событии в базе данных сервера.
+ *                      @c true – да, необходимо, @c false – нет.
+ *
+ * @return Номер события. В случае провала функция возвращает 0.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+uint CreateTimeEvent(uint beginSecond, string& funcName, int value, bool save);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  beginSecond  Время, в полных минутах, когда произойдет событие.
+ * @param  funcName     Имя функции-события (см. CreateTimeEvent(uint, string&, bool)).
+ * @param  value        Значение, передаваемое вместе с событием.
+ * @param  save         Флаг, который определяет, необходимо ли сохранять запись о событии в базе данных сервера.
+ *                      @c true – да, необходимо, @c false – нет.
+ *
+ * @return Номер события. В случае провала функция возвращает 0.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+uint CreateTimeEvent(uint beginSecond, string& funcName, uint value, bool save);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  beginSecond  Время, в полных минутах, когда произойдет событие.
+ * @param  funcName     Имя функции-события (см. CreateTimeEvent(uint, string&, bool)).
+ * @param  values       Значения, передаваемые вместе с событием.
+ * @param  save         Флаг, который определяет, необходимо ли сохранять запись о событии в базе данных сервера.
+ *                      @c true – да, необходимо, @c false – нет.
+ *
+ * @return Номер события. В случае провала функция возвращает 0.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+uint CreateTimeEvent(uint beginSecond, string& funcName, int[]& values, bool save);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  beginSecond  Время, в полных минутах, когда произойдет событие.
+ * @param  funcName     Имя функции-события (см. CreateTimeEvent(uint, string&, bool)).
+ * @param  values       Значения, передаваемые вместе с событием.
+ * @param  save         Флаг, который определяет, необходимо ли сохранять запись о событии в базе данных сервера.
+ *                      @c true – да, необходимо, @c false – нет.
+ *
+ * @return Номер события. В случае провала функция возвращает 0.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+uint CreateTimeEvent(uint beginSecond, string& funcName, uint[]& values, bool save);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  num       Номер события
+ * @param  duration  время до выполнения данного события в секундах (не полная секунда).
+ * @param  values    Значения, передаваемые вместе с событием.
+ *
+ * @return Возвращает false, если событие не найдено.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+bool GetTimeEvent(uint num, uint& duration, uint[]@+ values);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  num       Номер события
+ * @param  duration  время до выполнения данного события в секундах (не полная секунда).
+ * @param  values    Значения, передаваемые вместе с событием.
+ *
+ * @return Возвращает false, если событие не найдено.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+bool GetTimeEvent(uint num, uint& duration, int[]@+ values);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  num       Номер события
+ * @param  duration  время до выполнения данного события в секундах (не полная секунда).
+ * @param  values    Значения, передаваемые вместе с событием.
+ *
+ * @return Возвращает false, если событие не найдено.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+bool SetTimeEvent(uint num, uint duration, uint[]@+ values);
+
+/** \~russian Создает событие, которое произойдет в указанное игровое время.
+ *
+ * @param  num       Номер события
+ * @param  duration  время до выполнения данного события в секундах (не полная секунда).
+ * @param  values    Значения, передаваемые вместе с событием.
+ *
+ * @return Возвращает false, если событие не найдено.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+bool SetTimeEvent(uint num, uint duration, int[]@+ values);
+
+/** \~russian Удаляет событие с указанным номером.
+ *
+ * Номер события возвращается при его создании.
+ *
+ * @param  num  номер удаляемого события.
+ *
+ * @return Возвращает false, если событие не найдено.
+ *
+ * @see    CreateTimeEvent(uint, string&, bool)
+ */
+bool EraseTimeEvent(uint num);
+
+//@}
+
+/**
+ * \~russian @name Для работы с данными
+ * \~english @name Data related
+ * \~ @weight 230
+ */
+//@{
+
+/** \~russian Удаляет данные.
+ *
+ * @param  name  Уникальное имя данных.
+ */
+void EraseAnyData(string& name);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, int64[]&)
+ * @see    SetAnyData(string&, int64[]&, uint)
+ */
+bool GetAnyData(string& name, int64[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, int32[]&)
+ * @see    SetAnyData(string&, int32[]&, uint)
+ */
+bool GetAnyData(string& name, int32[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, int16[]&)
+ * @see    SetAnyData(string&, int16[]&, uint)
+ */
+bool GetAnyData(string& name, int16[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, int8[]&)
+ * @see    SetAnyData(string&, int8[]&, uint)
+ */
+bool GetAnyData(string& name, int8[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, uint64[]&)
+ * @see    SetAnyData(string&, uint64[]&, uint)
+ */
+bool GetAnyData(string& name, uint64[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, uint32[]&)
+ * @see    SetAnyData(string&, uint32[]&, uint)
+ */
+bool GetAnyData(string& name, uint32[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, uint16[]&)
+ * @see    SetAnyData(string&, uint16[]&, uint)
+ */
+bool GetAnyData(string& name, uint16[]& data);
+
+/** \~russian Позволяет загрузить сохраненные данные.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив, в который будут помещены данные.
+ *               Массив не обнуляется, а дописывается найденными данными.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    SetAnyData(string&, uint8[]&)
+ * @see    SetAnyData(string&, uint8[]&, uint)
+ */
+bool GetAnyData(string& name, uint8[]& data);
+
+/** \~russian Проверяет, существуют ли данные с указанным именем.
+ *
+ * @param  name  Проверяемое имя.
+ *
+ * @return @c true, если существуют; @c false – если нет.
+ */
+bool IsAnyData(string& name);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int64[]&)
+ * @see    SetAnyData(string&, int64[]&, uint)
+ */
+bool SetAnyData(string& name, int64[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int32[]&)
+ * @see    SetAnyData(string&, int32[]&, uint)
+ */
+bool SetAnyData(string& name, int32[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int16[]&)
+ * @see    SetAnyData(string&, int16[]&, uint)
+ */
+bool SetAnyData(string& name, int16[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int8[]&)
+ * @see    SetAnyData(string&, int8[]&, uint)
+ */
+bool SetAnyData(string& name, int8[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint64[]&)
+ * @see    SetAnyData(string&, uint64[]&, uint)
+ */
+bool SetAnyData(string& name, uint64[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint32[]&)
+ * @see    SetAnyData(string&, uint32[]&, uint)
+ */
+bool SetAnyData(string& name, uint32[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint16[]&)
+ * @see    SetAnyData(string&, uint16[]&, uint)
+ */
+bool SetAnyData(string& name, uint16[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name  Уникальное имя данных.
+ * @param  data  Массив сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint8[]&)
+ * @see    SetAnyData(string&, uint8[]&, uint)
+ */
+bool SetAnyData(string& name, uint8[]& data);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int64[]&)
+ * @see    SetAnyData(string&, int64[]&)
+ */
+bool SetAnyData(string& name, int64[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int32[]&)
+ * @see    SetAnyData(string&, int32[]&)
+ */
+bool SetAnyData(string& name, int32[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name     Уникальное имя данных.
+ * @param  data     Массив сохраняемых данных.
+ * @param  dataSize Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int16[]&)
+ * @see    SetAnyData(string&, int16[]&)
+ */
+bool SetAnyData(string& name, int16[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, int8[]&)
+ * @see    SetAnyData(string&, int8[]&)
+ */
+bool SetAnyData(string& name, int8[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint64[]&)
+ * @see    SetAnyData(string&, uint64[]&)
+ */
+bool SetAnyData(string& name, uint64[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param name Уникальное имя данных.
+ * @param data Массив сохраняемых данных.
+ * @param dataSize Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint32[]&)
+ * @see    SetAnyData(string&, uint32[]&)
+ */
+bool SetAnyData(string& name, uint32[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint16[]&)
+ * @see    SetAnyData(string&, uint16[]&)
+ */
+bool SetAnyData(string& name, uint16[]& data, uint dataSize);
+
+/** \~russian Сохраняет или перезаписывает данные фиксированного размера по данному имени.
+ *
+ * Эти данные не исчезнут после рестарта сервера. Максимальный размер массива – 65535 байт.
+ *
+ * @param  name      Уникальное имя данных.
+ * @param  data      Массив сохраняемых данных.
+ * @param  dataSize  Размер сохраняемых данных.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ * @see    GetAnyData(string&, uint8[]&)
+ * @see    SetAnyData(string&, uint8[]&)
+ */
+bool SetAnyData(string& name, uint8[]& data, uint dataSize);
+
+//@}
+
+/**
+ * \~russian @name Функции для работы с константами (*Names.lst)
+ * \~english @name For constants (*Names.lst)
+ */
+//@{
+
+/** \~russian Определение значения константы по имени.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ *
+ * @return Значение константы.
+ */
+int GetConstantValue(int constCollection, string@+ name);
+
+/** \~russian Определение имени константы по значению.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  value            Значение константы.
+ *
+ * @return Имя константы.
+ */
+string@ GetConstantName(int constCollection, int value);
+
+/** \~russian Добавление отдельной константы в коллекцию.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ * @param  value            Значение константы.
+ *
+ */
+void AddConstant(int constCollection, string@+ name, int value);
+
+/** \~russian Загрузка/перезагрузка коллекции.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  fileName         Имя файла.
+ * @param  pathType         Путь.
+ *
+ */
+bool LoadConstants(int constCollection, string@+ fileName, int pathType);
+//@}
+
+/**
+ * \~russian @name Функции для работы с изображениями
+ * \~english @name Image functions
+ */
+//@{
+
+/** \~russian загрузка изображения.
+ *
+ * @param  index            Номер изображения, с которым идет работа, перечисления см. в Game images _defines.fos;
+ * @param  imageName        Имя файла, формат должен быть только PNG, при null удаляется текущее изображение;
+ * @param  imageDepth       Глубина создаваемого изображения, допустимые значения 4 - ARGB, 3 - RGB, 2 - GB, 1 - B, необходима для оптимизации работы с памятью, что бы не выделять память, которая не будет использоваться (узнать кол-во выделенной памяти под изображения можно во вкладке сервера Memory -> Images);
+ * @param  pathType         Тип пути.
+ *
+ * @return @c true, если операция успешна; @c false – если нет.
+ *
+ */
+bool LoadImage(uint index, string@+ imageName, uint imageDepth, int pathType);
+
+/** \~russian определение цвета пикселя.
+ *
+ * @param  index            Номер изображения, с которым идет работа, перечисления см. в Game images _defines.fos;
+ * @param  x                Координаты пикселя X;
+ * @param  y                Координаты пикселя Y.
+ *
+ * @return цвет
+ *
+ */
+uint GetImageColor(uint index, uint x, uint y);
+//@}
+
+/** Получает CraftItem@ по номеру
+CraftItem@ GetCraftItem(uint num);
+
+/*@}*/

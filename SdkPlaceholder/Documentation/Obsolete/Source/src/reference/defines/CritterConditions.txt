@@ -1,0 +1,56 @@
+/**
+ * @defgroup CritterConditions Critter conditions
+ * @ingroup Defines
+ *
+ * \~russian Состояния криттера.
+ * \~english Critter conditions.
+ *
+ */
+/*@{*/
+
+/** @name Critter basic conditions
+ *
+ * @see Critter::Cond
+ *
+ */
+//@{
+
+/** \~russian Криттер жив. */
+#define COND_LIFE                   (1)
+
+/** \~russian Криттер в нокауте. */
+#define COND_KNOCKOUT               (2)
+
+/** \~russian Криттер умер. */
+#define COND_DEAD                   (3)
+
+/** \~russian Криттер не в игре. */
+#define COND_NOT_IN_GAME            (4)
+
+//@}
+
+/** @name Critter extended conditions
+ *
+ * @see Critter::CondExt
+ * @see Critter::ToDead
+ *
+ */
+//@{
+#define COND_KNOCKOUT_FRONT         (1)
+#define COND_KNOCKOUT_BACK          (2)
+#define COND_DEAD_FRONT             (1)
+#define COND_DEAD_BACK              (2)
+#define COND_DEAD_BURST             (3)
+#define COND_DEAD_BLOODY_SINGLE     (4)
+#define COND_DEAD_BLOODY_BURST      (5)
+#define COND_DEAD_PULSE             (6)
+#define COND_DEAD_PULSE_DUST        (7)
+#define COND_DEAD_LASER             (8)
+#define COND_DEAD_EXPLODE           (9)
+#define COND_DEAD_FUSED             (10)
+#define COND_DEAD_BURN              (11)
+#define COND_DEAD_BURN2             (12)
+#define COND_DEAD_BURN_RUN          (13)
+//@}
+
+/*@}*/

@@ -1,7 +1,7 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
-[ "$FO_ROOT" ] || { echo "FO_ROOT variable is not set"; exit 1; }
-[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST variable is not set"; exit 1; }
+[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
+[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
@@ -20,11 +20,12 @@ fi
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir -p android
-cd android
 
 mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
 cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
+
+mkdir -p Android
+cd Android
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
@@ -44,9 +45,13 @@ cd ../
 export ANDROID_ABI=armeabi-v7a
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+make -j$(nproc)
+cd ../
 
-pwd
-
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" "$ROOT_FULL_PATH/Source"
-make -j4
+export ANDROID_ABI=x86
+mkdir -p $ANDROID_ABI
+cd $ANDROID_ABI
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+make -j$(nproc)
 cd ../

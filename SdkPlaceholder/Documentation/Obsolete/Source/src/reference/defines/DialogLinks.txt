@@ -1,0 +1,25 @@
+/**
+ * @defgroup DialogLinks Dialog links
+ * @ingroup Defines
+ *
+ * \~russian Специальные действия в диалогах.
+ * \~english Dialog special actions.
+ *
+ * \~
+ *
+ */
+/*@{*/
+
+/** \~russian Завершение диалога */
+#define DIALOG_END                  uint(-1)
+
+/** \~russian Возврат к предыдущей ветке диалога */
+#define DIALOG_BACK                 uint(-2)
+
+/** \~russian Переход в режим бартера */
+#define DIALOG_BARTER               uint(-3)
+
+/** \~russian Завершение диалога с последующей атакой NPC. */
+#define DIALOG_ATTACK               uint(-4)
+
+/*@}*/

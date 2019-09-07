@@ -1,0 +1,50 @@
+/**
+ * \~russian @defgroup Timeouts Таймауты
+ * \~english @defgroup Timeouts Timeouts
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+/** \~russian Таймаут на использование навыка Первая помощь. */
+#define TO_SK_FIRST_AID             (230)
+
+/** \~russian Таймаут на использование навыка Доктор. */
+#define TO_SK_DOCTOR                (231)
+
+/** \~russian Таймаут на использование навыка Ремонт. */
+#define TO_SK_REPAIR                (232) // Used in engine
+
+/** \~russian Таймаут на использование навыка Наука. */
+#define TO_SK_SCIENCE               (233) // Used in engine
+
+/** \~russian Таймаут на использование навыка Взлом. */
+#define TO_SK_LOCKPICK              (234)
+
+/** \~russian Таймаут на использование навыка Воровство. */
+#define TO_SK_STEAL                 (235)
+
+/** \~russian Боевой таймаут. */
+#define TO_BATTLE                   (238)
+
+/** \~russian Таймаут на переходы между локациями. */
+#define TO_TRANSFER                 (239)
+
+/** \~russian Таймаут на выход из игры. */
+#define TO_REMOVE_FROM_GAME         (240)
+
+/** \~russian Таймаут репликации. */
+#define TO_REPLICATION              (241)
+
+/** \~russian Таймаут на изменение кармы. */
+#define TO_KARMA_VOTING             (242)
+
+/** \~russian Таймаут на скрытность. */
+#define TO_KARMA_VOTING             (243)
+
+/** \~russian Таймаут на использование навыка воровства. */
+#define TO_STEALING                 (248)
+
+/** \~russian (?) */
+#define TO_AGGRESSOR                (249)
+
+/*@}*/

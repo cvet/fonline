@@ -1,0 +1,169 @@
+/** \~russian @page page_encounters Случайные встречи
+
+Механика случайных встреч находится в скрипте worldmap.fos, а описание самих встреч - в worldmap_init.fos (оба находятся в Server\\scripts). Для простого изменения встреч потребуется редактирование только второго скрипта. \n
+Скрипт можно условно поделить на три части - блок составов групп (группа криттеров, генерируемых на карте), блок таблиц встреч (в каком секторе какие встречи) и блок зон (задается соответствие сектор-таблица).
+
+<h2>Составы групп</h2>
+Под составом группы подразумевается не только группа живых криттеров, генерируемых на карте, но и трупы, а так же предметы. \n
+Описание группы производится с помощью класса CEncounterGroup:
+ - @b TeamNum - Номер команды из _teams.fos
+ - @b Position - Вариант расстановки криттеров на энкаунтере, подробнее смотрите в worldmap.fos
+ - @b Spacing - Расстояние между генерируемыми криттерами
+ - @b AddCritter - Возвращает экземпляр класса CEncounterObject. Добавляет описание криттера в группу. Параметр Pid - прототип криттера (см.  Server\\proto\\critters\\all.fopro). После добавления можно настраивать свойства криттера:
+ <ul>
+  <li>Ratio - Процентная доля криттеров с таким описанием в составе группы</li>
+  <li>Dead - Если true, то труп, по умолчанию false</li>
+ </ul>
+ - @b AddItem - Возвращает экземпляр класса CEncounterObject. Добавляет описание предмета, который может появиться у криттера или на локации. Параметр Pid - номер прототипа предмета. Через точку можно настроить некоторые параметры:
+ <ul>
+  <li>Minimum - Минимальное количество генерируемых предметов</li>
+  <li>Maximum - Максимальное количество</li>
+  <li>Slot - Слот рук\инвентаря</li>
+ </ul>
+ - @b Общее (и для криттера, и для предмета):
+ <ul>
+  <li>Dialog - Номер диалога из dialog.lst</li>
+  <li>Script - Скрипт, присваиваемый объекту</li>
+  <li>Distance - Расстояние от игрока до объекта</li>
+ </ul>
+ - @b Checks - Различные проверки
+ <ul>
+  <li>CheckRandom - Шанс на появление данного криттера в составе команды, трупа или предмета на земле</li>
+  <li>CheckParam - Проверка на различные параметры игрока</li>
+  <li>CheckLVar - Проверка локальной переменной</li>
+  <li>CheckGVar - Проверка глобальной переменной</li>
+  <li>CheckHour - Проверка игрового времени</li>
+ </ul>
+ - CEncounterObject[] Objects - Массив объектов случайных встреч, криттеров, предметов
+Все это легко изменить, убрать, добавить в скрипте worldmap.fos.
+
+Пример 1:
+@code
+										// ARRO_Spore_Plants
+	@group=@EncounterGroups[GROUP_ARRO_Spore_Plants];
+	group.TeamNum=0;
+	group.Position=POSITION_SURROUNDING;
+	group.Spacing=3;
+	group.AddCritter(16).Ratio(100).Dialog(0).Script("mob@_MobInit")
+		.AddItem(PID_PLANT_SPIKE,2,6,SLOT_INV);
+	group.AddItem(PID_BROC_FLOWER).Distance(10).CheckRandom(10);
+	group.AddItem(PID_XANDER_ROOT).Distance(15).CheckRandom(10);
+	group.AddCritter(4).Dead(true).Dialog(0).CheckRandom(5)
+		.AddItem(PID_BOTTLE_CAPS,0,10,SLOT_INV);
+@endcode
+GROUP_ARRO_Spore_Plants - это название генерируемой группы (объявляется в worldmap.fos), на карте генерируются криттеры с номером прототипа 16 (хищный цветок) и 4 (труп дикарки), расстановка будет круговой с расстоянием в 3 гекса между криттерами. При этом все живые криттеры будут иметь прототип 16. Инициализация этих криттеров будет производиться функцией _MobInit из скрипта mob.fos. В инвентаре криттера будут шипы растения (которыми хищные цветки плюются). На расстоянии 10 гексов от игрока с 10% шансом появления будет цветок брока и в 15 - корень зандера. У каждого предмета отдельная проверка на рандом. Так же с 5% шансом будет труп дикарки с деньгами в инвентаре в количестве от 0 до 10 штук (тоже рандом).
+
+Пример 2:
+@code
+										// RDRC_Broken_Hills_Caravan
+	@group=@EncounterGroups[GROUP_RDRC_Broken_Hills_Caravan];
+	group.TeamNum=40;
+	group.Position=POSITION_HUDDLE;
+	group.Spacing=2;
+	group.AddCritter(61).Dialog(DIALOG_enc_brok_trader).Script("encounter_npc@_NpcInit")
+		.AddItem(PID_HK_CAWS,1,1,SLOT_HAND1)
+		.AddItem(PID_BOTTLE_CAPS,0,40,SLOT_INV)
+		.AddItem(PID_URANIUM_ORE,2,10,SLOT_INV)
+		.AddItem(PID_SLEDGEHAMMER,1,1,SLOT_INV)
+		.AddItem(PID_DYNAMITE,2,4,SLOT_INV)
+		.AddItem(PID_FIRST_AID_KIT,1,1,SLOT_INV);
+	group.AddCritter(48).Ratio(50).Dialog(0).Script("encounter_npc@_NpcInit")
+		.AddItem(PID_MINIGUN,1,1,SLOT_HAND1)
+		.AddItem(PID_5MM_JHP,20,80,SLOT_INV)
+		.AddItem(PID_BOTTLE_CAPS,0,30,SLOT_INV);
+	group.AddCritter(49).Ratio(50).Dialog(0).Script("encounter_npc@_NpcInit")
+		.AddItem(PID_MINIGUN,1,1,SLOT_HAND1)
+		.AddItem(PID_BOTTLE_CAPS,0,30,SLOT_INV);
+@endcode
+В отличие от примера 1, здесь группа криттеров (караван) имеет 40 номер команды и расстановка кучкой\толпой с промежутками в 2 гекса. Криттер с прототипом 61 имеет диалог (торговец). Поскольку у этого криттера нет Ratio, он будет генерироваться всегда, тогда как количество остальных будет зависеть от Ratio.
+
+<h2>Таблицы встреч</h2>
+На самом деле это больше похоже на список, содержащий информацию о случайных встречах, попадающихся игроку при путешествии по глобальной карте. \n
+Описание таблицы производится с помощью класса CEncounterTable:
+ - uint16[] LocationPids - Массив локаций, доступных для загрузки при попадании на локацию
+ - CEncounter[] Encounters - Массив описаний случайных встреч
+ - void AddLocationPid(uint16 locationPid) - Метод добавления локации в массив
+ - CEncounter@ AddEncounter - Возвращает экземпляр класса CEncounter. Функция добавления описания случайной встречи в таблицу
+ <ul>
+  <li>uint chance - Шанс попадания именно этой случайной встречи</li>
+  <li>uint strNum - Номер строки из @ref page_fogmmsg "FOGM.MSG"</li>
+ </ul>
+Сама случайная описывается с помощью класса CEncounter:
+ - AddGroup - Функция добавления группы криттеров на локацию
+ <ul>
+  <li>uint group - Название группы из блока составов групп</li>
+  <li>uint ratioMin - Минимальное количество генерируемых криттеров</li>
+  <li>uint ratioMax - Максимальное количество генерируемых криттеров</li>
+ </ul>
+ - Fighting - Инициация атаки
+ <ul>
+  <li>uint fromGroup - номер атакующей группы</li>
+  <li>uint toGroup - номер атакуемой группы</li>
+ </ul>
+ - LocationPid - Прототип локации, имя берётся из _maps.fos)
+ - Special - если true, то уникальная встреча
+ - CCheck[] Checks - Массив различных проверок
+ <ul>
+  <li>CheckRandom - Шанс на появление данной случайной встречи</li>
+  <li>CheckParam - Проверка на различные параметры игрока</li>
+  <li>CheckLVar - Проверка локальной переменной</li>
+  <li>CheckGVar - Проверка глобальной переменной</li>
+  <li>CheckHour - Проверка игрового времени</li>
+ </ul>
+ - AssignLVar - установка нового значения локальной переменной
+
+Пример:
+@code
+										// Nav_M (Areas around Navarro)
+	@table=@EncounterTables[TABLE_Nav_M];
+	table.AddLocationPid(LOCATION_MountainEncounter1);
+	table.AddLocationPid(LOCATION_MountainEncounter2);
+	table.AddEncounter(100, 10051500).AddGroup(GROUP_NAV_Enclave_Patrol    , 4, 7).AddGroup(GROUP_Player, 0, 0).Fighting(0,1).CheckLVar(LVAR_enc_loyality_enclave,'<',10);
+	table.AddEncounter(100, 10051500).AddGroup(GROUP_NAV_Enclave_Patrol    , 4, 7).CheckLVar(LVAR_enc_loyality_enclave,'>',9);
+	table.AddEncounter(  5, 10051600).Special(true).LocationPid(LOCATION_SpecialBridgeEncounter).CheckParam(ST_LEVEL,'>',9).CheckLVar(LVAR_special_encounter_bridge,'<',1).AssignLVar(LVAR_special_encounter_bridge,'=',1);
+	table.AddEncounter(  1, 10051610).Special(true).LocationPid(LOCATION_SpecialHolyEncounter2).CheckLVar(LVAR_special_encounter_holy1,'>',0).CheckLVar(LVAR_special_encounter_holy2,'<',1).AssignLVar(LVAR_special_encounter_holy2,'=',1);
+@endcode
+TABLE_Nav_M - название таблицы (объявляется в worldmap.fos), далее идёт список локаций, доступных для загрузки. Потом список возможных встреч. То, что Ratio=100, ещё не означает, что локация попадётся со 100% вероятностью, формула имеет более сложный вид. Как видим из проверки локальной переменной, встреча делится на две - с атакой игрока группой криттеров GROUP_NAV_Enclave_Patrol и без неё (но при любом значении переменной будет попадаться только одна из них). \n
+ - @b Важно: Если группа криттеров агрессивна к игроку по умолчанию, но инициация атаки отсутствует, то эта группа атакует игрока сразу, как он появится на карте, а не по истечении таймаута неагрессивности. \n
+Далее идут уникальные встречи, для того, чтобы они действительно были уникальными, идёт проверка переменной, попадалась ли эта локация раньше, и если нет - то встреча происходит и значение переменной меняется на нужное. Для того, чтобы встреча состоялась, должны выполняться все условия.
+
+<h2>Зоны</h2>
+Это уже гораздо больше похоже на таблицу, где каждому сектору глобальной карты присваивается одна из таблиц встреч. То есть это значит, что в определённом секторе карты будет лишь тот набор встреч и локаций, что описаны в соответствующей таблице. \n
+Описание таблицы производится с помощью функции SetZone:
+ - uint zx - Номер сектора по оси X
+ - uint zy - Номер сектора по оси Y
+ - uint table - Название таблицы
+ - int difficulty - Коэффициент сложности (исползуется в формуле начисления опыта за возможность отмены встречи)
+ - uint terrain - Тип местности (пустыня\горы\город\побережье\вода)
+ - uint morningChance - Шанс на встречу в утреннее время
+ - uint afternoonChance - Шанс на встречу в дневное время
+ - uint nightChance - Шанс на встречу в вечернее время
+
+Пример:
+@code
+	SetZone(3   ,17  ,TABLE_Nav_M     ,-40  ,TERRAIN_Mountain  ,CHANCE_Frequent  );
+	SetZone(3   ,17  ,TABLE_Ocean2_O  ,0    ,TERRAIN_Water     ,CHANCE_Rare      );
+	SetZone(3   ,18  ,TABLE_Nav_O     ,-25  ,TERRAIN_Coast     ,CHANCE_Common    );
+@endcode
+Как видим, в одном и том же секторе (3:17) могут встретиться энкаунтеры из таблиц TABLE_Nav_M и TABLE_Ocean2_O. Всё зависит от типа местности и от изображения на картинке глобальной карты. Если там вода - то будут встречи из таблицы TABLE_Ocean2_O, в ином случае - из таблицы TABLE_Nav_M. \n
+Подробнее о шансах можно узнать из скрипта worldmap.fos:
+@code
+// Encounter frequency percentages
+#define CHANCE_Forced                          (100) // This shouldn't change
+#define CHANCE_Frequent                        (38) // Was 9/3d6
+#define CHANCE_Common                          (22) // Was 8/3d6
+#define CHANCE_Uncommon                        (12) // Was 6/3d6
+#define CHANCE_Rare                            (4) // Was 5/3d6
+#define CHANCE_None                            (0) // This shouldn't change
+@endcode
+И его влияние на возможность случайной встречи:
+@code
+	// Check chance
+	uint chance;
+	if(IS_MORNING(__Hour)) chance=zone.MorningChance;
+	if(IS_AFTERNOON(__Hour)) chance=zone.AfternoonChance;
+	else chance=zone.NightChance;
+	if(uint(Random(1,100))>chance) return;
+@endcode
+
+*/

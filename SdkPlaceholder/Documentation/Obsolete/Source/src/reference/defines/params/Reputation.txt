@@ -1,0 +1,29 @@
+/**
+ * \~russian @defgroup Reputation Репутация
+ * \~english @defgroup Reputation Reputation
+ * \~ @ingroup Params
+ */
+/*@{*/
+
+#define REPUTATION_DEN              (570)
+#define REPUTATION_KLAMATH          (571)
+#define REPUTATION_MODOC            (572)
+#define REPUTATION_VAULT_CITY       (573)
+#define REPUTATION_GECKO            (574)
+#define REPUTATION_BROKEN_HILLS     (575)
+#define REPUTATION_NEW_RENO         (576)
+#define REPUTATION_SIERRA           (577)
+#define REPUTATION_VAULT15          (578)
+#define REPUTATION_NCR              (579)
+#define REPUTATION_CATHEDRAL        (580)
+#define REPUTATION_SAD              (581)
+#define REPUTATION_REDDING          (582)
+#define REPUTATION_SF               (583)
+#define REPUTATION_NAVARRO          (584)
+#define REPUTATION_ARROYO           (585)
+#define REPUTATION_PRIMAL_TRIBE     (586)
+#define REPUTATION_RANGERS          (587)
+#define REPUTATION_VAULT13          (588)
+#define REPUTATION_SACRAMENTO       (589)
+
+/*@}*/

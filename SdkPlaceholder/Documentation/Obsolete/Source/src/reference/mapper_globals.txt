@@ -1,0 +1,392 @@
+/** @addtogroup Mapper */
+/*@{*/
+
+struct MapperObject {
+/**
+ * \~russian @name  Общие поля
+ * \~english @name  Shared parameters
+ * \~
+ */
+//@{
+    const uint8  MapObjType;
+    const uint16 ProtoId;
+    const uint16 MapX;
+    const uint16 MapY;
+    uint8   Dir;
+    const uint UID;
+    const uint ContainerUID;
+    const uint ParentUID;
+    const uint ParentChildIndex;
+    string  ScriptName;
+    string  FuncName;
+    uint    LightColor;
+    uint8   LightDay;
+    uint8   LightDirOff;
+    uint8   LightRadius;
+    int8    LightIntensity;
+    int     UserData0;
+    int     UserData1;
+    int     UserData2;
+    int     UserData3;
+    int     UserData4;
+    int     UserData5;
+    int     UserData6;
+    int     UserData7;
+    int     UserData8;
+    int     UserData9;
+//@}
+
+/**
+ * \~russian @name  Поля криттеров
+ * \~english @name  Critter parameters
+ * \~
+ */
+//@{
+    uint8   Critter_Cond;
+    uint8   Critter_CondExt;
+    int16   Critter_ParamIndex0;
+    int16   Critter_ParamIndex1;
+    int16   Critter_ParamIndex2;
+    int16   Critter_ParamIndex3;
+    int16   Critter_ParamIndex4;
+    int16   Critter_ParamIndex5;
+    int16   Critter_ParamIndex6;
+    int16   Critter_ParamIndex7;
+    int16   Critter_ParamIndex8;
+    int16   Critter_ParamIndex9;
+    int16   Critter_ParamIndex10;
+    int16   Critter_ParamIndex11;
+    int16   Critter_ParamIndex12;
+    int16   Critter_ParamIndex13;
+    int16   Critter_ParamIndex14;
+    int     Critter_ParamValue0;
+    int     Critter_ParamValue1;
+    int     Critter_ParamValue2;
+    int     Critter_ParamValue3;
+    int     Critter_ParamValue4;
+    int     Critter_ParamValue5;
+    int     Critter_ParamValue6;
+    int     Critter_ParamValue7;
+    int     Critter_ParamValue8;
+    int     Critter_ParamValue9;
+    int     Critter_ParamValue10;
+    int     Critter_ParamValue11;
+    int     Critter_ParamValue12;
+    int     Critter_ParamValue13;
+    int     Critter_ParamValue14;
+//@}
+
+/**
+ * \~russian @name  Общие поля итемов и сценери
+ * \~english @name  Item/Scenery shared parameters
+ * \~
+ */
+//@{
+    int16   OffsetX;
+    int16   OffsetY;
+    uint8   AnimStayBegin;
+    uint8   AnimStayEnd;
+    uint16  AnimWait;
+    string  PicMap;
+    string  PicInv;
+    uint8   InfoOffset;
+//@}
+
+/**
+ * \~russian @name  Поля итемов
+ * \~english @name  Item parameters
+ * \~
+ */
+//@{
+    uint    Item_Count;
+    uint8   Item_BrokenFlags;
+    uint8   Item_BrokenCount;
+    uint16  Item_Deterioration;
+    uint8   Item_ItemSlot;
+    uint16  ITEM_TYPE_AMMOPid;
+    uint    ITEM_TYPE_AMMOCount;
+    uint    Item_LockerDoorId;
+    uint16  Item_LockerCondition;
+    uint16  Item_LockerComplexity;
+    int16   Item_TrapValue;
+    int     Item_Val0;
+    int     Item_Val1;
+    int     Item_Val2;
+    int     Item_Val3;
+    int     Item_Val4;
+    int     Item_Val5;
+    int     Item_Val6;
+    int     Item_Val7;
+    int     Item_Val8;
+    int     Item_Val9;
+//@}
+
+/**
+ * \~russian @name  Поля сценери
+ * \~english @name  Scenery parameters
+ * \~
+ */
+//@{
+    bool    Scenery_CanUse;
+    bool    Scenery_CanTalk;
+    uint    Scenery_TriggerNum;
+    uint8   Scenery_ParamsCount;
+    int     Scenery_Param0;
+    int     Scenery_Param1;
+    int     Scenery_Param2;
+    int     Scenery_Param3;
+    int     Scenery_Param4;
+    uint    Scenery_ToMapPid;
+    uint    Scenery_ToEntire;
+    uint8   Scenery_ToDir;
+    uint8   Scenery_SpriteCut;
+//@}
+};
+
+struct MapperMap {
+    const uint16 Width;
+    const uint16 Height;
+    const int    WorkHexX;
+    const int    WorkHexY;
+    int    Time;
+    bool   NoLogOut;
+    string ScriptModule;
+    string ScriptFunc;
+    uint    GetTilesCount(uint16 hexX, uint16 hexY, bool roof) const;
+    void    DeleteTile(uint16 hexX, uint16 hexY, bool roof, uint index);
+    uint    GetTile(uint16 hexX, uint16 hexY, bool roof, uint index) const;
+    void    AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, uint picHash);
+};
+
+/**
+ * \~russian @name Зарезервированные функции
+ * \~english @name Reserved functions
+ * \~
+ */
+//@{
+void start();
+uint loop();
+bool console_message(string& message);
+void render_iface(uint layer);
+void render_map();
+bool mouse_down(int click);
+bool mouse_up(int click);
+void mouse_move(int x, int y);
+bool key_down(uint8 key);
+bool key_up(uint8 key);
+void input_lost();
+//@}
+
+/**
+ * \~russian @name Пользовательские функции
+ * Вызываются из консоли используя символ '#'
+ * \~english @name User functions
+ * Call in console using '#'
+ * \~
+ */
+//@{
+string FuncName(string str);
+//@}
+
+/**
+ * \~russian @name Глобальные функции
+ * \~english @name Global functions
+ * \~
+ */
+//@{
+/**
+ * \~russian Начальные параметры: 0 ST_DIALOG_ID, 1 ST_AI_ID, 2 ST_BAG_ID, 3 ST_TEAM_ID, 4 ST_NPC_ROLE, 5 ST_REPLICATION_TIME, 6..14 -1
+ * \~english Init state: 0 ST_DIALOG_ID, 1 ST_AI_ID, 2 ST_BAG_ID, 3 ST_TEAM_ID, 4 ST_NPC_ROLE, 5 ST_REPLICATION_TIME, 6..14 -1
+ * \~
+ */
+void    SetDefaultCritterParam(uint index, int param);
+MapperMap@+ LoadMap(string& fileName, int pathType);
+void    UnloadMap(MapperMap@+ map);
+bool    SaveMap(MapperMap@+ map, string& fileName, int pathType);
+bool    ShowMap(MapperMap@+ map);
+int     GetLoadedMaps(MapperMap@[]@+ maps);
+void    DeleteObject(MapperObject@+ obj);
+void    DeleteObjects(MapperObject@[]& objects);
+void    SelectObject(MapperObject@+ obj, bool set);
+void    SelectObjects(MapperObject@[]& objects, bool set);
+MapperObject@+ GetSelectedObject();
+uint    GetSelectedObjects(MapperObject@[]@+ objects);
+MapperObject@+ GetMonitorObject(int x, int y, bool ignoreInterface = false);
+void    GetMousePosition(int& x, int& y);
+uint    GetMapFileNames(string@+ dir, string@[]@+ names);
+
+ProtoItem@+ GetProtoItem(uint16 protoId);
+bool    LoadDat(string& datName);
+void    MoveScreen(uint16 hexX, uint16 hexY, uint speed);
+int     GetKeybLang();
+string@ GetIfaceIniStr(string& key);
+bool    LoadFont(int font, string& fontFileName);
+void    SetDefaultFont(int font, uint color);
+void    MouseClick(int x, int y, int button, int cursor);
+void    KeyboardPress(uint8 key1, uint8 key2);
+
+void    Log(string& text);
+string@ GetLastError();
+int     Random(int minimum, int maximum);
+uint    GetTick();
+uint    GetAngelScriptProperty(int property);
+void    SetAngelScriptProperty(int property, uint value);
+
+void    GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist);
+uint    GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut);
+bool    GetHexPos(uint16 hx, uint16 hy, int& x, int& y);
+bool    GetMonitorHex(int x, int y, uint16& hx, uint16& hy);
+void    MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps);
+uint    GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2);
+uint8   GetDirection(uint16 fromX, uint16 fromY, uint16 toX, uint16 toY);
+uint8   GetOffsetDir(uint16 hx, uint16 hy, uint16 tx, uint16 ty, float offset);
+
+void    Message(string& text);
+void    Message(int textMsg, uint strNum);
+void    MapMessage(string& text, uint16 hx, uint16 hy, uint timeMs, uint color, bool fade, int offsX, int offsY);
+string@ GetMsgStr(int textMsg, uint strNum);
+string@ GetMsgStr(int textMsg, uint strNum, uint skipCount);
+uint    GetMsgStrNumUpper(int textMsg, uint strNum);
+uint    GetMsgStrNumLower(int textMsg, uint strNum);
+uint    GetMsgStrCount(int textMsg, uint strNum);
+bool    IsMsgStr(int textMsg, uint strNum);
+string@ ReplaceText(const string& text, const string& replace, const string& str);
+string@ ReplaceText(const string& text, const string& replace, int i);
+
+uint    LoadSprite(string& name, int pathIndex);
+uint    LoadSprite(uint16 sprNum, uint8 dir, int pathIndex);
+int     GetSpriteWidth(uint sprId, int sprIndex);
+int     GetSpriteHeight(uint sprId, int sprIndex);
+uint    GetSpriteCount(uint sprId);
+void    DrawSprite(uint sprId, int sprIndex, int x, int y, uint color);
+void    DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color);
+void    DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags);
+void    DrawPrimitive(int primitiveType, int[]& data);
+void    DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY);
+void    DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color);
+void    DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, int[]@+ layers, float[]@+ position, uint color);
+
+uint    TabGetTileDirs(int tab, string@[]@+ dirNames, bool[]@+ includeSubdirs);
+uint    TabGetItemPids(int tab, string@+ subTab, uint16[]@+ itemPids);
+uint    TabGetCritterPids(int tab, string@+ subTab, uint16[]@+ critterPids);
+void    TabSetTileDirs(int tab, string@[]@+ dirNames, bool[]@+ includeSubdirs);
+void    TabSetItemPids(int tab, string@+ subTab, uint16[]@+ itemPids);
+void    TabSetCritterPids(int tab, string@+ subTab, uint16[]@+ critterPids);
+void    TabDelete(int tab);
+void    TabSelect(int tab, string@+ subTab, bool show = false);
+void    TabSetName(int tab, string@+ subName);
+
+void    Update() const;
+uint    GetChilds(MapperObject@[]@+ objects) const;
+void    MoveToHex(uint16 hexX, uint16 hexY);
+void    MoveToHexOffset(int x, int y);
+void    MoveToDir(uint8 dir);
+
+MapperObject@+ AddObject(uint16 hexX, uint16 hexY, int mapObjType, uint16 pid);
+MapperObject@+ GetObject(uint16 hexX, uint16 hexY, int mapObjType, uint16 pid, uint skip) const;
+uint    GetObjects(uint16 hexX, uint16 hexY, uint radius, int mapObjType, uint16 pid, MapperObject@[]@+ objects) const;
+void    UpdateObjects() const;
+string@ GetTileName(uint16 hexX, uint16 hexY, bool roof, uint index) const;
+void    AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string@+ picName);
+uint    GetDayTime(uint dayPart) const;
+void    SetDayTime(uint dayPart, uint time);
+void    GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b) const;
+void    SetDayColor(uint dayPart, uint8 r, uint8 g, uint8 b);
+void    Resize(uint16 width, uint16 height);
+//@}
+
+/**
+ * \~russian @name Функции для работы с константами (*Names.lst)
+ * \~english @name For constants (*Names.lst)
+ */
+//@{
+
+/** \~russian Определение значения константы по имени.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ *
+ * @return Значение константы.
+ */
+int GetConstantValue(int constCollection, string@+ name);
+
+/** \~russian Определение имени константы по значению.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  value            Значение константы.
+ *
+ * @return Имя константы.
+ */
+string@ GetConstantName(int constCollection, int value);
+
+/** \~russian Добавление отдельной константы в коллекцию.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  name             Имя константы.
+ * @param  value            Значение константы.
+ *
+ */
+void AddConstant(int constCollection, string@+ name, int value);
+
+/** \~russian Загрузка/перезагрузка коллекции.
+ *
+ * @param  constCollection  Номер коллекции, см. Constants collections в _defines.fos.
+ * @param  fileName         Имя файла.
+ * @param  pathType         Путь.
+ *
+ */
+bool LoadConstants(int constCollection, string@+ fileName, int pathType);
+//@}
+
+/** \~russian Указывает надо ли разбивать тайлы в папках по группам. Группа определяется как строка в имени файла до первого числа (например, abc12.png - группа abc), а если номера нет, то группа определяется как '<other>'. */
+__SplitTilesCollection
+
+/**
+ * \~russian @name Геомертия игровой сетки
+ * \~english @name Grid geometry
+ * \~
+ * В скрипте config.fos, в функции InitializeGeometry(), добавлены необходимые настройки для трех игр: Fallout1/2, Fallout Tactics и Arcanum. Данная функция вызывается в скриптах сервера, клиента и маппера, т.к. информация о геометрии нужна всем трем.
+ * Четырехугольная изометрия использует восемь направлений, гексогональная шесть.\n
+ * Рабочие спрайты для геометрии находятся в art/geometry/.\n
+ */
+//@{
+
+/** \~russian Тип изометрии true - гексогональная, false - четырехугольная. */
+bool __MapHexagonal;
+
+/** \~russian Ширина гекса */
+int __MapHexWidth;
+
+/** \~russian Высота гекса */
+int __MapHexHeight;
+
+/** \~russian Высота линии гексов */
+int __MapHexLineHeight;
+
+/** \~russian Смещение тайлов земли по горизонтали */
+int __MapTileOffsX;
+
+/** \~russian Смещение тайлов земли по вертикали */
+int __MapTileOffsY;
+
+/** \~russian Смещение тайлов крыши по горизонтали */
+int __MapRoofOffsX;
+
+/** \~russian Смещение тайлов крыши по вертикали */
+int __MapRoofOffsY;
+
+/** \~russian Кол-во гексов на один тайл крыши (нужно для его корректного скрывания) */
+int __MapRoofSkipSize;
+
+/** \~russian Угол для рендеринга трехмерных моделей */
+float __MapCameraAngle;
+
+/** \~russian Сглаживание пути при перемещениях */
+bool __MapSmoothPath;
+
+/** \~russian Путь и префикс для файлов геометрии */
+string __MapDataPrefix;
+
+//@}
+
+/*@}*/

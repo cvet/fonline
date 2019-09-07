@@ -1,0 +1,22 @@
+/**
+ * @defgroup Gender Gender
+ * @ingroup Defines
+ *
+ * \~russian Пол
+ * \~english Gender
+ *
+ * \~
+ * @see      ST_GENDER
+ */
+/*@{*/
+
+/** \~russian Мужской пол */
+#define GENDER_MALE                 (0)
+
+/** \~russian Женский пол */
+#define GENDER_FEMALE               (1)
+
+/** \~russian Оно */
+#define GENDER_IT                   (2)
+
+/*@}*/

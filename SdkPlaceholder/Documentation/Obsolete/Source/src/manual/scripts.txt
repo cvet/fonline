@@ -1,0 +1,19 @@
+/** \~russian @page page_scripts Скрипты
+@subpage code_style
+
+@subpage data_types
+
+@subpage specialized_functions
+
+@subpage page_preprocessor
+
+@subpage time_events
+
+@subpage critters_time_events
+
+@subpage events
+
+@subpage critters_interaction
+
+@subpage dialogs_scripts
+ */

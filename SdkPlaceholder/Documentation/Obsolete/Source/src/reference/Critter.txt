@@ -1,0 +1,1636 @@
+/** \~russian Криттер.
+ *
+ * Под словом "криттер" подразумеваются как игроки, так и NPC.
+ *
+ ** \~english Critter.
+ *
+ * Represents players, as well as NPCs.
+ *
+ * \~ @ingroup Server
+ */
+
+class Critter
+{
+public:
+    /**
+     * \~russian @name Общие поля
+     * \~english @name General fields
+     * \~ @weight 200
+     */
+    //@{
+
+    /** \~russian Уникальный идентификатор криттера.
+     *
+     ** \~english Critter's unique identifier.
+     *
+     ** \~
+     * @see #GetCritter(uint)
+     */
+    const uint Id;
+
+    /** \~russian Позволяет определить валидность объекта. */
+    /** \~english Allows to check whether underlying object is valid. */
+    const bool IsNotValid;
+
+    /** \~russian Базовый тип анимации криттера. */
+    /** \~english Critter common animation type. */
+    const uint8 CrType;
+
+    /** \~russian Координата, по оси X, расположения криттера на карте. */
+    /** \~english Critter's location on the map, X axis. */
+    const uint16 HexX;
+
+    /** \~russian Координата, по оси Y, расположения криттера на карте. */
+    /** \~english Critter's location on the map, Y axis. */
+    const uint16 HexY;
+
+    /** \~russian Координата, по оси X, расположения криттера на глобальной карте. */
+    /** \~english Critter's position on worldmap, X-coordinate. */
+    const uint16 WorldX;
+
+    /** \~russian Координата, по оси Y, расположения криттера на глобальной карте. */
+    /** \~english Critter's position on worldmap, Y-coordinate. */
+    const uint16 WorldY;
+
+    /** \~russian Направление, в которое повернут криттер. */
+    /** \~english Critter's direction. */
+    const uint8 Dir;
+
+    /** \~russian Текущее состояние криттера.
+     *
+     * Cм. @link CritterConditions Critter basic conditions@endlink.
+     *
+     * \~english Current Critter's condition (see @link CritterConditions Critter basic conditions@endlink).
+     */
+    const uint8 Cond;
+
+    /** \~russian Уточняет состояние криттера.
+     *
+     * См. @link CritterConditions Extended critter conditions@endlink.
+     *
+     * \~english Critter's extended condition (see @link CritterConditions Extended critter conditions@endlink).
+     */
+    const uint8 CondExt;
+
+    /** \~russian Флаги криттера, предназначенные только для чтения.
+     *
+     *  См. @link CritterExtraFlags Critter extra flags@endlink.
+     */
+    const uint16 Flags;
+
+    /** \~russian Определяет роль криттера. Устанавливается по усмотрению разработчика скрипта.
+     *
+     ** \~english Value describing role of the npc - usage depends on script.
+     *
+     ** \~
+     * @see Map::GetNpc
+     */
+    int NpcRole;
+
+    /** \~russian Дистанция обнаружения для событий #CRITTER_EVENT_SHOW_CRITTER_1 и #CRITTER_EVENT_HIDE_CRITTER_1. */
+    /** \~english Distance used by following events #CRITTER_EVENT_SHOW_CRITTER_1 and #CRITTER_EVENT_HIDE_CRITTER_1. */
+    uint ShowCritterDist1;
+
+    /** \~russian Дистанция обнаружения для события #CRITTER_EVENT_SHOW_CRITTER_2 и #CRITTER_EVENT_HIDE_CRITTER_2. */
+    /** \~english Distance used by following events #CRITTER_EVENT_SHOW_CRITTER_2 and #CRITTER_EVENT_HIDE_CRITTER_2. */
+    uint ShowCritterDist2;
+
+    /** \~russian Дистанция обнаружения для событий #CRITTER_EVENT_SHOW_CRITTER_3 и #CRITTER_EVENT_HIDE_CRITTER_3. */
+    /** \~english Distance used by following events #CRITTER_EVENT_SHOW_CRITTER_3 and #CRITTER_EVENT_HIDE_CRITTER_3. */
+    uint ShowCritterDist3;
+
+    /** \~russian Позволяет узнать, бежал ли криттер в момент срабатывания событий триггера или предмета. */
+    bool IsRuning;
+    
+    /** \~russian Уточняет состояние криттера. Используется для анимаций. */
+    const uint Life;
+    
+    /** \~russian Уточняет состояние криттера. Используется для анимаций. */
+    const uint Knockout;
+    
+    /** \~russian Уточняет состояние криттера. Используется для анимаций. */
+    const uint Dead;
+
+    /** \~russian Массив значений параметров криттера.
+     *
+     * Только для чтения.
+     *
+     * @see  ParamBase
+     * @see  SetParameterGetBehaviour
+     *
+     */
+    DataVal Param;
+
+    /** \~russian Массив базовых значений параметров криттера.
+     *
+     * @see  Param
+     * @see  SetParameterChangeBehaviour
+     *
+     */
+    DataRef ParamBase;
+
+    //@}
+
+    /**
+     * \~russian @name Скрипты и события
+     * \~english @name Scripts and events
+     * \~ @weight 300
+     */
+    //@{
+
+    /** \~russian Устанавливает новый скрипт и вызывает в нем функцию инициализации с параметром @a firstTime равным @c true.
+     *
+     * @param   script  Имя скрипта.
+     *
+     * @return  @c true в случае успеха; @c false в случае провала.
+     *
+     * @remarks Если скрипт или функция не найдена, то установки значения скрипта не произойдет.
+     *
+     ** \~english Assigns given script and calls initialization function with @a firstTime set to @c true.
+     *
+     * @param   script  Script name.
+     *
+     * @return  @c true in case of success; @c false otherwise.
+     *
+     * @remarks If the script or the funtion can not be found, the new script will not be set.
+     */
+    bool SetScript(string@+ script);
+
+    /** \~russian Возвращает ID текущего скрипта, связанного с данным криттером.
+     *
+     * См. @b _scripts.fos, @b scripts.lst.
+     *
+     * @return ID текущего скрипта. 0, если скрипт не назначен.
+     *
+     ** \~english Retrieves the identifier of the script assigned to critter.
+     *
+     * See @b _scripts.fos, @b scripts.lst.
+     *
+     * @return Identifier of the script used by critter, 0 if no assigned.
+     */
+    uint GetScriptId();
+
+    /** \~russian Биндит функцию-обработчика определенного события.
+     *
+     * @param  eventType  Тип события (см. @link CritterEvents Critter events@endlink).
+     * @param  funcName   Имя функции-обработчика.
+     *
+     ** \~english Assigns the event handler for given event.
+     *
+     * @param  eventType  Type of the event (see @link CritterEvents Critter events@endlink).
+     * @param  funcName   Name of the function that will be attached as event handler.
+     */
+    void SetEvent(int eventType, string& funcName);
+
+    //@}
+
+    /**
+     * \~russian @name Вызов событий
+     * \~english @name Invoking events
+     * \~ @weight 295
+     */
+
+    //@{
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_IDLE. */
+    /** \~english Invokes #CRITTER_EVENT_IDLE event. */
+    void EventIdle();
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_FINISH. */
+    /** \~english Invokes #CRITTER_EVENT_FINISH event. */
+    void EventFinish(bool deleted);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_DEAD. */
+    /** \~english Invokes #CRITTER_EVENT_DEAD event. */
+    void EventDead(Critter@ killer);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_RESPAWN. */
+    /** \~english Invokes #CRITTER_EVENT_RESPAWN event. */
+    void EventRespawn();
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SHOW_CRITTER. */
+    /** \~english Invokes #CRITTER_EVENT_SHOW_CRITTER event. */
+    void EventShowCritter(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_HIDE_CRITTER. */
+    /** \~english Invokes #CRITTER_EVENT_HIDE_CRITTER event. */
+    void EventHideCritter(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SHOW_ITEM_ON_MAP. */
+    /** \~english Invokes #CRITTER_EVENT_SHOW_ITEM_ON_MAP event. */
+    void EventShowItemOnMap(Item& showItem, bool added, Critter@ dropper);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_CHANGE_ITEM_ON_MAP. */
+    /** \~english Invokes #CRITTER_EVENT_CHANGE_ITEM_ON_MAP event. */
+    void EventChangeItemOnMap(Item& item);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_HIDE_ITEM_ON_MAP. */
+    /** \~english Invokes #CRITTER_EVENT_HIDE_ITEM_ON_MAP event. */
+    void EventHideItemOnMap(Item& hideItem, bool removed, Critter@ picker);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_ATTACKED. */
+    /** \~english Invokes #CRITTER_EVENT_ATTACKED event. */
+    bool EventAttacked(Critter& attacker, Item@ weapon);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_STEALING. */
+    /** \~english Invokes #CRITTER_EVENT_STEALING event. */
+    void EventStealing(Critter& thief, bool success, Item& item, uint count);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_MESSAGE. */
+    /** \~english Invokes #CRITTER_EVENT_MESSAGE event. */
+    void EventMessage(Critter& fromCrit, int message, int value);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_ATTACK. */
+    /** \~english Invokes #CRITTER_EVENT_ATTACK event. */
+    bool EventAttack(Critter& target, Item@ weapon);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_USE_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_USE_ITEM event. */
+    bool EventUseItem(Item& item, Critter@ onCritter, Item@ onItem, Scenery@ onScenery);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_USE_SKILL. */
+    /** \~english Invokes #CRITTER_EVENT_USE_SKILL event. */
+    bool EventUseSkill(int skill, Critter@ onCritter, Item@ onItem, Scenery@ onScenery);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_DROP_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_DROP_ITEM event. */
+    void EventDropItem(Item& item);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_MOVE_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_MOVE_ITEM event. */
+    void EventMoveItem(Item& item, uint8 fromSlot);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_KNOCKOUT. */
+    /** \~english Invokes #CRITTER_EVENT_KNOCKOUT event. */
+    void EventKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_STEALING. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_STEALING event. */
+    void EventSmthStealing(Critter& fromCrit, Critter& thief, bool success, Item& item, uint count);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_ATTACK. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_ATTACK event. */
+    void EventSmthAttack(Critter& fromCrit, Critter& target);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_ATTACKED. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_ATTACKED event. */
+    void EventSmthAttack(Critter& fromCrit, Critter& target);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_USE_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_USE_ITEM event. */
+    void EventSmthUseItem(Critter& fromCrit, Item& item, Critter@ onCritter, Item@ onItem, Scenery@ onScenery);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_USE_SKILL. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_USE_SKILL event. */
+    void EventSmthUseSkill(Critter& fromCrit, int skill, Critter@ onCritter, Item@ onItem, Scenery@ onScenery);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_DROP_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_DROP_ITEM event. */
+    void EventSmthDropItem(Critter& fromCrit, Item& item);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_MOVE_ITEM. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_MOVE_ITEM event. */
+    void EventSmthMoveItem(Critter& fromCrit, Item& item, uint8 fromSlot);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SMTH_KNOCKOUT. */
+    /** \~english Invokes #CRITTER_EVENT_SMTH_KNOCKOUT event. */
+    void EventSmthKnockout(Critter& fromCrit, uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_BARTER. */
+    /** \~english Invokes #CRITTER_EVENT_BARTER event. */
+    bool EventBarter(Critter& cr, bool attach, uint barterCount);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_TALK. */
+    /** \~english Invokes #CRITTER_EVENT_TALK event. */
+    bool EventTalk(Critter& cr, bool attach, uint talkCount);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_PLANE_BEGIN. */
+    /** \~english Invokes #CRITTER_EVENT_PLANE_BEGIN event. */
+    bool EventPlaneBegin(NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_PLANE_END. */
+    /** \~english Invokes #CRITTER_EVENT_PLANE_END event. */
+    bool EventPlaneEnd(NpcPlane& plane, uint childIndex, int reason, Critter@ someCr, Item@ someItem);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_PLANE_RUN. */
+    /** \~english Invokes #CRITTER_EVENT_PLANE_RUN event. */
+    bool EventPlaneRun(NpcPlane& plane, uint childIndex, int reason, uint& p0, uint& p1, uint& p2);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SHOW_CRITTER_1. */
+    /** \~english Invokes #CRITTER_EVENT_SHOW_CRITTER_1 event. */
+    void EventShowCritter1(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SHOW_CRITTER_2. */
+    /** \~english Invokes #CRITTER_EVENT_SHOW_CRITTER_2 event. */
+    void EventShowCritter2(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_SHOW_CRITTER_3. */
+    /** \~english Invokes #CRITTER_EVENT_SHOW_CRITTER_3 event. */
+    void EventShowCritter3(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_HIDE_CRITTER_1. */
+    /** \~english Invokes #CRITTER_EVENT_HIDE_CRITTER_1 event. */
+    void EventHideCritter1(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_HIDE_CRITTER_2. */
+    /** \~english Invokes #CRITTER_EVENT_HIDE_CRITTER_2 event. */
+    void EventHideCritter2(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_HIDE_CRITTER_3. */
+    /** \~english Invokes #CRITTER_EVENT_HIDE_CRITTER_3 event. */
+    void EventHideCritter3(Critter& cr);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_GLOBAL_PROCESS. */
+    /** \~english Invokes #CRITTER_EVENT_GLOBAL_PROCESS event. */
+    bool EventGlobalProcess(int type, Critter& cr, Item@ car, uint& x, uint& y, uint& toX, uint& toY, uint& speed, uint& encounterDescriptor, bool& waitForAnswer);
+
+    /** \~russian Принудительно вызывает событие #CRITTER_EVENT_GLOBAL_INVITE. */
+    /** \~english Invokes #CRITTER_EVENT_GLOBAL_INVITE event. */
+    bool EventGlobalInvite(Critter& leader, Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir);
+
+    //@}
+
+    /**
+     * \~russian @name Карта
+     * \~english @name Map
+     *
+     * \~ @weight 290
+     */
+    //@{
+
+    /** \~russian Возвращает указатель на объект карты, на которой находится криттер.
+     *
+     * @return Указатель на экземпляр класса Map. В случае провала – @c null.
+     *
+     ** \~english Returns a handler to the map object on which the critter is located in.
+     *
+     * @return Handler to the Map object in case of success, otherwise – @c null.
+     */
+    Map@+ GetMap();
+
+    /** \~russian Возвращает уникальный ID карты, на которой находится криттер.
+     *
+     * @return ID карты. В случае провала – 0.
+     *
+     ** \~english Retrieves the ID of the map critter is located in.
+     *
+     * @return Map's ID. In case of failure (e.g. critter on worldmap)  – 0.
+     */
+    uint GetMapId();
+
+    /** \~russian Возвращает ID прототипа карты, на которой находится криттер.
+     *
+     * @return ID прототипа карты. В случае провала – 0.
+     *
+     ** \~english Retrieves the ID number of map proto the critter is located in.
+     *
+     * @return Map's proto ID. In case of failure (e.g. critter on worldmap)  – 0.
+     */
+    uint16 GetMapProtoId();
+
+    /** \~russian Позволяет получить состояние видимости указанной клетки глобальной карты мира для криттера.
+     *
+     * @param   zoneX, zoneY  Координаты клетки глобальной карты мира.
+     *
+     * @return  Состояние видимости. См. @link GlobalMapFog Global map fog@endlink.
+     *
+     * @see     SetFog
+     *
+     ** \~english Gets fog of the player's worldmap, at given coordinates.
+     *
+     * @param   zoneX, zoneY  Coordinates.
+     *
+     * @return  Fog type, see @link GlobalMapFog Global map fog@endlink.
+     *
+     * @see     SetFog
+     */
+    int GetFog(uint16 zoneX, uint16 zoneY);
+
+    /** \~russian Позволяет изменить для криттера видимость указанной клетки глобальной карты мира.
+     *
+     * @param zoneX, zoneY  Координаты клетки глобальной карты мира.
+     * @param fog           Устанавливаемое состояние видимости. См. @link GlobalMapFog Global map fog@endlink.
+     *
+     * @see GetFog
+     *
+     ** \~english Sets fog of the player's worldmap, at given coordinates.
+     *
+     * @param zoneX, zoneY  Coordinates.
+     * @param fog           Fog type, see @link GlobalMapFog Global map fog@endlink.
+     *
+     * @see GetFog
+     */
+    void SetFog(uint16 zoneX, uint16 zoneY, int fog);
+
+    //@}
+
+    /**
+     * \~russian @name Cтатистика
+     * \~english @name Statistics
+     * \~ @weight 270
+     */
+    //@{
+
+    /** \~russian Добавляет указанное количество очков в указанную статистику криттера.
+     *
+     * @param  score  Номер статистики (см. @link Scores@endlink).
+     * @param  value  Количество очков.
+     *
+     */
+    void AddScore(int score, int value);
+
+    //@}
+
+    /**
+     * \~russian @name Инвентарь
+     * \~english @name Inventory
+     * \~ @weight 260
+     */
+    //@{
+
+    /** \~russian Возвращает время обновления сумки.
+     *
+     * @return Время обновления сумки в реальных минутах.
+     *
+     * @see    SetBagRefreshTime
+     */
+    uint GetBagRefreshTime();
+
+    /** \~russian Устанавливает время обновления сумки.
+     *
+     * Если время обновления равно 0, то берется время по-умолчанию:
+     * рандомно от 60 до 120 реальных минут.
+     *
+     * @param  realMinutes  Новое значение в реальных минутах.
+     *
+     * @see    GetBagRefreshTime
+     */
+    void SetBagRefreshTime(uint realMinutes);
+
+    /** \~russian Позволяет получить внутреннюю сумку криттера.
+     *
+     * @param  pids       Массив, к которому будут дописаны номера прототипов предметов в сумке.
+     * @param  minCounts  Массив, к которому будут дописано минимальное количество предметов для каждого прототипа.
+     * @param  maxCounts  Массив, к которому будут дописано максимальное количество предметов для каждого прототипа.
+     * @param  slots      Массив, к которому будут дописаны номера слотов размещения для каждого прототипа.
+     *
+     * @see    SetInternalBag
+     */
+    uint GetInternalBag(uint16[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots);
+
+    /** \~russian Позволяет установить внутреннюю сумку криттера.
+     *
+     * Начальное состояние формируется из инвентаря NPC в маппере, если его параметр @a BagId равен 0.
+     *
+     * @param  pids       Массив с номерами прототипов предметов, которые будут содержаться в сумке.
+     * @param  minCounts  Массив, содержащий минимальное количество каждого предмета в сумке.
+     * @param  maxCounts  Массив, содержащий максимальное количество каждого предмета в сумке.
+     * @param  slots      Массив с номерами слотов, в которых должны размещаться предметы из сумки.
+     *
+     * @see    GetInternalBag
+     */
+    void SetInternalBag(uint16[]& pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots);
+
+    /** \~russian Возвращает количество всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Количество всех предметов.
+     */
+    uint ItemsCount();
+
+    /** \~russian Возвращает общий вес всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Общий вес предметов в инвентаре.
+     */
+    uint ItemsWeight();
+
+    /** \~russian Возвращает общий объем всех предметов, находящихся в инвентаре криттера.
+     *
+     * @return Общий объем предметов в инвентаре.
+     */
+    uint ItemsVolume();
+
+    /** \~russian Возвращает количество указанных предметов, находящихся в инвентаре криттера.
+     *
+     * @param   protoId  ID прототипа предмета (см. файл @b ITEMPID.H).
+     *
+     * @return  Количество предметов с указанным прототипом, находящихся в инвентаре.
+     */
+    uint CountItem(uint16 protoId);
+
+    /** \~russian Позволяет получить предмет с указанным прототипом,
+     *            находящийся в указанном слоте инвентаря криттера.
+     *
+     * @param  protoId  ID прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  slot     Слот, в котором находится предмет (см. @link Slots@endlink).
+     *                  Если установлено значение: -1, то слот учитываться не будет.
+     *
+     * @return Указатель на экземпляр класса Item, если предмет найден.
+     *         В противном случае – @c null.
+     */
+    Item@+ GetItem(uint16 protoId, int slot);
+
+   /** \~russian Позволяет получить предмет с указанным идентификатором,
+     *           находящийся в инвентаре криттера.
+     *
+     * @param  itemId  ID предмета (см. файл @b ITEMPID.H).
+     *
+     * @return Указатель на экземпляр класса Item, если предмет найден.
+     *         В противном случае – @c null.
+     */
+    Item@+ GetItemById(uint itemId);
+
+    /** \~russian Находит все предметы, которые находятся в инвентаре.
+     *
+     * @param  slot   Слот, в котором находятся предметы (см. @link Slots@endlink).
+     *                Если установлено значение: -1, то слот учитываться не будет.
+     * @param  items  Массив указателей на предметы, которые находятся в инвентаре.
+     *                Массив не очищается, а дописывается с конца нужными предметами.
+     *
+     * @return Количество найденных предметов.
+     */
+    uint GetItems(int slot, Item@[]@+ items);
+
+    /** \~russian Позволяет получить все предметы указанного типа, находящиеся в инвентаре криттера.
+     *
+     * @param   type   Тип предмета (см. @link ItemsTypes Items types@endlink).
+     * @param   items  Массив, в конец которого будут записаны найденные предметы.
+     *
+     * @return  Количество предметов указанного типа.
+     */
+    uint GetItemsByType(int type, Item@[]@+ items);
+
+    /** \~russian Перемещает предмет из одного слота в другой.
+     *
+     * @param  objId   Уникальный ID предмета.
+     * @param  toSlot  Слот, в который перемещают предмет (см. @link Slots@endlink).
+     * @param  count   Количество перемещаемых предметов.
+     *
+     * @return @c true – в случае удачного перемещения, @c false – в случае провала.
+     */
+    bool MoveItem(uint objId, uint count, uint8 toSlot);
+
+    /** \~russian Добавляет предмет в инвентарь криттера.
+     *
+     * @param  protoId  Номер прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  count    Количество предметов.
+     *
+     * @return Указатель на экземпляр класса Item. В случае провала – @c null.
+     */
+    Item@+ AddItem(uint16 protoId, uint count);
+
+    /** \~russian Удаляет предмет из инвентаря криттера.
+     *
+     * @param  protoId  Номер прототипа предмета (см. файл @b ITEMPID.H).
+     * @param  count    Количество предметов.
+     *
+     * @return @c true – в случае удачного добавления; @c false – в случае провала.
+     */
+    bool DeleteItem(uint16 protoId, uint count);
+
+    /** \~russian Заставляет криттера поднять предмет.
+     *
+     * Для того, чтобы предмет был поднят удачно, криттер должен находиться не дальше,
+     * чем на 1 гексагон от предмета.
+     *
+     * @param  hexX, hexY  Координаты гексагона, на котором находится предмет.
+     * @param  protoId     Номер прототипа предмета (см. файл @b ITEMPID.H).
+     *
+     * @return @c true – в случае поднятия,
+     *         @c false – в случае неудачного завершения работы функции.
+     */
+    bool PickItem(uint16 hexX, uint16 hexY, uint16 protoId);
+
+    /** \~russian Возвращает номер прототипа избранной вещи криттера для указанного слота.
+     *
+     * Подроности см. в описании #SetFavoriteItem.
+     *
+     * @param  slot  Слот. Доступны три: @c SLOT_HAND1, @c SLOT_HAND2, @c SLOT_ARMOR.
+     *
+     * @see    SetFavoriteItem
+     */
+    uint16 GetFavoriteItem(int slot);
+
+    /** \~russian Устанавливает избранную вещь криттера для указанного слота.
+     *
+     * Криттер, по окончании планов, может автоматически выбирать избранный предмет
+     * в нужный слот.
+     *
+     * Для отключения механизма можно установить криттеру перк #MODE_NO_FAVORITE_ITEM.
+     *
+     * @param  slot  Слот. См. @link Slots@endlink.
+     *               Из них доступны три: @c SLOT_HAND1, @c SLOT_HAND2, @c SLOT_ARMOR.
+     * @param  pid   Номер прототипа избранной вещи.
+     *
+     * @see    GetFavoriteItem
+     */
+    void SetFavoriteItem(int slot, uint16 pid);
+
+    /** \~russian Позволяет получить прототип предмета, который находится в указанном слоте.
+     *
+     * @param  slot  Слот (см. @link Slots@endlink).
+     *
+     * @return Указатель на экземпляр класса ProtoItem.
+     *         Если слот пуст, то возвращается @c null.
+     */
+    ProtoItem@+ GetSlotProto(int slot);
+
+    //@}
+
+    /**
+     * \~russian @name Передвижение
+     * \~english @name Movement
+     * \~ @weight 250
+     */
+    //@{
+
+    /** \~russian Заставляет криттера пройти 1 гексагон в случайном направлении.
+     *
+     * @return @c true – в случае удачного выполнения функции;
+     *         @c false – в случае провала.
+     *
+     * @see    MoveToDir
+     */
+    bool MoveRandom();
+
+    /** \~russian Заставляет криттера пройти 1 гексагон в указанном направлении.
+     *
+     * @param  dir  Направление шага. Возможные значения:
+     *              0 – вверх-право, 1 – вправо, 2 – вниз-право и т.д.
+     *
+     * @return @c true – в случае удачного выполнения функции;
+     *         @c false – в случае провала.
+     *
+     * @see    MoveRandom
+     */
+    bool MoveToDir(uint8 dir);
+
+    /** \~russian Поворачивает криттера в указанном направлении.
+     *
+     * @param  dir  Направление. Возможные значения:
+     *              0 – вверх-право, 1 – вправо, 2 – вниз-право и т.д.
+     *
+     */
+    void SetDir(uint8 dir);
+
+    /** \~russian Устанавливает домашнюю позицию криттера.
+     *
+     * Криттер будет всегда возвращаться в эту позицию при отсутствии планов.
+     *
+     * @param  hexX, hexY  Координаты гексагона (позиции).
+     * @param  dir         Направление, в которое будет повернут криттер, будучи на этой позиции.
+     *
+     * @see    GetHomePos
+     */
+    void SetHomePos(uint16 hexX, uint16 hexY, uint8 dir);
+
+    /** \~russian Возвращает домашнюю позицию криттера.
+     *
+     * @param  [out]  mapId       Переменная, в которую будет записан уникальный
+     *                            идентификатор карты домашней позиции криттера.
+     * @param  [out]  hexX, hexY  Переменные, в которые будут записаны координаты
+     *                            домашней позиции.
+     * @param  [out]  dir         Переменная, в которую будет записано направление,
+     *                            в которое повернут криттер, стоя на этой позиции.
+     *
+     * @see    SetHomePos
+     */
+    void GetHomePos(uint& mapId, uint16& hexX, uint16& hexY, uint8& dir);
+
+    /** \~russian Перемещает игрока или партию игроков на глобальную карту мира.
+     *
+     * @param   requestGroup  Указывает, нужно ли послать уведомление о перемещении
+     *                        всей партии данного игрока (@c true) или просто выкинуть игрока
+     *                        на глобал (@c false).
+     *
+     * @remarks Предназначена только для игроков.
+     */
+    bool TransitToGlobal(bool requestGroup);
+
+    /** \~russian Перемещает на глобал с группой.
+     *
+     * @param  group  Массив криттеров, перемещаемых на глобал в группу с криттером.
+     *
+     * @return @c true – если перемещение успешно; @c false – в противном случае.
+     *
+     * @remarks Криттер, у которого вызывается метод, должен находиться не на глобале.
+     *
+     * @remarks Криттеры из группы могут находиться и на других картах. Если кто-то из
+     *          них находится на глобале, то в группу он не будет добавлен, но функция всё
+     *          равно завершится успешно и криттер, для которого был вызван метод, будет
+     *          перемещен на глобал.
+     */
+    bool TransitToGlobal(Critter@[]& group);
+
+    /** \~russian Перемещает криттера на глобал в группу указанного криттера.
+     *
+     * @param   critterId  Идентификатор криттера, в группу которого происходит перемещение.
+     *                     Этот криттер должен находиться на глобале.
+     *
+     * @return  @c true – если перемещение успешно; @c false – в противном случае.
+     *
+     * @remarks Криттер, для которого вызывается метод, должен находиться не на глобале.
+     */
+    bool TransitToGlobalGroup(uint critterId);
+
+    /** \~russian Перемещает криттера в указанный гексагон на текущей карте.
+     *
+     * @param   hexX, hexY  Координаты гексагона, в который нужно переместить криттера.
+     * @param   dir         Направление криттера после перемещения.
+     *
+     * @remarks Для NPC автоматически прописывается новая домашняя позиция.
+     *
+     * @remarks Если параметр <tt>dir > 5</tt>, то направление криттера не меняется.
+     */
+    bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir);
+
+    /** \~russian Перемещает криттера на определенную карту, помещая его в указанный гексагон.
+     *
+     * @param   mapId       Идентификатор карты.
+     * @param   hexX, hexY  Координаты гексагона, на который помещается криттер. При передаче некорректных гексов
+     *                      Игрок перемещается в область рядом с машиной или на вход с номером 0, если машина отсутствует.
+     * @param   dir         Направление криттера после перемещения.
+     * @param   withGroup   Перемещать ли игрока вместе с группой или отдельно.
+     *
+     * @remarks Для NPC автоматически прописывается новая домашняя позиция.
+     *
+     * @remarks Если параметр <tt>dir > 5</tt>, то направление криттера не меняется.
+     */
+    bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir, bool withGroup);
+
+    /** \~russian Перемещает криттера на определенную карту, помещая его в указанный гексагон.
+     *
+     * @param   mapId       Идентификатор карты.
+     * @param   hexX, hexY  Координаты гексагона, на который помещается криттер. При передаче некорректных гексов
+     *                      Игрок перемещается в область рядом с машиной или на вход с номером 0, если машина отсутствует.
+     * @param   dir         Направление криттера после перемещения.
+     *
+     * @remarks Для NPC автоматически прописывается новая домашняя позиция.
+     *
+     * @remarks Если параметр <tt>dir > 5</tt>, то направление криттера не меняется.
+     */
+    bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir);
+
+    /** \~russian Перемещает криттера на определенную карту, помещая его на точку входа с указанным номером.
+     *
+     * @param   mapId      Идентификатор карты.
+     * @param   entireNum  Номер точки входа (специально помеченной группы гексагонов).
+     *
+     * @remarks Для NPC автоматически прописывается новая домашняя позиция.
+     */
+    bool TransitToMap(uint mapId, uint8 entireNum);
+
+    //@}
+
+    /**
+     * \~russian @name Разговор
+     * \~english @name Talk
+     * \~ @weight 240
+     */
+    //@{
+
+    /** \~russian Заставляет криттера сказать что-либо.
+     *
+     * Если NPC мертв или упал на землю, то произносить фразу он не будет.
+     *
+     * @param  howSay  Тип фразы. Например: говорить спокойно, кричать и т.д.
+     *                 (см. @link SayTypes Say types@endlink).
+     * @param  text    Текст сообщения.
+     */
+    void Say(uint8 howSay, string@ text);
+
+    /** \~russian Заставляет криттера сказать что-либо.
+     *
+     * Текст сообщения находится в файле. Если NPC мертв или упал на землю,
+     * то произносить фразу он не будет.
+     *
+     * @param  howSay   Тип фразы, например: говорить спокойно, кричать и т.д.
+     *                  (см. @link SayTypes Say types@endlink).
+     * @param  textMsg  Название файла с текстами
+     *                  (см. @link MsgNums Msg nums@endlink).
+     * @param  strNum   Номер фразы в файле.
+     */
+    void SayMsg(uint8 howSay, uint16 textMsg, uint strNum);
+
+    /** \~russian Заставляет криттера сказать что-либо.
+     *
+     * Текст сообщения находится в файле. Если NPC мертв или упал на землю,
+     * то произносить фразу он не будет.
+     *
+     * @param  howSay   Тип фразы, например: говорить спокойно, кричать и т.д.
+     *                  (см. @link SayTypes Say types@endlink).
+     * @param  textMsg  Название файла с текстами (см. @link MsgNums Msg nums@endlink).
+     * @param  strNum   Номер фразы в файле.
+     * @param  lexems   Вставки текста
+     *                  (см. <a href="http://fonline.ru/fowork/wiki/index.php/Скрипты:_Работа_с_диалогом#@lex name@">Работа с диалогом</a>).
+     */
+    void SayMsg(uint8 howSay, uint16 textMsg, uint strNum, string& lexems);
+
+    //@}
+
+    /**
+     * \~russian @name Локации
+     * \~english @name Locations
+     * \~ @weight 230
+     */
+    //@{
+
+    /** \~russian Позволяет определить, знает ли игрок об указанной локации или нет.
+     *
+     * @param  byId    Если указано значение @c true,
+     *                 то @a locNum расценивается как уникальный идентификатор локации;
+     *                 если @c false – то как номер прототипа.
+     * @param  locNum  Номер прототипа локации (см. файл @b _maps.fos) или
+     *                 уникальный идентификатор локации.
+     *
+     * @return @c true – если знает; @c false – если нет.
+     *
+     * @see    SetKnownLoc
+     * @see    UnsetKnownLoc
+     */
+    bool IsKnownLoc(bool byId, uint locNum);
+
+    /** \~russian Делает локацию видимой для криттера.
+     *
+     * @param  byId    Если указано значение @c true, то @a locNum расценивается
+     *                 как уникальный идентификатор локации, если @c false –
+     *                 то как номер прототипа.
+     * @param  locNum  Номер прототипа локации (см. файл @b _maps.fos) или
+     *                 уникальный идентификатор локации.
+     *
+     * @return @c true – в случае успеха; @c false – в случае провала.
+     *
+     * @see    IsKnownLoc
+     * @see    UnsetKnownLoc
+     */
+    bool SetKnownLoc(bool byId, uint locNum);
+
+    /** \~russian Делает локацию невидимой для криттера.
+     *
+     * @param  byId    Если указано значение @c true, то @a locNum расценивается
+     *                 как уникальный идентификатор локации, если @c false –
+     *                 то как номер прототипа.
+     * @param  locNum  Номер прототипа локации (см. файл @b _maps.fos) или
+     *                 уникальный идентификатор локации.
+     *
+     * @return @c true – в случае успеха, @c false – в случае провала.
+     *
+     * @see    IsKnownLoc
+     * @see    SetKnownLoc
+     */
+    bool UnsetKnownLoc(bool byId, uint locNum);
+
+    //@}
+
+    /**
+     * \~russian @name Планы
+     * \~english @name Plans
+     * \~ @weight 220
+     */
+    //@{
+
+    /** \~russian Устанавливает план NPC.
+     *
+     * План добавляется в очередь планов. Cортировка планов (т.е. определение порядка исполнения)
+     * при установке идет по их приоритету (см. NpcPlane::Priority).
+     *
+     * @param   plane  Устанавливаемый план.
+     *
+     * @return  @c true – в случае успеха; @c false – в случае неудачи.
+     *
+     * @remarks Для создания экземпляра класса NpcPlane используйте глобальную функцию ::CreatePlane.
+     */
+    bool AddPlane(NpcPlane@+ plane);
+
+    /** \~russian Удаляет план по указанному индексу.
+     *
+     * @param  index  Индекс удаляемого плана в очереди.
+     *
+     * @return @c true – в случае успеха; @c false – в случае неудачи.
+     */
+    bool ErasePlane(uint index);
+
+    /** \~russian Удаляет план(ы) указанного типа.
+     *
+     * @param  planeType Тип плана, который следует удалить
+     *                   (см. @link PlanesTypes Planes types@endlink).
+     *                   Если установлено значение: -1, то этот параметр учитываться не будет.
+     * @param  all       Если установлено значение @c true, то удаляются все планы указанного типа.
+     *                   Если установлено значение – @c false, то удаляется только один план
+     *                   указанного типа, находящийся в самом начале очереди.
+     *
+     * @return Отрицательное значение в случае неудачи.
+     *         Все остальные значения в случае удачного выполнения функции.
+     */
+    uint ErasePlane(int planeType, bool all);
+
+    /** \~russian Возвращает текущий план.
+     *
+     * @return Текущий план.
+     */
+    NpcPlane@+ GetCurPlane();
+
+    /** \~russian Позволяет получить все текущие планы NPC.
+     *
+     * @param   planes  Массив, в конец которого будут дописаны все текущие планы.
+     *
+     * @return  Количество базовых планов.
+     *
+     * @remarks Чтобы просто узнать количество базовых планов,
+     *          в параметре @a planes можно передать значение @c null вместо списка.
+     */
+    uint GetPlanes(NpcPlane@[]@+ planes);
+
+    /** \~russian Позволяет проверить, есть ли у криттера запланированные действия.
+     *
+     * @return @c true – если у криттера нет запланированных действий;
+     *         @c false – если есть.
+     */
+    bool IsNoPlanes();
+
+    /** \~russian Позволяет узнать количество планов с заданным идентификатором.
+     *
+     * @param   identifier  Идентификатор планов.
+     * @param   planes  Массив, в конец которого будут дописаны все текущие планы.
+     *
+     * @return  Количество найденных планов.
+     */
+    uint GetPlanes(int identifier, NpcPlane@[]@+ planes);
+
+    /** \~russian Позволяет узнать количество планов с заданным параметром identifierExt.
+     *
+     * @param   identifierExt  Параметр identifierExt планов, среди которых будет вестись поиск.
+     * @param   planes  Массив, в конец которого будут дописаны все текущие планы.
+     *
+     * @return  Количество найденных планов.
+     */
+    uint GetPlanesByExt(uint identifierExt, NpcPlane@[]@+ planes);
+
+    /** \~russian Позволяет узнать количество планов с заданными параметрами identifier и identifierExt.
+     *
+     * @param   identifier  параметр identifier планов, среди которых будет вестись поиск.
+     * @param   identifierExt  параметр identifierExt планов, среди которых будет вестись поиск.
+     * @param   planes  Массив, в конец которого будут дописаны все текущие планы.
+     *
+     * @return  Количество найденных планов.
+     */
+    uint GetPlanes(int identifier, uint identifierExt, NpcPlane@[]@+ planes);
+
+    /** \~russian Cбрасывает все планы NPC. */
+    /** \~english Drops all NPC planes. */
+    void DropPlanes();
+
+    //@}
+
+    /**
+     * \~russian @name Уведомления
+     * \~english @name Notifications
+     * \~ @weight 210
+     */
+    //@{
+
+    /** \~russian Отправляет игроку уведомление об изменившейся игровой переменной.
+     *
+     * @param   var  Изменившаяся игровая переменная.
+     *
+     * @remarks Только для игроков.
+     */
+    void SendQuestVar(GameVar& var);
+
+    /** \~russian Служит для оповещения игроков о результатах боя.
+     *
+     * @param  combatResult  Массив, содержащий информацию о бое и его результате.
+     *                       Первый элемент массива должен содержать размер массива. Затем может
+     *                       следовать любое количество записей
+     *                       (детальную их спецификацию см. в @b combat_msg.fos).
+     *
+     * @remarks Только для игроков.
+     *
+     ** \~english Sends the results of the combat to players.
+     *
+     * @param  combatResult Result to send. First uint should be equal the @a combatResult
+     *                      length, then it should be followed by any number of records
+     *                      (for their definition, look in combat_msg.fos).
+     *
+     * @remarks Only for players.
+     */
+    void SendCombatResult(uint[]& combatResult);
+
+    /** \~russian Служит для разрешения отправки игроку информации о других криттерах.
+     *
+     * @param   index    Индекс параметра. См. @link Params Параметры криттеров@endlink.
+     * @param   enabled  Разрешить или запретить отправку.
+     *
+     * @remarks По-умолчанию, все уведомления запрещены.
+     * @remarks Только для игроков.
+     */
+    void SetSendParam(uint index, bool enabled);
+
+    /** \~russian Отправляет сообщение другим криттерам.
+     *
+     * Чтобы другой криттер прочитал это сообщение, для него должна быть описана
+     * предопределенная функция ::on_message. Сообщения принимаются в момент посылки.
+     *
+     * @param  num  Номер сообщения.
+     * @param  val  Передаваемое значение.
+     * @param  to   Определяет, кому отсылается сообщение
+     *              (см. @link InSendMessage In SendMessage@endlink).
+     *
+     * @see    CRITTER_EVENT_MESSAGE
+     */
+    void SendMessage(int num, int val, int to);
+
+    //@}
+
+    /**
+     * \~russian @name Состояние
+     * \~english @name State
+     * \~ @weight 200
+     */
+    //@{
+
+    /** \~russian Проверяет, свободен ли криттер или нет.
+     *
+     * @return @c true – если криттер свободен; @c false – в противном случае.
+     *
+     * @see    IsBusy
+     */
+    bool IsFree();
+
+    /** \~russian Проверяет, занят ли криттер или нет.
+     *
+     * @return @c true – если криттер занят; @c false – в противном случае.
+     *
+     * @see    IsFree
+     */
+    bool IsBusy();
+
+    /** \~russian Проверяет, мёртв ли криттер.
+     *
+     * @return @c true – если криттер мёртв; @c false – в противном случае.
+     *
+     * @see    ToDead
+     * @see    IsKnockout
+     * @see    IsLife
+     */
+    bool IsDead();
+
+    /** \~russian Проверяет, находится ли криттер в нокдауне.
+     *
+     * @return @c true – если криттер в нокдауне; @c false – в противном случае.
+     *
+     * @see    ToKnockout
+     * @see    IsDead
+     * @see    IsLife
+     */
+    bool IsKnockout();
+
+    /** \~russian Проверяет, жив ли криттер.
+     *
+     * @return @c true – если криттер жив; @c false – в противном случае.
+     *
+     * @see    ToLife
+     * @see    IsDead
+     * @see    IsKnockout
+     */
+    bool IsLife();
+
+    /** \~russian Убивает криттера.
+     *
+     * @param  anim2     Тип анимации смерти
+     *                   (см. <b>COND_DEAD_...</b> в @link CritterConditions Critter extended conditions@endlink).
+     * @param  killer    Указатель на криттера-убийцу.
+     *
+     * @see    IsDead
+     */
+    void ToDead(uint anim2, Critter@+ killer);
+
+    /** \~russian Посылает криттера в нокаут.
+     *
+     * @param   anim2begin        анимации начала накаута
+     * @param   anim2idle         анимации нахождения в накауте
+     * @param   anim2end          анимации выхода из накаута
+     * @param   lostAp            Количество очков действия, необходимых для поднятия с земли.
+     * @param   knockHx, knockHy  Гекс, на который падает криттер.
+     *
+     * @return  @c true – в случае успеха; @c false – в случае неудачи.
+     *
+     * @remarks Пока возможность указать гекс, на который упал криттер,
+     *          не реализована должным образом. Криттер в клиенте падает в отличный
+     *          от своей позиции гекс некорректно.
+     *
+     * @see     IsKnockout
+     */
+    bool ToKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint16 knockHx, uint16 knockHy);
+
+    /** \~russian Возвращает мертвого криттера к жизни.
+     *
+     * Если позиция мёртвого криттера занята (например, другим криттером),
+     * то респаун не происходит.
+     *
+     * @return @c true – в случае успеха; @c false – в случае неудачи.
+     *
+     * @see    IsLife
+     */
+    bool ToLife();
+
+    //@}
+
+    /**
+     * \~russian @name Анимация
+     * \~english @name Animation
+     * \~ @weight 190
+     */
+    //@{
+
+    /** \~russian Ставит указанную анимацию в очередь проигрываемых анимаций криттера.
+     *
+     * Для удобства пользуйтесь макросами (см. @b Animation в файле @b _macros.fos).
+     *
+     * Функция прекращает свою работу, когда началось проигрывание анимации.
+     *
+     * Если функция была вызвана в момент, когда у криттера проигрывается какая-либо анимация,
+     * то проигрывание новой анимации будет занесено в очередь.
+     *
+     * @param  anim1         Первый индекс анимации (см. @b ANIM1_* в @b _animation.fos).
+     * @param  anim2         Второй индекс анимации (см. @b ANIM2_* в @b _animation.fos).
+     * @param  item          Указатель на предмет, используемый в анимации.
+     * @param  clearSequence Очистка очереди анимаций.
+     *                       При @c false анимация записывается в конец очереди.
+     * @param  delayPlay     Актуален при <code>clearSequence == false</code>.
+     *                       Указывает ставить ли анимацию в очередь или пропустить (не проигрывать,
+     *                       если в данный момент идет другая анимация).
+     *
+     ** \~ @see #animation2d_process
+     *     @see #animation3d_process
+     */
+    void Animate(uint anim1, uint anim2, Item@+ item, bool clearSequence, bool delayPlay);
+
+    /** \~russian Cмена типа криттера.
+     *
+     * @param  newType  Новый тип.
+     *                  См. <a href="http://www.fonline.ru/forum/showthread.php?t=4511">Таблицу типов криттеров и возможностей их анимации</a>.
+     *
+     * @return @c true – в случае успеха, @c false – в противном случае.
+     */
+    bool ChangeCrType(uint newType);
+
+    /** \~russian Позволяет определить возможность использования криттером
+     *            указанной анимации (оружия, действий)
+     *
+     * @param   index  Индекс анимации.
+     *
+     * @return  @c true – если анимация может использоваться,
+     *          @c false – в противном случае.
+     */
+    bool IsAnim1(uint index);
+    
+    /** \~russian Для смены данных значений на постоянной основе (например, положение сидя, лежа).
+     *
+     * @param  cond   Для какого состаяния применить значения (см. COND_* в _defines.fos), при нуле применяется ко всем трем.
+     * @param  anim1  Значения анимаций.
+     * @param  anim2  Значения анимаций.
+     *
+     */
+    void SetAnims(int cond, uint anim1, uint anim2);
+
+    //@}
+
+    /**
+     * \~russian @name Для групп (партий)
+     * \~english @name Party
+     * \~ @weight 180
+     */
+    //@{
+
+    /** \~russian Ищет криттеров, входящих в группу во главе с криттером.
+     *
+     * @param   findType  Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters  Массив криттеров, в конец которого будут записаны найденные криттеры.
+     *
+     * @return  Количество найденных криттеров.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     * @remarks Найденные криттеры будут отсортированы по отдалению от криттера.
+     */
+    uint GetFollowGroup(int findType, Critter@[]@+ critters);
+
+    /** \~russian Позволяет получить лидера группы, в которую входит криттер.
+     *
+     * @return В том случае, если криттер видит лидера, то возвращается указатель
+     *         на лидера группы. В противном случае возвращается @c null.
+     */
+    Critter@+ GetFollowLeader();
+
+    /** \~russian Возвращает текущую группу на глобальной карте, в которую входит криттер.
+     *
+     * @return Массив, содержащий всех криттеров, входящих в группу на глобальной карте.
+     *         Если криттер находится не на глобале, то будет возвращен @c null.
+     *
+     */
+    Critter@[]@+ GetGlobalGroup();
+
+    //@}
+
+    /** \~russian @name Для работы со стеком противников
+     *
+     * Максимальная вместимость стека – 30.
+     *
+     ** \~english @name Enemy stack
+     *
+     * Maximum size of stack – 30.
+     *
+     ** \~ @weight 170
+     */
+    //@{
+
+    /** \~russian Добавляет криттера с указанным ID в стек противников.
+     *
+     * @param  critterId  ID добавляемого криттера.
+     */
+    void AddEnemyInStack(uint critterId);
+
+    /** \~russian Позволяет изменить размер стека противников.
+     *
+     * @param  newSize  Новый размер стека. Максимальное значение – 30.
+     */
+    void ChangeEnemyStackSize(uint newSize);
+
+    /** \~russian Позволяет проверить, находится ли криттер с указанным ID в стеке противников.
+     *
+     * @param  critterId  ID проверяемого криттера.
+     *
+     * @return @c true если находится; @c false – если нет.
+     */
+    bool CheckEnemyInStack(uint critterId);
+
+    /** \~russian Очищает стек противников. */
+    void ClearEnemyStack();
+
+    /** \~russian Удаляет криттера с указанным ID из стека противников.
+     *
+     * @param  critterId  ID удаляемого криттера.
+     */
+    void EraseEnemyFromStack(uint critterId);
+
+    /** \~russian Позволяет получить ID всех противников, находящихся в стеке.
+     *
+     * @param  enemyStack  Массив, в который будут записаны все ID врагов криттера.
+     */
+    void GetEnemyStack(uint[]& enemyStack);
+
+    //@}
+
+    /**
+     * \~russian @name Информация с голодисков
+     * \~english @name Holodisks
+     * \~ @weight 160
+     */
+    //@{
+
+    /** \~russian Записывает в Пип-бой информацию с указанного голодиска.
+     *
+     * @param  holodiskNum  Номер голодиска.
+     * @see    EraseHolodiskInfo
+     * @see    IsHolodiskInfo
+     */
+    void AddHolodiskInfo(uint holodiskNum);
+
+    /** \~russian Стирает из Пип-боя информацию с указанного голодиска.
+     *
+     * @param  holodiskNum Номер голодиска.
+     * @see    AddHolodiskInfo
+     * @see    IsHolodiskInfo
+     */
+    void EraseHolodiskInfo(uint holodiskNum);
+
+    /** \~russian Позволяет проверить, содержится ли в Пип-бое информация с указанного голодиска.
+     *
+     * @param  holodiskNum  Номер голодиска.
+     *
+     * @return @c true – если содержится; @c false – если нет.
+     *
+     * @see    AddHolodiskInfo
+     * @see    EraseHolodiskInfo
+     */
+    bool IsHolodiskInfo(uint holodiskNum);
+
+    //@}
+
+    /**
+     * \~russian @name Для работы с временными событиями криттера.
+     * \~english @name %Critter time events
+     * \~ @weight 150
+     */
+    //@{
+
+    /** \~russian Создает временное событие персонажа.
+     *
+     * @param  funcName  @ref term_func_link.
+     * @param  duration  Игровое время (в игровых секундах) через которое должно произойти событие.
+     * @param  identifier  идентификатор, для удобного поиска событий в общем списке.
+     *
+     * @return  Возвращает true в случае успеха.
+     *
+     * @see  @ref  critters_time_events
+     */
+    bool AddTimeEvent(string& funcName, uint duration, int identifier);
+    
+
+    /** \~russian Создает временное событие персонажа с указанием параметра rate.
+     *
+     * @param  funcName  @ref term_func_link.
+     * @param  duration  Игровое время (в игровых секундах) через которое должно произойти событие.
+     * @param  identifier  идентификатор, для удобного поиска событий в общем списке.
+     * @param  rate  дополнительный параметр, можно использовать для любых целей, если использован метод без указания значения rate, то данный параметр в функции обработчике будет равен нулю.
+     *
+     * @return  Возвращает true в случае успеха.
+     *
+     * @see  @ref  critters_time_events
+     */
+    bool AddTimeEvent(string& funcName, uint duration, int identifier, uint rate);
+
+    /** \~russian Изменяет временное событие персонажа.
+     *
+     * @param  index  Индекс события, которое необходимо изменить.
+     * @param  newDuration  Новый интервал до возникновения события.
+     * @param  newRate  Новое значение параметра rate.
+     *
+     * @see  @ref  critters_time_events
+     */
+    void ChangeTimeEvent(uint index, uint newDuration, uint newRate);
+
+    /** \~russian Возвращает количество найденных событий персонажа по указанным параметрам.
+     *
+     * @param  identifier  Идентификатор указанный при создании события.
+     * @param  indexes  Индексы событий.
+     * @param  durations  Временные промежутки событий.
+     * @param  rates  значения параметра rate тех событий.
+     *
+     * @return  Количество найденных событий.
+     *
+     * @see  @ref  critters_time_events
+     */
+    uint GetTimeEvents(int identifier, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates);
+
+    /** \~russian Возвращает количество найденных событий персонажа, а так же их параметры identifier по указанным параметрам.
+     *
+     * @param  findIdentifiers  Идентификаторы найденных событий.
+     * @param  identifiers  Идентификаторы указанные при создании событий.
+     * @param  indexes  Индексы событий.
+     * @param  durations  Временные промежутки событий.
+     * @param  rates  значения параметра rate событий.
+     *
+     * @return  Количество найденных событий.
+     *
+     * @see  @ref  critters_time_events
+     */
+    uint GetTimeEvents(int[]& findIdentifiers, int[]@+ identifiers, uint[]@+ indexes, uint[]@+ durations, uint[]@+ rates);
+
+    /** \~russian Удаляет временное событие персонажа по индексу в массиве.
+     *
+     * @param  index  Индекс события, которое следует удалить
+     *
+     * @see  @ref  critters_time_events
+     */
+    void EraseTimeEvent(uint index);
+
+    /** \~russian Удаляет временные события персонажа с заданным идентификатором.
+     *
+     * @param  identifier  Идентификатор, указанный при создании, тех событий, которые следует удалить.
+     *
+     * @return  Количество удаленных событий
+     *
+     * @see  @ref  critters_time_events
+     */
+    uint EraseTimeEvents(int identifier);
+
+    /** \~russian Удаляет временные события персонажа с заданными идентификаторами.
+     *
+     * @param  identifiers  Массив идентификаторов тех событий, которые нужно удалить.
+     *
+     * @return  Количество удаленных событий.
+     *
+     * @see  @ref  critters_time_events
+    */
+    uint EraseTimeEvents(int[]& identifiers);
+
+    //@}
+
+    /**
+     * \~russian @name Мультигексовость
+     * \~english @name Multihex
+     *
+     * \~ @weight 145
+     */
+    //@{
+    
+    /** \~russian Возвращает значение мултигексовости для персонажа */
+    uint GetMultihex();
+    
+    /** \~russian Устанавливает новое значение мультигексовости для персонажа
+     *
+     * \~russian @remarks при value равном -1 значение меняется на значение по-умолчанию (значение по-умолчанию указано в CritterType.cfg)
+     */
+    void SetMultihex(int value);
+    
+    //@}
+    
+    /**
+     * \~russian @name Прочее
+     * \~english @name Miscellaneous
+     * \~ @weight 140
+     */
+    //@{
+
+    /** \~russian Возвращает номер прототипа криттера. */
+    uint16 GetProtoId();
+
+    /** \~russian Позволяет проверить, является ли криттер NPC.
+     *
+     * @return @c true – если криттер является NPC; @c false – в противном случае.
+     */
+    bool IsNpc();
+
+    /** \~russian Позволяет проверить, является ли криттер игроком.
+     *
+     * @return @c true – если криттер является игроком; @c false – в противном случае.
+     */
+    bool IsPlayer();
+
+    /** \~russian Заставляет криттера подождать указанное количество времени.
+     *
+     * Функция прекращает свою работу после окончания таймаута.\n
+     * \b Примечание: Если функция вызвана во время движения @ref term_critter "персонажа", то он остановится.
+     * 
+     * @param  ms  Время (в миллисекундах, 1 секунда = 1000 миллисекунд), которое криттер должен ждать.
+     *
+     * @see    CRITTER_EVENT_IDLE
+     */
+    void Wait(uint ms);
+
+    /** \~russian Показывает игроку содержимое контейнера.
+     *
+     * @param  contCr        Указатель на криттера, инвентарь которого будет показан.
+     * @param  contItem      Указатель на предмет-контейнер, содержимое которого будет показано.
+     * @param  transferType  Тип обмена (см. @link TransferTypes Transfer types@endlink).
+     */
+    void ShowContainer(Critter@+ contCr, Item@+ contItem, uint8 transferType);
+
+    /** \~russian Ищет криттеров в поле видимости.
+     *
+     * @param   lookOnMe  При значении @c true ищутся те, кто видит криттера,
+     *                    а при @c false – те, кого видит криттер.
+     * @param   findType  Тип поиска (см. @link CritterFindTypes Critter find types@endlink).
+     * @param   critters  Массив криттеров, в конец которого будут записаны найденные криттеры.
+     *
+     * @return  Количество записанных криттеров.
+     *
+     * @remarks Чтобы просто узнать количество найденных криттеров,
+     *          в параметре @a critters можно передать значение @c null вместо списка.
+     *
+     * @remarks Найденные криттеры будут отсортированы по отдалению от криттера.
+     */
+    uint GetCritters(bool lookOnMe, int findType, Critter@[]@+ critters);
+
+    /** \~russian  Находит всех игроков, разговаривающих с криттером.
+     *
+     * @param   players  Массив криттеров, в который будут записаны разговаривающие с криттером игроки.
+     *
+     * @return  Количество игроков, разговаривающих с криттером.
+     *
+     * @remarks Предназначена только для NPC.
+     * @remarks Если необходимо просто проверить, разговаривает ли кто-либо с криттером,
+     *          можно передать @c null в качестве значения аргумента @a players.
+     * @remarks На данный момент с каждым NPC может разговаривать максимум два игрока.
+     * @remarks Найденные криттеры будут отсортированы по отдалению от криттера.
+     */
+    uint GetTalkedPlayers(Critter@[]@+ players);
+
+    /** \~russian Сбрасывает таймеры на вызов обновлений Фикс-боя, точек входа в город и игровой статистики. */
+    void DropTimers();
+
+    /** \~russian Открывает окно на стороне клиента, позволяя обработать его ответ.
+     *
+     * Подробности использования этой функции смотрите в статье <a href="http://fonline.ru/fowork/wiki/index.php/Скрипты: Взаимодействие с игроком">Взаимодействие с игроком</a>.
+     *
+     * @param   screenType  Тип окна (см. @link ShowScreenModes Show screen modes@endlink).
+     * @param   param       Дополнительный параметр.
+     * @param   funcName    Вызываемая при ответе функция.
+     *
+     * @remarks Ответ (вызов функции) вы сможете получить только на последний
+     *          вызванный @c ShowScreen, т.к. каждый вызов @c ShowScreen отменяет
+     *          ожидание предыдущего. Также у игрока всегда есть возможность не отвечать
+     *          на него, и тогда и функция не вызовется.
+     */
+    void ShowScreen(int screenType, uint param, string& funcName);
+
+    /** \~russian Проигрывает звук с указанным именем на стороне клиента.
+     *
+     * @param  soundName  Имя звука в клиенте.
+     * @param  sendSelf   Отправлять ли сообщения о проигрывании самому себе.
+     */
+    void PlaySound(string& soundName, bool sendSelf);
+
+    /** \~russian Проигрывает звук с указанными составляющими на стороне клиента.
+     *
+     * @param  soundType, soundTypeExt, soundId, soundIdExt  Составляющие звука.
+     *                   Формула составления имени для некоторых soundType различается
+     *                   (см. @link SoundTypes Sound types@endlink).
+     * @param  sendSelf  Отправлять ли сообщения о проигрывании самому себе.
+     */
+    void PlaySound(uint8 soundType, uint8 soundTypeExt,
+        uint8 soundId, uint8 soundIdExt, bool sendSelf);
+
+    /** \~russian Вызывает скрипт на стороне клиента.
+     *
+     * Спецификация функции на стороне клиента (см. <strong>templates.fos</strong>):
+     * @code
+     * void __FuncName(int param0, int param1, int param2, string@ param3, int[]@ param4);
+     * @endcode
+     *
+     * @param  funcName            Имя функции.
+     * @param  p0, p1, p2, p3, p4  Значения для передаваемых в функцию параметров.
+     */
+    void RunClientScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4);
+
+    /** \~russian Устанавливает значения для лексем, использующихся в строках с описанием криттера.
+     *
+     * @param lexems Cтрока значений лексем (см. <a href="http://fonline.ru/fowork/wiki/index.php/Скрипты:_Работа_с_диалогом#@lex name@">описание тэга \@lex\@</a>, где описан формат строки).
+     */
+    void SetLexems(string@+ lexems);
+
+    /** \~russian Позволяет проверить, может ли криттер перемещаться.
+     *
+     * Такие проверки актуальны, например, для турелей или хищных растений, в коде, где возможно
+     * перемещение криттеров: при взрывах или подобных критических атаках с отбрасыванием назад.
+     */
+    bool IsCanWalk();
+
+    /** \~russian Позволяет проверить, может ли криттер передвигаться бегом.
+     */
+    bool IsCanRun();
+
+    /** \~russian Позволяет проверить, может ли криттер вращаться.
+     */
+    bool IsCanRotate();
+
+    /** \~russian Позволяет проверить, может ли криттер атаковать прицельно.
+     *
+     * Значение проставляется в таблице криттеров.
+     *
+     */
+    bool IsCanAim();
+
+    /** Позволяет получить уровень доступа игрока.
+     *
+     * @return Уровень доступа игрока (см. @link AccessLevels Access levels@endlink).
+     */
+    int GetAccess();
+
+    /** \~russian Проверяет, виден ли указанный криттер криттеру.
+     *
+     * @param  cr  Криттер, видимость которого проверяется.
+     *
+     * @return @c true – если указанный криттер виден; @c false – в противном случае.
+     */
+    bool IsSee(Critter& cr);
+
+    /** \~russian Проверяет, виден ли криттер указанным криттером.
+     *
+     * @param  cr  Криттер, по отношению к которому проверяется видимость.
+     *
+     * @return @c true – если криттер виден указанному криттеру;
+     *         @c false – в противном случае.
+     */
+    bool IsSeenBy(Critter& cr);
+
+    /** \~russian Проверяет, виден ли указанный предмет криттеру.
+     *
+     * @param  item  Предмет, видимость которого проверяется.
+     *
+     * @return @c true – если указанный предмет виден; @c false – в противном случае.
+     */
+    bool IsSee(Item& item);
+
+    /** \~russian Обновляет видимость криттера. */
+    void RefreshVisible();
+
+    /** \~russian Вызывает на стороне клиент зарезервированную функцию #critter_action.
+     *
+     * @param  action     Действие (см. @link CritterActions Действия криттеров@endlink).
+     * @param  actionExt  Параметр с дополнительной информацией о действии.
+     *                    Зависит от типа типа действия.
+     * @param  item       Предмет, участвующий в действии.
+     *
+     ** \~ @see #critter_action
+     */
+    void Action(int action, int actionExt, Item@+ item);
+    
+    /** \~russian Вызывает отключение клиента.
+     *
+     */
+    void Disconnect();
+
+    //@}
+}
