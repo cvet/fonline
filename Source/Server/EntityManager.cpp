@@ -80,7 +80,7 @@ void EntityManager::RegisterEntity( Entity* entity )
     auto it = allEntities.insert( std::make_pair( entity->Id, entity ) );
     RUNTIME_ASSERT( it.second );
     entitiesCount[ (int) entity->Type ]++;
-	
+
     entity->MonoHandle = Script::CreateMonoObject( GetEntityTypeMonoName( entity->Type ) );
     RUNTIME_ASSERT( entity->MonoHandle );
 

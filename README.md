@@ -114,6 +114,7 @@ Todo:\
 * [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
 * [mbedTLS](https://tls.mbed.org/) - library for network transport security
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
+* [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [openssl](https://www.openssl.org/) - library for network transport security
 * [unqlite](https://unqlite.org/) - nosql database engine

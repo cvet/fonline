@@ -5462,8 +5462,8 @@ bool FOClient::ReloadScripts()
         WriteLog( "Load client script fail.\n" );
         errors++;
     }
-	
-	// Mono assemblies
+
+    // Mono assemblies
     map< string, UCharVec > assemblies_data;
     uint                    mono_assembly_index = STR_INTERNAL_SCRIPT_MONO_DLLS;
     while( msg_script.Count( mono_assembly_index ) )

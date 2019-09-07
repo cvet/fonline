@@ -5,6 +5,7 @@
 #include "StringUtils.h"
 #include "FileUtils.h"
 #include "IniFile.h"
+#include "Threading.h"
 #include "AngelScriptExt/reflection.h"
 #include "preprocessor.h"
 #include "scriptstdstring/scriptstdstring.h"
@@ -122,13 +123,11 @@ struct EventData
     MonoMethod* MMethod;
 };
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 ServerScriptFunctions ServerFunctions;
 #endif
-#ifdef FONLINE_CLIENT
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 ClientScriptFunctions ClientFunctions;
-#endif
-#ifdef FONLINE_MAPPER
 MapperScriptFunctions MapperFunctions;
 #endif
 
@@ -554,8 +553,8 @@ void Script::Finish()
         FinishContext( FreeContexts[ 0 ] );
 
     FinishEngine( Engine );     // Finish default engine
-	
-	mono_jit_cleanup( mono_domain_get() );
+
+    mono_jit_cleanup( mono_domain_get() );
 }
 
 void* Script::LoadDynamicLibrary( const string& dll_name )
@@ -758,7 +757,7 @@ static int SystemCall( const string& command, string& output )
     string log;
     while( true )
     {
-        Thread_Sleep( 1 );
+        Thread::Sleep( 1 );
 
         DWORD bytes;
         while( PeekNamedPipe( out_read, nullptr, 0, nullptr, &bytes, nullptr ) && bytes > 0 )
@@ -805,7 +804,7 @@ static MonoAssembly* LoadNetAssembly( const string& name )
     assemblies_path = "Resources/Mono/" + assemblies_path;
     #endif
 
-    FileManager file;
+    File file;
     file.LoadFile( assemblies_path );
     RUNTIME_ASSERT( file.IsLoaded() );
 
@@ -833,14 +832,14 @@ static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImag
 
 static bool CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images )
 {
-    string          mono_path = MainConfig->GetStr( "", "MonoPath" );
-    string          xbuild_path = _str( mono_path + "/bin/xbuild.bat" ).resolvePath();
+    string         mono_path = MainConfig->GetStr( "", "MonoPath" );
+    string         xbuild_path = _str( mono_path + "/bin/xbuild.bat" ).resolvePath();
 
-    FilesCollection proj_files( "csproj" );
+    FileCollection proj_files( "csproj" );
     while( proj_files.IsNextFile() )
     {
-        string       name, path;
-        FileManager& file = proj_files.GetNextFile( &name, &path );
+        string name, path;
+        File&  file = proj_files.GetNextFile( &name, &path );
         RUNTIME_ASSERT( file.IsLoaded() );
 
         // Compile
@@ -866,10 +865,10 @@ static bool CompileGameAssemblies( const string& target, map< string, MonoImage*
         RUNTIME_ASSERT( epos != string::npos );
         pos += _str( "<OutputPath>" ).length();
 
-        string      assembly_name = name + ".dll";
-        string      assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
+        string assembly_name = name + ".dll";
+        string assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
 
-        FileManager assembly_file;
+        File   assembly_file;
         assembly_file.LoadFile( assembly_path );
         RUNTIME_ASSERT( assembly_file.IsLoaded() );
 

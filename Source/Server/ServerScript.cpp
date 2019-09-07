@@ -472,7 +472,7 @@ bool FOServer::ReloadClientScripts()
     if( errors )
         return false;
 
-	// Mono assemblies
+    // Mono assemblies
     std::map< string, UCharVec > assemblies_data;
     if( !Script::GetMonoAssemblies( "Client", assemblies_data ) )
     {
@@ -486,7 +486,7 @@ bool FOServer::ReloadClientScripts()
         msg_script.AddStr( mono_assembly_index++, kv.first );
         msg_script.AddBinary( mono_assembly_index++, &kv.second[ 0 ], (uint) kv.second.size() );
     }
-	
+
     // Copy generated MSG to language packs
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
     {

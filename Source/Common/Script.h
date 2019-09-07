@@ -267,126 +267,125 @@ public:
     std::vector< asBYTE >& GetBuf() { return binBuf; }
 };
 
-#ifdef FONLINE_SERVER
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 struct ServerScriptFunctions
 {
-    void* ResourcesGenerated;
-    void* Init;
-    void* GenerateWorld;
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* GlobalMapCritterIn;
-    void* GlobalMapCritterOut;
+    EventData* ResourcesGenerated;
+    EventData* Init;
+    EventData* GenerateWorld;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* GlobalMapCritterIn;
+    EventData* GlobalMapCritterOut;
 
-    void* LocationInit;
-    void* LocationFinish;
+    EventData* LocationInit;
+    EventData* LocationFinish;
 
-    void* MapInit;
-    void* MapFinish;
-    void* MapLoop;
-    void* MapCritterIn;
-    void* MapCritterOut;
-    void* MapCheckLook;
-    void* MapCheckTrapLook;
+    EventData* MapInit;
+    EventData* MapFinish;
+    EventData* MapLoop;
+    EventData* MapCritterIn;
+    EventData* MapCritterOut;
+    EventData* MapCheckLook;
+    EventData* MapCheckTrapLook;
 
-    void* CritterInit;
-    void* CritterFinish;
-    void* CritterIdle;
-    void* CritterGlobalMapIdle;
-    void* CritterCheckMoveItem;
-    void* CritterMoveItem;
-    void* CritterShow;
-    void* CritterShowDist1;
-    void* CritterShowDist2;
-    void* CritterShowDist3;
-    void* CritterHide;
-    void* CritterHideDist1;
-    void* CritterHideDist2;
-    void* CritterHideDist3;
-    void* CritterShowItemOnMap;
-    void* CritterHideItemOnMap;
-    void* CritterChangeItemOnMap;
-    void* CritterMessage;
-    void* CritterTalk;
-    void* CritterBarter;
-    void* CritterGetAttackDistantion;
-    void* PlayerRegistration;
-    void* PlayerLogin;
-    void* PlayerGetAccess;
-    void* PlayerAllowCommand;
-    void* PlayerLogout;
+    EventData* CritterInit;
+    EventData* CritterFinish;
+    EventData* CritterIdle;
+    EventData* CritterGlobalMapIdle;
+    EventData* CritterCheckMoveItem;
+    EventData* CritterMoveItem;
+    EventData* CritterShow;
+    EventData* CritterShowDist1;
+    EventData* CritterShowDist2;
+    EventData* CritterShowDist3;
+    EventData* CritterHide;
+    EventData* CritterHideDist1;
+    EventData* CritterHideDist2;
+    EventData* CritterHideDist3;
+    EventData* CritterShowItemOnMap;
+    EventData* CritterHideItemOnMap;
+    EventData* CritterChangeItemOnMap;
+    EventData* CritterMessage;
+    EventData* CritterTalk;
+    EventData* CritterBarter;
+    EventData* CritterGetAttackDistantion;
+    EventData* PlayerRegistration;
+    EventData* PlayerLogin;
+    EventData* PlayerGetAccess;
+    EventData* PlayerAllowCommand;
+    EventData* PlayerLogout;
 
-    void* ItemInit;
-    void* ItemFinish;
-    void* ItemWalk;
-    void* ItemCheckMove;
+    EventData* ItemInit;
+    EventData* ItemFinish;
+    EventData* ItemWalk;
+    EventData* ItemCheckMove;
 
-    void* StaticItemWalk;
+    EventData* StaticItemWalk;
 } extern ServerFunctions;
 #endif
-#ifdef FONLINE_CLIENT
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 struct ClientScriptFunctions
 {
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* AutoLogin;
-    void* GetActiveScreens;
-    void* ScreenChange;
-    void* ScreenScroll;
-    void* RenderIface;
-    void* RenderMap;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* CritterIn;
-    void* CritterOut;
-    void* ItemMapIn;
-    void* ItemMapChanged;
-    void* ItemMapOut;
-    void* ItemInvAllIn;
-    void* ItemInvIn;
-    void* ItemInvChanged;
-    void* ItemInvOut;
-    void* MapLoad;
-    void* MapUnload;
-    void* ReceiveItems;
-    void* MapMessage;
-    void* InMessage;
-    void* OutMessage;
-    void* MessageBox;
-    void* CombatResult;
-    void* ItemCheckMove;
-    void* CritterAction;
-    void* Animation2dProcess;
-    void* Animation3dProcess;
-    void* CritterAnimation;
-    void* CritterAnimationSubstitute;
-    void* CritterAnimationFallout;
-    void* CritterCheckMoveItem;
-    void* CritterGetAttackDistantion;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* AutoLogin;
+    EventData* GetActiveScreens;
+    EventData* ScreenChange;
+    EventData* ScreenScroll;
+    EventData* RenderIface;
+    EventData* RenderMap;
+    EventData* MouseDown;
+    EventData* MouseUp;
+    EventData* MouseMove;
+    EventData* KeyDown;
+    EventData* KeyUp;
+    EventData* InputLost;
+    EventData* CritterIn;
+    EventData* CritterOut;
+    EventData* ItemMapIn;
+    EventData* ItemMapChanged;
+    EventData* ItemMapOut;
+    EventData* ItemInvAllIn;
+    EventData* ItemInvIn;
+    EventData* ItemInvChanged;
+    EventData* ItemInvOut;
+    EventData* MapLoad;
+    EventData* MapUnload;
+    EventData* ReceiveItems;
+    EventData* MapMessage;
+    EventData* InMessage;
+    EventData* OutMessage;
+    EventData* MessageBox;
+    EventData* CombatResult;
+    EventData* ItemCheckMove;
+    EventData* CritterAction;
+    EventData* Animation2dProcess;
+    EventData* Animation3dProcess;
+    EventData* CritterAnimation;
+    EventData* CritterAnimationSubstitute;
+    EventData* CritterAnimationFallout;
+    EventData* CritterCheckMoveItem;
+    EventData* CritterGetAttackDistantion;
 } extern ClientFunctions;
-#endif
-#ifdef FONLINE_MAPPER
+
 struct MapperScriptFunctions
 {
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* ConsoleMessage;
-    void* RenderIface;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* MapLoad;
-    void* MapSave;
-    void* InspectorProperties;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* ConsoleMessage;
+    EventData* RenderIface;
+    EventData* MouseDown;
+    EventData* MouseUp;
+    EventData* MouseMove;
+    EventData* KeyDown;
+    EventData* KeyUp;
+    EventData* InputLost;
+    EventData* MapLoad;
+    EventData* MapSave;
+    EventData* InspectorProperties;
 } extern MapperFunctions;
 #endif

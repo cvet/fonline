@@ -598,6 +598,7 @@ include_directories( "${MONO_DIR}" )
 include_directories( "${MONO_DIR}/repo" )
 include_directories( "${MONO_DIR}/repo/mono" )
 include_directories( "${MONO_DIR}/repo/mono/eglib" )
+DisableLibWarnings( libmono )
 
 # Common source
 set( COMMON_SOURCE

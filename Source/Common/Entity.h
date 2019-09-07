@@ -94,7 +94,7 @@ public:
     const uint       Id;
     const EntityType Type;
     ProtoEntity*     Proto;
-	uint             MonoHandle;
+    uint             MonoHandle;
     mutable long     RefCounter;
     bool             IsDestroyed;
     bool             IsDestroying;
