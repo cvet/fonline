@@ -1,17 +1,19 @@
+Build
+
 # MSVC files
 .vs
 /InterfaceEditor/obj/
-SDK/Modules/*/bin
-SDK/Modules/*/obj
+SdkPlaceholder/Modules/*/bin
+SdkPlaceholder/Modules/*/obj
 
 # Other
 _Temp
-/SDK/Binaries/VSCode/VSCode-win32-x64
-/SDK/Binaries/VSCode/VSCode-linux-x64
-/SDK/Binaries/Mono
-/SDK/Modules/Core/Resources/Mono
-/SDK/Binaries/Client/*
-/SDK/Binaries/Mapper/*
-/SDK/Binaries/Server/*
-/SDK/Binaries/ASCompiler/*
-/SDK/Modules/BuildSystem/_msicreator/createmsi.pyc
+/SdkPlaceholder/Binaries/VSCode/VSCode-win32-x64
+/SdkPlaceholder/Binaries/VSCode/VSCode-linux-x64
+/SdkPlaceholder/Binaries/Mono
+/SdkPlaceholder/Modules/Core/Resources/Mono
+/SdkPlaceholder/Binaries/Client/*
+/SdkPlaceholder/Binaries/Mapper/*
+/SdkPlaceholder/Binaries/Server/*
+/SdkPlaceholder/Binaries/ASCompiler/*
+/SdkPlaceholder/Modules/BuildSystem/_msicreator/createmsi.pyc
