@@ -456,10 +456,10 @@ public:
         static void          Global_AddPropertySetCallback( asIScriptGeneric* gen );
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static bool          Global_LoadDataFile( string dat_name );
-        static bool Global_LoadImage( uint index, string image_name, uint image_depth );
-        static uint Global_GetImageColor( uint index, uint x, uint y );
-        static void Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result );
-        static void Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
+        static bool          Global_LoadImage( uint index, string image_name, uint image_depth );
+        static uint          Global_GetImageColor( uint index, uint x, uint y );
+        static void          Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result );
+        static void          Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
     };
 };
 

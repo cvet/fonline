@@ -234,7 +234,7 @@ static int main_disabled( int argc, char** argv )
     InitialSetup( "FOnlineEditor", argc, argv );
 
     // Threading
-    Thread::SetCurrentName( "GUI" );
+    Thread::SetName( "GUI" );
 
     // Logging
     LogToFile( "FOnlineEditor.log" );

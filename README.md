@@ -123,10 +123,7 @@ Todo:\
 
 ## Help and support
 
-* E-mail cvet@tut.by
-* Telegram @aka_cvet
-* Skype cvet___
-* Phone/WhatsApp/Telegram/Viber +7 981 9028150
-* [English-speaking community](https://fodev.net)
-* [Russian-speaking community](https://fonline.ru)
-* [Discord invite](https://discord.gg/xa6TbqU)
+* GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)
+* E-Mail: <cvet@tut.by>
+* Forums: [fodev.net](https://fodev.net)
+* Discord: [invite](https://discord.gg/xa6TbqU)
