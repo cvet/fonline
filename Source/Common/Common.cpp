@@ -979,24 +979,6 @@ void GetClientOptions()
     Script::SetRunTimeout( 0, 0 );
     # endif
 }
-
-ClientScriptFunctions ClientFunctions;
-MapperScriptFunctions MapperFunctions;
-#endif
-
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-int  ServerGameSleep = 10;
-bool AllowServerNativeCalls = false;
-bool AllowClientNativeCalls = false;
-
-void GetServerOptions()
-{
-    ServerGameSleep = MainConfig->GetInt( "", "GameSleep", 10 );
-    AllowServerNativeCalls = ( MainConfig->GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
-    AllowClientNativeCalls = ( MainConfig->GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
-}
-
-ServerScriptFunctions ServerFunctions;
 #endif
 
 static void AddPropertyCallback( void ( * function )( void*, void*, void*, void* ) )

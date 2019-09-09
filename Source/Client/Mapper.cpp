@@ -2979,9 +2979,9 @@ void FOMapper::SelectAdd( Entity* entity )
         SelectedEntities.push_back( entity );
 
         if( entity->Type == EntityType::CritterView )
-            ( (CritterView*) entity )->Alpha = SELECT_ALPHA;
+            ( (CritterView*) entity )->Alpha = HexMngr.SelectAlpha;
         if( entity->Type == EntityType::ItemHexView )
-            ( (ItemHexView*) entity )->Alpha = SELECT_ALPHA;
+            ( (ItemHexView*) entity )->Alpha = HexMngr.SelectAlpha;
     }
 }
 

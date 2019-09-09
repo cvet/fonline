@@ -1349,7 +1349,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 ProtoMap::TileVec& tiles = GetTiles( nx, ny, false );
                 Sprite&            spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                 tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : nullptr, &Effect::Tile, nullptr );
+                                                                 tiles[ i ].IsSelected ? (uchar*) &SelectAlpha : nullptr, &Effect::Tile, nullptr );
                 #else
                 Sprite& spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                       &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1372,7 +1372,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 ProtoMap::TileVec& roofs = GetTiles( nx, ny, true );
                 Sprite&            spr = roofTree.InsertSprite( DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                 &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
+                                                                roofs[ i ].IsSelected ? (uchar*) &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
                 #else
                 Sprite& spr = roofTree.InsertSprite( DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                      &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1933,7 +1933,7 @@ void HexManager::RebuildTiles()
                 ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
                 Sprite&            spr = tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                               &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                              tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : nullptr, &Effect::Tile, nullptr );
+                                                              tiles[ i ].IsSelected ? (uchar*) &SelectAlpha : nullptr, &Effect::Tile, nullptr );
                 #else
                 Sprite& spr = tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                    &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1985,7 +1985,7 @@ void HexManager::RebuildRoof()
                     ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                     Sprite&            spr = roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                 roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
+                                                                 roofs[ i ].IsSelected ? (uchar*) &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
                     #else
                     Sprite& spr = roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                       &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,

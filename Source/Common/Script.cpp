@@ -104,6 +104,14 @@ static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 #endif
 
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+ServerScriptFunctions ServerFunctions;
+#endif
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
+ClientScriptFunctions ClientFunctions;
+MapperScriptFunctions MapperFunctions;
+#endif
+
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls,
                    uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
 {
