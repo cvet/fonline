@@ -102,7 +102,7 @@ public:
     void Start( ThreadFunc func, const string& name, void* arg = nullptr );
     void Wait();
 
-    static size_t      GetName();
+    static size_t      GetId();
     static void        SetName( const char* name );
     static const char* GetName();
     static const char* FindName( size_t thread_id );
