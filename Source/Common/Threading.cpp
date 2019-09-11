@@ -90,7 +90,7 @@ void Thread::Wait()
     RUNTIME_ASSERT( !"Unreachable place" );
 }
 
-size_t Thread::GetName()
+size_t Thread::GetId()
 {
     return 1;
 }
