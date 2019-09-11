@@ -4,7 +4,7 @@ metadata:
 spec:
   containers:
   - name: jnlp
-    image: brightside/jnlp-fonline
+    image: cvet/jnlp-fonline
     tty: true
     volumeMounts:
     - name: dockersock
