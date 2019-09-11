@@ -6,6 +6,7 @@
 #include "GraphicLoader.h"
 #include "StringUtils.h"
 #include "Script.h"
+#include "Settings.h"
 
 static int       ModeWidth = 0, ModeHeight = 0;
 static float     ModeWidthF = 0, ModeHeightF = 0;

@@ -4,6 +4,7 @@
 #include "GraphicApi.h"
 #include "Threading.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 struct ImGuiViewportDataSDL2
 {

@@ -88,6 +88,17 @@ struct ProjectFilesWindow: GuiWindow
 };
 // static ProjectFilesWindow* ProjectFiles = nullptr;
 
+struct StructureWindow: GuiWindow
+{
+    StructureWindow(): GuiWindow( "Structure" ) {}
+
+    virtual bool Draw() override
+    {
+        ImGui::Text( "StructureWindow" );
+        return true;
+    }
+};
+
 struct InspectorWindow: GuiWindow
 {
     InspectorWindow(): GuiWindow( "Inspector" ) {}
@@ -219,7 +230,26 @@ struct MapperWindow: GuiWindow
         SAFEDEL( WindowMap );
     }
 };
-FOMapper*                   MapperWindow::MapperInstance;
+FOMapper*              MapperWindow::MapperInstance;
+
+struct SettingsWindow: GuiWindow
+{
+    SettingsWindow(): GuiWindow( "Settings" ) {}
+
+    virtual bool Draw() override
+    {
+        if( ImGui::Button( "Start" ) )
+        {
+            // ...
+        }
+
+        if( ImGui::Button( "Build" ) )
+        {
+            // ...
+        }
+        return true;
+    }
+};
 
 static vector< GuiWindow* > Windows;
 static vector< GuiWindow* > NewWindows;
@@ -234,16 +264,12 @@ static int main_disabled( int argc, char** argv )
     InitialSetup( "FOnlineEditor", argc, argv );
 
     // Threading
-    Thread::SetCurrentName( "GUI" );
+    Thread::SetName( "Editor" );
 
     // Logging
     LogToFile( "FOnlineEditor.log" );
     LogToBuffer( true );
     WriteLog( "FOnline Editor v.{}.\n", FONLINE_VERSION );
-
-    // Options
-    // GetServerOptions();
-    GetClientOptions();
 
     // Initialize Gui
     bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
@@ -252,10 +278,10 @@ static int main_disabled( int argc, char** argv )
 
     // Basic windows
     Windows.push_back( new ProjectFilesWindow() );
+    Windows.push_back( new StructureWindow() );
     Windows.push_back( new InspectorWindow() );
     Windows.push_back( new LogWindow() );
-    Windows.push_back( new ServerWindow() );
-    Windows.push_back( new ClientWindow() );
+    Windows.push_back( new SettingsWindow() );
 
     // Main loop
     while( !GameOpt.Quit )
@@ -334,15 +360,18 @@ static void DockSpaceBegin()
 
         ImGuiID dock_main_id = dockspace_id;
         ImGuiID dock_left_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.15f, nullptr, &dock_main_id );
+        ImGuiID dock_left_left_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Left, 0.177f, nullptr, &dock_main_id );
         ImGuiID dock_right_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id );
         ImGuiID dock_down_id = ImGui::DockBuilderSplitNode( dock_main_id, ImGuiDir_Down, 0.25f, nullptr, &dock_main_id );
 
         ImGui::DockBuilderDockWindow( "Project Files", dock_left_id );
         ImGui::DockBuilderDockWindow( "Inspector", dock_right_id );
+        ImGui::DockBuilderDockWindow( "Structure", dock_left_left_id );
         ImGui::DockBuilderDockWindow( "Log", dock_down_id );
         ImGui::DockBuilderDockWindow( "Server", dock_main_id );
         ImGui::DockBuilderDockWindow( "Client", dock_main_id );
         ImGui::DockBuilderDockWindow( "Mapper", dock_main_id );
+        ImGui::DockBuilderDockWindow( "Settings", dock_main_id );
         ImGui::DockBuilderFinish( dock_main_id );
     }
 

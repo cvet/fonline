@@ -83,7 +83,7 @@ namespace ServerBind
     #undef BIND_ASSERT
     #undef BIND_DUMMY_DATA
     #define BIND_SERVER
-    #define BIND_CLASS    FOServer::SScriptFunc::
+    #define BIND_CLASS    FOServer::ScriptFunc::
     #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); return false; }
     #include "ScriptBind_Include.h"
 }
@@ -502,7 +502,7 @@ static void SortCritterByDist( int hx, int hy, CritterVec& critters )
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
 }
 
-Item* FOServer::SScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uint stack_id )
+Item* FOServer::ScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uint stack_id )
 {
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -514,7 +514,7 @@ Item* FOServer::SScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uin
     return ItemMngr.AddItemContainer( cont, pid, count, stack_id );
 }
 
-CScriptArray* FOServer::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
+CScriptArray* FOServer::ScriptFunc::Item_GetItems( Item* cont, uint stack_id )
 {
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -524,7 +524,7 @@ CScriptArray* FOServer::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-bool FOServer::SScriptFunc::Item_SetScript( Item* item, asIScriptFunction* func )
+bool FOServer::ScriptFunc::Item_SetScript( Item* item, asIScriptFunction* func )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -541,7 +541,7 @@ bool FOServer::SScriptFunc::Item_SetScript( Item* item, asIScriptFunction* func 
     return true;
 }
 
-Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
+Map* FOServer::ScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -593,7 +593,7 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     return map;
 }
 
-bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
+bool FOServer::ScriptFunc::Item_ChangeProto( Item* item, hash pid )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -630,7 +630,7 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
     return true;
 }
 
-void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_frm )
+void FOServer::ScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_frm )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -657,7 +657,7 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     }
 }
 
-bool FOServer::SScriptFunc::Item_CallStaticItemFunction( Item* static_item, Critter* cr, Item* item, int param )
+bool FOServer::ScriptFunc::Item_CallStaticItemFunction( Item* static_item, Critter* cr, Item* item, int param )
 {
     if( !static_item->SceneryScriptBindId )
         return false;
@@ -670,7 +670,7 @@ bool FOServer::SScriptFunc::Item_CallStaticItemFunction( Item* static_item, Crit
     return Script::RunPrepared() && Script::GetReturnedBool();
 }
 
-bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsPlayer( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -678,7 +678,7 @@ bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )
     return cr->IsPlayer();
 }
 
-bool FOServer::SScriptFunc::Crit_IsNpc( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsNpc( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -686,7 +686,7 @@ bool FOServer::SScriptFunc::Crit_IsNpc( Critter* cr )
     return cr->IsNpc();
 }
 
-int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
+int FOServer::ScriptFunc::Cl_GetAccess( Critter* cl )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -696,7 +696,7 @@ int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
     return ( (Client*) cl )->Access;
 }
 
-bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
+bool FOServer::ScriptFunc::Cl_SetAccess( Critter* cl, int access )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -716,7 +716,7 @@ bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
     return allow;
 }
 
-Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
+Map* FOServer::ScriptFunc::Crit_GetMap( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -724,7 +724,7 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
     return MapMngr.GetMap( cr->GetMapId() );
 }
 
-bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
+bool FOServer::ScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -738,14 +738,14 @@ bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
     ushort hy = cr->GetHexY();
     MoveHexByDir( hx, hy, direction, map->GetWidth(), map->GetHeight() );
     ushort move_flags = direction | BIN16( 00000000, 00111000 );
-    bool   move = Act_Move( cr, hx, hy, move_flags );
+    bool   move = Self->Act_Move( cr, hx, hy, move_flags );
     if( !move )
         SCRIPT_ERROR_R0( "Move fail." );
     cr->Send_Move( cr, move_flags );
     return true;
 }
 
-void FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir )
+void FOServer::ScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -772,7 +772,7 @@ void FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
     }
 }
 
-void FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir )
+void FOServer::ScriptFunc::Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -797,7 +797,7 @@ void FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, Map* map, ushort 
     }
 }
 
-void FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr )
+void FOServer::ScriptFunc::Crit_TransitToGlobal( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -808,7 +808,7 @@ void FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr )
         SCRIPT_ERROR_R( "Transit fail." );
 }
 
-void FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group )
+void FOServer::ScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -830,7 +830,7 @@ void FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptA
     }
 }
 
-void FOServer::SScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, Critter* leader )
+void FOServer::ScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, Critter* leader )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -849,7 +849,7 @@ void FOServer::SScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, Critter* lea
         SCRIPT_ERROR_R( "Transit fail." );
 }
 
-bool FOServer::SScriptFunc::Crit_IsLife( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsLife( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -857,7 +857,7 @@ bool FOServer::SScriptFunc::Crit_IsLife( Critter* cr )
     return cr->IsLife();
 }
 
-bool FOServer::SScriptFunc::Crit_IsKnockout( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsKnockout( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -865,7 +865,7 @@ bool FOServer::SScriptFunc::Crit_IsKnockout( Critter* cr )
     return cr->IsKnockout();
 }
 
-bool FOServer::SScriptFunc::Crit_IsDead( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsDead( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -873,7 +873,7 @@ bool FOServer::SScriptFunc::Crit_IsDead( Critter* cr )
     return cr->IsDead();
 }
 
-bool FOServer::SScriptFunc::Crit_IsFree( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsFree( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -881,7 +881,7 @@ bool FOServer::SScriptFunc::Crit_IsFree( Critter* cr )
     return cr->IsFree() && !cr->IsWait();
 }
 
-bool FOServer::SScriptFunc::Crit_IsBusy( Critter* cr )
+bool FOServer::ScriptFunc::Crit_IsBusy( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -889,7 +889,7 @@ bool FOServer::SScriptFunc::Crit_IsBusy( Critter* cr )
     return cr->IsBusy() || cr->IsWait();
 }
 
-void FOServer::SScriptFunc::Crit_Wait( Critter* cr, uint ms )
+void FOServer::ScriptFunc::Crit_Wait( Critter* cr, uint ms )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -903,7 +903,7 @@ void FOServer::SScriptFunc::Crit_Wait( Critter* cr, uint ms )
     }
 }
 
-void FOServer::SScriptFunc::Crit_RefreshVisible( Critter* cr )
+void FOServer::ScriptFunc::Crit_RefreshVisible( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -912,7 +912,7 @@ void FOServer::SScriptFunc::Crit_RefreshVisible( Critter* cr )
     cr->ProcessVisibleItems();
 }
 
-void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir )
+void FOServer::ScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -942,7 +942,7 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
     cr->Send_LoadMap( map );
 }
 
-void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
+void FOServer::ScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -958,7 +958,7 @@ void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
         cr->SendAA_Text( cr->VisCr, text, how_say, false );
 }
 
-void FOServer::SScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str )
+void FOServer::ScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -972,7 +972,7 @@ void FOServer::SScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text
         cr->SendAA_Msg( cr->VisCr, num_str, how_say, text_msg );
 }
 
-void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, string lexems )
+void FOServer::ScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, string lexems )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -987,7 +987,7 @@ void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort t
         cr->SendAA_MsgLex( cr->VisCr, num_str, how_say, text_msg, lexems.c_str() );
 }
 
-void FOServer::SScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
+void FOServer::ScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1006,7 +1006,7 @@ void FOServer::SScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
     }
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int find_type )
+CScriptArray* FOServer::ScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int find_type )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1023,7 +1023,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr )
+CScriptArray* FOServer::ScriptFunc::Npc_GetTalkedPlayers( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1045,7 +1045,7 @@ CScriptArray* FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr )
     return Script::CreateArrayRef( "Critter[]", players );
 }
 
-bool FOServer::SScriptFunc::Crit_IsSeeCr( Critter* cr, Critter* cr_ )
+bool FOServer::ScriptFunc::Crit_IsSeeCr( Critter* cr, Critter* cr_ )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1061,7 +1061,7 @@ bool FOServer::SScriptFunc::Crit_IsSeeCr( Critter* cr, Critter* cr_ )
     return std::find( critters.begin(), critters.end(), cr_ ) != critters.end();
 }
 
-bool FOServer::SScriptFunc::Crit_IsSeenByCr( Critter* cr, Critter* cr_ )
+bool FOServer::ScriptFunc::Crit_IsSeenByCr( Critter* cr, Critter* cr_ )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1077,7 +1077,7 @@ bool FOServer::SScriptFunc::Crit_IsSeenByCr( Critter* cr, Critter* cr_ )
     return std::find( critters.begin(), critters.end(), cr_ ) != critters.end();
 }
 
-bool FOServer::SScriptFunc::Crit_IsSeeItem( Critter* cr, Item* item )
+bool FOServer::ScriptFunc::Crit_IsSeeItem( Critter* cr, Item* item )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1089,7 +1089,7 @@ bool FOServer::SScriptFunc::Crit_IsSeeItem( Critter* cr, Item* item )
     return cr->CountIdVisItem( item->GetId() );
 }
 
-uint FOServer::SScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
+uint FOServer::ScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1097,7 +1097,7 @@ uint FOServer::SScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
     return cr->CountItemPid( proto_id );
 }
 
-bool FOServer::SScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
+bool FOServer::ScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1109,7 +1109,7 @@ bool FOServer::SScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
     return ItemMngr.SubItemCritter( cr, pid, count );
 }
 
-Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
+Item* FOServer::ScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1123,7 +1123,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     return ItemMngr.AddItemCritter( cr, pid, count );
 }
 
-Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
+Item* FOServer::ScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1131,7 +1131,7 @@ Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
     return cr->GetItem( item_id, false );
 }
 
-Item* FOServer::SScriptFunc::Crit_GetItemPredicate( Critter* cr, asIScriptFunction* predicate )
+Item* FOServer::ScriptFunc::Crit_GetItemPredicate( Critter* cr, asIScriptFunction* predicate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1159,7 +1159,7 @@ Item* FOServer::SScriptFunc::Crit_GetItemPredicate( Critter* cr, asIScriptFuncti
     return nullptr;
 }
 
-Item* FOServer::SScriptFunc::Crit_GetItemBySlot( Critter* cr, uchar slot )
+Item* FOServer::ScriptFunc::Crit_GetItemBySlot( Critter* cr, uchar slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1167,7 +1167,7 @@ Item* FOServer::SScriptFunc::Crit_GetItemBySlot( Critter* cr, uchar slot )
     return cr->GetItemSlot( slot );
 }
 
-Item* FOServer::SScriptFunc::Crit_GetItemByPid( Critter* cr, hash proto_id )
+Item* FOServer::ScriptFunc::Crit_GetItemByPid( Critter* cr, hash proto_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1175,7 +1175,7 @@ Item* FOServer::SScriptFunc::Crit_GetItemByPid( Critter* cr, hash proto_id )
     return cr->GetItemByPidInvPriority( proto_id );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetItems( Critter* cr )
+CScriptArray* FOServer::ScriptFunc::Crit_GetItems( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1183,7 +1183,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItems( Critter* cr )
     return Script::CreateArrayRef( "Item[]", cr->GetInventory() );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot )
+CScriptArray* FOServer::ScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1193,7 +1193,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot 
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetItemsPredicate( Critter* cr, asIScriptFunction* predicate )
+CScriptArray* FOServer::ScriptFunc::Crit_GetItemsPredicate( Critter* cr, asIScriptFunction* predicate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1223,7 +1223,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItemsPredicate( Critter* cr, asIScr
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-void FOServer::SScriptFunc::Crit_ChangeItemSlot( Critter* cr, uint item_id, uchar slot )
+void FOServer::ScriptFunc::Crit_ChangeItemSlot( Critter* cr, uint item_id, uchar slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1257,7 +1257,7 @@ void FOServer::SScriptFunc::Crit_ChangeItemSlot( Critter* cr, uint item_id, ucha
     Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, from_slot );
 }
 
-void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )
+void FOServer::ScriptFunc::Crit_SetCond( Critter* cr, int cond )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1280,7 +1280,7 @@ void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )
     }
 }
 
-void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
+void FOServer::ScriptFunc::Crit_CloseDialog( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1289,7 +1289,7 @@ void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
         ( (Client*) cr )->CloseTalk();
 }
 
-void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* arr )
+void FOServer::ScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* arr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1301,7 +1301,7 @@ void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* ar
     cr->Send_CombatResult( (uint*) arr->At( 0 ), arr->GetSize() );
 }
 
-void FOServer::SScriptFunc::Crit_Action( Critter* cr, int action, int action_ext, Item* item )
+void FOServer::ScriptFunc::Crit_Action( Critter* cr, int action, int action_ext, Item* item )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1311,7 +1311,7 @@ void FOServer::SScriptFunc::Crit_Action( Critter* cr, int action, int action_ext
     cr->SendAA_Action( action, action_ext, item );
 }
 
-void FOServer::SScriptFunc::Crit_Animate( Critter* cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
+void FOServer::ScriptFunc::Crit_Animate( Critter* cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1321,7 +1321,7 @@ void FOServer::SScriptFunc::Crit_Animate( Critter* cr, uint anim1, uint anim2, I
     cr->SendAA_Animate( anim1, anim2, item, clear_sequence, delay_play );
 }
 
-void FOServer::SScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, uint anim2 )
+void FOServer::ScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, uint anim2 )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1344,7 +1344,7 @@ void FOServer::SScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, ui
     cr->SendAA_SetAnims( cond, anim1, anim2 );
 }
 
-void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, string sound_name, bool send_self )
+void FOServer::ScriptFunc::Crit_PlaySound( Critter* cr, string sound_name, bool send_self )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1359,7 +1359,7 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, string sound_name, bool
     }
 }
 
-bool FOServer::SScriptFunc::Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_num )
+bool FOServer::ScriptFunc::Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_num )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1369,7 +1369,7 @@ bool FOServer::SScriptFunc::Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_n
     return cr->CheckKnownLocByPid( loc_num );
 }
 
-bool FOServer::SScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_num )
+bool FOServer::ScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_num )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1401,7 +1401,7 @@ bool FOServer::SScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_UnsetKnownLoc( Critter* cr, bool by_id, uint loc_num )
+bool FOServer::ScriptFunc::Crit_UnsetKnownLoc( Critter* cr, bool by_id, uint loc_num )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1418,7 +1418,7 @@ bool FOServer::SScriptFunc::Crit_UnsetKnownLoc( Critter* cr, bool by_id, uint lo
     return true;
 }
 
-void FOServer::SScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone_y, int fog )
+void FOServer::ScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone_y, int fog )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1441,7 +1441,7 @@ void FOServer::SScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone
     gmap_fog->Release();
 }
 
-int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y )
+int FOServer::ScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1457,7 +1457,7 @@ int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_
     return result;
 }
 
-void FOServer::SScriptFunc::Cl_SendItems( Critter* cl, CScriptArray* items, int param )
+void FOServer::ScriptFunc::Cl_SendItems( Critter* cl, CScriptArray* items, int param )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1469,7 +1469,7 @@ void FOServer::SScriptFunc::Cl_SendItems( Critter* cl, CScriptArray* items, int 
     ( (Client*) cl )->Send_SomeItems( items, param );
 }
 
-void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
+void FOServer::ScriptFunc::Cl_Disconnect( Critter* cl )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1481,7 +1481,7 @@ void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
         cl_->Disconnect();
 }
 
-bool FOServer::SScriptFunc::Cl_IsOnline( Critter* cl )
+bool FOServer::ScriptFunc::Cl_IsOnline( Critter* cl )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1492,7 +1492,7 @@ bool FOServer::SScriptFunc::Cl_IsOnline( Critter* cl )
     return cl_->IsOnline();
 }
 
-bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func )
+bool FOServer::ScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1509,7 +1509,7 @@ bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier )
+bool FOServer::ScriptFunc::Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1524,7 +1524,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, asIScriptFunction* f
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, asIScriptFunction* func, uint duration, int identifier, uint rate )
+bool FOServer::ScriptFunc::Crit_AddTimeEventRate( Critter* cr, asIScriptFunction* func, uint duration, int identifier, uint rate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1539,7 +1539,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, asIScriptFunctio
     return true;
 }
 
-uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
+uint FOServer::ScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1606,7 +1606,7 @@ uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CSc
     return size;
 }
 
-uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, CScriptArray* find_identifiers, CScriptArray* identifiers, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
+uint FOServer::ScriptFunc::Crit_GetTimeEventsArr( Critter* cr, CScriptArray* find_identifiers, CScriptArray* identifiers, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1688,7 +1688,7 @@ uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, CScriptArray* fi
     return size;
 }
 
-void FOServer::SScriptFunc::Crit_ChangeTimeEvent( Critter* cr, uint index, uint new_duration, uint new_rate )
+void FOServer::ScriptFunc::Crit_ChangeTimeEvent( Critter* cr, uint index, uint new_duration, uint new_rate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1712,7 +1712,7 @@ void FOServer::SScriptFunc::Crit_ChangeTimeEvent( Critter* cr, uint index, uint 
     cr->AddCrTimeEvent( func_num, new_rate, new_duration, identifier );
 }
 
-void FOServer::SScriptFunc::Crit_EraseTimeEvent( Critter* cr, uint index )
+void FOServer::ScriptFunc::Crit_EraseTimeEvent( Critter* cr, uint index )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1726,7 +1726,7 @@ void FOServer::SScriptFunc::Crit_EraseTimeEvent( Critter* cr, uint index )
     cr->EraseCrTimeEvent( index );
 }
 
-uint FOServer::SScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
+uint FOServer::ScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1769,7 +1769,7 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
     return result;
 }
 
-uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray* identifiers )
+uint FOServer::ScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray* identifiers )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1815,7 +1815,7 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray* 
     return result;
 }
 
-void FOServer::SScriptFunc::Crit_MoveToCritter( Critter* cr, Critter* target, uint cut, bool is_run )
+void FOServer::ScriptFunc::Crit_MoveToCritter( Critter* cr, Critter* target, uint cut, bool is_run )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1832,7 +1832,7 @@ void FOServer::SScriptFunc::Crit_MoveToCritter( Critter* cr, Critter* target, ui
     cr->Moving.IsRun = is_run;
 }
 
-void FOServer::SScriptFunc::Crit_MoveToHex( Critter* cr, ushort hx, ushort hy, uint cut, bool is_run )
+void FOServer::ScriptFunc::Crit_MoveToHex( Critter* cr, ushort hx, ushort hy, uint cut, bool is_run )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1844,7 +1844,7 @@ void FOServer::SScriptFunc::Crit_MoveToHex( Critter* cr, ushort hx, ushort hy, u
     cr->Moving.IsRun = is_run;
 }
 
-int FOServer::SScriptFunc::Crit_GetMovingState( Critter* cr )
+int FOServer::ScriptFunc::Crit_GetMovingState( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1852,7 +1852,7 @@ int FOServer::SScriptFunc::Crit_GetMovingState( Critter* cr )
     return cr->Moving.State;
 }
 
-void FOServer::SScriptFunc::Crit_ResetMovingState( Critter* cr, uint& gag_id )
+void FOServer::ScriptFunc::Crit_ResetMovingState( Critter* cr, uint& gag_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1863,7 +1863,7 @@ void FOServer::SScriptFunc::Crit_ResetMovingState( Critter* cr, uint& gag_id )
 }
 
 
-Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
+Location* FOServer::ScriptFunc::Map_GetLocation( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1871,7 +1871,7 @@ Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
     return map->GetLocation();
 }
 
-bool FOServer::SScriptFunc::Map_SetScript( Map* map, asIScriptFunction* func )
+bool FOServer::ScriptFunc::Map_SetScript( Map* map, asIScriptFunction* func )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1888,7 +1888,7 @@ bool FOServer::SScriptFunc::Map_SetScript( Map* map, asIScriptFunction* func )
     return true;
 }
 
-Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, CScriptDict* props )
+Item* FOServer::ScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, CScriptDict* props )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1910,12 +1910,12 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
                 return nullptr;
 
-        return CreateItemOnHex( map, hx, hy, proto_id, count, &props_, true );
+        return Self->CreateItemOnHex( map, hx, hy, proto_id, count, &props_, true );
     }
-    return CreateItemOnHex( map, hx, hy, proto_id, count, nullptr, true );
+    return Self->CreateItemOnHex( map, hx, hy, proto_id, count, nullptr, true );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItems( Map* map )
+CScriptArray* FOServer::ScriptFunc::Map_GetItems( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1925,7 +1925,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItems( Map* map )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1937,7 +1937,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushor
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1949,7 +1949,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ush
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, hash pid )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsByPid( Map* map, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1959,7 +1959,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, hash pid )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsPredicate( Map* map, asIScriptFunction* predicate )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsPredicate( Map* map, asIScriptFunction* predicate )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1989,7 +1989,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsPredicate( Map* map, asIScriptF
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexPredicate( Map* map, ushort hx, ushort hy, asIScriptFunction* predicate )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexPredicate( Map* map, ushort hx, ushort hy, asIScriptFunction* predicate )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2023,7 +2023,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexPredicate( Map* map, ushort 
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexRadiusPredicate( Map* map, ushort hx, ushort hy, uint radius, asIScriptFunction* predicate )
+CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexRadiusPredicate( Map* map, ushort hx, ushort hy, uint radius, asIScriptFunction* predicate )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2057,7 +2057,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexRadiusPredicate( Map* map, u
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-Item* FOServer::SScriptFunc::Map_GetItem( Map* map, uint item_id )
+Item* FOServer::ScriptFunc::Map_GetItem( Map* map, uint item_id )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2067,7 +2067,7 @@ Item* FOServer::SScriptFunc::Map_GetItem( Map* map, uint item_id )
     return map->GetItem( item_id );
 }
 
-Item* FOServer::SScriptFunc::Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid )
+Item* FOServer::ScriptFunc::Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2077,7 +2077,7 @@ Item* FOServer::SScriptFunc::Map_GetItemHex( Map* map, ushort hx, ushort hy, has
     return map->GetItemHex( hx, hy, pid, nullptr );
 }
 
-Critter* FOServer::SScriptFunc::Map_GetCritterHex( Map* map, ushort hx, ushort hy )
+Critter* FOServer::ScriptFunc::Map_GetCritterHex( Map* map, ushort hx, ushort hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2090,7 +2090,7 @@ Critter* FOServer::SScriptFunc::Map_GetCritterHex( Map* map, ushort hx, ushort h
     return cr;
 }
 
-Item* FOServer::SScriptFunc::Map_GetStaticItem( Map* map, ushort hx, ushort hy, hash pid )
+Item* FOServer::ScriptFunc::Map_GetStaticItem( Map* map, ushort hx, ushort hy, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2100,7 +2100,7 @@ Item* FOServer::SScriptFunc::Map_GetStaticItem( Map* map, ushort hx, ushort hy, 
     return map->GetProtoMap()->GetStaticItem( hx, hy, pid );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsHex( Map* map, ushort hx, ushort hy )
+CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHex( Map* map, ushort hx, ushort hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2113,7 +2113,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsHex( Map* map, ushort hx,
     return Script::CreateArrayRef( "array<const Item>", static_items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid )
+CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2125,7 +2125,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsHexEx( Map* map, ushort h
     return Script::CreateArrayRef( "array<const Item>", static_items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsByPid( Map* map, hash pid )
+CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsByPid( Map* map, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2135,7 +2135,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsByPid( Map* map, hash pid
     return Script::CreateArrayRef( "array<const Item>", static_items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsPredicate( Map* map, asIScriptFunction* predicate )
+CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsPredicate( Map* map, asIScriptFunction* predicate )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2164,7 +2164,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsPredicate( Map* map, asIS
     return Script::CreateArrayRef( "array<const Item>", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsAll( Map* map )
+CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsAll( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2172,7 +2172,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsAll( Map* map )
     return Script::CreateArrayRef( "array<const Item>", map->GetProtoMap()->StaticItemsVec );
 }
 
-Critter* FOServer::SScriptFunc::Map_GetCritterById( Map* map, uint crid )
+Critter* FOServer::ScriptFunc::Map_GetCritterById( Map* map, uint crid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2180,7 +2180,7 @@ Critter* FOServer::SScriptFunc::Map_GetCritterById( Map* map, uint crid )
     return map->GetCritter( crid );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type )
+CScriptArray* FOServer::ScriptFunc::Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2193,7 +2193,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushor
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, int find_type )
+CScriptArray* FOServer::ScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2219,7 +2219,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, 
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type )
+CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2240,7 +2240,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort fro
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
+CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2268,7 +2268,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushor
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type )
+CScriptArray* FOServer::ScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2285,7 +2285,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushor
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArray* critters, bool look_on_them, int find_type )
+CScriptArray* FOServer::ScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArray* critters, bool look_on_them, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2302,7 +2302,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArr
     return Script::CreateArrayRef( "Critter[]", result_critters );
 }
 
-void FOServer::SScriptFunc::Map_GetHexInPath( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
+void FOServer::ScriptFunc::Map_GetHexInPath( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2323,7 +2323,7 @@ void FOServer::SScriptFunc::Map_GetHexInPath( Map* map, ushort from_hx, ushort f
     to_hy = pre_block.second;
 }
 
-void FOServer::SScriptFunc::Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
+void FOServer::ScriptFunc::Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2351,7 +2351,7 @@ void FOServer::SScriptFunc::Map_GetHexInPathWall( Map* map, ushort from_hx, usho
     }
 }
 
-uint FOServer::SScriptFunc::Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
+uint FOServer::ScriptFunc::Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2375,7 +2375,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthHex( Map* map, ushort from_hx, usho
     return (uint) path.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut )
+uint FOServer::ScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2403,7 +2403,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, CScriptDict* props )
+Critter* FOServer::ScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, CScriptDict* props )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2434,7 +2434,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     return npc;
 }
 
-uint FOServer::SScriptFunc::Map_GetNpcCount( Map* map, int npc_role, int find_type )
+uint FOServer::ScriptFunc::Map_GetNpcCount( Map* map, int npc_role, int find_type )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2442,7 +2442,7 @@ uint FOServer::SScriptFunc::Map_GetNpcCount( Map* map, int npc_role, int find_ty
     return map->GetNpcCount( npc_role, find_type );
 }
 
-Critter* FOServer::SScriptFunc::Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count )
+Critter* FOServer::ScriptFunc::Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2450,7 +2450,7 @@ Critter* FOServer::SScriptFunc::Map_GetNpc( Map* map, int npc_role, int find_typ
     return map->GetNpc( npc_role, find_type, skip_count );
 }
 
-bool FOServer::SScriptFunc::Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_y )
+bool FOServer::ScriptFunc::Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_y )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2460,7 +2460,7 @@ bool FOServer::SScriptFunc::Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_
     return map->IsHexPassed( hex_x, hex_y );
 }
 
-bool FOServer::SScriptFunc::Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius )
+bool FOServer::ScriptFunc::Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2470,7 +2470,7 @@ bool FOServer::SScriptFunc::Map_IsHexesPassed( Map* map, ushort hex_x, ushort he
     return map->IsHexesPassed( hex_x, hex_y, radius );
 }
 
-bool FOServer::SScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y )
+bool FOServer::ScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2480,7 +2480,7 @@ bool FOServer::SScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y
     return map->IsHexRaked( hex_x, hex_y );
 }
 
-void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, string text )
+void FOServer::ScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, string text )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2489,7 +2489,7 @@ void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, u
     map->SetText( hex_x, hex_y, color, text, false );
 }
 
-void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num )
+void FOServer::ScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2499,7 +2499,7 @@ void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y
     map->SetTextMsg( hex_x, hex_y, color, text_msg, str_num );
 }
 
-void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, string lexems )
+void FOServer::ScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, string lexems )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2509,7 +2509,7 @@ void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort he
     map->SetTextMsgLex( hex_x, hex_y, color, text_msg, str_num, lexems.c_str(), (ushort) lexems.length() );
 }
 
-void FOServer::SScriptFunc::Map_RunEffect( Map* map, hash eff_pid, ushort hx, ushort hy, uint radius )
+void FOServer::ScriptFunc::Map_RunEffect( Map* map, hash eff_pid, ushort hx, ushort hy, uint radius )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2521,7 +2521,7 @@ void FOServer::SScriptFunc::Map_RunEffect( Map* map, hash eff_pid, ushort hx, us
     map->SendEffect( eff_pid, hx, hy, radius );
 }
 
-void FOServer::SScriptFunc::Map_RunFlyEffect( Map* map, hash eff_pid, Critter* from_cr, Critter* to_cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+void FOServer::ScriptFunc::Map_RunFlyEffect( Map* map, hash eff_pid, Critter* from_cr, Critter* to_cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2541,7 +2541,7 @@ void FOServer::SScriptFunc::Map_RunFlyEffect( Map* map, hash eff_pid, Critter* f
     map->SendFlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
 }
 
-bool FOServer::SScriptFunc::Map_CheckPlaceForItem( Map* map, ushort hx, ushort hy, hash pid )
+bool FOServer::ScriptFunc::Map_CheckPlaceForItem( Map* map, ushort hx, ushort hy, hash pid )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2552,7 +2552,7 @@ bool FOServer::SScriptFunc::Map_CheckPlaceForItem( Map* map, ushort hx, ushort h
     return map->IsPlaceForProtoItem( hx, hy, proto_item );
 }
 
-void FOServer::SScriptFunc::Map_BlockHex( Map* map, ushort hx, ushort hy, bool full )
+void FOServer::ScriptFunc::Map_BlockHex( Map* map, ushort hx, ushort hy, bool full )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2564,7 +2564,7 @@ void FOServer::SScriptFunc::Map_BlockHex( Map* map, ushort hx, ushort hy, bool f
         map->SetHexFlag( hx, hy, FH_NRAKE_ITEM );
 }
 
-void FOServer::SScriptFunc::Map_UnblockHex( Map* map, ushort hx, ushort hy )
+void FOServer::ScriptFunc::Map_UnblockHex( Map* map, ushort hx, ushort hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2575,7 +2575,7 @@ void FOServer::SScriptFunc::Map_UnblockHex( Map* map, ushort hx, ushort hy )
     map->UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
 }
 
-void FOServer::SScriptFunc::Map_PlaySound( Map* map, string sound_name )
+void FOServer::ScriptFunc::Map_PlaySound( Map* map, string sound_name )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2584,7 +2584,7 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, string sound_name )
         cr->Send_PlaySound( 0, sound_name );
 }
 
-void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, ushort hx, ushort hy, uint radius )
+void FOServer::ScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, ushort hx, ushort hy, uint radius )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2596,17 +2596,17 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, us
             cr->Send_PlaySound( 0, sound_name );
 }
 
-bool FOServer::SScriptFunc::Map_Reload( Map* map )
+bool FOServer::ScriptFunc::Map_Reload( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !RegenerateMap( map ) )
+    if( !Self->RegenerateMap( map ) )
         SCRIPT_ERROR_R0( "Reload map fail." );
 
     return true;
 }
 
-void FOServer::SScriptFunc::Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps )
+void FOServer::ScriptFunc::Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2628,7 +2628,7 @@ void FOServer::SScriptFunc::Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, 
     }
 }
 
-void FOServer::SScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir )
+void FOServer::ScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2641,10 +2641,10 @@ void FOServer::SScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx,
 
     ushort from_hx = hx, from_hy = hy;
     MoveHexByDir( from_hx, from_hy, ReverseDir( dir ), map->GetWidth(), map->GetHeight() );
-    VerifyTrigger( map, cr, from_hx, from_hy, hx, hy, dir );
+    Self->VerifyTrigger( map, cr, from_hx, from_hy, hx, hy, dir );
 }
 
-uint FOServer::SScriptFunc::Location_GetMapCount( Location* loc )
+uint FOServer::ScriptFunc::Location_GetMapCount( Location* loc )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2652,7 +2652,7 @@ uint FOServer::SScriptFunc::Location_GetMapCount( Location* loc )
     return loc->GetMapsCount();
 }
 
-Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, hash map_pid )
+Map* FOServer::ScriptFunc::Location_GetMap( Location* loc, hash map_pid )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2663,7 +2663,7 @@ Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, hash map_pid )
     return nullptr;
 }
 
-Map* FOServer::SScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
+Map* FOServer::ScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2675,7 +2675,7 @@ Map* FOServer::SScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
     return maps[ index ];
 }
 
-CScriptArray* FOServer::SScriptFunc::Location_GetMaps( Location* loc )
+CScriptArray* FOServer::ScriptFunc::Location_GetMaps( Location* loc )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2683,7 +2683,7 @@ CScriptArray* FOServer::SScriptFunc::Location_GetMaps( Location* loc )
     return Script::CreateArrayRef( "Map[]", loc->GetMaps() );
 }
 
-bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& map_index, hash& entire )
+bool FOServer::ScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& map_index, hash& entire )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2704,7 +2704,7 @@ bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, 
     return true;
 }
 
-uint FOServer::SScriptFunc::Location_GetEntrances( Location* loc, CScriptArray* maps_index, CScriptArray* entires )
+uint FOServer::ScriptFunc::Location_GetEntrances( Location* loc, CScriptArray* maps_index, CScriptArray* entires )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2733,18 +2733,18 @@ uint FOServer::SScriptFunc::Location_GetEntrances( Location* loc, CScriptArray* 
     return count;
 }
 
-bool FOServer::SScriptFunc::Location_Reload( Location* loc )
+bool FOServer::ScriptFunc::Location_Reload( Location* loc )
 {
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     for( Map* map : loc->GetMaps() )
-        if( !RegenerateMap( map ) )
+        if( !Self->RegenerateMap( map ) )
             SCRIPT_ERROR_R0( "Reload map in location fail." );
     return true;
 }
 
-uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )
+uint FOServer::ScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )
 {
     if( !cr1 )
         SCRIPT_ERROR_R0( "Critter1 arg is null." );
@@ -2760,7 +2760,7 @@ uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter*
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
-Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )
+Item* FOServer::ScriptFunc::Global_GetItem( uint item_id )
 {
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
@@ -2771,7 +2771,7 @@ Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )
     return item;
 }
 
-void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* to_cr, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* to_cr, bool skip_checks )
 {
     if( !item )
         SCRIPT_ERROR_R( "Item arg is null." );
@@ -2790,7 +2790,7 @@ void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* 
     ItemMngr.MoveItem( item, count, to_cr, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
     if( !item )
         SCRIPT_ERROR_R( "Item arg is null." );
@@ -2811,7 +2811,7 @@ void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_
     ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
 {
     if( !item )
         SCRIPT_ERROR_R( "Item arg is null." );
@@ -2830,7 +2830,7 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
     ItemMngr.MoveItem( item, count, to_cont, stack_id, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to_cr, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to_cr, bool skip_checks )
 {
     if( !items )
         SCRIPT_ERROR_R( "Items arg is null." );
@@ -2849,7 +2849,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
     if( !items )
         SCRIPT_ERROR_R( "Items arg is null." );
@@ -2870,7 +2870,7 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_ma
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_cont, uint stack_id, bool skip_checks )
+void FOServer::ScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_cont, uint stack_id, bool skip_checks )
 {
     if( !items )
         SCRIPT_ERROR_R( "Items arg is null." );
@@ -2889,20 +2889,20 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_
     }
 }
 
-void FOServer::SScriptFunc::Global_DeleteItem( Item* item )
+void FOServer::ScriptFunc::Global_DeleteItem( Item* item )
 {
     if( item )
         ItemMngr.DeleteItem( item );
 }
 
-void FOServer::SScriptFunc::Global_DeleteItemById( uint item_id )
+void FOServer::ScriptFunc::Global_DeleteItemById( uint item_id )
 {
     Item* item = ItemMngr.GetItem( item_id );
     if( item )
         ItemMngr.DeleteItem( item );
 }
 
-void FOServer::SScriptFunc::Global_DeleteItems( CScriptArray* items )
+void FOServer::ScriptFunc::Global_DeleteItems( CScriptArray* items )
 {
     for( int i = 0, j = items->GetSize(); i < j; i++ )
     {
@@ -2912,7 +2912,7 @@ void FOServer::SScriptFunc::Global_DeleteItems( CScriptArray* items )
     }
 }
 
-void FOServer::SScriptFunc::Global_DeleteItemsById( CScriptArray* items )
+void FOServer::ScriptFunc::Global_DeleteItemsById( CScriptArray* items )
 {
     if( !items )
         SCRIPT_ERROR_R( "Items arg is null." );
@@ -2930,36 +2930,36 @@ void FOServer::SScriptFunc::Global_DeleteItemsById( CScriptArray* items )
     }
 }
 
-void FOServer::SScriptFunc::Global_DeleteNpc( Critter* npc )
+void FOServer::ScriptFunc::Global_DeleteNpc( Critter* npc )
 {
     if( npc )
         CrMngr.DeleteNpc( npc );
 }
 
-void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
+void FOServer::ScriptFunc::Global_DeleteNpcById( uint npc_id )
 {
     Critter* npc = CrMngr.GetNpc( npc_id );
     if( npc )
         CrMngr.DeleteNpc( npc );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, string text )
+void FOServer::ScriptFunc::Global_RadioMessage( ushort channel, string text )
 {
     if( !text.empty() )
         ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, nullptr );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
+void FOServer::ScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, nullptr );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems )
+void FOServer::ScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
 }
 
-uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
+uint FOServer::ScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     if( !year )
         year = Globals->GetYear();
@@ -2987,7 +2987,7 @@ uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ush
     return Timer::GetFullSecond( year, month, day, hour, minute, second );
 }
 
-void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second )
+void FOServer::ScriptFunc::Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second )
 {
     DateTimeStamp dt = Timer::GetGameTime( full_second );
     year = dt.Year;
@@ -2999,7 +2999,7 @@ void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
     second = dt.Second;
 }
 
-Location* FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters )
+Location* FOServer::ScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters )
 {
     // Create and generate location
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
@@ -3038,27 +3038,27 @@ Location* FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx,
     return loc;
 }
 
-void FOServer::SScriptFunc::Global_DeleteLocation( Location* loc )
+void FOServer::ScriptFunc::Global_DeleteLocation( Location* loc )
 {
     if( loc )
         MapMngr.DeleteLocation( loc, nullptr );
 }
 
-void FOServer::SScriptFunc::Global_DeleteLocationById( uint loc_id )
+void FOServer::ScriptFunc::Global_DeleteLocationById( uint loc_id )
 {
     Location* loc = MapMngr.GetLocation( loc_id );
     if( loc )
         MapMngr.DeleteLocation( loc, nullptr );
 }
 
-Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
+Critter* FOServer::ScriptFunc::Global_GetCritter( uint crid )
 {
     if( !crid )
         return nullptr;          // SCRIPT_ERROR_R0("Critter id arg is zero.");
     return CrMngr.GetCritter( crid );
 }
 
-Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
+Critter* FOServer::ScriptFunc::Global_GetPlayer( string name )
 {
     // Check existence
     uint               id = MAKE_CLIENT_ID( name );
@@ -3085,14 +3085,14 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
     return cl;
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type )
+CScriptArray* FOServer::ScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type )
 {
     CritterVec critters;
     CrMngr.GetGlobalMapCritters( wx, wy, radius, find_type, critters );
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )
+Map* FOServer::ScriptFunc::Global_GetMap( uint map_id )
 {
     if( !map_id )
         SCRIPT_ERROR_R0( "Map id arg is zero." );
@@ -3100,7 +3100,7 @@ Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )
     return MapMngr.GetMap( map_id );
 }
 
-Map* FOServer::SScriptFunc::Global_GetMapByPid( hash map_pid, uint skip_count )
+Map* FOServer::ScriptFunc::Global_GetMapByPid( hash map_pid, uint skip_count )
 {
     if( !map_pid )
         SCRIPT_ERROR_R0( "Invalid zero map proto id arg." );
@@ -3108,7 +3108,7 @@ Map* FOServer::SScriptFunc::Global_GetMapByPid( hash map_pid, uint skip_count )
     return MapMngr.GetMapByPid( map_pid, skip_count );
 }
 
-Location* FOServer::SScriptFunc::Global_GetLocation( uint loc_id )
+Location* FOServer::ScriptFunc::Global_GetLocation( uint loc_id )
 {
     if( !loc_id )
         SCRIPT_ERROR_R0( "Location id arg is zero." );
@@ -3116,7 +3116,7 @@ Location* FOServer::SScriptFunc::Global_GetLocation( uint loc_id )
     return MapMngr.GetLocation( loc_id );
 }
 
-Location* FOServer::SScriptFunc::Global_GetLocationByPid( hash loc_pid, uint skip_count )
+Location* FOServer::ScriptFunc::Global_GetLocationByPid( hash loc_pid, uint skip_count )
 {
     if( !loc_pid )
         SCRIPT_ERROR_R0( "Invalid zero location proto id arg." );
@@ -3124,7 +3124,7 @@ Location* FOServer::SScriptFunc::Global_GetLocationByPid( hash loc_pid, uint ski
     return MapMngr.GetLocationByPid( loc_pid, skip_count );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radius )
+CScriptArray* FOServer::ScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radius )
 {
     LocationVec locations;
     LocationVec all_locations;
@@ -3139,7 +3139,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, 
     return Script::CreateArrayRef( "Location[]", locations );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr )
+CScriptArray* FOServer::ScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr )
 {
     LocationVec locations;
     LocationVec all_locations;
@@ -3155,7 +3155,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, usho
     return Script::CreateArrayRef( "Location[]", locations );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius )
+CScriptArray* FOServer::ScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius )
 {
     UIntVec loc_ids;
     MapMngr.GetZoneLocations( zx, zy, zone_radius, loc_ids );
@@ -3165,7 +3165,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushor
     return ids;
 }
 
-bool FOServer::SScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance )
+bool FOServer::ScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance )
 {
     if( !player )
         SCRIPT_ERROR_R0( "Player arg is null." );
@@ -3183,11 +3183,11 @@ bool FOServer::SScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, 
     if( cl->Talk.Locked )
         SCRIPT_ERROR_R0( "Can't open new dialog from demand, result or dialog functions." );
 
-    Dialog_Begin( cl, (Npc*) npc, 0, 0, 0, ignore_distance );
+    Self->Dialog_Begin( cl, (Npc*) npc, 0, 0, 0, ignore_distance );
     return cl->Talk.TalkType == TALK_WITH_NPC && cl->Talk.TalkNpc == npc->GetId();
 }
 
-bool FOServer::SScriptFunc::Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance )
+bool FOServer::ScriptFunc::Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance )
 {
     if( !player )
         SCRIPT_ERROR_R0( "Player arg is null." );
@@ -3205,11 +3205,11 @@ bool FOServer::SScriptFunc::Global_RunDialogNpcDlgPack( Critter* player, Critter
     if( cl->Talk.Locked )
         SCRIPT_ERROR_R0( "Can't open new dialog from demand, result or dialog functions." );
 
-    Dialog_Begin( cl, (Npc*) npc, dlg_pack, 0, 0, ignore_distance );
+    Self->Dialog_Begin( cl, (Npc*) npc, dlg_pack, 0, 0, ignore_distance );
     return cl->Talk.TalkType == TALK_WITH_NPC && cl->Talk.TalkNpc == npc->GetId();
 }
 
-bool FOServer::SScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance )
+bool FOServer::ScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance )
 {
     if( !player )
         SCRIPT_ERROR_R0( "Player arg is null." );
@@ -3223,11 +3223,11 @@ bool FOServer::SScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack,
     if( cl->Talk.Locked )
         SCRIPT_ERROR_R0( "Can't open new dialog from demand, result or dialog functions." );
 
-    Dialog_Begin( cl, nullptr, dlg_pack, hx, hy, ignore_distance );
+    Self->Dialog_Begin( cl, nullptr, dlg_pack, hx, hy, ignore_distance );
     return cl->Talk.TalkType == TALK_WITH_HEX && cl->Talk.TalkHexX == hx && cl->Talk.TalkHexY == hy;
 }
 
-int64 FOServer::SScriptFunc::Global_WorldItemCount( hash pid )
+int64 FOServer::ScriptFunc::Global_WorldItemCount( hash pid )
 {
     if( !ProtoMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid protoId arg." );
@@ -3235,7 +3235,7 @@ int64 FOServer::SScriptFunc::Global_WorldItemCount( hash pid )
     return ItemMngr.GetItemStatistics( pid );
 }
 
-bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, string first_str, uint parameter, asIScriptFunction* func )
+bool FOServer::ScriptFunc::Global_AddTextListener( int say_type, string first_str, uint parameter, asIScriptFunction* func )
 {
     if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
@@ -3250,22 +3250,24 @@ bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, string first_s
     tl.FirstStr = first_str;
     tl.Parameter = parameter;
 
-    SCOPE_LOCK( TextListenersLocker );
+    Mutex& m = Self->TextListenersLocker;
+    SCOPE_LOCK( m );
 
-    TextListeners.push_back( tl );
+    Self->TextListeners.push_back( tl );
     return true;
 }
 
-void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, string first_str, uint parameter )
+void FOServer::ScriptFunc::Global_EraseTextListener( int say_type, string first_str, uint parameter )
 {
-    SCOPE_LOCK( TextListenersLocker );
+    Mutex& m = Self->TextListenersLocker;
+    SCOPE_LOCK( m );
 
-    for( auto it = TextListeners.begin(), end = TextListeners.end(); it != end; ++it )
+    for( auto it = Self->TextListeners.begin(), end = Self->TextListeners.end(); it != end; ++it )
     {
         TextListen& tl = *it;
         if( say_type == tl.SayType && _str( first_str ).compareIgnoreCaseUtf8( tl.FirstStr ) && tl.Parameter == parameter )
         {
-            TextListeners.erase( it );
+            Self->TextListeners.erase( it );
             return;
         }
     }
@@ -3297,7 +3299,7 @@ static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
     }
 }
 
-bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory )
+bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory )
 {
     // Check
     if( !cr1 )
@@ -3409,7 +3411,7 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     return true;
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetAllItems( hash pid )
+CScriptArray* FOServer::ScriptFunc::Global_GetAllItems( hash pid )
 {
     ItemVec items;
     ItemVec all_items;
@@ -3424,7 +3426,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllItems( hash pid )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetOnlinePlayers()
+CScriptArray* FOServer::ScriptFunc::Global_GetOnlinePlayers()
 {
     CritterVec players;
     ClVec      all_players;
@@ -3439,7 +3441,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetOnlinePlayers()
     return Script::CreateArrayRef( "Critter[]", players );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetRegisteredPlayerIds()
+CScriptArray* FOServer::ScriptFunc::Global_GetRegisteredPlayerIds()
 {
     UIntVec       ids = DbStorage->GetAllIds( "Players" );
     CScriptArray* result = Script::CreateArray( "uint[]" );
@@ -3447,7 +3449,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetRegisteredPlayerIds()
     return result;
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetAllNpc( hash pid )
+CScriptArray* FOServer::ScriptFunc::Global_GetAllNpc( hash pid )
 {
     CritterVec npcs;
     PcVec      all_npcs;
@@ -3462,7 +3464,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllNpc( hash pid )
     return Script::CreateArrayRef( "Critter[]", npcs );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetAllMaps( hash pid )
+CScriptArray* FOServer::ScriptFunc::Global_GetAllMaps( hash pid )
 {
     MapVec maps;
     MapVec all_maps;
@@ -3477,7 +3479,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllMaps( hash pid )
     return Script::CreateArrayRef( "Map[]", maps );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetAllLocations( hash pid )
+CScriptArray* FOServer::ScriptFunc::Global_GetAllLocations( hash pid )
 {
     LocationVec locations;
     LocationVec all_locations;
@@ -3492,7 +3494,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllLocations( hash pid )
     return Script::CreateArrayRef( "Location[]", locations );
 }
 
-void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
+void FOServer::ScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
     DateTimeStamp cur_time;
     Timer::GetCurrentDateTime( cur_time );
@@ -3506,12 +3508,12 @@ void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = cur_time.Milliseconds;
 }
 
-void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
+void FOServer::ScriptFunc::Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
-    SetGameTime( multiplier, year, month, day, hour, minute, second );
+    Self->SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
-void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
+void FOServer::ScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
 {
     int   prop_enum_value = gen->GetArgDWord( 0 );
     void* ref = gen->GetArgAddress( 1 );
@@ -3534,7 +3536,7 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 1 );
 }
 
-void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen )
+void FOServer::ScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen )
 {
     int   prop_enum_value = gen->GetArgDWord( 0 );
     void* ref = gen->GetArgAddress( 1 );
@@ -3557,13 +3559,13 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 1 );
 }
 
-void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
+void FOServer::ScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 {
     Critter::SlotEnabled[ index ] = true;
     Critter::SlotDataSendEnabled[ index ] = enable_send;
 }
 
-bool FOServer::SScriptFunc::Global_LoadDataFile( string dat_name )
+bool FOServer::ScriptFunc::Global_LoadDataFile( string dat_name )
 {
     return File::LoadDataFile( dat_name );
 }
@@ -3577,7 +3579,7 @@ struct ServerImage
 };
 static vector< ServerImage* > ServerImages;
 
-bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uint image_depth )
+bool FOServer::ScriptFunc::Global_LoadImage( uint index, string image_name, uint image_depth )
 {
     // Delete old
     if( index >= ServerImages.size() )
@@ -3720,7 +3722,7 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uin
     return true;
 }
 
-uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
+uint FOServer::ScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
 {
     if( index >= ServerImages.size() || !ServerImages[ index ] )
         SCRIPT_ERROR_R0( "Image not loaded." );
@@ -3882,12 +3884,12 @@ static void YieldWebRequest( const string& url, CScriptArray* headers, CScriptDi
     request_data->WorkThread->Start( request_func, "WebRequest", request_data );
 }
 
-void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
+void FOServer::ScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
 {
     YieldWebRequest( url, nullptr, post, "", success, result );
 }
 
-void FOServer::SScriptFunc::Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result )
+void FOServer::ScriptFunc::Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result )
 {
     YieldWebRequest( url, headers, nullptr, post, success, result );
 }

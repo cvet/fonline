@@ -27,7 +27,7 @@ int main( int argc, char** argv )
 static int main_disabled( int argc, char** argv )
 #endif
 {
-    Thread::SetCurrentName( "ServerService" );
+    Thread::SetName( "ServerService" );
     LogToFile( "FOnlineServerService.log" );
     InitialSetup( "FOnlineServerService", argc, argv );
 
@@ -133,7 +133,7 @@ static int main_disabled( int argc, char** argv )
 #ifdef FO_WINDOWS
 static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
-    Thread::SetCurrentName( "Service" );
+    Thread::SetName( "Service" );
     LogToFile( "FOnlineServerService.log" );
 
     FOServiceStatusHandle = RegisterServiceCtrlHandlerW( L"FOnlineServer", FOServiceCtrlHandler );

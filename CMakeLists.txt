@@ -501,7 +501,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "${WEBSOCKETS_DIR}" )
 endif()
 
-# MongoDB C driver & Bson
+# MongoDB & Bson
 if( NOT BUILD_ONLY_CLIENT )
 	StatusMessage( "+ Bson" )
 	set( BSON_DIR "ThirdParty/libbson" )
@@ -517,7 +517,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	target_compile_definitions( bson_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
 	DisableLibWarnings( bson_static )
 
-	StatusMessage( "+ MongoDB C driver" )
+	StatusMessage( "+ MongoDB" )
 	set( MONGODB_DIR "ThirdParty/mongo-c-driver" )
 	set( ENABLE_SASL "OFF" CACHE STRING "" FORCE )
 	set( MONGOC_ENABLE_STATIC ON CACHE STRING "" FORCE )
@@ -621,6 +621,7 @@ set( COMMON_SOURCE
 	Source/Common/Timer.cpp Source/Common/Timer.h # Rename (Timing)
 	Source/Common/LineTracer.h Source/Common/LineTracer.cpp
 	Source/Common/Crypt.cpp Source/Common/Crypt.h # Split to DataStorage/LocalStorage
+	Source/Common/Settings.h Source/Common/Settings.cpp
 )
 
 # Server source
