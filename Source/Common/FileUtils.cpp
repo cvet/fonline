@@ -3,6 +3,7 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "Settings.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 
@@ -636,7 +637,8 @@ void File::ResetCurrentDir()
     #ifdef FO_WINDOWS
     SetCurrentDirectoryW( _str( GameOpt.WorkDir ).toWideChar().c_str() );
     #else
-    chdir( GameOpt.WorkDir.c_str() );
+    int r = chdir( GameOpt.WorkDir.c_str() );
+    UNUSED_VARIABLE( r );
     #endif
 }
 
@@ -646,7 +648,8 @@ void File::SetCurrentDir( const string& dir, const string& write_dir )
     #ifdef FO_WINDOWS
     SetCurrentDirectoryW( _str( resolved_dir ).toWideChar().c_str() );
     #else
-    chdir( resolved_dir.c_str() );
+    int r = chdir( resolved_dir.c_str() );
+    UNUSED_VARIABLE( r );
     #endif
 
     writeDir = _str( write_dir ).formatPath();

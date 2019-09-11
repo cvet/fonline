@@ -10,13 +10,6 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-static char DumpMess[] =
-{
-    "Please send this file '{}' on e-mail 'support@fonline.ru'."
-    "The theme of the letter should contain a word 'dump'. In the letter specify "
-    "under what circumstances there was a failure. Thanks."
-};
-
 static string AppName;
 static string AppVer;
 static string ManualDumpAppendix;
@@ -80,7 +73,8 @@ void CatchExceptions( const string& app_name, int app_ver )
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG   retval = EXCEPTION_CONTINUE_SEARCH;
-    string mess;
+    string message;
+    string traceback;
 
     File::ResetCurrentDir();
     DateTimeStamp dt;
@@ -93,9 +87,14 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     FILE* f = fopen( dump_path.c_str(), "wt" );
     if( f )
     {
+        if( !except )
+            message = ManualDumpMessage;
+        else
+            message = "Exception";
+
         // Generic info
         fprintf( f, "Message\n" );
-        fprintf( f, "%s\n", ManualDumpMessage.c_str() );
+        fprintf( f, "%s\n", message.c_str() );
         fprintf( f, "\n" );
         fprintf( f, "Application\n" );
         fprintf( f, "\tName        %s\n", AppName.c_str() );
@@ -120,7 +119,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             {
                 # define CASE_EXCEPTION( e ) \
                 case e:                      \
-                    fprintf( f, # e ); break
+                    fprintf( f, # e ); message = # e; break
                 CASE_EXCEPTION( EXCEPTION_ACCESS_VIOLATION );
                 CASE_EXCEPTION( EXCEPTION_DATATYPE_MISALIGNMENT );
                 CASE_EXCEPTION( EXCEPTION_BREAKPOINT );
@@ -143,11 +142,14 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 CASE_EXCEPTION( EXCEPTION_INVALID_DISPOSITION );
                 CASE_EXCEPTION( EXCEPTION_GUARD_PAGE );
                 CASE_EXCEPTION( EXCEPTION_INVALID_HANDLE );
+                # undef CASE_EXCEPTION
             case 0xE06D7363:
                 fprintf( f, "Unhandled C++ Exception" );
+                message = "Unhandled C++ Exception";
                 break;
             default:
                 fprintf( f, "0x%0X", except->ExceptionRecord->ExceptionCode );
+                message = _str( "Unknown Exception (code {})", except->ExceptionRecord->ExceptionCode );
                 break;
             }
             fprintf( f, "\n" );
@@ -313,7 +315,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                         CHAR    loadedImageName[ STACKWALK_MAX_NAMELEN ];
                     };
 
-                    static void OnCallstackEntry( FILE* f, int frame_num, CallstackEntry& entry )
+                    static void OnCallstackEntry( bool is_current_thread, string& traceback, FILE* f, int frame_num, CallstackEntry& entry )
                     {
                         if( frame_num >= 0 && entry.offset != 0 )
                         {
@@ -327,10 +329,20 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                                 strcpy_s( entry.moduleName, "???" );
 
                             fprintf( f, "\t%s, %s + %lld", entry.moduleName, entry.name, entry.offsetFromSmybol );
+                            if( is_current_thread )
+                                traceback += _str( "    {}, {}", entry.moduleName, entry.name );
                             if( entry.lineFileName[ 0 ] != 0 )
-                                fprintf( f, ", %s (%d)\n", entry.lineFileName, entry.lineNumber );
+                            {
+                                fprintf( f, ", %s (line %d)\n", entry.lineFileName, entry.lineNumber );
+                                if( is_current_thread )
+                                    traceback += _str( ", {} at line {}\n", entry.lineFileName, entry.lineNumber );
+                            }
                             else
+                            {
                                 fprintf( f, "\n" );
+                                if( is_current_thread )
+                                    traceback += _str( "+ {}\n", entry.offsetFromSmybol );
+                            }
                         }
                     }
                 };
@@ -413,7 +425,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                     }
                 }
 
-                CSE::OnCallstackEntry( f, frame_num, callstack );
+                CSE::OnCallstackEntry( i == 0, traceback, f, frame_num, callstack );
                 if( stack.AddrReturn.Offset == 0 )
                     break;
 
@@ -444,16 +456,10 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         CloseHandle( process );
 
         fclose( f );
-
-        mess = _str( DumpMess, dump_path );
-    }
-    else
-    {
-        mess = _str( mess, "Error while create dump file - Error create file, path '{}', err {}.", dump_path, GetLastError() );
     }
 
     if( except )
-        ShowMessage( mess.c_str() );
+        ShowErrorMessage( message, traceback );
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -466,15 +472,16 @@ void CreateDump( const string& appendix, const string& message )
     TopLevelFilterReadableDump( nullptr );
 }
 
-#elif !defined ( FO_ANDROID ) && !defined ( FO_WEB )
+#elif !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && !defined ( FO_IOS )
+
+# ifdef FO_LINUX
+#  define BACKWARD_HAS_BFD    1
+# endif
+# include "backward.hpp"
 
 # include "FileUtils.h"
 # include <execinfo.h>
-# include <cxxabi.h>
 # include <sys/utsname.h>
-# include <string.h>
-
-# define BACKTRACE_BUFFER_COUNT    ( 100 )
 
 static void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
 static bool SigactionsSetted = false;
@@ -497,21 +504,17 @@ void CatchExceptions( const string& app_name, int app_ver )
 
         struct sigaction act;
 
-        /*
-           SIGSEGV
-           Description     Invalid memory reference
-           Default action  Abnormal termination of the process
-         */
+        // SIGSEGV
+        // Description     Invalid memory reference
+        // Default action  Abnormal termination of the process
         memset( &act, 0, sizeof( act ) );
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
         sigaction( SIGSEGV, &act, &OldSIGSEGV );
 
-        /*
-           SIGFPE
-           Description     Erroneous arithmetic operation
-           Default action  bnormal termination of the process
-         */
+        // SIGFPE
+        // Description     Erroneous arithmetic operation
+        // Default action  bnormal termination of the process
         memset( &act, 0, sizeof( act ) );
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
@@ -538,8 +541,58 @@ void CreateDump( const string& appendix, const string& message )
 
 static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
-    string mess;
+    string message;
+    string traceback;
 
+    // Additional description
+    static const char* str_SIGSEGV[] =
+    {
+        "Address not mapped to object",          // SEGV_MAPERR
+        "Invalid permissions for mapped object", // SEGV_ACCERR
+    };
+    static const char* str_SIGFPE[] =
+    {
+        "Integer divide by zero",           // FPE_INTDIV
+        "Integer overflow",                 // FPE_INTOVF
+        "Floating-point divide by zero",    // FPE_FLTDIV
+        "Floating-point overflow",          // FPE_FLTOVF
+        "Floating-point underflow",         // FPE_FLTUND
+        "Floating-point inexact result",    // FPE_FLTRES
+        "Invalid floating-point operation", // FPE_FLTINV
+        "Subscript out of range",           // FPE_FLTSUB
+    };
+
+    const char* sig_desc = nullptr;
+    if( siginfo )
+    {
+        if( siginfo->si_signo == SIGSEGV && siginfo->si_code >= 0 && siginfo->si_code < 2 )
+            sig_desc = str_SIGSEGV[ siginfo->si_code ];
+        if( siginfo->si_signo == SIGFPE && siginfo->si_code >= 0 && siginfo->si_code < 8 )
+            sig_desc = str_SIGFPE[ siginfo->si_code ];
+    }
+
+    // Format message
+    if( siginfo )
+    {
+        message = strsignal( siginfo->si_signo );
+        if( sig_desc )
+            message += _str( " ({})", sig_desc );
+    }
+    else
+    {
+        message = ManualDumpMessage;
+    }
+
+    // Obtain traceback
+    backward::StackTrace st;
+    st.load_here( 42 );
+    backward::Printer st_printer;
+    st_printer.snippet = false;
+    std::stringstream ss;
+    st_printer.print( st, ss );
+    traceback = ss.str();
+
+    // Dump file
     File::ResetCurrentDir();
     DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
@@ -553,7 +606,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     {
         // Generic info
         fprintf( f, "Message\n" );
-        fprintf( f, "\t%s\n", ManualDumpMessage.c_str() );
+        fprintf( f, "\t%s\n", message.c_str() );
         fprintf( f, "\n" );
         fprintf( f, "Application\n" );
         fprintf( f, "\tName        %s\n", AppName.c_str() );
@@ -567,31 +620,9 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         // Exception information
         if( siginfo )
         {
-            const char* str = nullptr;
-            static const char* str_SIGSEGV[] =
-            {
-                "Address not mapped to object, SEGV_MAPERR",
-                "Invalid permissions for mapped object, SEGV_ACCERR",
-            };
-            if( siginfo->si_signo == SIGSEGV && siginfo->si_code >= 0 && siginfo->si_code < 2 )
-                str = str_SIGSEGV[ siginfo->si_code ];
-            static const char* str_SIGFPE[] =
-            {
-                "Integer divide by zero, FPE_INTDIV",
-                "Integer overflow, FPE_INTOVF",
-                "Floating-point divide by zero, FPE_FLTDIV",
-                "Floating-point overflow, FPE_FLTOVF",
-                "Floating-point underflow, FPE_FLTUND",
-                "Floating-point inexact result, FPE_FLTRES",
-                "Invalid floating-point operation, FPE_FLTINV",
-                "Subscript out of range, FPE_FLTSUB",
-            };
-            if( siginfo->si_signo == SIGFPE && siginfo->si_code >= 0 && siginfo->si_code < 8 )
-                str = str_SIGFPE[ siginfo->si_code ];
-
             fprintf( f, "Exception\n" );
             fprintf( f, "\tSigno   %s (%d)\n", strsignal( siginfo->si_signo ), siginfo->si_signo );
-            fprintf( f, "\tCode    %s (%d)\n", str ? str : "No description", siginfo->si_code );
+            fprintf( f, "\tCode    %s (%d)\n", sig_desc ? sig_desc : "No description", siginfo->si_code );
             fprintf( f, "\tErrno   %s (%d)\n", strerror( siginfo->si_errno ), siginfo->si_errno );
             fprintf( f, "\n" );
         }
@@ -600,55 +631,20 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         DumpAngelScript( f );
 
         // Threads
-        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
+        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetName(), Thread::GetId(), ", current" );
 
-        // Stack
-        int skip = 0;
-        void* callstack[ BACKTRACE_BUFFER_COUNT ];
-        const int max_frames = sizeof( callstack ) / sizeof( callstack[ 0 ] );
-        char buf[ 1024 ];
-        int frames = backtrace( callstack, max_frames );
-        char** symbols = backtrace_symbols( callstack, frames );
+        // Stacktrace
+        st_printer.print( st );
+        st_printer.print( st, f );
 
-        for( int i = skip; i < frames; i++ )
-        {
-            Dl_info info;
-            if( dladdr( callstack[ i ], &info ) && info.dli_sname )
-            {
-                char* demangled = nullptr;
-                int status = -1;
-                if( info.dli_sname[ 0 ] == '_' )
-                    demangled = abi::__cxa_demangle( info.dli_sname, nullptr, 0, &status );
-                snprintf( buf, sizeof( buf ), "%-3d %*p %s + %zd",
-                          i, int(2 + sizeof( void* ) * 2), callstack[ i ],
-                          status == 0 ? demangled : info.dli_sname == 0 ? symbols[ i ] : info.dli_sname,
-                          (char*) callstack[ i ] - (char*) info.dli_saddr );
-
-                free( demangled );
-            }
-            else
-            {
-                snprintf( buf, sizeof( buf ), "%-3d %*p %s",
-                          i, int(2 + sizeof( void* ) * 2), callstack[ i ], symbols[ i ] );
-            }
-            fprintf( f, "\t%s\n", buf );
-        }
-
-        free( symbols );
         fclose( f );
-
-        mess = _str( DumpMess, dump_path );
     }
-    else
-    {
-        mess = _str( "Error while create dump file - Error create file, path '{}'.", dump_path );
-    }
-
-    // if( siginfo )
-    //    MessageBox( NULL, mess, "FOnline Error", MB_OK );
 
     if( siginfo )
+    {
+        ShowErrorMessage( message, traceback );
         ExitProcess( 1 );
+    }
 }
 
 #else
@@ -683,7 +679,18 @@ bool RaiseAssert( const string& message, const string& file, int line )
     CreateDump( _str( "AssertFailed_v{}_{}({})", FONLINE_VERSION, name, line ), message );
 
     // Show message
-    ShowMessage( _str( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ).c_str() );
+    string traceback = "";
+    # if defined ( FO_LINUX ) || defined ( FO_MAC )
+    backward::StackTrace st;
+    st.load_here( 42 );
+    backward::Printer st_printer;
+    st_printer.snippet = false;
+    std::stringstream ss;
+    st_printer.print( st, ss );
+    traceback = ss.str();
+    # endif
+
+    ShowErrorMessage( _str( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ), traceback );
     #endif
 
     // Shut down

@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get -qq update && apt-get install -y default-jdk git openssh-client bash unzip curl python-minimal nodejs default-jre git-core wget lftp cmake ant \
-  build-essential cmake freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libsdl2-dev
+  build-essential cmake freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libsdl2-dev binutils-dev
 
 # Install i386 dependencies
 #RUN apt-get install -y freeglut3-dev:i386 libssl-dev:i386 libevent-dev:i386 libx11-dev:i386 libxi-dev:i386 libxmu-dev:i386 \

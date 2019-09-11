@@ -1,6 +1,7 @@
 #include "GraphicStructures.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "Settings.h"
 
 bool Is3dExtensionSupported( const string& ext )
 {
@@ -67,14 +68,14 @@ Texture::Texture(): Name( nullptr ), Id( 0 ), Width( 0 ), Height( 0 ), Samples( 
 
 Texture::~Texture()
 {
-    #ifndef FO_SERVER_DAEMON
+    #ifndef FO_NO_GRAPHIC
     GL( glDeleteTextures( 1, &Id ) );
     #endif
 }
 
 void Texture::UpdateRegion( const Rect& r, const uchar* data )
 {
-    #ifndef FO_SERVER_DAEMON
+    #ifndef FO_NO_GRAPHIC
     GL( glBindTexture( GL_TEXTURE_2D, Id ) );
     GL( glTexSubImage2D( GL_TEXTURE_2D, 0, r.L, r.T, r.W(), r.H(), GL_RGBA, GL_UNSIGNED_BYTE, data ) );
     GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
@@ -193,7 +194,7 @@ void MeshData::Load( File& file )
 void CombinedMesh::Clear()
 {
     EncapsulatedMeshCount = 0;
-    #ifndef FO_SERVER_DAEMON
+    #ifndef FO_NO_GRAPHIC
     if( VBO )
         GL( glDeleteBuffers( 1, &VBO ) );
     if( IBO )
@@ -296,7 +297,7 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
 
 void CombinedMesh::Finalize()
 {
-    #ifndef FO_SERVER_DAEMON
+    #ifndef FO_NO_GRAPHIC
     GL( glGenBuffers( 1, &VBO ) );
     GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
     GL( glBufferData( GL_ARRAY_BUFFER, Vertices.size() * sizeof( Vertex3D ), &Vertices[ 0 ], GL_STATIC_DRAW ) );

@@ -152,6 +152,8 @@ private:
     string     curDataPrefix;
 
 public:
+    uchar SelectAlpha = 100;
+
     void   ResizeField( ushort w, ushort h );
     Field& GetField( ushort hx, ushort hy )    { return hexField[ hy * maxHexX + hx ]; }
     bool   IsHexToDraw( ushort hx, ushort hy ) { return hexField[ hy * maxHexX + hx ].IsView; }

@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
 [ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
 [ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
@@ -20,10 +20,12 @@ fi
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir -p web
-cd web
+
 mkdir -p "./Binaries/Client/Web" && rm -rf "./Binaries/Client/Web/*"
 cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
+
+mkdir -p Web
+cd Web
 
 mkdir -p emsdk
 cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
@@ -38,12 +40,12 @@ emcc -v
 
 mkdir -p release
 cd release
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" "$ROOT_FULL_PATH"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" -DFONLINE_WEB_DEBUG=OFF "$ROOT_FULL_PATH"
 make -j$(nproc)
 cd ../
 
 mkdir -p debug
 cd debug
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$ROOT_FULL_PATH"
+cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" -DFONLINE_WEB_DEBUG=ON "$ROOT_FULL_PATH"
 make -j$(nproc)
 cd ../

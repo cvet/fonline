@@ -4,6 +4,7 @@
 #include "GraphicStructures.h"
 #include "3dAnimation.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #include "assimp/cimport.h"
 #include "assimp/postprocess.h"
 #include "fbxsdk/fbxsdk.h"

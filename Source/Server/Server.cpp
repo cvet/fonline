@@ -7,35 +7,15 @@
 #include "ResourceConverter.h"
 #include "FileSystem.h"
 #include "IniFile.h"
+#include "AdminPanel.h"
+#include "Settings.h"
 #include <chrono>
 
-#define MAX_CLIENTS_IN_GAME    ( 3000 )
-
-int                       FOServer::UpdateIndex = -1;
-int                       FOServer::UpdateLastIndex = -1;
-uint                      FOServer::UpdateLastTick;
-ClVec                     FOServer::LogClients;
-NetServerBase*            FOServer::TcpServer;
-NetServerBase*            FOServer::WebSocketsServer;
-ClVec                     FOServer::ConnectedClients;
-Mutex                     FOServer::ConnectedClientsLocker;
-FOServer::Statistics_     FOServer::Statistics;
-bool                      FOServer::RequestReloadClientScripts;
-LangPackVec               FOServer::LangPacks;
-Pragmas                   FOServer::ServerPropertyPragmas;
-FOServer::TextListenVec   FOServer::TextListeners;
-Mutex                     FOServer::TextListenersLocker;
-bool                      FOServer::Active;
-bool                      FOServer::ActiveInProcess;
-UIntMap                   FOServer::RegIp;
-Mutex                     FOServer::RegIpLocker;
-FOServer::ClientBannedVec FOServer::Banned;
-Mutex                     FOServer::BannedLocker;
-FOServer::UpdateFileVec   FOServer::UpdateFiles;
-UCharVec                  FOServer::UpdateFilesList;
+FOServer* FOServer::Self;
 
 FOServer::FOServer()
 {
+    Self = this;
     Active = true;
     ActiveInProcess = true;
     memzero( &Statistics, sizeof( Statistics ) );
@@ -47,6 +27,41 @@ FOServer::FOServer()
 FOServer::~FOServer()
 {
     //
+}
+
+int FOServer::Run()
+{
+    ServerGameSleep = MainConfig->GetInt( "", "GameSleep", 10 );
+    AllowServerNativeCalls = ( MainConfig->GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
+    AllowClientNativeCalls = ( MainConfig->GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
+
+    WriteLog( "FOnline Server, version {}.\n", FONLINE_VERSION );
+    if( !GameOpt.CommandLine.empty() )
+        WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
+
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
+    if( MemoryDebugLevel > 2 )
+        Debugger::StartTraceMemory();
+
+    ushort port = MainConfig->GetInt( "", "AdminPanelPort", 0 );
+    if( port )
+        InitAdminManager( this, (ushort) port );
+
+    if( !Init() )
+    {
+        WriteLog( "Initialization failed!\n" );
+        return 1;
+    }
+
+    WriteLog( "***   Starting game loop   ***\n" );
+
+    while( !GameOpt.Quit )
+        LogicTick();
+
+    WriteLog( "***   Finishing game loop  ***\n" );
+
+    Finish();
+    return 0;
 }
 
 void FOServer::Finish()
@@ -68,7 +83,7 @@ void FOServer::Finish()
         DbHistory->CommitChanges();
 
     // Logging clients
-    LogToFunc( "LogToClients", FOServer::LogToClients, false );
+    LogToFunc( "LogToClients", std::bind( &FOServer::LogToClients, this, std::placeholders::_1 ), false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
@@ -481,11 +496,6 @@ void FOServer::OnNewConnection( NetConnection* connection )
     ConnectedClientsLocker.Lock();
     uint count = (uint) ConnectedClients.size();
     ConnectedClientsLocker.Unlock();
-    if( count >= MAX_CLIENTS_IN_GAME )
-    {
-        connection->Disconnect();
-        return;
-    }
 
     // Allocate client
     ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
@@ -1719,7 +1729,7 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
             return;
         }
 
-        LogToFunc( "LogToClients", FOServer::LogToClients, false );
+        LogToFunc( "LogToClients", std::bind( &FOServer::LogToClients, this, std::placeholders::_1 ), false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
@@ -1741,7 +1751,7 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
             LogClients.clear();
         }
         if( !LogClients.empty() )
-            LogToFunc( "LogToClients", FOServer::LogToClients, true );
+            LogToFunc( "LogToClients", std::bind( &FOServer::LogToClients, this, std::placeholders::_1 ), true );
     }
     break;
     case CMD_DEV_EXEC:
@@ -1897,7 +1907,7 @@ bool FOServer::InitReal()
         sample_time = 0;
 
     // Reserve memory
-    ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
+    ConnectedClients.reserve( 10000 );
 
     // Data base
     string storage_db_type = MainConfig->GetStr( "", "DbStorage", "Memory" );
@@ -2036,9 +2046,9 @@ bool FOServer::InitReal()
 
     WriteLog( "Starting server on ports {} and {}.\n", port, port + 1 );
 
-    if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
+    if( !( TcpServer = NetServerBase::StartTcpServer( port, std::bind( &FOServer::OnNewConnection, this, std::placeholders::_1 ) ) ) )
         return false;
-    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, wss_credentials, FOServer::OnNewConnection ) ) )
+    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, wss_credentials, std::bind( &FOServer::OnNewConnection, this, std::placeholders::_1 ) ) ) )
         return false;
 
     // Script timeouts
@@ -2215,7 +2225,7 @@ void FOServer::LogToClients( const string& str )
             }
         }
         if( LogClients.empty() )
-            LogToFunc( "LogToClients", FOServer::LogToClients, false );
+            LogToFunc( "LogToClients", std::bind( &FOServer::LogToClients, this, std::placeholders::_1 ), false );
     }
 }
 

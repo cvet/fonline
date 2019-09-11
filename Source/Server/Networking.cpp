@@ -3,6 +3,7 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #include <stdexcept>
 
 #define ASIO_STANDALONE
