@@ -6,6 +6,7 @@
 #include "ItemManager.h"
 #include "MapManager.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 /************************************************************************/
 /* Map                                                                  */

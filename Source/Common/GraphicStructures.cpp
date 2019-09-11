@@ -1,6 +1,7 @@
 #include "GraphicStructures.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "Settings.h"
 
 bool Is3dExtensionSupported( const string& ext )
 {

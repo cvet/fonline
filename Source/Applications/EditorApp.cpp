@@ -241,10 +241,6 @@ static int main_disabled( int argc, char** argv )
     LogToBuffer( true );
     WriteLog( "FOnline Editor v.{}.\n", FONLINE_VERSION );
 
-    // Options
-    // GetServerOptions();
-    GetClientOptions();
-
     // Initialize Gui
     bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
     if( !AppGui::Init( "FOnline Editor", use_dx, true, true ) )

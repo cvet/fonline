@@ -6,6 +6,7 @@
 #include "NetBuffer.h"
 #include "StringUtils.h"
 #include "Server.h"
+#include "Settings.h"
 
 #define MAX_SESSIONS    ( 10 )
 

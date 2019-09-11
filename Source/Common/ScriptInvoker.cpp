@@ -3,6 +3,7 @@
 #include "Testing.h"
 #include "Script.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "DataBase.h"
 #endif

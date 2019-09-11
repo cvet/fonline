@@ -8,6 +8,7 @@
 #include "FileSystem.h"
 #include "IniFile.h"
 #include "AdminPanel.h"
+#include "Settings.h"
 #include <chrono>
 
 FOServer* FOServer::Self;

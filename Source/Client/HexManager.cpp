@@ -7,6 +7,7 @@
 #include "ProtoManager.h"
 #include "Script.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 /************************************************************************/
 /* FIELD                                                                */
@@ -2112,11 +2113,6 @@ void HexManager::SetWeather( int time, uchar rain )
 
 void HexManager::ResizeField( ushort w, ushort h )
 {
-    GameOpt.ClientMap = nullptr;
-    GameOpt.ClientMapLight = nullptr;
-    GameOpt.ClientMapWidth = 0;
-    GameOpt.ClientMapHeight = 0;
-
     maxHexX = w;
     maxHexY = h;
     SAFEDELA( hexField );
@@ -2131,11 +2127,6 @@ void HexManager::ResizeField( ushort w, ushort h )
     memzero( hexTrack, w * h * sizeof( char ) );
     hexLight = new uchar[ w * h * 3 ];
     memzero( hexLight, w * h * 3 * sizeof( uchar ) );
-
-    GameOpt.ClientMap = hexField;
-    GameOpt.ClientMapLight = hexLight;
-    GameOpt.ClientMapWidth = w;
-    GameOpt.ClientMapHeight = h;
 }
 
 void HexManager::SwitchShowTrack()

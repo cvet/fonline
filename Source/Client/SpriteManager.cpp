@@ -5,6 +5,7 @@
 #include "IniFile.h"
 #include "Crypt.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #include "F2Palette_Include.h"
 
 #ifdef FO_WEB
