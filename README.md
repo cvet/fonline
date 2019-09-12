@@ -10,7 +10,7 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 
 ## Features
 
-* C++14 *(not all refactored but wip)*
+* C++17 *(not all refactored but wip)*
 * OpenGL/ES/WebGL and DirectX *(wip)* rendering
 * AngelScript and C# *(wip)* scripting languages
 * Editor and Server target platforms
