@@ -71,8 +71,8 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 ## Clone / Build / Setup
 
-Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).\
-You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.\
+Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).  
+You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.10.2.
 
 For build just run from repository root one of the following scripts:
@@ -85,9 +85,9 @@ For build just run from repository root one of the following scripts:
 
 All output binaries you can find in Build/Binaries directory.
 
-Todo:\
-...write about build with cmake\
-...write about how make final sdk\
+Todo:  
+...write about build with cmake  
+...write about how make final sdk  
 ...write about how setup own test environment
 
 ## Third-party packages
