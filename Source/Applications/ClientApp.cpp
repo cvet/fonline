@@ -45,9 +45,6 @@ static int main_disabled( int argc, char** argv )
         Thread::Sleep( 500 );
     #endif
 
-    // Options
-    GetClientOptions();
-
     // Start message
     WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );
 
