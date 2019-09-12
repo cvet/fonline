@@ -622,6 +622,7 @@ set( COMMON_SOURCE
 	Source/Common/LineTracer.h Source/Common/LineTracer.cpp
 	Source/Common/Crypt.cpp Source/Common/Crypt.h # Split to DataStorage/LocalStorage
 	Source/Common/Settings.h Source/Common/Settings.cpp
+	Source/Common/YamlFile.h Source/Common/YamlFile.cpp
 )
 
 # Server source
