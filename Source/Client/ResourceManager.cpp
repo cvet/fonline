@@ -5,6 +5,7 @@
 #include "Script.h"
 #include "Crypt.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 ResourceManager ResMngr;
 
