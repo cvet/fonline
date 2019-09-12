@@ -20,12 +20,12 @@ PUSHD %FO_BUILD_DEST%
 
 MKDIR Windows\x86
 PUSHD Windows\x86
-cmake -G "Visual Studio 15 2017" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
+cmake -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
 POPD
 
 MKDIR Windows\x64
 PUSHD Windows\x64
-cmake -G "Visual Studio 15 2017 Win64" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
+cmake -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
 POPD
 
 cmake --build Windows\x64 --config RelWithDebInfo --target FOnlineServer
