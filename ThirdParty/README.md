@@ -7,7 +7,7 @@
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-master-050919](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
-* Json - [json-nlohmann](https://github.com/azadkuh/nlohmann_json_release)
+* Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
 * NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.0.9](https://www.libsdl.org/download-2.0.php) ([2](https://github.com/spurious/SDL-mirror))
