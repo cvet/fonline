@@ -1,68 +1,56 @@
-/*
- Custom argument formatter tests
+// Formatting library for C++ - custom argument formatter tests
+//
+// Copyright (c) 2012 - present, Victor Zverovich
+// All rights reserved.
+//
+// For the license information refer to format.h.
 
- Copyright (c) 2016, Victor Zverovich
- All rights reserved.
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 
- For the license information refer to format.h.
- */
-
-#include "fmt/printf.h"
+#include "fmt/format.h"
 #include "gtest-extra.h"
 
-using fmt::BasicPrintfArgFormatter;
+// MSVC 2013 is known to be broken.
+#if !FMT_MSC_VER || FMT_MSC_VER > 1800
 
 // A custom argument formatter that doesn't print `-` for floating-point values
 // rounded to 0.
-class CustomArgFormatter
-  : public fmt::BasicArgFormatter<CustomArgFormatter, char> {
+class custom_arg_formatter
+    : public fmt::arg_formatter<fmt::internal::buffer_range<char>> {
  public:
-  CustomArgFormatter(fmt::BasicFormatter<char, CustomArgFormatter> &f,
-                     fmt::FormatSpec &s, const char *fmt)
-  : fmt::BasicArgFormatter<CustomArgFormatter, char>(f, s, fmt) {}
+  using range = fmt::internal::buffer_range<char>;
+  typedef fmt::arg_formatter<range> base;
 
-  void visit_double(double value) {
-    if (round(value * pow(10, spec().precision())) == 0)
-      value = 0;
-    fmt::BasicArgFormatter<CustomArgFormatter, char>::visit_double(value);
+  custom_arg_formatter(fmt::format_context& ctx,
+                       fmt::format_parse_context* parse_ctx,
+                       fmt::format_specs* s = nullptr)
+      : base(ctx, parse_ctx, s) {}
+
+  using base::operator();
+
+  iterator operator()(double value) {
+    // Comparing a float to 0.0 is safe.
+    if (round(value * pow(10, specs()->precision)) == 0.0) value = 0;
+    return base::operator()(value);
   }
 };
 
-// A custom argument formatter that doesn't print `-` for floating-point values
-// rounded to 0.
-class CustomPrintfArgFormatter :
-    public BasicPrintfArgFormatter<CustomPrintfArgFormatter, char> {
- public:
-  typedef BasicPrintfArgFormatter<CustomPrintfArgFormatter, char> Base;
-
-  CustomPrintfArgFormatter(fmt::BasicWriter<char> &w, fmt::FormatSpec &spec)
-  : Base(w, spec) {}
-
-  void visit_double(double value) {
-    if (round(value * pow(10, spec().precision())) == 0)
-      value = 0;
-    Base::visit_double(value);
-  }
-};
-
-std::string custom_format(const char *format_str, fmt::ArgList args) {
-  fmt::MemoryWriter writer;
-  // Pass custom argument formatter as a template arg to BasicFormatter.
-  fmt::BasicFormatter<char, CustomArgFormatter> formatter(args, writer);
-  formatter.format(format_str);
-  return writer.str();
+std::string custom_vformat(fmt::string_view format_str, fmt::format_args args) {
+  fmt::memory_buffer buffer;
+  // Pass custom argument formatter as a template arg to vwrite.
+  fmt::vformat_to<custom_arg_formatter>(buffer, format_str, args);
+  return std::string(buffer.data(), buffer.size());
 }
-FMT_VARIADIC(std::string, custom_format, const char *)
 
-std::string custom_sprintf(const char* format_str, fmt::ArgList args){
-  fmt::MemoryWriter writer;
-  fmt::PrintfFormatter<char, CustomPrintfArgFormatter> formatter(args, writer);
-  formatter.format(format_str);
-  return writer.str();
+template <typename... Args>
+std::string custom_format(const char* format_str, const Args&... args) {
+  auto va = fmt::make_format_args(args...);
+  return custom_vformat(format_str, va);
 }
-FMT_VARIADIC(std::string, custom_sprintf, const char*);
 
 TEST(CustomFormatterTest, Format) {
   EXPECT_EQ("0.00", custom_format("{:.2f}", -.00001));
-  EXPECT_EQ("0.00", custom_sprintf("%.2f", -.00001));
 }
+#endif

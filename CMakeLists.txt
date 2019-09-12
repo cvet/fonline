@@ -487,7 +487,7 @@ include_directories( "${JSON_DIR}" )
 StatusMessage( "+ Fmt" )
 set( FMT_DIR "ThirdParty/fmt" )
 add_subdirectory( "${FMT_DIR}" )
-include_directories( "${FMT_DIR}" )
+include_directories( "${FMT_DIR}/include" )
 DisableLibWarnings( fmt )
 
 # Asio & Websockets
