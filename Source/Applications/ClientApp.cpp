@@ -6,6 +6,7 @@
 #include "Debugger.h"
 #include "Client.h"
 #include "Keyboard.h"
+#include "Settings.h"
 #include <locale.h>
 
 #ifdef FO_IOS
