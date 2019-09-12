@@ -7,6 +7,7 @@
 #include "Mapper.h"
 #include "AppGui.h"
 #include "IniFile.h"
+#include "Settings.h"
 
 static void DockSpaceBegin();
 static void DockSpaceEnd();

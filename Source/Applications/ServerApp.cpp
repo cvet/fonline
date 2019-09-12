@@ -7,6 +7,7 @@
 #include "IniFile.h"
 #include "StringUtils.h"
 #include "AppGui.h"
+#include "Settings.h"
 
 static FOServer* Server;
 static Thread    ServerThread;
