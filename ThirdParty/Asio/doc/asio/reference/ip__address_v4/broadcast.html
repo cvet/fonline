@@ -20,27 +20,27 @@
 <a name="asio.reference.ip__address_v4.broadcast"></a><a class="link" href="broadcast.html" title="ip::address_v4::broadcast">ip::address_v4::broadcast</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm120564"></a> 
-Obtain an address object that represents the broadcast
-          address.
+          <a class="indexterm" name="asio.indexterm.ip__address_v4.broadcast"></a> 
+Obtain an
+          address object that represents the broadcast address.
         </p>
-<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">address_v4</span> <a class="link" href="broadcast/overload1.html" title="ip::address_v4::broadcast (1 of 2 overloads)">broadcast</a><span class="special">();</span>
+<pre class="programlisting">static address_v4 <a class="link" href="broadcast/overload1.html" title="ip::address_v4::broadcast (1 of 2 overloads)">broadcast</a>();
   <span class="emphasis"><em>&#187; <a class="link" href="broadcast/overload1.html" title="ip::address_v4::broadcast (1 of 2 overloads)">more...</a></em></span>
 </pre>
 <p>
-          Obtain an address object that represents the broadcast address that corresponds
-          to the specified address and netmask.
+          (Deprecated: Use <a class="link" href="../ip__network_v4.html" title="ip::network_v4"><code class="computeroutput">ip::network_v4</code></a>
+          class.) Obtain an address object that represents the broadcast address
+          that corresponds to the specified address and netmask.
         </p>
-<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">address_v4</span> <a class="link" href="broadcast/overload2.html" title="ip::address_v4::broadcast (2 of 2 overloads)">broadcast</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">address_v4</span> <span class="special">&amp;</span> <span class="identifier">addr</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">address_v4</span> <span class="special">&amp;</span> <span class="identifier">mask</span><span class="special">);</span>
+<pre class="programlisting">static address_v4 <a class="link" href="broadcast/overload2.html" title="ip::address_v4::broadcast (2 of 2 overloads)">broadcast</a>(
+    const address_v4 &amp; addr,
+    const address_v4 &amp; mask);
   <span class="emphasis"><em>&#187; <a class="link" href="broadcast/overload2.html" title="ip::address_v4::broadcast (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

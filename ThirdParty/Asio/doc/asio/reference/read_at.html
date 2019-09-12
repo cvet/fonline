@@ -6,106 +6,110 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
-<link rel="prev" href="read/overload8.html" title="read (8 of 8 overloads)">
+<link rel="prev" href="read/overload12.html" title="read (12 of 12 overloads)">
 <link rel="next" href="read_at/overload1.html" title="read_at (1 of 8 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="read/overload8.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="read_at/overload1.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="read/overload12.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="read_at/overload1.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
 <a name="asio.reference.read_at"></a><a class="link" href="read_at.html" title="read_at">read_at</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm146066"></a> 
-Attempt to read a certain amount of data at the specified offset before
+        <a class="indexterm" name="asio.indexterm.read_at"></a> 
+The <code class="computeroutput">read_at</code> function is a composed
+        operation that reads a certain amount of data at the specified offset before
         returning.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload1.html" title="read_at (1 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+<p>
+        Attempt to read a certain amount of data at the specified offset before returning.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>&gt;
+std::size_t <a class="link" href="read_at/overload1.html" title="read_at (1 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    const MutableBufferSequence &amp; buffers);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload1.html" title="read_at (1 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload2.html" title="read_at (2 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>&gt;
+std::size_t <a class="link" href="read_at/overload2.html" title="read_at (2 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    const MutableBufferSequence &amp; buffers,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload2.html" title="read_at (2 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">CompletionCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload3.html" title="read_at (3 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">CompletionCondition</span> <span class="identifier">completion_condition</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>,
+    typename <a class="link" href="CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>&gt;
+std::size_t <a class="link" href="read_at/overload3.html" title="read_at (3 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    const MutableBufferSequence &amp; buffers,
+    CompletionCondition completion_condition);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload3.html" title="read_at (3 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">CompletionCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload4.html" title="read_at (4 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">CompletionCondition</span> <span class="identifier">completion_condition</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>,
+    typename <a class="link" href="CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>&gt;
+std::size_t <a class="link" href="read_at/overload4.html" title="read_at (4 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    const MutableBufferSequence &amp; buffers,
+    CompletionCondition completion_condition,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload4.html" title="read_at (4 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload5.html" title="read_at (5 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_at/overload5.html" title="read_at (5 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    basic_streambuf&lt; Allocator &gt; &amp; b);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload5.html" title="read_at (5 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload6.html" title="read_at (6 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_at/overload6.html" title="read_at (6 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload6.html" title="read_at (6 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">CompletionCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload7.html" title="read_at (7 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">CompletionCondition</span> <span class="identifier">completion_condition</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename Allocator,
+    typename <a class="link" href="CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>&gt;
+std::size_t <a class="link" href="read_at/overload7.html" title="read_at (7 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    CompletionCondition completion_condition);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload7.html" title="read_at (7 of 8 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">CompletionCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_at/overload8.html" title="read_at (8 of 8 overloads)">read_at</a><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">CompletionCondition</span> <span class="identifier">completion_condition</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename Allocator,
+    typename <a class="link" href="CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>&gt;
+std::size_t <a class="link" href="read_at/overload8.html" title="read_at (8 of 8 overloads)">read_at</a>(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    CompletionCondition completion_condition,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="read_at/overload8.html" title="read_at (8 of 8 overloads)">more...</a></em></span>
 </pre>
 <h5>
@@ -121,8 +125,7 @@ Attempt to read a certain amount of data at the specified offset before
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -130,7 +133,7 @@ Attempt to read a certain amount of data at the specified offset before
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="read/overload8.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="read_at/overload1.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="read/overload12.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="read_at/overload1.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

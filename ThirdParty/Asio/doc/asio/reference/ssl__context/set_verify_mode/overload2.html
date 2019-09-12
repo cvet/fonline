@@ -23,9 +23,9 @@
 <p>
             Set the peer verification mode.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">set_verify_mode</span><span class="special">(</span>
-    <span class="identifier">verify_mode</span> <span class="identifier">v</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void set_verify_mode(
+    verify_mode v,
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function may be used to configure the peer verification mode used
@@ -40,8 +40,8 @@
 <dl>
 <dt><span class="term">v</span></dt>
 <dd><p>
-                  A bitmask of peer verification modes. See <a class="link" href="../../ssl__verify_mode.html" title="ssl::verify_mode"><code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">verify_mode</span></code></a> for available
-                  values.
+                  A bitmask of peer verification modes. See <a class="link" href="../../ssl__verify_mode.html" title="ssl::verify_mode"><code class="computeroutput">ssl::verify_mode</code></a>
+                  for available values.
                 </p></dd>
 <dt><span class="term">ec</span></dt>
 <dd><p>
@@ -54,13 +54,12 @@
             <span><a name="asio.reference.ssl__context.set_verify_mode.overload2.remarks"></a></span><a class="link" href="overload2.html#asio.reference.ssl__context.set_verify_mode.overload2.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_CTX_set_verify</span></code>.
+            Calls <code class="computeroutput">SSL_CTX_set_verify</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

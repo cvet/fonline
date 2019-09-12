@@ -21,12 +21,12 @@
           (3 of 6 overloads)</a>
 </h5></div></div></div>
 <p>
-            Construct a <a class="link" href="../../basic_raw_socket.html" title="basic_raw_socket"><code class="computeroutput"><span class="identifier">basic_raw_socket</span></code></a>, opening it
-            and binding it to the given local endpoint.
+            Construct a <a class="link" href="../../basic_raw_socket.html" title="basic_raw_socket"><code class="computeroutput">basic_raw_socket</code></a>,
+            opening it and binding it to the given local endpoint.
           </p>
-<pre class="programlisting"><span class="identifier">basic_raw_socket</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">);</span>
+<pre class="programlisting">basic_raw_socket(
+    asio::io_context &amp; io_context,
+    const endpoint_type &amp; endpoint);
 </pre>
 <p>
             This constructor creates a raw socket and automatically opens it bound
@@ -40,9 +40,9 @@
 <div class="variablelist">
 <p class="title"><b></b></p>
 <dl>
-<dt><span class="term">io_service</span></dt>
+<dt><span class="term">io_context</span></dt>
 <dd><p>
-                  The <a class="link" href="../../io_service.html" title="io_service"><code class="computeroutput"><span class="identifier">io_service</span></code></a>
+                  The <a class="link" href="../../io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
                   object that the raw socket will use to dispatch handlers for any
                   asynchronous operations performed on the socket.
                 </p></dd>
@@ -69,8 +69,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

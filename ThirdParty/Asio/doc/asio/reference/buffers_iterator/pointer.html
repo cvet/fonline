@@ -20,14 +20,14 @@
 <a name="asio.reference.buffers_iterator.pointer"></a><a class="link" href="pointer.html" title="buffers_iterator::pointer">buffers_iterator::pointer</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm103680"></a> 
-The type of the result of applying <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;()</span></code>
-          to the iterator.
+          <a class="indexterm" name="asio.indexterm.buffers_iterator.pointer"></a> 
+The type
+          of the result of applying <code class="computeroutput">operator-&gt;()</code> to the iterator.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">const_or_non_const_ByteType</span> <span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span>
+<pre class="programlisting">typedef const_or_non_const_ByteType * pointer;
 </pre>
 <p>
-          If the buffer sequence stores buffer objects that are convertible to <a class="link" href="../mutable_buffer.html" title="mutable_buffer"><code class="computeroutput"><span class="identifier">mutable_buffer</span></code></a>,
+          If the buffer sequence stores buffer objects that are convertible to <a class="link" href="../mutable_buffer.html" title="mutable_buffer"><code class="computeroutput">mutable_buffer</code></a>,
           this is a pointer to a non-const ByteType. Otherwise, a pointer to a const
           ByteType.
         </p>
@@ -44,8 +44,7 @@ The type of the result of applying <code class="computeroutput"><span class="key
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

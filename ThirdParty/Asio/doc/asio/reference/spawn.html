@@ -7,7 +7,7 @@
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
 <link rel="prev" href="socket_base/_socket_base.html" title="socket_base::~socket_base">
-<link rel="next" href="spawn/overload1.html" title="spawn (1 of 4 overloads)">
+<link rel="next" href="spawn/overload1.html" title="spawn (1 of 7 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
@@ -20,73 +20,119 @@
 <a name="asio.reference.spawn"></a><a class="link" href="spawn.html" title="spawn">spawn</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm155422"></a> 
+        <a class="indexterm" name="asio.indexterm.spawn"></a> 
 Start a new stackful coroutine.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Handler.html" title="Handlers">Handler</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="spawn/overload1.html" title="spawn (1 of 4 overloads)">spawn</a><span class="special">(</span>
-    <span class="identifier">Handler</span> <span class="identifier">handler</span><span class="special">,</span>
-    <span class="identifier">Function</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span> <span class="special">&amp;</span> <span class="identifier">attributes</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span><span class="special">());</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload1.html" title="spawn (1 of 4 overloads)">more...</a></em></span>
+<p>
+        Start a new stackful coroutine, calling the specified handler when it completes.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function&gt;
+void <a class="link" href="spawn/overload1.html" title="spawn (1 of 7 overloads)">spawn</a>(
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes());
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload1.html" title="spawn (1 of 7 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Handler.html" title="Handlers">Handler</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="spawn/overload2.html" title="spawn (2 of 4 overloads)">spawn</a><span class="special">(</span>
-    <span class="identifier">basic_yield_context</span><span class="special">&lt;</span> <span class="identifier">Handler</span> <span class="special">&gt;</span> <span class="identifier">ctx</span><span class="special">,</span>
-    <span class="identifier">Function</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span> <span class="special">&amp;</span> <span class="identifier">attributes</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span><span class="special">());</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload2.html" title="spawn (2 of 4 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="spawn/overload3.html" title="spawn (3 of 4 overloads)">spawn</a><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span> <span class="identifier">strand</span><span class="special">,</span>
-    <span class="identifier">Function</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span> <span class="special">&amp;</span> <span class="identifier">attributes</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span><span class="special">());</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload3.html" title="spawn (3 of 4 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="spawn/overload4.html" title="spawn (4 of 4 overloads)">spawn</a><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">,</span>
-    <span class="identifier">Function</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span> <span class="special">&amp;</span> <span class="identifier">attributes</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines</span><span class="special">::</span><span class="identifier">attributes</span><span class="special">());</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload4.html" title="spawn (4 of 4 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Handler.html" title="Handlers">Handler</a>,
+    typename Function&gt;
+void <a class="link" href="spawn/overload2.html" title="spawn (2 of 7 overloads)">spawn</a>(
+    Handler &amp;&amp; handler,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes(),
+    typename enable_if&lt;!is_executor&lt; typename decay&lt; Handler &gt;::type &gt;::value &amp;&amp;!is_convertible&lt; Handler &amp;, execution_context &amp; &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload2.html" title="spawn (2 of 7 overloads)">more...</a></em></span>
 </pre>
 <p>
-        The <code class="computeroutput"><span class="identifier">spawn</span><span class="special">()</span></code>
-        function is a high-level wrapper over the Boost.Coroutine library. This function
-        enables programs to implement asynchronous logic in a synchronous manner,
-        as illustrated by the following example:
+        Start a new stackful coroutine, inheriting the execution context of another.
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span><span class="special">(</span><span class="identifier">my_strand</span><span class="special">,</span> <span class="identifier">do_echo</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Handler.html" title="Handlers">Handler</a>,
+    typename Function&gt;
+void <a class="link" href="spawn/overload3.html" title="spawn (3 of 7 overloads)">spawn</a>(
+    basic_yield_context&lt; Handler &gt; ctx,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes());
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload3.html" title="spawn (3 of 7 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start a new stackful coroutine that executes on a given executor.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function,
+    typename <a class="link" href="Executor1.html" title="Executor requirements">Executor</a>&gt;
+void <a class="link" href="spawn/overload4.html" title="spawn (4 of 7 overloads)">spawn</a>(
+    const Executor &amp; ex,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes(),
+    typename enable_if&lt; is_executor&lt; Executor &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload4.html" title="spawn (4 of 7 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start a new stackful coroutine that executes on a given strand.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function,
+    typename <a class="link" href="Executor1.html" title="Executor requirements">Executor</a>&gt;
+void <a class="link" href="spawn/overload5.html" title="spawn (5 of 7 overloads)">spawn</a>(
+    const strand&lt; Executor &gt; &amp; ex,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes());
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload5.html" title="spawn (5 of 7 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start a new stackful coroutine that executes in the context of a strand.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function&gt;
+void <a class="link" href="spawn/overload6.html" title="spawn (6 of 7 overloads)">spawn</a>(
+    const asio::io_context::strand &amp; s,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes());
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload6.html" title="spawn (6 of 7 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start a new stackful coroutine that executes on a given execution context.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function,
+    typename ExecutionContext&gt;
+void <a class="link" href="spawn/overload7.html" title="spawn (7 of 7 overloads)">spawn</a>(
+    ExecutionContext &amp; ctx,
+    Function &amp;&amp; function,
+    const boost::coroutines::attributes &amp; attributes = boost::coroutines::attributes(),
+    typename enable_if&lt; is_convertible&lt; ExecutionContext &amp;, execution_context &amp; &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="spawn/overload7.html" title="spawn (7 of 7 overloads)">more...</a></em></span>
+</pre>
+<p>
+        The <code class="computeroutput">spawn()</code> function is a high-level wrapper over the Boost.Coroutine
+        library. This function enables programs to implement asynchronous logic in
+        a synchronous manner, as illustrated by the following example:
+      </p>
+<pre class="programlisting">asio::spawn(my_strand, do_echo);
 
-<span class="comment">// ...</span>
+// ...
 
-<span class="keyword">void</span> <span class="identifier">do_echo</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
-    <span class="keyword">char</span> <span class="identifier">data</span><span class="special">[</span><span class="number">128</span><span class="special">];</span>
-    <span class="keyword">for</span> <span class="special">(;;)</span>
-    <span class="special">{</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">length</span> <span class="special">=</span>
-        <span class="identifier">my_socket</span><span class="special">.</span><span class="identifier">async_read_some</span><span class="special">(</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">),</span> <span class="identifier">yield</span><span class="special">);</span>
+void do_echo(asio::yield_context yield)
+{
+  try
+  {
+    char data[128];
+    for (;;)
+    {
+      std::size_t length =
+        my_socket.async_read_some(
+          asio::buffer(data), yield);
 
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">my_socket</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">length</span><span class="special">),</span> <span class="identifier">yield</span><span class="special">);</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
-  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="comment">// ...</span>
-  <span class="special">}</span>
-<span class="special">}</span>
+      asio::async_write(my_socket,
+          asio::buffer(data, length), yield);
+    }
+  }
+  catch (std::exception&amp; e)
+  {
+    // ...
+  }
+}
 </pre>
 <h5>
 <a name="asio.reference.spawn.h0"></a>
@@ -101,8 +147,7 @@ Start a new stackful coroutine.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

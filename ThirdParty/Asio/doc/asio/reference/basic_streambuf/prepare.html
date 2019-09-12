@@ -20,26 +20,25 @@
 <a name="asio.reference.basic_streambuf.prepare"></a><a class="link" href="prepare.html" title="basic_streambuf::prepare">basic_streambuf::prepare</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm92067"></a> 
-Get a list of buffers that represents the output
-          sequence, with the given size.
+          <a class="indexterm" name="asio.indexterm.basic_streambuf.prepare"></a> 
+Get a list
+          of buffers that represents the output sequence, with the given size.
         </p>
-<pre class="programlisting"><span class="identifier">mutable_buffers_type</span> <span class="identifier">prepare</span><span class="special">(</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">);</span>
+<pre class="programlisting">mutable_buffers_type prepare(
+    std::size_t n);
 </pre>
 <p>
-          Ensures that the output sequence can accommodate <code class="computeroutput"><span class="identifier">n</span></code>
-          characters, reallocating character array objects as necessary.
+          Ensures that the output sequence can accommodate <code class="computeroutput">n</code> characters,
+          reallocating character array objects as necessary.
         </p>
 <h6>
 <a name="asio.reference.basic_streambuf.prepare.h0"></a>
           <span><a name="asio.reference.basic_streambuf.prepare.return_value"></a></span><a class="link" href="prepare.html#asio.reference.basic_streambuf.prepare.return_value">Return Value</a>
         </h6>
 <p>
-          An object of type <code class="computeroutput"><span class="identifier">mutable_buffers_type</span></code>
-          that satisfies MutableBufferSequence requirements, representing character
-          array objects at the start of the output sequence such that the sum of
-          the buffer sizes is <code class="computeroutput"><span class="identifier">n</span></code>.
+          An object of type <code class="computeroutput">mutable_buffers_type</code> that satisfies MutableBufferSequence
+          requirements, representing character array objects at the start of the
+          output sequence such that the sum of the buffer sizes is <code class="computeroutput">n</code>.
         </p>
 <h6>
 <a name="asio.reference.basic_streambuf.prepare.h1"></a>
@@ -50,9 +49,7 @@ Get a list of buffers that represents the output
 <dl>
 <dt><span class="term">std::length_error</span></dt>
 <dd><p>
-                If <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
-                <span class="special">+</span> <span class="identifier">n</span>
-                <span class="special">&gt;</span> <span class="identifier">max_size</span><span class="special">()</span></code>.
+                If <code class="computeroutput">size() + n &gt; max_size()</code>.
               </p></dd>
 </dl>
 </div>
@@ -61,14 +58,13 @@ Get a list of buffers that represents the output
           <span><a name="asio.reference.basic_streambuf.prepare.remarks"></a></span><a class="link" href="prepare.html#asio.reference.basic_streambuf.prepare.remarks">Remarks</a>
         </h6>
 <p>
-          The returned object is invalidated by any <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
+          The returned object is invalidated by any <code class="computeroutput">basic_streambuf</code>
           member function that modifies the input sequence or output sequence.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

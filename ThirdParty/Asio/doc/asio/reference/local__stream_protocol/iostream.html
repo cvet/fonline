@@ -20,10 +20,11 @@
 <a name="asio.reference.local__stream_protocol.iostream"></a><a class="link" href="iostream.html" title="local::stream_protocol::iostream">local::stream_protocol::iostream</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm135597"></a> 
-The UNIX domain iostream type.
+          <a class="indexterm" name="asio.indexterm.local__stream_protocol.iostream"></a> 
+The
+          UNIX domain iostream type.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_socket_iostream</span><span class="special">&lt;</span> <span class="identifier">stream_protocol</span> <span class="special">&gt;</span> <span class="identifier">iostream</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_socket_iostream&lt; stream_protocol &gt; iostream;
 </pre>
 <h6>
 <a name="asio.reference.local__stream_protocol.iostream.h0"></a>
@@ -50,12 +51,36 @@ The UNIX domain iostream type.
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_socket_iostream/duration_type.html" title="basic_socket_iostream::duration_type"><span class="bold"><strong>duration_type</strong></span></a>
+                    <a class="link" href="../basic_socket_iostream/clock_type.html" title="basic_socket_iostream::clock_type"><span class="bold"><strong>clock_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The clock type.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/duration.html" title="basic_socket_iostream::duration"><span class="bold"><strong>duration</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
                     The duration type.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/duration_type.html" title="basic_socket_iostream::duration_type"><span class="bold"><strong>duration_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use duration.) The duration type.
                   </p>
                 </td>
 </tr>
@@ -74,12 +99,36 @@ The UNIX domain iostream type.
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_socket_iostream/time_type.html" title="basic_socket_iostream::time_type"><span class="bold"><strong>time_type</strong></span></a>
+                    <a class="link" href="../basic_socket_iostream/protocol_type.html" title="basic_socket_iostream::protocol_type"><span class="bold"><strong>protocol_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The protocol type.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/time_point.html" title="basic_socket_iostream::time_point"><span class="bold"><strong>time_point</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
                     The time type.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/time_type.html" title="basic_socket_iostream::time_type"><span class="bold"><strong>time_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use time_point.) The time type.
                   </p>
                 </td>
 </tr>
@@ -117,10 +166,10 @@ The UNIX domain iostream type.
 <td>
                   <p>
                     Construct a basic_socket_iostream without establishing a connection.
-                  </p>
-                  <p>
-                    Establish a connection to an endpoint corresponding to a resolver
-                    query.
+                    <br> <span class="silver"> &#8212;</span><br> Construct a basic_socket_iostream from the supplied
+                    socket. <br> <span class="silver"> &#8212;</span><br> Move-construct a basic_socket_iostream
+                    from another. <br> <span class="silver"> &#8212;</span><br> Establish a connection to an endpoint
+                    corresponding to a resolver query.
                   </p>
                 </td>
 </tr>
@@ -164,15 +213,26 @@ The UNIX domain iostream type.
 <tr>
 <td>
                   <p>
+                    <a class="link" href="../basic_socket_iostream/expires_after.html" title="basic_socket_iostream::expires_after"><span class="bold"><strong>expires_after</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Set the stream's expiry time relative to now.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
                     <a class="link" href="../basic_socket_iostream/expires_at.html" title="basic_socket_iostream::expires_at"><span class="bold"><strong>expires_at</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    Get the stream's expiry time as an absolute time.
-                  </p>
-                  <p>
-                    Set the stream's expiry time as an absolute time.
+                    (Deprecated: Use expiry().) Get the stream's expiry time as an
+                    absolute time. <br> <span class="silver"> &#8212;</span><br> Set the stream's expiry time as
+                    an absolute time.
                   </p>
                 </td>
 </tr>
@@ -184,10 +244,33 @@ The UNIX domain iostream type.
                 </td>
 <td>
                   <p>
-                    Get the timer's expiry time relative to now.
+                    (Deprecated: Use expiry().) Get the stream's expiry time relative
+                    to now. <br> <span class="silver"> &#8212;</span><br> (Deprecated: Use expires_after().) Set
+                    the stream's expiry time relative to now.
                   </p>
+                </td>
+</tr>
+<tr>
+<td>
                   <p>
-                    Set the stream's expiry time relative to now.
+                    <a class="link" href="../basic_socket_iostream/expiry.html" title="basic_socket_iostream::expiry"><span class="bold"><strong>expiry</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Get the stream's expiry time as an absolute time.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/operator_eq_.html" title="basic_socket_iostream::operator="><span class="bold"><strong>operator=</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Move-assign a basic_socket_iostream from another.
                   </p>
                 </td>
 </tr>
@@ -200,6 +283,18 @@ The UNIX domain iostream type.
 <td>
                   <p>
                     Return a pointer to the underlying streambuf.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket_iostream/socket.html" title="basic_socket_iostream::socket"><span class="bold"><strong>socket</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Get a reference to the underlying socket.
                   </p>
                 </td>
 </tr>
@@ -218,8 +313,7 @@ The UNIX domain iostream type.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

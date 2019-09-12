@@ -7,7 +7,7 @@
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
 <link rel="prev" href="buffers_iterator/value_type.html" title="buffers_iterator::value_type">
-<link rel="next" href="connect/overload1.html" title="connect (1 of 8 overloads)">
+<link rel="next" href="connect/overload1.html" title="connect (1 of 12 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
@@ -20,96 +20,153 @@
 <a name="asio.reference.connect"></a><a class="link" href="connect.html" title="connect">connect</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm103759"></a> 
-Establishes a socket connection by trying each endpoint in a sequence.
+        <a class="indexterm" name="asio.indexterm.connect"></a> 
+The <code class="computeroutput">connect</code> function is a composed
+        operation that establishes a socket connection by trying each endpoint in
+        a sequence.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload1.html" title="connect (1 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload1.html" title="connect (1 of 8 overloads)">more...</a></em></span>
+<p>
+        Establishes a socket connection by trying each endpoint in a sequence.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename <a class="link" href="EndpointSequence.html" title="Endpoint sequence requirements">EndpointSequence</a>&gt;
+Protocol::endpoint <a class="link" href="connect/overload1.html" title="connect (1 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    const EndpointSequence &amp; endpoints,
+    typename enable_if&lt; is_endpoint_sequence&lt; EndpointSequence &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload1.html" title="connect (1 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload2.html" title="connect (2 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload2.html" title="connect (2 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename <a class="link" href="EndpointSequence.html" title="Endpoint sequence requirements">EndpointSequence</a>&gt;
+Protocol::endpoint <a class="link" href="connect/overload2.html" title="connect (2 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    const EndpointSequence &amp; endpoints,
+    asio::error_code &amp; ec,
+    typename enable_if&lt; is_endpoint_sequence&lt; EndpointSequence &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload2.html" title="connect (2 of 12 overloads)">more...</a></em></span>
+</pre>
+<p>
+        (Deprecated: Use range overload.) Establishes a socket connection by trying
+        each endpoint in a sequence.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator&gt;
+Iterator <a class="link" href="connect/overload3.html" title="connect (3 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    typename enable_if&lt;!is_endpoint_sequence&lt; Iterator &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload3.html" title="connect (3 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload3.html" title="connect (3 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">end</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload3.html" title="connect (3 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator&gt;
+Iterator <a class="link" href="connect/overload4.html" title="connect (4 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    asio::error_code &amp; ec,
+    typename enable_if&lt;!is_endpoint_sequence&lt; Iterator &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload4.html" title="connect (4 of 12 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Establishes a socket connection by trying each endpoint in a sequence.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator&gt;
+Iterator <a class="link" href="connect/overload5.html" title="connect (5 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    Iterator end);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload5.html" title="connect (5 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload4.html" title="connect (4 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">end</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload4.html" title="connect (4 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator&gt;
+Iterator <a class="link" href="connect/overload6.html" title="connect (6 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    Iterator end,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload6.html" title="connect (6 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">ConnectCondition</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload5.html" title="connect (5 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">ConnectCondition</span> <span class="identifier">connect_condition</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload5.html" title="connect (5 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename <a class="link" href="EndpointSequence.html" title="Endpoint sequence requirements">EndpointSequence</a>,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Protocol::endpoint <a class="link" href="connect/overload7.html" title="connect (7 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    const EndpointSequence &amp; endpoints,
+    ConnectCondition connect_condition,
+    typename enable_if&lt; is_endpoint_sequence&lt; EndpointSequence &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload7.html" title="connect (7 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">ConnectCondition</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload6.html" title="connect (6 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">ConnectCondition</span> <span class="identifier">connect_condition</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload6.html" title="connect (6 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename <a class="link" href="EndpointSequence.html" title="Endpoint sequence requirements">EndpointSequence</a>,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Protocol::endpoint <a class="link" href="connect/overload8.html" title="connect (8 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    const EndpointSequence &amp; endpoints,
+    ConnectCondition connect_condition,
+    asio::error_code &amp; ec,
+    typename enable_if&lt; is_endpoint_sequence&lt; EndpointSequence &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload8.html" title="connect (8 of 12 overloads)">more...</a></em></span>
+</pre>
+<p>
+        (Deprecated: Use range overload.) Establishes a socket connection by trying
+        each endpoint in a sequence.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Iterator <a class="link" href="connect/overload9.html" title="connect (9 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    ConnectCondition connect_condition,
+    typename enable_if&lt;!is_endpoint_sequence&lt; Iterator &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload9.html" title="connect (9 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">ConnectCondition</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload7.html" title="connect (7 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">end</span><span class="special">,</span>
-    <span class="identifier">ConnectCondition</span> <span class="identifier">connect_condition</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload7.html" title="connect (7 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Iterator <a class="link" href="connect/overload10.html" title="connect (10 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    ConnectCondition connect_condition,
+    asio::error_code &amp; ec,
+    typename enable_if&lt;!is_endpoint_sequence&lt; Iterator &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload10.html" title="connect (10 of 12 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Establishes a socket connection by trying each endpoint in a sequence.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Iterator <a class="link" href="connect/overload11.html" title="connect (11 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    Iterator end,
+    ConnectCondition connect_condition);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload11.html" title="connect (11 of 12 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">ConnectCondition</span><span class="special">&gt;</span>
-<span class="identifier">Iterator</span> <a class="link" href="connect/overload8.html" title="connect (8 of 8 overloads)">connect</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">begin</span><span class="special">,</span>
-    <span class="identifier">Iterator</span> <span class="identifier">end</span><span class="special">,</span>
-    <span class="identifier">ConnectCondition</span> <span class="identifier">connect_condition</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload8.html" title="connect (8 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator,
+    typename <a class="link" href="ConnectCondition.html" title="Connect condition requirements">ConnectCondition</a>&gt;
+Iterator <a class="link" href="connect/overload12.html" title="connect (12 of 12 overloads)">connect</a>(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    Iterator end,
+    ConnectCondition connect_condition,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="connect/overload12.html" title="connect (12 of 12 overloads)">more...</a></em></span>
 </pre>
 <h5>
 <a name="asio.reference.connect.h0"></a>
@@ -124,8 +181,7 @@ Establishes a socket connection by trying each endpoint in a sequence.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

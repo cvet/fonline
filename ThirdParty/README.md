@@ -2,7 +2,7 @@
 
 * Acm - ACM sound format reader
 * AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
-* Asio - [asio-1.10.8](https://think-async.com/Asio/)
+* Asio - [asio-1.12.2](https://think-async.com/Asio/)
 * Assimp - [assimp-4.1.0](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-master-050919](https://github.com/bombela/backward-cpp)
@@ -25,5 +25,5 @@
 * openssl - [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
 * variant - [variant-1.1.5](https://github.com/mapbox/variant)
-* websocketpp - [websocketpp_0.7.0](https://github.com/zaphoyd/websocketpp)
+* websocketpp - [websocketpp_0.8.1](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib128](https://www.zlib.net/)

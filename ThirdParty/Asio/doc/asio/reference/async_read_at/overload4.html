@@ -24,17 +24,17 @@
           Start an asynchronous operation to read a certain amount of data at the
           specified offset.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../AsyncRandomAccessReadDevice.html" title="Buffer-oriented asynchronous random-access read device requirements">AsyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">CompletionCondition</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <span class="identifier">async_read_at</span><span class="special">(</span>
-    <span class="identifier">AsyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">CompletionCondition</span> <span class="identifier">completion_condition</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../AsyncRandomAccessReadDevice.html" title="Buffer-oriented asynchronous random-access read device requirements">AsyncRandomAccessReadDevice</a>,
+    typename Allocator,
+    typename <a class="link" href="../CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>,
+    typename <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> async_read_at(
+    AsyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    CompletionCondition completion_condition,
+    ReadHandler &amp;&amp; handler);
 </pre>
 <p>
           This function is used to asynchronously read a certain number of bytes
@@ -67,7 +67,7 @@
               </p></dd>
 <dt><span class="term">b</span></dt>
 <dd><p>
-                A <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput"><span class="identifier">basic_streambuf</span></code></a>
+                A <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
                 object into which the data will be read. Ownership of the streambuf
                 is retained by the caller, which must guarantee that it remains valid
                 until the handler is called.
@@ -78,13 +78,13 @@
                 The function object to be called to determine whether the read operation
                 is complete. The signature of the function object must be:
 </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">completion_condition</span><span class="special">(</span>
-  <span class="comment">// Result of latest async_read_some_at operation.</span>
-  <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">,</span>
+<pre class="programlisting">std::size_t completion_condition(
+  // Result of latest async_read_some_at operation.
+  const asio::error_code&amp; error,
 
-  <span class="comment">// Number of bytes transferred so far.</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span>
-<span class="special">);</span>
+  // Number of bytes transferred so far.
+  std::size_t bytes_transferred
+);
 </pre>
 <p>
                 A return value of 0 indicates that the read operation is complete.
@@ -99,21 +99,21 @@
                 will be made of the handler as required. The function signature of
                 the handler must be:
 </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span>
-  <span class="comment">// Result of operation.</span>
-  <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">,</span>
+<pre class="programlisting">void handler(
+  // Result of operation.
+  const asio::error_code&amp; error,
 
-  <span class="comment">// Number of bytes copied into the buffers. If an error</span>
-  <span class="comment">// occurred, this will be the number of bytes successfully</span>
-  <span class="comment">// transferred prior to the error.</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span>
-<span class="special">);</span>
+  // Number of bytes copied into the buffers. If an error
+  // occurred, this will be the number of bytes successfully
+  // transferred prior to the error.
+  std::size_t bytes_transferred
+);
 </pre>
 <p>
                 Regardless of whether the asynchronous operation completes immediately
                 or not, the handler will not be invoked from within this function.
                 Invocation of the handler will be performed in a manner equivalent
-                to using <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">post</span><span class="special">()</span></code>.
+                to using <code class="computeroutput">asio::io_context::post()</code>.
               </p>
 </dd>
 </dl>
@@ -121,8 +121,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

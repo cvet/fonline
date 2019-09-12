@@ -75,10 +75,10 @@
               <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>.
             </li>
 <li class="listitem">
-              Type safety violations must be explicitly requested using the <code class="computeroutput"><span class="identifier">buffer_cast</span></code> function. In general
-              an application should never need to do this, but it is required by
-              the library implementation to pass the raw memory to the underlying
-              operating system functions.
+              The underlying memory is explicitly accessed using the <code class="computeroutput"><span class="identifier">data</span><span class="special">()</span></code>
+              member function. In general an application should never need to do
+              this, but it is required by the library implementation to pass the
+              raw memory to the underlying operating system functions.
             </li>
 </ul></div>
 <p>
@@ -109,7 +109,7 @@
               member function. The return type of this function meets the <code class="computeroutput"><span class="identifier">ConstBufferSequence</span></code> requirements.
             </li>
 <li class="listitem">
-              The output sequence of the streambuf is accessible via the <a class="link" href="../../reference/basic_streambuf/data.html" title="basic_streambuf::data">prepare()</a>
+              The output sequence of the streambuf is accessible via the <a class="link" href="../../reference/basic_streambuf/prepare.html" title="basic_streambuf::prepare">prepare()</a>
               member function. The return type of this function meets the <code class="computeroutput"><span class="identifier">MutableBufferSequence</span></code> requirements.
             </li>
 <li class="listitem">
@@ -220,8 +220,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

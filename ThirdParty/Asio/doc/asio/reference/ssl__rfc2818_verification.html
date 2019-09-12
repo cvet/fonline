@@ -23,7 +23,7 @@
         Verifies a certificate against a hostname according to the rules described
         in RFC 2818.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">rfc2818_verification</span>
+<pre class="programlisting">class rfc2818_verification
 </pre>
 <h5>
 <a name="asio.reference.ssl__rfc2818_verification.h0"></a>
@@ -116,28 +116,28 @@
         The following example shows how to synchronously open a secure connection
         to a given host name:
       </p>
-<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>
-<span class="keyword">namespace</span> <span class="identifier">ssl</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">;</span>
-<span class="keyword">typedef</span> <span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ssl_socket</span><span class="special">;</span>
+<pre class="programlisting">using asio::ip::tcp;
+namespace ssl = asio::ssl;
+typedef ssl::stream&lt;tcp::socket&gt; ssl_socket;
 
-<span class="comment">// Create a context that uses the default paths for finding CA certificates.</span>
-<span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">sslv23</span><span class="special">);</span>
-<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">set_default_verify_paths</span><span class="special">();</span>
+// Create a context that uses the default paths for finding CA certificates.
+ssl::context ctx(ssl::context::sslv23);
+ctx.set_default_verify_paths();
 
-<span class="comment">// Open a socket and connect it to the remote host.</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
-<span class="identifier">ssl_socket</span> <span class="identifier">sock</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
-<span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">query</span> <span class="identifier">query</span><span class="special">(</span><span class="string">"host.name"</span><span class="special">,</span> <span class="string">"https"</span><span class="special">);</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">sock</span><span class="special">.</span><span class="identifier">lowest_layer</span><span class="special">(),</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">resolve</span><span class="special">(</span><span class="identifier">query</span><span class="special">));</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">lowest_layer</span><span class="special">().</span><span class="identifier">set_option</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">no_delay</span><span class="special">(</span><span class="keyword">true</span><span class="special">));</span>
+// Open a socket and connect it to the remote host.
+asio::io_context io_context;
+ssl_socket sock(io_context, ctx);
+tcp::resolver resolver(io_context);
+tcp::resolver::query query("host.name", "https");
+asio::connect(sock.lowest_layer(), resolver.resolve(query));
+sock.lowest_layer().set_option(tcp::no_delay(true));
 
-<span class="comment">// Perform SSL handshake and verify the remote host's certificate.</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">set_verify_mode</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">verify_peer</span><span class="special">);</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">set_verify_callback</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">rfc2818_verification</span><span class="special">(</span><span class="string">"host.name"</span><span class="special">));</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">handshake</span><span class="special">(</span><span class="identifier">ssl_socket</span><span class="special">::</span><span class="identifier">client</span><span class="special">);</span>
+// Perform SSL handshake and verify the remote host's certificate.
+sock.set_verify_mode(ssl::verify_peer);
+sock.set_verify_callback(ssl::rfc2818_verification("host.name"));
+sock.handshake(ssl_socket::client);
 
-<span class="comment">// ... read and write as normal ...</span>
+// ... read and write as normal ...
 </pre>
 <h5>
 <a name="asio.reference.ssl__rfc2818_verification.h3"></a>
@@ -152,8 +152,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

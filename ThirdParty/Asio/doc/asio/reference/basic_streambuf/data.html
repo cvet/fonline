@@ -20,10 +20,11 @@
 <a name="asio.reference.basic_streambuf.data"></a><a class="link" href="data.html" title="basic_streambuf::data">basic_streambuf::data</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm91967"></a> 
-Get a list of buffers that represents the input sequence.
+          <a class="indexterm" name="asio.indexterm.basic_streambuf.data"></a> 
+Get a list of buffers
+          that represents the input sequence.
         </p>
-<pre class="programlisting"><span class="identifier">const_buffers_type</span> <span class="identifier">data</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">const_buffers_type data() const;
 </pre>
 <h6>
 <a name="asio.reference.basic_streambuf.data.h0"></a>
@@ -31,23 +32,21 @@ Get a list of buffers that represents the input sequence.
           Value</a>
         </h6>
 <p>
-          An object of type <code class="computeroutput"><span class="identifier">const_buffers_type</span></code>
-          that satisfies ConstBufferSequence requirements, representing all character
-          arrays in the input sequence.
+          An object of type <code class="computeroutput">const_buffers_type</code> that satisfies ConstBufferSequence
+          requirements, representing all character arrays in the input sequence.
         </p>
 <h6>
 <a name="asio.reference.basic_streambuf.data.h1"></a>
           <span><a name="asio.reference.basic_streambuf.data.remarks"></a></span><a class="link" href="data.html#asio.reference.basic_streambuf.data.remarks">Remarks</a>
         </h6>
 <p>
-          The returned object is invalidated by any <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
+          The returned object is invalidated by any <code class="computeroutput">basic_streambuf</code>
           member function that modifies the input sequence or output sequence.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

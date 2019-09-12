@@ -2,7 +2,7 @@
 // receiver.cpp
 // ~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,10 +18,10 @@ const short multicast_port = 30001;
 class receiver
 {
 public:
-  receiver(asio::io_service& io_service,
+  receiver(asio::io_context& io_context,
       const asio::ip::address& listen_address,
       const asio::ip::address& multicast_address)
-    : socket_(io_service)
+    : socket_(io_context)
   {
     // Create the socket so that multiple may be bound to the same address.
     asio::ip::udp::endpoint listen_endpoint(
@@ -78,11 +78,11 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    asio::io_service io_service;
-    receiver r(io_service,
-        asio::ip::address::from_string(argv[1]),
-        asio::ip::address::from_string(argv[2]));
-    io_service.run();
+    asio::io_context io_context;
+    receiver r(io_context,
+        asio::ip::make_address(argv[1]),
+        asio::ip::make_address(argv[2]));
+    io_context.run();
   }
   catch (std::exception& e)
   {

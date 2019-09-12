@@ -21,16 +21,15 @@
       port option requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">X</span></code> denotes
-        a serial port option class, <code class="computeroutput"><span class="identifier">a</span></code>
-        denotes a value of <code class="computeroutput"><span class="identifier">X</span></code>, <code class="computeroutput"><span class="identifier">ec</span></code> denotes a value of type <code class="computeroutput"><span class="identifier">error_code</span></code>, and <code class="computeroutput"><span class="identifier">s</span></code>
-        denotes a value of implementation-defined type <span class="emphasis"><em><code class="literal">storage</code></em></span>
-        (where <span class="emphasis"><em><code class="literal">storage</code></em></span> is the type <code class="computeroutput"><span class="identifier">DCB</span></code> on Windows and <code class="computeroutput"><span class="identifier">termios</span></code>
-        on <span class="emphasis"><em>POSIX</em></span> platforms), and <code class="computeroutput"><span class="identifier">u</span></code>
-        denotes an identifier.
+        In the table below, <code class="computeroutput">X</code> denotes a serial port option class, <code class="computeroutput">a</code>
+        denotes a value of <code class="computeroutput">X</code>, <code class="computeroutput">ec</code> denotes a value of type
+        <code class="computeroutput">error_code</code>, and <code class="computeroutput">s</code> denotes a value of implementation-defined
+        type <span class="emphasis"><em><code class="literal">storage</code></em></span> (where <span class="emphasis"><em><code class="literal">storage</code></em></span>
+        is the type <code class="computeroutput">DCB</code> on Windows and <code class="computeroutput">termios</code> on <span class="emphasis"><em>POSIX</em></span>
+        platforms), and <code class="computeroutput">u</code> denotes an identifier.
       </p>
 <div class="table">
-<a name="asio.reference.SettableSerialPortOption.t0"></a><p class="title"><b>Table&#160;26.&#160;SettableSerialPortOption requirements</b></p>
+<a name="asio.reference.SettableSerialPortOption.t0"></a><p class="title"><b>Table&#160;24.&#160;SettableSerialPortOption requirements</b></p>
 <div class="table-contents"><table class="table" summary="SettableSerialPortOption requirements">
 <colgroup>
 <col>
@@ -57,23 +56,20 @@
 <tbody><tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">X</span><span class="special">&amp;</span> <span class="identifier">u</span>
-                  <span class="special">=</span> <span class="identifier">a</span><span class="special">;</span></code><br> <code class="computeroutput"><span class="identifier">u</span><span class="special">.</span><span class="identifier">store</span><span class="special">(</span><span class="identifier">s</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span></code>
+                  <code class="computeroutput">const X&amp; u = a;</code><br> <code class="computeroutput">u.store(s, ec);</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">error_code</span></code>
+                  <code class="computeroutput">error_code</code>
                 </p>
               </td>
 <td>
                 <p>
                   Saves the value of the serial port option to the storage.<br>
-                  <br> If successful, sets <code class="computeroutput"><span class="identifier">ec</span></code>
-                  such that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code>
-                  is true. If an error occurred, sets <code class="computeroutput"><span class="identifier">ec</span></code>
-                  such that <code class="computeroutput"><span class="special">!!</span><span class="identifier">ec</span></code>
-                  is true. Returns <code class="computeroutput"><span class="identifier">ec</span></code>.
+                  <br> If successful, sets <code class="computeroutput">ec</code> such that <code class="computeroutput">!ec</code>
+                  is true. If an error occurred, sets <code class="computeroutput">ec</code> such that
+                  <code class="computeroutput">!!ec</code> is true. Returns <code class="computeroutput">ec</code>.
                 </p>
               </td>
 </tr></tbody>
@@ -83,8 +79,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -24,58 +24,31 @@
         This tutorial program shows how to use asio to implement a server application
         with UDP.
       </p>
-<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
+<pre class="programlisting">int main()
+{
+  try
+  {
+    asio::io_context io_context;
 </pre>
 <p>
         Create an <a class="link" href="../reference/ip__udp/socket.html" title="ip::udp::socket">ip::udp::socket</a>
         object to receive requests on UDP port 13.
       </p>
-<pre class="programlisting">    <span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span><span class="special">(</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">v4</span><span class="special">(),</span> <span class="number">13</span><span class="special">));</span>
+<pre class="programlisting">    udp::socket socket(io_context, udp::endpoint(udp::v4(), 13));
 </pre>
 <p>
         Wait for a client to initiate contact with us. The remote_endpoint object
         will be populated by <a class="link" href="../reference/basic_datagram_socket/receive_from.html" title="basic_datagram_socket::receive_from">ip::udp::socket::receive_from()</a>.
       </p>
-<pre class="programlisting">    <span class="keyword">for</span> <span class="special">(;;)</span>
-    <span class="special">{</span>
-      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">recv_buf</span><span class="special">;</span>
-      <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">remote_endpoint</span><span class="special">;</span>
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">error</span><span class="special">;</span>
-      <span class="identifier">socket</span><span class="special">.</span><span class="identifier">receive_from</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">recv_buf</span><span class="special">),</span>
-          <span class="identifier">remote_endpoint</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">error</span><span class="special">);</span>
-
-      <span class="keyword">if</span> <span class="special">(</span><span class="identifier">error</span> <span class="special">&amp;&amp;</span> <span class="identifier">error</span> <span class="special">!=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">message_size</span><span class="special">)</span>
-        <span class="keyword">throw</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">system_error</span><span class="special">(</span><span class="identifier">error</span><span class="special">);</span>
-</pre>
 <p>
         Determine what we are going to send back to the client.
       </p>
-<pre class="programlisting">      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message</span> <span class="special">=</span> <span class="identifier">make_daytime_string</span><span class="special">();</span>
-</pre>
 <p>
         Send the response to the remote_endpoint.
       </p>
-<pre class="programlisting">      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ignored_error</span><span class="special">;</span>
-      <span class="identifier">socket</span><span class="special">.</span><span class="identifier">send_to</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">message</span><span class="special">),</span>
-          <span class="identifier">remote_endpoint</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">ignored_error</span><span class="special">);</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
-</pre>
 <p>
         Finally, handle any exceptions.
       </p>
-<pre class="programlisting">  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
-
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
-</pre>
 <p>
         See the <a class="link" href="tutdaytime5/src.html" title="Source listing for Daytime.5">full source listing</a>
       </p>
@@ -93,8 +66,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

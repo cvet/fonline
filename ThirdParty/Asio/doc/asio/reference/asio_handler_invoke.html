@@ -20,32 +20,39 @@
 <a name="asio.reference.asio_handler_invoke"></a><a class="link" href="asio_handler_invoke.html" title="asio_handler_invoke">asio_handler_invoke</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm26569"></a> 
-Default invoke function for handlers.
+        <a class="indexterm" name="asio.indexterm.asio_handler_invoke"></a> 
+Default invoke function
+        for handlers.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="asio_handler_invoke/overload1.html" title="asio_handler_invoke (1 of 2 overloads)">asio_handler_invoke</a><span class="special">(</span>
-    <span class="identifier">Function</span> <span class="special">&amp;</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="special">...</span> <span class="special">);</span>
+<p>
+        Default handler invocation hook used for non-const function objects.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function&gt;
+void <a class="link" href="asio_handler_invoke/overload1.html" title="asio_handler_invoke (1 of 2 overloads)">asio_handler_invoke</a>(
+    Function &amp; function,
+    ... );
   <span class="emphasis"><em>&#187; <a class="link" href="asio_handler_invoke/overload1.html" title="asio_handler_invoke (1 of 2 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="asio_handler_invoke/overload2.html" title="asio_handler_invoke (2 of 2 overloads)">asio_handler_invoke</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">Function</span> <span class="special">&amp;</span> <span class="identifier">function</span><span class="special">,</span>
-    <span class="special">...</span> <span class="special">);</span>
+</pre>
+<p>
+        Default handler invocation hook used for const function objects.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Function&gt;
+void <a class="link" href="asio_handler_invoke/overload2.html" title="asio_handler_invoke (2 of 2 overloads)">asio_handler_invoke</a>(
+    const Function &amp; function,
+    ... );
   <span class="emphasis"><em>&#187; <a class="link" href="asio_handler_invoke/overload2.html" title="asio_handler_invoke (2 of 2 overloads)">more...</a></em></span>
 </pre>
 <p>
-        Completion handlers for asynchronous operations are invoked by the <a class="link" href="io_service.html" title="io_service"><code class="computeroutput"><span class="identifier">io_service</span></code></a>
-        associated with the corresponding object (e.g. a socket or deadline_timer).
-        Certain guarantees are made on when the handler may be invoked, in particular
-        that a handler can only be invoked from a thread that is currently calling
-        <code class="computeroutput"><span class="identifier">run</span><span class="special">()</span></code>
-        on the corresponding <a class="link" href="io_service.html" title="io_service"><code class="computeroutput"><span class="identifier">io_service</span></code></a> object. Handlers may
-        subsequently be invoked through other objects (such as <a class="link" href="io_service__strand.html" title="io_service::strand"><code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span></code></a> objects) that provide additional
-        guarantees.
+        Completion handlers for asynchronous operations are invoked by the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a> associated
+        with the corresponding object (e.g. a socket or deadline_timer). Certain
+        guarantees are made on when the handler may be invoked, in particular that
+        a handler can only be invoked from a thread that is currently calling <code class="computeroutput">run()</code>
+        on the corresponding <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        object. Handlers may subsequently be invoked through other objects (such
+        as <a class="link" href="io_context__strand.html" title="io_context::strand"><code class="computeroutput">io_context::strand</code></a>
+        objects) that provide additional guarantees.
       </p>
 <p>
         When asynchronous operations are composed from other asynchronous operations,
@@ -62,7 +69,7 @@ Default invoke function for handlers.
 <p>
         This default implementation invokes the function object like so:
       </p>
-<pre class="programlisting"><span class="identifier">function</span><span class="special">();</span>
+<pre class="programlisting">function();
 </pre>
 <p>
         If necessary, the default implementation makes a copy of the function object
@@ -72,13 +79,13 @@ Default invoke function for handlers.
 <a name="asio.reference.asio_handler_invoke.h0"></a>
         <span><a name="asio.reference.asio_handler_invoke.example"></a></span><a class="link" href="asio_handler_invoke.html#asio.reference.asio_handler_invoke.example">Example</a>
       </h5>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">my_handler</span><span class="special">;</span>
+<pre class="programlisting">class my_handler;
 
-<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Function</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <span class="identifier">asio_handler_invoke</span><span class="special">(</span><span class="identifier">Function</span> <span class="identifier">function</span><span class="special">,</span> <span class="identifier">my_handler</span><span class="special">*</span> <span class="identifier">context</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="identifier">context</span><span class="special">-&gt;</span><span class="identifier">strand_</span><span class="special">.</span><span class="identifier">dispatch</span><span class="special">(</span><span class="identifier">function</span><span class="special">);</span>
-<span class="special">}</span>
+template &lt;typename Function&gt;
+void asio_handler_invoke(Function function, my_handler* context)
+{
+  context-&gt;strand_.dispatch(function);
+}
 </pre>
 <h5>
 <a name="asio.reference.asio_handler_invoke.h1"></a>
@@ -93,8 +100,7 @@ Default invoke function for handlers.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
