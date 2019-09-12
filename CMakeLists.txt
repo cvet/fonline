@@ -683,7 +683,7 @@ set( CLIENT_SOURCE
 set( EDITOR_SOURCE
 	${CLIENT_SOURCE}
 	${SERVER_SOURCE}
-	Source/Client/Mapper.cpp Source/Client/Mapper.h
+	Source/Editor/Mapper.cpp Source/Editor/Mapper.h
 )
 list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
@@ -691,6 +691,7 @@ list( REMOVE_DUPLICATES EDITOR_SOURCE )
 include_directories( "Source/Common" )
 include_directories( "Source/Server" )
 include_directories( "Source/Client" )
+include_directories( "Source/Editor" )
 
 # Applications
 StatusMessage( "Applications:" )
