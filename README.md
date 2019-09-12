@@ -73,7 +73,7 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).\
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.\
-In any way first you must install CMake version equal or higher then 3.5.
+In any way first you must install CMake version equal or higher then 3.10.2.
 
 For build just run from repository root one of the following scripts:
 * BuildScripts\windows.bat - build Windows binaries (windows only)
