@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.5 )
+cmake_minimum_required( VERSION 3.10.2 )
 project( FOnlineProject )
 
 # Options
@@ -212,6 +212,7 @@ if( MSVC )
 else()
 	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BUILD_OPTIONS}" )
 endif()
+set( CMAKE_CXX_STANDARD 17 )
 
 # Embedded resources generation
 function( CreateResources dir output )
