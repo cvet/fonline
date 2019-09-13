@@ -33,14 +33,14 @@ if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
 	mkdir -p sdk
 	unzip "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
+
+	cd sdk/tools
+	( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
+	cd ../../
 fi
+
 export ANDROID_NDK="$PWD/$ANDROID_NDK_VERSION"
 export ANDROID_HOME="$PWD/sdk"
-
-cd sdk/tools
-( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
-cd ../
-cd ../
 
 export ANDROID_ABI=armeabi-v7a
 mkdir -p $ANDROID_ABI
