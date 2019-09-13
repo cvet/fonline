@@ -174,7 +174,7 @@ if (FMT_PEDANTIC)
   target_compile_options(fmt PRIVATE ${PEDANTIC_COMPILE_FLAGS})
 endif ()
 
-target_compile_features(fmt INTERFACE ${FMT_REQUIRED_FEATURES})
+#!target_compile_features(fmt INTERFACE ${FMT_REQUIRED_FEATURES})
 
 target_include_directories(fmt PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -201,7 +201,7 @@ add_library(fmt::fmt-header-only ALIAS fmt-header-only)
 
 target_compile_definitions(fmt-header-only INTERFACE FMT_HEADER_ONLY=1)
 
-target_compile_features(fmt-header-only INTERFACE ${FMT_REQUIRED_FEATURES})
+#!target_compile_features(fmt-header-only INTERFACE ${FMT_REQUIRED_FEATURES})
 
 target_include_directories(fmt-header-only INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
