@@ -8,6 +8,8 @@
 #include "AppGui.h"
 #include "IniFile.h"
 #include "Settings.h"
+#include "ResourceConverter.h"
+#include "BuildSystem.h"
 
 static void DockSpaceBegin();
 static void DockSpaceEnd();
@@ -246,7 +248,8 @@ struct SettingsWindow: GuiWindow
 
         if( ImGui::Button( "Build" ) )
         {
-            // ...
+            // Generate resources
+            // bool changed = ResourceConverter::Generate(resource_names);
         }
 
         GameOpt.Draw( true );

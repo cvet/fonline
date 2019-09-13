@@ -4,7 +4,6 @@
 #include "Timer.h"
 #include "scripthelper/scripthelper.h"
 #include "minizip/zip.h"
-#include "ResourceConverter.h"
 #include "FileSystem.h"
 #include "IniFile.h"
 #include "AdminPanel.h"
@@ -2379,9 +2378,6 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
             cl->Disconnect();
     }
 
-    // Generate resources
-    bool changed = ResourceConverter::Generate( resource_names );
-
     // Clear collections
     for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )
         SAFEDELA( it->Data );
@@ -2454,7 +2450,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     WriteLog( "Generate update files complete.\n" );
 
     // Callback after generation
-    if( first_generation && changed )
+    if( first_generation )
         Script::RaiseInternalEvent( ServerFunctions.ResourcesGenerated );
 
     // Append binaries

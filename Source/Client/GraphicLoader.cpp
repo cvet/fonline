@@ -8,34 +8,12 @@
 #include "SpriteManager.h"
 #include "ResourceManager.h"
 #include "Crypt.h"
-
-#if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
-# include "png.h"
-#endif
-
-/************************************************************************/
-/* Models                                                               */
-/************************************************************************/
+#include "GraphicStructures.h"
 
 StrVec  GraphicLoader::processedFiles;
 BoneVec GraphicLoader::loadedModels;
 StrVec  GraphicLoader::loadedModelNames;
 PtrVec  GraphicLoader::loadedAnimations;
-
-void GraphicLoader::DestroyModel( Bone* root_bone )
-{
-    for( size_t i = 0, j = loadedModels.size(); i < j; i++ )
-    {
-        if( loadedModels[ i ] == root_bone )
-        {
-            processedFiles.erase( std::find( processedFiles.begin(), processedFiles.end(), loadedModelNames[ i ] ) );
-            loadedModels.erase( loadedModels.begin() + i );
-            loadedModelNames.erase( loadedModelNames.begin() + i );
-            break;
-        }
-    }
-    delete root_bone;
-}
 
 Bone* GraphicLoader::LoadModel( const string& fname )
 {
@@ -76,6 +54,21 @@ Bone* GraphicLoader::LoadModel( const string& fname )
     loadedModels.push_back( root_bone );
     loadedModelNames.push_back( fname );
     return root_bone;
+}
+
+void GraphicLoader::DestroyModel( Bone* root_bone )
+{
+    for( size_t i = 0, j = loadedModels.size(); i < j; i++ )
+    {
+        if( loadedModels[ i ] == root_bone )
+        {
+            processedFiles.erase( std::find( processedFiles.begin(), processedFiles.end(), loadedModelNames[ i ] ) );
+            loadedModels.erase( loadedModels.begin() + i );
+            loadedModelNames.erase( loadedModelNames.begin() + i );
+            break;
+        }
+    }
+    delete root_bone;
 }
 
 AnimSet* GraphicLoader::LoadAnimation( const string& anim_fname, const string& anim_name )
@@ -746,19 +739,7 @@ void GraphicLoader::EffectProcessVariables( EffectPass& effect_pass, bool start,
     }
 }
 
-/*
-   Todo:
-        if(Name) delete Name;
-        if(Effect)
-        {
-                if(EffectParams) Effect->DeleteParameterBlock(EffectParams);
-                Effect->Release();
-                Effect=NULL;
-        }
- */
-
 uint    Effect::MaxBones;
-
 Effect* Effect::Contour, * Effect::ContourDefault;
 Effect* Effect::Generic, * Effect::GenericDefault;
 Effect* Effect::Critter, * Effect::CritterDefault;
@@ -843,93 +824,4 @@ bool GraphicLoader::Load3dEffects()
         return false;
     }
     return true;
-}
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height )
-{
-    result_width = *(uint*) data;
-    result_height = *(uint*) ( data + 4 );
-    if( result_width * result_height * 4 != data_size - 8 )
-        return nullptr;
-    uchar* result = new uchar[ result_width * result_height * 4 ];
-    memcpy( result, data + 8, result_width * result_height * 4 );
-    return result;
-}
-
-void GraphicLoader::SavePNG( const string& fname, uchar* data, uint width, uint height )
-{
-    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
-    // Initialize stuff
-    png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
-    if( !png_ptr )
-        return;
-    png_infop info_ptr = png_create_info_struct( png_ptr );
-    if( !info_ptr )
-        return;
-    if( setjmp( png_jmpbuf( png_ptr ) ) )
-        return;
-
-    static UCharVec result_png;
-    struct PNGWriter
-    {
-        static void Write( png_structp png_ptr, png_bytep png_data, png_size_t length )
-        {
-            UNUSED_VARIABLE( png_ptr );
-            for( png_size_t i = 0; i < length; i++ )
-                result_png.push_back( png_data[ i ] );
-        }
-        static void Flush( png_structp png_ptr )
-        {
-            UNUSED_VARIABLE( png_ptr );
-        }
-    };
-    result_png.clear();
-    png_set_write_fn( png_ptr, nullptr, &PNGWriter::Write, &PNGWriter::Flush );
-
-    // Write header
-    if( setjmp( png_jmpbuf( png_ptr ) ) )
-        return;
-    png_byte color_type = PNG_COLOR_TYPE_RGB_ALPHA;
-    png_byte bit_depth = 8;
-    png_set_IHDR( png_ptr, info_ptr, width, height, bit_depth, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE );
-    png_write_info( png_ptr, info_ptr );
-
-    // Write pointers
-    uchar** row_pointers = new uchar*[ height ];
-    for( uint y = 0; y < height; y++ )
-        row_pointers[ y ] = &data[ y * width * 4 ];
-
-    // Write bytes
-    if( setjmp( png_jmpbuf( png_ptr ) ) )
-        return;
-    png_write_image( png_ptr, row_pointers );
-
-    // End write
-    if( setjmp( png_jmpbuf( png_ptr ) ) )
-        return;
-    png_write_end( png_ptr, nullptr );
-
-    // Clean up
-    delete[] row_pointers;
-
-    // Write to disk
-    File fm;
-    fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
-    fm.SaveFile( fname );
-    #endif
-}
-
-uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )
-{
-    result_width = *(uint*) data;
-    result_height = *(uint*) ( data + 4 );
-    if( result_width * result_height * 4 != data_size - 8 )
-        return nullptr;
-    uchar* result = new uchar[ result_width * result_height * 4 ];
-    memcpy( result, data + 8, result_width * result_height * 4 );
-    return result;
 }

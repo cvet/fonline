@@ -1,11 +1,17 @@
-#ifndef __GRAPHIC_LOADER__
-#define __GRAPHIC_LOADER__
+#pragma once
 
 #include "Common.h"
-#include "FileUtils.h"
-#include "GraphicStructures.h"
 
 class AnimSet;
+struct Bone;
+using BoneVec = vector< Bone* >;
+struct MeshTexture;
+using MeshTextureVec = vector< MeshTexture* >;
+struct Effect;
+using EffectVec = vector< Effect* >;
+struct EffectDefault;
+struct EffectPass;
+class File;
 
 class GraphicLoader
 {
@@ -41,13 +47,4 @@ private:
     static EffectVec loadedEffects;
 
     static bool LoadEffectPass( Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count );
-
-    // Images
-    // All input/output data is in RGBA format
-public:
-    static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height );
-    static void   SavePNG( const string& fname, uchar* data, uint width, uint height );
-    static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height );
 };
-
-#endif // __GRAPHIC_LOADER__

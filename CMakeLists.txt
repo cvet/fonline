@@ -296,7 +296,7 @@ DisableLibWarnings( zlibstatic )
 
 # PNG
 StatusMessage( "+ PNG" )
-if( NOT BUILD_ONLY_CLIENT )
+if( NOT ( ANDROID OR ( APPLE AND IOS_PLATFORM ) OR EMSCRIPTEN ) )
 	set( PNG_DIR "ThirdParty/PNG" )
 	set( SKIP_INSTALL_ALL ON CACHE STRING "" FORCE )
 	set( PNG16 "png16_static" )
@@ -588,9 +588,9 @@ endif()
 
 # Common source
 set( COMMON_SOURCE
-	Source/Common/Common.cpp Source/Common/Common.h # Clean up from different things
+	Source/Common/Common.cpp Source/Common/Common.h
 	Source/Common/Entity.cpp Source/Common/Entity.h
-	Source/Common/ProtoMap.cpp # Remove
+	Source/Common/ProtoMap.cpp
 	Source/Common/Testing.cpp Source/Common/Testing.h
 	Source/Common/Debugger.cpp Source/Common/Debugger.h
 	Source/Common/Log.cpp Source/Common/Log.h
@@ -618,9 +618,9 @@ set( COMMON_SOURCE
 	Source/Common/StringUtils.cpp Source/Common/StringUtils.h
 	Source/Common/UcsTables_Include.h
 	Source/Common/Threading.cpp Source/Common/Threading.h
-	Source/Common/Timer.cpp Source/Common/Timer.h # Rename (Timing)
+	Source/Common/Timer.cpp Source/Common/Timer.h
 	Source/Common/LineTracer.h Source/Common/LineTracer.cpp
-	Source/Common/Crypt.cpp Source/Common/Crypt.h # Split to DataStorage/LocalStorage
+	Source/Common/Crypt.cpp Source/Common/Crypt.h
 	Source/Common/Settings.h Source/Common/Settings.cpp
 )
 
@@ -628,24 +628,21 @@ set( COMMON_SOURCE
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
 	Source/Server/AdminPanel.cpp Source/Server/AdminPanel.h
-	# Location
 	Source/Server/Map.cpp Source/Server/Map.h
 	Source/Server/Critter.cpp Source/Server/Critter.h
 	Source/Server/Item.cpp Source/Server/Item.h
-	# To Server.h?
 	Source/Server/EntityManager.cpp Source/Server/EntityManager.h
 	Source/Server/MapManager.cpp Source/Server/MapManager.h
 	Source/Server/CritterManager.cpp Source/Server/CritterManager.h
 	Source/Server/ItemManager.cpp Source/Server/ItemManager.h
 	Source/Server/AppGui.cpp Source/Server/AppGuiDX.cpp Source/Server/AppGui.h
-	Source/Server/ResourceConverter.cpp Source/Server/ResourceConverter.h
 	Source/Server/DataBase.cpp Source/Server/DataBase.h
 	Source/Server/Dialogs.cpp Source/Server/Dialogs.h
 	Source/Server/Networking.cpp Source/Server/Networking.h
 	Source/Server/Server.cpp Source/Server/Server.h
-	Source/Server/ServerClient.cpp # Refactor
-	Source/Server/ServerItem.cpp # Refactor
-	Source/Server/ServerNpc.cpp # Refactor
+	Source/Server/ServerClient.cpp
+	Source/Server/ServerItem.cpp
+	Source/Server/ServerNpc.cpp
 	Source/Server/ServerScript.cpp
 )
 
@@ -661,18 +658,18 @@ list( REMOVE_ITEM SERVER_SOURCE_NO_GUI "Source/Server/AppGuiDX.cpp" )
 set( CLIENT_SOURCE
 	${COMMON_SOURCE}
 	Source/Client/Client.cpp Source/Client/Client.h
-	Source/Client/ClientInterface.cpp # Remove
+	Source/Client/ClientInterface.cpp
 	Source/Client/SoundManager.cpp Source/Client/SoundManager.h
 	Source/Client/MapView.cpp Source/Client/MapView.h
 	Source/Client/CritterView.cpp Source/Client/CritterView.h
 	Source/Client/ItemView.cpp Source/Client/ItemView.h
 	Source/Client/ItemHexView.cpp Source/Client/ItemHexView.h
 	Source/Client/Keyboard.cpp Source/Client/Keyboard.h
-	Source/Client/HexManager.cpp Source/Client/HexManager.h # MapView
+	Source/Client/HexManager.cpp Source/Client/HexManager.h
 	Source/Client/ResourceManager.cpp Source/Client/ResourceManager.h
-	Source/Client/GraphicLoader.cpp Source/Client/GraphicLoader.h # Refactor, merge with ResourceManager?
+	Source/Client/GraphicLoader.cpp Source/Client/GraphicLoader.h
 	Source/Client/3dStuff.cpp Source/Client/3dStuff.h
-	Source/Client/SpriteManager.cpp Source/Client/SpriteManager.h # Refactor, split loaders
+	Source/Client/SpriteManager.cpp Source/Client/SpriteManager.h
 	Source/Client/SpriteManagerFont.cpp
 	Source/Client/F2Palette_Include.h
 	Source/Client/Sprites.cpp Source/Client/Sprites.h
@@ -684,6 +681,8 @@ set( EDITOR_SOURCE
 	${CLIENT_SOURCE}
 	${SERVER_SOURCE}
 	Source/Editor/Mapper.cpp Source/Editor/Mapper.h
+	Source/Editor/ResourceConverter.cpp Source/Editor/ResourceConverter.h
+	Source/Editor/BuildSystem.cpp Source/Editor/BuildSystem.h
 )
 list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
@@ -719,7 +718,8 @@ if( NOT FONLINE_BUILD_ONLY_EDITOR )
 	endif()
 	set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" )
 	set_target_properties( FOnline PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_CLIENT" )
-	target_link_libraries( FOnline "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${BACKWARDCPP_LIBS}" "${CLIENT_LIBS}" )
+	target_link_libraries( FOnline "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${BACKWARDCPP_LIBS}" "${CLIENT_LIBS}" )
+	target_link_libraries( FOnline "Acm" "Ogg" "Vorbis" "Theora" "${PNG16}" )
 endif()
 
 if( NOT BUILD_ONLY_CLIENT )
@@ -730,7 +730,7 @@ if( NOT BUILD_ONLY_CLIENT )
 		set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" )
 		set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER" )
-		target_link_libraries( FOnlineServer "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServer "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${RENDER_LIBS}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 
 		if( WIN32 )
 			StatusMessage( "+ FOnlineServerService" )
@@ -739,7 +739,7 @@ if( NOT BUILD_ONLY_CLIENT )
 			set_target_properties( FOnlineServerService PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 			set_target_properties( FOnlineServerService PROPERTIES OUTPUT_NAME "FOnlineServerService${NON_CLIENT_POSTFIX}" )
 			set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER;FO_NO_GRAPHIC" )
-			target_link_libraries( FOnlineServerService "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
+			target_link_libraries( FOnlineServerService "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 		else()
 			StatusMessage( "+ FOnlineServerDaemon" )
 			list( APPEND ALL_TARGETS "FOnlineServerDaemon" )
@@ -747,7 +747,7 @@ if( NOT BUILD_ONLY_CLIENT )
 			set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 			set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" )
 			set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER;FO_NO_GRAPHIC" )
-			target_link_libraries( FOnlineServerDaemon "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
+			target_link_libraries( FOnlineServerDaemon "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 		endif()
 
 		if( BUILD_TEST_CASES )

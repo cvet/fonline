@@ -2,7 +2,6 @@
 #include "Log.h"
 #include "Testing.h"
 #include "Script.h"
-#include "ResourceConverter.h"
 #include "FileSystem.h"
 #include "sha1.h"
 #include "sha2.h"
@@ -72,7 +71,6 @@ bool FOMapper::Init()
     File::ClearDataFiles();
     File::InitDataFiles( "$Basic" );
     File::InitDataFiles( "./" );
-    ResourceConverter::Generate( nullptr );
     File::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     File::InitDataFiles( CLIENT_DATA );
 

@@ -7,6 +7,9 @@
 #include "StringUtils.h"
 #include "Settings.h"
 #include "F2Palette_Include.h"
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+# include "png.h"
+#endif
 
 #ifdef FO_WEB
 # define SDL_GL_SwapWindow( a )    (void) 0
@@ -1279,6 +1282,75 @@ void SpriteManager::DumpAtlases()
     }
 }
 
+static void SavePNG( const string& fname, uchar* data, uint width, uint height )
+{
+    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined( FO_MAC )
+    // Initialize stuff
+    png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
+    if( !png_ptr )
+        return;
+    png_infop info_ptr = png_create_info_struct( png_ptr );
+    if( !info_ptr )
+        return;
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+
+    static UCharVec result_png;
+    struct PNGWriter
+    {
+        static void Write( png_structp png_ptr, png_bytep png_data, png_size_t length )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            for( png_size_t i = 0; i < length; i++ )
+                result_png.push_back( png_data[ i ] );
+        }
+        static void Flush( png_structp png_ptr )
+        {
+            UNUSED_VARIABLE( png_ptr );
+        }
+    };
+    result_png.clear();
+    png_set_write_fn( png_ptr, nullptr, &PNGWriter::Write, &PNGWriter::Flush );
+
+    // Write header
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_byte color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+    png_byte bit_depth = 8;
+    png_set_IHDR( png_ptr, info_ptr, width, height, bit_depth, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE );
+    png_write_info( png_ptr, info_ptr );
+
+    // Write pointers
+    uchar** row_pointers = new uchar*[ height ];
+    for( uint y = 0; y < height; y++ )
+        row_pointers[ y ] = &data[ y * width * 4 ];
+
+    // Write bytes
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_write_image( png_ptr, row_pointers );
+
+    // End write
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_write_end( png_ptr, nullptr );
+
+    // Clean up
+    delete[] row_pointers;
+
+    // Write to disk
+    File fm;
+    fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
+    fm.SaveFile( fname );
+
+	#else
+	UNUSED_VARIABLE(fname);
+	UNUSED_VARIABLE(data);
+	UNUSED_VARIABLE(width);
+	UNUSED_VARIABLE(height);
+    #endif
+}
+
 void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
 {
     // Size
@@ -1288,7 +1360,8 @@ void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
         GetWindowSize( w, h );
 
     // Get data
-    uchar* data = new uchar[ w * h * 4 ];
+    uint   size = w * h * 4;
+    uchar* data = new uchar[ size ];
     if( tex )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
@@ -1310,7 +1383,7 @@ void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
     }
 
     // Save
-    GraphicLoader::SavePNG( fname, data, w, h );
+    SavePNG( fname, data, w, h );
 
     // Clean up
     SAFEDELA( data );
@@ -1405,6 +1478,28 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     SAFEDELA( data );
 }
 
+static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height )
+{
+    result_width = *(uint*) data;
+    result_height = *(uint*) ( data + 4 );
+    RUNTIME_ASSERT( result_width * result_height * 4 == data_size - 8 );
+
+    uchar* result = new uchar[ data_size - 8 ];
+    memcpy( result, data + 8, data_size - 8 );
+    return result;
+}
+
+static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )
+{
+    result_width = *(uint*) data;
+    result_height = *(uint*) ( data + 4 );
+    RUNTIME_ASSERT( result_width * result_height * 4 == data_size - 8 );
+
+    uchar* result = new uchar[ data_size - 8 ];
+    memcpy( result, data + 8, data_size - 8 );
+    return result;
+}
+
 AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
 {
     AnyFrames* dummy = ( use_dummy ? DummyAnimation : nullptr );
@@ -1421,9 +1516,9 @@ AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* 
 
     AnyFrames* result = nullptr;
     if( ext == "png" )
-        result = LoadAnimationOther( fname, &GraphicLoader::LoadPNG );
+        result = LoadAnimationOther( fname, &LoadPNG );
     else if( ext == "tga" )
-        result = LoadAnimationOther( fname, &GraphicLoader::LoadTGA );
+        result = LoadAnimationOther( fname, &LoadTGA );
     else if( ext == "frm" )
         result = LoadAnimationFrm( fname, frm_anim_pix );
     else if( ext == "rix" )
