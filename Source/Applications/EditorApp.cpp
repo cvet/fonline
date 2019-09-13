@@ -248,6 +248,8 @@ struct SettingsWindow: GuiWindow
         {
             // ...
         }
+
+        GameOpt.Draw( true );
         return true;
     }
 };

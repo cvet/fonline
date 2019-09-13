@@ -1,229 +1,248 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "IniFile.h"
+#include "imgui.h"
 
 Settings GameOpt;
 IniFile* MainConfig;
 StrVec   ProjectFiles;
 
-Settings::Settings()
+static void SetEntry( string& entry, const string& value ) { entry = value; }
+static void SetEntry( uchar& entry, const string& value )  { entry = _str( value ).toInt(); }
+static void SetEntry( short& entry, const string& value )  { entry = _str( value ).toInt(); }
+static void SetEntry( int& entry, const string& value )    { entry = _str( value ).toInt(); }
+static void SetEntry( uint& entry, const string& value )   { entry = _str( value ).toInt(); }
+static void SetEntry( bool& entry, const string& value )   { entry = _str( value ).toBool(); }
+static void SetEntry( float& entry, const string& value )  { entry = _str( value ).toFloat(); }
+
+static void DrawEntry( const char* name, const string& entry ) { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const uchar& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const short& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const int& entry )    { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const uint& entry )   { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const bool& entry )   { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEntry( const char* name, const float& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+
+static void DrawEditableEntry( const char* name, string& entry ) { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, uchar& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, short& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, int& entry )    { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, uint& entry )   { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, bool& entry )   { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+static void DrawEditableEntry( const char* name, float& entry )  { ImGui::TextUnformatted( _str( "{}: {}", name, entry ).c_str() ); }
+
+static void Process( Settings& settings, StrMap* init, bool draw_editable )
 {
-    WorkDir = "";
-    CommandLine = "";
+    #define PROCESS_ENTRY( entry )                                                               \
+        if( init && init->count( # entry ) )                                                     \
+            SetEntry( settings.entry, ( *init )[ # entry ] ); else if( !init && !draw_editable ) \
+            DrawEntry( # entry, settings.entry ); else if( !init && draw_editable )              \
+            DrawEditableEntry( # entry, settings.entry )
+    PROCESS_ENTRY( WorkDir );
+    PROCESS_ENTRY( CommandLine );
+    PROCESS_ENTRY( FullSecondStart );
+    PROCESS_ENTRY( FullSecond );
+    PROCESS_ENTRY( GameTimeTick );
+    PROCESS_ENTRY( YearStartFTHi );
+    PROCESS_ENTRY( YearStartFTLo );
+    PROCESS_ENTRY( DisableTcpNagle );
+    PROCESS_ENTRY( DisableZlibCompression );
+    PROCESS_ENTRY( FloodSize );
+    PROCESS_ENTRY( NoAnswerShuffle );
+    PROCESS_ENTRY( DialogDemandRecheck );
+    PROCESS_ENTRY( SneakDivider );
+    PROCESS_ENTRY( LookMinimum );
+    PROCESS_ENTRY( DeadHitPoints );
+    PROCESS_ENTRY( Breaktime );
+    PROCESS_ENTRY( TimeoutTransfer );
+    PROCESS_ENTRY( TimeoutBattle );
+    PROCESS_ENTRY( RunOnCombat );
+    PROCESS_ENTRY( RunOnTransfer );
+    PROCESS_ENTRY( GlobalMapWidth );
+    PROCESS_ENTRY( GlobalMapHeight );
+    PROCESS_ENTRY( GlobalMapZoneLength );
+    PROCESS_ENTRY( BagRefreshTime );
+    PROCESS_ENTRY( WhisperDist );
+    PROCESS_ENTRY( ShoutDist );
+    PROCESS_ENTRY( LookChecks );
+    // PROCESS_ENTRY(LookDir);
+    // PROCESS_ENTRY(LookSneakDir);
+    PROCESS_ENTRY( RegistrationTimeout );
+    PROCESS_ENTRY( AccountPlayTime );
+    PROCESS_ENTRY( ScriptRunSuspendTimeout );
+    PROCESS_ENTRY( ScriptRunMessageTimeout );
+    PROCESS_ENTRY( TalkDistance );
+    PROCESS_ENTRY( NpcMaxTalkers );
+    PROCESS_ENTRY( MinNameLength );
+    PROCESS_ENTRY( MaxNameLength );
+    PROCESS_ENTRY( DlgTalkMinTime );
+    PROCESS_ENTRY( DlgBarterMinTime );
+    PROCESS_ENTRY( MinimumOfflineTime );
+    PROCESS_ENTRY( ForceRebuildResources );
+    PROCESS_ENTRY( MapHexagonal );
+    PROCESS_ENTRY( MapHexWidth );
+    PROCESS_ENTRY( MapHexHeight );
+    PROCESS_ENTRY( MapHexLineHeight );
+    PROCESS_ENTRY( MapTileOffsX );
+    PROCESS_ENTRY( MapTileOffsY );
+    PROCESS_ENTRY( MapTileStep );
+    PROCESS_ENTRY( MapRoofOffsX );
+    PROCESS_ENTRY( MapRoofOffsY );
+    PROCESS_ENTRY( MapRoofSkipSize );
+    PROCESS_ENTRY( MapCameraAngle );
+    PROCESS_ENTRY( MapSmoothPath );
+    PROCESS_ENTRY( MapDataPrefix );
+    PROCESS_ENTRY( Quit );
+    PROCESS_ENTRY( WaitPing );
+    PROCESS_ENTRY( OpenGLRendering );
+    PROCESS_ENTRY( OpenGLDebug );
+    PROCESS_ENTRY( AssimpLogging );
+    PROCESS_ENTRY( MouseX );
+    PROCESS_ENTRY( MouseY );
+    PROCESS_ENTRY( LastMouseX );
+    PROCESS_ENTRY( LastMouseY );
+    PROCESS_ENTRY( ScrOx );
+    PROCESS_ENTRY( ScrOy );
+    PROCESS_ENTRY( ShowTile );
+    PROCESS_ENTRY( ShowRoof );
+    PROCESS_ENTRY( ShowItem );
+    PROCESS_ENTRY( ShowScen );
+    PROCESS_ENTRY( ShowWall );
+    PROCESS_ENTRY( ShowCrit );
+    PROCESS_ENTRY( ShowFast );
+    PROCESS_ENTRY( ShowPlayerNames );
+    PROCESS_ENTRY( ShowNpcNames );
+    PROCESS_ENTRY( ShowCritId );
+    PROCESS_ENTRY( ScrollKeybLeft );
+    PROCESS_ENTRY( ScrollKeybRight );
+    PROCESS_ENTRY( ScrollKeybUp );
+    PROCESS_ENTRY( ScrollKeybDown );
+    PROCESS_ENTRY( ScrollMouseLeft );
+    PROCESS_ENTRY( ScrollMouseRight );
+    PROCESS_ENTRY( ScrollMouseUp );
+    PROCESS_ENTRY( ScrollMouseDown );
+    PROCESS_ENTRY( ShowGroups );
+    PROCESS_ENTRY( HelpInfo );
+    PROCESS_ENTRY( DebugInfo );
+    PROCESS_ENTRY( DebugNet );
+    PROCESS_ENTRY( Enable3dRendering );
+    PROCESS_ENTRY( FullScreen );
+    PROCESS_ENTRY( VSync );
+    PROCESS_ENTRY( Light );
+    PROCESS_ENTRY( Host );
+    PROCESS_ENTRY( Port );
+    PROCESS_ENTRY( ProxyType );
+    PROCESS_ENTRY( ProxyHost );
+    PROCESS_ENTRY( ProxyPort );
+    PROCESS_ENTRY( ProxyUser );
+    PROCESS_ENTRY( ProxyPass );
+    PROCESS_ENTRY( ScrollDelay );
+    PROCESS_ENTRY( ScrollStep );
+    PROCESS_ENTRY( ScrollCheck );
+    PROCESS_ENTRY( FixedFPS );
+    PROCESS_ENTRY( FPS );
+    PROCESS_ENTRY( PingPeriod );
+    PROCESS_ENTRY( Ping );
+    PROCESS_ENTRY( MsgboxInvert );
+    PROCESS_ENTRY( MessNotify );
+    PROCESS_ENTRY( SoundNotify );
+    PROCESS_ENTRY( AlwaysOnTop );
+    PROCESS_ENTRY( TextDelay );
+    PROCESS_ENTRY( DamageHitDelay );
+    PROCESS_ENTRY( ScreenWidth );
+    PROCESS_ENTRY( ScreenHeight );
+    PROCESS_ENTRY( MultiSampling );
+    PROCESS_ENTRY( MouseScroll );
+    PROCESS_ENTRY( DoubleClickTime );
+    PROCESS_ENTRY( RoofAlpha );
+    PROCESS_ENTRY( HideCursor );
+    PROCESS_ENTRY( ShowMoveCursor );
+    PROCESS_ENTRY( DisableMouseEvents );
+    PROCESS_ENTRY( DisableKeyboardEvents );
+    PROCESS_ENTRY( HidePassword );
+    PROCESS_ENTRY( PlayerOffAppendix );
+    PROCESS_ENTRY( Animation3dSmoothTime );
+    PROCESS_ENTRY( Animation3dFPS );
+    PROCESS_ENTRY( RunModMul );
+    PROCESS_ENTRY( RunModDiv );
+    PROCESS_ENTRY( RunModAdd );
+    PROCESS_ENTRY( MapZooming );
+    PROCESS_ENTRY( SpritesZoom );
+    PROCESS_ENTRY( SpritesZoomMax );
+    PROCESS_ENTRY( SpritesZoomMin );
+    // PROCESS_ENTRY(EffectValues);
+    PROCESS_ENTRY( KeyboardRemap );
+    PROCESS_ENTRY( CritterFidgetTime );
+    PROCESS_ENTRY( Anim2CombatBegin );
+    PROCESS_ENTRY( Anim2CombatIdle );
+    PROCESS_ENTRY( Anim2CombatEnd );
+    PROCESS_ENTRY( RainTick );
+    PROCESS_ENTRY( RainSpeedX );
+    PROCESS_ENTRY( RainSpeedY );
+    PROCESS_ENTRY( ConsoleHistorySize );
+    PROCESS_ENTRY( SoundVolume );
+    PROCESS_ENTRY( MusicVolume );
+    PROCESS_ENTRY( ChosenLightColor );
+    PROCESS_ENTRY( ChosenLightDistance );
+    PROCESS_ENTRY( ChosenLightIntensity );
+    PROCESS_ENTRY( ChosenLightFlags );
+    PROCESS_ENTRY( ServerDir );
+    PROCESS_ENTRY( ShowCorners );
+    PROCESS_ENTRY( ShowSpriteCuts );
+    PROCESS_ENTRY( ShowDrawOrder );
+    PROCESS_ENTRY( SplitTilesCollection );
+    #undef PROCESS_ENTRY
 
-    FullSecondStart = 0;
-    FullSecond = 0;
-    GameTimeTick = 0;
-    YearStartFTHi = 0;
-    YearStartFTLo = 0;
-
-    DisableTcpNagle = false;
-    DisableZlibCompression = false;
-    FloodSize = 2048;
-    NoAnswerShuffle = false;
-    DialogDemandRecheck = false;
-    SneakDivider = 6;
-    LookMinimum = 6;
-    DeadHitPoints = -6;
-
-    Breaktime = 1200;
-    TimeoutTransfer = 3;
-    TimeoutBattle = 10;
-    RunOnCombat = false;
-    RunOnTransfer = false;
-    GlobalMapWidth = 28;
-    GlobalMapHeight = 30;
-    GlobalMapZoneLength = 50;
-    BagRefreshTime = 60;
-    WhisperDist = 2;
-    ShoutDist = 200;
-    LookChecks = 0;
-    LookDir[ 0 ] = 0;
-    LookDir[ 1 ] = 20;
-    LookDir[ 2 ] = 40;
-    LookDir[ 3 ] = 60;
-    LookDir[ 4 ] = 60;
-    LookSneakDir[ 0 ] = 90;
-    LookSneakDir[ 1 ] = 60;
-    LookSneakDir[ 2 ] = 30;
-    LookSneakDir[ 3 ] = 0;
-    LookSneakDir[ 4 ] = 0;
-    RegistrationTimeout = 5;
-    AccountPlayTime = 0;
-    ScriptRunSuspendTimeout = 30000;
-    ScriptRunMessageTimeout = 10000;
-    TalkDistance = 3;
-    NpcMaxTalkers = 1;
-    MinNameLength = 4;
-    MaxNameLength = 12;
-    DlgTalkMinTime = 0;
-    DlgBarterMinTime = 0;
-    MinimumOfflineTime = 180000;
-    ForceRebuildResources = false;
-
-    MapHexagonal = true;
-    MapHexWidth = 32;
-    MapHexHeight = 16;
-    MapHexLineHeight = 12;
-    MapTileOffsX = -8;
-    MapTileOffsY = 32;
-    MapTileStep = 2;
-    MapRoofOffsX = -8;
-    MapRoofOffsY = -66;
-    MapRoofSkipSize = 2;
-    MapCameraAngle = 25.7f;
-    MapSmoothPath = true;
-    MapDataPrefix = "art/geometry/fallout_";
-
-    #ifdef FO_WEB
-    WebBuild = true;
-    #else
-    WebBuild = false;
-    #endif
-    #ifdef FO_WINDOWS
-    WindowsBuild = true;
-    #else
-    WindowsBuild = false;
-    #endif
-    #ifdef FO_LINUX
-    LinuxBuild = true;
-    #else
-    LinuxBuild = false;
-    #endif
-    #ifdef FO_MAC
-    MacOsBuild = true;
-    #else
-    MacOsBuild = false;
-    #endif
-    #ifdef FO_ANDROID
-    AndroidBuild = true;
-    #else
-    AndroidBuild = false;
-    #endif
-    #ifdef FO_IOS
-    IOsBuild = true;
-    #else
-    IOsBuild = false;
-    #endif
-
-    DesktopBuild = WindowsBuild || LinuxBuild || MacOsBuild;
-    TabletBuild = AndroidBuild || IOsBuild;
-
-    #ifdef FO_WINDOWS
-    if( GetSystemMetrics( SM_TABLETPC ) != 0 )
+    // ProcessEntry
+    if( init )
     {
-        DesktopBuild = false;
-        TabletBuild = true;
+        #ifdef FO_WEB
+        settings.WebBuild = true;
+        #else
+        settings.WebBuild = false;
+        #endif
+        #ifdef FO_WINDOWS
+        settings.WindowsBuild = true;
+        #else
+        settings.WindowsBuild = false;
+        #endif
+        #ifdef FO_LINUX
+        settings.LinuxBuild = true;
+        #else
+        settings.LinuxBuild = false;
+        #endif
+        #ifdef FO_MAC
+        settings.MacOsBuild = true;
+        #else
+        settings.MacOsBuild = false;
+        #endif
+        #ifdef FO_ANDROID
+        settings.AndroidBuild = true;
+        #else
+        settings.AndroidBuild = false;
+        #endif
+        #ifdef FO_IOS
+        settings.IOsBuild = true;
+        #else
+        settings.IOsBuild = false;
+        #endif
+        settings.DesktopBuild = ( settings.WindowsBuild || settings.LinuxBuild || settings.MacOsBuild );
+        settings.TabletBuild = ( settings.AndroidBuild || settings.IOsBuild );
+
+        #ifdef FO_WINDOWS
+        if( GetSystemMetrics( SM_TABLETPC ) != 0 )
+        {
+            settings.DesktopBuild = false;
+            settings.TabletBuild = true;
+        }
+        #endif
     }
-    #endif
-
-    // Client and Mapper
-    Quit = false;
-    WaitPing = false;
-    OpenGLRendering = true;
-    OpenGLDebug = false;
-    AssimpLogging = false;
-    MouseX = 0;
-    MouseY = 0;
-    LastMouseX = 0;
-    LastMouseY = 0;
-    ScrOx = 0;
-    ScrOy = 0;
-    ShowTile = true;
-    ShowRoof = true;
-    ShowItem = true;
-    ShowScen = true;
-    ShowWall = true;
-    ShowCrit = true;
-    ShowFast = true;
-    ShowPlayerNames = false;
-    ShowNpcNames = false;
-    ShowCritId = false;
-    ScrollKeybLeft = false;
-    ScrollKeybRight = false;
-    ScrollKeybUp = false;
-    ScrollKeybDown = false;
-    ScrollMouseLeft = false;
-    ScrollMouseRight = false;
-    ScrollMouseUp = false;
-    ScrollMouseDown = false;
-    ShowGroups = true;
-    HelpInfo = false;
-    DebugInfo = false;
-    DebugNet = false;
-    Enable3dRendering = false;
-    FullScreen = false;
-    VSync = false;
-    Light = 0;
-    Host = "localhost";
-    Port = 4000;
-    ProxyType = 0;
-    ProxyHost = "";
-    ProxyPort = 0;
-    ProxyUser = "";
-    ProxyPass = "";
-    ScrollDelay = 10;
-    ScrollStep = 1;
-    ScrollCheck = true;
-    FixedFPS = 100;
-    FPS = 0;
-    PingPeriod = 2000;
-    Ping = 0;
-    MsgboxInvert = false;
-    MessNotify = true;
-    SoundNotify = true;
-    AlwaysOnTop = false;
-    TextDelay = 3000;
-    DamageHitDelay = 0;
-    ScreenWidth = 1024;
-    ScreenHeight = 768;
-    MultiSampling = -1;
-    MouseScroll = true;
-    DoubleClickTime = 0;
-    RoofAlpha = 200;
-    HideCursor = false;
-    ShowMoveCursor = false;
-    DisableMouseEvents = false;
-    DisableKeyboardEvents = false;
-    HidePassword = true;
-    PlayerOffAppendix = "_off";
-    Animation3dSmoothTime = 150;
-    Animation3dFPS = 30;
-    RunModMul = 1;
-    RunModDiv = 3;
-    RunModAdd = 0;
-    MapZooming = false;
-    SpritesZoom = 1.0f;
-    SpritesZoomMax = MAX_ZOOM;
-    SpritesZoomMin = MIN_ZOOM;
-    memzero( EffectValues, sizeof( EffectValues ) );
-    KeyboardRemap = "";
-    CritterFidgetTime = 50000;
-    Anim2CombatBegin = 0;
-    Anim2CombatIdle = 0;
-    Anim2CombatEnd = 0;
-    RainTick = 60;
-    RainSpeedX = 0;
-    RainSpeedY = 15;
-    ConsoleHistorySize = 20;
-    SoundVolume = 100;
-    MusicVolume = 100;
-    ChosenLightColor = 0;
-    ChosenLightDistance = 4;
-    ChosenLightIntensity = 2500;
-    ChosenLightFlags = 0;
-
-    // Mapper
-    ServerDir = "";
-    ShowCorners = false;
-    ShowSpriteCuts = false;
-    ShowDrawOrder = false;
-    SplitTilesCollection = true;
 }
 
 void Settings::Init( int argc, char** argv )
 {
     // Parse command line args
+    StrMap commands;
     StrVec configs;
     for( int i = 0; i < argc; i++ )
     {
@@ -245,7 +264,19 @@ void Settings::Init( int argc, char** argv )
         CommandLine += argv[ i ];
         if( i < argc - 1 )
             CommandLine += " ";
+
+        // Map commands
+        if( argv[ i ][ 0 ] == '-' )
+        {
+            string key = _str( "{}", argv[ i ] ).trim().substringAfter( '0' );
+            if( i < argc - 1 && argv[ i + 1 ][ 0 ] != '-' )
+                commands[ key ] = argv[ i + 1 ][ 0 ];
+            else
+                commands[ key ] = "1";
+        }
     }
+
+    Process( *this, &commands, false );
 
     // Store start directory
     if( !WorkDir.empty() )
@@ -472,4 +503,9 @@ void Settings::Init( int argc, char** argv )
     READ_CFG_STR_DEF( *MainConfig, "KeyboardRemap", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "KeyboardRemap" );
     KeyboardRemap = buf;
+}
+
+void Settings::Draw( bool editable )
+{
+    Process( *this, nullptr, editable );
 }
