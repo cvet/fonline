@@ -20,12 +20,13 @@
 <a name="asio.reference.local__basic_endpoint.operator_lt_"></a><a class="link" href="operator_lt_.html" title="local::basic_endpoint::operator&lt;">local::basic_endpoint::operator&lt;</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm133283"></a> 
-Compare endpoints for ordering.
+          <a class="indexterm" name="asio.indexterm.local__basic_endpoint.operator_lt_"></a> 
+Compare
+          endpoints for ordering.
         </p>
-<pre class="programlisting"><span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;(</span>
-    <span class="keyword">const</span> <span class="identifier">basic_endpoint</span><span class="special">&lt;</span> <span class="identifier">Protocol</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">e1</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">basic_endpoint</span><span class="special">&lt;</span> <span class="identifier">Protocol</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">e2</span><span class="special">);</span>
+<pre class="programlisting">friend bool operator&lt;(
+    const basic_endpoint&lt; Protocol &gt; &amp; e1,
+    const basic_endpoint&lt; Protocol &gt; &amp; e2);
 </pre>
 <h6>
 <a name="asio.reference.local__basic_endpoint.operator_lt_.h0"></a>
@@ -40,8 +41,7 @@ Compare endpoints for ordering.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

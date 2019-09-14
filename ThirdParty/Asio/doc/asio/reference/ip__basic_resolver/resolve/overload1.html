@@ -1,13 +1,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
-<title>ip::basic_resolver::resolve (1 of 4 overloads)</title>
+<title>ip::basic_resolver::resolve (1 of 12 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../../../index.html" title="Asio">
 <link rel="up" href="../resolve.html" title="ip::basic_resolver::resolve">
 <link rel="prev" href="../resolve.html" title="ip::basic_resolver::resolve">
-<link rel="next" href="overload2.html" title="ip::basic_resolver::resolve (2 of 4 overloads)">
+<link rel="next" href="overload2.html" title="ip::basic_resolver::resolve (2 of 12 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../../asio.png"></td></tr></table>
@@ -17,14 +17,15 @@
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h5 class="title">
-<a name="asio.reference.ip__basic_resolver.resolve.overload1"></a><a class="link" href="overload1.html" title="ip::basic_resolver::resolve (1 of 4 overloads)">ip::basic_resolver::resolve
-          (1 of 4 overloads)</a>
+<a name="asio.reference.ip__basic_resolver.resolve.overload1"></a><a class="link" href="overload1.html" title="ip::basic_resolver::resolve (1 of 12 overloads)">ip::basic_resolver::resolve
+          (1 of 12 overloads)</a>
 </h5></div></div></div>
 <p>
+            (Deprecated: Use overload with separate host and service parameters.)
             Perform forward resolution of a query to a list of entries.
           </p>
-<pre class="programlisting"><span class="identifier">iterator</span> <span class="identifier">resolve</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">query</span> <span class="special">&amp;</span> <span class="identifier">q</span><span class="special">);</span>
+<pre class="programlisting">results_type resolve(
+    const query &amp; q);
 </pre>
 <p>
             This function is used to resolve a query into a list of endpoint entries.
@@ -48,8 +49,8 @@
             Value</a>
           </h6>
 <p>
-            A forward-only iterator that can be used to traverse the list of endpoint
-            entries.
+            A range object representing the list of endpoint entries. A successful
+            call to this function is guaranteed to return a non-empty range.
           </p>
 <h6>
 <a name="asio.reference.ip__basic_resolver.resolve.overload1.h2"></a>
@@ -64,22 +65,10 @@
                 </p></dd>
 </dl>
 </div>
-<h6>
-<a name="asio.reference.ip__basic_resolver.resolve.overload1.h3"></a>
-            <span><a name="asio.reference.ip__basic_resolver.resolve.overload1.remarks"></a></span><a class="link" href="overload1.html#asio.reference.ip__basic_resolver.resolve.overload1.remarks">Remarks</a>
-          </h6>
-<p>
-            A default constructed iterator represents the end of the list.
-          </p>
-<p>
-            A successful call to this function is guaranteed to return at least one
-            entry.
-          </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

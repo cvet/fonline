@@ -7,13 +7,13 @@
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../examples.html" title="Examples">
 <link rel="prev" href="cpp03_examples.html" title="C++03 Examples">
-<link rel="next" href="../reference.html" title="Reference">
+<link rel="next" href="cpp17_examples.html" title="C++17 Examples">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="cpp03_examples.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="../reference.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="cpp03_examples.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="cpp17_examples.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
@@ -108,6 +108,28 @@
 </ul></div>
 <h5>
 <a name="asio.examples.cpp11_examples.h4"></a>
+        <span><a name="asio.examples.cpp11_examples.fork"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.fork">Fork</a>
+      </h5>
+<p>
+        These POSIX-specific examples show how to use Asio in conjunction with the
+        <code class="computeroutput">fork()</code> system call. The first example illustrates the steps
+        required to start a daemon process:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <a href="../../../src/examples/cpp11/fork/daemon.cpp" target="_top">../src/examples/cpp11/fork/daemon.cpp</a>
+            (<a href="../../examples/diffs/fork/daemon.cpp.html" target="_top">diff to C++03</a>)
+          </li></ul></div>
+<p>
+        The second example demonstrates how it is possible to fork a process from
+        within a completion handler.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <a href="../../../src/examples/cpp11/fork/process_per_connection.cpp" target="_top">../src/examples/cpp11/fork/process_per_connection.cpp</a>
+            (<a href="../../examples/diffs/fork/process_per_connection.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li></ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h5"></a>
         <span><a name="asio.examples.cpp11_examples.futures"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.futures">Futures</a>
       </h5>
 <p>
@@ -118,7 +140,18 @@
             <a href="../../../src/examples/cpp11/futures/daytime_client.cpp" target="_top">../src/examples/cpp11/futures/daytime_client.cpp</a>
           </li></ul></div>
 <h5>
-<a name="asio.examples.cpp11_examples.h5"></a>
+<a name="asio.examples.cpp11_examples.h6"></a>
+        <span><a name="asio.examples.cpp11_examples.handler_tracking"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.handler_tracking">Handler
+        Tracking</a>
+      </h5>
+<p>
+        This example shows how to implement custom handler tracking.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <a href="../../../src/examples/cpp11/handler_tracking/custom_tracking.hpp" target="_top">../src/examples/cpp11/handler_tracking/custom_tracking.hpp</a>
+          </li></ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h7"></a>
         <span><a name="asio.examples.cpp11_examples.http_server"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.http_server">HTTP
         Server</a>
       </h5>
@@ -208,7 +241,82 @@
           </li>
 </ul></div>
 <h5>
-<a name="asio.examples.cpp11_examples.h6"></a>
+<a name="asio.examples.cpp11_examples.h8"></a>
+        <span><a name="asio.examples.cpp11_examples.multicast"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.multicast">Multicast</a>
+      </h5>
+<p>
+        An example showing the use of multicast to transmit packets to a group of
+        subscribers.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/multicast/receiver.cpp" target="_top">../src/examples/cpp11/multicast/receiver.cpp</a>
+            (<a href="../../examples/diffs/multicast/receiver.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/multicast/sender.cpp" target="_top">../src/examples/cpp11/multicast/sender.cpp</a>
+            (<a href="../../examples/diffs/multicast/sender.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+</ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h9"></a>
+        <span><a name="asio.examples.cpp11_examples.nonblocking"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.nonblocking">Nonblocking</a>
+      </h5>
+<p>
+        Example demonstrating reactor-style operations for integrating a third-party
+        library that wants to perform the I/O operations itself.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <a href="../../../src/examples/cpp11/nonblocking/third_party_lib.cpp" target="_top">../src/examples/cpp11/nonblocking/third_party_lib.cpp</a>
+            (<a href="../../examples/diffs/nonblocking/third_party_lib.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li></ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h10"></a>
+        <span><a name="asio.examples.cpp11_examples.operations"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.operations">Operations</a>
+      </h5>
+<p>
+        Examples showing how to implement composed asynchronous operations as reusable
+        library functions.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/operations/composed_1.cpp" target="_top">../src/examples/cpp11/operations/composed_1.cpp</a>
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/operations/composed_2.cpp" target="_top">../src/examples/cpp11/operations/composed_2.cpp</a>
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/operations/composed_3.cpp" target="_top">../src/examples/cpp11/operations/composed_3.cpp</a>
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/operations/composed_4.cpp" target="_top">../src/examples/cpp11/operations/composed_4.cpp</a>
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/operations/composed_5.cpp" target="_top">../src/examples/cpp11/operations/composed_5.cpp</a>
+          </li>
+</ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h11"></a>
+        <span><a name="asio.examples.cpp11_examples.socks_4"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.socks_4">SOCKS
+        4</a>
+      </h5>
+<p>
+        Example client program implementing the SOCKS 4 protocol for communication
+        via a proxy.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/socks4/sync_client.cpp" target="_top">../src/examples/cpp11/socks4/sync_client.cpp</a>
+            (<a href="../../examples/diffs/socks4/sync_client.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/socks4/socks4.hpp" target="_top">../src/examples/cpp11/socks4/socks4.hpp</a>
+            (<a href="../../examples/diffs/socks4/socks4.hpp.html" target="_top">diff to C++03</a>)
+          </li>
+</ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h12"></a>
         <span><a name="asio.examples.cpp11_examples.spawn"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.spawn">Spawn</a>
       </h5>
 <p>
@@ -219,11 +327,100 @@
             <a href="../../../src/examples/cpp11/spawn/echo_server.cpp" target="_top">../src/examples/cpp11/spawn/echo_server.cpp</a>
             (<a href="../../examples/diffs/spawn/echo_server.cpp.html" target="_top">diff to C++03</a>)
           </li></ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h13"></a>
+        <span><a name="asio.examples.cpp11_examples.ssl"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.ssl">SSL</a>
+      </h5>
+<p>
+        Example client and server programs showing the use of the <a class="link" href="../reference/ssl__stream.html" title="ssl::stream">ssl::stream&lt;&gt;</a>
+        template with asynchronous operations.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/ssl/client.cpp" target="_top">../src/examples/cpp11/ssl/client.cpp</a>
+            (<a href="../../examples/diffs/ssl/client.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/ssl/server.cpp" target="_top">../src/examples/cpp11/ssl/server.cpp</a>
+            (<a href="../../examples/diffs/ssl/server.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+</ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h14"></a>
+        <span><a name="asio.examples.cpp11_examples.timeouts"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.timeouts">Timeouts</a>
+      </h5>
+<p>
+        A collection of examples showing how to cancel long running asynchronous
+        operations after a period of time.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/timeouts/async_tcp_client.cpp" target="_top">../src/examples/cpp11/timeouts/async_tcp_client.cpp</a>
+            (<a href="../../examples/diffs/timeouts/async_tcp_client.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/timeouts/blocking_tcp_client.cpp" target="_top">../src/examples/cpp11/timeouts/blocking_tcp_client.cpp</a>
+            (<a href="../../examples/diffs/timeouts/blocking_tcp_client.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/timeouts/blocking_token_tcp_client.cpp" target="_top">../src/examples/cpp11/timeouts/blocking_token_tcp_client.cpp</a>
+            (<a href="../../examples/diffs/timeouts/blocking_token_tcp_client.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/timeouts/blocking_udp_client.cpp" target="_top">../src/examples/cpp11/timeouts/blocking_udp_client.cpp</a>
+            (<a href="../../examples/diffs/timeouts/blocking_udp_client.cpp.html" target="_top">diff
+            to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/timeouts/server.cpp" target="_top">../src/examples/cpp11/timeouts/server.cpp</a>
+            (<a href="../../examples/diffs/timeouts/server.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+</ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h15"></a>
+        <span><a name="asio.examples.cpp11_examples.timers"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.timers">Timers</a>
+      </h5>
+<p>
+        Example showing how to customise basic_waitable_timer using a different clock
+        type.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <a href="../../../src/examples/cpp11/timers/time_t_timer.cpp" target="_top">../src/examples/cpp11/timers/time_t_timer.cpp</a>
+            (<a href="../../examples/diffs/timers/time_t_timer.cpp.html" target="_top">diff to C++03</a>)
+          </li></ul></div>
+<h5>
+<a name="asio.examples.cpp11_examples.h16"></a>
+        <span><a name="asio.examples.cpp11_examples.unix_domain_sockets"></a></span><a class="link" href="cpp11_examples.html#asio.examples.cpp11_examples.unix_domain_sockets">UNIX
+        Domain Sockets</a>
+      </h5>
+<p>
+        Examples showing how to use UNIX domain (local) sockets.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/local/connect_pair.cpp" target="_top">../src/examples/cpp11/local/connect_pair.cpp</a>
+            (<a href="../../examples/diffs/local/connect_pair.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/local/iostream_client.cpp" target="_top">../src/examples/cpp11/local/iostream_client.cpp</a>
+            (<a href="../../examples/diffs/local/iostream_client.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/local/stream_server.cpp" target="_top">../src/examples/cpp11/local/stream_server.cpp</a>
+            (<a href="../../examples/diffs/local/stream_server.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+<li class="listitem">
+            <a href="../../../src/examples/cpp11/local/stream_client.cpp" target="_top">../src/examples/cpp11/local/stream_client.cpp</a>
+            (<a href="../../examples/diffs/local/stream_client.cpp.html" target="_top">diff to C++03</a>)
+          </li>
+</ul></div>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -231,7 +428,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="cpp03_examples.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="../reference.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="cpp03_examples.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="cpp17_examples.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

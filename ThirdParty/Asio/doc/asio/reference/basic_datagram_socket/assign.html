@@ -20,25 +20,25 @@
 <a name="asio.reference.basic_datagram_socket.assign"></a><a class="link" href="assign.html" title="basic_datagram_socket::assign">basic_datagram_socket::assign</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm32550"></a> 
-Assign an existing native socket to the socket.
+          <a class="indexterm" name="asio.indexterm.basic_datagram_socket.assign"></a> 
+Assign
+          an existing native socket to the socket.
         </p>
-<pre class="programlisting"><span class="keyword">void</span> <a class="link" href="assign/overload1.html" title="basic_datagram_socket::assign (1 of 2 overloads)">assign</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">protocol_type</span> <span class="special">&amp;</span> <span class="identifier">protocol</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">native_handle_type</span> <span class="special">&amp;</span> <span class="identifier">native_socket</span><span class="special">);</span>
+<pre class="programlisting">void <a class="link" href="assign/overload1.html" title="basic_datagram_socket::assign (1 of 2 overloads)">assign</a>(
+    const protocol_type &amp; protocol,
+    const native_handle_type &amp; native_socket);
   <span class="emphasis"><em>&#187; <a class="link" href="assign/overload1.html" title="basic_datagram_socket::assign (1 of 2 overloads)">more...</a></em></span>
 
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <a class="link" href="assign/overload2.html" title="basic_datagram_socket::assign (2 of 2 overloads)">assign</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">protocol_type</span> <span class="special">&amp;</span> <span class="identifier">protocol</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">native_handle_type</span> <span class="special">&amp;</span> <span class="identifier">native_socket</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+void <a class="link" href="assign/overload2.html" title="basic_datagram_socket::assign (2 of 2 overloads)">assign</a>(
+    const protocol_type &amp; protocol,
+    const native_handle_type &amp; native_socket,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="assign/overload2.html" title="basic_datagram_socket::assign (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

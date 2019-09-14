@@ -20,32 +20,31 @@
 <a name="asio.overview.cpp2011.chrono"></a><a class="link" href="chrono.html" title="Chrono">Chrono</a>
 </h4></div></div></div>
 <p>
-          Asio provides timers based on the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span></code>
-          facilities via the <a class="link" href="../../reference/basic_waitable_timer.html" title="basic_waitable_timer">basic_waitable_timer</a>
+          Asio provides timers based on the <code class="computeroutput">std::chrono</code> facilities via
+          the <a class="link" href="../../reference/basic_waitable_timer.html" title="basic_waitable_timer">basic_waitable_timer</a>
           class template. The typedefs <a class="link" href="../../reference/system_timer.html" title="system_timer">system_timer</a>,
           <a class="link" href="../../reference/steady_timer.html" title="steady_timer">steady_timer</a> and <a class="link" href="../../reference/high_resolution_timer.html" title="high_resolution_timer">high_resolution_timer</a>
-          utilise the standard clocks <code class="computeroutput"><span class="identifier">system_clock</span></code>,
-          <code class="computeroutput"><span class="identifier">steady_clock</span></code> and <code class="computeroutput"><span class="identifier">high_resolution_clock</span></code> respectively.
+          utilise the standard clocks <code class="computeroutput">system_clock</code>, <code class="computeroutput">steady_clock</code>
+          and <code class="computeroutput">high_resolution_clock</code> respectively.
         </p>
 <p>
-          Support for the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span></code> facilities is automatically enabled
+          Support for the <code class="computeroutput">std::chrono</code> facilities is automatically enabled
           for <code class="literal">g++</code> 4.6 and later, when the <code class="literal">-std=c++0x</code>
           or <code class="literal">-std=gnu++0x</code> compiler options are used. (Note that,
-          for <code class="literal">g++</code>, the draft-standard <code class="computeroutput"><span class="identifier">monotonic_clock</span></code>
-          is used in place of <code class="computeroutput"><span class="identifier">steady_clock</span></code>.)
-          Support may be disabled by defining <code class="computeroutput"><span class="identifier">ASIO_DISABLE_STD_CHRONO</span></code>,
-          or explicitly enabled for other compilers by defining <code class="computeroutput"><span class="identifier">ASIO_HAS_STD_CHRONO</span></code>.
+          for <code class="literal">g++</code>, the draft-standard <code class="computeroutput">monotonic_clock</code>
+          is used in place of <code class="computeroutput">steady_clock</code>.) Support may be disabled
+          by defining <code class="computeroutput">ASIO_DISABLE_STD_CHRONO</code>, or explicitly enabled
+          for other compilers by defining <code class="computeroutput">ASIO_HAS_STD_CHRONO</code>.
         </p>
 <p>
-          When standard <code class="computeroutput"><span class="identifier">chrono</span></code> is
-          unavailable, Asio will otherwise use the Boost.Chrono library. The <a class="link" href="../../reference/basic_waitable_timer.html" title="basic_waitable_timer">basic_waitable_timer</a>
+          When standard <code class="computeroutput">chrono</code> is unavailable, Asio will otherwise use
+          the Boost.Chrono library. The <a class="link" href="../../reference/basic_waitable_timer.html" title="basic_waitable_timer">basic_waitable_timer</a>
           class template may be used with either.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

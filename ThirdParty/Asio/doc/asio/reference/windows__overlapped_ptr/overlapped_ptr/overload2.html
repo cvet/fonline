@@ -21,20 +21,19 @@
           (2 of 2 overloads)</a>
 </h5></div></div></div>
 <p>
-            Construct an <a class="link" href="../../windows__overlapped_ptr.html" title="windows::overlapped_ptr"><code class="computeroutput"><span class="identifier">windows</span><span class="special">::</span><span class="identifier">overlapped_ptr</span></code></a> to contain the
-            specified handler.
+            Construct an <a class="link" href="../../windows__overlapped_ptr.html" title="windows::overlapped_ptr"><code class="computeroutput">windows::overlapped_ptr</code></a>
+            to contain the specified handler.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../Handler.html" title="Handlers">Handler</a><span class="special">&gt;</span>
-<span class="identifier">overlapped_ptr</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">,</span>
-    <span class="identifier">Handler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../Handler.html" title="Handlers">Handler</a>&gt;
+overlapped_ptr(
+    asio::io_context &amp; io_context,
+    Handler &amp;&amp; handler);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

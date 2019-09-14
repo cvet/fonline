@@ -21,14 +21,16 @@
       requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">X</span></code> denotes
-        an I/O control command class, <code class="computeroutput"><span class="identifier">a</span></code>
-        denotes a value of <code class="computeroutput"><span class="identifier">X</span></code>, and
-        <code class="computeroutput"><span class="identifier">u</span></code> denotes an identifier.
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">IoControlCommand</code> requirements
+        if it satisfies the requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">a</code> denotes a (possibly const) value of type
+        <code class="computeroutput">X</code>, and <code class="computeroutput">b</code> denotes a value of type <code class="computeroutput">X</code>.
       </p>
 <div class="table">
-<a name="asio.reference.IoControlCommand.t0"></a><p class="title"><b>Table&#160;16.&#160;IoControlCommand requirements</b></p>
-<div class="table-contents"><table class="table" summary="IoControlCommand requirements">
+<a name="asio.reference.IoControlCommand.t0"></a><p class="title"><b>Table&#160;19.&#160;IoControlCommand requirements for extensible implementations</b></p>
+<div class="table-contents"><table class="table" summary="IoControlCommand requirements for extensible implementations">
 <colgroup>
 <col>
 <col>
@@ -55,12 +57,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">name</span><span class="special">();</span></code>
+                  <code class="computeroutput">a.name()</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">int</span></code>
+                  <code class="computeroutput">int</code>
                 </p>
               </td>
 <td>
@@ -74,12 +76,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">data</span><span class="special">();</span></code>
+                  <code class="computeroutput">b.data()</code>
                 </p>
               </td>
 <td>
                 <p>
-                  a pointer, convertible to <code class="computeroutput"><span class="keyword">void</span><span class="special">*</span></code>
+                  <code class="computeroutput">void*</code>
                 </p>
               </td>
 <td>
@@ -92,8 +94,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

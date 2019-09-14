@@ -29,45 +29,44 @@
         </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-              <a class="link" href="../../reference/generic__datagram_protocol.html" title="generic::datagram_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">datagram_protocol</span></code></a>
+              <a class="link" href="../../reference/generic__datagram_protocol.html" title="generic::datagram_protocol"><code class="computeroutput">generic::datagram_protocol</code></a>
             </li>
 <li class="listitem">
-              <a class="link" href="../../reference/generic__raw_protocol.html" title="generic::raw_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">raw_protocol</span></code></a>
+              <a class="link" href="../../reference/generic__raw_protocol.html" title="generic::raw_protocol"><code class="computeroutput">generic::raw_protocol</code></a>
             </li>
 <li class="listitem">
-              <a class="link" href="../../reference/generic__seq_packet_protocol.html" title="generic::seq_packet_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">seq_packet_protocol</span></code></a>
+              <a class="link" href="../../reference/generic__seq_packet_protocol.html" title="generic::seq_packet_protocol"><code class="computeroutput">generic::seq_packet_protocol</code></a>
             </li>
 <li class="listitem">
-              <a class="link" href="../../reference/generic__stream_protocol.html" title="generic::stream_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span></code></a>
+              <a class="link" href="../../reference/generic__stream_protocol.html" title="generic::stream_protocol"><code class="computeroutput">generic::stream_protocol</code></a>
             </li>
 </ul></div>
 <p>
           These classes implement the <a class="link" href="../../reference/Protocol.html" title="Protocol requirements">protocol
           type requirements</a>, but allow the user to specify the address family
-          (e.g. <code class="computeroutput"><span class="identifier">AF_INET</span></code>) and protocol
-          type (e.g. <code class="computeroutput"><span class="identifier">IPPROTO_TCP</span></code>)
+          (e.g. <code class="computeroutput">AF_INET</code>) and protocol type (e.g. <code class="computeroutput">IPPROTO_TCP</code>)
           at runtime. For example:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="identifier">my_socket</span><span class="special">.</span><span class="identifier">open</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">(</span><span class="identifier">AF_INET</span><span class="special">,</span> <span class="identifier">IPPROTO_TCP</span><span class="special">));</span>
-<span class="special">...</span>
+<pre class="programlisting">asio::generic::stream_protocol::socket my_socket(my_io_context);
+my_socket.open(asio::generic::stream_protocol(AF_INET, IPPROTO_TCP));
+...
 </pre>
 <p>
-          An endpoint class template, <a class="link" href="../../reference/generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">basic_endpoint</span></code></a>, is included to
-          support these protocol classes. This endpoint can hold any other endpoint
-          type, provided its native representation fits into a <code class="computeroutput"><span class="identifier">sockaddr_storage</span></code>
+          An endpoint class template, <a class="link" href="../../reference/generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput">asio::generic::basic_endpoint</code></a>,
+          is included to support these protocol classes. This endpoint can hold any
+          other endpoint type, provided its native representation fits into a <code class="computeroutput">sockaddr_storage</code>
           object. This class will also convert from other types that implement the
           <a class="link" href="../../reference/Endpoint.html" title="Endpoint requirements">endpoint</a> type requirements:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">my_endpoint1</span> <span class="special">=</span> <span class="special">...;</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">my_endpoint2</span><span class="special">(</span><span class="identifier">my_endpoint1</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::tcp::endpoint my_endpoint1 = ...;
+asio::generic::stream_protocol::endpoint my_endpoint2(my_endpoint1);
 </pre>
 <p>
           The conversion is implicit, so as to support the following use cases:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">my_endpoint</span> <span class="special">=</span> <span class="special">...;</span>
-<span class="identifier">my_socket</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">my_endpoint</span><span class="special">);</span>
+<pre class="programlisting">asio::generic::stream_protocol::socket my_socket(my_io_context);
+asio::ip::tcp::endpoint my_endpoint = ...;
+my_socket.connect(my_endpoint);
 </pre>
 <h6>
 <a name="asio.overview.networking.other_protocols.h0"></a>
@@ -79,23 +78,23 @@
           (or acceptor) object to convert to the more generic protocol's socket (or
           acceptor) type. If the protocol conversion is valid:
         </p>
-<pre class="programlisting"><span class="identifier">Protocol1</span> <span class="identifier">p1</span> <span class="special">=</span> <span class="special">...;</span>
-<span class="identifier">Protocol2</span> <span class="identifier">p2</span><span class="special">(</span><span class="identifier">p1</span><span class="special">);</span>
+<pre class="programlisting">Protocol1 p1 = ...;
+Protocol2 p2(p1);
 </pre>
 <p>
           then the corresponding socket conversion is allowed:
         </p>
-<pre class="programlisting"><span class="identifier">Protocol1</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket1</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">Protocol2</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket2</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">my_socket1</span><span class="special">));</span>
+<pre class="programlisting">Protocol1::socket my_socket1(my_io_context);
+...
+Protocol2::socket my_socket2(std::move(my_socket1));
 </pre>
 <p>
           For example, one possible conversion is from a TCP socket to a generic
           stream-oriented socket:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket1</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket2</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">my_socket1</span><span class="special">));</span>
+<pre class="programlisting">asio::ip::tcp::socket my_socket1(my_io_context);
+...
+asio::generic::stream_protocol::socket my_socket2(std::move(my_socket1));
 </pre>
 <p>
           These conversions are also available for move-assignment.
@@ -103,9 +102,8 @@
 <p>
           These conversions are not limited to the above generic protocol classes.
           User-defined protocols may take advantage of this feature by similarly
-          ensuring the conversion from <code class="computeroutput"><span class="identifier">Protocol1</span></code>
-          to <code class="computeroutput"><span class="identifier">Protocol2</span></code> is valid,
-          as above.
+          ensuring the conversion from <code class="computeroutput">Protocol1</code> to <code class="computeroutput">Protocol2</code>
+          is valid, as above.
         </p>
 <h6>
 <a name="asio.overview.networking.other_protocols.h1"></a>
@@ -113,15 +111,16 @@
           Generic Sockets</a>
         </h6>
 <p>
-          As a convenience, a socket acceptor's <code class="computeroutput"><span class="identifier">accept</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">async_accept</span><span class="special">()</span></code> functions can directly accept into a
-          different protocol's socket type, provided the corresponding protocol conversion
-          is valid. For example, the following is supported because the protocol
-          <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span></code> is convertible to <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span></code>:
+          As a convenience, a socket acceptor's <code class="computeroutput">accept()</code> and <code class="computeroutput">async_accept()</code>
+          functions can directly accept into a different protocol's socket type,
+          provided the corresponding protocol conversion is valid. For example, the
+          following is supported because the protocol <code class="computeroutput">asio::ip::tcp</code>
+          is convertible to <code class="computeroutput">asio::generic::stream_protocol</code>:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">my_acceptor</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">my_socket</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="identifier">my_acceptor</span><span class="special">.</span><span class="identifier">accept</span><span class="special">(</span><span class="identifier">my_socket</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::tcp::acceptor my_acceptor(my_io_context);
+...
+asio::generic::stream_protocol::socket my_socket(my_io_context);
+my_acceptor.accept(my_socket);
 </pre>
 <h6>
 <a name="asio.overview.networking.other_protocols.h2"></a>
@@ -129,14 +128,16 @@
           Also</a>
         </h6>
 <p>
-          <a class="link" href="../../reference/generic__datagram_protocol.html" title="generic::datagram_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">datagram_protocol</span></code></a>, <a class="link" href="../../reference/generic__raw_protocol.html" title="generic::raw_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">raw_protocol</span></code></a>, <a class="link" href="../../reference/generic__seq_packet_protocol.html" title="generic::seq_packet_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">seq_packet_protocol</span></code></a>, <a class="link" href="../../reference/generic__stream_protocol.html" title="generic::stream_protocol"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">stream_protocol</span></code></a>, <a class="link" href="../../reference/Protocol.html" title="Protocol requirements">protocol
-          type requirements</a>.
+          <a class="link" href="../../reference/generic__datagram_protocol.html" title="generic::datagram_protocol"><code class="computeroutput">generic::datagram_protocol</code></a>,
+          <a class="link" href="../../reference/generic__raw_protocol.html" title="generic::raw_protocol"><code class="computeroutput">generic::raw_protocol</code></a>,
+          <a class="link" href="../../reference/generic__seq_packet_protocol.html" title="generic::seq_packet_protocol"><code class="computeroutput">generic::seq_packet_protocol</code></a>,
+          <a class="link" href="../../reference/generic__stream_protocol.html" title="generic::stream_protocol"><code class="computeroutput">generic::stream_protocol</code></a>,
+          <a class="link" href="../../reference/Protocol.html" title="Protocol requirements">protocol type requirements</a>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

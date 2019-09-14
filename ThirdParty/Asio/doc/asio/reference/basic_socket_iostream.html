@@ -6,14 +6,14 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
-<link rel="prev" href="basic_socket_acceptor/shutdown_type.html" title="basic_socket_acceptor::shutdown_type">
+<link rel="prev" href="basic_socket_acceptor/_basic_socket_acceptor.html" title="basic_socket_acceptor::~basic_socket_acceptor">
 <link rel="next" href="basic_socket_iostream/basic_socket_iostream.html" title="basic_socket_iostream::basic_socket_iostream">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="basic_socket_acceptor/shutdown_type.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="basic_socket_iostream/basic_socket_iostream.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="basic_socket_acceptor/_basic_socket_acceptor.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="basic_socket_iostream/basic_socket_iostream.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
@@ -22,13 +22,11 @@
 <p>
         Iostream interface for a socket.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="StreamSocketService.html" title="Stream socket service requirements">StreamSocketService</a> <span class="special">=</span> <span class="identifier">stream_socket_service</span><span class="special">&lt;</span><span class="identifier">Protocol</span><span class="special">&gt;,</span>
-    <span class="keyword">typename</span> <span class="identifier">Time</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">ptime</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="TimeTraits.html" title="Time traits requirements">TimeTraits</a> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">time_traits</span><span class="special">&lt;</span><span class="identifier">Time</span><span class="special">&gt;,</span>
-    <span class="keyword">typename</span> <a class="link" href="TimerService.html" title="Timer service requirements">TimerService</a> <span class="special">=</span> <span class="identifier">deadline_timer_service</span><span class="special">&lt;</span><span class="identifier">Time</span><span class="special">,</span> <span class="identifier">TimeTraits</span><span class="special">&gt;&gt;</span>
-<span class="keyword">class</span> <span class="identifier">basic_socket_iostream</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Clock = chrono::steady_clock,
+    typename <a class="link" href="WaitTraits.html" title="Wait traits requirements">WaitTraits</a> = wait_traits&lt;Clock&gt;&gt;
+class basic_socket_iostream
 </pre>
 <h5>
 <a name="asio.reference.basic_socket_iostream.h0"></a>
@@ -55,12 +53,36 @@
 <tr>
 <td>
                 <p>
-                  <a class="link" href="basic_socket_iostream/duration_type.html" title="basic_socket_iostream::duration_type"><span class="bold"><strong>duration_type</strong></span></a>
+                  <a class="link" href="basic_socket_iostream/clock_type.html" title="basic_socket_iostream::clock_type"><span class="bold"><strong>clock_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The clock type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/duration.html" title="basic_socket_iostream::duration"><span class="bold"><strong>duration</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
                   The duration type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/duration_type.html" title="basic_socket_iostream::duration_type"><span class="bold"><strong>duration_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use duration.) The duration type.
                 </p>
               </td>
 </tr>
@@ -79,12 +101,36 @@
 <tr>
 <td>
                 <p>
-                  <a class="link" href="basic_socket_iostream/time_type.html" title="basic_socket_iostream::time_type"><span class="bold"><strong>time_type</strong></span></a>
+                  <a class="link" href="basic_socket_iostream/protocol_type.html" title="basic_socket_iostream::protocol_type"><span class="bold"><strong>protocol_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The protocol type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/time_point.html" title="basic_socket_iostream::time_point"><span class="bold"><strong>time_point</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
                   The time type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/time_type.html" title="basic_socket_iostream::time_type"><span class="bold"><strong>time_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use time_point.) The time type.
                 </p>
               </td>
 </tr>
@@ -121,10 +167,10 @@
 <td>
                 <p>
                   Construct a basic_socket_iostream without establishing a connection.
-                </p>
-                <p>
-                  Establish a connection to an endpoint corresponding to a resolver
-                  query.
+                  <br> <span class="silver"> &#8212;</span><br> Construct a basic_socket_iostream from the supplied
+                  socket. <br> <span class="silver"> &#8212;</span><br> Move-construct a basic_socket_iostream from
+                  another. <br> <span class="silver"> &#8212;</span><br> Establish a connection to an endpoint corresponding
+                  to a resolver query.
                 </p>
               </td>
 </tr>
@@ -168,15 +214,26 @@
 <tr>
 <td>
                 <p>
+                  <a class="link" href="basic_socket_iostream/expires_after.html" title="basic_socket_iostream::expires_after"><span class="bold"><strong>expires_after</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the stream's expiry time relative to now.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <a class="link" href="basic_socket_iostream/expires_at.html" title="basic_socket_iostream::expires_at"><span class="bold"><strong>expires_at</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
-                  Get the stream's expiry time as an absolute time.
-                </p>
-                <p>
-                  Set the stream's expiry time as an absolute time.
+                  (Deprecated: Use expiry().) Get the stream's expiry time as an
+                  absolute time. <br> <span class="silver"> &#8212;</span><br> Set the stream's expiry time as an
+                  absolute time.
                 </p>
               </td>
 </tr>
@@ -188,10 +245,33 @@
               </td>
 <td>
                 <p>
-                  Get the timer's expiry time relative to now.
+                  (Deprecated: Use expiry().) Get the stream's expiry time relative
+                  to now. <br> <span class="silver"> &#8212;</span><br> (Deprecated: Use expires_after().) Set the
+                  stream's expiry time relative to now.
                 </p>
+              </td>
+</tr>
+<tr>
+<td>
                 <p>
-                  Set the stream's expiry time relative to now.
+                  <a class="link" href="basic_socket_iostream/expiry.html" title="basic_socket_iostream::expiry"><span class="bold"><strong>expiry</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the stream's expiry time as an absolute time.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/operator_eq_.html" title="basic_socket_iostream::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move-assign a basic_socket_iostream from another.
                 </p>
               </td>
 </tr>
@@ -204,6 +284,18 @@
 <td>
                 <p>
                   Return a pointer to the underlying streambuf.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_socket_iostream/socket.html" title="basic_socket_iostream::socket"><span class="bold"><strong>socket</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a reference to the underlying socket.
                 </p>
               </td>
 </tr>
@@ -222,8 +314,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -231,7 +322,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="basic_socket_acceptor/shutdown_type.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="basic_socket_iostream/basic_socket_iostream.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="basic_socket_acceptor/_basic_socket_acceptor.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="basic_socket_iostream/basic_socket_iostream.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

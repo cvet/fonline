@@ -21,17 +21,15 @@
       asynchronous random-access read device requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">a</span></code> denotes
-        an asynchronous random access read device object, <code class="computeroutput"><span class="identifier">o</span></code>
-        denotes an offset of type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
-        <code class="computeroutput"><span class="identifier">mb</span></code> denotes an object satisfying
-        <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">mutable buffer sequence</a>
-        requirements, and <code class="computeroutput"><span class="identifier">h</span></code> denotes
-        an object satisfying <a class="link" href="ReadHandler.html" title="Read handler requirements">read handler</a>
+        In the table below, <code class="computeroutput">a</code> denotes an asynchronous random access
+        read device object, <code class="computeroutput">o</code> denotes an offset of type <code class="computeroutput">boost::uint64_t</code>,
+        <code class="computeroutput">mb</code> denotes an object satisfying <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">mutable
+        buffer sequence</a> requirements, and <code class="computeroutput">h</code> denotes an object
+        satisfying <a class="link" href="ReadHandler.html" title="Read handler requirements">read handler</a>
         requirements.
       </p>
 <div class="table">
-<a name="asio.reference.AsyncRandomAccessReadDevice.t0"></a><p class="title"><b>Table&#160;1.&#160;Buffer-oriented asynchronous random-access read device requirements</b></p>
+<a name="asio.reference.AsyncRandomAccessReadDevice.t0"></a><p class="title"><b>Table&#160;2.&#160;Buffer-oriented asynchronous random-access read device requirements</b></p>
 <div class="table-contents"><table class="table" summary="Buffer-oriented asynchronous random-access read device requirements">
 <colgroup>
 <col>
@@ -59,59 +57,51 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_io_service</span><span class="special">();</span></code>
+                  <code class="computeroutput">a.get_executor()</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">io_service</span><span class="special">&amp;</span></code>
+                  A type satisfying the <a class="link" href="Executor1.html" title="Executor requirements">Executor
+                  requirements</a>.
                 </p>
               </td>
 <td>
                 <p>
-                  Returns the <code class="computeroutput"><span class="identifier">io_service</span></code>
-                  object through which the <code class="computeroutput"><span class="identifier">async_read_some_at</span></code>
-                  handler <code class="computeroutput"><span class="identifier">h</span></code> will
-                  be invoked.
+                  Returns the associated I/O executor.
                 </p>
               </td>
 </tr>
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">async_read_some_at</span><span class="special">(</span><span class="identifier">o</span><span class="special">,</span>
-                  <span class="identifier">mb</span><span class="special">,</span>
-                  <span class="identifier">h</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.async_read_some_at(o, mb, h);</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">void</span></code>
+                  <code class="computeroutput">void</code>
                 </p>
               </td>
 <td>
                 <p>
                   Initiates an asynchronous operation to read one or more bytes of
-                  data from the device <code class="computeroutput"><span class="identifier">a</span></code>
-                  at the offset <code class="computeroutput"><span class="identifier">o</span></code>.
-                  The operation is performed via the <code class="computeroutput"><span class="identifier">io_service</span></code>
-                  object <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_io_service</span><span class="special">()</span></code>
-                  and behaves according to <a class="link" href="asynchronous_operations.html" title="Requirements on asynchronous operations">asynchronous
-                  operation</a> requirements.<br> <br> The mutable buffer
-                  sequence <code class="computeroutput"><span class="identifier">mb</span></code> specifies
-                  memory where the data should be placed. The <code class="computeroutput"><span class="identifier">async_read_some_at</span></code>
+                  data from the device <code class="computeroutput">a</code> at the offset <code class="computeroutput">o</code>.
+                  The operation is performed via the <code class="computeroutput">io_service</code> object
+                  <code class="computeroutput">a.get_io_service()</code> and behaves according to <a class="link" href="asynchronous_operations.html" title="Requirements on asynchronous operations">asynchronous operation</a>
+                  requirements.<br> <br> The mutable buffer sequence <code class="computeroutput">mb</code>
+                  specifies memory where the data should be placed. The <code class="computeroutput">async_read_some_at</code>
                   operation shall always fill a buffer in the sequence completely
                   before proceeding to the next.<br> <br> The implementation
-                  shall maintain one or more copies of <code class="computeroutput"><span class="identifier">mb</span></code>
-                  until such time as the read operation no longer requires access
-                  to the memory specified by the buffers in the sequence. The program
-                  must ensure the memory is valid until:<br> <br> &#8212; the last copy
-                  of <code class="computeroutput"><span class="identifier">mb</span></code> is destroyed,
-                  or<br> <br> &#8212; the handler for the asynchronous read operation
-                  is invoked,<br> <br> whichever comes first.<br> <br> If
-                  the total size of all buffers in the sequence <code class="computeroutput"><span class="identifier">mb</span></code>
-                  is <code class="computeroutput"><span class="number">0</span></code>, the asynchronous
-                  read operation shall complete immediately and pass <code class="computeroutput"><span class="number">0</span></code> as the argument to the handler
+                  shall maintain one or more copies of <code class="computeroutput">mb</code> until such
+                  time as the read operation no longer requires access to the memory
+                  specified by the buffers in the sequence. The program must ensure
+                  the memory is valid until:<br> <br> &#8212; the last copy of <code class="computeroutput">mb</code>
+                  is destroyed, or<br> <br> &#8212; the handler for the asynchronous
+                  read operation is invoked,<br> <br> whichever comes first.<br>
+                  <br> If the total size of all buffers in the sequence <code class="computeroutput">mb</code>
+                  is <code class="computeroutput">0</code>, the asynchronous read operation shall complete
+                  immediately and pass <code class="computeroutput">0</code> as the argument to the handler
                   that specifies the number of bytes read.
                 </p>
               </td>
@@ -123,8 +113,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

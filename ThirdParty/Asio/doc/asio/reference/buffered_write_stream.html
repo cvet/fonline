@@ -22,10 +22,10 @@
 <p>
         Adds buffering to the write-related operations of a stream.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Stream</span><span class="special">&gt;</span>
-<span class="keyword">class</span> <span class="identifier">buffered_write_stream</span> <span class="special">:</span>
-  <span class="identifier">noncopyable</span>
+<pre class="programlisting">template&lt;
+    typename Stream&gt;
+class buffered_write_stream :
+  noncopyable
 </pre>
 <h5>
 <a name="asio.reference.buffered_write_stream.h0"></a>
@@ -49,6 +49,18 @@
               </th>
 </tr></thead>
 <tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="buffered_write_stream/executor_type.html" title="buffered_write_stream::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the object.
+                </p>
+              </td>
+</tr>
 <tr>
 <td>
                 <p>
@@ -170,12 +182,35 @@
                 <p>
                   Flush all data from the buffer to the next layer. Returns the number
                   of bytes written to the next layer on the last write operation.
-                  Throws an exception on failure.
+                  Throws an exception on failure. <br> <span class="silver"> &#8212;</span><br> Flush all data from
+                  the buffer to the next layer. Returns the number of bytes written
+                  to the next layer on the last write operation, or 0 if an error
+                  occurred.
                 </p>
+              </td>
+</tr>
+<tr>
+<td>
                 <p>
-                  Flush all data from the buffer to the next layer. Returns the number
-                  of bytes written to the next layer on the last write operation,
-                  or 0 if an error occurred.
+                  <a class="link" href="buffered_write_stream/get_executor.html" title="buffered_write_stream::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="buffered_write_stream/get_io_context.html" title="buffered_write_stream::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
                 </p>
               </td>
 </tr>
@@ -187,7 +222,8 @@
               </td>
 <td>
                 <p>
-                  Get the io_service associated with the object.
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
                 </p>
               </td>
 </tr>
@@ -211,10 +247,8 @@
               </td>
 <td>
                 <p>
-                  Get a reference to the lowest layer.
-                </p>
-                <p>
-                  Get a const reference to the lowest layer.
+                  Get a reference to the lowest layer. <br> <span class="silver"> &#8212;</span><br> Get a const
+                  reference to the lowest layer.
                 </p>
               </td>
 </tr>
@@ -239,11 +273,9 @@
 <td>
                 <p>
                   Peek at the incoming data on the stream. Returns the number of
-                  bytes read. Throws an exception on failure.
-                </p>
-                <p>
-                  Peek at the incoming data on the stream. Returns the number of
-                  bytes read, or 0 if an error occurred.
+                  bytes read. Throws an exception on failure. <br> <span class="silver"> &#8212;</span><br> Peek
+                  at the incoming data on the stream. Returns the number of bytes
+                  read, or 0 if an error occurred.
                 </p>
               </td>
 </tr>
@@ -256,11 +288,8 @@
 <td>
                 <p>
                   Read some data from the stream. Returns the number of bytes read.
-                  Throws an exception on failure.
-                </p>
-                <p>
-                  Read some data from the stream. Returns the number of bytes read
-                  or 0 if an error occurred.
+                  Throws an exception on failure. <br> <span class="silver"> &#8212;</span><br> Read some data from
+                  the stream. Returns the number of bytes read or 0 if an error occurred.
                 </p>
               </td>
 </tr>
@@ -273,12 +302,9 @@
 <td>
                 <p>
                   Write the given data to the stream. Returns the number of bytes
-                  written. Throws an exception on failure.
-                </p>
-                <p>
-                  Write the given data to the stream. Returns the number of bytes
-                  written, or 0 if an error occurred and the error handler did not
-                  throw.
+                  written. Throws an exception on failure. <br> <span class="silver"> &#8212;</span><br> Write the
+                  given data to the stream. Returns the number of bytes written,
+                  or 0 if an error occurred and the error handler did not throw.
                 </p>
               </td>
 </tr>
@@ -320,7 +346,7 @@
 </tr></tbody>
 </table></div>
 <p>
-        The <a class="link" href="buffered_write_stream.html" title="buffered_write_stream"><code class="computeroutput"><span class="identifier">buffered_write_stream</span></code></a>
+        The <a class="link" href="buffered_write_stream.html" title="buffered_write_stream"><code class="computeroutput">buffered_write_stream</code></a>
         class template can be used to add buffering to the synchronous and asynchronous
         write operations of a stream.
       </p>
@@ -348,8 +374,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -26,8 +26,8 @@
 <p>
             Determine whether the socket is at the out-of-band data mark.
           </p>
-<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">at_mark</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">bool at_mark(
+    asio::error_code &amp; ec) const;
 </pre>
 <p>
             This function is used to check whether the socket input is currently
@@ -57,8 +57,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

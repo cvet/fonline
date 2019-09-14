@@ -20,11 +20,11 @@
 <a name="asio.reference.ip__multicast__hops"></a><a class="link" href="ip__multicast__hops.html" title="ip::multicast::hops">ip::multicast::hops</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm127895"></a> 
-Socket option for time-to-live associated with outgoing
-        multicast packets.
+        <a class="indexterm" name="asio.indexterm.ip__multicast__hops"></a> 
+Socket option for time-to-live
+        associated with outgoing multicast packets.
       </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">implementation_defined</span> <span class="identifier">hops</span><span class="special">;</span>
+<pre class="programlisting">typedef implementation_defined hops;
 </pre>
 <p>
         Implements the IPPROTO_IP/IP_MULTICAST_TTL socket option.
@@ -36,19 +36,19 @@ Socket option for time-to-live associated with outgoing
 <p>
         Setting the option:
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">multicast</span><span class="special">::</span><span class="identifier">hops</span> <span class="identifier">option</span><span class="special">(</span><span class="number">4</span><span class="special">);</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">set_option</span><span class="special">(</span><span class="identifier">option</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::udp::socket socket(io_context);
+...
+asio::ip::multicast::hops option(4);
+socket.set_option(option);
 </pre>
 <p>
         Getting the current option value:
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">multicast</span><span class="special">::</span><span class="identifier">hops</span> <span class="identifier">option</span><span class="special">;</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">get_option</span><span class="special">(</span><span class="identifier">option</span><span class="special">);</span>
-<span class="keyword">int</span> <span class="identifier">ttl</span> <span class="special">=</span> <span class="identifier">option</span><span class="special">.</span><span class="identifier">value</span><span class="special">();</span>
+<pre class="programlisting">asio::ip::udp::socket socket(io_context);
+...
+asio::ip::multicast::hops option;
+socket.get_option(option);
+int ttl = option.value();
 </pre>
 <h5>
 <a name="asio.reference.ip__multicast__hops.h1"></a>
@@ -63,8 +63,7 @@ Socket option for time-to-live associated with outgoing
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

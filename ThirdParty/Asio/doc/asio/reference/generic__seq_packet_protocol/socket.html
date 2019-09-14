@@ -20,10 +20,11 @@
 <a name="asio.reference.generic__seq_packet_protocol.socket"></a><a class="link" href="socket.html" title="generic::seq_packet_protocol::socket">generic::seq_packet_protocol::socket</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm113986"></a> 
-The generic socket type.
+          <a class="indexterm" name="asio.indexterm.generic__seq_packet_protocol.socket"></a> 
+The
+          generic socket type.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_seq_packet_socket</span><span class="special">&lt;</span> <span class="identifier">seq_packet_protocol</span> <span class="special">&gt;</span> <span class="identifier">socket</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_seq_packet_socket&lt; seq_packet_protocol &gt; socket;
 </pre>
 <h6>
 <a name="asio.reference.generic__seq_packet_protocol.socket.h0"></a>
@@ -123,12 +124,12 @@ The generic socket type.
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_seq_packet_socket/implementation_type.html" title="basic_seq_packet_socket::implementation_type"><span class="bold"><strong>implementation_type</strong></span></a>
+                    <a class="link" href="../basic_seq_packet_socket/executor_type.html" title="basic_seq_packet_socket::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    The underlying implementation type of I/O object.
+                    The type of the executor associated with the object.
                   </p>
                 </td>
 </tr>
@@ -197,26 +198,12 @@ The generic socket type.
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_seq_packet_socket/native_type.html" title="basic_seq_packet_socket::native_type"><span class="bold"><strong>native_type</strong></span></a>
+                    <a class="link" href="../basic_seq_packet_socket/out_of_band_inline.html" title="basic_seq_packet_socket::out_of_band_inline"><span class="bold"><strong>out_of_band_inline</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    (Deprecated: Use native_handle_type.) The native representation
-                    of a socket.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/non_blocking_io.html" title="basic_seq_packet_socket::non_blocking_io"><span class="bold"><strong>non_blocking_io</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use non_blocking().) IO control command to set the
-                    blocking mode of the socket.
+                    Socket option for putting received out-of-band data inline.
                   </p>
                 </td>
 </tr>
@@ -296,24 +283,24 @@ The generic socket type.
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_seq_packet_socket/service_type.html" title="basic_seq_packet_socket::service_type"><span class="bold"><strong>service_type</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    The type of the service that will be used to provide I/O operations.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
                     <a class="link" href="../basic_seq_packet_socket/shutdown_type.html" title="basic_seq_packet_socket::shutdown_type"><span class="bold"><strong>shutdown_type</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
                     Different ways a socket may be shutdown.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_seq_packet_socket/wait_type.html" title="basic_seq_packet_socket::wait_type"><span class="bold"><strong>wait_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Wait types.
                   </p>
                 </td>
 </tr>
@@ -393,6 +380,19 @@ The generic socket type.
 <tr>
 <td>
                   <p>
+                    <a class="link" href="../basic_seq_packet_socket/async_wait.html" title="basic_seq_packet_socket::async_wait"><span class="bold"><strong>async_wait</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Asynchronously wait for the socket to become ready to read, ready
+                    to write, or to have pending error conditions.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
                     <a class="link" href="../basic_seq_packet_socket/at_mark.html" title="basic_seq_packet_socket::at_mark"><span class="bold"><strong>at_mark</strong></span></a>
                   </p>
                 </td>
@@ -422,24 +422,13 @@ The generic socket type.
                 </td>
 <td>
                   <p>
-                    Construct a basic_seq_packet_socket without opening it.
-                  </p>
-                  <p>
-                    Construct and open a basic_seq_packet_socket.
-                  </p>
-                  <p>
-                    Construct a basic_seq_packet_socket, opening it and binding it
-                    to the given local endpoint.
-                  </p>
-                  <p>
-                    Construct a basic_seq_packet_socket on an existing native socket.
-                  </p>
-                  <p>
-                    Move-construct a basic_seq_packet_socket from another.
-                  </p>
-                  <p>
-                    Move-construct a basic_seq_packet_socket from a socket of another
-                    protocol type.
+                    Construct a basic_seq_packet_socket without opening it. <br>
+                    <span class="silver"> &#8212;</span><br> Construct and open a basic_seq_packet_socket. <br> <span class="silver"> &#8212;</span>
+                    <br> Construct a basic_seq_packet_socket, opening it and binding
+                    it to the given local endpoint. <br> <span class="silver"> &#8212;</span><br> Construct a basic_seq_packet_socket
+                    on an existing native socket. <br> <span class="silver"> &#8212;</span><br> Move-construct a
+                    basic_seq_packet_socket from another. <br> <span class="silver"> &#8212;</span><br> Move-construct
+                    a basic_seq_packet_socket from a socket of another protocol type.
                   </p>
                 </td>
 </tr>
@@ -494,12 +483,38 @@ The generic socket type.
 <tr>
 <td>
                   <p>
+                    <a class="link" href="../basic_seq_packet_socket/get_executor.html" title="basic_seq_packet_socket::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Get the executor associated with the object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_seq_packet_socket/get_io_context.html" title="basic_seq_packet_socket::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use get_executor().) Get the io_context associated
+                    with the object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
                     <a class="link" href="../basic_seq_packet_socket/get_io_service.html" title="basic_seq_packet_socket::get_io_service"><span class="bold"><strong>get_io_service</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    Get the io_service associated with the object.
+                    (Deprecated: Use get_executor().) Get the io_context associated
+                    with the object.
                   </p>
                 </td>
 </tr>
@@ -559,22 +574,8 @@ The generic socket type.
                 </td>
 <td>
                   <p>
-                    Get a reference to the lowest layer.
-                  </p>
-                  <p>
-                    Get a const reference to the lowest layer.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/native.html" title="basic_seq_packet_socket::native"><span class="bold"><strong>native</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use native_handle().) Get the native socket representation.
+                    Get a reference to the lowest layer. <br> <span class="silver"> &#8212;</span><br> Get a const
+                    reference to the lowest layer.
                   </p>
                 </td>
 </tr>
@@ -599,9 +600,8 @@ The generic socket type.
 <td>
                   <p>
                     Gets the non-blocking mode of the native socket implementation.
-                  </p>
-                  <p>
-                    Sets the non-blocking mode of the native socket implementation.
+                    <br> <span class="silver"> &#8212;</span><br> Sets the non-blocking mode of the native socket
+                    implementation.
                   </p>
                 </td>
 </tr>
@@ -613,10 +613,8 @@ The generic socket type.
                 </td>
 <td>
                   <p>
-                    Gets the non-blocking mode of the socket.
-                  </p>
-                  <p>
-                    Sets the non-blocking mode of the socket.
+                    Gets the non-blocking mode of the socket. <br> <span class="silver"> &#8212;</span><br> Sets
+                    the non-blocking mode of the socket.
                   </p>
                 </td>
 </tr>
@@ -640,9 +638,7 @@ The generic socket type.
                 </td>
 <td>
                   <p>
-                    Move-assign a basic_seq_packet_socket from another.
-                  </p>
-                  <p>
+                    Move-assign a basic_seq_packet_socket from another. <br> <span class="silver"> &#8212;</span><br>
                     Move-assign a basic_seq_packet_socket from a socket of another
                     protocol type.
                   </p>
@@ -656,10 +652,20 @@ The generic socket type.
                 </td>
 <td>
                   <p>
-                    Receive some data on the socket.
+                    Receive some data on the socket. <br> <span class="silver"> &#8212;</span><br> Receive some data
+                    on a connected socket.
                   </p>
+                </td>
+</tr>
+<tr>
+<td>
                   <p>
-                    Receive some data on a connected socket.
+                    <a class="link" href="../basic_seq_packet_socket/release.html" title="basic_seq_packet_socket::release"><span class="bold"><strong>release</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Release ownership of the underlying native socket.
                   </p>
                 </td>
 </tr>
@@ -711,59 +717,35 @@ The generic socket type.
                   </p>
                 </td>
 </tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_seq_packet_socket/wait.html" title="basic_seq_packet_socket::wait"><span class="bold"><strong>wait</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Wait for the socket to become ready to read, ready to write,
+                    or to have pending error conditions.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_seq_packet_socket/_basic_seq_packet_socket.html" title="basic_seq_packet_socket::~basic_seq_packet_socket"><span class="bold"><strong>~basic_seq_packet_socket</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Destroys the socket.
+                  </p>
+                </td>
+</tr>
 </tbody>
 </table></div>
 <h6>
 <a name="asio.reference.generic__seq_packet_protocol.socket.h2"></a>
-          <span><a name="asio.reference.generic__seq_packet_protocol.socket.protected_member_functions"></a></span><a class="link" href="socket.html#asio.reference.generic__seq_packet_protocol.socket.protected_member_functions">Protected
-          Member Functions</a>
-        </h6>
-<div class="informaltable"><table class="table">
-<colgroup>
-<col>
-<col>
-</colgroup>
-<thead><tr>
-<th>
-                  <p>
-                    Name
-                  </p>
-                </th>
-<th>
-                  <p>
-                    Description
-                  </p>
-                </th>
-</tr></thead>
-<tbody>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/get_implementation.html" title="basic_seq_packet_socket::get_implementation"><span class="bold"><strong>get_implementation</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    Get the underlying implementation of the I/O object.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/get_service.html" title="basic_seq_packet_socket::get_service"><span class="bold"><strong>get_service</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    Get the service associated with the I/O object.
-                  </p>
-                </td>
-</tr>
-</tbody>
-</table></div>
-<h6>
-<a name="asio.reference.generic__seq_packet_protocol.socket.h3"></a>
           <span><a name="asio.reference.generic__seq_packet_protocol.socket.data_members"></a></span><a class="link" href="socket.html#asio.reference.generic__seq_packet_protocol.socket.data_members">Data
           Members</a>
         </h6>
@@ -789,6 +771,19 @@ The generic socket type.
 <td>
                   <p>
                     <a class="link" href="../basic_seq_packet_socket/max_connections.html" title="basic_seq_packet_socket::max_connections"><span class="bold"><strong>max_connections</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use max_listen_connections.) The maximum length
+                    of the queue of pending incoming connections.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_seq_packet_socket/max_listen_connections.html" title="basic_seq_packet_socket::max_listen_connections"><span class="bold"><strong>max_listen_connections</strong></span></a>
                   </p>
                 </td>
 <td>
@@ -847,63 +842,13 @@ The generic socket type.
 </tr>
 </tbody>
 </table></div>
-<h6>
-<a name="asio.reference.generic__seq_packet_protocol.socket.h4"></a>
-          <span><a name="asio.reference.generic__seq_packet_protocol.socket.protected_data_members"></a></span><a class="link" href="socket.html#asio.reference.generic__seq_packet_protocol.socket.protected_data_members">Protected
-          Data Members</a>
-        </h6>
-<div class="informaltable"><table class="table">
-<colgroup>
-<col>
-<col>
-</colgroup>
-<thead><tr>
-<th>
-                  <p>
-                    Name
-                  </p>
-                </th>
-<th>
-                  <p>
-                    Description
-                  </p>
-                </th>
-</tr></thead>
-<tbody>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/implementation.html" title="basic_seq_packet_socket::implementation"><span class="bold"><strong>implementation</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use get_implementation().) The underlying implementation
-                    of the I/O object.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_seq_packet_socket/service.html" title="basic_seq_packet_socket::service"><span class="bold"><strong>service</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use get_service().) The service associated with
-                    the I/O object.
-                  </p>
-                </td>
-</tr>
-</tbody>
-</table></div>
 <p>
-          The <a class="link" href="../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput"><span class="identifier">basic_seq_packet_socket</span></code></a> class
-          template provides asynchronous and blocking sequenced packet socket functionality.
+          The <a class="link" href="../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput">basic_seq_packet_socket</code></a>
+          class template provides asynchronous and blocking sequenced packet socket
+          functionality.
         </p>
 <h6>
-<a name="asio.reference.generic__seq_packet_protocol.socket.h5"></a>
+<a name="asio.reference.generic__seq_packet_protocol.socket.h3"></a>
           <span><a name="asio.reference.generic__seq_packet_protocol.socket.thread_safety"></a></span><a class="link" href="socket.html#asio.reference.generic__seq_packet_protocol.socket.thread_safety">Thread
           Safety</a>
         </h6>
@@ -914,7 +859,7 @@ The generic socket type.
           <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Unsafe.
         </p>
 <h6>
-<a name="asio.reference.generic__seq_packet_protocol.socket.h6"></a>
+<a name="asio.reference.generic__seq_packet_protocol.socket.h4"></a>
           <span><a name="asio.reference.generic__seq_packet_protocol.socket.requirements"></a></span><a class="link" href="socket.html#asio.reference.generic__seq_packet_protocol.socket.requirements">Requirements</a>
         </h6>
 <p>
@@ -926,8 +871,7 @@ The generic socket type.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -21,13 +21,19 @@
       option requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">X</span></code> denotes
-        a socket option class, <code class="computeroutput"><span class="identifier">a</span></code>
-        denotes a value of <code class="computeroutput"><span class="identifier">X</span></code>, <code class="computeroutput"><span class="identifier">p</span></code> denotes a value that meets the <a class="link" href="Protocol.html" title="Protocol requirements">protocol</a> requirements, and <code class="computeroutput"><span class="identifier">u</span></code> denotes an identifier.
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">GettableSocketOption</code> requirements
+        if it satisfies the requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">a</code> denotes a (possibly const) value of type
+        <code class="computeroutput">X</code>, <code class="computeroutput">b</code> denotes a value of type <code class="computeroutput">X</code>, <code class="computeroutput">p</code>
+        denotes a (possibly const) value that meets the <a class="link" href="Protocol.html" title="Protocol requirements"><code class="computeroutput">Protocol</code></a>
+        requirements, and <code class="computeroutput">s</code> denotes a (possibly const) value of a type
+        that is convertible to <code class="computeroutput">size_t</code> and denotes a size in bytes.
       </p>
 <div class="table">
-<a name="asio.reference.GettableSocketOption.t0"></a><p class="title"><b>Table&#160;12.&#160;GettableSocketOption requirements</b></p>
-<div class="table-contents"><table class="table" summary="GettableSocketOption requirements">
+<a name="asio.reference.GettableSocketOption.t0"></a><p class="title"><b>Table&#160;16.&#160;GettableSocketOption requirements for extensible implementations</b></p>
+<div class="table-contents"><table class="table" summary="GettableSocketOption requirements for extensible implementations">
 <colgroup>
 <col>
 <col>
@@ -54,12 +60,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">level</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.level(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">int</span></code>
+                  <code class="computeroutput">int</code>
                 </p>
               </td>
 <td>
@@ -73,12 +79,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">name</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.name(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">int</span></code>
+                  <code class="computeroutput">int</code>
                 </p>
               </td>
 <td>
@@ -92,12 +98,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">data</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">b.data(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  a pointer, convertible to <code class="computeroutput"><span class="keyword">void</span><span class="special">*</span></code>
+                  <code class="computeroutput">void*</code>
                 </p>
               </td>
 <td>
@@ -111,12 +117,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.size(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
+                  <code class="computeroutput">size_t</code>
                 </p>
               </td>
 <td>
@@ -131,21 +137,19 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">resize</span><span class="special">(</span><span class="identifier">p</span><span class="special">,</span>
-                  <span class="identifier">s</span><span class="special">);</span></code>
+                  <code class="computeroutput">b.resize(p,s)</code>
                 </p>
               </td>
 <td>
               </td>
 <td>
                 <p>
-                  post: <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span>
-                  <span class="special">==</span> <span class="identifier">s</span></code>.<br>
-                  Passed the value contained in the <span class="emphasis"><em>option_len</em></span>
-                  argument to <span class="emphasis"><em>POSIX</em></span> <a href="http://www.opengroup.org/onlinepubs/000095399/functions/getsockopt.html" target="_top"><code class="computeroutput"><span class="identifier">getsockopt</span><span class="special">()</span></code></a>
+                  post: <code class="computeroutput">b.size(p) == s</code>.<br> Passed the value contained
+                  in the <span class="emphasis"><em>option_len</em></span> argument to <span class="emphasis"><em>POSIX</em></span>
+                  <a href="http://www.opengroup.org/onlinepubs/000095399/functions/getsockopt.html" target="_top"><code class="computeroutput"><span class="identifier">getsockopt</span><span class="special">()</span></code></a>
                   (or equivalent) after successful completion of the function. Permitted
-                  to throw an exception if the socket option object <code class="computeroutput"><span class="identifier">a</span></code> does not support the specified
-                  size.
+                  to throw an exception if the socket option object <code class="computeroutput">b</code>
+                  does not support the specified size.
                 </p>
               </td>
 </tr>
@@ -156,8 +160,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -2,7 +2,7 @@
 // client.cpp
 // ~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -50,9 +50,9 @@ private:
 class session
 {
 public:
-  session(asio::io_service& ios, size_t block_size, stats& s)
-    : strand_(ios),
-      socket_(ios),
+  session(asio::io_context& ioc, size_t block_size, stats& s)
+    : strand_(ioc),
+      socket_(ioc),
       block_size_(block_size),
       read_data_(new char[block_size]),
       read_data_length_(0),
@@ -74,16 +74,17 @@ public:
     delete[] write_data_;
   }
 
-  void start(asio::ip::tcp::resolver::iterator endpoint_iterator)
+  void start(asio::ip::tcp::resolver::results_type endpoints)
   {
-    asio::async_connect(socket_, endpoint_iterator,
-        strand_.wrap(boost::bind(&session::handle_connect, this,
+    asio::async_connect(socket_, endpoints,
+        asio::bind_executor(strand_,
+          boost::bind(&session::handle_connect, this,
             asio::placeholders::error)));
   }
 
   void stop()
   {
-    strand_.post(boost::bind(&session::close_socket, this));
+    asio::post(strand_, boost::bind(&session::close_socket, this));
   }
 
 private:
@@ -98,13 +99,13 @@ private:
       {
         ++unwritten_count_;
         async_write(socket_, asio::buffer(write_data_, block_size_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(write_allocator_,
                 boost::bind(&session::handle_write, this,
                   asio::placeholders::error,
                   asio::placeholders::bytes_transferred))));
         socket_.async_read_some(asio::buffer(read_data_, block_size_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(read_allocator_,
                 boost::bind(&session::handle_read, this,
                   asio::placeholders::error,
@@ -125,13 +126,13 @@ private:
       {
         std::swap(read_data_, write_data_);
         async_write(socket_, asio::buffer(write_data_, read_data_length_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(write_allocator_,
                 boost::bind(&session::handle_write, this,
                   asio::placeholders::error,
                   asio::placeholders::bytes_transferred))));
         socket_.async_read_some(asio::buffer(read_data_, block_size_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(read_allocator_,
                 boost::bind(&session::handle_read, this,
                   asio::placeholders::error,
@@ -151,13 +152,13 @@ private:
       {
         std::swap(read_data_, write_data_);
         async_write(socket_, asio::buffer(write_data_, read_data_length_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(write_allocator_,
                 boost::bind(&session::handle_write, this,
                   asio::placeholders::error,
                   asio::placeholders::bytes_transferred))));
         socket_.async_read_some(asio::buffer(read_data_, block_size_),
-            strand_.wrap(
+            asio::bind_executor(strand_,
               make_custom_alloc_handler(read_allocator_,
                 boost::bind(&session::handle_read, this,
                   asio::placeholders::error,
@@ -172,7 +173,7 @@ private:
   }
 
 private:
-  asio::io_service::strand strand_;
+  asio::io_context::strand strand_;
   asio::ip::tcp::socket socket_;
   size_t block_size_;
   char* read_data_;
@@ -189,21 +190,21 @@ private:
 class client
 {
 public:
-  client(asio::io_service& ios,
-      const asio::ip::tcp::resolver::iterator endpoint_iterator,
+  client(asio::io_context& ioc,
+      const asio::ip::tcp::resolver::results_type endpoints,
       size_t block_size, size_t session_count, int timeout)
-    : io_service_(ios),
-      stop_timer_(ios),
+    : io_context_(ioc),
+      stop_timer_(ioc),
       sessions_(),
       stats_()
   {
-    stop_timer_.expires_from_now(boost::posix_time::seconds(timeout));
+    stop_timer_.expires_after(asio::chrono::seconds(timeout));
     stop_timer_.async_wait(boost::bind(&client::handle_timeout, this));
 
     for (size_t i = 0; i < session_count; ++i)
     {
-      session* new_session = new session(io_service_, block_size, stats_);
-      new_session->start(endpoint_iterator);
+      session* new_session = new session(io_context_, block_size, stats_);
+      new_session->start(endpoints);
       sessions_.push_back(new_session);
     }
   }
@@ -226,8 +227,8 @@ public:
   }
 
 private:
-  asio::io_service& io_service_;
-  asio::deadline_timer stop_timer_;
+  asio::io_context& io_context_;
+  asio::steady_timer stop_timer_;
   std::list<session*> sessions_;
   stats stats_;
 };
@@ -251,23 +252,23 @@ int main(int argc, char* argv[])
     size_t session_count = atoi(argv[5]);
     int timeout = atoi(argv[6]);
 
-    asio::io_service ios;
+    asio::io_context ioc;
 
-    asio::ip::tcp::resolver r(ios);
-    asio::ip::tcp::resolver::iterator iter =
-      r.resolve(asio::ip::tcp::resolver::query(host, port));
+    asio::ip::tcp::resolver r(ioc);
+    asio::ip::tcp::resolver::results_type endpoints =
+      r.resolve(host, port);
 
-    client c(ios, iter, block_size, session_count, timeout);
+    client c(ioc, endpoints, block_size, session_count, timeout);
 
     std::list<asio::thread*> threads;
     while (--thread_count > 0)
     {
       asio::thread* new_thread = new asio::thread(
-          boost::bind(&asio::io_service::run, &ios));
+          boost::bind(&asio::io_context::run, &ioc));
       threads.push_back(new_thread);
     }
 
-    ios.run();
+    ioc.run();
 
     while (!threads.empty())
     {

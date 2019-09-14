@@ -20,10 +20,11 @@
 <a name="asio.reference.basic_streambuf.size"></a><a class="link" href="size.html" title="basic_streambuf::size">basic_streambuf::size</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm92133"></a> 
-Get the size of the input sequence.
+          <a class="indexterm" name="asio.indexterm.basic_streambuf.size"></a> 
+Get the size of the
+          input sequence.
         </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">std::size_t size() const;
 </pre>
 <h6>
 <a name="asio.reference.basic_streambuf.size.h0"></a>
@@ -32,22 +33,21 @@ Get the size of the input sequence.
         </h6>
 <p>
           The size of the input sequence. The value is equal to that calculated for
-          <code class="computeroutput"><span class="identifier">s</span></code> in the following code:
+          <code class="computeroutput">s</code> in the following code:
         </p>
-<pre class="programlisting"><span class="identifier">size_t</span> <span class="identifier">s</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
-<span class="identifier">const_buffers_type</span> <span class="identifier">bufs</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">();</span>
-<span class="identifier">const_buffers_type</span><span class="special">::</span><span class="identifier">const_iterator</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">bufs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
-<span class="keyword">while</span> <span class="special">(</span><span class="identifier">i</span> <span class="special">!=</span> <span class="identifier">bufs</span><span class="special">.</span><span class="identifier">end</span><span class="special">())</span>
-<span class="special">{</span>
-  <span class="identifier">const_buffer</span> <span class="identifier">buf</span><span class="special">(*</span><span class="identifier">i</span><span class="special">++);</span>
-  <span class="identifier">s</span> <span class="special">+=</span> <span class="identifier">buffer_size</span><span class="special">(</span><span class="identifier">buf</span><span class="special">);</span>
-<span class="special">}</span>
+<pre class="programlisting">size_t s = 0;
+const_buffers_type bufs = data();
+const_buffers_type::const_iterator i = bufs.begin();
+while (i != bufs.end())
+{
+  const_buffer buf(*i++);
+  s += buf.size();
+}
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

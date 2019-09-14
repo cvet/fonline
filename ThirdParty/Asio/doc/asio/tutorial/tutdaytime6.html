@@ -25,97 +25,95 @@
         <span><a name="asio.tutorial.tutdaytime6.the_main___function"></a></span><a class="link" href="tutdaytime6.html#asio.tutorial.tutdaytime6.the_main___function">The
         main() function</a>
       </h5>
-<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
+<pre class="programlisting">int main()
+{
+  try
+  {
 </pre>
 <p>
-        Create a server object to accept incoming client requests, and run the <a class="link" href="../reference/io_service.html" title="io_service">io_service</a> object.
+        Create a server object to accept incoming client requests, and run the <a class="link" href="../reference/io_context.html" title="io_context">io_context</a> object.
       </p>
-<pre class="programlisting">    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
-    <span class="identifier">udp_server</span> <span class="identifier">server</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-    <span class="identifier">io_service</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
-  <span class="special">}</span>
-  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
+<pre class="programlisting">    asio::io_context io_context;
+    udp_server server(io_context);
+    io_context.run();
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <h5>
 <a name="asio.tutorial.tutdaytime6.h1"></a>
         <span><a name="asio.tutorial.tutdaytime6.the_udp_server_class"></a></span><a class="link" href="tutdaytime6.html#asio.tutorial.tutdaytime6.the_udp_server_class">The
         udp_server class</a>
       </h5>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">udp_server</span>
-<span class="special">{</span>
-<span class="keyword">public</span><span class="special">:</span>
+<pre class="programlisting">class udp_server
+{
+public:
 </pre>
 <p>
         The constructor initialises a socket to listen on UDP port 13.
       </p>
-<pre class="programlisting">  <span class="identifier">udp_server</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">)</span>
-    <span class="special">:</span> <span class="identifier">socket_</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span><span class="special">(</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">v4</span><span class="special">(),</span> <span class="number">13</span><span class="special">))</span>
-  <span class="special">{</span>
-    <span class="identifier">start_receive</span><span class="special">();</span>
-  <span class="special">}</span>
+<pre class="programlisting">  udp_server(asio::io_context&amp; io_context)
+    : socket_(io_context, udp::endpoint(udp::v4(), 13))
+  {
+    start_receive();
+  }
 
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="keyword">void</span> <span class="identifier">start_receive</span><span class="special">()</span>
-  <span class="special">{</span>
+private:
+  void start_receive()
+  {
 </pre>
 <p>
         The function <a class="link" href="../reference/basic_datagram_socket/async_receive_from.html" title="basic_datagram_socket::async_receive_from">ip::udp::socket::async_receive_from()</a>
         will cause the application to listen in the background for a new request.
-        When such a request is received, the <a class="link" href="../reference/io_service.html" title="io_service">io_service</a>
-        object will invoke the <code class="computeroutput"><span class="identifier">handle_receive</span><span class="special">()</span></code> function with two arguments: a value of
-        type <a class="link" href="../reference/error_code.html" title="error_code">error_code</a> indicating
-        whether the operation succeeded or failed, and a <code class="computeroutput"><span class="identifier">size_t</span></code>
-        value <code class="computeroutput"><span class="identifier">bytes_transferred</span></code> specifying
-        the number of bytes received.
+        When such a request is received, the <a class="link" href="../reference/io_context.html" title="io_context">io_context</a>
+        object will invoke the <code class="computeroutput">handle_receive()</code> function with two arguments:
+        a value of type <a class="link" href="../reference/error_code.html" title="error_code">error_code</a>
+        indicating whether the operation succeeded or failed, and a <code class="computeroutput">size_t</code>
+        value <code class="computeroutput">bytes_transferred</code> specifying the number of bytes received.
       </p>
-<pre class="programlisting">    <span class="identifier">socket_</span><span class="special">.</span><span class="identifier">async_receive_from</span><span class="special">(</span>
-        <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">recv_buffer_</span><span class="special">),</span> <span class="identifier">remote_endpoint_</span><span class="special">,</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">udp_server</span><span class="special">::</span><span class="identifier">handle_receive</span><span class="special">,</span> <span class="keyword">this</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">bytes_transferred</span><span class="special">));</span>
-  <span class="special">}</span>
+<pre class="programlisting">    socket_.async_receive_from(
+        asio::buffer(recv_buffer_), remote_endpoint_,
+        boost::bind(&amp;udp_server::handle_receive, this,
+          asio::placeholders::error,
+          asio::placeholders::bytes_transferred));
+  }
 </pre>
 <p>
-        The function <code class="computeroutput"><span class="identifier">handle_receive</span><span class="special">()</span></code> will service the client request.
+        The function <code class="computeroutput">handle_receive()</code> will service the client request.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">handle_receive</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">,</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="comment">/*bytes_transferred*/</span><span class="special">)</span>
-  <span class="special">{</span>
+<pre class="programlisting">  void handle_receive(const asio::error_code&amp; error,
+      std::size_t /*bytes_transferred*/)
+  {
 </pre>
 <p>
-        The <code class="computeroutput"><span class="identifier">error</span></code> parameter contains
-        the result of the asynchronous operation. Since we only provide the 1-byte
-        <code class="computeroutput"><span class="identifier">recv_buffer_</span></code> to contain the
-        client's request, the <a class="link" href="../reference/io_service.html" title="io_service">io_service</a>
+        The <code class="computeroutput">error</code> parameter contains the result of the asynchronous
+        operation. Since we only provide the 1-byte <code class="computeroutput">recv_buffer_</code> to
+        contain the client's request, the <a class="link" href="../reference/io_context.html" title="io_context">io_context</a>
         object would return an error if the client sent anything larger. We can ignore
         such an error if it comes up.
       </p>
-<pre class="programlisting">    <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">error</span> <span class="special">||</span> <span class="identifier">error</span> <span class="special">==</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">message_size</span><span class="special">)</span>
-    <span class="special">{</span>
+<pre class="programlisting">    if (!error)
+    {
 </pre>
 <p>
         Determine what we are going to send.
       </p>
-<pre class="programlisting">      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">message</span><span class="special">(</span>
-          <span class="keyword">new</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="identifier">make_daytime_string</span><span class="special">()));</span>
+<pre class="programlisting">      boost::shared_ptr&lt;std::string&gt; message(
+          new std::string(make_daytime_string()));
 </pre>
 <p>
         We now call <a class="link" href="../reference/basic_datagram_socket/async_send_to.html" title="basic_datagram_socket::async_send_to">ip::udp::socket::async_send_to()</a>
         to serve the data to the client.
       </p>
-<pre class="programlisting">      <span class="identifier">socket_</span><span class="special">.</span><span class="identifier">async_send_to</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(*</span><span class="identifier">message</span><span class="special">),</span> <span class="identifier">remote_endpoint_</span><span class="special">,</span>
-          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">udp_server</span><span class="special">::</span><span class="identifier">handle_send</span><span class="special">,</span> <span class="keyword">this</span><span class="special">,</span> <span class="identifier">message</span><span class="special">,</span>
-            <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span>
-            <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">bytes_transferred</span><span class="special">));</span>
+<pre class="programlisting">      socket_.async_send_to(asio::buffer(*message), remote_endpoint_,
+          boost::bind(&amp;udp_server::handle_send, this, message,
+            asio::placeholders::error,
+            asio::placeholders::bytes_transferred));
 </pre>
 <p>
         When initiating the asynchronous operation, and if using <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a>
@@ -126,29 +124,29 @@
 <p>
         Start listening for the next client request.
       </p>
-<pre class="programlisting">      <span class="identifier">start_receive</span><span class="special">();</span>
+<pre class="programlisting">      start_receive();
 </pre>
 <p>
         Any further actions for this client request are now the responsibility of
-        <code class="computeroutput"><span class="identifier">handle_send</span><span class="special">()</span></code>.
+        <code class="computeroutput">handle_send()</code>.
       </p>
-<pre class="programlisting">    <span class="special">}</span>
-  <span class="special">}</span>
+<pre class="programlisting">    }
+  }
 </pre>
 <p>
-        The function <code class="computeroutput"><span class="identifier">handle_send</span><span class="special">()</span></code> is invoked after the service request has
-        been completed.
+        The function <code class="computeroutput">handle_send()</code> is invoked after the service request
+        has been completed.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">handle_send</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="comment">/*message*/</span><span class="special">,</span>
-      <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="comment">/*error*/</span><span class="special">,</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="comment">/*bytes_transferred*/</span><span class="special">)</span>
-  <span class="special">{</span>
-  <span class="special">}</span>
+<pre class="programlisting">  void handle_send(boost::shared_ptr&lt;std::string&gt; /*message*/,
+      const asio::error_code&amp; /*error*/,
+      std::size_t /*bytes_transferred*/)
+  {
+  }
 
-  <span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket_</span><span class="special">;</span>
-  <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">remote_endpoint_</span><span class="special">;</span>
-  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">recv_buffer_</span><span class="special">;</span>
-<span class="special">};</span>
+  udp::socket socket_;
+  udp::endpoint remote_endpoint_;
+  boost::array&lt;char, 1&gt; recv_buffer_;
+};
 </pre>
 <p>
         See the <a class="link" href="tutdaytime6/src.html" title="Source listing for Daytime.6">full source listing</a>
@@ -167,8 +165,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

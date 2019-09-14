@@ -20,15 +20,15 @@
 <a name="asio.reference.operator_lt__lt_"></a><a class="link" href="operator_lt__lt_.html" title="operator&lt;&lt;">operator&lt;&lt;</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm137147"></a> 
+        <a class="indexterm" name="asio.indexterm.operator_lt__lt_"></a> 
 Output an error code.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Elem</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Traits</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">Elem</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">&lt;&lt;(</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">Elem</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename Elem,
+    typename Traits&gt;
+std::basic_ostream&lt; Elem, Traits &gt; &amp; operator&lt;&lt;(
+    std::basic_ostream&lt; Elem, Traits &gt; &amp; os,
+    const error_code &amp; ec);
 </pre>
 <h5>
 <a name="asio.reference.operator_lt__lt_.h0"></a>
@@ -43,8 +43,7 @@ Output an error code.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
