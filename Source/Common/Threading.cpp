@@ -10,7 +10,7 @@ Mutex       Thread::threadNamesLocker;
 
 static void* ThreadBeginExecution( Thread::ThreadFunc func, char* name, void* arg )
 {
-    Thread::SetCurrentName( name );
+    Thread::SetName( name );
     delete[] name;
     func( arg );
     return nullptr;
@@ -34,7 +34,7 @@ void Thread::Wait()
         thread.join();
 }
 
-size_t Thread::GetCurrentId()
+size_t Thread::GetId()
 {
     # ifdef FO_WINDOWS
     return (size_t) GetCurrentThreadId();
@@ -43,17 +43,17 @@ size_t Thread::GetCurrentId()
     # endif
 }
 
-void Thread::SetCurrentName( const char* name )
+void Thread::SetName( const char* name )
 {
     if( threadName[ 0 ] )
         return;
 
     Str::Copy( threadName, name );
     SCOPE_LOCK( threadNamesLocker );
-    threadNames.insert( std::make_pair( GetCurrentId(), threadName ) );
+    threadNames.insert( std::make_pair( GetId(), threadName ) );
 }
 
-const char* Thread::GetCurrentName()
+const char* Thread::GetName()
 {
     return threadName;
 }
@@ -90,17 +90,17 @@ void Thread::Wait()
     RUNTIME_ASSERT( !"Unreachable place" );
 }
 
-size_t Thread::GetCurrentId()
+size_t Thread::GetId()
 {
     return 1;
 }
 
-void Thread::SetCurrentName( const char* name )
+void Thread::SetName( const char* name )
 {
     // ...
 }
 
-const char* Thread::GetCurrentName()
+const char* Thread::GetName()
 {
     return "Main";
 }

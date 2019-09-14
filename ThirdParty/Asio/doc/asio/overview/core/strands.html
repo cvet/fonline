@@ -32,8 +32,8 @@
         </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-              Calling io_service::run() from only one thread means all event handlers
-              execute in an implicit strand, due to the io_service's guarantee that
+              Calling io_context::run() from only one thread means all event handlers
+              execute in an implicit strand, due to the io_context's guarantee that
               handlers are only invoked from inside run().
             </li>
 <li class="listitem">
@@ -43,10 +43,10 @@
               This is an implicit strand.
             </li>
 <li class="listitem">
-              An explicit strand is an instance of <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span></code>.
-              All event handler function objects need to be wrapped using <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span><span class="special">::</span><span class="identifier">wrap</span><span class="special">()</span></code>
-              or otherwise posted/dispatched through the <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span></code>
-              object.
+              An explicit strand is an instance of <code class="computeroutput"><span class="identifier">strand</span><span class="special">&lt;&gt;</span></code> or <code class="computeroutput"><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">strand</span></code>.
+              All event handler function objects need to be bound to the strand using
+              <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">bind_executor</span><span class="special">()</span></code>
+              or otherwise posted/dispatched through the strand object.
             </li>
 </ul></div>
 <p>
@@ -56,41 +56,97 @@
           should also go through the same strand. This is needed to ensure thread
           safe access for any objects that are shared between the caller and the
           composed operation (in the case of <code class="computeroutput"><span class="identifier">async_read</span><span class="special">()</span></code> it's the socket, which the caller can
-          close() to cancel the operation). This is done by having hook functions
-          for all intermediate handlers which forward the calls to the customisable
-          hook associated with the final handler:
+          <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>
+          to cancel the operation).
+        </p>
+<p>
+          To achieve this, all asynchronous operations obtain the handler's associated
+          executor by using the <code class="computeroutput"><span class="identifier">get_associated_executor</span></code>
+          function. For example:
+        </p>
+<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">associated_executor_t</span><span class="special">&lt;</span><span class="identifier">Handler</span><span class="special">&gt;</span> <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">get_associated_executor</span><span class="special">(</span><span class="identifier">h</span><span class="special">);</span>
+</pre>
+<p>
+          The associated executor must satisfy the Executor requirements. It will
+          be used by the asynchronous operation to submit both intermediate and final
+          handlers for execution.
+        </p>
+<p>
+          The executor may be customised for a particular handler type by specifying
+          a nested type <code class="computeroutput"><span class="identifier">executor_type</span></code>
+          and member function <code class="computeroutput"><span class="identifier">get_executor</span><span class="special">()</span></code>:
+        </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">my_handler</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// Custom implementation of Executor type requirements.</span>
+  <span class="keyword">typedef</span> <span class="identifier">my_executor</span> <span class="identifier">executor_type</span><span class="special">;</span>
+
+  <span class="comment">// Return a custom executor implementation.</span>
+  <span class="identifier">executor_type</span> <span class="identifier">get_executor</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+  <span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">my_executor</span><span class="special">();</span>
+  <span class="special">}</span>
+
+  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="special">{</span> <span class="special">...</span> <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+          In more complex cases, the <code class="computeroutput"><span class="identifier">associated_executor</span></code>
+          template may be partially specialised directly:
         </p>
 <pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">my_handler</span>
 <span class="special">{</span>
   <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="special">{</span> <span class="special">...</span> <span class="special">}</span>
 <span class="special">};</span>
 
-<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">F</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <span class="identifier">asio_handler_invoke</span><span class="special">(</span><span class="identifier">F</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">my_handler</span><span class="special">*)</span>
-<span class="special">{</span>
-  <span class="comment">// Do custom invocation here.</span>
-  <span class="comment">// Default implementation calls f();</span>
-<span class="special">}</span>
+<span class="keyword">namespace</span> <span class="identifier">asio</span> <span class="special">{</span>
+
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Executor</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">associated_executor</span><span class="special">&lt;</span><span class="identifier">my_handler</span><span class="special">,</span> <span class="identifier">Executor</span><span class="special">&gt;</span>
+  <span class="special">{</span>
+    <span class="comment">// Custom implementation of Executor type requirements.</span>
+    <span class="keyword">typedef</span> <span class="identifier">my_executor</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="comment">// Return a custom executor implementation.</span>
+    <span class="keyword">static</span> <span class="identifier">type</span> <span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">my_handler</span><span class="special">&amp;,</span>
+        <span class="keyword">const</span> <span class="identifier">Executor</span><span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">Executor</span><span class="special">())</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+      <span class="keyword">return</span> <span class="identifier">my_executor</span><span class="special">();</span>
+    <span class="special">}</span>
+  <span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// namespace asio</span>
 </pre>
 <p>
-          The <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span><span class="special">::</span><span class="identifier">wrap</span><span class="special">()</span></code>
-          function creates a new completion handler that defines <code class="computeroutput"><span class="identifier">asio_handler_invoke</span></code>
-          so that the function object is executed through the strand.
+          The <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">bind_executor</span><span class="special">()</span></code>
+          function is a helper to bind a specific executor object, such as a strand,
+          to a completion handler. This binding automatically associates an executor
+          as shown above. For example, to bind a strand to a completion handler we
+          would simply write:
         </p>
+<pre class="programlisting"><span class="identifier">my_socket</span><span class="special">.</span><span class="identifier">async_read_some</span><span class="special">(</span><span class="identifier">my_buffer</span><span class="special">,</span>
+    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">bind_executor</span><span class="special">(</span><span class="identifier">my_strand</span><span class="special">,</span>
+      <span class="special">[](</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">length</span><span class="special">)</span>
+      <span class="special">{</span>
+        <span class="comment">// ...</span>
+      <span class="special">}));</span>
+</pre>
 <h6>
 <a name="asio.overview.core.strands.h0"></a>
           <span><a name="asio.overview.core.strands.see_also"></a></span><a class="link" href="strands.html#asio.overview.core.strands.see_also">See
           Also</a>
         </h6>
 <p>
-          <a class="link" href="../../reference/io_service__strand.html" title="io_service::strand">io_service::strand</a>,
+          <a class="link" href="../../reference/associated_executor.html" title="associated_executor">associated_executor</a>,
+          <a class="link" href="../../reference/get_associated_executor.html" title="get_associated_executor">get_associated_executor</a>,
+          <a class="link" href="../../reference/bind_executor.html" title="bind_executor">bind_executor</a>, <a class="link" href="../../reference/strand.html" title="strand">strand</a>, <a class="link" href="../../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>,
           <a class="link" href="../../tutorial/tuttimer5.html" title="Timer.5 - Synchronising handlers in multithreaded programs">tutorial Timer.5</a>, <a class="link" href="../../examples/cpp03_examples.html#asio.examples.cpp03_examples.http_server_3">HTTP server 3 example</a>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

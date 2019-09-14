@@ -23,10 +23,10 @@
 <p>
             Write some data to the stream.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">write_some</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>&gt;
+std::size_t write_some(
+    const ConstBufferSequence &amp; buffers);
 </pre>
 <p>
             This function is used to write data on the stream. The function call
@@ -73,14 +73,14 @@
           </h6>
 <p>
             The write_some operation may not transmit all of the data to the peer.
-            Consider using the <a class="link" href="../../write.html" title="write"><code class="computeroutput"><span class="identifier">write</span></code></a> function if you need to
-            ensure that all data is written before the blocking operation completes.
+            Consider using the <a class="link" href="../../write.html" title="write"><code class="computeroutput">write</code></a>
+            function if you need to ensure that all data is written before the blocking
+            operation completes.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

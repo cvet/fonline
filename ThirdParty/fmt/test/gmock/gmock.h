@@ -235,7 +235,7 @@
 
 // Most of the types needed for porting Google Mock are also required
 // for Google Test and are defined in gtest-port.h.
-#include "gtest/gtest.h"
+#include "gtest.h"
 
 // To avoid conditional compilation everywhere, we make it
 // gmock-port.h's responsibility to #include the header implementing
@@ -825,8 +825,9 @@ template <typename T> struct DecayArray<T[]> {
 // crashes).
 template <typename T>
 inline T Invalid() {
+  void *p = NULL;
   return const_cast<typename remove_reference<T>::type&>(
-      *static_cast<volatile typename remove_reference<T>::type*>(NULL));
+      *static_cast<volatile typename remove_reference<T>::type*>(p));
 }
 template <>
 inline void Invalid<void>() {}

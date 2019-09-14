@@ -20,28 +20,28 @@
 <a name="asio.reference.windows__overlapped_ptr.reset"></a><a class="link" href="reset.html" title="windows::overlapped_ptr::reset">windows::overlapped_ptr::reset</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm174844"></a> 
-Reset to empty.
+          <a class="indexterm" name="asio.indexterm.windows__overlapped_ptr.reset"></a> 
+Reset
+          to empty.
         </p>
-<pre class="programlisting"><span class="keyword">void</span> <a class="link" href="reset/overload1.html" title="windows::overlapped_ptr::reset (1 of 2 overloads)">reset</a><span class="special">();</span>
+<pre class="programlisting">void <a class="link" href="reset/overload1.html" title="windows::overlapped_ptr::reset (1 of 2 overloads)">reset</a>();
   <span class="emphasis"><em>&#187; <a class="link" href="reset/overload1.html" title="windows::overlapped_ptr::reset (1 of 2 overloads)">more...</a></em></span>
 </pre>
 <p>
           Reset to contain the specified handler, freeing any current OVERLAPPED
           object.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../Handler.html" title="Handlers">Handler</a><span class="special">&gt;</span>
-<span class="keyword">void</span> <a class="link" href="reset/overload2.html" title="windows::overlapped_ptr::reset (2 of 2 overloads)">reset</a><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">,</span>
-    <span class="identifier">Handler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Handler.html" title="Handlers">Handler</a>&gt;
+void <a class="link" href="reset/overload2.html" title="windows::overlapped_ptr::reset (2 of 2 overloads)">reset</a>(
+    asio::io_context &amp; io_context,
+    Handler &amp;&amp; handler);
   <span class="emphasis"><em>&#187; <a class="link" href="reset/overload2.html" title="windows::overlapped_ptr::reset (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

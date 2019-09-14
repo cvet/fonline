@@ -24,68 +24,69 @@
         This tutorial program shows how to use asio to implement a server application
         with TCP.
       </p>
-<pre class="programlisting"><span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">ctime</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;ctime&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;asio.hpp&gt;
 
-<span class="keyword">using</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>
+using asio::ip::tcp;
 </pre>
 <p>
-        We define the function <code class="computeroutput"><span class="identifier">make_daytime_string</span><span class="special">()</span></code> to create the string to be sent back to
-        the client. This function will be reused in all of our daytime server applications.
+        We define the function <code class="computeroutput">make_daytime_string()</code> to create the string
+        to be sent back to the client. This function will be reused in all of our
+        daytime server applications.
       </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">make_daytime_string</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">std</span><span class="special">;</span> <span class="comment">// For time_t, time and ctime;</span>
-  <span class="identifier">time_t</span> <span class="identifier">now</span> <span class="special">=</span> <span class="identifier">time</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
-  <span class="keyword">return</span> <span class="identifier">ctime</span><span class="special">(&amp;</span><span class="identifier">now</span><span class="special">);</span>
-<span class="special">}</span>
+<pre class="programlisting">std::string make_daytime_string()
+{
+  using namespace std; // For time_t, time and ctime;
+  time_t now = time(0);
+  return ctime(&amp;now);
+}
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
+int main()
+{
+  try
+  {
+    asio::io_context io_context;
 </pre>
 <p>
         A <a class="link" href="../reference/ip__tcp/acceptor.html" title="ip::tcp::acceptor">ip::tcp::acceptor</a>
         object needs to be created to listen for new connections. It is initialised
         to listen on TCP port 13, for IP version 4.
       </p>
-<pre class="programlisting">    <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">acceptor</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">v4</span><span class="special">(),</span> <span class="number">13</span><span class="special">));</span>
+<pre class="programlisting">    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 13));
 </pre>
 <p>
         This is an iterative server, which means that it will handle one connection
         at a time. Create a socket that will represent the connection to the client,
         and then wait for a connection.
       </p>
-<pre class="programlisting">    <span class="keyword">for</span> <span class="special">(;;)</span>
-    <span class="special">{</span>
-      <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-      <span class="identifier">acceptor</span><span class="special">.</span><span class="identifier">accept</span><span class="special">(</span><span class="identifier">socket</span><span class="special">);</span>
+<pre class="programlisting">    for (;;)
+    {
+      tcp::socket socket(io_context);
+      acceptor.accept(socket);
 </pre>
 <p>
         A client is accessing our service. Determine the current time and transfer
         this information to the client.
       </p>
-<pre class="programlisting">      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message</span> <span class="special">=</span> <span class="identifier">make_daytime_string</span><span class="special">();</span>
+<pre class="programlisting">      std::string message = make_daytime_string();
 
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ignored_error</span><span class="special">;</span>
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">socket</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">message</span><span class="special">),</span> <span class="identifier">ignored_error</span><span class="special">);</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
+      asio::error_code ignored_error;
+      asio::write(socket, asio::buffer(message), ignored_error);
+    }
+  }
 </pre>
 <p>
         Finally, handle any exceptions.
       </p>
-<pre class="programlisting">  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
+<pre class="programlisting">  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
         See the <a class="link" href="tutdaytime2/src.html" title="Source listing for Daytime.2">full source listing</a>
@@ -104,8 +105,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

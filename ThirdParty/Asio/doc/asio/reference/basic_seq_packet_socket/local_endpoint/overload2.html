@@ -26,8 +26,8 @@
 <p>
             Get the local endpoint of the socket.
           </p>
-<pre class="programlisting"><span class="identifier">endpoint_type</span> <span class="identifier">local_endpoint</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">endpoint_type local_endpoint(
+    asio::error_code &amp; ec) const;
 </pre>
 <p>
             This function is used to obtain the locally bound endpoint of the socket.
@@ -58,20 +58,19 @@
 <a name="asio.reference.basic_seq_packet_socket.local_endpoint.overload2.h2"></a>
             <span><a name="asio.reference.basic_seq_packet_socket.local_endpoint.overload2.example"></a></span><a class="link" href="overload2.html#asio.reference.basic_seq_packet_socket.local_endpoint.overload2.example">Example</a>
           </h6>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">endpoint</span> <span class="special">=</span> <span class="identifier">socket</span><span class="special">.</span><span class="identifier">local_endpoint</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="comment">// An error occurred.</span>
-<span class="special">}</span>
+<pre class="programlisting">asio::ip::tcp::socket socket(io_context);
+...
+asio::error_code ec;
+asio::ip::tcp::endpoint endpoint = socket.local_endpoint(ec);
+if (ec)
+{
+  // An error occurred.
+}
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

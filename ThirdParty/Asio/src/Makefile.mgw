@@ -40,7 +40,7 @@ UNIT_TEST_EXES = \
 	tests/unit/generic/seq_packet_protocol.exe \
 	tests/unit/generic/stream_protocol.exe \
 	tests/unit/high_resolution_timer.exe \
-	tests/unit/io_service.exe \
+	tests/unit/io_context.exe \
 	tests/unit/ip/address.exe \
 	tests/unit/ip/address_v4.exe \
 	tests/unit/ip/address_v6.exe \
@@ -77,9 +77,19 @@ UNIT_TEST_EXES = \
 	tests/unit/strand.exe \
 	tests/unit/stream_socket_service.exe \
 	tests/unit/streambuf.exe \
+	tests/unit/system_executor.exe \
+	tests/unit/system_context.exe \
 	tests/unit/system_timer.exe \
 	tests/unit/thread.exe \
 	tests/unit/time_traits.exe \
+	tests/unit/ts/buffer.exe \
+	tests/unit/ts/executor.exe \
+	tests/unit/ts/internet.exe \
+	tests/unit/ts/io_context.exe \
+	tests/unit/ts/net.exe \
+	tests/unit/ts/netfwd.exe \
+	tests/unit/ts/socket.exe \
+	tests/unit/ts/timer.exe \
 	tests/unit/waitable_timer_service.exe \
 	tests/unit/windows/basic_handle.exe \
 	tests/unit/windows/basic_object_handle.exe \
@@ -118,9 +128,9 @@ EXAMPLE_EXES = \
 	examples/cpp03/socks4/sync_client.exe \
 	examples/cpp03/timeouts/async_tcp_client.exe \
 	examples/cpp03/timeouts/blocking_tcp_client.exe \
+	examples/cpp03/timeouts/blocking_token_tcp_client.exe \
 	examples/cpp03/timeouts/blocking_udp_client.exe \
 	examples/cpp03/timeouts/server.exe \
-	examples/cpp03/timers/tick_count_timer.exe \
 	examples/cpp03/timers/time_t_timer.exe \
 	examples/cpp03/tutorial/timer1/timer.exe \
 	examples/cpp03/tutorial/timer2/timer.exe \
@@ -185,7 +195,7 @@ examples/cpp03/http/server/http_server.exe: \
 
 examples/cpp03/http/server2/http_server.exe: \
 		examples/cpp03/http/server2/connection.o \
-		examples/cpp03/http/server2/io_service_pool.o \
+		examples/cpp03/http/server2/io_context_pool.o \
 		examples/cpp03/http/server2/main.o \
 		examples/cpp03/http/server2/mime_types.o \
 		examples/cpp03/http/server2/reply.o \

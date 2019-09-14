@@ -1,13 +1,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
-<title>basic_deadline_timer::basic_deadline_timer (2 of 3 overloads)</title>
+<title>basic_deadline_timer::basic_deadline_timer (2 of 4 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../../../index.html" title="Asio">
 <link rel="up" href="../basic_deadline_timer.html" title="basic_deadline_timer::basic_deadline_timer">
-<link rel="prev" href="overload1.html" title="basic_deadline_timer::basic_deadline_timer (1 of 3 overloads)">
-<link rel="next" href="overload3.html" title="basic_deadline_timer::basic_deadline_timer (3 of 3 overloads)">
+<link rel="prev" href="overload1.html" title="basic_deadline_timer::basic_deadline_timer (1 of 4 overloads)">
+<link rel="next" href="overload3.html" title="basic_deadline_timer::basic_deadline_timer (3 of 4 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../../asio.png"></td></tr></table>
@@ -17,15 +17,15 @@
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h5 class="title">
-<a name="asio.reference.basic_deadline_timer.basic_deadline_timer.overload2"></a><a class="link" href="overload2.html" title="basic_deadline_timer::basic_deadline_timer (2 of 3 overloads)">basic_deadline_timer::basic_deadline_timer
-          (2 of 3 overloads)</a>
+<a name="asio.reference.basic_deadline_timer.basic_deadline_timer.overload2"></a><a class="link" href="overload2.html" title="basic_deadline_timer::basic_deadline_timer (2 of 4 overloads)">basic_deadline_timer::basic_deadline_timer
+          (2 of 4 overloads)</a>
 </h5></div></div></div>
 <p>
             Constructor to set a particular expiry time as an absolute time.
           </p>
-<pre class="programlisting"><span class="identifier">basic_deadline_timer</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">time_type</span> <span class="special">&amp;</span> <span class="identifier">expiry_time</span><span class="special">);</span>
+<pre class="programlisting">basic_deadline_timer(
+    asio::io_context &amp; io_context,
+    const time_type &amp; expiry_time);
 </pre>
 <p>
             This constructor creates a timer and sets the expiry time.
@@ -37,9 +37,9 @@
 <div class="variablelist">
 <p class="title"><b></b></p>
 <dl>
-<dt><span class="term">io_service</span></dt>
+<dt><span class="term">io_context</span></dt>
 <dd><p>
-                  The <a class="link" href="../../io_service.html" title="io_service"><code class="computeroutput"><span class="identifier">io_service</span></code></a>
+                  The <a class="link" href="../../io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
                   object that the timer will use to dispatch handlers for any asynchronous
                   operations performed on the timer.
                 </p></dd>
@@ -53,8 +53,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

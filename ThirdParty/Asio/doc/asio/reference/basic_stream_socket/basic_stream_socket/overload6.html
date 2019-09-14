@@ -21,15 +21,14 @@
           (6 of 6 overloads)</a>
 </h5></div></div></div>
 <p>
-            Move-construct a <a class="link" href="../../basic_stream_socket.html" title="basic_stream_socket"><code class="computeroutput"><span class="identifier">basic_stream_socket</span></code></a> from a socket
-            of another protocol type.
+            Move-construct a <a class="link" href="../../basic_stream_socket.html" title="basic_stream_socket"><code class="computeroutput">basic_stream_socket</code></a>
+            from a socket of another protocol type.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../Protocol.html" title="Protocol requirements">Protocol1</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../../StreamSocketService.html" title="Stream socket service requirements">StreamSocketService1</a><span class="special">&gt;</span>
-<span class="identifier">basic_stream_socket</span><span class="special">(</span>
-    <span class="identifier">basic_stream_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol1</span><span class="special">,</span> <span class="identifier">StreamSocketService1</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_convertible</span><span class="special">&lt;</span> <span class="identifier">Protocol1</span><span class="special">,</span> <span class="identifier">Protocol</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">*</span>  <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../Protocol.html" title="Protocol requirements">Protocol1</a>&gt;
+basic_stream_socket(
+    basic_stream_socket&lt; Protocol1 &gt; &amp;&amp; other,
+    typename enable_if&lt; is_convertible&lt; Protocol1, Protocol &gt;::value &gt;::type *  = 0);
 </pre>
 <p>
             This constructor moves a stream socket from one object to another.
@@ -43,8 +42,8 @@
 <dl>
 <dt><span class="term">other</span></dt>
 <dd><p>
-                  The other <a class="link" href="../../basic_stream_socket.html" title="basic_stream_socket"><code class="computeroutput"><span class="identifier">basic_stream_socket</span></code></a> object
-                  from which the move will occur.
+                  The other <a class="link" href="../../basic_stream_socket.html" title="basic_stream_socket"><code class="computeroutput">basic_stream_socket</code></a>
+                  object from which the move will occur.
                 </p></dd>
 </dl>
 </div>
@@ -54,13 +53,12 @@
           </h6>
 <p>
             Following the move, the moved-from object is in the same state as if
-            constructed using the <code class="computeroutput"><span class="identifier">basic_stream_socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">&amp;)</span> <span class="identifier">constructor</span></code>.
+            constructed using the <code class="computeroutput">basic_stream_socket(io_context&amp;) constructor</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

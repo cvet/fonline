@@ -116,9 +116,19 @@ namespace utf8
 
 namespace fmt
 {
-    template< typename ArgFormatter >
-    void format_arg( BasicFormatter< char, ArgFormatter >& f, const char*& format_str, const _str& s )
+    template< >
+    struct formatter< _str >
     {
-        f.writer().write( "{}", s.str() );
-    }
+        template< typename ParseContext >
+        constexpr auto parse( ParseContext& ctx )
+        {
+            return ctx.begin();
+        }
+
+        template< typename FormatContext >
+        auto format( const _str &s, FormatContext & ctx )
+        {
+            return format_to( ctx.out(), "{}", s.str() );
+        }
+    };
 }

@@ -1,5 +1,4 @@
-#ifndef __SCRIPT__
-#define __SCRIPT__
+#pragma once
 
 #include "Common.h"
 #include "ScriptPragmas.h"
@@ -261,4 +260,119 @@ public:
     std::vector< asBYTE >& GetBuf() { return binBuf; }
 };
 
-#endif // __SCRIPT__
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+struct ServerScriptFunctions
+{
+    void* ResourcesGenerated;
+    void* Init;
+    void* GenerateWorld;
+    void* Start;
+    void* Finish;
+    void* Loop;
+    void* GlobalMapCritterIn;
+    void* GlobalMapCritterOut;
+    void* LocationInit;
+    void* LocationFinish;
+    void* MapInit;
+    void* MapFinish;
+    void* MapLoop;
+    void* MapCritterIn;
+    void* MapCritterOut;
+    void* MapCheckLook;
+    void* MapCheckTrapLook;
+    void* CritterInit;
+    void* CritterFinish;
+    void* CritterIdle;
+    void* CritterGlobalMapIdle;
+    void* CritterCheckMoveItem;
+    void* CritterMoveItem;
+    void* CritterShow;
+    void* CritterShowDist1;
+    void* CritterShowDist2;
+    void* CritterShowDist3;
+    void* CritterHide;
+    void* CritterHideDist1;
+    void* CritterHideDist2;
+    void* CritterHideDist3;
+    void* CritterShowItemOnMap;
+    void* CritterHideItemOnMap;
+    void* CritterChangeItemOnMap;
+    void* CritterMessage;
+    void* CritterTalk;
+    void* CritterBarter;
+    void* CritterGetAttackDistantion;
+    void* PlayerRegistration;
+    void* PlayerLogin;
+    void* PlayerGetAccess;
+    void* PlayerAllowCommand;
+    void* PlayerLogout;
+    void* ItemInit;
+    void* ItemFinish;
+    void* ItemWalk;
+    void* ItemCheckMove;
+    void* StaticItemWalk;
+} extern ServerFunctions;
+#endif
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
+struct ClientScriptFunctions
+{
+    void* Start;
+    void* Finish;
+    void* Loop;
+    void* AutoLogin;
+    void* GetActiveScreens;
+    void* ScreenChange;
+    void* ScreenScroll;
+    void* RenderIface;
+    void* RenderMap;
+    void* MouseDown;
+    void* MouseUp;
+    void* MouseMove;
+    void* KeyDown;
+    void* KeyUp;
+    void* InputLost;
+    void* CritterIn;
+    void* CritterOut;
+    void* ItemMapIn;
+    void* ItemMapChanged;
+    void* ItemMapOut;
+    void* ItemInvAllIn;
+    void* ItemInvIn;
+    void* ItemInvChanged;
+    void* ItemInvOut;
+    void* MapLoad;
+    void* MapUnload;
+    void* ReceiveItems;
+    void* MapMessage;
+    void* InMessage;
+    void* OutMessage;
+    void* MessageBox;
+    void* CombatResult;
+    void* ItemCheckMove;
+    void* CritterAction;
+    void* Animation2dProcess;
+    void* Animation3dProcess;
+    void* CritterAnimation;
+    void* CritterAnimationSubstitute;
+    void* CritterAnimationFallout;
+    void* CritterCheckMoveItem;
+    void* CritterGetAttackDistantion;
+} extern ClientFunctions;
+struct MapperScriptFunctions
+{
+    void* Start;
+    void* Finish;
+    void* Loop;
+    void* ConsoleMessage;
+    void* RenderIface;
+    void* MouseDown;
+    void* MouseUp;
+    void* MouseMove;
+    void* KeyDown;
+    void* KeyUp;
+    void* InputLost;
+    void* MapLoad;
+    void* MapSave;
+    void* InspectorProperties;
+} extern MapperFunctions;
+#endif

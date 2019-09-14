@@ -26,8 +26,8 @@
 <p>
             Disable sends or receives on the socket.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">shutdown</span><span class="special">(</span>
-    <span class="identifier">shutdown_type</span> <span class="identifier">what</span><span class="special">);</span>
+<pre class="programlisting">void shutdown(
+    shutdown_type what);
 </pre>
 <p>
             This function is used to disable send operations, receive operations,
@@ -66,15 +66,14 @@
 <p>
             Shutting down the send side of the socket:
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">shutdown</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">::</span><span class="identifier">shutdown_send</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::tcp::socket socket(io_context);
+...
+socket.shutdown(asio::ip::tcp::socket::shutdown_send);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

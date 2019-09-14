@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "Testing.h"
 #include "Timer.h"
+#include "Settings.h"
 #include <random>
 
 void FOServer::ProcessMove( Critter* cr )

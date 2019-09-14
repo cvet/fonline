@@ -25,17 +25,16 @@
         the timer fires once a second. This will show how to pass additional parameters
         to your handler function.
       </p>
-<pre class="programlisting"><span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">bind</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
+#include &lt;boost/bind.hpp&gt;
 </pre>
 <p>
         To implement a repeating timer using asio you need to change the timer's
         expiry time in your callback function, and to then start a new asynchronous
         wait. Obviously this means that the callback function will need to be able
         to access the timer object. To this end we add two new parameters to the
-        <code class="computeroutput"><span class="identifier">print</span></code> function:
+        <code class="computeroutput">print</code> function:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
@@ -46,23 +45,23 @@
             sixth time.
           </li>
 </ul></div>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="comment">/*e*/</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span><span class="special">*</span> <span class="identifier">t</span><span class="special">,</span> <span class="keyword">int</span><span class="special">*</span> <span class="identifier">count</span><span class="special">)</span>
-<span class="special">{</span>
+<pre class="programlisting">void print(const asio::error_code&amp; /*e*/,
+    asio::steady_timer* t, int* count)
+{
 </pre>
 <p>
         As mentioned above, this tutorial program uses a counter to stop running
         when the timer fires for the sixth time. However you will observe that there
-        is no explicit call to ask the io_service to stop. Recall that in tutorial
-        Timer.2 we learnt that the <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
+        is no explicit call to ask the io_context to stop. Recall that in tutorial
+        Timer.2 we learnt that the <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
         function completes when there is no more "work" to do. By not starting
-        a new asynchronous wait on the timer when <code class="computeroutput"><span class="identifier">count</span></code>
-        reaches 5, the io_service will run out of work and stop running.
+        a new asynchronous wait on the timer when <code class="computeroutput">count</code> reaches 5, the
+        io_context will run out of work and stop running.
       </p>
-<pre class="programlisting">  <span class="keyword">if</span> <span class="special">(*</span><span class="identifier">count</span> <span class="special">&lt;</span> <span class="number">5</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">count</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-    <span class="special">++(*</span><span class="identifier">count</span><span class="special">);</span>
+<pre class="programlisting">  if (*count &lt; 5)
+  {
+    std::cout &lt;&lt; *count &lt;&lt; std::endl;
+    ++(*count);
 </pre>
 <p>
         Next we move the expiry time for the timer along by one second from the previous
@@ -70,16 +69,16 @@
         ensure that the timer does not drift away from the whole-second mark due
         to any delays in processing the handler.
       </p>
-<pre class="programlisting">    <span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
+<pre class="programlisting">    t-&gt;expires_at(t-&gt;expiry() + asio::chrono::seconds(1));
 </pre>
 <p>
         Then we start a new asynchronous wait on the timer. As you can see, the
         <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a> function is used
-        to associate the extra parameters with your callback handler. The <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>
+        to associate the extra parameters with your callback handler. The <a class="link" href="../reference/basic_waitable_timer/async_wait.html" title="basic_waitable_timer::async_wait">steady_timer::async_wait()</a>
         function expects a handler function (or function object) with the signature
-        <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;)</span></code>. Binding the additional parameters
-        converts your <code class="computeroutput"><span class="identifier">print</span></code> function
-        into a function object that matches the signature correctly.
+        <code class="computeroutput">void(const asio::error_code&amp;)</code>. Binding the additional parameters
+        converts your <code class="computeroutput">print</code> function into a function object that matches
+        the signature correctly.
       </p>
 <p>
         See the <a href="http://www.boost.org/libs/bind/bind.html" target="_top">Boost.Bind
@@ -94,42 +93,40 @@
         list. In tutorial Timer.4 you will see that this placeholder may be elided
         if the parameter is not needed by the callback handler.
       </p>
-<pre class="programlisting">    <span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">print</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span> <span class="identifier">t</span><span class="special">,</span> <span class="identifier">count</span><span class="special">));</span>
-  <span class="special">}</span>
-<span class="special">}</span>
+<pre class="programlisting">    t-&gt;async_wait(boost::bind(print,
+          asio::placeholders::error, t, count));
+  }
+}
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
+int main()
+{
+  asio::io_context io;
 </pre>
 <p>
-        A new <code class="computeroutput"><span class="identifier">count</span></code> variable is added
-        so that we can stop the program when the timer fires for the sixth time.
+        A new <code class="computeroutput">count</code> variable is added so that we can stop the program
+        when the timer fires for the sixth time.
       </p>
-<pre class="programlisting">  <span class="keyword">int</span> <span class="identifier">count</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
+<pre class="programlisting">  int count = 0;
+  asio::steady_timer t(io, asio::chrono::seconds(1));
 </pre>
 <p>
-        As in Step 4, when making the call to <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>
-        from <code class="computeroutput"><span class="identifier">main</span></code> we bind the additional
-        parameters needed for the <code class="computeroutput"><span class="identifier">print</span></code>
-        function.
+        As in Step 4, when making the call to <a class="link" href="../reference/basic_waitable_timer/async_wait.html" title="basic_waitable_timer::async_wait">steady_timer::async_wait()</a>
+        from <code class="computeroutput">main</code> we bind the additional parameters needed for the
+        <code class="computeroutput">print</code> function.
       </p>
-<pre class="programlisting">  <span class="identifier">t</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">print</span><span class="special">,</span>
-        <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">count</span><span class="special">));</span>
+<pre class="programlisting">  t.async_wait(boost::bind(print,
+        asio::placeholders::error, &amp;t, &amp;count));
 
-  <span class="identifier">io</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+  io.run();
 </pre>
 <p>
-        Finally, just to prove that the <code class="computeroutput"><span class="identifier">count</span></code>
-        variable was being used in the <code class="computeroutput"><span class="identifier">print</span></code>
-        handler function, we will print out its new value.
+        Finally, just to prove that the <code class="computeroutput">count</code> variable was being used
+        in the <code class="computeroutput">print</code> handler function, we will print out its new value.
       </p>
-<pre class="programlisting">  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Final count is "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<pre class="programlisting">  std::cout &lt;&lt; "Final count is " &lt;&lt; count &lt;&lt; std::endl;
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
         See the <a class="link" href="tuttimer3/src.html" title="Source listing for Timer.3">full source listing</a>
@@ -148,8 +145,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

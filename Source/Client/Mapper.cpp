@@ -8,6 +8,7 @@
 #include "sha2.h"
 #include "Threading.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 bool          FOMapper::SpritesCanDraw = false;
 FOMapper*     FOMapper::Self = nullptr;
@@ -37,55 +38,6 @@ bool FOMapper::Init()
         WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
-
-    // Register dll script data
-    struct GetDrawingSprites_
-    {
-        static void* GetDrawingSprites( uint& count )
-        {
-            Sprites& tree = Self->HexMngr.GetDrawTree();
-            count = tree.Size();
-            if( !count )
-                return nullptr;
-            return tree.RootSprite();
-        }
-    };
-    GameOpt.GetDrawingSprites = &GetDrawingSprites_::GetDrawingSprites;
-
-    struct GetSpriteInfo_
-    {
-        static void* GetSpriteInfo( uint spr_id )
-        {
-            return SprMngr.GetSpriteInfo( spr_id );
-        }
-    };
-    GameOpt.GetSpriteInfo = &GetSpriteInfo_::GetSpriteInfo;
-
-    struct GetSpriteColor_
-    {
-        static uint GetSpriteColor( uint spr_id, int x, int y, bool with_zoom )
-        {
-            return SprMngr.GetPixColor( spr_id, x, y, with_zoom );
-        }
-    };
-    GameOpt.GetSpriteColor = &GetSpriteColor_::GetSpriteColor;
-
-    struct IsSpriteHit_
-    {
-        static bool IsSpriteHit( void* sprite, int x, int y, bool check_egg )
-        {
-            Sprite*     sprite_ = (Sprite*) sprite;
-            if( !sprite_ || !sprite_->Valid ) return false;
-            SpriteInfo* si = SprMngr.GetSpriteInfo( sprite_->PSprId ? *sprite_->PSprId : sprite_->SprId );
-            if( !si ) return false;
-            int         sx = sprite_->ScrX - si->Width / 2 + si->OffsX + GameOpt.ScrOx + ( sprite_->OffsX ? *sprite_->OffsX : 0 ) + *sprite_->PScrX;
-            int         sy = sprite_->ScrY - si->Height + si->OffsY + GameOpt.ScrOy + ( sprite_->OffsY ? *sprite_->OffsY : 0 ) + *sprite_->PScrY;
-            if( !( sprite_ = sprite_->GetIntersected( x - sx, y - sy ) ) ) return false;
-            if( check_egg && SprMngr.CompareHexEgg( sprite_->HexX, sprite_->HexY, sprite_->EggType ) && SprMngr.IsEggTransp( x, y ) ) return false;
-            return true;
-        }
-    };
-    GameOpt.IsSpriteHit = &IsSpriteHit_::IsSpriteHit;
 
     // Input
     Keyb::Init();
@@ -2979,9 +2931,9 @@ void FOMapper::SelectAdd( Entity* entity )
         SelectedEntities.push_back( entity );
 
         if( entity->Type == EntityType::CritterView )
-            ( (CritterView*) entity )->Alpha = SELECT_ALPHA;
+            ( (CritterView*) entity )->Alpha = HexMngr.SelectAlpha;
         if( entity->Type == EntityType::ItemHexView )
-            ( (ItemHexView*) entity )->Alpha = SELECT_ALPHA;
+            ( (ItemHexView*) entity )->Alpha = HexMngr.SelectAlpha;
     }
 }
 

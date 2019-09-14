@@ -6,14 +6,14 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
-<link rel="prev" href="io_service__work/_work.html" title="io_service::work::~work">
+<link rel="prev" href="io_service.html" title="io_service">
 <link rel="next" href="ip__address/address.html" title="ip::address::address">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="io_service__work/_work.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ip__address/address.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="io_service.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ip__address/address.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
@@ -22,7 +22,7 @@
 <p>
         Implements version-independent IP addresses.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">address</span>
+<pre class="programlisting">class address
 </pre>
 <h5>
 <a name="asio.reference.ip__address.h0"></a>
@@ -55,16 +55,9 @@
               </td>
 <td>
                 <p>
-                  Default constructor.
-                </p>
-                <p>
-                  Construct an address from an IPv4 address.
-                </p>
-                <p>
-                  Construct an address from an IPv6 address.
-                </p>
-                <p>
-                  Copy constructor.
+                  Default constructor. <br> <span class="silver"> &#8212;</span><br> Construct an address from an
+                  IPv4 address. <br> <span class="silver"> &#8212;</span><br> Construct an address from an IPv6 address.
+                  <br> <span class="silver"> &#8212;</span><br> Copy constructor.
                 </p>
               </td>
 </tr>
@@ -76,8 +69,9 @@
               </td>
 <td>
                 <p>
-                  Create an address from an IPv4 address string in dotted decimal
-                  form, or from an IPv6 address in hexadecimal notation.
+                  (Deprecated: Use make_address().) Create an address from an IPv4
+                  address string in dotted decimal form, or from an IPv6 address
+                  in hexadecimal notation.
                 </p>
               </td>
 </tr>
@@ -149,13 +143,8 @@
               </td>
 <td>
                 <p>
-                  Assign from another address.
-                </p>
-                <p>
-                  Assign from an IPv4 address.
-                </p>
-                <p>
-                  Assign from an IPv6 address.
+                  Assign from another address. <br> <span class="silver"> &#8212;</span><br> Assign from an IPv4
+                  address. <br> <span class="silver"> &#8212;</span><br> Assign from an IPv6 address.
                 </p>
               </td>
 </tr>
@@ -167,7 +156,8 @@
               </td>
 <td>
                 <p>
-                  Get the address as a string in dotted decimal format.
+                  Get the address as a string. <br> <span class="silver"> &#8212;</span><br> (Deprecated: Use other
+                  overload.) Get the address as a string.
                 </p>
               </td>
 </tr>
@@ -315,7 +305,21 @@
                 </p>
               </th>
 </tr></thead>
-<tbody><tr>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="ip__address/make_address.html" title="ip::address::make_address"><span class="bold"><strong>make_address</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Create an address from an IPv4 address string in dotted decimal
+                  form, or from an IPv6 address in hexadecimal notation.
+                </p>
+              </td>
+</tr>
+<tr>
 <td>
                 <p>
                   <a class="link" href="ip__address/operator_lt__lt_.html" title="ip::address::operator&lt;&lt;"><span class="bold"><strong>operator&lt;&lt;</strong></span></a>
@@ -326,10 +330,11 @@
                   Output an address as a string.
                 </p>
               </td>
-</tr></tbody>
+</tr>
+</tbody>
 </table></div>
 <p>
-        The <a class="link" href="ip__address.html" title="ip::address"><code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">address</span></code></a>
+        The <a class="link" href="ip__address.html" title="ip::address"><code class="computeroutput">ip::address</code></a>
         class provides the ability to use either IP version 4 or version 6 addresses.
       </p>
 <h5>
@@ -356,8 +361,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -365,7 +369,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="io_service__work/_work.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ip__address/address.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="io_service.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ip__address/address.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

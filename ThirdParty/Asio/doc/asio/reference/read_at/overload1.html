@@ -23,13 +23,13 @@
           Attempt to read a certain amount of data at the specified offset before
           returning.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">read_at</span><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessReadDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../SyncRandomAccessReadDevice.html" title="Buffer-oriented synchronous random-access read device requirements">SyncRandomAccessReadDevice</a>,
+    typename <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>&gt;
+std::size_t read_at(
+    SyncRandomAccessReadDevice &amp; d,
+    uint64_t offset,
+    const MutableBufferSequence &amp; buffers);
 </pre>
 <p>
           This function is used to read a certain number of bytes of data from a
@@ -99,12 +99,13 @@
           <span><a name="asio.reference.read_at.overload1.example"></a></span><a class="link" href="overload1.html#asio.reference.read_at.overload1.example">Example</a>
         </h6>
 <p>
-          To read into a single data buffer use the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a> function as follows:
+          To read into a single data buffer use the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+          function as follows:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">read_at</span><span class="special">(</span><span class="identifier">d</span><span class="special">,</span> <span class="number">42</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">size</span><span class="special">));</span>
+<pre class="programlisting">asio::read_at(d, 42, asio::buffer(data, size));
 </pre>
 <p>
-          See the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a>
+          See the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
           documentation for information on reading into multiple buffers in one go,
           and how to use it with arrays, boost::array or std::vector.
         </p>
@@ -115,15 +116,14 @@
 <p>
           This overload is equivalent to calling:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">read_at</span><span class="special">(</span>
-    <span class="identifier">d</span><span class="special">,</span> <span class="number">42</span><span class="special">,</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">transfer_all</span><span class="special">());</span>
+<pre class="programlisting">asio::read_at(
+    d, 42, buffers,
+    asio::transfer_all());
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

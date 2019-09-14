@@ -25,82 +25,83 @@
         <span><a name="asio.tutorial.tutdaytime3.the_main___function"></a></span><a class="link" href="tutdaytime3.html#asio.tutorial.tutdaytime3.the_main___function">The
         main() function</a>
       </h5>
-<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
+<pre class="programlisting">int main()
+{
+  try
+  {
 </pre>
 <p>
         We need to create a server object to accept incoming client connections.
-        The <a class="link" href="../reference/io_service.html" title="io_service">io_service</a> object provides
+        The <a class="link" href="../reference/io_context.html" title="io_context">io_context</a> object provides
         I/O services, such as sockets, that the server object will use.
       </p>
-<pre class="programlisting">    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
-    <span class="identifier">tcp_server</span> <span class="identifier">server</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
+<pre class="programlisting">    asio::io_context io_context;
+    tcp_server server(io_context);
 </pre>
 <p>
-        Run the <a class="link" href="../reference/io_service.html" title="io_service">io_service</a> object
+        Run the <a class="link" href="../reference/io_context.html" title="io_context">io_context</a> object
         so that it will perform asynchronous operations on your behalf.
       </p>
-<pre class="programlisting">    <span class="identifier">io_service</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
-  <span class="special">}</span>
-  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
+<pre class="programlisting">    io_context.run();
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <h5>
 <a name="asio.tutorial.tutdaytime3.h1"></a>
         <span><a name="asio.tutorial.tutdaytime3.the_tcp_server_class"></a></span><a class="link" href="tutdaytime3.html#asio.tutorial.tutdaytime3.the_tcp_server_class">The
         tcp_server class</a>
       </h5>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">tcp_server</span>
-<span class="special">{</span>
-<span class="keyword">public</span><span class="special">:</span>
+<pre class="programlisting">class tcp_server
+{
+public:
 </pre>
 <p>
         The constructor initialises an acceptor to listen on TCP port 13.
       </p>
-<pre class="programlisting">  <span class="identifier">tcp_server</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">)</span>
-    <span class="special">:</span> <span class="identifier">acceptor_</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">v4</span><span class="special">(),</span> <span class="number">13</span><span class="special">))</span>
-  <span class="special">{</span>
-    <span class="identifier">start_accept</span><span class="special">();</span>
-  <span class="special">}</span>
+<pre class="programlisting">  tcp_server(asio::io_context&amp; io_context)
+    : acceptor_(io_context, tcp::endpoint(tcp::v4(), 13))
+  {
+    start_accept();
+  }
 
-<span class="keyword">private</span><span class="special">:</span>
+private:
 </pre>
 <p>
-        The function <code class="computeroutput"><span class="identifier">start_accept</span><span class="special">()</span></code> creates a socket and initiates an asynchronous
-        accept operation to wait for a new connection.
+        The function <code class="computeroutput">start_accept()</code> creates a socket and initiates an
+        asynchronous accept operation to wait for a new connection.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">start_accept</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="identifier">tcp_connection</span><span class="special">::</span><span class="identifier">pointer</span> <span class="identifier">new_connection</span> <span class="special">=</span>
-      <span class="identifier">tcp_connection</span><span class="special">::</span><span class="identifier">create</span><span class="special">(</span><span class="identifier">acceptor_</span><span class="special">.</span><span class="identifier">get_io_service</span><span class="special">());</span>
+<pre class="programlisting">  void start_accept()
+  {
+    tcp_connection::pointer new_connection =
+      tcp_connection::create(acceptor_.get_executor().context());
 
-    <span class="identifier">acceptor_</span><span class="special">.</span><span class="identifier">async_accept</span><span class="special">(</span><span class="identifier">new_connection</span><span class="special">-&gt;</span><span class="identifier">socket</span><span class="special">(),</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">tcp_server</span><span class="special">::</span><span class="identifier">handle_accept</span><span class="special">,</span> <span class="keyword">this</span><span class="special">,</span> <span class="identifier">new_connection</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">));</span>
-  <span class="special">}</span>
+    acceptor_.async_accept(new_connection-&gt;socket(),
+        boost::bind(&amp;tcp_server::handle_accept, this, new_connection,
+          asio::placeholders::error));
+  }
 </pre>
 <p>
-        The function <code class="computeroutput"><span class="identifier">handle_accept</span><span class="special">()</span></code> is called when the asynchronous accept
-        operation initiated by <code class="computeroutput"><span class="identifier">start_accept</span><span class="special">()</span></code> finishes. It services the client request,
-        and then calls <code class="computeroutput"><span class="identifier">start_accept</span><span class="special">()</span></code> to initiate the next accept operation.
+        The function <code class="computeroutput">handle_accept()</code> is called when the asynchronous
+        accept operation initiated by <code class="computeroutput">start_accept()</code> finishes. It services
+        the client request, and then calls <code class="computeroutput">start_accept()</code> to initiate
+        the next accept operation.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">handle_accept</span><span class="special">(</span><span class="identifier">tcp_connection</span><span class="special">::</span><span class="identifier">pointer</span> <span class="identifier">new_connection</span><span class="special">,</span>
-      <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">error</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="identifier">new_connection</span><span class="special">-&gt;</span><span class="identifier">start</span><span class="special">();</span>
-    <span class="special">}</span>
+<pre class="programlisting">  void handle_accept(tcp_connection::pointer new_connection,
+      const asio::error_code&amp; error)
+  {
+    if (!error)
+    {
+      new_connection-&gt;start();
+    }
 
-    <span class="identifier">start_accept</span><span class="special">();</span>
-  <span class="special">}</span>
+    start_accept();
+  }
 </pre>
 <h5>
 <a name="asio.tutorial.tutdaytime3.h2"></a>
@@ -108,74 +109,73 @@
         tcp_connection class</a>
       </h5>
 <p>
-        We will use <code class="computeroutput"><span class="identifier">shared_ptr</span></code> and
-        <code class="computeroutput"><span class="identifier">enable_shared_from_this</span></code> because
-        we want to keep the <code class="computeroutput"><span class="identifier">tcp_connection</span></code>
-        object alive as long as there is an operation that refers to it.
+        We will use <code class="computeroutput">shared_ptr</code> and <code class="computeroutput">enable_shared_from_this</code>
+        because we want to keep the <code class="computeroutput">tcp_connection</code> object alive as long
+        as there is an operation that refers to it.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">tcp_connection</span>
-  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_shared_from_this</span><span class="special">&lt;</span><span class="identifier">tcp_connection</span><span class="special">&gt;</span>
-<span class="special">{</span>
-<span class="keyword">public</span><span class="special">:</span>
-  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">tcp_connection</span><span class="special">&gt;</span> <span class="identifier">pointer</span><span class="special">;</span>
+<pre class="programlisting">class tcp_connection
+  : public boost::enable_shared_from_this&lt;tcp_connection&gt;
+{
+public:
+  typedef boost::shared_ptr&lt;tcp_connection&gt; pointer;
 
-  <span class="keyword">static</span> <span class="identifier">pointer</span> <span class="identifier">create</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="keyword">return</span> <span class="identifier">pointer</span><span class="special">(</span><span class="keyword">new</span> <span class="identifier">tcp_connection</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">));</span>
-  <span class="special">}</span>
+  static pointer create(asio::io_context&amp; io_context)
+  {
+    return pointer(new tcp_connection(io_context));
+  }
 
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;</span> <span class="identifier">socket</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="keyword">return</span> <span class="identifier">socket_</span><span class="special">;</span>
-  <span class="special">}</span>
+  tcp::socket&amp; socket()
+  {
+    return socket_;
+  }
 </pre>
 <p>
-        In the function <code class="computeroutput"><span class="identifier">start</span><span class="special">()</span></code>,
-        we call asio::async_write() to serve the data to the client. Note that we
-        are using asio::async_write(), rather than <a class="link" href="../reference/basic_stream_socket/async_write_some.html" title="basic_stream_socket::async_write_some">ip::tcp::socket::async_write_some()</a>,
+        In the function <code class="computeroutput">start()</code>, we call asio::async_write() to serve
+        the data to the client. Note that we are using asio::async_write(), rather
+        than <a class="link" href="../reference/basic_stream_socket/async_write_some.html" title="basic_stream_socket::async_write_some">ip::tcp::socket::async_write_some()</a>,
         to ensure that the entire block of data is sent.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">start</span><span class="special">()</span>
-  <span class="special">{</span>
+<pre class="programlisting">  void start()
+  {
 </pre>
 <p>
-        The data to be sent is stored in the class member <code class="computeroutput"><span class="identifier">message_</span></code>
-        as we need to keep the data valid until the asynchronous operation is complete.
+        The data to be sent is stored in the class member <code class="computeroutput">message_</code> as
+        we need to keep the data valid until the asynchronous operation is complete.
       </p>
-<pre class="programlisting">    <span class="identifier">message_</span> <span class="special">=</span> <span class="identifier">make_daytime_string</span><span class="special">();</span>
+<pre class="programlisting">    message_ = make_daytime_string();
 </pre>
 <p>
         When initiating the asynchronous operation, and if using <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a>
         , you must specify only the arguments that match the handler's parameter
         list. In this program, both of the argument placeholders (asio::placeholders::error
         and asio::placeholders::bytes_transferred) could potentially have been removed,
-        since they are not being used in <code class="computeroutput"><span class="identifier">handle_write</span><span class="special">()</span></code>.
+        since they are not being used in <code class="computeroutput">handle_write()</code>.
       </p>
-<pre class="programlisting">    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">socket_</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">message_</span><span class="special">),</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">tcp_connection</span><span class="special">::</span><span class="identifier">handle_write</span><span class="special">,</span> <span class="identifier">shared_from_this</span><span class="special">(),</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">bytes_transferred</span><span class="special">));</span>
+<pre class="programlisting">    asio::async_write(socket_, asio::buffer(message_),
+        boost::bind(&amp;tcp_connection::handle_write, shared_from_this(),
+          asio::placeholders::error,
+          asio::placeholders::bytes_transferred));
 </pre>
 <p>
         Any further actions for this client connection are now the responsibility
-        of <code class="computeroutput"><span class="identifier">handle_write</span><span class="special">()</span></code>.
+        of <code class="computeroutput">handle_write()</code>.
       </p>
-<pre class="programlisting">  <span class="special">}</span>
+<pre class="programlisting">  }
 
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="identifier">tcp_connection</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">)</span>
-    <span class="special">:</span> <span class="identifier">socket_</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">)</span>
-  <span class="special">{</span>
-  <span class="special">}</span>
+private:
+  tcp_connection(asio::io_context&amp; io_context)
+    : socket_(io_context)
+  {
+  }
 
-  <span class="keyword">void</span> <span class="identifier">handle_write</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="comment">/*error*/</span><span class="special">,</span>
-      <span class="identifier">size_t</span> <span class="comment">/*bytes_transferred*/</span><span class="special">)</span>
-  <span class="special">{</span>
-  <span class="special">}</span>
+  void handle_write(const asio::error_code&amp; /*error*/,
+      size_t /*bytes_transferred*/)
+  {
+  }
 
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket_</span><span class="special">;</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message_</span><span class="special">;</span>
-<span class="special">};</span>
+  tcp::socket socket_;
+  std::string message_;
+};
 </pre>
 <h5>
 <a name="asio.tutorial.tutdaytime3.h3"></a>
@@ -183,21 +183,21 @@
         unused handler parameters</a>
       </h5>
 <p>
-        You may have noticed that the <code class="computeroutput"><span class="identifier">error</span></code>,
-        and <code class="computeroutput"><span class="identifier">bytes_transferred</span></code> parameters
-        are not used in the body of the <code class="computeroutput"><span class="identifier">handle_write</span><span class="special">()</span></code> function. If parameters are not needed,
-        it is possible to remove them from the function so that it looks like:
+        You may have noticed that the <code class="computeroutput">error</code>, and <code class="computeroutput">bytes_transferred</code>
+        parameters are not used in the body of the <code class="computeroutput">handle_write()</code> function.
+        If parameters are not needed, it is possible to remove them from the function
+        so that it looks like:
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">handle_write</span><span class="special">()</span>
-  <span class="special">{</span>
-  <span class="special">}</span>
+<pre class="programlisting">  void handle_write()
+  {
+  }
 </pre>
 <p>
         The asio::async_write() call used to initiate the call can then be changed
         to just:
       </p>
-<pre class="programlisting">  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">socket_</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">message_</span><span class="special">),</span>
-      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">tcp_connection</span><span class="special">::</span><span class="identifier">handle_write</span><span class="special">,</span> <span class="identifier">shared_from_this</span><span class="special">()));</span>
+<pre class="programlisting">  asio::async_write(socket_, asio::buffer(message_),
+      boost::bind(&amp;tcp_connection::handle_write, shared_from_this()));
 </pre>
 <p>
         See the <a class="link" href="tutdaytime3/src.html" title="Source listing for Daytime.3">full source listing</a>
@@ -216,8 +216,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

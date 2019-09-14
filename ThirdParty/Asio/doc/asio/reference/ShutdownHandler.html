@@ -22,10 +22,9 @@
 </h3></div></div></div>
 <p>
         A shutdown handler must meet the requirements for a <a class="link" href="Handler.html" title="Handlers">handler</a>.
-        A value <code class="computeroutput"><span class="identifier">h</span></code> of a shutdown handler
-        class should work correctly in the expression <code class="computeroutput"><span class="identifier">h</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span></code>,
-        where <code class="computeroutput"><span class="identifier">ec</span></code> is an lvalue of
-        type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">error_code</span></code>.
+        A value <code class="computeroutput">h</code> of a shutdown handler class should work correctly
+        in the expression <code class="computeroutput">h(ec)</code>, where <code class="computeroutput">ec</code> is an lvalue
+        of type <code class="computeroutput">const error_code</code>.
       </p>
 <h5>
 <a name="asio.reference.ShutdownHandler.h0"></a>
@@ -34,44 +33,65 @@
 <p>
         A free function as a shutdown handler:
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">shutdown_handler</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">void shutdown_handler(
+    const asio::error_code&amp; ec)
+{
+  ...
+}
 </pre>
 <p>
         A shutdown handler function object:
       </p>
-<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">shutdown_handler</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span>
-      <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="special">...</span>
-  <span class="special">}</span>
-  <span class="special">...</span>
-<span class="special">};</span>
+<pre class="programlisting">struct shutdown_handler
+{
+  ...
+  void operator()(
+      const asio::error_code&amp; ec)
+  {
+    ...
+  }
+  ...
+};
 </pre>
 <p>
-        A non-static class member function adapted to a shutdown handler using <code class="computeroutput"><span class="identifier">bind</span><span class="special">()</span></code>:
+        A lambda as a shutdown handler:
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">my_class</span><span class="special">::</span><span class="identifier">shutdown_handler</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-<span class="special">}</span>
-<span class="special">...</span>
-<span class="identifier">ssl_stream</span><span class="special">.</span><span class="identifier">async_shutdown</span><span class="special">(</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">my_class</span><span class="special">::</span><span class="identifier">shutdown_handler</span><span class="special">,</span>
-      <span class="keyword">this</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">));</span>
+<pre class="programlisting">ssl_stream.async_shutdown(...,
+    [](const asio::error_code&amp; ec)
+    {
+      ...
+    });
+</pre>
+<p>
+        A non-static class member function adapted to a shutdown handler using <code class="computeroutput">std::bind()</code>:
+      </p>
+<pre class="programlisting">void my_class::shutdown_handler(
+    const asio::error_code&amp; ec)
+{
+  ...
+}
+...
+ssl_stream.async_shutdown(
+    std::bind(&amp;my_class::shutdown_handler,
+      this, std::placeholders::_1));
+</pre>
+<p>
+        A non-static class member function adapted to a shutdown handler using <code class="computeroutput">boost::bind()</code>:
+      </p>
+<pre class="programlisting">void my_class::shutdown_handler(
+    const asio::error_code&amp; ec)
+{
+  ...
+}
+...
+ssl_stream.async_shutdown(
+    boost::bind(&amp;my_class::shutdown_handler,
+      this, asio::placeholders::error));
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

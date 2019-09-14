@@ -23,11 +23,11 @@
 <p>
             Receive some data on a connected socket.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">receive</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_flags</span> <span class="identifier">flags</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>&gt;
+std::size_t receive(
+    const MutableBufferSequence &amp; buffers,
+    socket_base::message_flags flags);
 </pre>
 <p>
             This function is used to receive data on the datagram socket. The function
@@ -83,8 +83,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

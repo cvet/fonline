@@ -1,8 +1,8 @@
 # FOnline Engine
 
-[![appveyor](https://ci.appveyor.com/api/projects/status/kyjfx4w9xiu67oep?svg=true)](https://ci.appveyor.com/project/cvet/fonline-lqwem)
-[![codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
-[![codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
+[![Jenkins](https://ci.fonline.ru/buildStatus/icon?job=fonline/master)](https://ci.fonline.ru/blue/organizations/jenkins/fonline/activity)
+[![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
+[![Codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
 
 ## Goal
 
@@ -10,7 +10,7 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 
 ## Features
 
-* C++14 *(not all refactored but wip)*
+* C++17 *(not all refactored but wip)*
 * OpenGL/ES/WebGL and DirectX *(wip)* rendering
 * AngelScript and C# *(wip)* scripting languages
 * Editor and Server target platforms
@@ -71,9 +71,9 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 ## Clone / Build / Setup
 
-Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).\
-You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.\
-In any way first you must install CMake version equal or higher then 3.5.
+Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).  
+You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
+In any way first you must install CMake version equal or higher then 3.10.2.
 
 For build just run from repository root one of the following scripts:
 * BuildScripts\windows.bat - build Windows binaries (windows only)
@@ -85,9 +85,9 @@ For build just run from repository root one of the following scripts:
 
 All output binaries you can find in Build/Binaries directory.
 
-Todo:\
-...write about build with cmake\
-...write about how make final sdk\
+Todo:  
+...write about build with cmake  
+...write about how make final sdk  
 ...write about how setup own test environment
 
 ## Third-party packages
@@ -123,10 +123,7 @@ Todo:\
 
 ## Help and support
 
-* E-mail cvet@tut.by
-* Telegram @aka_cvet
-* Skype cvet___
-* Phone/WhatsApp/Telegram/Viber +7 981 9028150
-* [English-speaking community](https://fodev.net)
-* [Russian-speaking community](https://fonline.ru)
-* [Discord invite](https://discord.gg/xa6TbqU)
+* GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)
+* E-Mail: <cvet@tut.by>
+* Forums: [fodev.net](https://fodev.net)
+* Discord: [invite](https://discord.gg/xa6TbqU)

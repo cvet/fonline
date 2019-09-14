@@ -6,6 +6,7 @@
 #include "SoundManager.h"
 #include "Script.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 bool CritterView::SlotEnabled[ 0x100 ];
 

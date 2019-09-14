@@ -23,9 +23,9 @@
 <p>
             Use a certificate chain from a memory buffer.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">use_certificate_chain</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">const_buffer</span> <span class="special">&amp;</span> <span class="identifier">chain</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void use_certificate_chain(
+    const const_buffer &amp; chain,
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function is used to load a certificate chain into the context from
@@ -54,14 +54,12 @@
             <span><a name="asio.reference.ssl__context.use_certificate_chain.overload2.remarks"></a></span><a class="link" href="overload2.html#asio.reference.ssl__context.use_certificate_chain.overload2.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_CTX_use_certificate</span></code>
-            and SSL_CTX_add_extra_chain_cert.
+            Calls <code class="computeroutput">SSL_CTX_use_certificate</code> and SSL_CTX_add_extra_chain_cert.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

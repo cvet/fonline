@@ -23,10 +23,10 @@
 <p>
             Set the password callback.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">PasswordCallback</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <span class="identifier">set_password_callback</span><span class="special">(</span>
-    <span class="identifier">PasswordCallback</span> <span class="identifier">callback</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename PasswordCallback&gt;
+void set_password_callback(
+    PasswordCallback callback);
 </pre>
 <p>
             This function is used to specify a callback function to obtain password
@@ -45,10 +45,10 @@
                   The function object to be used for obtaining the password. The
                   function signature of the handler must be:
 </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">password_callback</span><span class="special">(</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">max_length</span><span class="special">,</span>  <span class="comment">// The maximum size for a password.</span>
-  <span class="identifier">password_purpose</span> <span class="identifier">purpose</span> <span class="comment">// Whether password is for reading or writing.</span>
-<span class="special">);</span>
+<pre class="programlisting">std::string password_callback(
+  std::size_t max_length,  // The maximum size for a password.
+  password_purpose purpose // Whether password is for reading or writing.
+);
 </pre>
 <p>
                   The return value of the callback is a string containing the password.
@@ -74,13 +74,12 @@
             <span><a name="asio.reference.ssl__context.set_password_callback.overload1.remarks"></a></span><a class="link" href="overload1.html#asio.reference.ssl__context.set_password_callback.overload1.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_CTX_set_default_passwd_cb</span></code>.
+            Calls <code class="computeroutput">SSL_CTX_set_default_passwd_cb</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

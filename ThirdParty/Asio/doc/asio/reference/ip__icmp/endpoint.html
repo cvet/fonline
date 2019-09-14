@@ -20,10 +20,10 @@
 <a name="asio.reference.ip__icmp.endpoint"></a><a class="link" href="endpoint.html" title="ip::icmp::endpoint">ip::icmp::endpoint</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm126720"></a> 
+          <a class="indexterm" name="asio.indexterm.ip__icmp.endpoint"></a> 
 The type of a ICMP endpoint.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_endpoint</span><span class="special">&lt;</span> <span class="identifier">icmp</span> <span class="special">&gt;</span> <span class="identifier">endpoint</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_endpoint&lt; icmp &gt; endpoint;
 </pre>
 <h6>
 <a name="asio.reference.ip__icmp.endpoint.h0"></a>
@@ -105,9 +105,7 @@ The type of a ICMP endpoint.
                 </td>
 <td>
                   <p>
-                    Get the IP address associated with the endpoint.
-                  </p>
-                  <p>
+                    Get the IP address associated with the endpoint. <br> <span class="silver"> &#8212;</span><br>
                     Set the IP address associated with the endpoint.
                   </p>
                 </td>
@@ -120,21 +118,15 @@ The type of a ICMP endpoint.
                 </td>
 <td>
                   <p>
-                    Default constructor.
-                  </p>
-                  <p>
-                    Construct an endpoint using a port number, specified in the host's
-                    byte order. The IP address will be the any address (i.e. INADDR_ANY
-                    or in6addr_any). This constructor would typically be used for
-                    accepting new connections.
-                  </p>
-                  <p>
-                    Construct an endpoint using a port number and an IP address.
-                    This constructor may be used for accepting connections on a specific
-                    interface or for making a connection to a remote endpoint.
-                  </p>
-                  <p>
-                    Copy constructor.
+                    Default constructor. <br> <span class="silver"> &#8212;</span><br> Construct an endpoint using
+                    a port number, specified in the host's byte order. The IP address
+                    will be the any address (i.e. INADDR_ANY or in6addr_any). This
+                    constructor would typically be used for accepting new connections.
+                    <br> <span class="silver"> &#8212;</span><br> Construct an endpoint using a port number and an
+                    IP address. This constructor may be used for accepting connections
+                    on a specific interface or for making a connection to a remote
+                    endpoint. <br> <span class="silver"> &#8212;</span><br> Copy constructor. <br> <span class="silver"> &#8212;</span><br> Move
+                    constructor.
                   </p>
                 </td>
 </tr>
@@ -170,7 +162,8 @@ The type of a ICMP endpoint.
                 </td>
 <td>
                   <p>
-                    Assign from another endpoint.
+                    Assign from another endpoint. <br> <span class="silver"> &#8212;</span><br> Move-assign from
+                    another endpoint.
                   </p>
                 </td>
 </tr>
@@ -183,11 +176,9 @@ The type of a ICMP endpoint.
 <td>
                   <p>
                     Get the port associated with the endpoint. The port number is
-                    always in the host's byte order.
-                  </p>
-                  <p>
-                    Set the port associated with the endpoint. The port number is
-                    always in the host's byte order.
+                    always in the host's byte order. <br> <span class="silver"> &#8212;</span><br> Set the port associated
+                    with the endpoint. The port number is always in the host's byte
+                    order.
                   </p>
                 </td>
 </tr>
@@ -360,7 +351,7 @@ The type of a ICMP endpoint.
 </tr></tbody>
 </table></div>
 <p>
-          The <a class="link" href="../ip__basic_endpoint.html" title="ip::basic_endpoint"><code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">basic_endpoint</span></code></a>
+          The <a class="link" href="../ip__basic_endpoint.html" title="ip::basic_endpoint"><code class="computeroutput">ip::basic_endpoint</code></a>
           class template describes an endpoint that may be associated with a particular
           socket.
         </p>
@@ -388,8 +379,7 @@ The type of a ICMP endpoint.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

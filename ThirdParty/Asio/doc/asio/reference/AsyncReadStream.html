@@ -21,16 +21,17 @@
       read stream requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">a</span></code> denotes
-        an asynchronous read stream object, <code class="computeroutput"><span class="identifier">mb</span></code>
-        denotes an object satisfying <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements">mutable
-        buffer sequence</a> requirements, and <code class="computeroutput"><span class="identifier">h</span></code>
-        denotes an object satisfying <a class="link" href="ReadHandler.html" title="Read handler requirements">read
-        handler</a> requirements.
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">AsyncReadStream</code> requirements
+        if it satisfies the requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">a</code> denotes a value of type <code class="computeroutput">X</code>,
+        <code class="computeroutput">mb</code> denotes a (possibly const) value satisfying the <a class="link" href="MutableBufferSequence.html" title="Mutable buffer sequence requirements"><code class="computeroutput">MutableBufferSequence</code></a>
+        requirements, and <code class="computeroutput">t</code> is a completion token.
       </p>
 <div class="table">
-<a name="asio.reference.AsyncReadStream.t0"></a><p class="title"><b>Table&#160;3.&#160;Buffer-oriented asynchronous read stream requirements</b></p>
-<div class="table-contents"><table class="table" summary="Buffer-oriented asynchronous read stream requirements">
+<a name="asio.reference.AsyncReadStream.t0"></a><p class="title"><b>Table&#160;4.&#160;AsyncReadStream requirements</b></p>
+<div class="table-contents"><table class="table" summary="AsyncReadStream requirements">
 <colgroup>
 <col>
 <col>
@@ -57,58 +58,52 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_io_service</span><span class="special">();</span></code>
+                  <code class="computeroutput">a.get_executor()</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">io_service</span><span class="special">&amp;</span></code>
+                  A type satisfying the <a class="link" href="Executor1.html" title="Executor requirements">Executor
+                  requirements</a>.
                 </p>
               </td>
 <td>
                 <p>
-                  Returns the <code class="computeroutput"><span class="identifier">io_service</span></code>
-                  object through which the <code class="computeroutput"><span class="identifier">async_read_some</span></code>
-                  handler <code class="computeroutput"><span class="identifier">h</span></code> will
-                  be invoked.
+                  Returns the associated I/O executor.
                 </p>
               </td>
 </tr>
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">async_read_some</span><span class="special">(</span><span class="identifier">mb</span><span class="special">,</span>
-                  <span class="identifier">h</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.async_read_some(mb,t)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">void</span></code>
+                  The return type is determined according to the requirements for
+                  an <a class="link" href="asynchronous_operations.html" title="Requirements on asynchronous operations">asynchronous
+                  operation</a>.
                 </p>
               </td>
 <td>
                 <p>
-                  Initiates an asynchronous operation to read one or more bytes of
-                  data from the stream <code class="computeroutput"><span class="identifier">a</span></code>.
-                  The operation is performed via the <code class="computeroutput"><span class="identifier">io_service</span></code>
-                  object <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_io_service</span><span class="special">()</span></code>
-                  and behaves according to <a class="link" href="asynchronous_operations.html" title="Requirements on asynchronous operations">asynchronous
-                  operation</a> requirements.<br> <br> The mutable buffer
-                  sequence <code class="computeroutput"><span class="identifier">mb</span></code> specifies
-                  memory where the data should be placed. The <code class="computeroutput"><span class="identifier">async_read_some</span></code>
-                  operation shall always fill a buffer in the sequence completely
-                  before proceeding to the next.<br> <br> The implementation
-                  shall maintain one or more copies of <code class="computeroutput"><span class="identifier">mb</span></code>
-                  until such time as the read operation no longer requires access
-                  to the memory specified by the buffers in the sequence. The program
-                  must ensure the memory is valid until:<br> <br> &#8212; the last copy
-                  of <code class="computeroutput"><span class="identifier">mb</span></code> is destroyed,
-                  or<br> <br> &#8212; the handler for the asynchronous read operation
-                  is invoked,<br> <br> whichever comes first.<br> <br> If
-                  the total size of all buffers in the sequence <code class="computeroutput"><span class="identifier">mb</span></code>
-                  is <code class="computeroutput"><span class="number">0</span></code>, the asynchronous
-                  read operation shall complete immediately and pass <code class="computeroutput"><span class="number">0</span></code> as the argument to the handler
-                  that specifies the number of bytes read.
+                  Meets the requirements for a <a class="link" href="read_write_operations.html" title="Requirements on read and write operations">read
+                  operation</a> and an <a class="link" href="asynchronous_operations.html" title="Requirements on asynchronous operations">asynchronous
+                  operation</a> with completion signature <code class="computeroutput">void(error_code
+                  ec, size_t n)</code>.<br> <br> If <code class="computeroutput">buffer_size(mb) &gt;
+                  0</code>, initiates an asynchronous operation to read one or more
+                  bytes of data from the stream <code class="computeroutput">a</code> into the buffer sequence
+                  <code class="computeroutput">mb</code>. If successful, <code class="computeroutput">ec</code> is set such that
+                  <code class="computeroutput">!ec</code> is <code class="computeroutput">true</code>, and <code class="computeroutput">n</code> is the
+                  number of bytes read. If an error occurred, <code class="computeroutput">ec</code> is
+                  set such that <code class="computeroutput">!!ec</code> is <code class="computeroutput">true</code>, and <code class="computeroutput">n</code>
+                  is 0. If all data has been read from the stream, and the stream
+                  performed an orderly shutdown, <code class="computeroutput">ec</code> is <code class="computeroutput">stream_errc::eof</code>
+                  and <code class="computeroutput">n</code> is 0.<br> <br> If <code class="computeroutput">buffer_size(mb)
+                  == 0</code>, the operation completes immediately. <code class="computeroutput">ec</code>
+                  is set such that <code class="computeroutput">!ec</code> is <code class="computeroutput">true</code>, and <code class="computeroutput">n</code>
+                  is 0.
                 </p>
               </td>
 </tr>
@@ -119,8 +114,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

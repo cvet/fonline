@@ -20,13 +20,14 @@
 <a name="asio.reference.buffers_end"></a><a class="link" href="buffers_end.html" title="buffers_end">buffers_end</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm102789"></a> 
-Construct an iterator representing the end of the buffers' data.
+        <a class="indexterm" name="asio.indexterm.buffers_end"></a> 
+Construct an iterator representing the
+        end of the buffers' data.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">BufferSequence</span><span class="special">&gt;</span>
-<span class="identifier">buffers_iterator</span><span class="special">&lt;</span> <span class="identifier">BufferSequence</span> <span class="special">&gt;</span> <span class="identifier">buffers_end</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">BufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename BufferSequence&gt;
+buffers_iterator&lt; BufferSequence &gt; buffers_end(
+    const BufferSequence &amp; buffers);
 </pre>
 <h5>
 <a name="asio.reference.buffers_end.h0"></a>
@@ -41,8 +42,7 @@ Construct an iterator representing the end of the buffers' data.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

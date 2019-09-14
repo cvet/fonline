@@ -8,6 +8,7 @@
 #include "EntityManager.h"
 #include "ProtoManager.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 MapManager MapMngr;
 

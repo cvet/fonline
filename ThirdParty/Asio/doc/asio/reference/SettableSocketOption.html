@@ -21,13 +21,18 @@
       option requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">X</span></code> denotes
-        a socket option class, <code class="computeroutput"><span class="identifier">a</span></code>
-        denotes a value of <code class="computeroutput"><span class="identifier">X</span></code>, <code class="computeroutput"><span class="identifier">p</span></code> denotes a value that meets the <a class="link" href="Protocol.html" title="Protocol requirements">protocol</a> requirements, and <code class="computeroutput"><span class="identifier">u</span></code> denotes an identifier.
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">SettableSocketOption</code> requirements
+        if it satisfies the requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">a</code> denotes a (possibly const) value of type
+        <code class="computeroutput">X</code>, <code class="computeroutput">p</code> denotes a (possibly const) value that meets
+        the <a class="link" href="Protocol.html" title="Protocol requirements"><code class="computeroutput">Protocol</code></a>
+        requirements, and <code class="computeroutput">u</code> denotes an identifier.
       </p>
 <div class="table">
-<a name="asio.reference.SettableSocketOption.t0"></a><p class="title"><b>Table&#160;27.&#160;SettableSocketOption requirements</b></p>
-<div class="table-contents"><table class="table" summary="SettableSocketOption requirements">
+<a name="asio.reference.SettableSocketOption.t0"></a><p class="title"><b>Table&#160;25.&#160;SettableSocketOption requirements for extensible implementations</b></p>
+<div class="table-contents"><table class="table" summary="SettableSocketOption requirements for extensible implementations">
 <colgroup>
 <col>
 <col>
@@ -54,12 +59,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">level</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.level(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">int</span></code>
+                  <code class="computeroutput">int</code>
                 </p>
               </td>
 <td>
@@ -73,12 +78,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">name</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.name(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">int</span></code>
+                  <code class="computeroutput">int</code>
                 </p>
               </td>
 <td>
@@ -92,14 +97,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">X</span><span class="special">&amp;</span> <span class="identifier">u</span>
-                  <span class="special">=</span> <span class="identifier">a</span><span class="special">;</span> <span class="identifier">u</span><span class="special">.</span><span class="identifier">data</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.data(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  a pointer, convertible to <code class="computeroutput"><span class="keyword">const</span>
-                  <span class="keyword">void</span><span class="special">*</span></code>
+                  <code class="computeroutput">const void*</code>
                 </p>
               </td>
 <td>
@@ -113,12 +116,12 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.size(p)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
+                  <code class="computeroutput">size_t</code>
                 </p>
               </td>
 <td>
@@ -137,8 +140,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -19,50 +19,49 @@
 <div class="titlepage"><div><div><h4 class="title">
 <a name="asio.tutorial.tuttimer3.src"></a><a class="link" href="src.html" title="Source listing for Timer.3">Source listing for Timer.3</a>
 </h4></div></div></div>
-<pre class="programlisting"><span class="comment">//</span>
-<span class="comment">// timer.cpp</span>
-<span class="comment">// ~~~~~~~~~</span>
-<span class="comment">//</span>
-<span class="comment">// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)</span>
-<span class="comment">//</span>
-<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See accompanying</span>
-<span class="comment">// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
-<span class="comment">//</span>
+<pre class="programlisting">//
+// timer.cpp
+// ~~~~~~~~~
+//
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">bind</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
+#include &lt;boost/bind.hpp&gt;
 
-<span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="comment">/*e*/</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span><span class="special">*</span> <span class="identifier">t</span><span class="special">,</span> <span class="keyword">int</span><span class="special">*</span> <span class="identifier">count</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">if</span> <span class="special">(*</span><span class="identifier">count</span> <span class="special">&lt;</span> <span class="number">5</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">count</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-    <span class="special">++(*</span><span class="identifier">count</span><span class="special">);</span>
+void print(const asio::error_code&amp; /*e*/,
+    asio::steady_timer* t, int* count)
+{
+  if (*count &lt; 5)
+  {
+    std::cout &lt;&lt; *count &lt;&lt; std::endl;
+    ++(*count);
 
-    <span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
-    <span class="identifier">t</span><span class="special">-&gt;</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">print</span><span class="special">,</span>
-          <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span> <span class="identifier">t</span><span class="special">,</span> <span class="identifier">count</span><span class="special">));</span>
-  <span class="special">}</span>
-<span class="special">}</span>
+    t-&gt;expires_at(t-&gt;expiry() + asio::chrono::seconds(1));
+    t-&gt;async_wait(boost::bind(print,
+          asio::placeholders::error, t, count));
+  }
+}
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
+int main()
+{
+  asio::io_context io;
 
-  <span class="keyword">int</span> <span class="identifier">count</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
-  <span class="identifier">t</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">print</span><span class="special">,</span>
-        <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">count</span><span class="special">));</span>
+  int count = 0;
+  asio::steady_timer t(io, asio::chrono::seconds(1));
+  t.async_wait(boost::bind(print,
+        asio::placeholders::error, &amp;t, &amp;count));
 
-  <span class="identifier">io</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+  io.run();
 
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Final count is "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  std::cout &lt;&lt; "Final count is " &lt;&lt; count &lt;&lt; std::endl;
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
           Return to <a class="link" href="../tuttimer3.html" title="Timer.3 - Binding arguments to a handler">Timer.3 - Binding arguments
@@ -71,8 +70,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

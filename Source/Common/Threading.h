@@ -19,9 +19,8 @@ public:
     Mutex( const Mutex& ) = delete;
     Mutex& operator=( const Mutex& ) = delete;
 
-    void Lock()    { mutex.lock(); }
-    bool TryLock() { return mutex.try_lock(); }
-    void Unlock()  { mutex.unlock(); }
+    void Lock()   { mutex.lock(); }
+    void Unlock() { mutex.unlock(); }
 };
 
 class MutexLocker
@@ -55,9 +54,9 @@ public:
     void Start( ThreadFunc func, const string& name, void* arg = nullptr );
     void Wait();
 
-    static size_t      GetCurrentId();
-    static void        SetCurrentName( const char* name );
-    static const char* GetCurrentName();
+    static size_t      GetId();
+    static void        SetName( const char* name );
+    static const char* GetName();
     static const char* FindName( size_t thread_id );
     static void        Sleep( uint ms );
 };
@@ -74,9 +73,8 @@ public:
     Mutex( const Mutex& ) = delete;
     Mutex& operator=( const Mutex& ) = delete;
 
-    void Lock()    {}
-    bool TryLock() {}
-    void Unlock()  {}
+    void Lock()   {}
+    void Unlock() {}
 };
 
 class MutexLocker
@@ -102,9 +100,9 @@ public:
     void Start( ThreadFunc func, const string& name, void* arg = nullptr );
     void Wait();
 
-    static size_t      GetCurrentId();
-    static void        SetCurrentName( const char* name );
-    static const char* GetCurrentName();
+    static size_t      GetId();
+    static void        SetName( const char* name );
+    static const char* GetName();
     static const char* FindName( size_t thread_id );
     static void        Sleep( uint ms );
 };
