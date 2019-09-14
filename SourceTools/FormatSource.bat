@@ -8,6 +8,8 @@ call :IndentFile ..\Source\Server, *.h
 call :IndentFile ..\Source\Server, *.cpp
 call :IndentFile ..\Source\Client, *.h
 call :IndentFile ..\Source\Client, *.cpp
+call :IndentFile ..\Source\Editor, *.h
+call :IndentFile ..\Source\Editor, *.cpp
 call :IndentFile ..\Source\Applications, *.cpp
 
 exit /B 0

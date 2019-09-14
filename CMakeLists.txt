@@ -43,11 +43,12 @@ set( BUILD_DEFINES "UNICODE" "_UNICODE" )
 
 # Architecture configuration
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	StatusMessage( "CPU architecture: 64-bit" )
 	set( ARCH_STR "x64" )
 else()
+	StatusMessage( "CPU architecture: 32-bit" )
 	set( ARCH_STR "x86" )
 endif()
-StatusMessage( "CPU architecture: ${ARCH_STR}" )
 
 if( WIN32 )
 	set( OS "Windows" )
@@ -622,6 +623,7 @@ set( COMMON_SOURCE
 	Source/Common/LineTracer.h Source/Common/LineTracer.cpp
 	Source/Common/Crypt.cpp Source/Common/Crypt.h
 	Source/Common/Settings.h Source/Common/Settings.cpp
+	Source/Common/Randomizer.h Source/Common/Randomizer.cpp
 )
 
 # Server source

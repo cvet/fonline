@@ -89,6 +89,7 @@
 # include <signal.h>
 #endif
 
+#include <memory>
 #include <algorithm>
 #include <functional>
 #include <math.h>
@@ -785,24 +786,6 @@ private:
     uint   width;
     uint   height;
     uint   widthBytes;
-};
-
-// Mersenne Twist pseudorandom number generator
-class Randomizer
-{
-    static const int periodN = 624;
-    static const int periodM = 397;
-    unsigned int     rndNumbers[ periodN ];
-    int              rndIter;
-
-    void GenerateState();
-
-public:
-    Randomizer();
-    Randomizer( unsigned int seed );
-    void Generate();
-    void Generate( unsigned int seed );
-    int  Random( int minimum, int maximum );
 };
 
 // Flex rect

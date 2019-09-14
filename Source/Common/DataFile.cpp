@@ -15,9 +15,9 @@
 /* Folder/Dat/Zip loaders                                               */
 /************************************************************************/
 
-typedef vector< pair< string, string > > FileNameVec;
+using FileNameVec = vector< pair< string, string > >;
 
-static void GetFileNames_( const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result )
+static void GetFileNamesGeneric( const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
     string path_fixed = _str( path ).lower().normalizePathSlashes();
     if( !path_fixed.empty() && path_fixed.back() != '/' )
@@ -39,7 +39,7 @@ static void GetFileNames_( const FileNameVec& fnames, const string& path, bool i
     }
 }
 
-class FolderFile: public DataFile
+class FolderFile: public IDataFile
 {
 private:
     struct FileEntry
@@ -67,7 +67,7 @@ public:
     void          GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result );
 };
 
-class FalloutDatFile: public DataFile
+class FalloutDatFile: public IDataFile
 {
 private:
     typedef map< string, uchar* > IndexMap;
@@ -89,10 +89,10 @@ public:
     const string& GetPackName() { return fileName; }
     bool          IsFilePresent( const string& path, const string& path_lower, uint& size, uint64& write_time );
     uchar*        OpenFile( const string& path, const string& path_lower, uint& size, uint64& write_time );
-    void          GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result ) { GetFileNames_( filesTreeNames, path, include_subdirs, ext, result ); }
+    void          GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result ) { GetFileNamesGeneric( filesTreeNames, path, include_subdirs, ext, result ); }
 };
 
-class ZipFile: public DataFile
+class ZipFile: public IDataFile
 {
 private:
     struct ZipFileInfo
@@ -117,10 +117,10 @@ public:
     const string& GetPackName() { return fileName; }
     bool          IsFilePresent( const string& path, const string& path_lower, uint& size, uint64& write_time );
     uchar*        OpenFile( const string& path, const string& path_lower, uint& size, uint64& write_time );
-    void          GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result ) { GetFileNames_( filesTreeNames, path, include_subdirs, ext, result ); }
+    void          GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result ) { GetFileNamesGeneric( filesTreeNames, path, include_subdirs, ext, result ); }
 };
 
-class BundleFile: public DataFile
+class BundleFile: public IDataFile
 {
 private:
     struct FileEntry
@@ -149,49 +149,45 @@ string BundleFile::packName = "$Bundle";
 /* Manage                                                               */
 /************************************************************************/
 
-DataFile* OpenDataFile( const string& path )
+DataFile Fabric::OpenDataFile( const string& path )
 {
     string ext = _str( path ).getFileExtension();
     if( path == "$Bundle" )
     {
-        BundleFile* bundle = new BundleFile();
+        auto bundle = std::make_shared< BundleFile >();
         if( !bundle->Init( path ) )
         {
             WriteLog( "Unable to open bundle data files.\n", path );
-            delete bundle;
             return nullptr;
         }
         return bundle;
     }
     else if( ext == "dat" )
     {
-        FalloutDatFile* dat = new FalloutDatFile();
+        auto dat = std::make_shared< FalloutDatFile >();
         if( !dat->Init( path ) )
         {
             WriteLog( "Unable to open DAT file '{}'.\n", path );
-            delete dat;
             return nullptr;
         }
         return dat;
     }
     else if( ext == "zip" || ext == "bos" || path[ 0 ] == '$' )
     {
-        ZipFile* zip = new ZipFile();
+        auto zip = std::make_shared< ZipFile >();
         if( !zip->Init( path ) )
         {
             WriteLog( "Unable to open ZIP file '{}'.\n", path );
-            delete zip;
             return nullptr;
         }
         return zip;
     }
     else
     {
-        FolderFile* folder = new FolderFile();
+        auto folder = std::make_shared< FolderFile >();
         if( !folder->Init( path ) )
         {
             WriteLog( "Unable to open folder '{}'.\n", path );
-            delete folder;
             return nullptr;
         }
         return folder;
@@ -314,7 +310,7 @@ void FolderFile::GetFileNames( const string& path, bool include_subdirs, const s
     #endif
 
     StrVec result_;
-    GetFileNames_( files_tree_names, path, include_subdirs, ext, result_ );
+    GetFileNamesGeneric( files_tree_names, path, include_subdirs, ext, result_ );
     if( !result_.empty() )
         result.insert( result.begin(), result_.begin(), result_.end() );
 }
@@ -928,7 +924,7 @@ uchar* BundleFile::OpenFile( const string& path, const string& path_lower, uint&
 void BundleFile::GetFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
     StrVec result_;
-    GetFileNames_( filesTreeNames, path, include_subdirs, ext, result_ );
+    GetFileNamesGeneric( filesTreeNames, path, include_subdirs, ext, result_ );
     if( !result_.empty() )
         result.insert( result.begin(), result_.begin(), result_.end() );
 }

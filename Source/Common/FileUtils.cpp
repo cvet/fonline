@@ -10,6 +10,51 @@
 DataFileVec File::dataFiles;
 string      File::writeDir;
 
+class DefaultFileUtils: public IFileUtils
+{
+public:
+    virtual bool InitDataFiles( const string& path ) override
+    {
+        return false;
+    }
+
+    bool LoadDataFile( const string& path, bool skip_inner = false )
+    {
+        return false;
+    }
+
+    virtual bool MakeDir( const string& path ) override
+    {
+        return false;
+    }
+
+    virtual bool Copy( const string& from_path, const string& to_path ) override
+    {
+        return false;
+    }
+
+    virtual bool Move( const string& from_path, const string& to_path ) override
+    {
+        return false;
+    }
+
+    virtual bool PatchFile( const string& path, const string& drom_str, const string& to_str ) override
+    {
+        return false;
+    }
+
+    virtual bool SystemCall( const string& path, const StrVec& args ) override
+    {
+        return false;
+    }
+};
+
+FileUtils Fabric::CreateDefaultFileUtils()
+{
+    return std::make_shared< DefaultFileUtils >();
+}
+
+
 File::File()
 {
     fileLoaded = false;
@@ -85,10 +130,10 @@ void File::InitDataFiles( const string& path, bool set_write_dir /* = true */ )
 
 bool File::LoadDataFile( const string& path, bool skip_inner /* = false */ )
 {
-    DataFile* data_file = nullptr;
+    DataFile data_file;
 
     // Find already loaded
-    for( DataFile* df : dataFiles )
+    for( DataFile df : dataFiles )
     {
         if( df->GetPackName() == path )
         {
@@ -100,10 +145,10 @@ bool File::LoadDataFile( const string& path, bool skip_inner /* = false */ )
     // Add new
     if( !data_file )
     {
-        data_file = OpenDataFile( path.c_str() );
+        data_file = Fabric::OpenDataFile( path );
         if( !data_file )
         {
-            WriteLog( "Load data '{}' fail.\n", path );
+            WriteLog( "Load data file '{}' failed.\n", path );
             return false;
         }
     }
@@ -135,8 +180,6 @@ bool File::LoadDataFile( const string& path, bool skip_inner /* = false */ )
 
 void File::ClearDataFiles()
 {
-    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
-        delete *it;
     dataFiles.clear();
 }
 
@@ -174,9 +217,8 @@ bool File::LoadFile( const string& path, bool no_read /* = false */ )
         string data_path_lower = _str( data_path ).lower();
 
         // Find file in every data file
-        for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+        for( DataFile dat : dataFiles )
         {
-            DataFile* dat = *it;
             if( !no_read )
             {
                 uint   file_size;
@@ -770,8 +812,8 @@ void File::GetFolderFileNames( const string& path, bool include_subdirs, const s
 
 void File::GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
-    for( DataFile* dataFile : dataFiles )
-        dataFile->GetFileNames( _str( path ).formatPath(), include_subdirs, ext, result );
+    for( DataFile df : dataFiles )
+        df->GetFileNames( _str( path ).formatPath(), include_subdirs, ext, result );
 }
 
 FileCollection::FileCollection( const string& ext, const string& fixed_dir /* = "" */ )

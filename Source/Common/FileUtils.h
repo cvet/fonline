@@ -8,6 +8,25 @@
 # undef DeleteFile
 #endif
 
+class IFileUtils
+{
+public:
+    virtual bool InitDataFiles( const string& path ) = 0;
+    virtual bool MakeDir( const string& path ) = 0;
+    virtual bool Copy( const string& from_path, const string& to_path ) = 0;
+    virtual bool Move( const string& from_path, const string& to_path ) = 0;
+    virtual bool PatchFile( const string& path, const string& drom_str, const string& to_str ) = 0;
+    virtual bool SystemCall( const string& path, const StrVec& args ) = 0;
+    virtual ~IFileUtils() = default;
+};
+using FileUtils = std::shared_ptr< IFileUtils >;
+
+namespace Fabric
+{
+    FileUtils CreateDefaultFileUtils();
+}
+
+
 struct FindData
 {
     string FileName;

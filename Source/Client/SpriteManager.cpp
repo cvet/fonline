@@ -1284,7 +1284,7 @@ void SpriteManager::DumpAtlases()
 
 static void SavePNG( const string& fname, uchar* data, uint width, uint height )
 {
-    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined( FO_MAC )
+    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
     // Initialize stuff
     png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
     if( !png_ptr )
@@ -1343,11 +1343,11 @@ static void SavePNG( const string& fname, uchar* data, uint width, uint height )
     fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
     fm.SaveFile( fname );
 
-	#else
-	UNUSED_VARIABLE(fname);
-	UNUSED_VARIABLE(data);
-	UNUSED_VARIABLE(width);
-	UNUSED_VARIABLE(height);
+    #else
+    UNUSED_VARIABLE( fname );
+    UNUSED_VARIABLE( data );
+    UNUSED_VARIABLE( width );
+    UNUSED_VARIABLE( height );
     #endif
 }
 

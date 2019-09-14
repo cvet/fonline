@@ -13,6 +13,9 @@
 class SpriteManager;
 struct SpriteInfo;
 struct AnyFrames;
+class IDataFile;
+using DataFile = std::shared_ptr< IDataFile >;
+using DataFileVec = vector< DataFile >;
 
 struct LoadedAnim
 {
@@ -25,7 +28,7 @@ typedef map< hash, LoadedAnim > LoadedAnimMap;
 class ResourceManager
 {
 private:
-    PtrVec                    processedDats;
+    DataFileVec               processedDats;
     UIntStrMap                namesHash;
     LoadedAnimMap             loadedAnims;
     AnimMap                   critterFrames;
@@ -33,8 +36,6 @@ private:
     StrVec                    splashNames;
     StrMap                    soundNames;
 
-    void       AddNamesHash( StrVec& names );
-    void       RegisterCritterAnim( AnyFrames* anim, hash model_name, int anim1, int anim2, bool fallout_spr );
     AnyFrames* LoadFalloutAnim( hash model_name, uint anim1, uint anim2 );
     AnyFrames* LoadFalloutAnimSpr( hash model_name, uint anim1, uint anim2 );
 

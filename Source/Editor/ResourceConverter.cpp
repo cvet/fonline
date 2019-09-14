@@ -1264,13 +1264,12 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             string ext = _str( fname ).getFileExtension();
                             if( ext == "zip" || ext == "bos" || ext == "dat" )
                             {
-                                DataFile* inner = OpenDataFile( path );
+                                DataFile inner = Fabric::OpenDataFile( path );
                                 if( inner )
                                 {
                                     StrVec inner_files;
                                     inner->GetFileNames( "", true, "", inner_files );
                                     resource_names->insert( resource_names->end(), inner_files.begin(), inner_files.end() );
-                                    delete inner;
                                 }
                                 else
                                 {

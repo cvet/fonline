@@ -13,9 +13,8 @@ void ResourceManager::Refresh()
 {
     // Dat files, packed data
     DataFileVec& data_files = File::GetDataFiles();
-    for( auto it = data_files.begin(), end = data_files.end(); it != end; ++it )
+    for( DataFile data_file : data_files )
     {
-        DataFile* data_file = *it;
         if( std::find( processedDats.begin(), processedDats.end(), data_file ) == processedDats.end() )
         {
             // Hash all files
