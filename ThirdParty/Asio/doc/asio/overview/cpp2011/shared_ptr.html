@@ -20,20 +20,20 @@
 <a name="asio.overview.cpp2011.shared_ptr"></a><a class="link" href="shared_ptr.html" title="Shared Pointers">Shared Pointers</a>
 </h4></div></div></div>
 <p>
-          Asio's implementation can use <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">weak_ptr</span><span class="special">&lt;&gt;</span></code> in preference to the Boost equivalents.
+          Asio's implementation can use <code class="computeroutput">std::shared_ptr&lt;&gt;</code> and
+          <code class="computeroutput">std::weak_ptr&lt;&gt;</code> in preference to the Boost equivalents.
         </p>
 <p>
           Support for the standard smart pointers is automatically enabled for <code class="literal">g++</code>
           4.3 and later, when the <code class="literal">-std=c++0x</code> or <code class="literal">-std=gnu++0x</code>
           compiler options are used, as well as for Microsoft Visual C++ 10. It may
-          be disabled by defining <code class="computeroutput"><span class="identifier">ASIO_DISABLE_STD_SHARED_PTR</span></code>,
-          or explicitly enabled for other compilers by defining <code class="computeroutput"><span class="identifier">ASIO_HAS_STD_SHARED_PTR</span></code>.
+          be disabled by defining <code class="computeroutput">ASIO_DISABLE_STD_SHARED_PTR</code>, or explicitly
+          enabled for other compilers by defining <code class="computeroutput">ASIO_HAS_STD_SHARED_PTR</code>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

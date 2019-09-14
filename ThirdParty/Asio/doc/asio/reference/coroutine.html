@@ -22,7 +22,7 @@
 <p>
         Provides support for implementing stackless coroutines.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">coroutine</span>
+<pre class="programlisting">class coroutine
 </pre>
 <h5>
 <a name="asio.reference.coroutine.h0"></a>
@@ -98,32 +98,31 @@
 </tbody>
 </table></div>
 <p>
-        The <code class="computeroutput"><span class="identifier">coroutine</span></code> class may be
-        used to implement stackless coroutines. The class itself is used to store
-        the current state of the coroutine.
+        The <code class="computeroutput">coroutine</code> class may be used to implement stackless coroutines.
+        The class itself is used to store the current state of the coroutine.
       </p>
 <p>
         Coroutines are copy-constructible and assignable, and the space overhead
         is a single int. They can be used as a base class:
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">session</span> <span class="special">:</span> <span class="identifier">coroutine</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-<span class="special">};</span>
+<pre class="programlisting">class session : coroutine
+{
+  ...
+};
 </pre>
 <p>
         or as a data member:
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">session</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-  <span class="identifier">coroutine</span> <span class="identifier">coro_</span><span class="special">;</span>
-<span class="special">};</span>
+<pre class="programlisting">class session
+{
+  ...
+  coroutine coro_;
+};
 </pre>
 <p>
-        or even bound in as a function argument using lambdas or <code class="computeroutput"><span class="identifier">bind</span><span class="special">()</span></code>. The important thing is that as the application
-        maintains a copy of the object for as long as the coroutine must be kept
-        alive.
+        or even bound in as a function argument using lambdas or <code class="computeroutput">bind()</code>.
+        The important thing is that as the application maintains a copy of the object
+        for as long as the coroutine must be kept alive.
       </p>
 <h5>
 <a name="asio.reference.coroutine.h1"></a>
@@ -133,71 +132,67 @@
         A coroutine is used in conjunction with certain "pseudo-keywords",
         which are implemented as macros. These macros are defined by a header file:
       </p>
-<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">yield</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;asio/yield.hpp&gt;
 </pre>
 <p>
         and may conversely be undefined as follows:
       </p>
-<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">unyield</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;asio/unyield.hpp&gt;
 </pre>
 <p>
         <span class="bold"><strong>reenter</strong></span>
       </p>
 <p>
-        The <code class="computeroutput"><span class="identifier">reenter</span></code> macro is used
-        to define the body of a coroutine. It takes a single argument: a pointer
-        or reference to a coroutine object. For example, if the base class is a coroutine
-        object you may write:
+        The <code class="computeroutput">reenter</code> macro is used to define the body of a coroutine.
+        It takes a single argument: a pointer or reference to a coroutine object.
+        For example, if the base class is a coroutine object you may write:
       </p>
-<pre class="programlisting"><span class="identifier">reenter</span> <span class="special">(</span><span class="keyword">this</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="special">...</span> <span class="identifier">coroutine</span> <span class="identifier">body</span> <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">reenter (this)
+{
+  ... coroutine body ...
+}
 </pre>
 <p>
         and if a data member or other variable you can write:
       </p>
-<pre class="programlisting"><span class="identifier">reenter</span> <span class="special">(</span><span class="identifier">coro_</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="special">...</span> <span class="identifier">coroutine</span> <span class="identifier">body</span> <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">reenter (coro_)
+{
+  ... coroutine body ...
+}
 </pre>
 <p>
-        When <code class="computeroutput"><span class="identifier">reenter</span></code> is executed
-        at runtime, control jumps to the location of the last <code class="computeroutput"><span class="identifier">yield</span></code>
-        or <code class="computeroutput"><span class="identifier">fork</span></code>.
+        When <code class="computeroutput">reenter</code> is executed at runtime, control jumps to the location
+        of the last <code class="computeroutput">yield</code> or <code class="computeroutput">fork</code>.
       </p>
 <p>
         The coroutine body may also be a single statement, such as:
       </p>
-<pre class="programlisting"><span class="identifier">reenter</span> <span class="special">(</span><span class="keyword">this</span><span class="special">)</span> <span class="keyword">for</span> <span class="special">(;;)</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">reenter (this) for (;;)
+{
+  ...
+}
 </pre>
 <p>
-        <span class="bold"><strong>Limitation:</strong></span> The <code class="computeroutput"><span class="identifier">reenter</span></code>
-        macro is implemented using a switch. This means that you must take care when
-        using local variables within the coroutine body. The local variable is not
-        allowed in a position where reentering the coroutine could bypass the variable
-        definition.
+        <span class="bold"><strong>Limitation:</strong></span> The <code class="computeroutput">reenter</code> macro
+        is implemented using a switch. This means that you must take care when using
+        local variables within the coroutine body. The local variable is not allowed
+        in a position where reentering the coroutine could bypass the variable definition.
       </p>
 <p>
         <span class="bold"><strong>yield <span class="emphasis"><em>statement</em></span></strong></span>
       </p>
 <p>
-        This form of the <code class="computeroutput"><span class="identifier">yield</span></code> keyword
-        is often used with asynchronous operations:
+        This form of the <code class="computeroutput">yield</code> keyword is often used with asynchronous
+        operations:
       </p>
-<pre class="programlisting"><span class="identifier">yield</span> <span class="identifier">socket_</span><span class="special">-&gt;</span><span class="identifier">async_read_some</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">(*</span><span class="identifier">buffer_</span><span class="special">),</span> <span class="special">*</span><span class="keyword">this</span><span class="special">);</span>
+<pre class="programlisting">yield socket_-&gt;async_read_some(buffer(*buffer_), *this);
 </pre>
 <p>
         This divides into four logical steps:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">yield</span></code> saves the current
-            state of the coroutine.
+            <code class="computeroutput">yield</code> saves the current state of the coroutine.
           </li>
 <li class="listitem">
             The statement initiates the asynchronous operation.
@@ -211,56 +206,52 @@
 </ul></div>
 <p>
         When the asynchronous operation completes, the function object is invoked
-        and <code class="computeroutput"><span class="identifier">reenter</span></code> causes control
-        to transfer to the resume point. It is important to remember to carry the
-        coroutine state forward with the asynchronous operation. In the above snippet,
-        the current class is a function object object with a coroutine object as
-        base class or data member.
+        and <code class="computeroutput">reenter</code> causes control to transfer to the resume point.
+        It is important to remember to carry the coroutine state forward with the
+        asynchronous operation. In the above snippet, the current class is a function
+        object object with a coroutine object as base class or data member.
       </p>
 <p>
         The statement may also be a compound statement, and this permits us to define
         local variables with limited scope:
       </p>
-<pre class="programlisting"><span class="identifier">yield</span>
-<span class="special">{</span>
-  <span class="identifier">mutable_buffers_1</span> <span class="identifier">b</span> <span class="special">=</span> <span class="identifier">buffer</span><span class="special">(*</span><span class="identifier">buffer_</span><span class="special">);</span>
-  <span class="identifier">socket_</span><span class="special">-&gt;</span><span class="identifier">async_read_some</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="special">*</span><span class="keyword">this</span><span class="special">);</span>
-<span class="special">}</span>
+<pre class="programlisting">yield
+{
+  mutable_buffers_1 b = buffer(*buffer_);
+  socket_-&gt;async_read_some(b, *this);
+}
 </pre>
 <p>
         <span class="bold"><strong>yield return <span class="emphasis"><em>expression</em></span> ;</strong></span>
       </p>
 <p>
-        This form of <code class="computeroutput"><span class="identifier">yield</span></code> is often
-        used in generators or coroutine-based parsers. For example, the function
-        object:
+        This form of <code class="computeroutput">yield</code> is often used in generators or coroutine-based
+        parsers. For example, the function object:
       </p>
-<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">interleave</span> <span class="special">:</span> <span class="identifier">coroutine</span>
-<span class="special">{</span>
-  <span class="identifier">istream</span><span class="special">&amp;</span> <span class="identifier">is1</span><span class="special">;</span>
-  <span class="identifier">istream</span><span class="special">&amp;</span> <span class="identifier">is2</span><span class="special">;</span>
-  <span class="keyword">char</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">char</span> <span class="identifier">c</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">reenter</span> <span class="special">(</span><span class="keyword">this</span><span class="special">)</span> <span class="keyword">for</span> <span class="special">(;;)</span>
-    <span class="special">{</span>
-      <span class="identifier">yield</span> <span class="keyword">return</span> <span class="identifier">is1</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
-      <span class="identifier">yield</span> <span class="keyword">return</span> <span class="identifier">is2</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
-<span class="special">};</span>
+<pre class="programlisting">struct interleave : coroutine
+{
+  istream&amp; is1;
+  istream&amp; is2;
+  char operator()(char c)
+  {
+    reenter (this) for (;;)
+    {
+      yield return is1.get();
+      yield return is2.get();
+    }
+  }
+};
 </pre>
 <p>
         defines a trivial coroutine that interleaves the characters from two input
         streams.
       </p>
 <p>
-        This type of <code class="computeroutput"><span class="identifier">yield</span></code> divides
-        into three logical steps:
+        This type of <code class="computeroutput">yield</code> divides into three logical steps:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">yield</span></code> saves the current
-            state of the coroutine.
+            <code class="computeroutput">yield</code> saves the current state of the coroutine.
           </li>
 <li class="listitem">
             The resume point is defined immediately following the semicolon.
@@ -273,13 +264,11 @@
         <span class="bold"><strong>yield ;</strong></span>
       </p>
 <p>
-        This form of <code class="computeroutput"><span class="identifier">yield</span></code> is equivalent
-        to the following steps:
+        This form of <code class="computeroutput">yield</code> is equivalent to the following steps:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">yield</span></code> saves the current
-            state of the coroutine.
+            <code class="computeroutput">yield</code> saves the current state of the coroutine.
           </li>
 <li class="listitem">
             The resume point is defined immediately following the semicolon.
@@ -292,52 +281,50 @@
         This form might be applied when coroutines are used for cooperative threading
         and scheduling is explicitly managed. For example:
       </p>
-<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">task</span> <span class="special">:</span> <span class="identifier">coroutine</span>
-<span class="special">{</span>
-  <span class="special">...</span>
-  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()()</span>
-  <span class="special">{</span>
-    <span class="identifier">reenter</span> <span class="special">(</span><span class="keyword">this</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="keyword">while</span> <span class="special">(...</span> <span class="keyword">not</span> <span class="identifier">finished</span> <span class="special">...)</span>
-      <span class="special">{</span>
-        <span class="special">...</span> <span class="keyword">do</span> <span class="identifier">something</span> <span class="special">...</span>
-        <span class="identifier">yield</span><span class="special">;</span>
-        <span class="special">...</span> <span class="keyword">do</span> <span class="identifier">some</span> <span class="identifier">more</span> <span class="special">...</span>
-        <span class="identifier">yield</span><span class="special">;</span>
-      <span class="special">}</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
-  <span class="special">...</span>
-<span class="special">};</span>
-<span class="special">...</span>
-<span class="identifier">task</span> <span class="identifier">t1</span><span class="special">,</span> <span class="identifier">t2</span><span class="special">;</span>
-<span class="keyword">for</span> <span class="special">(;;)</span>
-<span class="special">{</span>
-  <span class="identifier">t1</span><span class="special">();</span>
-  <span class="identifier">t2</span><span class="special">();</span>
-<span class="special">}</span>
+<pre class="programlisting">struct task : coroutine
+{
+  ...
+  void operator()()
+  {
+    reenter (this)
+    {
+      while (... not finished ...)
+      {
+        ... do something ...
+        yield;
+        ... do some more ...
+        yield;
+      }
+    }
+  }
+  ...
+};
+...
+task t1, t2;
+for (;;)
+{
+  t1();
+  t2();
+}
 </pre>
 <p>
         <span class="bold"><strong>yield break ;</strong></span>
       </p>
 <p>
-        The final form of <code class="computeroutput"><span class="identifier">yield</span></code> is
-        used to explicitly terminate the coroutine. This form is comprised of two
-        steps:
+        The final form of <code class="computeroutput">yield</code> is used to explicitly terminate the
+        coroutine. This form is comprised of two steps:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">yield</span></code> sets the coroutine
-            state to indicate termination.
+            <code class="computeroutput">yield</code> sets the coroutine state to indicate termination.
           </li>
 <li class="listitem">
             Control is transferred to the end of the coroutine body.
           </li>
 </ul></div>
 <p>
-        Once terminated, calls to <code class="computeroutput"><span class="identifier">is_complete</span><span class="special">()</span></code> return true and the coroutine cannot be
-        reentered.
+        Once terminated, calls to <code class="computeroutput">is_complete()</code> return true and the
+        coroutine cannot be reentered.
       </p>
 <p>
         Note that a coroutine may also be implicitly terminated if the coroutine
@@ -348,30 +335,27 @@
         <span class="bold"><strong>fork <span class="emphasis"><em>statement</em></span></strong></span>
       </p>
 <p>
-        The <code class="computeroutput"><span class="identifier">fork</span></code> pseudo-keyword is
-        used when "forking" a coroutine, i.e. splitting it into two (or
-        more) copies. One use of <code class="computeroutput"><span class="identifier">fork</span></code>
+        The <code class="computeroutput">fork</code> pseudo-keyword is used when "forking" a coroutine,
+        i.e. splitting it into two (or more) copies. One use of <code class="computeroutput">fork</code>
         is in a server, where a new coroutine is created to handle each client connection:
       </p>
-<pre class="programlisting"><span class="identifier">reenter</span> <span class="special">(</span><span class="keyword">this</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">do</span>
-  <span class="special">{</span>
-    <span class="identifier">socket_</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="keyword">new</span> <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service_</span><span class="special">));</span>
-    <span class="identifier">yield</span> <span class="identifier">acceptor</span><span class="special">-&gt;</span><span class="identifier">async_accept</span><span class="special">(*</span><span class="identifier">socket_</span><span class="special">,</span> <span class="special">*</span><span class="keyword">this</span><span class="special">);</span>
-    <span class="identifier">fork</span> <span class="identifier">server</span><span class="special">(*</span><span class="keyword">this</span><span class="special">)();</span>
-  <span class="special">}</span> <span class="keyword">while</span> <span class="special">(</span><span class="identifier">is_parent</span><span class="special">());</span>
-  <span class="special">...</span> <span class="identifier">client</span><span class="special">-</span><span class="identifier">specific</span> <span class="identifier">handling</span> <span class="identifier">follows</span> <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">reenter (this)
+{
+  do
+  {
+    socket_.reset(new tcp::socket(io_context_));
+    yield acceptor-&gt;async_accept(*socket_, *this);
+    fork server(*this)();
+  } while (is_parent());
+  ... client-specific handling follows ...
+}
 </pre>
 <p>
-        The logical steps involved in a <code class="computeroutput"><span class="identifier">fork</span></code>
-        are:
+        The logical steps involved in a <code class="computeroutput">fork</code> are:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">fork</span></code> saves the current
-            state of the coroutine.
+            <code class="computeroutput">fork</code> saves the current state of the coroutine.
           </li>
 <li class="listitem">
             The statement creates a copy of the coroutine and either executes it
@@ -386,16 +370,15 @@
           </li>
 </ul></div>
 <p>
-        The functions <code class="computeroutput"><span class="identifier">is_parent</span><span class="special">()</span></code>
-        and <code class="computeroutput"><span class="identifier">is_child</span><span class="special">()</span></code>
-        can be used to differentiate between parent and child. You would use these
-        functions to alter subsequent control flow.
+        The functions <code class="computeroutput">is_parent()</code> and <code class="computeroutput">is_child()</code> can be
+        used to differentiate between parent and child. You would use these functions
+        to alter subsequent control flow.
       </p>
 <p>
-        Note that <code class="computeroutput"><span class="identifier">fork</span></code> doesn't do
-        the actual forking by itself. It is the application's responsibility to create
-        a clone of the coroutine and call it. The clone can be called immediately,
-        as above, or scheduled for delayed execution using something like <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">post</span><span class="special">()</span></code>.
+        Note that <code class="computeroutput">fork</code> doesn't do the actual forking by itself. It is
+        the application's responsibility to create a clone of the coroutine and call
+        it. The clone can be called immediately, as above, or scheduled for delayed
+        execution using something like <code class="computeroutput">io_context::post()</code>.
       </p>
 <h5>
 <a name="asio.reference.coroutine.h2"></a>
@@ -408,16 +391,13 @@
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">ASIO_CORO_REENTER</span></code> instead
-            of <code class="computeroutput"><span class="identifier">reenter</span></code>
+            <code class="computeroutput">ASIO_CORO_REENTER</code> instead of <code class="computeroutput">reenter</code>
           </li>
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">ASIO_CORO_YIELD</span></code> instead
-            of <code class="computeroutput"><span class="identifier">yield</span></code>
+            <code class="computeroutput">ASIO_CORO_YIELD</code> instead of <code class="computeroutput">yield</code>
           </li>
 <li class="listitem">
-            <code class="computeroutput"><span class="identifier">ASIO_CORO_FORK</span></code> instead
-            of <code class="computeroutput"><span class="identifier">fork</span></code>
+            <code class="computeroutput">ASIO_CORO_FORK</code> instead of <code class="computeroutput">fork</code>
           </li>
 </ul></div>
 <h5>
@@ -433,8 +413,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

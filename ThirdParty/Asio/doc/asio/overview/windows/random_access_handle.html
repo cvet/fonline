@@ -28,15 +28,13 @@
           For example, to perform asynchronous operations on a file the following
           object may be created:
         </p>
-<pre class="programlisting"><span class="identifier">HANDLE</span> <span class="identifier">handle</span> <span class="special">=</span> <span class="special">::</span><span class="identifier">CreateFile</span><span class="special">(...);</span>
-<span class="identifier">windows</span><span class="special">::</span><span class="identifier">random_access_handle</span> <span class="identifier">file</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">,</span> <span class="identifier">handle</span><span class="special">);</span>
+<pre class="programlisting">HANDLE handle = ::CreateFile(...);
+windows::random_access_handle file(my_io_context, handle);
 </pre>
 <p>
-          Data may be read from or written to the handle using one of the <code class="computeroutput"><span class="identifier">read_some_at</span><span class="special">()</span></code>,
-          <code class="computeroutput"><span class="identifier">async_read_some_at</span><span class="special">()</span></code>,
-          <code class="computeroutput"><span class="identifier">write_some_at</span><span class="special">()</span></code>
-          or <code class="computeroutput"><span class="identifier">async_write_some_at</span><span class="special">()</span></code> member functions. However, like the equivalent
-          functions (<code class="computeroutput"><span class="identifier">read_some</span><span class="special">()</span></code>,
+          Data may be read from or written to the handle using one of the <code class="computeroutput">read_some_at()</code>,
+          <code class="computeroutput">async_read_some_at()</code>, <code class="computeroutput">write_some_at()</code> or <code class="computeroutput">async_write_some_at()</code>
+          member functions. However, like the equivalent functions (<code class="computeroutput">read_some()</code>,
           etc.) on streams, these functions are only required to transfer one or
           more bytes in a single operation. Therefore free functions called <a class="link" href="../../reference/read_at.html" title="read_at">read_at()</a>, <a class="link" href="../../reference/async_read_at.html" title="async_read_at">async_read_at()</a>,
           <a class="link" href="../../reference/write_at.html" title="write_at">write_at()</a> and <a class="link" href="../../reference/async_write_at.html" title="async_write_at">async_write_at()</a>
@@ -48,26 +46,22 @@
           <span><a name="asio.overview.windows.random_access_handle.see_also"></a></span><a class="link" href="random_access_handle.html#asio.overview.windows.random_access_handle.see_also">See Also</a>
         </h6>
 <p>
-          <a class="link" href="../../reference/windows__random_access_handle.html" title="windows::random_access_handle">windows::random_access_handle</a>,
-          <a class="link" href="../../reference/windows__basic_random_access_handle.html" title="windows::basic_random_access_handle">windows::basic_random_access_handle</a>,
-          <a class="link" href="../../reference/windows__random_access_handle_service.html" title="windows::random_access_handle_service">windows::random_access_handle_service</a>.
+          <a class="link" href="../../reference/windows__random_access_handle.html" title="windows::random_access_handle">windows::random_access_handle</a>.
         </p>
 <h6>
 <a name="asio.overview.windows.random_access_handle.h1"></a>
           <span><a name="asio.overview.windows.random_access_handle.notes"></a></span><a class="link" href="random_access_handle.html#asio.overview.windows.random_access_handle.notes">Notes</a>
         </h6>
 <p>
-          Windows random-access <code class="computeroutput"><span class="identifier">HANDLE</span></code>s
-          are only available at compile time when targeting Windows and only when
-          the I/O completion port backend is used (which is the default). A program
-          may test for the macro <code class="computeroutput"><span class="identifier">ASIO_HAS_WINDOWS_RANDOM_ACCESS_HANDLE</span></code>
+          Windows random-access <code class="computeroutput">HANDLE</code>s are only available at compile
+          time when targeting Windows and only when the I/O completion port backend
+          is used (which is the default). A program may test for the macro <code class="computeroutput">ASIO_HAS_WINDOWS_RANDOM_ACCESS_HANDLE</code>
           to determine whether they are supported.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

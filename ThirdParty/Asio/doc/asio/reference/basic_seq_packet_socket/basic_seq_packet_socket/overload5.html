@@ -21,11 +21,11 @@
           (5 of 6 overloads)</a>
 </h5></div></div></div>
 <p>
-            Move-construct a <a class="link" href="../../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput"><span class="identifier">basic_seq_packet_socket</span></code></a> from
-            another.
+            Move-construct a <a class="link" href="../../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput">basic_seq_packet_socket</code></a>
+            from another.
           </p>
-<pre class="programlisting"><span class="identifier">basic_seq_packet_socket</span><span class="special">(</span>
-    <span class="identifier">basic_seq_packet_socket</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+<pre class="programlisting">basic_seq_packet_socket(
+    basic_seq_packet_socket &amp;&amp; other);
 </pre>
 <p>
             This constructor moves a sequenced packet socket from one object to another.
@@ -39,7 +39,7 @@
 <dl>
 <dt><span class="term">other</span></dt>
 <dd><p>
-                  The other <a class="link" href="../../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput"><span class="identifier">basic_seq_packet_socket</span></code></a>
+                  The other <a class="link" href="../../basic_seq_packet_socket.html" title="basic_seq_packet_socket"><code class="computeroutput">basic_seq_packet_socket</code></a>
                   object from which the move will occur.
                 </p></dd>
 </dl>
@@ -50,13 +50,13 @@
           </h6>
 <p>
             Following the move, the moved-from object is in the same state as if
-            constructed using the <code class="computeroutput"><span class="identifier">basic_seq_packet_socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">&amp;)</span> <span class="identifier">constructor</span></code>.
+            constructed using the <code class="computeroutput">basic_seq_packet_socket(io_context&amp;)
+            constructor</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

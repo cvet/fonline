@@ -19,31 +19,30 @@
 <div class="titlepage"><div><div><h4 class="title">
 <a name="asio.tutorial.tuttimer1.src"></a><a class="link" href="src.html" title="Source listing for Timer.1">Source listing for Timer.1</a>
 </h4></div></div></div>
-<pre class="programlisting"><span class="comment">//</span>
-<span class="comment">// timer.cpp</span>
-<span class="comment">// ~~~~~~~~~</span>
-<span class="comment">//</span>
-<span class="comment">// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)</span>
-<span class="comment">//</span>
-<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See accompanying</span>
-<span class="comment">// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
-<span class="comment">//</span>
+<pre class="programlisting">//
+// timer.cpp
+// ~~~~~~~~~
+//
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
+int main()
+{
+  asio::io_context io;
 
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">5</span><span class="special">));</span>
-  <span class="identifier">t</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+  asio::steady_timer t(io, asio::chrono::seconds(5));
+  t.wait();
 
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Hello, world!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  std::cout &lt;&lt; "Hello, world!" &lt;&lt; std::endl;
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
           Return to <a class="link" href="../tuttimer1.html" title="Timer.1 - Using a timer synchronously">Timer.1 - Using a timer
@@ -52,8 +51,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

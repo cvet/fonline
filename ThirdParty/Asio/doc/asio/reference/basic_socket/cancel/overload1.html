@@ -23,13 +23,12 @@
 <p>
             Cancel all asynchronous operations associated with the socket.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">cancel</span><span class="special">();</span>
+<pre class="programlisting">void cancel();
 </pre>
 <p>
             This function causes all outstanding asynchronous connect, send and receive
             operations to finish immediately, and the handlers for cancelled operations
-            will be passed the <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span></code>
-            error.
+            will be passed the <code class="computeroutput">asio::error::operation_aborted</code> error.
           </p>
 <h6>
 <a name="asio.reference.basic_socket.cancel.overload1.h0"></a>
@@ -49,8 +48,7 @@
             <span><a name="asio.reference.basic_socket.cancel.overload1.remarks"></a></span><a class="link" href="overload1.html#asio.reference.basic_socket.cancel.overload1.remarks">Remarks</a>
           </h6>
 <p>
-            Calls to <code class="computeroutput"><span class="identifier">cancel</span><span class="special">()</span></code>
-            will always fail with <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_not_supported</span></code>
+            Calls to <code class="computeroutput">cancel()</code> will always fail with <code class="computeroutput">asio::error::operation_not_supported</code>
             when run on Windows XP, Windows Server 2003, and earlier versions of
             Windows, unless ASIO_ENABLE_CANCELIO is defined. However, the CancelIo
             function has two issues that should be considered before enabling its
@@ -76,9 +74,8 @@
                 Disable asio's I/O completion port backend by defining ASIO_DISABLE_IOCP.
               </li>
 <li class="listitem">
-                Use the <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>
-                function to simultaneously cancel the outstanding operations and
-                close the socket.
+                Use the <code class="computeroutput">close()</code> function to simultaneously cancel the
+                outstanding operations and close the socket.
               </li>
 </ul></div>
 <p>
@@ -89,8 +86,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -26,7 +26,7 @@
 <p>
             Gets the non-blocking mode of the socket.
           </p>
-<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">non_blocking</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">bool non_blocking() const;
 </pre>
 <h6>
 <a name="asio.reference.basic_raw_socket.non_blocking.overload1.h0"></a>
@@ -34,10 +34,9 @@
             Value</a>
           </h6>
 <p>
-            <code class="computeroutput"><span class="keyword">true</span></code> if the socket's synchronous
-            operations will fail with <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">would_block</span></code>
-            if they are unable to perform the requested operation immediately. If
-            <code class="computeroutput"><span class="keyword">false</span></code>, synchronous operations
+            <code class="computeroutput">true</code> if the socket's synchronous operations will fail with
+            <code class="computeroutput">asio::error::would_block</code> if they are unable to perform the
+            requested operation immediately. If <code class="computeroutput">false</code>, synchronous operations
             will block until complete.
           </p>
 <h6>
@@ -46,13 +45,12 @@
           </h6>
 <p>
             The non-blocking mode has no effect on the behaviour of asynchronous
-            operations. Asynchronous operations will never fail with the error <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">would_block</span></code>.
+            operations. Asynchronous operations will never fail with the error <code class="computeroutput">asio::error::would_block</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -7,7 +7,7 @@
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
 <link rel="prev" href="read_at/overload8.html" title="read_at (8 of 8 overloads)">
-<link rel="next" href="read_until/overload1.html" title="read_until (1 of 8 overloads)">
+<link rel="next" href="read_until/overload1.html" title="read_until (1 of 16 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
@@ -20,89 +20,192 @@
 <a name="asio.reference.read_until"></a><a class="link" href="read_until.html" title="read_until">read_until</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm147198"></a> 
-Read data into a streambuf until it contains a delimiter, matches
-        a regular expression, or a function object indicates a match.
+        <a class="indexterm" name="asio.indexterm.read_until"></a> 
+The <code class="computeroutput">read_until</code> function is
+        a composed operation that reads data into a dynamic buffer sequence, or into
+        a streambuf, until it contains a delimiter, matches a regular expression,
+        or a function object indicates a match.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload1.html" title="read_until (1 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">char</span> <span class="identifier">delim</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload1.html" title="read_until (1 of 8 overloads)">more...</a></em></span>
+<p>
+        Read data into a dynamic buffer sequence until it contains a specified delimiter.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload1.html" title="read_until (1 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    char delim);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload1.html" title="read_until (1 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload2.html" title="read_until (2 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">char</span> <span class="identifier">delim</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload2.html" title="read_until (2 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload2.html" title="read_until (2 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    char delim,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload2.html" title="read_until (2 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload3.html" title="read_until (3 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">delim</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload3.html" title="read_until (3 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload3.html" title="read_until (3 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    string_view delim);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload3.html" title="read_until (3 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload4.html" title="read_until (4 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">delim</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload4.html" title="read_until (4 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload4.html" title="read_until (4 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    string_view delim,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload4.html" title="read_until (4 of 16 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Read data into a dynamic buffer sequence until some part of the data it contains
+        matches a regular expression.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload5.html" title="read_until (5 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    const boost::regex &amp; expr);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload5.html" title="read_until (5 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload5.html" title="read_until (5 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">regex</span> <span class="special">&amp;</span> <span class="identifier">expr</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload5.html" title="read_until (5 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t <a class="link" href="read_until/overload6.html" title="read_until (6 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    const boost::regex &amp; expr,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload6.html" title="read_until (6 of 16 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Read data into a dynamic buffer sequence until a function object indicates
+        a match.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename MatchCondition&gt;
+std::size_t <a class="link" href="read_until/overload7.html" title="read_until (7 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    MatchCondition match_condition,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload7.html" title="read_until (7 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload6.html" title="read_until (6 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">regex</span> <span class="special">&amp;</span> <span class="identifier">expr</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload6.html" title="read_until (6 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename MatchCondition&gt;
+std::size_t <a class="link" href="read_until/overload8.html" title="read_until (8 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    MatchCondition match_condition,
+    asio::error_code &amp; ec,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload8.html" title="read_until (8 of 16 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Read data into a streambuf until it contains a specified delimiter.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload9.html" title="read_until (9 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    char delim);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload9.html" title="read_until (9 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">MatchCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload7.html" title="read_until (7 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">MatchCondition</span> <span class="identifier">match_condition</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_match_condition</span><span class="special">&lt;</span> <span class="identifier">MatchCondition</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">*</span>  <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload7.html" title="read_until (7 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload10.html" title="read_until (10 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    char delim,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload10.html" title="read_until (10 of 16 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">MatchCondition</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="read_until/overload8.html" title="read_until (8 of 8 overloads)">read_until</a><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">MatchCondition</span> <span class="identifier">match_condition</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_match_condition</span><span class="special">&lt;</span> <span class="identifier">MatchCondition</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">*</span>  <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload8.html" title="read_until (8 of 8 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload11.html" title="read_until (11 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    string_view delim);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload11.html" title="read_until (11 of 16 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload12.html" title="read_until (12 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    string_view delim,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload12.html" title="read_until (12 of 16 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Read data into a streambuf until some part of the data it contains matches
+        a regular expression.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload13.html" title="read_until (13 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    const boost::regex &amp; expr);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload13.html" title="read_until (13 of 16 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator&gt;
+std::size_t <a class="link" href="read_until/overload14.html" title="read_until (14 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    const boost::regex &amp; expr,
+    asio::error_code &amp; ec);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload14.html" title="read_until (14 of 16 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Read data into a streambuf until a function object indicates a match.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator,
+    typename MatchCondition&gt;
+std::size_t <a class="link" href="read_until/overload15.html" title="read_until (15 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    MatchCondition match_condition,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload15.html" title="read_until (15 of 16 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator,
+    typename MatchCondition&gt;
+std::size_t <a class="link" href="read_until/overload16.html" title="read_until (16 of 16 overloads)">read_until</a>(
+    SyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    MatchCondition match_condition,
+    asio::error_code &amp; ec,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="read_until/overload16.html" title="read_until (16 of 16 overloads)">more...</a></em></span>
 </pre>
 <h5>
 <a name="asio.reference.read_until.h0"></a>
@@ -117,8 +220,7 @@ Read data into a streambuf until it contains a delimiter, matches
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -7,7 +7,7 @@
 <link rel="home" href="../../../index.html" title="Asio">
 <link rel="up" href="../basic_io_object.html" title="basic_io_object">
 <link rel="prev" href="../basic_io_object.html" title="basic_io_object">
-<link rel="next" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 2 overloads)">
+<link rel="next" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 3 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../asio.png"></td></tr></table>
@@ -20,25 +20,35 @@
 <a name="asio.reference.basic_io_object.basic_io_object"></a><a class="link" href="basic_io_object.html" title="basic_io_object::basic_io_object">basic_io_object::basic_io_object</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm42638"></a> 
-Construct a <a class="link" href="../basic_io_object.html" title="basic_io_object"><code class="computeroutput"><span class="identifier">basic_io_object</span></code></a>.
+          <a class="indexterm" name="asio.indexterm.basic_io_object.basic_io_object"></a> 
+Construct
+          a <a class="link" href="../basic_io_object.html" title="basic_io_object"><code class="computeroutput">basic_io_object</code></a>.
         </p>
-<pre class="programlisting"><span class="keyword">explicit</span> <a class="link" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 2 overloads)">basic_io_object</a><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="special">&amp;</span> <span class="identifier">io_service</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 2 overloads)">more...</a></em></span>
+<pre class="programlisting">explicit <a class="link" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 3 overloads)">basic_io_object</a>(
+    asio::io_context &amp; io_context);
+  <span class="emphasis"><em>&#187; <a class="link" href="basic_io_object/overload1.html" title="basic_io_object::basic_io_object (1 of 3 overloads)">more...</a></em></span>
 </pre>
 <p>
-          Move-construct a <a class="link" href="../basic_io_object.html" title="basic_io_object"><code class="computeroutput"><span class="identifier">basic_io_object</span></code></a>.
+          Move-construct a <a class="link" href="../basic_io_object.html" title="basic_io_object"><code class="computeroutput">basic_io_object</code></a>.
         </p>
-<pre class="programlisting"><a class="link" href="basic_io_object/overload2.html" title="basic_io_object::basic_io_object (2 of 2 overloads)">basic_io_object</a><span class="special">(</span>
-    <span class="identifier">basic_io_object</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="basic_io_object/overload2.html" title="basic_io_object::basic_io_object (2 of 2 overloads)">more...</a></em></span>
+<pre class="programlisting"><a class="link" href="basic_io_object/overload2.html" title="basic_io_object::basic_io_object (2 of 3 overloads)">basic_io_object</a>(
+    basic_io_object &amp;&amp; other);
+  <span class="emphasis"><em>&#187; <a class="link" href="basic_io_object/overload2.html" title="basic_io_object::basic_io_object (2 of 3 overloads)">more...</a></em></span>
+</pre>
+<p>
+          Perform a converting move-construction of a <a class="link" href="../basic_io_object.html" title="basic_io_object"><code class="computeroutput">basic_io_object</code></a>.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../IoObjectService.html" title="I/O object service requirements">IoObjectService1</a>&gt;
+<a class="link" href="basic_io_object/overload3.html" title="basic_io_object::basic_io_object (3 of 3 overloads)">basic_io_object</a>(
+    IoObjectService1 &amp; other_service,
+    typename IoObjectService1::implementation_type &amp; other_implementation);
+  <span class="emphasis"><em>&#187; <a class="link" href="basic_io_object/overload3.html" title="basic_io_object::basic_io_object (3 of 3 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

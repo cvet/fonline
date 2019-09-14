@@ -23,8 +23,8 @@
 <p>
             Clear options on the context.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">clear_options</span><span class="special">(</span>
-    <span class="identifier">options</span> <span class="identifier">o</span><span class="special">);</span>
+<pre class="programlisting">void clear_options(
+    options o);
 </pre>
 <p>
             This function may be used to configure the SSL options used by the context.
@@ -39,8 +39,9 @@
 <dt><span class="term">o</span></dt>
 <dd><p>
                   A bitmask of options. The available option values are defined in
-                  the <a class="link" href="../../ssl__context_base.html" title="ssl::context_base"><code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context_base</span></code></a> class. The
-                  specified options, if currently enabled on the context, are cleared.
+                  the <a class="link" href="../../ssl__context_base.html" title="ssl::context_base"><code class="computeroutput">ssl::context_base</code></a>
+                  class. The specified options, if currently enabled on the context,
+                  are cleared.
                 </p></dd>
 </dl>
 </div>
@@ -62,13 +63,12 @@
             <span><a name="asio.reference.ssl__context.clear_options.overload1.remarks"></a></span><a class="link" href="overload1.html#asio.reference.ssl__context.clear_options.overload1.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_CTX_clear_options</span></code>.
+            Calls <code class="computeroutput">SSL_CTX_clear_options</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

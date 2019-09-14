@@ -34,30 +34,30 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
-            This means that the number of file descriptors in the process cannot
-            be permitted to exceed <code class="computeroutput"><span class="identifier">FD_SETSIZE</span></code>.
+            Uses <code class="computeroutput">select</code> for demultiplexing. This means that the number
+            of file descriptors in the process cannot be permitted to exceed <code class="computeroutput">FD_SETSIZE</code>.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h1"></a>
@@ -68,28 +68,29 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">epoll</span></code> for demultiplexing.
+            Uses <code class="computeroutput">epoll</code> for demultiplexing.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">epoll</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">epoll</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h2"></a>
@@ -107,20 +108,21 @@
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
             Demultiplexing using <code class="literal">/dev/poll</code> is performed in one
-            of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            of the threads that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h3"></a>
@@ -131,30 +133,30 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
-            This means that the number of file descriptors in the process cannot
-            be permitted to exceed <code class="computeroutput"><span class="identifier">FD_SETSIZE</span></code>.
+            Uses <code class="computeroutput">select</code> for demultiplexing. This means that the number
+            of file descriptors in the process cannot be permitted to exceed <code class="computeroutput">FD_SETSIZE</code>.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h4"></a>
@@ -165,28 +167,29 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">kqueue</span></code> for demultiplexing.
+            Uses <code class="computeroutput">kqueue</code> for demultiplexing.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">kqueue</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">kqueue</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h5"></a>
@@ -196,28 +199,29 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">kqueue</span></code> for demultiplexing.
+            Uses <code class="computeroutput">kqueue</code> for demultiplexing.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">kqueue</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">kqueue</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h6"></a>
@@ -227,30 +231,30 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
-            This means that the number of file descriptors in the process cannot
-            be permitted to exceed <code class="computeroutput"><span class="identifier">FD_SETSIZE</span></code>.
+            Uses <code class="computeroutput">select</code> for demultiplexing. This means that the number
+            of file descriptors in the process cannot be permitted to exceed <code class="computeroutput">FD_SETSIZE</code>.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h7"></a>
@@ -260,30 +264,30 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
-            This means that the number of file descriptors in the process cannot
-            be permitted to exceed <code class="computeroutput"><span class="identifier">FD_SETSIZE</span></code>.
+            Uses <code class="computeroutput">select</code> for demultiplexing. This means that the number
+            of file descriptors in the process cannot be permitted to exceed <code class="computeroutput">FD_SETSIZE</code>.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h8"></a>
@@ -293,30 +297,30 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
-            This means that the number of file descriptors in the process cannot
-            be permitted to exceed <code class="computeroutput"><span class="identifier">FD_SETSIZE</span></code>.
+            Uses <code class="computeroutput">select</code> for demultiplexing. This means that the number
+            of file descriptors in the process cannot be permitted to exceed <code class="computeroutput">FD_SETSIZE</code>.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
         Scatter-Gather:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            At most <code class="computeroutput"><span class="identifier">min</span><span class="special">(</span><span class="number">64</span><span class="special">,</span><span class="identifier">IOV_MAX</span><span class="special">)</span></code> buffers may be transferred in a single
-            operation.
+            At most <code class="computeroutput">min(64,IOV_MAX)</code> buffers may be transferred in a
+            single operation.
           </li></ul></div>
 <h5>
 <a name="asio.overview.implementation.h9"></a>
@@ -327,20 +331,21 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for demultiplexing.
+            Uses <code class="computeroutput">select</code> for demultiplexing.
           </li></ul></div>
 <p>
         Threads:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            Demultiplexing using <code class="computeroutput"><span class="identifier">select</span></code>
-            is performed in one of the threads that calls <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            Demultiplexing using <code class="computeroutput">select</code> is performed in one of the threads
+            that calls <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
@@ -363,8 +368,7 @@
             operations except for asynchronous connect.
           </li>
 <li class="listitem">
-            Uses <code class="computeroutput"><span class="identifier">select</span></code> for emulating
-            asynchronous connect.
+            Uses <code class="computeroutput">select</code> for emulating asynchronous connect.
           </li>
 </ul></div>
 <p>
@@ -373,24 +377,22 @@
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
             Demultiplexing using I/O completion ports is performed in all threads
-            that call <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run_one</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">poll_one</span><span class="special">()</span></code>.
+            that call <code class="computeroutput">io_context::run()</code>, <code class="computeroutput">io_context::run_one()</code>,
+            <code class="computeroutput">io_context::poll()</code> or <code class="computeroutput">io_context::poll_one()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to trigger timers. This thread is created on construction of
-            the first <code class="computeroutput"><span class="identifier">deadline_timer</span></code>
-            or <code class="computeroutput"><span class="identifier">deadline_timer_service</span></code>
-            objects.
+            An additional thread per <code class="computeroutput">io_context</code> is used to trigger timers.
+            This thread is created on construction of the first <code class="computeroutput">basic_deadline_timer</code>
+            or <code class="computeroutput">basic_waitable_timer</code> objects.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used for the <code class="computeroutput"><span class="identifier">select</span></code>
-            demultiplexing. This thread is created on the first call to <code class="computeroutput"><span class="identifier">async_connect</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used for the <code class="computeroutput">select</code>
+            demultiplexing. This thread is created on the first call to <code class="computeroutput">async_connect()</code>.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to emulate asynchronous host resolution. This thread is created
-            on the first call to either <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">async_resolve</span><span class="special">()</span></code>.
+            An additional thread per <code class="computeroutput">io_context</code> is used to emulate asynchronous
+            host resolution. This thread is created on the first call to either
+            <code class="computeroutput">ip::tcp::resolver::async_resolve()</code> or <code class="computeroutput">ip::udp::resolver::async_resolve()</code>.
           </li>
 </ul></div>
 <p>
@@ -417,9 +419,8 @@
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
-            The core facilities such as the <code class="computeroutput"><span class="identifier">io_service</span></code>,
-            <code class="computeroutput"><span class="identifier">strand</span></code>, buffers, composed
-            operations, timers, etc., should all work as normal.
+            The core facilities such as the <code class="computeroutput">io_context</code>, <code class="computeroutput">strand</code>,
+            buffers, composed operations, timers, etc., should all work as normal.
           </li>
 <li class="listitem">
             For sockets, only client-side TCP is supported.
@@ -428,16 +429,14 @@
             Explicit binding of a client-side TCP socket is not supported.
           </li>
 <li class="listitem">
-            The <code class="computeroutput"><span class="identifier">cancel</span><span class="special">()</span></code>
-            function is not supported for sockets. Asynchronous operations may only
-            be cancelled by closing the socket.
+            The <code class="computeroutput">cancel()</code> function is not supported for sockets. Asynchronous
+            operations may only be cancelled by closing the socket.
           </li>
 <li class="listitem">
-            Operations that use <code class="computeroutput"><span class="identifier">null_buffers</span></code>
-            are not supported.
+            Operations that use <code class="computeroutput">null_buffers</code> are not supported.
           </li>
 <li class="listitem">
-            Only <code class="computeroutput"><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">no_delay</span></code> and <code class="computeroutput"><span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">keep_alive</span></code>
+            Only <code class="computeroutput">tcp::no_delay</code> and <code class="computeroutput">socket_base::keep_alive</code>
             options are supported.
           </li>
 <li class="listitem">
@@ -452,8 +451,8 @@
         Demultiplexing mechanism:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
-            Uses the <code class="computeroutput"><span class="identifier">Windows</span><span class="special">::</span><span class="identifier">Networking</span><span class="special">::</span><span class="identifier">Sockets</span><span class="special">::</span><span class="identifier">StreamSocket</span></code> class to implement asynchronous
-            TCP socket operations.
+            Uses the <code class="computeroutput">Windows::Networking::Sockets::StreamSocket</code> class
+            to implement asynchronous TCP socket operations.
           </li></ul></div>
 <p>
         Threads:
@@ -461,13 +460,11 @@
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
             Event completions are delivered to the Windows thread pool and posted
-            to the <code class="computeroutput"><span class="identifier">io_service</span></code> for
-            the handler to be executed.
+            to the <code class="computeroutput">io_context</code> for the handler to be executed.
           </li>
 <li class="listitem">
-            An additional thread per <code class="computeroutput"><span class="identifier">io_service</span></code>
-            is used to trigger timers. This thread is created on construction of
-            the first timer objects.
+            An additional thread per <code class="computeroutput">io_context</code> is used to trigger timers.
+            This thread is created on construction of the first timer objects.
           </li>
 </ul></div>
 <p>
@@ -479,8 +476,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

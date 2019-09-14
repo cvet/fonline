@@ -20,31 +20,31 @@
 <a name="asio.overview.posix.fork"></a><a class="link" href="fork.html" title="Fork">Fork</a>
 </h4></div></div></div>
 <p>
-          Asio supports programs that utilise the <code class="computeroutput"><span class="identifier">fork</span><span class="special">()</span></code> system call. Provided the program calls
-          <code class="computeroutput"><span class="identifier">io_service</span><span class="special">.</span><span class="identifier">notify_fork</span><span class="special">()</span></code>
-          at the appropriate times, Asio will recreate any internal file descriptors
-          (such as the "self-pipe trick" descriptor used for waking up
-          a reactor). The notification is usually performed as follows:
+          Asio supports programs that utilise the <code class="computeroutput">fork()</code> system call.
+          Provided the program calls <code class="computeroutput">io_context.notify_fork()</code> at the
+          appropriate times, Asio will recreate any internal file descriptors (such
+          as the "self-pipe trick" descriptor used for waking up a reactor).
+          The notification is usually performed as follows:
         </p>
-<pre class="programlisting"><span class="identifier">io_service_</span><span class="special">.</span><span class="identifier">notify_fork</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">fork_prepare</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">fork</span><span class="special">()</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="identifier">io_service_</span><span class="special">.</span><span class="identifier">notify_fork</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">fork_child</span><span class="special">);</span>
-  <span class="special">...</span>
-<span class="special">}</span>
-<span class="keyword">else</span>
-<span class="special">{</span>
-  <span class="identifier">io_service_</span><span class="special">.</span><span class="identifier">notify_fork</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">fork_parent</span><span class="special">);</span>
-  <span class="special">...</span>
-<span class="special">}</span>
+<pre class="programlisting">io_context_.notify_fork(asio::io_context::fork_prepare);
+if (fork() == 0)
+{
+  io_context_.notify_fork(asio::io_context::fork_child);
+  ...
+}
+else
+{
+  io_context_.notify_fork(asio::io_context::fork_parent);
+  ...
+}
 </pre>
 <p>
-          User-defined services can also be made fork-aware by overriding the <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">service</span><span class="special">::</span><span class="identifier">fork_service</span><span class="special">()</span></code>
+          User-defined services can also be made fork-aware by overriding the <code class="computeroutput">io_context::service::notify_fork()</code>
           virtual function.
         </p>
 <p>
           Note that any file descriptors accessible via Asio's public API (e.g. the
-          descriptors underlying <code class="computeroutput"><span class="identifier">basic_socket</span><span class="special">&lt;&gt;</span></code>, <code class="computeroutput"><span class="identifier">posix</span><span class="special">::</span><span class="identifier">stream_descriptor</span></code>,
+          descriptors underlying <code class="computeroutput">basic_socket&lt;&gt;</code>, <code class="computeroutput">posix::stream_descriptor</code>,
           etc.) are not altered during a fork. It is the program's responsibility
           to manage these as required.
         </p>
@@ -54,16 +54,15 @@
           Also</a>
         </h6>
 <p>
-          <a class="link" href="../../reference/io_service/notify_fork.html" title="io_service::notify_fork">io_service::notify_fork()</a>,
-          <a class="link" href="../../reference/io_service/fork_event.html" title="io_service::fork_event">io_service::fork_event</a>,
-          <a class="link" href="../../reference/io_service__service/fork_service.html" title="io_service::service::fork_service">io_service::service::fork_service()</a>,
+          <a class="link" href="../../reference/io_context/notify_fork.html" title="io_context::notify_fork">io_context::notify_fork()</a>,
+          <a class="link" href="../../reference/io_context/fork_event.html" title="io_context::fork_event">io_context::fork_event</a>,
+          <a class="link" href="../../reference/execution_context__service/notify_fork.html" title="execution_context::service::notify_fork">io_context::service::notify_fork()</a>,
           <a class="link" href="../../examples/cpp03_examples.html#asio.examples.cpp03_examples.fork">Fork examples</a>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

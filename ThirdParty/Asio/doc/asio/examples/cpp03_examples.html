@@ -101,9 +101,8 @@
       </h5>
 <p>
         These POSIX-specific examples show how to use Asio in conjunction with the
-        <code class="computeroutput"><span class="identifier">fork</span><span class="special">()</span></code>
-        system call. The first example illustrates the steps required to start a
-        daemon process:
+        <code class="computeroutput">fork()</code> system call. The first example illustrates the steps
+        required to start a daemon process:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
             <a href="../../../src/examples/cpp03/fork/daemon.cpp" target="_top">../src/examples/cpp03/fork/daemon.cpp</a>
@@ -203,7 +202,7 @@
         Server 2</a>
       </h5>
 <p>
-        An HTTP server using an io_service-per-CPU design.
+        An HTTP server using an io_context-per-CPU design.
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
@@ -216,10 +215,10 @@
             <a href="../../../src/examples/cpp03/http/server2/header.hpp" target="_top">../src/examples/cpp03/http/server2/header.hpp</a>
           </li>
 <li class="listitem">
-            <a href="../../../src/examples/cpp03/http/server2/io_service_pool.cpp" target="_top">../src/examples/cpp03/http/server2/io_service_pool.cpp</a>
+            <a href="../../../src/examples/cpp03/http/server2/io_context_pool.cpp" target="_top">../src/examples/cpp03/http/server2/io_context_pool.cpp</a>
           </li>
 <li class="listitem">
-            <a href="../../../src/examples/cpp03/http/server2/io_service_pool.hpp" target="_top">../src/examples/cpp03/http/server2/io_service_pool.hpp</a>
+            <a href="../../../src/examples/cpp03/http/server2/io_context_pool.hpp" target="_top">../src/examples/cpp03/http/server2/io_context_pool.hpp</a>
           </li>
 <li class="listitem">
             <a href="../../../src/examples/cpp03/http/server2/main.cpp" target="_top">../src/examples/cpp03/http/server2/main.cpp</a>
@@ -264,7 +263,7 @@
         Server 3</a>
       </h5>
 <p>
-        An HTTP server using a single io_service and a thread pool calling <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>.
+        An HTTP server using a single io_context and a thread pool calling <code class="computeroutput">io_context::run()</code>.
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
@@ -453,7 +452,7 @@
       </h5>
 <p>
         This example demonstrates how to integrate custom functionality (in this
-        case, for logging) into asio's <a class="link" href="../reference/io_service.html" title="io_service">io_service</a>,
+        case, for logging) into asio's <a class="link" href="../reference/io_context.html" title="io_context">io_context</a>,
         and how to use a custom service with <a class="link" href="../reference/basic_stream_socket.html" title="basic_stream_socket">basic_stream_socket&lt;&gt;</a>.
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
@@ -525,6 +524,9 @@
             <a href="../../../src/examples/cpp03/timeouts/blocking_tcp_client.cpp" target="_top">../src/examples/cpp03/timeouts/blocking_tcp_client.cpp</a>
           </li>
 <li class="listitem">
+            <a href="../../../src/examples/cpp03/timeouts/blocking_token_tcp_client.cpp" target="_top">../src/examples/cpp03/timeouts/blocking_token_tcp_client.cpp</a>
+          </li>
+<li class="listitem">
             <a href="../../../src/examples/cpp03/timeouts/blocking_udp_client.cpp" target="_top">../src/examples/cpp03/timeouts/blocking_udp_client.cpp</a>
           </li>
 <li class="listitem">
@@ -536,16 +538,12 @@
         <span><a name="asio.examples.cpp03_examples.timers"></a></span><a class="link" href="cpp03_examples.html#asio.examples.cpp03_examples.timers">Timers</a>
       </h5>
 <p>
-        Examples showing how to customise deadline_timer using different time types.
+        Example showing how to customise basic_waitable_timer using a different clock
+        type.
       </p>
-<div class="itemizedlist"><ul class="itemizedlist" type="disc">
-<li class="listitem">
-            <a href="../../../src/examples/cpp03/timers/tick_count_timer.cpp" target="_top">../src/examples/cpp03/timers/tick_count_timer.cpp</a>
-          </li>
-<li class="listitem">
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
             <a href="../../../src/examples/cpp03/timers/time_t_timer.cpp" target="_top">../src/examples/cpp03/timers/time_t_timer.cpp</a>
-          </li>
-</ul></div>
+          </li></ul></div>
 <h5>
 <a name="asio.examples.cpp03_examples.h20"></a>
         <span><a name="asio.examples.cpp03_examples.porthopper"></a></span><a class="link" href="cpp03_examples.html#asio.examples.cpp03_examples.porthopper">Porthopper</a>
@@ -600,6 +598,9 @@
             <a href="../../../src/examples/cpp03/local/connect_pair.cpp" target="_top">../src/examples/cpp03/local/connect_pair.cpp</a>
           </li>
 <li class="listitem">
+            <a href="../../../src/examples/cpp03/local/iostream_client.cpp" target="_top">../src/examples/cpp03/local/iostream_client.cpp</a>
+          </li>
+<li class="listitem">
             <a href="../../../src/examples/cpp03/local/stream_server.cpp" target="_top">../src/examples/cpp03/local/stream_server.cpp</a>
           </li>
 <li class="listitem">
@@ -611,7 +612,8 @@
         <span><a name="asio.examples.cpp03_examples.windows"></a></span><a class="link" href="cpp03_examples.html#asio.examples.cpp03_examples.windows">Windows</a>
       </h5>
 <p>
-        An example showing how to use the Windows-specific function <code class="computeroutput"><span class="identifier">TransmitFile</span></code> with Asio.
+        An example showing how to use the Windows-specific function <code class="computeroutput">TransmitFile</code>
+        with Asio.
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
             <a href="../../../src/examples/cpp03/windows/transmit_file.cpp" target="_top">../src/examples/cpp03/windows/transmit_file.cpp</a>
@@ -619,8 +621,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -23,13 +23,13 @@
 <p>
             Close the socket.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">close</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void close(
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function is used to close the socket. Any asynchronous send, receive
             or connect operations will be cancelled immediately, and will complete
-            with the <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span></code> error.
+            with the <code class="computeroutput">asio::error::operation_aborted</code> error.
           </p>
 <h6>
 <a name="asio.reference.basic_socket.close.overload2.h0"></a>
@@ -49,14 +49,14 @@
 <a name="asio.reference.basic_socket.close.overload2.h1"></a>
             <span><a name="asio.reference.basic_socket.close.overload2.example"></a></span><a class="link" href="overload2.html#asio.reference.basic_socket.close.overload2.example">Example</a>
           </h6>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="comment">// An error occurred.</span>
-<span class="special">}</span>
+<pre class="programlisting">asio::ip::tcp::socket socket(io_context);
+...
+asio::error_code ec;
+socket.close(ec);
+if (ec)
+{
+  // An error occurred.
+}
 </pre>
 <h6>
 <a name="asio.reference.basic_socket.close.overload2.h2"></a>
@@ -64,13 +64,12 @@
           </h6>
 <p>
             For portable behaviour with respect to graceful closure of a connected
-            socket, call <code class="computeroutput"><span class="identifier">shutdown</span><span class="special">()</span></code> before closing the socket.
+            socket, call <code class="computeroutput">shutdown()</code> before closing the socket.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -23,14 +23,15 @@
           <span class="emphasis"><em>Inherited from basic_socket.</em></span>
         </p>
 <p>
-          <a class="indexterm" name="idm43633"></a> 
-Start an asynchronous connect.
+          <a class="indexterm" name="asio.indexterm.basic_raw_socket.async_connect"></a> 
+Start
+          an asynchronous connect.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../ConnectHandler.html" title="Connect handler requirements">ConnectHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <span class="identifier">async_connect</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">peer_endpoint</span><span class="special">,</span>
-    <span class="identifier">ConnectHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../ConnectHandler.html" title="Connect handler requirements">ConnectHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> async_connect(
+    const endpoint_type &amp; peer_endpoint,
+    ConnectHandler &amp;&amp; handler);
 </pre>
 <p>
           This function is used to asynchronously connect a socket to the specified
@@ -60,15 +61,15 @@ Start an asynchronous connect.
                 Copies will be made of the handler as required. The function signature
                 of the handler must be:
 </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span>
-  <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span> <span class="comment">// Result of operation</span>
-<span class="special">);</span>
+<pre class="programlisting">void handler(
+  const asio::error_code&amp; error // Result of operation
+);
 </pre>
 <p>
                 Regardless of whether the asynchronous operation completes immediately
                 or not, the handler will not be invoked from within this function.
                 Invocation of the handler will be performed in a manner equivalent
-                to using <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">post</span><span class="special">()</span></code>.
+                to using <code class="computeroutput">asio::io_context::post()</code>.
               </p>
 </dd>
 </dl>
@@ -77,26 +78,25 @@ Start an asynchronous connect.
 <a name="asio.reference.basic_raw_socket.async_connect.h1"></a>
           <span><a name="asio.reference.basic_raw_socket.async_connect.example"></a></span><a class="link" href="async_connect.html#asio.reference.basic_raw_socket.async_connect.example">Example</a>
         </h6>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">connect_handler</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">error</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="comment">// Connect succeeded.</span>
-  <span class="special">}</span>
-<span class="special">}</span>
+<pre class="programlisting">void connect_handler(const asio::error_code&amp; error)
+{
+  if (!error)
+  {
+    // Connect succeeded.
+  }
+}
 
-<span class="special">...</span>
+...
 
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">endpoint</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">address</span><span class="special">::</span><span class="identifier">from_string</span><span class="special">(</span><span class="string">"1.2.3.4"</span><span class="special">),</span> <span class="number">12345</span><span class="special">);</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">async_connect</span><span class="special">(</span><span class="identifier">endpoint</span><span class="special">,</span> <span class="identifier">connect_handler</span><span class="special">);</span>
+asio::ip::tcp::socket socket(io_context);
+asio::ip::tcp::endpoint endpoint(
+    asio::ip::address::from_string("1.2.3.4"), 12345);
+socket.async_connect(endpoint, connect_handler);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

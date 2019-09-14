@@ -21,18 +21,18 @@
           (2 of 2 overloads)</a>
 </h5></div></div></div>
 <p>
-            Obtain an address object that represents the broadcast address that corresponds
-            to the specified address and netmask.
+            (Deprecated: Use <a class="link" href="../../ip__network_v4.html" title="ip::network_v4"><code class="computeroutput">ip::network_v4</code></a>
+            class.) Obtain an address object that represents the broadcast address
+            that corresponds to the specified address and netmask.
           </p>
-<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">address_v4</span> <span class="identifier">broadcast</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">address_v4</span> <span class="special">&amp;</span> <span class="identifier">addr</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">address_v4</span> <span class="special">&amp;</span> <span class="identifier">mask</span><span class="special">);</span>
+<pre class="programlisting">static address_v4 broadcast(
+    const address_v4 &amp; addr,
+    const address_v4 &amp; mask);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

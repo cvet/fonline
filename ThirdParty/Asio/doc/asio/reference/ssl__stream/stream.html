@@ -20,14 +20,14 @@
 <a name="asio.reference.ssl__stream.stream"></a><a class="link" href="stream.html" title="ssl::stream::stream">ssl::stream::stream</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm162000"></a> 
+          <a class="indexterm" name="asio.indexterm.ssl__stream.stream"></a> 
 Construct a stream.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Arg</span><span class="special">&gt;</span>
-<span class="identifier">stream</span><span class="special">(</span>
-    <span class="identifier">Arg</span> <span class="special">&amp;</span> <span class="identifier">arg</span><span class="special">,</span>
-    <span class="identifier">context</span> <span class="special">&amp;</span> <span class="identifier">ctx</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename Arg&gt;
+stream(
+    Arg &amp;&amp; arg,
+    context &amp; ctx);
 </pre>
 <p>
           This constructor creates a stream and initialises the underlying stream
@@ -53,8 +53,7 @@ Construct a stream.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

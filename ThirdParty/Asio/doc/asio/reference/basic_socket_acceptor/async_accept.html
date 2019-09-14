@@ -7,7 +7,7 @@
 <link rel="home" href="../../../index.html" title="Asio">
 <link rel="up" href="../basic_socket_acceptor.html" title="basic_socket_acceptor">
 <link rel="prev" href="assign/overload2.html" title="basic_socket_acceptor::assign (2 of 2 overloads)">
-<link rel="next" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 2 overloads)">
+<link rel="next" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 6 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../asio.png"></td></tr></table>
@@ -20,33 +20,59 @@
 <a name="asio.reference.basic_socket_acceptor.async_accept"></a><a class="link" href="async_accept.html" title="basic_socket_acceptor::async_accept">basic_socket_acceptor::async_accept</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm71341"></a> 
-Start an asynchronous accept.
+          <a class="indexterm" name="asio.indexterm.basic_socket_acceptor.async_accept"></a> 
+Start
+          an asynchronous accept.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../Protocol.html" title="Protocol requirements">Protocol1</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../AcceptHandler.html" title="Accept handler requirements">AcceptHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 2 overloads)">async_accept</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol1</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">peer</span><span class="special">,</span>
-    <span class="identifier">AcceptHandler</span> <span class="identifier">handler</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_convertible</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">Protocol1</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">*</span>  <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 2 overloads)">more...</a></em></span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Protocol.html" title="Protocol requirements">Protocol1</a>,
+    typename <a class="link" href="../AcceptHandler.html" title="Accept handler requirements">AcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 6 overloads)">async_accept</a>(
+    basic_socket&lt; Protocol1 &gt; &amp; peer,
+    AcceptHandler &amp;&amp; handler,
+    typename enable_if&lt; is_convertible&lt; Protocol, Protocol1 &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload1.html" title="basic_socket_acceptor::async_accept (1 of 6 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../SocketService.html" title="Socket service requirements">SocketService</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../AcceptHandler.html" title="Accept handler requirements">AcceptHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_accept/overload2.html" title="basic_socket_acceptor::async_accept (2 of 2 overloads)">async_accept</a><span class="special">(</span>
-    <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">protocol_type</span><span class="special">,</span> <span class="identifier">SocketService</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">peer</span><span class="special">,</span>
-    <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">peer_endpoint</span><span class="special">,</span>
-    <span class="identifier">AcceptHandler</span> <span class="identifier">handler</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload2.html" title="basic_socket_acceptor::async_accept (2 of 2 overloads)">more...</a></em></span>
+template&lt;
+    typename <a class="link" href="../AcceptHandler.html" title="Accept handler requirements">AcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload2.html" title="basic_socket_acceptor::async_accept (2 of 6 overloads)">async_accept</a>(
+    basic_socket&lt; protocol_type &gt; &amp; peer,
+    endpoint_type &amp; peer_endpoint,
+    AcceptHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload2.html" title="basic_socket_acceptor::async_accept (2 of 6 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="../MoveAcceptHandler.html" title="Move accept handler requirements">MoveAcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload3.html" title="basic_socket_acceptor::async_accept (3 of 6 overloads)">async_accept</a>(
+    MoveAcceptHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload3.html" title="basic_socket_acceptor::async_accept (3 of 6 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="../MoveAcceptHandler.html" title="Move accept handler requirements">MoveAcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload4.html" title="basic_socket_acceptor::async_accept (4 of 6 overloads)">async_accept</a>(
+    asio::io_context &amp; io_context,
+    MoveAcceptHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload4.html" title="basic_socket_acceptor::async_accept (4 of 6 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="../MoveAcceptHandler.html" title="Move accept handler requirements">MoveAcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload5.html" title="basic_socket_acceptor::async_accept (5 of 6 overloads)">async_accept</a>(
+    endpoint_type &amp; peer_endpoint,
+    MoveAcceptHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload5.html" title="basic_socket_acceptor::async_accept (5 of 6 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="../MoveAcceptHandler.html" title="Move accept handler requirements">MoveAcceptHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_accept/overload6.html" title="basic_socket_acceptor::async_accept (6 of 6 overloads)">async_accept</a>(
+    asio::io_context &amp; io_context,
+    endpoint_type &amp; peer_endpoint,
+    MoveAcceptHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_accept/overload6.html" title="basic_socket_acceptor::async_accept (6 of 6 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -22,9 +22,9 @@
 <p>
         Class used to specify that an asynchronous operation should return a future.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;&gt;</span>
-<span class="keyword">class</span> <span class="identifier">use_future_t</span>
+<pre class="programlisting">template&lt;
+    typename Allocator = std::allocator&lt;void&gt;&gt;
+class use_future_t
 </pre>
 <h5>
 <a name="asio.reference.use_future_t.h0"></a>
@@ -99,7 +99,31 @@
 <tr>
 <td>
                 <p>
+                  <a class="link" href="use_future_t/operator_lp__rp_.html" title="use_future_t::operator()"><span class="bold"><strong>operator()</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Wrap a function object in a packaged task.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <a class="link" href="use_future_t/operator_lb__rb_.html" title="use_future_t::operator[]"><span class="bold"><strong>operator[]</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use rebind().) Specify an alternate allocator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="use_future_t/rebind.html" title="use_future_t::rebind"><span class="bold"><strong>rebind</strong></span></a>
                 </p>
               </td>
 <td>
@@ -116,31 +140,29 @@
               </td>
 <td>
                 <p>
-                  Construct using default-constructed allocator.
-                </p>
-                <p>
-                  Construct using specified allocator.
+                  Construct using default-constructed allocator. <br> <span class="silver"> &#8212;</span><br> Construct
+                  using specified allocator.
                 </p>
               </td>
 </tr>
 </tbody>
 </table></div>
 <p>
-        The <a class="link" href="use_future_t.html" title="use_future_t"><code class="computeroutput"><span class="identifier">use_future_t</span></code></a>
+        The <a class="link" href="use_future_t.html" title="use_future_t"><code class="computeroutput">use_future_t</code></a>
         class is used to indicate that an asynchronous operation should return a
-        std::future object. A <a class="link" href="use_future_t.html" title="use_future_t"><code class="computeroutput"><span class="identifier">use_future_t</span></code></a> object may be passed
-        as a handler to an asynchronous operation, typically using the special value
-        <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">use_future</span></code>. For example:
+        std::future object. A <a class="link" href="use_future_t.html" title="use_future_t"><code class="computeroutput">use_future_t</code></a>
+        object may be passed as a handler to an asynchronous operation, typically
+        using the special value <code class="computeroutput">asio::use_future</code>. For example:
       </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;</span> <span class="identifier">my_future</span>
-  <span class="special">=</span> <span class="identifier">my_socket</span><span class="special">.</span><span class="identifier">async_read_some</span><span class="special">(</span><span class="identifier">my_buffer</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">use_future</span><span class="special">);</span>
+<pre class="programlisting">std::future&lt;std::size_t&gt; my_future
+  = my_socket.async_read_some(my_buffer, asio::use_future);
 </pre>
 <p>
         The initiating function (async_read_some in the above example) returns a
         future that will receive the result of the operation. If the operation completes
-        with an <a class="link" href="error_code.html" title="error_code"><code class="computeroutput"><span class="identifier">error_code</span></code></a>
-        indicating failure, it is converted into a <a class="link" href="system_error.html" title="system_error"><code class="computeroutput"><span class="identifier">system_error</span></code></a> and passed back to
-        the caller via the future.
+        with an <a class="link" href="error_code.html" title="error_code"><code class="computeroutput">error_code</code></a>
+        indicating failure, it is converted into a <a class="link" href="system_error.html" title="system_error"><code class="computeroutput">system_error</code></a>
+        and passed back to the caller via the future.
       </p>
 <h5>
 <a name="asio.reference.use_future_t.h2"></a>
@@ -150,13 +172,12 @@
         <span class="emphasis"><em>Header: </em></span><code class="literal">asio/use_future.hpp</code>
       </p>
 <p>
-        <span class="emphasis"><em>Convenience header: </em></span>None
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">asio.hpp</code>
       </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

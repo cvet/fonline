@@ -20,25 +20,25 @@
 <a name="asio.reference.ssl__context.use_certificate_file"></a><a class="link" href="use_certificate_file.html" title="ssl::context::use_certificate_file">ssl::context::use_certificate_file</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm158397"></a> 
-Use a certificate from a file.
+          <a class="indexterm" name="asio.indexterm.ssl__context.use_certificate_file"></a> 
+Use
+          a certificate from a file.
         </p>
-<pre class="programlisting"><span class="keyword">void</span> <a class="link" href="use_certificate_file/overload1.html" title="ssl::context::use_certificate_file (1 of 2 overloads)">use_certificate_file</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">filename</span><span class="special">,</span>
-    <span class="identifier">file_format</span> <span class="identifier">format</span><span class="special">);</span>
+<pre class="programlisting">void <a class="link" href="use_certificate_file/overload1.html" title="ssl::context::use_certificate_file (1 of 2 overloads)">use_certificate_file</a>(
+    const std::string &amp; filename,
+    file_format format);
   <span class="emphasis"><em>&#187; <a class="link" href="use_certificate_file/overload1.html" title="ssl::context::use_certificate_file (1 of 2 overloads)">more...</a></em></span>
 
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <a class="link" href="use_certificate_file/overload2.html" title="ssl::context::use_certificate_file (2 of 2 overloads)">use_certificate_file</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">filename</span><span class="special">,</span>
-    <span class="identifier">file_format</span> <span class="identifier">format</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+void <a class="link" href="use_certificate_file/overload2.html" title="ssl::context::use_certificate_file (2 of 2 overloads)">use_certificate_file</a>(
+    const std::string &amp; filename,
+    file_format format,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="use_certificate_file/overload2.html" title="ssl::context::use_certificate_file (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -22,14 +22,6 @@ AnyFrames*    SpriteManager::DummyAnimation = nullptr;
 
 #define FAST_FORMAT_SIGNATURE    ( 0xDEADBEEF ) // Must be really unique
 
-#ifdef FO_ANDROID
-PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
-PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
-PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
-PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
-PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
-#endif
-
 #ifdef FO_IOS
 SDL_Window* SprMngr_MainWindow;
 #endif

@@ -20,13 +20,13 @@
 <a name="asio.reference.transfer_exactly"></a><a class="link" href="transfer_exactly.html" title="transfer_exactly">transfer_exactly</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm166185"></a> 
-Return a completion condition function object that indicates
-        that a read or write operation should continue until an exact number of bytes
-        has been transferred, or until an error occurs.
+        <a class="indexterm" name="asio.indexterm.transfer_exactly"></a> 
+Return a completion condition
+        function object that indicates that a read or write operation should continue
+        until an exact number of bytes has been transferred, or until an error occurs.
       </p>
-<pre class="programlisting"><span class="identifier">unspecified</span> <span class="identifier">transfer_exactly</span><span class="special">(</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">);</span>
+<pre class="programlisting">unspecified transfer_exactly(
+    std::size_t size);
 </pre>
 <p>
         This function is used to create an object, of unspecified type, that meets
@@ -39,19 +39,19 @@ Return a completion condition function object that indicates
 <p>
         Reading until a buffer is full or contains exactly 64 bytes:
       </p>
-<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="number">128</span><span class="special">&gt;</span> <span class="identifier">buf</span><span class="special">;</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">read</span><span class="special">(</span>
-    <span class="identifier">sock</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">buf</span><span class="special">),</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">transfer_exactly</span><span class="special">(</span><span class="number">64</span><span class="special">),</span> <span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="comment">// An error occurred.</span>
-<span class="special">}</span>
-<span class="keyword">else</span>
-<span class="special">{</span>
-  <span class="comment">// n == 64</span>
-<span class="special">}</span>
+<pre class="programlisting">boost::array&lt;char, 128&gt; buf;
+asio::error_code ec;
+std::size_t n = asio::read(
+    sock, asio::buffer(buf),
+    asio::transfer_exactly(64), ec);
+if (ec)
+{
+  // An error occurred.
+}
+else
+{
+  // n == 64
+}
 </pre>
 <h5>
 <a name="asio.reference.transfer_exactly.h1"></a>
@@ -66,8 +66,7 @@ Return a completion condition function object that indicates
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

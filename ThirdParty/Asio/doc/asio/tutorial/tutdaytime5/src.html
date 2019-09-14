@@ -19,64 +19,60 @@
 <div class="titlepage"><div><div><h4 class="title">
 <a name="asio.tutorial.tutdaytime5.src"></a><a class="link" href="src.html" title="Source listing for Daytime.5">Source listing for Daytime.5</a>
 </h4></div></div></div>
-<pre class="programlisting"><span class="comment">//</span>
-<span class="comment">// server.cpp</span>
-<span class="comment">// ~~~~~~~~~~</span>
-<span class="comment">//</span>
-<span class="comment">// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)</span>
-<span class="comment">//</span>
-<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See accompanying</span>
-<span class="comment">// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
-<span class="comment">//</span>
+<pre class="programlisting">//
+// server.cpp
+// ~~~~~~~~~~
+//
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">ctime</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+#include &lt;ctime&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;boost/array.hpp&gt;
+#include &lt;asio.hpp&gt;
 
-<span class="keyword">using</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">;</span>
+using asio::ip::udp;
 
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">make_daytime_string</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">std</span><span class="special">;</span> <span class="comment">// For time_t, time and ctime;</span>
-  <span class="identifier">time_t</span> <span class="identifier">now</span> <span class="special">=</span> <span class="identifier">time</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
-  <span class="keyword">return</span> <span class="identifier">ctime</span><span class="special">(&amp;</span><span class="identifier">now</span><span class="special">);</span>
-<span class="special">}</span>
+std::string make_daytime_string()
+{
+  using namespace std; // For time_t, time and ctime;
+  time_t now = time(0);
+  return ctime(&amp;now);
+}
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="keyword">try</span>
-  <span class="special">{</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
+int main()
+{
+  try
+  {
+    asio::io_context io_context;
 
-    <span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span><span class="special">(</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">v4</span><span class="special">(),</span> <span class="number">13</span><span class="special">));</span>
+    udp::socket socket(io_context, udp::endpoint(udp::v4(), 13));
 
-    <span class="keyword">for</span> <span class="special">(;;)</span>
-    <span class="special">{</span>
-      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">recv_buf</span><span class="special">;</span>
-      <span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">remote_endpoint</span><span class="special">;</span>
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">error</span><span class="special">;</span>
-      <span class="identifier">socket</span><span class="special">.</span><span class="identifier">receive_from</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">recv_buf</span><span class="special">),</span>
-          <span class="identifier">remote_endpoint</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">error</span><span class="special">);</span>
+    for (;;)
+    {
+      boost::array&lt;char, 1&gt; recv_buf;
+      udp::endpoint remote_endpoint;
+      asio::error_code error;
+      socket.receive_from(asio::buffer(recv_buf), remote_endpoint);
 
-      <span class="keyword">if</span> <span class="special">(</span><span class="identifier">error</span> <span class="special">&amp;&amp;</span> <span class="identifier">error</span> <span class="special">!=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">message_size</span><span class="special">)</span>
-        <span class="keyword">throw</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">system_error</span><span class="special">(</span><span class="identifier">error</span><span class="special">);</span>
+      std::string message = make_daytime_string();
 
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message</span> <span class="special">=</span> <span class="identifier">make_daytime_string</span><span class="special">();</span>
+      asio::error_code ignored_error;
+      socket.send_to(asio::buffer(message),
+          remote_endpoint, 0, ignored_error);
+    }
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
 
-      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ignored_error</span><span class="special">;</span>
-      <span class="identifier">socket</span><span class="special">.</span><span class="identifier">send_to</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">message</span><span class="special">),</span>
-          <span class="identifier">remote_endpoint</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">ignored_error</span><span class="special">);</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
-  <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
-
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
           Return to <a class="link" href="../tutdaytime5.html" title="Daytime.5 - A synchronous UDP daytime server">Daytime.5 - A synchronous
@@ -85,8 +81,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

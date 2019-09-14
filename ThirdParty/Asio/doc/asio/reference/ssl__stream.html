@@ -22,11 +22,11 @@
 <p>
         Provides stream-oriented functionality using SSL.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <span class="identifier">Stream</span><span class="special">&gt;</span>
-<span class="keyword">class</span> <span class="identifier">stream</span> <span class="special">:</span>
-  <span class="keyword">public</span> <span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream_base</span><span class="special">,</span>
-  <span class="identifier">noncopyable</span>
+<pre class="programlisting">template&lt;
+    typename Stream&gt;
+class stream :
+  public ssl::stream_base,
+  noncopyable
 </pre>
 <h5>
 <a name="asio.reference.ssl__stream.h0"></a>
@@ -65,25 +65,24 @@
 <tr>
 <td>
                 <p>
-                  <a class="link" href="ssl__stream/handshake_type.html" title="ssl::stream::handshake_type"><span class="bold"><strong>handshake_type</strong></span></a>
+                  <a class="link" href="ssl__stream/executor_type.html" title="ssl::stream::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
-                  Different handshake types.
+                  The type of the executor associated with the object.
                 </p>
               </td>
 </tr>
 <tr>
 <td>
                 <p>
-                  <a class="link" href="ssl__stream/impl_type.html" title="ssl::stream::impl_type"><span class="bold"><strong>impl_type</strong></span></a>
+                  <a class="link" href="ssl__stream/handshake_type.html" title="ssl::stream::handshake_type"><span class="bold"><strong>handshake_type</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
-                  (Deprecated: Use native_handle_type.) The underlying implementation
-                  type.
+                  Different handshake types.
                 </p>
               </td>
 </tr>
@@ -199,12 +198,38 @@
 <tr>
 <td>
                 <p>
+                  <a class="link" href="ssl__stream/get_executor.html" title="ssl::stream::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="ssl__stream/get_io_context.html" title="ssl::stream::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <a class="link" href="ssl__stream/get_io_service.html" title="ssl::stream::get_io_service"><span class="bold"><strong>get_io_service</strong></span></a>
                 </p>
               </td>
 <td>
                 <p>
-                  Get the io_service associated with the object.
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
                 </p>
               </td>
 </tr>
@@ -217,19 +242,6 @@
 <td>
                 <p>
                   Perform SSL handshaking.
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <a class="link" href="ssl__stream/impl.html" title="ssl::stream::impl"><span class="bold"><strong>impl</strong></span></a>
-                </p>
-              </td>
-<td>
-                <p>
-                  (Deprecated: Use native_handle().) Get the underlying implementation
-                  in the native type.
                 </p>
               </td>
 </tr>
@@ -389,11 +401,12 @@
         <span><a name="asio.reference.ssl__stream.example"></a></span><a class="link" href="ssl__stream.html#asio.reference.ssl__stream.example">Example</a>
       </h5>
 <p>
-        To use the SSL stream template with an <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span></code>, you would write:
+        To use the SSL stream template with an <code class="computeroutput">ip::tcp::socket</code>, you
+        would write:
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">sslv23</span><span class="special">);</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">asio</span><span class="special">:</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">sock</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+<pre class="programlisting">asio::io_context io_context;
+asio::ssl::context ctx(asio::ssl::context::sslv23);
+asio::ssl::stream&lt;asio:ip::tcp::socket&gt; sock(io_context, ctx);
 </pre>
 <h5>
 <a name="asio.reference.ssl__stream.h4"></a>
@@ -408,8 +421,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

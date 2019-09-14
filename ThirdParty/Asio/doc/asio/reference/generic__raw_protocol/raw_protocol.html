@@ -20,29 +20,28 @@
 <a name="asio.reference.generic__raw_protocol.raw_protocol"></a><a class="link" href="raw_protocol.html" title="generic::raw_protocol::raw_protocol">generic::raw_protocol::raw_protocol</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm112867"></a> 
-Construct a protocol object for a specific
-          address family and protocol.
+          <a class="indexterm" name="asio.indexterm.generic__raw_protocol.raw_protocol"></a> 
+Construct
+          a protocol object for a specific address family and protocol.
         </p>
-<pre class="programlisting"><a class="link" href="raw_protocol/overload1.html" title="generic::raw_protocol::raw_protocol (1 of 2 overloads)">raw_protocol</a><span class="special">(</span>
-    <span class="keyword">int</span> <span class="identifier">address_family</span><span class="special">,</span>
-    <span class="keyword">int</span> <span class="identifier">socket_protocol</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="raw_protocol/overload1.html" title="generic::raw_protocol::raw_protocol (1 of 2 overloads)">raw_protocol</a>(
+    int address_family,
+    int socket_protocol);
   <span class="emphasis"><em>&#187; <a class="link" href="raw_protocol/overload1.html" title="generic::raw_protocol::raw_protocol (1 of 2 overloads)">more...</a></em></span>
 </pre>
 <p>
           Construct a generic protocol object from a specific protocol.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../Protocol.html" title="Protocol requirements">Protocol</a><span class="special">&gt;</span>
-<a class="link" href="raw_protocol/overload2.html" title="generic::raw_protocol::raw_protocol (2 of 2 overloads)">raw_protocol</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">Protocol</span> <span class="special">&amp;</span> <span class="identifier">source_protocol</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Protocol.html" title="Protocol requirements">Protocol</a>&gt;
+<a class="link" href="raw_protocol/overload2.html" title="generic::raw_protocol::raw_protocol (2 of 2 overloads)">raw_protocol</a>(
+    const Protocol &amp; source_protocol);
   <span class="emphasis"><em>&#187; <a class="link" href="raw_protocol/overload2.html" title="generic::raw_protocol::raw_protocol (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

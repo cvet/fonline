@@ -31,9 +31,10 @@
         </p>
 <p>
           Unsafe and error prone aspects of the BSD socket API not included. For
-          example, the use of <code class="computeroutput"><span class="keyword">int</span></code> to
-          represent all sockets lacks type safety. The socket representation in Asio
-          uses a distinct type for each protocol, e.g. for TCP one would use <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span></code>, and for UDP one uses <code class="computeroutput"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">socket</span></code>.
+          example, the use of <code class="computeroutput">int</code> to represent all sockets lacks type
+          safety. The socket representation in Asio uses a distinct type for each
+          protocol, e.g. for TCP one would use <code class="computeroutput">ip::tcp::socket</code>, and
+          for UDP one uses <code class="computeroutput">ip::udp::socket</code>.
         </p>
 <p>
           The following table shows the mapping between the BSD socket API and Asio:
@@ -59,8 +60,7 @@
 <tr>
 <td>
                   <p>
-                    socket descriptor - <code class="computeroutput"><span class="keyword">int</span></code>
-                    (POSIX) or <code class="computeroutput"><span class="identifier">SOCKET</span></code>
+                    socket descriptor - <code class="computeroutput">int</code> (POSIX) or <code class="computeroutput">SOCKET</code>
                     (Windows)
                   </p>
                 </td>
@@ -83,7 +83,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">in_addr</span></code>, <code class="computeroutput"><span class="identifier">in6_addr</span></code>
+                    <code class="computeroutput">in_addr</code>, <code class="computeroutput">in6_addr</code>
                   </p>
                 </td>
 <td>
@@ -97,8 +97,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">sockaddr_in</span></code>,
-                    <code class="computeroutput"><span class="identifier">sockaddr_in6</span></code>
+                    <code class="computeroutput">sockaddr_in</code>, <code class="computeroutput">sockaddr_in6</code>
                   </p>
                 </td>
 <td>
@@ -116,7 +115,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">accept</span><span class="special">()</span></code>
+                    <code class="computeroutput">accept()</code>
                   </p>
                 </td>
 <td>
@@ -131,7 +130,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">bind</span><span class="special">()</span></code>
+                    <code class="computeroutput">bind()</code>
                   </p>
                 </td>
 <td>
@@ -150,7 +149,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>
+                    <code class="computeroutput">close()</code>
                   </p>
                 </td>
 <td>
@@ -169,7 +168,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">connect</span><span class="special">()</span></code>
+                    <code class="computeroutput">connect()</code>
                   </p>
                 </td>
 <td>
@@ -187,8 +186,8 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">getaddrinfo</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">gethostbyaddr</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">gethostbyname</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">getnameinfo</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">getservbyname</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">getservbyport</span><span class="special">()</span></code>
+                    <code class="computeroutput">getaddrinfo()</code>, <code class="computeroutput">gethostbyaddr()</code>, <code class="computeroutput">gethostbyname()</code>,
+                    <code class="computeroutput">getnameinfo()</code>, <code class="computeroutput">getservbyname()</code>, <code class="computeroutput">getservbyport()</code>
                   </p>
                 </td>
 <td>
@@ -209,7 +208,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">gethostname</span><span class="special">()</span></code>
+                    <code class="computeroutput">gethostname()</code>
                   </p>
                 </td>
 <td>
@@ -221,7 +220,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">getpeername</span><span class="special">()</span></code>
+                    <code class="computeroutput">getpeername()</code>
                   </p>
                 </td>
 <td>
@@ -239,7 +238,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">getsockname</span><span class="special">()</span></code>
+                    <code class="computeroutput">getsockname()</code>
                   </p>
                 </td>
 <td>
@@ -258,7 +257,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">getsockopt</span><span class="special">()</span></code>
+                    <code class="computeroutput">getsockopt()</code>
                   </p>
                 </td>
 <td>
@@ -277,9 +276,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">inet_addr</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">inet_aton</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">inet_pton</span><span class="special">()</span></code>
+                    <code class="computeroutput">inet_addr()</code>, <code class="computeroutput">inet_aton()</code>, <code class="computeroutput">inet_pton()</code>
                   </p>
                 </td>
 <td>
@@ -293,8 +290,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">inet_ntoa</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">inet_ntop</span><span class="special">()</span></code>
+                    <code class="computeroutput">inet_ntoa()</code>, <code class="computeroutput">inet_ntop()</code>
                   </p>
                 </td>
 <td>
@@ -308,7 +304,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">ioctl</span><span class="special">()</span></code>
+                    <code class="computeroutput">ioctl()</code>
                   </p>
                 </td>
 <td>
@@ -326,7 +322,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">listen</span><span class="special">()</span></code>
+                    <code class="computeroutput">listen()</code>
                   </p>
                 </td>
 <td>
@@ -341,17 +337,15 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">poll</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">select</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">pselect</span><span class="special">()</span></code>
+                    <code class="computeroutput">poll()</code>, <code class="computeroutput">select()</code>, <code class="computeroutput">pselect()</code>
                   </p>
                 </td>
 <td>
                   <p>
-                    <a class="link" href="../../reference/io_service/run.html" title="io_service::run">io_service::run()</a>,
-                    <a class="link" href="../../reference/io_service/run_one.html" title="io_service::run_one">io_service::run_one()</a>,
-                    <a class="link" href="../../reference/io_service/poll.html" title="io_service::poll">io_service::poll()</a>,
-                    <a class="link" href="../../reference/io_service/poll_one.html" title="io_service::poll_one">io_service::poll_one()</a>
+                    <a class="link" href="../../reference/io_context/run.html" title="io_context::run">io_context::run()</a>,
+                    <a class="link" href="../../reference/io_context/run_one.html" title="io_context::run_one">io_context::run_one()</a>,
+                    <a class="link" href="../../reference/io_context/poll.html" title="io_context::poll">io_context::poll()</a>,
+                    <a class="link" href="../../reference/io_context/poll_one.html" title="io_context::poll_one">io_context::poll_one()</a>
                   </p>
                   <p>
                     Note: in conjunction with asynchronous operations.
@@ -361,9 +355,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">readv</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">recv</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">read</span><span class="special">()</span></code>
+                    <code class="computeroutput">readv()</code>, <code class="computeroutput">recv()</code>, <code class="computeroutput">read()</code>
                   </p>
                 </td>
 <td>
@@ -390,7 +382,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">recvfrom</span><span class="special">()</span></code>
+                    <code class="computeroutput">recvfrom()</code>
                   </p>
                 </td>
 <td>
@@ -407,9 +399,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">send</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">write</span><span class="special">()</span></code>,
-                    <code class="computeroutput"><span class="identifier">writev</span><span class="special">()</span></code>
+                    <code class="computeroutput">send()</code>, <code class="computeroutput">write()</code>, <code class="computeroutput">writev()</code>
                   </p>
                 </td>
 <td>
@@ -436,7 +426,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">sendto</span><span class="special">()</span></code>
+                    <code class="computeroutput">sendto()</code>
                   </p>
                 </td>
 <td>
@@ -453,7 +443,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">setsockopt</span><span class="special">()</span></code>
+                    <code class="computeroutput">setsockopt()</code>
                   </p>
                 </td>
 <td>
@@ -472,7 +462,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">shutdown</span><span class="special">()</span></code>
+                    <code class="computeroutput">shutdown()</code>
                   </p>
                 </td>
 <td>
@@ -490,7 +480,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">sockatmark</span><span class="special">()</span></code>
+                    <code class="computeroutput">sockatmark()</code>
                   </p>
                 </td>
 <td>
@@ -505,7 +495,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">socket</span><span class="special">()</span></code>
+                    <code class="computeroutput">socket()</code>
                   </p>
                 </td>
 <td>
@@ -524,7 +514,7 @@
 <tr>
 <td>
                   <p>
-                    <code class="computeroutput"><span class="identifier">socketpair</span><span class="special">()</span></code>
+                    <code class="computeroutput">socketpair()</code>
                   </p>
                 </td>
 <td>
@@ -541,8 +531,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

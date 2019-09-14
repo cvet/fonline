@@ -6,14 +6,14 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
-<link rel="prev" href="error_code__unspecified_bool_type_t.html" title="error_code::unspecified_bool_type_t">
+<link rel="prev" href="experimental__this_coro__token_t.html" title="experimental::this_coro::token_t">
 <link rel="next" href="generic__basic_endpoint/basic_endpoint.html" title="generic::basic_endpoint::basic_endpoint">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="error_code__unspecified_bool_type_t.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="generic__basic_endpoint/basic_endpoint.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="experimental__this_coro__token_t.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="generic__basic_endpoint/basic_endpoint.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
@@ -22,9 +22,9 @@
 <p>
         Describes an endpoint for any socket type.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a><span class="special">&gt;</span>
-<span class="keyword">class</span> <span class="identifier">basic_endpoint</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="Protocol.html" title="Protocol requirements">Protocol</a>&gt;
+class basic_endpoint
 </pre>
 <h5>
 <a name="asio.reference.generic__basic_endpoint.h0"></a>
@@ -106,16 +106,9 @@
               </td>
 <td>
                 <p>
-                  Default constructor.
-                </p>
-                <p>
-                  Construct an endpoint from the specified socket address.
-                </p>
-                <p>
-                  Construct an endpoint from the specific endpoint type.
-                </p>
-                <p>
-                  Copy constructor.
+                  Default constructor. <br> <span class="silver"> &#8212;</span><br> Construct an endpoint from the
+                  specified socket address. <br> <span class="silver"> &#8212;</span><br> Construct an endpoint from
+                  the specific endpoint type. <br> <span class="silver"> &#8212;</span><br> Copy constructor.
                 </p>
               </td>
 </tr>
@@ -290,15 +283,16 @@
 </tbody>
 </table></div>
 <p>
-        The <a class="link" href="generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">basic_endpoint</span></code></a> class template describes
-        an endpoint that may be associated with any socket type.
+        The <a class="link" href="generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput">generic::basic_endpoint</code></a>
+        class template describes an endpoint that may be associated with any socket
+        type.
       </p>
 <h5>
 <a name="asio.reference.generic__basic_endpoint.h3"></a>
         <span><a name="asio.reference.generic__basic_endpoint.remarks"></a></span><a class="link" href="generic__basic_endpoint.html#asio.reference.generic__basic_endpoint.remarks">Remarks</a>
       </h5>
 <p>
-        The socket types sockaddr type must be able to fit into a <code class="computeroutput"><span class="identifier">sockaddr_storage</span></code>
+        The socket types sockaddr type must be able to fit into a <code class="computeroutput">sockaddr_storage</code>
         structure.
       </p>
 <h5>
@@ -324,8 +318,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -333,7 +326,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="error_code__unspecified_bool_type_t.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="generic__basic_endpoint/basic_endpoint.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="experimental__this_coro__token_t.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="generic__basic_endpoint/basic_endpoint.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

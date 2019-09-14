@@ -1,87 +1,60 @@
-/*
- Mock allocator.
-
- Copyright (c) 2014, Victor Zverovich
- All rights reserved.
-
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
-
- 1. Redistributions of source code must retain the above copyright notice, this
-    list of conditions and the following disclaimer.
- 2. Redistributions in binary form must reproduce the above copyright notice,
-    this list of conditions and the following disclaimer in the documentation
-    and/or other materials provided with the distribution.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Formatting library for C++ - mock allocator
+//
+// Copyright (c) 2012 - present, Victor Zverovich
+// All rights reserved.
+//
+// For the license information refer to format.h.
 
 #ifndef FMT_MOCK_ALLOCATOR_H_
 #define FMT_MOCK_ALLOCATOR_H_
 
-#include "gmock/gmock.h"
+#include "fmt/format.h"
+#include "gmock.h"
 
-template <typename T>
-class MockAllocator {
+template <typename T> class mock_allocator {
  public:
-  MockAllocator() {}
-  MockAllocator(const MockAllocator &) {}
+  mock_allocator() {}
+  mock_allocator(const mock_allocator&) {}
   typedef T value_type;
-  MOCK_METHOD2_T(allocate, T *(std::size_t n, const T *h));
-  MOCK_METHOD2_T(deallocate, void (T *p, std::size_t n));
+  MOCK_METHOD1_T(allocate, T*(std::size_t n));
+  MOCK_METHOD2_T(deallocate, void(T* p, std::size_t n));
 };
 
-template <typename Allocator>
-class AllocatorRef {
+template <typename Allocator> class allocator_ref {
  private:
-  Allocator *alloc_;
+  Allocator* alloc_;
+
+  void move(allocator_ref& other) {
+    alloc_ = other.alloc_;
+    other.alloc_ = nullptr;
+  }
 
  public:
   typedef typename Allocator::value_type value_type;
 
-  explicit AllocatorRef(Allocator *alloc = 0) : alloc_(alloc) {}
+  explicit allocator_ref(Allocator* alloc = nullptr) : alloc_(alloc) {}
 
-  AllocatorRef(const AllocatorRef &other) : alloc_(other.alloc_) {}
+  allocator_ref(const allocator_ref& other) : alloc_(other.alloc_) {}
+  allocator_ref(allocator_ref&& other) { move(other); }
 
-  AllocatorRef& operator=(const AllocatorRef &other) {
-    alloc_ = other.alloc_;
-    return *this;
-  }
-
-#if FMT_USE_RVALUE_REFERENCES
- private:
-  void move(AllocatorRef &other) {
-    alloc_ = other.alloc_;
-    other.alloc_ = 0;
-  }
-
- public:
-  AllocatorRef(AllocatorRef &&other) {
-    move(other);
-  }
-
-  AllocatorRef& operator=(AllocatorRef &&other) {
+  allocator_ref& operator=(allocator_ref&& other) {
     assert(this != &other);
     move(other);
     return *this;
   }
-#endif
 
-  Allocator *get() const { return alloc_; }
-
-  value_type *allocate(std::size_t n,  const value_type *h) {
-    return alloc_->allocate(n, h);
+  allocator_ref& operator=(const allocator_ref& other) {
+    alloc_ = other.alloc_;
+    return *this;
   }
-  void deallocate(value_type *p, std::size_t n) { alloc_->deallocate(p, n); }
+
+ public:
+  Allocator* get() const { return alloc_; }
+
+  value_type* allocate(std::size_t n) {
+    return std::allocator_traits<Allocator>::allocate(*alloc_, n);
+  }
+  void deallocate(value_type* p, std::size_t n) { alloc_->deallocate(p, n); }
 };
 
 #endif  // FMT_MOCK_ALLOCATOR_H_
