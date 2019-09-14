@@ -21,15 +21,17 @@
       write stream requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">a</span></code> denotes
-        a synchronous write stream object, <code class="computeroutput"><span class="identifier">cb</span></code>
-        denotes an object satisfying <a class="link" href="ConstBufferSequence.html" title="Constant buffer sequence requirements">constant
-        buffer sequence</a> requirements, and <code class="computeroutput"><span class="identifier">ec</span></code>
-        denotes an object of type <code class="computeroutput"><span class="identifier">error_code</span></code>.
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">SyncWriteStream</code> requirements
+        if it satisfies the requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">a</code> denotes a value of type <code class="computeroutput">X</code>,
+        <code class="computeroutput">cb</code> denotes a (possibly const) value satisfying the <a class="link" href="ConstBufferSequence.html" title="Constant buffer sequence requirements"><code class="computeroutput">ConstBufferSequence</code></a>
+        requirements, and <code class="computeroutput">ec</code> denotes an object of type <code class="computeroutput">error_code</code>.
       </p>
 <div class="table">
-<a name="asio.reference.SyncWriteStream.t0"></a><p class="title"><b>Table&#160;37.&#160;Buffer-oriented synchronous write stream requirements</b></p>
-<div class="table-contents"><table class="table" summary="Buffer-oriented synchronous write stream requirements">
+<a name="asio.reference.SyncWriteStream.t0"></a><p class="title"><b>Table&#160;29.&#160;SyncWriteStream requirements</b></p>
+<div class="table-contents"><table class="table" summary="SyncWriteStream requirements">
 <colgroup>
 <col>
 <col>
@@ -52,70 +54,39 @@
                 </p>
               </th>
 </tr></thead>
-<tbody>
-<tr>
+<tbody><tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="identifier">cb</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.write_some(cb)</code><br> <code class="computeroutput">a.write_some(cb,ec)</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
+                  <code class="computeroutput">size_t</code>
                 </p>
               </td>
 <td>
                 <p>
-                  Equivalent to:
-</p>
-<pre class="programlisting"><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">size_t</span> <span class="identifier">s</span> <span class="special">=</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="identifier">cb</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span> <span class="keyword">throw</span> <span class="identifier">system_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">return</span> <span class="identifier">s</span><span class="special">;</span>
-</pre>
-<p>
+                  Meets the requirements for a <a class="link" href="read_write_operations.html" title="Requirements on read and write operations">write
+                  operation</a>.<br> <br> If <code class="computeroutput">buffer_size(cb) &gt; 0</code>,
+                  writes one or more bytes of data to the stream <code class="computeroutput">a</code> from
+                  the buffer sequence <code class="computeroutput">cb</code>. If successful, sets <code class="computeroutput">ec</code>
+                  such that <code class="computeroutput">!ec</code> is <code class="computeroutput">true</code>, and returns the
+                  number of bytes written. If an error occurred, sets <code class="computeroutput">ec</code>
+                  such that <code class="computeroutput">!!ec</code> is <code class="computeroutput">true</code>, and returns 0.<br>
+                  <br> If <code class="computeroutput">buffer_size(cb) == 0</code>, the operation shall
+                  not block. Sets <code class="computeroutput">ec</code> such that <code class="computeroutput">!ec</code> is
+                  <code class="computeroutput">true</code>, and returns 0.
                 </p>
               </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="identifier">cb</span><span class="special">,</span>
-                  <span class="identifier">ec</span><span class="special">);</span></code>
-                </p>
-              </td>
-<td>
-                <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
-                </p>
-              </td>
-<td>
-                <p>
-                  Writes one or more bytes of data to the stream <code class="computeroutput"><span class="identifier">a</span></code>.<br>
-                  <br> The constant buffer sequence <code class="computeroutput"><span class="identifier">cb</span></code>
-                  specifies memory where the data to be written is located. The
-                  <code class="computeroutput"><span class="identifier">write_some</span></code> operation
-                  shall always write a buffer in the sequence completely before proceeding
-                  to the next.<br> <br> If successful, returns the number of
-                  bytes written and sets <code class="computeroutput"><span class="identifier">ec</span></code>
-                  such that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code>
-                  is true. If an error occurred, returns <code class="computeroutput"><span class="number">0</span></code>
-                  and sets <code class="computeroutput"><span class="identifier">ec</span></code> such
-                  that <code class="computeroutput"><span class="special">!!</span><span class="identifier">ec</span></code>
-                  is true.<br> <br> If the total size of all buffers in the sequence
-                  <code class="computeroutput"><span class="identifier">cb</span></code> is <code class="computeroutput"><span class="number">0</span></code>, the function shall return <code class="computeroutput"><span class="number">0</span></code> immediately.
-                </p>
-              </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table></div>
 </div>
 <br class="table-break">
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -24,65 +24,63 @@
         functionality by modifying the program from tutorial Timer.1 to perform an
         asynchronous wait on the timer.
       </p>
-<pre class="programlisting"><span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
 </pre>
 <p>
         Using asio's asynchronous functionality means having a callback function
         that will be called when an asynchronous operation completes. In this program
-        we define a function called <code class="computeroutput"><span class="identifier">print</span></code>
-        to be called when the asynchronous wait finishes.
+        we define a function called <code class="computeroutput">print</code> to be called when the asynchronous
+        wait finishes.
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="comment">/*e*/</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Hello, world!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-<span class="special">}</span>
+<pre class="programlisting">void print(const asio::error_code&amp; /*e*/)
+{
+  std::cout &lt;&lt; "Hello, world!" &lt;&lt; std::endl;
+}
 
-<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
+int main()
+{
+  asio::io_context io;
 
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">5</span><span class="special">));</span>
+  asio::steady_timer t(io, asio::chrono::seconds(5));
 </pre>
 <p>
         Next, instead of doing a blocking wait as in tutorial Timer.1, we call the
-        <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>
+        <a class="link" href="../reference/basic_waitable_timer/async_wait.html" title="basic_waitable_timer::async_wait">steady_timer::async_wait()</a>
         function to perform an asynchronous wait. When calling this function we pass
-        the <code class="computeroutput"><span class="identifier">print</span></code> callback handler
-        that was defined above.
+        the <code class="computeroutput">print</code> callback handler that was defined above.
       </p>
-<pre class="programlisting">  <span class="identifier">t</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(&amp;</span><span class="identifier">print</span><span class="special">);</span>
+<pre class="programlisting">  t.async_wait(&amp;print);
 </pre>
 <p>
-        Finally, we must call the <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
-        member function on the io_service object.
+        Finally, we must call the <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
+        member function on the io_context object.
       </p>
 <p>
         The asio library provides a guarantee that callback handlers will only be
-        called from threads that are currently calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>.
-        Therefore unless the <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
+        called from threads that are currently calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>.
+        Therefore unless the <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
         function is called the callback for the asynchronous wait completion will
         never be invoked.
       </p>
 <p>
-        The <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
+        The <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
         function will also continue to run while there is still "work"
         to do. In this example, the work is the asynchronous wait on the timer, so
         the call will not return until the timer has expired and the callback has
         completed.
       </p>
 <p>
-        It is important to remember to give the io_service some work to do before
-        calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>.
-        For example, if we had omitted the above call to <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>,
-        the io_service would not have had any work to do, and consequently <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a> would have
+        It is important to remember to give the io_context some work to do before
+        calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>.
+        For example, if we had omitted the above call to <a class="link" href="../reference/basic_waitable_timer/async_wait.html" title="basic_waitable_timer::async_wait">steady_timer::async_wait()</a>,
+        the io_context would not have had any work to do, and consequently <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a> would have
         returned immediately.
       </p>
-<pre class="programlisting">  <span class="identifier">io</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+<pre class="programlisting">  io.run();
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
         See the <a class="link" href="tuttimer2/src.html" title="Source listing for Timer.2">full source listing</a>
@@ -101,8 +99,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

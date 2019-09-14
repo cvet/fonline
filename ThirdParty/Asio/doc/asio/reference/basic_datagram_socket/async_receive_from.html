@@ -20,33 +20,33 @@
 <a name="asio.reference.basic_datagram_socket.async_receive_from"></a><a class="link" href="async_receive_from.html" title="basic_datagram_socket::async_receive_from">basic_datagram_socket::async_receive_from</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm32997"></a> 
-Start an asynchronous receive.
+          <a class="indexterm" name="asio.indexterm.basic_datagram_socket.async_receive_from"></a> 
+Start
+          an asynchronous receive.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_receive_from/overload1.html" title="basic_datagram_socket::async_receive_from (1 of 2 overloads)">async_receive_from</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">sender_endpoint</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>,
+    typename <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_receive_from/overload1.html" title="basic_datagram_socket::async_receive_from (1 of 2 overloads)">async_receive_from</a>(
+    const MutableBufferSequence &amp; buffers,
+    endpoint_type &amp; sender_endpoint,
+    ReadHandler &amp;&amp; handler);
   <span class="emphasis"><em>&#187; <a class="link" href="async_receive_from/overload1.html" title="basic_datagram_socket::async_receive_from (1 of 2 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_receive_from/overload2.html" title="basic_datagram_socket::async_receive_from (2 of 2 overloads)">async_receive_from</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">sender_endpoint</span><span class="special">,</span>
-    <span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_flags</span> <span class="identifier">flags</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>,
+    typename <a class="link" href="../ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_receive_from/overload2.html" title="basic_datagram_socket::async_receive_from (2 of 2 overloads)">async_receive_from</a>(
+    const MutableBufferSequence &amp; buffers,
+    endpoint_type &amp; sender_endpoint,
+    socket_base::message_flags flags,
+    ReadHandler &amp;&amp; handler);
   <span class="emphasis"><em>&#187; <a class="link" href="async_receive_from/overload2.html" title="basic_datagram_socket::async_receive_from (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

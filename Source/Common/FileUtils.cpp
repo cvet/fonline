@@ -3,6 +3,7 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "Settings.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 

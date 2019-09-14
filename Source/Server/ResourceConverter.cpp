@@ -4,6 +4,7 @@
 #include "GraphicStructures.h"
 #include "3dAnimation.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #include "assimp/cimport.h"
 #include "assimp/postprocess.h"
 #include "fbxsdk/fbxsdk.h"
@@ -360,7 +361,6 @@ File* ResourceConverter::Convert3d( const string& name, File& file )
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_STRICT_MODE, false );
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true );
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, true );
-            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES, false );
         }
 
         // Load scene

@@ -23,9 +23,9 @@
 <p>
             Set the peer verification depth.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">set_verify_depth</span><span class="special">(</span>
-    <span class="keyword">int</span> <span class="identifier">depth</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void set_verify_depth(
+    int depth,
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function may be used to configure the maximum verification depth
@@ -54,13 +54,12 @@
             <span><a name="asio.reference.ssl__stream.set_verify_depth.overload2.remarks"></a></span><a class="link" href="overload2.html#asio.reference.ssl__stream.set_verify_depth.overload2.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_set_verify_depth</span></code>.
+            Calls <code class="computeroutput">SSL_set_verify_depth</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

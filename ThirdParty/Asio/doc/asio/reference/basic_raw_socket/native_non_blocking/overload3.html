@@ -7,13 +7,13 @@
 <link rel="home" href="../../../../index.html" title="Asio">
 <link rel="up" href="../native_non_blocking.html" title="basic_raw_socket::native_non_blocking">
 <link rel="prev" href="overload2.html" title="basic_raw_socket::native_non_blocking (2 of 3 overloads)">
-<link rel="next" href="../native_type.html" title="basic_raw_socket::native_type">
+<link rel="next" href="../non_blocking.html" title="basic_raw_socket::non_blocking">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="overload2.html"><img src="../../../../prev.png" alt="Prev"></a><a accesskey="u" href="../native_non_blocking.html"><img src="../../../../up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../home.png" alt="Home"></a><a accesskey="n" href="../native_type.html"><img src="../../../../next.png" alt="Next"></a>
+<a accesskey="p" href="overload2.html"><img src="../../../../prev.png" alt="Prev"></a><a accesskey="u" href="../native_non_blocking.html"><img src="../../../../up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../home.png" alt="Home"></a><a accesskey="n" href="../non_blocking.html"><img src="../../../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h5 class="title">
@@ -26,9 +26,9 @@
 <p>
             Sets the non-blocking mode of the native socket implementation.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">native_non_blocking</span><span class="special">(</span>
-    <span class="keyword">bool</span> <span class="identifier">mode</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void native_non_blocking(
+    bool mode,
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function is used to modify the non-blocking mode of the underlying
@@ -44,16 +44,15 @@
 <dl>
 <dt><span class="term">mode</span></dt>
 <dd><p>
-                  If <code class="computeroutput"><span class="keyword">true</span></code>, the underlying
-                  socket is put into non-blocking mode and direct system calls may
-                  fail with <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">would_block</span></code>
+                  If <code class="computeroutput">true</code>, the underlying socket is put into non-blocking
+                  mode and direct system calls may fail with <code class="computeroutput">asio::error::would_block</code>
                   (or the equivalent system error).
                 </p></dd>
 <dt><span class="term">ec</span></dt>
 <dd><p>
-                  Set to indicate what error occurred, if any. If the <code class="computeroutput"><span class="identifier">mode</span></code> is <code class="computeroutput"><span class="keyword">false</span></code>,
-                  but the current value of <code class="computeroutput"><span class="identifier">non_blocking</span><span class="special">()</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>,
-                  this function fails with <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">invalid_argument</span></code>,
+                  Set to indicate what error occurred, if any. If the <code class="computeroutput">mode</code>
+                  is <code class="computeroutput">false</code>, but the current value of <code class="computeroutput">non_blocking()</code>
+                  is <code class="computeroutput">true</code>, this function fails with <code class="computeroutput">asio::error::invalid_argument</code>,
                   as the combination does not make sense.
                 </p></dd>
 </dl>
@@ -66,79 +65,77 @@
             This function is intended to allow the encapsulation of arbitrary non-blocking
             system calls as asynchronous operations, in a way that is transparent
             to the user of the socket object. The following example illustrates how
-            Linux's <code class="computeroutput"><span class="identifier">sendfile</span></code> system
-            call might be encapsulated:
+            Linux's <code class="computeroutput">sendfile</code> system call might be encapsulated:
           </p>
-<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
-<span class="keyword">struct</span> <span class="identifier">sendfile_op</span>
-<span class="special">{</span>
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;</span> <span class="identifier">sock_</span><span class="special">;</span>
-  <span class="keyword">int</span> <span class="identifier">fd_</span><span class="special">;</span>
-  <span class="identifier">Handler</span> <span class="identifier">handler_</span><span class="special">;</span>
-  <span class="identifier">off_t</span> <span class="identifier">offset_</span><span class="special">;</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">total_bytes_transferred_</span><span class="special">;</span>
+<pre class="programlisting">template &lt;typename Handler&gt;
+struct sendfile_op
+{
+  tcp::socket&amp; sock_;
+  int fd_;
+  Handler handler_;
+  off_t offset_;
+  std::size_t total_bytes_transferred_;
 
-  <span class="comment">// Function call operator meeting WriteHandler requirements.</span>
-  <span class="comment">// Used as the handler for the async_write_some operation.</span>
-  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="comment">// Put the underlying socket into non-blocking mode.</span>
-    <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">ec</span><span class="special">)</span>
-      <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">sock_</span><span class="special">.</span><span class="identifier">native_non_blocking</span><span class="special">())</span>
-        <span class="identifier">sock_</span><span class="special">.</span><span class="identifier">native_non_blocking</span><span class="special">(</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+  // Function call operator meeting WriteHandler requirements.
+  // Used as the handler for the async_write_some operation.
+  void operator()(asio::error_code ec, std::size_t)
+  {
+    // Put the underlying socket into non-blocking mode.
+    if (!ec)
+      if (!sock_.native_non_blocking())
+        sock_.native_non_blocking(true, ec);
 
-    <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">ec</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="keyword">for</span> <span class="special">(;;)</span>
-      <span class="special">{</span>
-        <span class="comment">// Try the system call.</span>
-        <span class="identifier">errno</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
-        <span class="keyword">int</span> <span class="identifier">n</span> <span class="special">=</span> <span class="special">::</span><span class="identifier">sendfile</span><span class="special">(</span><span class="identifier">sock_</span><span class="special">.</span><span class="identifier">native_handle</span><span class="special">(),</span> <span class="identifier">fd_</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">offset_</span><span class="special">,</span> <span class="number">65536</span><span class="special">);</span>
-        <span class="identifier">ec</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">(</span><span class="identifier">n</span> <span class="special">&lt;</span> <span class="number">0</span> <span class="special">?</span> <span class="identifier">errno</span> <span class="special">:</span> <span class="number">0</span><span class="special">,</span>
-            <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">get_system_category</span><span class="special">());</span>
-        <span class="identifier">total_bytes_transferred_</span> <span class="special">+=</span> <span class="identifier">ec</span> <span class="special">?</span> <span class="number">0</span> <span class="special">:</span> <span class="identifier">n</span><span class="special">;</span>
+    if (!ec)
+    {
+      for (;;)
+      {
+        // Try the system call.
+        errno = 0;
+        int n = ::sendfile(sock_.native_handle(), fd_, &amp;offset_, 65536);
+        ec = asio::error_code(n &lt; 0 ? errno : 0,
+            asio::error::get_system_category());
+        total_bytes_transferred_ += ec ? 0 : n;
 
-        <span class="comment">// Retry operation immediately if interrupted by signal.</span>
-        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">interrupted</span><span class="special">)</span>
-          <span class="keyword">continue</span><span class="special">;</span>
+        // Retry operation immediately if interrupted by signal.
+        if (ec == asio::error::interrupted)
+          continue;
 
-        <span class="comment">// Check if we need to run the operation again.</span>
-        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">would_block</span>
-            <span class="special">||</span> <span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">try_again</span><span class="special">)</span>
-        <span class="special">{</span>
-          <span class="comment">// We have to wait for the socket to become ready again.</span>
-          <span class="identifier">sock_</span><span class="special">.</span><span class="identifier">async_write_some</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">null_buffers</span><span class="special">(),</span> <span class="special">*</span><span class="keyword">this</span><span class="special">);</span>
-          <span class="keyword">return</span><span class="special">;</span>
-        <span class="special">}</span>
+        // Check if we need to run the operation again.
+        if (ec == asio::error::would_block
+            || ec == asio::error::try_again)
+        {
+          // We have to wait for the socket to become ready again.
+          sock_.async_wait(tcp::socket::wait_write, *this);
+          return;
+        }
 
-        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span> <span class="special">||</span> <span class="identifier">n</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span>
-        <span class="special">{</span>
-          <span class="comment">// An error occurred, or we have reached the end of the file.</span>
-          <span class="comment">// Either way we must exit the loop so we can call the handler.</span>
-          <span class="keyword">break</span><span class="special">;</span>
-        <span class="special">}</span>
+        if (ec || n == 0)
+        {
+          // An error occurred, or we have reached the end of the file.
+          // Either way we must exit the loop so we can call the handler.
+          break;
+        }
 
-        <span class="comment">// Loop around to try calling sendfile again.</span>
-      <span class="special">}</span>
-    <span class="special">}</span>
+        // Loop around to try calling sendfile again.
+      }
+    }
 
-    <span class="comment">// Pass result back to user's handler.</span>
-    <span class="identifier">handler_</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">total_bytes_transferred_</span><span class="special">);</span>
-  <span class="special">}</span>
-<span class="special">};</span>
+    // Pass result back to user's handler.
+    handler_(ec, total_bytes_transferred_);
+  }
+};
 
-<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
-<span class="keyword">void</span> <span class="identifier">async_sendfile</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;</span> <span class="identifier">sock</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">fd</span><span class="special">,</span> <span class="identifier">Handler</span> <span class="identifier">h</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="identifier">sendfile_op</span><span class="special">&lt;</span><span class="identifier">Handler</span><span class="special">&gt;</span> <span class="identifier">op</span> <span class="special">=</span> <span class="special">{</span> <span class="identifier">sock</span><span class="special">,</span> <span class="identifier">fd</span><span class="special">,</span> <span class="identifier">h</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">0</span> <span class="special">};</span>
-  <span class="identifier">sock</span><span class="special">.</span><span class="identifier">async_write_some</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">null_buffers</span><span class="special">(),</span> <span class="identifier">op</span><span class="special">);</span>
-<span class="special">}</span>
+template &lt;typename Handler&gt;
+void async_sendfile(tcp::socket&amp; sock, int fd, Handler h)
+{
+  sendfile_op&lt;Handler&gt; op = { sock, fd, h, 0, 0 };
+  sock.async_wait(tcp::socket::wait_write, op);
+}
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -146,7 +143,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="overload2.html"><img src="../../../../prev.png" alt="Prev"></a><a accesskey="u" href="../native_non_blocking.html"><img src="../../../../up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../home.png" alt="Home"></a><a accesskey="n" href="../native_type.html"><img src="../../../../next.png" alt="Next"></a>
+<a accesskey="p" href="overload2.html"><img src="../../../../prev.png" alt="Prev"></a><a accesskey="u" href="../native_non_blocking.html"><img src="../../../../up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../home.png" alt="Home"></a><a accesskey="n" href="../non_blocking.html"><img src="../../../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

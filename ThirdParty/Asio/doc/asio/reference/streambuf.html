@@ -6,24 +6,24 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
-<link rel="prev" href="stream_socket_service/stream_socket_service.html" title="stream_socket_service::stream_socket_service">
+<link rel="prev" href="strand/_strand.html" title="strand::~strand">
 <link rel="next" href="system_category.html" title="system_category">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="stream_socket_service/stream_socket_service.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="system_category.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="strand/_strand.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="system_category.html"><img src="../../next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
 <a name="asio.reference.streambuf"></a><a class="link" href="streambuf.html" title="streambuf">streambuf</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm164678"></a> 
-Typedef for the typical usage of <a class="link" href="basic_streambuf.html" title="basic_streambuf"><code class="computeroutput"><span class="identifier">basic_streambuf</span></code></a>.
+        <a class="indexterm" name="asio.indexterm.streambuf"></a> 
+Typedef for the typical usage of <a class="link" href="basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>.
       </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_streambuf</span> <span class="identifier">streambuf</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_streambuf streambuf;
 </pre>
 <h5>
 <a name="asio.reference.streambuf.h0"></a>
@@ -105,6 +105,18 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
 <td>
                 <p>
                   Construct a basic_streambuf object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="basic_streambuf/capacity.html" title="basic_streambuf::capacity"><span class="bold"><strong>capacity</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the current capacity of the basic_streambuf.
                 </p>
               </td>
 </tr>
@@ -242,18 +254,17 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
 </tbody>
 </table></div>
 <p>
-        The <code class="computeroutput"><span class="identifier">basic_streambuf</span></code> class
-        is derived from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">streambuf</span></code> to associate the streambuf's
-        input and output sequences with one or more character arrays. These character
-        arrays are internal to the <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
+        The <code class="computeroutput">basic_streambuf</code> class is derived from <code class="computeroutput">std::streambuf</code>
+        to associate the streambuf's input and output sequences with one or more
+        character arrays. These character arrays are internal to the <code class="computeroutput">basic_streambuf</code>
         object, but direct access to the array elements is provided to permit them
         to be used efficiently with I/O operations. Characters written to the output
-        sequence of a <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
-        object are appended to the input sequence of the same object.
+        sequence of a <code class="computeroutput">basic_streambuf</code> object are appended to the input
+        sequence of the same object.
       </p>
 <p>
-        The <code class="computeroutput"><span class="identifier">basic_streambuf</span></code> class's
-        public interface is intended to permit the following implementation strategies:
+        The <code class="computeroutput">basic_streambuf</code> class's public interface is intended to
+        permit the following implementation strategies:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
@@ -273,22 +284,21 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
           </li>
 </ul></div>
 <p>
-        The constructor for <a class="link" href="basic_streambuf.html" title="basic_streambuf"><code class="computeroutput"><span class="identifier">basic_streambuf</span></code></a> accepts a <code class="computeroutput"><span class="identifier">size_t</span></code> argument specifying the maximum
-        of the sum of the sizes of the input sequence and output sequence. During
-        the lifetime of the <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
-        object, the following invariant holds:
+        The constructor for <a class="link" href="basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
+        accepts a <code class="computeroutput">size_t</code> argument specifying the maximum of the sum
+        of the sizes of the input sequence and output sequence. During the lifetime
+        of the <code class="computeroutput">basic_streambuf</code> object, the following invariant holds:
       </p>
-<pre class="programlisting"><span class="identifier">size</span><span class="special">()</span> <span class="special">&lt;=</span> <span class="identifier">max_size</span><span class="special">()</span>
+<pre class="programlisting">size() &lt;= max_size()
 </pre>
 <p>
         Any member function that would, if successful, cause the invariant to be
-        violated shall throw an exception of class <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">length_error</span></code>.
+        violated shall throw an exception of class <code class="computeroutput">std::length_error</code>.
       </p>
 <p>
-        The constructor for <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
-        takes an Allocator argument. A copy of this argument is used for any memory
-        allocation performed, by the constructor and by all member functions, during
-        the lifetime of each <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
+        The constructor for <code class="computeroutput">basic_streambuf</code> takes an Allocator argument.
+        A copy of this argument is used for any memory allocation performed, by the
+        constructor and by all member functions, during the lifetime of each <code class="computeroutput">basic_streambuf</code>
         object.
       </p>
 <h5>
@@ -298,31 +308,31 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
 <p>
         Writing directly from an streambuf to a socket:
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">streambuf</span> <span class="identifier">b</span><span class="special">;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="identifier">os</span><span class="special">(&amp;</span><span class="identifier">b</span><span class="special">);</span>
-<span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="string">"Hello, World!\n"</span><span class="special">;</span>
+<pre class="programlisting">asio::streambuf b;
+std::ostream os(&amp;b);
+os &lt;&lt; "Hello, World!\n";
 
-<span class="comment">// try sending some data in input sequence</span>
-<span class="identifier">size_t</span> <span class="identifier">n</span> <span class="special">=</span> <span class="identifier">sock</span><span class="special">.</span><span class="identifier">send</span><span class="special">(</span><span class="identifier">b</span><span class="special">.</span><span class="identifier">data</span><span class="special">());</span>
+// try sending some data in input sequence
+size_t n = sock.send(b.data());
 
-<span class="identifier">b</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">n</span><span class="special">);</span> <span class="comment">// sent data is removed from input sequence</span>
+b.consume(n); // sent data is removed from input sequence
 </pre>
 <p>
         Reading from a socket directly into a streambuf:
       </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">streambuf</span> <span class="identifier">b</span><span class="special">;</span>
+<pre class="programlisting">asio::streambuf b;
 
-<span class="comment">// reserve 512 bytes in output sequence</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">streambuf</span><span class="special">::</span><span class="identifier">mutable_buffers_type</span> <span class="identifier">bufs</span> <span class="special">=</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">prepare</span><span class="special">(</span><span class="number">512</span><span class="special">);</span>
+// reserve 512 bytes in output sequence
+asio::streambuf::mutable_buffers_type bufs = b.prepare(512);
 
-<span class="identifier">size_t</span> <span class="identifier">n</span> <span class="special">=</span> <span class="identifier">sock</span><span class="special">.</span><span class="identifier">receive</span><span class="special">(</span><span class="identifier">bufs</span><span class="special">);</span>
+size_t n = sock.receive(bufs);
 
-<span class="comment">// received data is "committed" from output sequence to input sequence</span>
-<span class="identifier">b</span><span class="special">.</span><span class="identifier">commit</span><span class="special">(</span><span class="identifier">n</span><span class="special">);</span>
+// received data is "committed" from output sequence to input sequence
+b.commit(n);
 
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span> <span class="identifier">is</span><span class="special">(&amp;</span><span class="identifier">b</span><span class="special">);</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">s</span><span class="special">;</span>
-<span class="identifier">is</span> <span class="special">&gt;&gt;</span> <span class="identifier">s</span><span class="special">;</span>
+std::istream is(&amp;b);
+std::string s;
+is &gt;&gt; s;
 </pre>
 <h5>
 <a name="asio.reference.streambuf.h4"></a>
@@ -337,8 +347,7 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
@@ -346,7 +355,7 @@ Typedef for the typical usage of <a class="link" href="basic_streambuf.html" tit
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="stream_socket_service/stream_socket_service.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="system_category.html"><img src="../../next.png" alt="Next"></a>
+<a accesskey="p" href="strand/_strand.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="system_category.html"><img src="../../next.png" alt="Next"></a>
 </div>
 </body>
 </html>

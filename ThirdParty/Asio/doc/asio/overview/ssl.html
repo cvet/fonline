@@ -30,35 +30,35 @@
         mode, certificate files, and so on. As an illustration, client-side initialisation
         may look something like:
       </p>
-<pre class="programlisting"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">sslv23</span><span class="special">);</span>
-<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">set_verify_mode</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">verify_peer</span><span class="special">);</span>
-<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">load_verify_file</span><span class="special">(</span><span class="string">"ca.pem"</span><span class="special">);</span>
+<pre class="programlisting">ssl::context ctx(ssl::context::sslv23);
+ctx.set_verify_mode(ssl::verify_peer);
+ctx.load_verify_file("ca.pem");
 </pre>
 <p>
         To use SSL with a TCP socket, one may write:
       </p>
-<pre class="programlisting"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ssl_sock</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+<pre class="programlisting">ssl::stream&lt;ip::tcp::socket&gt; ssl_sock(my_io_context, ctx);
 </pre>
 <p>
         To perform socket-specific operations, such as establishing an outbound connection
         or accepting an incoming one, the underlying socket must first be obtained
-        using the <code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code> template's <a class="link" href="../reference/ssl__stream/lowest_layer.html" title="ssl::stream::lowest_layer"><code class="computeroutput"><span class="identifier">lowest_layer</span><span class="special">()</span></code></a>
+        using the <code class="computeroutput">ssl::stream</code> template's <a class="link" href="../reference/ssl__stream/lowest_layer.html" title="ssl::stream::lowest_layer"><code class="computeroutput">lowest_layer()</code></a>
         member function:
       </p>
-<pre class="programlisting"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">::</span><span class="identifier">lowest_layer_type</span><span class="special">&amp;</span> <span class="identifier">sock</span> <span class="special">=</span> <span class="identifier">ssl_sock</span><span class="special">.</span><span class="identifier">lowest_layer</span><span class="special">();</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">my_endpoint</span><span class="special">);</span>
+<pre class="programlisting">ip::tcp::socket::lowest_layer_type&amp; sock = ssl_sock.lowest_layer();
+sock.connect(my_endpoint);
 </pre>
 <p>
         In some use cases the underlying stream object will need to have a longer
         lifetime than the SSL stream, in which case the template parameter should
         be a reference to the stream type:
       </p>
-<pre class="programlisting"><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">sock</span><span class="special">(</span><span class="identifier">my_io_service</span><span class="special">);</span>
-<span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;&gt;</span> <span class="identifier">ssl_sock</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+<pre class="programlisting">ip::tcp::socket sock(my_io_context);
+ssl::stream&lt;ip::tcp::socket&amp;&gt; ssl_sock(sock, ctx);
 </pre>
 <p>
         SSL handshaking must be performed prior to transmitting or receiving data
-        over an encrypted connection. This is accomplished using the <code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>
+        over an encrypted connection. This is accomplished using the <code class="computeroutput">ssl::stream</code>
         template's <a class="link" href="../reference/ssl__stream/handshake.html" title="ssl::stream::handshake">handshake()</a>
         or <a class="link" href="../reference/ssl__stream/async_handshake.html" title="ssl::stream::async_handshake">async_handshake()</a>
         member functions.
@@ -112,30 +112,30 @@
         The following example shows verification of a remote host's certificate according
         to the rules used by HTTPS:
       </p>
-<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>
-<span class="keyword">namespace</span> <span class="identifier">ssl</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">;</span>
-<span class="keyword">typedef</span> <span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ssl_socket</span><span class="special">;</span>
+<pre class="programlisting">using asio::ip::tcp;
+namespace ssl = asio::ssl;
+typedef ssl::stream&lt;tcp::socket&gt; ssl_socket;
 
-<span class="comment">// Create a context that uses the default paths for</span>
-<span class="comment">// finding CA certificates.</span>
-<span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">sslv23</span><span class="special">);</span>
-<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">set_default_verify_paths</span><span class="special">();</span>
+// Create a context that uses the default paths for
+// finding CA certificates.
+ssl::context ctx(ssl::context::sslv23);
+ctx.set_default_verify_paths();
 
-<span class="comment">// Open a socket and connect it to the remote host.</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
-<span class="identifier">ssl_socket</span> <span class="identifier">sock</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
-<span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">query</span> <span class="identifier">query</span><span class="special">(</span><span class="string">"host.name"</span><span class="special">,</span> <span class="string">"https"</span><span class="special">);</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">sock</span><span class="special">.</span><span class="identifier">lowest_layer</span><span class="special">(),</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">resolve</span><span class="special">(</span><span class="identifier">query</span><span class="special">));</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">lowest_layer</span><span class="special">().</span><span class="identifier">set_option</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">no_delay</span><span class="special">(</span><span class="keyword">true</span><span class="special">));</span>
+// Open a socket and connect it to the remote host.
+asio::io_context io_context;
+ssl_socket sock(io_context, ctx);
+tcp::resolver resolver(io_context);
+tcp::resolver::query query("host.name", "https");
+asio::connect(sock.lowest_layer(), resolver.resolve(query));
+sock.lowest_layer().set_option(tcp::no_delay(true));
 
-<span class="comment">// Perform SSL handshake and verify the remote host's</span>
-<span class="comment">// certificate.</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">set_verify_mode</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">verify_peer</span><span class="special">);</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">set_verify_callback</span><span class="special">(</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">rfc2818_verification</span><span class="special">(</span><span class="string">"host.name"</span><span class="special">));</span>
-<span class="identifier">sock</span><span class="special">.</span><span class="identifier">handshake</span><span class="special">(</span><span class="identifier">ssl_socket</span><span class="special">::</span><span class="identifier">client</span><span class="special">);</span>
+// Perform SSL handshake and verify the remote host's
+// certificate.
+sock.set_verify_mode(ssl::verify_peer);
+sock.set_verify_callback(ssl::rfc2818_verification("host.name"));
+sock.handshake(ssl_socket::client);
 
-<span class="comment">// ... read and write as normal ...</span>
+// ... read and write as normal ...
 </pre>
 <h5>
 <a name="asio.overview.ssl.h1"></a>
@@ -157,7 +157,8 @@
 <p>
         <a class="link" href="../reference/ssl__context.html" title="ssl::context">ssl::context</a>, <a class="link" href="../reference/ssl__rfc2818_verification.html" title="ssl::rfc2818_verification">ssl::rfc2818_verification</a>,
         <a class="link" href="../reference/ssl__stream.html" title="ssl::stream">ssl::stream</a>, <a class="link" href="../examples/cpp03_examples.html#asio.examples.cpp03_examples.ssl">SSL
-        example</a>.
+        example (C++03)</a>, <a class="link" href="../examples/cpp11_examples.html#asio.examples.cpp11_examples.ssl">SSL
+        example (C++11)</a>.
       </p>
 <h5>
 <a name="asio.overview.ssl.h3"></a>
@@ -167,13 +168,13 @@
         <a href="http://www.openssl.org" target="_top">OpenSSL</a> is required to make use
         of Asio's SSL support. When an application needs to use OpenSSL functionality
         that is not wrapped by Asio, the underlying OpenSSL types may be obtained
-        by calling <a class="link" href="../reference/ssl__context/native_handle.html" title="ssl::context::native_handle"><code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">native_handle</span><span class="special">()</span></code></a> or <a class="link" href="../reference/ssl__stream/native_handle.html" title="ssl::stream::native_handle"><code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">native_handle</span><span class="special">()</span></code></a>.
+        by calling <a class="link" href="../reference/ssl__context/native_handle.html" title="ssl::context::native_handle"><code class="computeroutput">ssl::context::native_handle()</code></a>
+        or <a class="link" href="../reference/ssl__stream/native_handle.html" title="ssl::stream::native_handle"><code class="computeroutput">ssl::stream::native_handle()</code></a>.
       </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -1,5 +1,6 @@
 #include "Timer.h"
 #include "Entity.h"
+#include "Settings.h"
 
 #ifdef FO_WINDOWS
 # include <Mmsystem.h>

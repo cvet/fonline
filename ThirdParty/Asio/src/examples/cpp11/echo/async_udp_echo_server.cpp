@@ -2,7 +2,7 @@
 // async_udp_echo_server.cpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,8 +17,8 @@ using asio::ip::udp;
 class server
 {
 public:
-  server(asio::io_service& io_service, short port)
-    : socket_(io_service, udp::endpoint(udp::v4(), port))
+  server(asio::io_context& io_context, short port)
+    : socket_(io_context, udp::endpoint(udp::v4(), port))
   {
     do_receive();
   }
@@ -67,11 +67,11 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    asio::io_service io_service;
+    asio::io_context io_context;
 
-    server s(io_service, std::atoi(argv[1]));
+    server s(io_context, std::atoi(argv[1]));
 
-    io_service.run();
+    io_context.run();
   }
   catch (std::exception& e)
   {

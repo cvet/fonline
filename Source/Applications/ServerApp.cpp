@@ -7,6 +7,7 @@
 #include "IniFile.h"
 #include "StringUtils.h"
 #include "AppGui.h"
+#include "Settings.h"
 
 static FOServer* Server;
 static Thread    ServerThread;
@@ -30,7 +31,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 static int main_disabled( int argc, char** argv )
 #endif
 {
-    Thread::SetCurrentName( "ServerGui" );
+    Thread::SetName( "ServerGui" );
     LogToFile( "FOnlineServer.log" );
     LogToBuffer( true );
     InitialSetup( "FOnlineServer", argc, argv );

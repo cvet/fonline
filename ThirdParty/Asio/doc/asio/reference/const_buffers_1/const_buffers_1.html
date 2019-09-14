@@ -20,26 +20,26 @@
 <a name="asio.reference.const_buffers_1.const_buffers_1"></a><a class="link" href="const_buffers_1.html" title="const_buffers_1::const_buffers_1">const_buffers_1::const_buffers_1</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm105980"></a> 
-Construct to represent a given memory range.
+          <a class="indexterm" name="asio.indexterm.const_buffers_1.const_buffers_1"></a> 
+Construct
+          to represent a given memory range.
         </p>
-<pre class="programlisting"><a class="link" href="const_buffers_1/overload1.html" title="const_buffers_1::const_buffers_1 (1 of 2 overloads)">const_buffers_1</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">data</span><span class="special">,</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="const_buffers_1/overload1.html" title="const_buffers_1::const_buffers_1 (1 of 2 overloads)">const_buffers_1</a>(
+    const void * data,
+    std::size_t size);
   <span class="emphasis"><em>&#187; <a class="link" href="const_buffers_1/overload1.html" title="const_buffers_1::const_buffers_1 (1 of 2 overloads)">more...</a></em></span>
 </pre>
 <p>
           Construct to represent a single non-modifiable buffer.
         </p>
-<pre class="programlisting"><span class="keyword">explicit</span> <a class="link" href="const_buffers_1/overload2.html" title="const_buffers_1::const_buffers_1 (2 of 2 overloads)">const_buffers_1</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">const_buffer</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">);</span>
+<pre class="programlisting">explicit <a class="link" href="const_buffers_1/overload2.html" title="const_buffers_1::const_buffers_1 (2 of 2 overloads)">const_buffers_1</a>(
+    const const_buffer &amp; b);
   <span class="emphasis"><em>&#187; <a class="link" href="const_buffers_1/overload2.html" title="const_buffers_1::const_buffers_1 (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

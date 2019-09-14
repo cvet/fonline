@@ -20,13 +20,14 @@
 <a name="asio.reference.ssl__stream.async_shutdown"></a><a class="link" href="async_shutdown.html" title="ssl::stream::async_shutdown">ssl::stream::async_shutdown</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm160715"></a> 
-Asynchronously shut down SSL on the stream.
+          <a class="indexterm" name="asio.indexterm.ssl__stream.async_shutdown"></a> 
+Asynchronously
+          shut down SSL on the stream.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../ShutdownHandler.html" title="SSL shutdown handler requirements">ShutdownHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <span class="identifier">async_shutdown</span><span class="special">(</span>
-    <span class="identifier">ShutdownHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../ShutdownHandler.html" title="SSL shutdown handler requirements">ShutdownHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> async_shutdown(
+    ShutdownHandler &amp;&amp; handler);
 </pre>
 <p>
           This function is used to asynchronously shut down SSL on the stream. This
@@ -46,9 +47,9 @@ Asynchronously shut down SSL on the stream.
                 Copies will be made of the handler as required. The equivalent function
                 signature of the handler must be:
 </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span>
-  <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span> <span class="comment">// Result of operation.</span>
-<span class="special">);</span>
+<pre class="programlisting">void handler(
+  const asio::error_code&amp; error // Result of operation.
+);
 </pre>
 <p>
               </p>
@@ -58,8 +59,7 @@ Asynchronously shut down SSL on the stream.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

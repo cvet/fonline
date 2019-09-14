@@ -20,10 +20,11 @@
 <a name="asio.reference.generic__seq_packet_protocol.endpoint"></a><a class="link" href="endpoint.html" title="generic::seq_packet_protocol::endpoint">generic::seq_packet_protocol::endpoint</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm113636"></a> 
-The type of an endpoint.
+          <a class="indexterm" name="asio.indexterm.generic__seq_packet_protocol.endpoint"></a> 
+The
+          type of an endpoint.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_endpoint</span><span class="special">&lt;</span> <span class="identifier">seq_packet_protocol</span> <span class="special">&gt;</span> <span class="identifier">endpoint</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_endpoint&lt; seq_packet_protocol &gt; endpoint;
 </pre>
 <h6>
 <a name="asio.reference.generic__seq_packet_protocol.endpoint.h0"></a>
@@ -105,16 +106,9 @@ The type of an endpoint.
                 </td>
 <td>
                   <p>
-                    Default constructor.
-                  </p>
-                  <p>
-                    Construct an endpoint from the specified socket address.
-                  </p>
-                  <p>
-                    Construct an endpoint from the specific endpoint type.
-                  </p>
-                  <p>
-                    Copy constructor.
+                    Default constructor. <br> <span class="silver"> &#8212;</span><br> Construct an endpoint from
+                    the specified socket address. <br> <span class="silver"> &#8212;</span><br> Construct an endpoint
+                    from the specific endpoint type. <br> <span class="silver"> &#8212;</span><br> Copy constructor.
                   </p>
                 </td>
 </tr>
@@ -289,15 +283,17 @@ The type of an endpoint.
 </tbody>
 </table></div>
 <p>
-          The <a class="link" href="../generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput"><span class="identifier">generic</span><span class="special">::</span><span class="identifier">basic_endpoint</span></code></a> class template
-          describes an endpoint that may be associated with any socket type.
+          The <a class="link" href="../generic__basic_endpoint.html" title="generic::basic_endpoint"><code class="computeroutput">generic::basic_endpoint</code></a>
+          class template describes an endpoint that may be associated with any socket
+          type.
         </p>
 <h6>
 <a name="asio.reference.generic__seq_packet_protocol.endpoint.h3"></a>
           <span><a name="asio.reference.generic__seq_packet_protocol.endpoint.remarks"></a></span><a class="link" href="endpoint.html#asio.reference.generic__seq_packet_protocol.endpoint.remarks">Remarks</a>
         </h6>
 <p>
-          The socket types sockaddr type must be able to fit into a <code class="computeroutput"><span class="identifier">sockaddr_storage</span></code> structure.
+          The socket types sockaddr type must be able to fit into a <code class="computeroutput">sockaddr_storage</code>
+          structure.
         </p>
 <h6>
 <a name="asio.reference.generic__seq_packet_protocol.endpoint.h4"></a>
@@ -323,8 +319,7 @@ The type of an endpoint.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

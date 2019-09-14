@@ -23,9 +23,9 @@
 <p>
             Place the acceptor into the state where it will listen for new connections.
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">listen</span><span class="special">(</span>
-    <span class="keyword">int</span> <span class="identifier">backlog</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">void listen(
+    int backlog,
+    asio::error_code &amp; ec);
 </pre>
 <p>
             This function puts the socket acceptor into the state where it may accept
@@ -52,20 +52,19 @@
 <a name="asio.reference.basic_socket_acceptor.listen.overload2.h1"></a>
             <span><a name="asio.reference.basic_socket_acceptor.listen.overload2.example"></a></span><a class="link" href="overload2.html#asio.reference.basic_socket_acceptor.listen.overload2.example">Example</a>
           </h6>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">acceptor</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">acceptor</span><span class="special">.</span><span class="identifier">listen</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">max_connections</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="comment">// An error occurred.</span>
-<span class="special">}</span>
+<pre class="programlisting">asio::ip::tcp::acceptor acceptor(io_context);
+...
+asio::error_code ec;
+acceptor.listen(asio::socket_base::max_listen_connections, ec);
+if (ec)
+{
+  // An error occurred.
+}
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

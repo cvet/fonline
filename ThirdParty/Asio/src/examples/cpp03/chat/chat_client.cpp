@@ -2,7 +2,7 @@
 // chat_client.cpp
 // ~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,24 +22,26 @@ typedef std::deque<chat_message> chat_message_queue;
 class chat_client
 {
 public:
-  chat_client(asio::io_service& io_service,
-      tcp::resolver::iterator endpoint_iterator)
-    : io_service_(io_service),
-      socket_(io_service)
+  chat_client(asio::io_context& io_context,
+      const tcp::resolver::results_type& endpoints)
+    : io_context_(io_context),
+      socket_(io_context)
   {
-    asio::async_connect(socket_, endpoint_iterator,
+    asio::async_connect(socket_, endpoints,
         boost::bind(&chat_client::handle_connect, this,
           asio::placeholders::error));
   }
 
   void write(const chat_message& msg)
   {
-    io_service_.post(boost::bind(&chat_client::do_write, this, msg));
+    asio::post(io_context_,
+        boost::bind(&chat_client::do_write, this, msg));
   }
 
   void close()
   {
-    io_service_.post(boost::bind(&chat_client::do_close, this));
+    asio::post(io_context_,
+        boost::bind(&chat_client::do_close, this));
   }
 
 private:
@@ -127,7 +129,7 @@ private:
   }
 
 private:
-  asio::io_service& io_service_;
+  asio::io_context& io_context_;
   tcp::socket socket_;
   chat_message read_msg_;
   chat_message_queue write_msgs_;
@@ -143,15 +145,14 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    asio::io_service io_service;
+    asio::io_context io_context;
 
-    tcp::resolver resolver(io_service);
-    tcp::resolver::query query(argv[1], argv[2]);
-    tcp::resolver::iterator iterator = resolver.resolve(query);
+    tcp::resolver resolver(io_context);
+    tcp::resolver::results_type endpoints = resolver.resolve(argv[1], argv[2]);
 
-    chat_client c(io_service, iterator);
+    chat_client c(io_context, endpoints);
 
-    asio::thread t(boost::bind(&asio::io_service::run, &io_service));
+    asio::thread t(boost::bind(&asio::io_context::run, &io_context));
 
     char line[chat_message::max_body_length + 1];
     while (std::cin.getline(line, chat_message::max_body_length + 1))

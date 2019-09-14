@@ -2,13 +2,13 @@
 // udp_server.cpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <asio/io_service.hpp>
+#include <asio/io_context.hpp>
 #include <asio/ip/udp.hpp>
 #include <boost/shared_ptr.hpp>
 #include <cstdio>
@@ -19,14 +19,14 @@
 
 using asio::ip::udp;
 
-#include "yield.hpp"
+#include <asio/yield.hpp>
 
-class udp_server : coroutine
+class udp_server : asio::coroutine
 {
 public:
-  udp_server(asio::io_service& io_service,
+  udp_server(asio::io_context& io_context,
       unsigned short port, std::size_t buf_size) :
-    socket_(io_service, udp::endpoint(udp::v4(), port)),
+    socket_(io_context, udp::endpoint(udp::v4(), port)),
     buffer_(buf_size)
   {
   }
@@ -90,7 +90,7 @@ private:
   allocator allocator_;
 };
 
-#include "unyield.hpp"
+#include <asio/unyield.hpp>
 
 int main(int argc, char* argv[])
 {
@@ -107,19 +107,19 @@ int main(int argc, char* argv[])
   std::size_t buf_size = std::atoi(argv[3]);
   bool spin = (std::strcmp(argv[4], "spin") == 0);
 
-  asio::io_service io_service(1);
+  asio::io_context io_context(1);
   std::vector<boost::shared_ptr<udp_server> > servers;
 
   for (unsigned short i = 0; i < num_ports; ++i)
   {
     unsigned short port = first_port + i;
-    boost::shared_ptr<udp_server> s(new udp_server(io_service, port, buf_size));
+    boost::shared_ptr<udp_server> s(new udp_server(io_context, port, buf_size));
     servers.push_back(s);
     (*s)(asio::error_code());
   }
 
   if (spin)
-    for (;;) io_service.poll();
+    for (;;) io_context.poll();
   else
-    io_service.run();
+    io_context.run();
 }

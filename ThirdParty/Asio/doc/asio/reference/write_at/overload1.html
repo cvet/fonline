@@ -23,13 +23,13 @@
 <p>
           Write all of the supplied data at the specified offset before returning.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../SyncRandomAccessWriteDevice.html" title="Buffer-oriented synchronous random-access write device requirements">SyncRandomAccessWriteDevice</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">write_at</span><span class="special">(</span>
-    <span class="identifier">SyncRandomAccessWriteDevice</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">,</span>
-    <span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../SyncRandomAccessWriteDevice.html" title="Buffer-oriented synchronous random-access write device requirements">SyncRandomAccessWriteDevice</a>,
+    typename <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>&gt;
+std::size_t write_at(
+    SyncRandomAccessWriteDevice &amp; d,
+    uint64_t offset,
+    const ConstBufferSequence &amp; buffers);
 </pre>
 <p>
           This function is used to write a certain number of bytes of data to a random
@@ -99,12 +99,13 @@
           <span><a name="asio.reference.write_at.overload1.example"></a></span><a class="link" href="overload1.html#asio.reference.write_at.overload1.example">Example</a>
         </h6>
 <p>
-          To write a single data buffer use the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a> function as follows:
+          To write a single data buffer use the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+          function as follows:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">write_at</span><span class="special">(</span><span class="identifier">d</span><span class="special">,</span> <span class="number">42</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">size</span><span class="special">));</span>
+<pre class="programlisting">asio::write_at(d, 42, asio::buffer(data, size));
 </pre>
 <p>
-          See the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a>
+          See the <a class="link" href="../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
           documentation for information on writing multiple buffers in one go, and
           how to use it with arrays, boost::array or std::vector.
         </p>
@@ -115,15 +116,14 @@
 <p>
           This overload is equivalent to calling:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">write_at</span><span class="special">(</span>
-    <span class="identifier">d</span><span class="special">,</span> <span class="identifier">offset</span><span class="special">,</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">transfer_all</span><span class="special">());</span>
+<pre class="programlisting">asio::write_at(
+    d, offset, buffers,
+    asio::transfer_all());
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

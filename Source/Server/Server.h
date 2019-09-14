@@ -40,26 +40,31 @@ public:
     FOServer();
     ~FOServer();
 
+    static FOServer* Self;
+    int              ServerGameSleep = 10;
+    bool             AllowServerNativeCalls = false;
+    bool             AllowClientNativeCalls = false;
+
     static void EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Net process
-    static void Process_ParseToGame( Client* cl );
-    static void Process_Move( Client* cl );
-    static void Process_Update( Client* cl );
-    static void Process_UpdateFile( Client* cl );
-    static void Process_UpdateFileData( Client* cl );
-    static void Process_CreateClient( Client* cl );
-    static void Process_LogIn( Client*& cl );
-    static void Process_Dir( Client* cl );
-    static void Process_Text( Client* cl );
-    static void Process_Command( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
-    static void Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
-    static void Process_Dialog( Client* cl );
-    static void Process_GiveMap( Client* cl );
-    static void Process_Ping( Client* cl );
-    static void Process_Property( Client* cl, uint data_size );
+    void Process_ParseToGame( Client* cl );
+    void Process_Move( Client* cl );
+    void Process_Update( Client* cl );
+    void Process_UpdateFile( Client* cl );
+    void Process_UpdateFileData( Client* cl );
+    void Process_CreateClient( Client* cl );
+    void Process_LogIn( Client*& cl );
+    void Process_Dir( Client* cl );
+    void Process_Text( Client* cl );
+    void Process_Command( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
+    void Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel );
+    void Process_Dialog( Client* cl );
+    void Process_GiveMap( Client* cl );
+    void Process_Ping( Client* cl );
+    void Process_Property( Client* cl, uint data_size );
 
-    static void Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery );
+    void Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery );
 
     // Update files
     struct UpdateFile
@@ -67,32 +72,32 @@ public:
         uint   Size;
         uchar* Data;
     };
-    typedef vector< UpdateFile > UpdateFileVec;
-    static UpdateFileVec UpdateFiles;
-    static UCharVec      UpdateFilesList;
+    using  UpdateFileVec = vector< UpdateFile >;
+    UpdateFileVec UpdateFiles;
+    UCharVec      UpdateFilesList;
 
-    static void GenerateUpdateFiles( bool first_generation = false, StrVec* resource_names = nullptr );
+    void GenerateUpdateFiles( bool first_generation = false, StrVec* resource_names = nullptr );
 
     // Actions
-    static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
+    bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
 
-    static bool RegenerateMap( Map* map );
-    static void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
+    bool RegenerateMap( Map* map );
+    void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
 
     // Scripting
-    static Pragmas ServerPropertyPragmas;
+    Pragmas ServerPropertyPragmas;
 
     // Init/Finish system
-    static bool InitScriptSystem();
-    static void FinishScriptSystem();
+    bool InitScriptSystem();
+    void FinishScriptSystem();
 
     // Dialogs demand and result
-    static bool DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave );
-    static uint DialogScriptResult( DemandResult& result, Critter* master, Critter* slave );
+    bool DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave );
+    uint DialogScriptResult( DemandResult& result, Critter* master, Critter* slave );
 
     // Client script
-    static bool RequestReloadClientScripts;
-    static bool ReloadClientScripts();
+    bool RequestReloadClientScripts = false;
+    bool ReloadClientScripts();
 
     // Text listen
     #define TEXT_LISTEN_FIRST_STR_MAX_LEN    ( 63 )
@@ -103,9 +108,9 @@ public:
         string FirstStr;
         uint64 Parameter;
     };
-    typedef vector< TextListen > TextListenVec;
-    static TextListenVec TextListeners;
-    static Mutex         TextListenersLocker;
+    using TextListenVec = vector< TextListen >;
+    TextListenVec TextListeners;
+    Mutex         TextListenersLocker;
 
     static void OnSendGlobalValue( Entity* entity, Property* prop );
     static void OnSendCritterValue( Entity* entity, Property* prop );
@@ -113,48 +118,50 @@ public:
     static void OnSendLocationValue( Entity* entity, Property* prop );
 
     // Items
-    static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
-    static void  OnSendItemValue( Entity* entity, Property* prop );
-    static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemBlockLines( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    Item*       CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
+    static void OnSendItemValue( Entity* entity, Property* prop );
+    static void OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemBlockLines( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Npc
-    static void ProcessCritter( Critter* cr );
-    static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
-    static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
-    static uint Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer );
-    static void Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
+    void ProcessCritter( Critter* cr );
+    bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
+    bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
+    uint Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer );
+    void Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
 
     // Main
-    static int     UpdateIndex, UpdateLastIndex;
-    static uint    UpdateLastTick;
-    static bool    Active, ActiveInProcess;
-    static UIntMap RegIp;
-    static Mutex   RegIpLocker;
+    int     UpdateIndex = -1;
+    int     UpdateLastIndex = -1;
+    uint    UpdateLastTick = 0;
+    bool    Active = false;
+    bool    ActiveInProcess = false;
+    UIntMap RegIp;
+    Mutex   RegIpLocker;
 
-    static void DisconnectClient( Client* cl );
-    static void RemoveClient( Client* cl );
-    static void Process( Client* cl );
-    static void ProcessMove( Critter* cr );
+    void DisconnectClient( Client* cl );
+    void RemoveClient( Client* cl );
+    void Process( Client* cl );
+    void ProcessMove( Critter* cr );
 
     // Log to client
-    static ClVec LogClients;
-    static void LogToClients( const string& str );
+    ClVec LogClients;
+    void LogToClients( const string& str );
 
     // Game time
-    static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
+    void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
     // Lang packs
-    static LangPackVec LangPacks;     // Todo: synchronize
-    static bool InitLangPacks( LangPackVec& lang_packs );
-    static bool InitLangPacksDialogs( LangPackVec& lang_packs );
-    static bool InitLangPacksLocations( LangPackVec& lang_packs );
-    static bool InitLangPacksItems( LangPackVec& lang_packs );
+    LangPackVec LangPacks;     // Todo: synchronize
+    bool InitLangPacks( LangPackVec& lang_packs );
+    bool InitLangPacksDialogs( LangPackVec& lang_packs );
+    bool InitLangPacksLocations( LangPackVec& lang_packs );
+    bool InitLangPacksItems( LangPackVec& lang_packs );
 
     // Init/Finish
     int  Run();
@@ -189,15 +196,15 @@ public:
     void DrawGui();
 
     // Net
-    static NetServerBase* TcpServer;
-    static NetServerBase* WebSocketsServer;
-    static ClVec          ConnectedClients;
-    static Mutex          ConnectedClientsLocker;
+    NetServerBase* TcpServer = nullptr;
+    NetServerBase* WebSocketsServer = nullptr;
+    ClVec          ConnectedClients;
+    Mutex          ConnectedClientsLocker;
 
-    static void OnNewConnection( NetConnection* connection );
+    void OnNewConnection( NetConnection* connection );
 
     // Access
-    static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
+    void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
     #define BANS_FNAME_ACTIVE     "Save/Bans/Active.txt"
@@ -219,17 +226,17 @@ public:
                          Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" );
         }
     };
-    typedef vector< ClientBanned > ClientBannedVec;
-    static ClientBannedVec Banned;
-    static Mutex           BannedLocker;
+    using ClientBannedVec = vector< ClientBanned >;
+    ClientBannedVec Banned;
+    Mutex           BannedLocker;
 
-    static ClientBanned* GetBanByName( const char* name );
-    static ClientBanned* GetBanByIp( uint ip );
-    static uint          GetBanTime( ClientBanned& ban );
-    static void          ProcessBans();
-    static void          SaveBan( ClientBanned& ban, bool expired );
-    static void          SaveBans();
-    static void          LoadBans();
+    ClientBanned* GetBanByName( const char* name );
+    ClientBanned* GetBanByIp( uint ip );
+    uint          GetBanTime( ClientBanned& ban );
+    void          ProcessBans();
+    void          SaveBan( ClientBanned& ban, bool expired );
+    void          SaveBans();
+    void          LoadBans();
 
     // Statistics
     struct Statistics_
@@ -251,12 +258,12 @@ public:
         uint  LoopMin;
         uint  LoopMax;
         uint  LagsCount;
-    } static Statistics;
+    } Statistics;
 
-    static string GetIngamePlayersStatistics();
+    string GetIngamePlayersStatistics();
 
     // Script functions
-    struct SScriptFunc
+    struct ScriptFunc
     {
         static Item*         Item_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static CScriptArray* Item_GetItems( Item* cont, uint stack_id );
@@ -449,12 +456,11 @@ public:
         static void          Global_AddPropertySetCallback( asIScriptGeneric* gen );
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static bool          Global_LoadDataFile( string dat_name );
-        // static uint Global_GetVersion();
-        static bool Global_LoadImage( uint index, string image_name, uint image_depth );
-        static uint Global_GetImageColor( uint index, uint x, uint y );
-        static void Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result );
-        static void Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
-    } ScriptFunc;
+        static bool          Global_LoadImage( uint index, string image_name, uint image_depth );
+        static uint          Global_GetImageColor( uint index, uint x, uint y );
+        static void          Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result );
+        static void          Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
+    };
 };
 
 #endif // __SERVER__

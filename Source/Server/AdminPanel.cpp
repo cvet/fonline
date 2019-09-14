@@ -6,6 +6,7 @@
 #include "NetBuffer.h"
 #include "StringUtils.h"
 #include "Server.h"
+#include "Settings.h"
 
 #define MAX_SESSIONS    ( 10 )
 
@@ -215,7 +216,7 @@ static void AdminWork( void* session_ )
         if( !s->Authorized )
         {
             StrVec client, tester, moder, admin, admin_names;
-            FOServer::GetAccesses( client, tester, moder, admin, admin_names );
+            Server->GetAccesses( client, tester, moder, admin, admin_names );
             int    pos = -1;
             for( size_t i = 0, j = admin.size(); i < j; i++ )
             {

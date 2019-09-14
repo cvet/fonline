@@ -28,37 +28,37 @@
         As a simple example, to perform a synchronous wait operation on a timer using
         a relative time one may write:
       </p>
-<pre class="programlisting"><span class="identifier">io_service</span> <span class="identifier">i</span><span class="special">;</span>
-<span class="special">...</span>
-<span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
-<span class="identifier">t</span><span class="special">.</span><span class="identifier">expires_from_now</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">5</span><span class="special">));</span>
-<span class="identifier">t</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<pre class="programlisting">io_context i;
+...
+deadline_timer t(i);
+t.expires_from_now(boost::posix_time::seconds(5));
+t.wait();
 </pre>
 <p>
         More commonly, a program will perform an asynchronous wait operation on a
         timer:
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">{</span> <span class="special">...</span> <span class="special">}</span>
-<span class="special">...</span>
-<span class="identifier">io_service</span> <span class="identifier">i</span><span class="special">;</span>
-<span class="special">...</span>
-<span class="identifier">deadline_timer</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
-<span class="identifier">t</span><span class="special">.</span><span class="identifier">expires_from_now</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">milliseconds</span><span class="special">(</span><span class="number">400</span><span class="special">));</span>
-<span class="identifier">t</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">handler</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">i</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+<pre class="programlisting">void handler(asio::error_code ec) { ... }
+...
+io_context i;
+...
+deadline_timer t(i);
+t.expires_from_now(boost::posix_time::milliseconds(400));
+t.async_wait(handler);
+...
+i.run();
 </pre>
 <p>
         The deadline associated with a timer may also be obtained as a relative time:
       </p>
-<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">time_duration</span> <span class="identifier">time_until_expiry</span>
-  <span class="special">=</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">expires_from_now</span><span class="special">();</span>
+<pre class="programlisting">boost::posix_time::time_duration time_until_expiry
+  = t.expires_from_now();
 </pre>
 <p>
         or as an absolute time to allow composition of timers:
       </p>
-<pre class="programlisting"><span class="identifier">deadline_timer</span> <span class="identifier">t2</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
-<span class="identifier">t2</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">t</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">30</span><span class="special">));</span>
+<pre class="programlisting">deadline_timer t2(i);
+t2.expires_at(t.expires_at() + boost::posix_time::seconds(30));
 </pre>
 <h5>
 <a name="asio.overview.timers.h0"></a>
@@ -67,14 +67,12 @@
       </h5>
 <p>
         <a class="link" href="../reference/basic_deadline_timer.html" title="basic_deadline_timer">basic_deadline_timer</a>,
-        <a class="link" href="../reference/deadline_timer.html" title="deadline_timer">deadline_timer</a>, <a class="link" href="../reference/deadline_timer_service.html" title="deadline_timer_service">deadline_timer_service</a>,
-        <a class="link" href="../tutorial/tuttimer1.html" title="Timer.1 - Using a timer synchronously">timer tutorials</a>.
+        <a class="link" href="../reference/deadline_timer.html" title="deadline_timer">deadline_timer</a>, <a class="link" href="../tutorial/tuttimer1.html" title="Timer.1 - Using a timer synchronously">timer tutorials</a>.
       </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

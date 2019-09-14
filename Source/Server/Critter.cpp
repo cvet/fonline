@@ -8,6 +8,7 @@
 #include "CritterManager.h"
 #include "ProtoManager.h"
 #include "StringUtils.h"
+#include "Settings.h"
 
 /************************************************************************/
 /*                                                                      */

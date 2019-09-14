@@ -11,6 +11,14 @@ bool OGL_texture_multisample = false;
 bool OGL_vertex_array_object = false;
 bool OGL_get_program_binary = false;
 
+#ifdef FO_ANDROID
+PFNGLBINDVERTEXARRAYOESPROC                 glBindVertexArrayOES_;
+PFNGLDELETEVERTEXARRAYSOESPROC              glDeleteVertexArraysOES_;
+PFNGLGENVERTEXARRAYSOESPROC                 glGenVertexArraysOES_;
+PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC glFramebufferTexture2DMultisampleIMG_;
+PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC  glRenderbufferStorageMultisampleIMG_;
+#endif
+
 bool GraphicApi::Init()
 {
     // Initialize GLEW
@@ -52,8 +60,8 @@ bool GraphicApi::Init()
     glDeleteVertexArraysOES_ = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym( es_lib, "glDeleteVertexArraysOES" );
     glGenVertexArraysOES_ = (PFNGLGENVERTEXARRAYSOESPROC) dlsym( es_lib, "glGenVertexArraysOES" );
     OGL_vertex_array_object = ( glBindVertexArrayOES_ && glDeleteVertexArraysOES_ && glGenVertexArraysOES_ );
-    glRenderbufferStorageMultisampleIMG_ = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG) dlsym( es_lib, "glRenderbufferStorageMultisampleIMG" );
-    glFramebufferTexture2DMultisampleIMG_ = (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG) dlsym( es_lib, "glFramebufferTexture2DMultisampleIMG" );
+    glRenderbufferStorageMultisampleIMG_ = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC) dlsym( es_lib, "glRenderbufferStorageMultisampleIMG" );
+    glFramebufferTexture2DMultisampleIMG_ = (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC) dlsym( es_lib, "glFramebufferTexture2DMultisampleIMG" );
     OGL_framebuffer_multisample = OGL_texture_multisample = ( glRenderbufferStorageMultisampleIMG_ && glFramebufferTexture2DMultisampleIMG_ );
     # endif
     # ifdef FO_IOS

@@ -5,6 +5,7 @@
 #include "GraphicApi.h"
 #include "FileUtils.h"
 #include "Timer.h"
+#include "Settings.h"
 #include "assimp/types.h"
 #include "assimp/scene.h"
 

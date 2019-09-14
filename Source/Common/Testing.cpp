@@ -631,7 +631,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         DumpAngelScript( f );
 
         // Threads
-        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
+        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetName(), Thread::GetId(), ", current" );
 
         // Stacktrace
         st_printer.print( st );

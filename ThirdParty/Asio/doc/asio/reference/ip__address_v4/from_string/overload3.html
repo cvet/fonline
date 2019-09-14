@@ -21,16 +21,16 @@
           (3 of 4 overloads)</a>
 </h5></div></div></div>
 <p>
-            Create an address from an IP address string in dotted decimal form.
+            (Deprecated: Use <code class="computeroutput">make_address_v4()</code>.) Create an address from
+            an IP address string in dotted decimal form.
           </p>
-<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">address_v4</span> <span class="identifier">from_string</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">str</span><span class="special">);</span>
+<pre class="programlisting">static address_v4 from_string(
+    const std::string &amp; str);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

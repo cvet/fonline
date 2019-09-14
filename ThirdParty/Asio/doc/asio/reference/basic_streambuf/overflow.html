@@ -20,21 +20,23 @@
 <a name="asio.reference.basic_streambuf.overflow"></a><a class="link" href="overflow.html" title="basic_streambuf::overflow">basic_streambuf::overflow</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm92035"></a> 
-Override std::streambuf behaviour.
+          <a class="indexterm" name="asio.indexterm.basic_streambuf.overflow"></a> 
+Override
+          std::streambuf behaviour.
         </p>
-<pre class="programlisting"><span class="identifier">int_type</span> <span class="identifier">overflow</span><span class="special">(</span>
-    <span class="identifier">int_type</span> <span class="identifier">c</span><span class="special">);</span>
+<pre class="programlisting">int_type overflow(
+    int_type c);
 </pre>
 <p>
-          Behaves according to the specification of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">streambuf</span><span class="special">::</span><span class="identifier">overflow</span><span class="special">()</span></code>, with the specialisation that <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">length_error</span></code> is thrown if appending the
-          character to the input sequence would require the condition <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span> <span class="special">&gt;</span> <span class="identifier">max_size</span><span class="special">()</span></code> to be true.
+          Behaves according to the specification of <code class="computeroutput">std::streambuf::overflow()</code>,
+          with the specialisation that <code class="computeroutput">std::length_error</code> is thrown if
+          appending the character to the input sequence would require the condition
+          <code class="computeroutput">size() &gt; max_size()</code> to be true.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

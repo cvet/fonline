@@ -20,30 +20,37 @@
 <a name="asio.reference.ssl__context.method"></a><a class="link" href="method.html" title="ssl::context::method">ssl::context::method</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm156924"></a> 
-Different methods supported by a context.
+          <a class="indexterm" name="asio.indexterm.ssl__context.method"></a> 
+Different methods supported
+          by a context.
         </p>
-<pre class="programlisting"><span class="keyword">enum</span> <span class="identifier">method</span>
+<pre class="programlisting">enum method
 </pre>
 <p>
-          <a class="indexterm" name="idm156931"></a>
- <a class="indexterm" name="idm156934"></a>
- <a class="indexterm" name="idm156937"></a>
- <a class="indexterm" name="idm156940"></a>
- <a class="indexterm" name="idm156943"></a>
- <a class="indexterm" name="idm156946"></a>
- <a class="indexterm" name="idm156949"></a>
- <a class="indexterm" name="idm156952"></a>
- <a class="indexterm" name="idm156955"></a>
- <a class="indexterm" name="idm156958"></a>
- <a class="indexterm" name="idm156961"></a>
- <a class="indexterm" name="idm156964"></a>
- <a class="indexterm" name="idm156967"></a>
- <a class="indexterm" name="idm156970"></a>
- <a class="indexterm" name="idm156973"></a>
- <a class="indexterm" name="idm156976"></a>
- <a class="indexterm" name="idm156979"></a>
- <a class="indexterm" name="idm156982"></a>
+          <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv2"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv2_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv2_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv3"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv3_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv3_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv1"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv1_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv1_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv23"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv23_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.sslv23_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv11"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv11_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv11_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv12"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv12_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv12_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv13"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv13_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tlsv13_server"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tls"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tls_client"></a>
+ <a class="indexterm" name="asio.indexterm.ssl__context.method.tls_server"></a>
         </p>
 <h6>
 <a name="asio.reference.ssl__context.method.h0"></a>
@@ -124,13 +131,36 @@ Different methods supported by a context.
 <dd><p>
                 TLS version 1.2 server.
               </p></dd>
+<dt><span class="term">tlsv13</span></dt>
+<dd><p>
+                Generic TLS version 1.3.
+              </p></dd>
+<dt><span class="term">tlsv13_client</span></dt>
+<dd><p>
+                TLS version 1.3 client.
+              </p></dd>
+<dt><span class="term">tlsv13_server</span></dt>
+<dd><p>
+                TLS version 1.3 server.
+              </p></dd>
+<dt><span class="term">tls</span></dt>
+<dd><p>
+                Generic TLS.
+              </p></dd>
+<dt><span class="term">tls_client</span></dt>
+<dd><p>
+                TLS client.
+              </p></dd>
+<dt><span class="term">tls_server</span></dt>
+<dd><p>
+                TLS server.
+              </p></dd>
 </dl>
 </div>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

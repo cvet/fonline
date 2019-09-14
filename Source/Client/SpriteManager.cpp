@@ -5,6 +5,7 @@
 #include "IniFile.h"
 #include "Crypt.h"
 #include "StringUtils.h"
+#include "Settings.h"
 #include "F2Palette_Include.h"
 
 #ifdef FO_WEB
@@ -20,14 +21,6 @@ AnyFrames*    SpriteManager::DummyAnimation = nullptr;
 #define ARRAY_BUFFERS_COUNT      ( 300 )
 
 #define FAST_FORMAT_SIGNATURE    ( 0xDEADBEEF ) // Must be really unique
-
-#ifdef FO_ANDROID
-PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
-PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
-PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
-PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
-PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
-#endif
 
 #ifdef FO_IOS
 SDL_Window* SprMngr_MainWindow;

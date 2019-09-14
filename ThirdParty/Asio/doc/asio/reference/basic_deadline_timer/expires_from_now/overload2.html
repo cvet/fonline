@@ -23,13 +23,13 @@
 <p>
             Set the timer's expiry time relative to now.
           </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">expires_from_now</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">duration_type</span> <span class="special">&amp;</span> <span class="identifier">expiry_time</span><span class="special">);</span>
+<pre class="programlisting">std::size_t expires_from_now(
+    const duration_type &amp; expiry_time);
 </pre>
 <p>
             This function sets the expiry time. Any pending asynchronous wait operations
             will be cancelled. The handler for each cancelled operation will be invoked
-            with the <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span></code> error code.
+            with the <code class="computeroutput">asio::error::operation_aborted</code> error code.
           </p>
 <h6>
 <a name="asio.reference.basic_deadline_timer.expires_from_now.overload2.h0"></a>
@@ -70,8 +70,8 @@
             <span><a name="asio.reference.basic_deadline_timer.expires_from_now.overload2.remarks"></a></span><a class="link" href="overload2.html#asio.reference.basic_deadline_timer.expires_from_now.overload2.remarks">Remarks</a>
           </h6>
 <p>
-            If the timer has already expired when <code class="computeroutput"><span class="identifier">expires_from_now</span><span class="special">()</span></code> is called, then the handlers for asynchronous
-            wait operations will:
+            If the timer has already expired when <code class="computeroutput">expires_from_now()</code>
+            is called, then the handlers for asynchronous wait operations will:
           </p>
 <div class="itemizedlist"><ul class="itemizedlist" type="disc">
 <li class="listitem">
@@ -88,8 +88,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

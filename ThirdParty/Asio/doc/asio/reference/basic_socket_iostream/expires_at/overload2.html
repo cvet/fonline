@@ -23,13 +23,13 @@
 <p>
             Set the stream's expiry time as an absolute time.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">expires_at</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">time_type</span> <span class="special">&amp;</span> <span class="identifier">expiry_time</span><span class="special">);</span>
+<pre class="programlisting">void expires_at(
+    const time_point &amp; expiry_time);
 </pre>
 <p>
             This function sets the expiry time associated with the stream. Stream
             operations performed after this time (where the operations cannot be
-            completed using the internal buffers) will fail with the error <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span></code>.
+            completed using the internal buffers) will fail with the error <code class="computeroutput">asio::error::operation_aborted</code>.
           </p>
 <h6>
 <a name="asio.reference.basic_socket_iostream.expires_at.overload2.h0"></a>
@@ -47,8 +47,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
