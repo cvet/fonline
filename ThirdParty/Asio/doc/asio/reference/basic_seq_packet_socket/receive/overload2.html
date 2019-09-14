@@ -23,12 +23,12 @@
 <p>
             Receive some data on the socket.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">receive</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_flags</span> <span class="identifier">in_flags</span><span class="special">,</span>
-    <span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_flags</span> <span class="special">&amp;</span> <span class="identifier">out_flags</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>&gt;
+std::size_t receive(
+    const MutableBufferSequence &amp; buffers,
+    socket_base::message_flags in_flags,
+    socket_base::message_flags &amp; out_flags);
 </pre>
 <p>
             This function is used to receive data on the sequenced packet socket.
@@ -53,7 +53,7 @@
 <dt><span class="term">out_flags</span></dt>
 <dd><p>
                   After the receive call completes, contains flags associated with
-                  the received data. For example, if the <code class="computeroutput"><span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_end_of_record</span></code>
+                  the received data. For example, if the <code class="computeroutput">socket_base::message_end_of_record</code>
                   bit is set then the received data marks the end of a record.
                 </p></dd>
 </dl>
@@ -75,7 +75,7 @@
 <dl>
 <dt><span class="term">asio::system_error</span></dt>
 <dd><p>
-                  Thrown on failure. An error code of <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">eof</span></code>
+                  Thrown on failure. An error code of <code class="computeroutput">asio::error::eof</code>
                   indicates that the connection was closed by the peer.
                 </p></dd>
 </dl>
@@ -86,29 +86,29 @@
           </h6>
 <p>
             The receive operation may not receive all of the requested number of
-            bytes. Consider using the <a class="link" href="../../read.html" title="read"><code class="computeroutput"><span class="identifier">read</span></code></a> function if you need to
-            ensure that the requested amount of data is read before the blocking
-            operation completes.
+            bytes. Consider using the <a class="link" href="../../read.html" title="read"><code class="computeroutput">read</code></a>
+            function if you need to ensure that the requested amount of data is read
+            before the blocking operation completes.
           </p>
 <h6>
 <a name="asio.reference.basic_seq_packet_socket.receive.overload2.h4"></a>
             <span><a name="asio.reference.basic_seq_packet_socket.receive.overload2.example"></a></span><a class="link" href="overload2.html#asio.reference.basic_seq_packet_socket.receive.overload2.example">Example</a>
           </h6>
 <p>
-            To receive into a single data buffer use the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a> function as follows:
+            To receive into a single data buffer use the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+            function as follows:
           </p>
-<pre class="programlisting"><span class="identifier">socket</span><span class="special">.</span><span class="identifier">receive</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">size</span><span class="special">),</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">out_flags</span><span class="special">);</span>
+<pre class="programlisting">socket.receive(asio::buffer(data, size), 0, out_flags);
 </pre>
 <p>
-            See the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a>
+            See the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
             documentation for information on receiving into multiple buffers in one
             go, and how to use it with arrays, boost::array or std::vector.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

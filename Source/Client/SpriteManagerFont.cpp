@@ -470,7 +470,7 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
     if( image_name.back() == '*' )
     {
         make_gray = true;
-        image_name.substr( 0, image_name.size() - 1 );
+        image_name = image_name.substr( 0, image_name.size() - 1 );
     }
     font.MakeGray = make_gray;
 

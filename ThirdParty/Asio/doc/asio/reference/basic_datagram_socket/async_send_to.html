@@ -20,33 +20,33 @@
 <a name="asio.reference.basic_datagram_socket.async_send_to"></a><a class="link" href="async_send_to.html" title="basic_datagram_socket::async_send_to">basic_datagram_socket::async_send_to</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm33471"></a> 
-Start an asynchronous send.
+          <a class="indexterm" name="asio.indexterm.basic_datagram_socket.async_send_to"></a> 
+Start
+          an asynchronous send.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_send_to/overload1.html" title="basic_datagram_socket::async_send_to (1 of 2 overloads)">async_send_to</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">destination</span><span class="special">,</span>
-    <span class="identifier">WriteHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>,
+    typename <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_send_to/overload1.html" title="basic_datagram_socket::async_send_to (1 of 2 overloads)">async_send_to</a>(
+    const ConstBufferSequence &amp; buffers,
+    const endpoint_type &amp; destination,
+    WriteHandler &amp;&amp; handler);
   <span class="emphasis"><em>&#187; <a class="link" href="async_send_to/overload1.html" title="basic_datagram_socket::async_send_to (1 of 2 overloads)">more...</a></em></span>
 
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_send_to/overload2.html" title="basic_datagram_socket::async_send_to (2 of 2 overloads)">async_send_to</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">destination</span><span class="special">,</span>
-    <span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">message_flags</span> <span class="identifier">flags</span><span class="special">,</span>
-    <span class="identifier">WriteHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+template&lt;
+    typename <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>,
+    typename <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_send_to/overload2.html" title="basic_datagram_socket::async_send_to (2 of 2 overloads)">async_send_to</a>(
+    const ConstBufferSequence &amp; buffers,
+    const endpoint_type &amp; destination,
+    socket_base::message_flags flags,
+    WriteHandler &amp;&amp; handler);
   <span class="emphasis"><em>&#187; <a class="link" href="async_send_to/overload2.html" title="basic_datagram_socket::async_send_to (2 of 2 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -26,12 +26,12 @@
 <p>
             Close the socket.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">close</span><span class="special">();</span>
+<pre class="programlisting">void close();
 </pre>
 <p>
             This function is used to close the socket. Any asynchronous send, receive
             or connect operations will be cancelled immediately, and will complete
-            with the <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span></code> error.
+            with the <code class="computeroutput">asio::error::operation_aborted</code> error.
           </p>
 <h6>
 <a name="asio.reference.basic_raw_socket.close.overload1.h0"></a>
@@ -53,13 +53,12 @@
           </h6>
 <p>
             For portable behaviour with respect to graceful closure of a connected
-            socket, call <code class="computeroutput"><span class="identifier">shutdown</span><span class="special">()</span></code> before closing the socket.
+            socket, call <code class="computeroutput">shutdown()</code> before closing the socket.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

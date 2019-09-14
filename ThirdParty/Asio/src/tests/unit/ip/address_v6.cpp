@@ -2,7 +2,7 @@
 // address_v6.cpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -66,8 +66,10 @@ void test()
     b = addr1.is_v4_mapped();
     (void)b;
 
+#if !defined(ASIO_NO_DEPRECATED)
     b = addr1.is_v4_compatible();
     (void)b;
+#endif // !defined(ASIO_NO_DEPRECATED)
 
     b = addr1.is_multicast_node_local();
     (void)b;
@@ -88,24 +90,32 @@ void test()
     (void)bytes_value;
 
     std::string string_value = addr1.to_string();
+#if !defined(ASIO_NO_DEPRECATED)
     string_value = addr1.to_string(ec);
+#endif // !defined(ASIO_NO_DEPRECATED)
 
+#if !defined(ASIO_NO_DEPRECATED)
     ip::address_v4 addr3 = addr1.to_v4();
+#endif // !defined(ASIO_NO_DEPRECATED)
 
     // address_v6 static functions.
 
+#if !defined(ASIO_NO_DEPRECATED)
     addr1 = ip::address_v6::from_string("0::0");
     addr1 = ip::address_v6::from_string("0::0", ec);
     addr1 = ip::address_v6::from_string(string_value);
     addr1 = ip::address_v6::from_string(string_value, ec);
+#endif // !defined(ASIO_NO_DEPRECATED)
 
     addr1 = ip::address_v6::any();
 
     addr1 = ip::address_v6::loopback();
 
+#if !defined(ASIO_NO_DEPRECATED)
     addr1 = ip::address_v6::v4_mapped(addr3);
 
     addr1 = ip::address_v6::v4_compatible(addr3);
+#endif // !defined(ASIO_NO_DEPRECATED)
 
     // address_v6 comparisons.
 
@@ -126,6 +136,30 @@ void test()
 
     b = (addr1 >= addr2);
     (void)b;
+
+    // address_v6 creation functions.
+
+    addr1 = ip::make_address_v6(const_bytes_value, scope_id);
+    addr1 = ip::make_address_v6("0::0");
+    addr1 = ip::make_address_v6("0::0", ec);
+    addr1 = ip::make_address_v6(string_value);
+    addr1 = ip::make_address_v6(string_value, ec);
+#if defined(ASIO_HAS_STRING_VIEW)
+# if defined(ASIO_HAS_STD_STRING_VIEW)
+    std::string_view string_view_value("0::0");
+# else // defined(ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
+    std::experimental::string_view string_view_value("0::0");
+# endif // defined(ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
+    addr1 = ip::make_address_v6(string_view_value);
+    addr1 = ip::make_address_v6(string_view_value, ec);
+#endif // defined(ASIO_HAS_STRING_VIEW)
+
+    // address_v6 IPv4-mapped conversion.
+#if defined(ASIO_NO_DEPRECATED)
+    ip::address_v4 addr3;
+#endif // defined(ASIO_NO_DEPRECATED)
+    addr1 = ip::make_address_v6(ip::v4_mapped, addr3);
+    addr3 = ip::make_address_v4(ip::v4_mapped, addr1);
 
     // address_v6 I/O.
 
@@ -274,6 +308,7 @@ void test()
   ASIO_CHECK(!mcast_org_local_address.is_v4_mapped());
   ASIO_CHECK(!mcast_site_local_address.is_v4_mapped());
 
+#if !defined(ASIO_NO_DEPRECATED)
   ASIO_CHECK(!unspecified_address.is_v4_compatible());
   ASIO_CHECK(!loopback_address.is_v4_compatible());
   ASIO_CHECK(!link_local_address.is_v4_compatible());
@@ -285,6 +320,7 @@ void test()
   ASIO_CHECK(!mcast_node_local_address.is_v4_compatible());
   ASIO_CHECK(!mcast_org_local_address.is_v4_compatible());
   ASIO_CHECK(!mcast_site_local_address.is_v4_compatible());
+#endif // !defined(ASIO_NO_DEPRECATED)
 
   ASIO_CHECK(!unspecified_address.is_multicast());
   ASIO_CHECK(!loopback_address.is_multicast());

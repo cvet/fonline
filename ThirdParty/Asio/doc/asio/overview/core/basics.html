@@ -34,18 +34,18 @@
           <span class="inlinemediaobject"><img src="../../../sync_op.png" alt="sync_op"></span>
         </p>
 <p>
-          <span class="bold"><strong>Your program</strong></span> will have at least one <span class="bold"><strong>io_service</strong></span> object. The <span class="bold"><strong>io_service</strong></span>
+          <span class="bold"><strong>Your program</strong></span> will have at least one <span class="bold"><strong>io_context</strong></span> object. The <span class="bold"><strong>io_context</strong></span>
           represents <span class="bold"><strong>your program</strong></span>'s link to the
           <span class="bold"><strong>operating system</strong></span>'s I/O services.
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io_service</span><span class="special">;</span>
+<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">io_context</span><span class="special">;</span>
 </pre>
 <p>
           To perform I/O operations <span class="bold"><strong>your program</strong></span>
           will need an <span class="bold"><strong>I/O object</strong></span> such as a TCP
           socket:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
+<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket</span><span class="special">(</span><span class="identifier">io_context</span><span class="special">);</span>
 </pre>
 <p>
           When a synchronous connect operation is performed, the following sequence
@@ -59,17 +59,17 @@
 </pre>
 <p>
           2. The <span class="bold"><strong>I/O object</strong></span> forwards the request
-          to the <span class="bold"><strong>io_service</strong></span>.
+          to the <span class="bold"><strong>io_context</strong></span>.
         </p>
 <p>
-          3. The <span class="bold"><strong>io_service</strong></span> calls on the <span class="bold"><strong>operating system</strong></span> to perform the connect operation.
+          3. The <span class="bold"><strong>io_context</strong></span> calls on the <span class="bold"><strong>operating system</strong></span> to perform the connect operation.
         </p>
 <p>
           4. The <span class="bold"><strong>operating system</strong></span> returns the result
-          of the operation to the <span class="bold"><strong>io_service</strong></span>.
+          of the operation to the <span class="bold"><strong>io_context</strong></span>.
         </p>
 <p>
-          5. The <span class="bold"><strong>io_service</strong></span> translates any error
+          5. The <span class="bold"><strong>io_context</strong></span> translates any error
           resulting from the operation into an object of type <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span></code>.
           An <code class="computeroutput"><span class="identifier">error_code</span></code> may be compared
           with specific values, or tested as a boolean (where a <code class="computeroutput"><span class="keyword">false</span></code>
@@ -115,10 +115,10 @@
         </p>
 <p>
           2. The <span class="bold"><strong>I/O object</strong></span> forwards the request
-          to the <span class="bold"><strong>io_service</strong></span>.
+          to the <span class="bold"><strong>io_context</strong></span>.
         </p>
 <p>
-          3. The <span class="bold"><strong>io_service</strong></span> signals to the <span class="bold"><strong>operating system</strong></span> that it should start an asynchronous
+          3. The <span class="bold"><strong>io_context</strong></span> signals to the <span class="bold"><strong>operating system</strong></span> that it should start an asynchronous
           connect.
         </p>
 <p>
@@ -131,17 +131,17 @@
 <p>
           4. The <span class="bold"><strong>operating system</strong></span> indicates that
           the connect operation has completed by placing the result on a queue, ready
-          to be picked up by the <span class="bold"><strong>io_service</strong></span>.
+          to be picked up by the <span class="bold"><strong>io_context</strong></span>.
         </p>
 <p>
-          5. <span class="bold"><strong>Your program</strong></span> must make a call to <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>
-          (or to one of the similar <span class="bold"><strong>io_service</strong></span> member
-          functions) in order for the result to be retrieved. A call to <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>
+          5. <span class="bold"><strong>Your program</strong></span> must make a call to <code class="computeroutput"><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>
+          (or to one of the similar <span class="bold"><strong>io_context</strong></span> member
+          functions) in order for the result to be retrieved. A call to <code class="computeroutput"><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>
           blocks while there are unfinished asynchronous operations, so you would
           typically call it as soon as you have started your first asynchronous operation.
         </p>
 <p>
-          6. While inside the call to <code class="computeroutput"><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, the <span class="bold"><strong>io_service</strong></span>
+          6. While inside the call to <code class="computeroutput"><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">run</span><span class="special">()</span></code>, the <span class="bold"><strong>io_context</strong></span>
           dequeues the result of the operation, translates it into an <code class="computeroutput"><span class="identifier">error_code</span></code>, and then passes it to <span class="bold"><strong>your completion handler</strong></span>.
         </p>
 <p>
@@ -152,8 +152,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

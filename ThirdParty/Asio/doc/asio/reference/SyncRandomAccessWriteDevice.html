@@ -21,16 +21,14 @@
       synchronous random-access write device requirements</a>
 </h3></div></div></div>
 <p>
-        In the table below, <code class="computeroutput"><span class="identifier">a</span></code> denotes
-        a synchronous random-access write device object, <code class="computeroutput"><span class="identifier">o</span></code>
-        denotes an offset of type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
-        <code class="computeroutput"><span class="identifier">cb</span></code> denotes an object satisfying
-        <a class="link" href="ConstBufferSequence.html" title="Constant buffer sequence requirements">constant buffer sequence</a>
-        requirements, and <code class="computeroutput"><span class="identifier">ec</span></code> denotes
-        an object of type <code class="computeroutput"><span class="identifier">error_code</span></code>.
+        In the table below, <code class="computeroutput">a</code> denotes a synchronous random-access write
+        device object, <code class="computeroutput">o</code> denotes an offset of type <code class="computeroutput">boost::uint64_t</code>,
+        <code class="computeroutput">cb</code> denotes an object satisfying <a class="link" href="ConstBufferSequence.html" title="Constant buffer sequence requirements">constant
+        buffer sequence</a> requirements, and <code class="computeroutput">ec</code> denotes an object
+        of type <code class="computeroutput">error_code</code>.
       </p>
 <div class="table">
-<a name="asio.reference.SyncRandomAccessWriteDevice.t0"></a><p class="title"><b>Table&#160;35.&#160;Buffer-oriented synchronous random-access write device requirements</b></p>
+<a name="asio.reference.SyncRandomAccessWriteDevice.t0"></a><p class="title"><b>Table&#160;27.&#160;Buffer-oriented synchronous random-access write device requirements</b></p>
 <div class="table-contents"><table class="table" summary="Buffer-oriented synchronous random-access write device requirements">
 <colgroup>
 <col>
@@ -58,23 +56,22 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some_at</span><span class="special">(</span><span class="identifier">o</span><span class="special">,</span>
-                  <span class="identifier">cb</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.write_some_at(o, cb);</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
+                  <code class="computeroutput">size_t</code>
                 </p>
               </td>
 <td>
                 <p>
                   Equivalent to:
 </p>
-<pre class="programlisting"><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-<span class="identifier">size_t</span> <span class="identifier">s</span> <span class="special">=</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span><span class="identifier">o</span><span class="special">,</span> <span class="identifier">cb</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">if</span> <span class="special">(</span><span class="identifier">ec</span><span class="special">)</span> <span class="keyword">throw</span> <span class="identifier">system_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
-<span class="keyword">return</span> <span class="identifier">s</span><span class="special">;</span>
+<pre class="programlisting">error_code ec;
+size_t s = a.write_some(o, cb, ec);
+if (ec) throw system_error(ec);
+return s;
 </pre>
 <p>
                 </p>
@@ -83,32 +80,27 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">write_some_at</span><span class="special">(</span><span class="identifier">o</span><span class="special">,</span>
-                  <span class="identifier">cb</span><span class="special">,</span>
-                  <span class="identifier">ec</span><span class="special">);</span></code>
+                  <code class="computeroutput">a.write_some_at(o, cb, ec);</code>
                 </p>
               </td>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">size_t</span></code>
+                  <code class="computeroutput">size_t</code>
                 </p>
               </td>
 <td>
                 <p>
-                  Writes one or more bytes of data to the device <code class="computeroutput"><span class="identifier">a</span></code>
-                  at offset <code class="computeroutput"><span class="identifier">o</span></code>.<br>
-                  <br> The constant buffer sequence <code class="computeroutput"><span class="identifier">cb</span></code>
-                  specifies memory where the data to be written is located. The
-                  <code class="computeroutput"><span class="identifier">write_some_at</span></code> operation
-                  shall always write a buffer in the sequence completely before proceeding
-                  to the next.<br> <br> If successful, returns the number of
-                  bytes written and sets <code class="computeroutput"><span class="identifier">ec</span></code>
-                  such that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code>
-                  is true. If an error occurred, returns <code class="computeroutput"><span class="number">0</span></code>
-                  and sets <code class="computeroutput"><span class="identifier">ec</span></code> such
-                  that <code class="computeroutput"><span class="special">!!</span><span class="identifier">ec</span></code>
-                  is true.<br> <br> If the total size of all buffers in the sequence
-                  <code class="computeroutput"><span class="identifier">cb</span></code> is <code class="computeroutput"><span class="number">0</span></code>, the function shall return <code class="computeroutput"><span class="number">0</span></code> immediately.
+                  Writes one or more bytes of data to the device <code class="computeroutput">a</code> at
+                  offset <code class="computeroutput">o</code>.<br> <br> The constant buffer sequence
+                  <code class="computeroutput">cb</code> specifies memory where the data to be written is
+                  located. The <code class="computeroutput">write_some_at</code> operation shall always
+                  write a buffer in the sequence completely before proceeding to
+                  the next.<br> <br> If successful, returns the number of bytes
+                  written and sets <code class="computeroutput">ec</code> such that <code class="computeroutput">!ec</code> is
+                  true. If an error occurred, returns <code class="computeroutput">0</code> and sets <code class="computeroutput">ec</code>
+                  such that <code class="computeroutput">!!ec</code> is true.<br> <br> If the total
+                  size of all buffers in the sequence <code class="computeroutput">cb</code> is <code class="computeroutput">0</code>,
+                  the function shall return <code class="computeroutput">0</code> immediately.
                 </p>
               </td>
 </tr>
@@ -119,8 +111,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -20,42 +20,42 @@
 <a name="asio.reference.generic__basic_endpoint.basic_endpoint"></a><a class="link" href="basic_endpoint.html" title="generic::basic_endpoint::basic_endpoint">generic::basic_endpoint::basic_endpoint</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm110880"></a> 
-Default constructor.
+          <a class="indexterm" name="asio.indexterm.generic__basic_endpoint.basic_endpoint"></a> 
+Default
+          constructor.
         </p>
-<pre class="programlisting"><a class="link" href="basic_endpoint/overload1.html" title="generic::basic_endpoint::basic_endpoint (1 of 4 overloads)">basic_endpoint</a><span class="special">();</span>
+<pre class="programlisting"><a class="link" href="basic_endpoint/overload1.html" title="generic::basic_endpoint::basic_endpoint (1 of 4 overloads)">basic_endpoint</a>();
   <span class="emphasis"><em>&#187; <a class="link" href="basic_endpoint/overload1.html" title="generic::basic_endpoint::basic_endpoint (1 of 4 overloads)">more...</a></em></span>
 </pre>
 <p>
           Construct an endpoint from the specified socket address.
         </p>
-<pre class="programlisting"><a class="link" href="basic_endpoint/overload2.html" title="generic::basic_endpoint::basic_endpoint (2 of 4 overloads)">basic_endpoint</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">socket_address</span><span class="special">,</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">socket_address_size</span><span class="special">,</span>
-    <span class="keyword">int</span> <span class="identifier">socket_protocol</span> <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="basic_endpoint/overload2.html" title="generic::basic_endpoint::basic_endpoint (2 of 4 overloads)">basic_endpoint</a>(
+    const void * socket_address,
+    std::size_t socket_address_size,
+    int socket_protocol = 0);
   <span class="emphasis"><em>&#187; <a class="link" href="basic_endpoint/overload2.html" title="generic::basic_endpoint::basic_endpoint (2 of 4 overloads)">more...</a></em></span>
 </pre>
 <p>
           Construct an endpoint from the specific endpoint type.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../Endpoint.html" title="Endpoint requirements">Endpoint</a><span class="special">&gt;</span>
-<a class="link" href="basic_endpoint/overload3.html" title="generic::basic_endpoint::basic_endpoint (3 of 4 overloads)">basic_endpoint</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">Endpoint</span> <span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Endpoint.html" title="Endpoint requirements">Endpoint</a>&gt;
+<a class="link" href="basic_endpoint/overload3.html" title="generic::basic_endpoint::basic_endpoint (3 of 4 overloads)">basic_endpoint</a>(
+    const Endpoint &amp; endpoint);
   <span class="emphasis"><em>&#187; <a class="link" href="basic_endpoint/overload3.html" title="generic::basic_endpoint::basic_endpoint (3 of 4 overloads)">more...</a></em></span>
 </pre>
 <p>
           Copy constructor.
         </p>
-<pre class="programlisting"><a class="link" href="basic_endpoint/overload4.html" title="generic::basic_endpoint::basic_endpoint (4 of 4 overloads)">basic_endpoint</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">basic_endpoint</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="basic_endpoint/overload4.html" title="generic::basic_endpoint::basic_endpoint (4 of 4 overloads)">basic_endpoint</a>(
+    const basic_endpoint &amp; other);
   <span class="emphasis"><em>&#187; <a class="link" href="basic_endpoint/overload4.html" title="generic::basic_endpoint::basic_endpoint (4 of 4 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

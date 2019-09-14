@@ -2,7 +2,7 @@
 // system_timer.cpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,7 +25,8 @@
 
 #if defined(ASIO_HAS_STD_CHRONO)
 
-#include "asio/io_service.hpp"
+#include "asio/executor_work_guard.hpp"
+#include "asio/io_context.hpp"
 #include "asio/thread.hpp"
 
 #if defined(ASIO_HAS_BOOST_BIND)
@@ -40,8 +41,6 @@ namespace bindns = boost;
 namespace bindns = std;
 #endif // defined(ASIO_HAS_BOOST_BIND)
 
-namespace chronons = std::chrono;
-
 void increment(int* count)
 {
   ++(*count);
@@ -55,7 +54,7 @@ void decrement_to_zero(asio::system_timer* t, int* count)
 
     int before_value = *count;
 
-    t->expires_at(t->expires_at() + chronons::seconds(1));
+    t->expires_at(t->expiry() + asio::chrono::seconds(1));
     t->async_wait(bindns::bind(decrement_to_zero, t, count));
 
     // Completion cannot nest, so count value should remain unchanged.
@@ -89,19 +88,19 @@ asio::system_timer::time_point now()
 
 void system_timer_test()
 {
-  using chronons::seconds;
-  using chronons::microseconds;
+  using asio::chrono::seconds;
+  using asio::chrono::microseconds;
 #if !defined(ASIO_HAS_BOOST_BIND)
   using std::placeholders::_1;
   using std::placeholders::_2;
 #endif // !defined(ASIO_HAS_BOOST_BIND)
 
-  asio::io_service ios;
+  asio::io_context ioc;
   int count = 0;
 
   asio::system_timer::time_point start = now();
 
-  asio::system_timer t1(ios, seconds(1));
+  asio::system_timer t1(ioc, seconds(1));
   t1.wait();
 
   // The timer must block until after its expiry time.
@@ -111,7 +110,7 @@ void system_timer_test()
 
   start = now();
 
-  asio::system_timer t2(ios, seconds(1) + microseconds(500000));
+  asio::system_timer t2(ioc, seconds(1) + microseconds(500000));
   t2.wait();
 
   // The timer must block until after its expiry time.
@@ -119,7 +118,7 @@ void system_timer_test()
   expected_end = start + seconds(1) + microseconds(500000);
   ASIO_CHECK(expected_end < end || expected_end == end);
 
-  t2.expires_at(t2.expires_at() + seconds(1));
+  t2.expires_at(t2.expiry() + seconds(1));
   t2.wait();
 
   // The timer must block until after its expiry time.
@@ -129,7 +128,7 @@ void system_timer_test()
 
   start = now();
 
-  t2.expires_from_now(seconds(1) + microseconds(200000));
+  t2.expires_after(seconds(1) + microseconds(200000));
   t2.wait();
 
   // The timer must block until after its expiry time.
@@ -139,13 +138,13 @@ void system_timer_test()
 
   start = now();
 
-  asio::system_timer t3(ios, seconds(5));
+  asio::system_timer t3(ioc, seconds(5));
   t3.async_wait(bindns::bind(increment, &count));
 
   // No completions can be delivered until run() is called.
   ASIO_CHECK(count == 0);
 
-  ios.run();
+  ioc.run();
 
   // The run() call will not return until all operations have finished, and
   // this should not be until after the timer's expiry time.
@@ -157,14 +156,14 @@ void system_timer_test()
   count = 3;
   start = now();
 
-  asio::system_timer t4(ios, seconds(1));
+  asio::system_timer t4(ioc, seconds(1));
   t4.async_wait(bindns::bind(decrement_to_zero, &t4, &count));
 
   // No completions can be delivered until run() is called.
   ASIO_CHECK(count == 3);
 
-  ios.reset();
-  ios.run();
+  ioc.restart();
+  ioc.run();
 
   // The run() call will not return until all operations have finished, and
   // this should not be until after the timer's final expiry time.
@@ -176,16 +175,16 @@ void system_timer_test()
   count = 0;
   start = now();
 
-  asio::system_timer t5(ios, seconds(10));
+  asio::system_timer t5(ioc, seconds(10));
   t5.async_wait(bindns::bind(increment_if_not_cancelled, &count, _1));
-  asio::system_timer t6(ios, seconds(1));
+  asio::system_timer t6(ioc, seconds(1));
   t6.async_wait(bindns::bind(cancel_timer, &t5));
 
   // No completions can be delivered until run() is called.
   ASIO_CHECK(count == 0);
 
-  ios.reset();
-  ios.run();
+  ioc.restart();
+  ioc.run();
 
   // The timer should have been cancelled, so count should not have changed.
   // The total run time should not have been much more than 1 second (and
@@ -199,8 +198,8 @@ void system_timer_test()
   // wait should run to completion and increment the counter.
   t5.async_wait(bindns::bind(increment_if_not_cancelled, &count, _1));
 
-  ios.reset();
-  ios.run();
+  ioc.restart();
+  ioc.run();
 
   // The timer should not have been cancelled, so count should have changed.
   // The total time since the timer was created should be more than 10 seconds.
@@ -215,14 +214,14 @@ void system_timer_test()
   // Start two waits on a timer, one of which will be cancelled. The one
   // which is not cancelled should still run to completion and increment the
   // counter.
-  asio::system_timer t7(ios, seconds(3));
+  asio::system_timer t7(ioc, seconds(3));
   t7.async_wait(bindns::bind(increment_if_not_cancelled, &count, _1));
   t7.async_wait(bindns::bind(increment_if_not_cancelled, &count, _1));
-  asio::system_timer t8(ios, seconds(1));
+  asio::system_timer t8(ioc, seconds(1));
   t8.async_wait(bindns::bind(cancel_one_timer, &t7));
 
-  ios.reset();
-  ios.run();
+  ioc.restart();
+  ioc.run();
 
   // One of the waits should not have been cancelled, so count should have
   // changed. The total time since the timer was created should be more than 3
@@ -233,26 +232,33 @@ void system_timer_test()
   ASIO_CHECK(expected_end < end || expected_end == end);
 }
 
-void timer_handler(const asio::error_code&)
+struct timer_handler
 {
-}
+  timer_handler() {}
+  void operator()(const asio::error_code&) {}
+#if defined(ASIO_HAS_MOVE)
+  timer_handler(timer_handler&&) {}
+private:
+  timer_handler(const timer_handler&);
+#endif // defined(ASIO_HAS_MOVE)
+};
 
 void system_timer_cancel_test()
 {
-  static asio::io_service io_service;
+  static asio::io_context io_context;
   struct timer
   {
     asio::system_timer t;
-    timer() : t(io_service)
+    timer() : t(io_context)
     {
       t.expires_at((asio::system_timer::time_point::max)());
     }
   } timers[50];
 
-  timers[2].t.async_wait(&timer_handler);
-  timers[41].t.async_wait(&timer_handler);
+  timers[2].t.async_wait(timer_handler());
+  timers[41].t.async_wait(timer_handler());
   for (int i = 10; i < 20; ++i)
-    timers[i].t.async_wait(&timer_handler);
+    timers[i].t.async_wait(timer_handler());
 
   ASIO_CHECK(timers[2].t.cancel() == 1);
   ASIO_CHECK(timers[41].t.cancel() == 1);
@@ -283,11 +289,11 @@ void asio_handler_deallocate(void* pointer, std::size_t,
 
 void system_timer_custom_allocation_test()
 {
-  static asio::io_service io_service;
+  static asio::io_context io_context;
   struct timer
   {
     asio::system_timer t;
-    timer() : t(io_service) {}
+    timer() : t(io_context) {}
   } timers[100];
 
   int allocation_count = 0;
@@ -307,39 +313,73 @@ void system_timer_custom_allocation_test()
   for (int i = 0; i < 50; ++i)
     timers[i].t.cancel();
 
-  io_service.run();
+  io_context.run();
 
   ASIO_CHECK(allocation_count == 0);
 }
 
-void io_service_run(asio::io_service* ios)
+void io_context_run(asio::io_context* ioc)
 {
-  ios->run();
+  ioc->run();
 }
 
 void system_timer_thread_test()
 {
-  asio::io_service ios;
-  asio::io_service::work w(ios);
-  asio::system_timer t1(ios);
-  asio::system_timer t2(ios);
+  asio::io_context ioc;
+  asio::executor_work_guard<asio::io_context::executor_type> work
+    = asio::make_work_guard(ioc);
+  asio::system_timer t1(ioc);
+  asio::system_timer t2(ioc);
   int count = 0;
 
-  asio::thread th(bindns::bind(io_service_run, &ios));
+  asio::thread th(bindns::bind(io_context_run, &ioc));
 
-  t2.expires_from_now(chronons::seconds(2));
+  t2.expires_after(asio::chrono::seconds(2));
   t2.wait();
 
-  t1.expires_from_now(chronons::seconds(2));
+  t1.expires_after(asio::chrono::seconds(2));
   t1.async_wait(bindns::bind(increment, &count));
 
-  t2.expires_from_now(chronons::seconds(4));
+  t2.expires_after(asio::chrono::seconds(4));
   t2.wait();
 
-  ios.stop();
+  ioc.stop();
   th.join();
 
   ASIO_CHECK(count == 1);
+}
+
+#if defined(ASIO_HAS_MOVE)
+asio::system_timer make_timer(asio::io_context& ioc, int* count)
+{
+  asio::system_timer t(ioc);
+  t.expires_after(asio::chrono::seconds(1));
+  t.async_wait(bindns::bind(increment, count));
+  return t;
+}
+#endif
+
+void system_timer_move_test()
+{
+#if defined(ASIO_HAS_MOVE)
+  asio::io_context io_context1;
+  asio::io_context io_context2;
+  int count = 0;
+
+  asio::system_timer t1 = make_timer(io_context1, &count);
+  asio::system_timer t2 = make_timer(io_context2, &count);
+  asio::system_timer t3 = std::move(t1);
+
+  t2 = std::move(t1);
+
+  io_context2.run();
+
+  ASIO_CHECK(count == 1);
+
+  io_context1.run();
+
+  ASIO_CHECK(count == 2);
+#endif // defined(ASIO_HAS_MOVE)
 }
 
 ASIO_TEST_SUITE
@@ -349,6 +389,7 @@ ASIO_TEST_SUITE
   ASIO_TEST_CASE(system_timer_cancel_test)
   ASIO_TEST_CASE(system_timer_custom_allocation_test)
   ASIO_TEST_CASE(system_timer_thread_test)
+  ASIO_TEST_CASE(system_timer_move_test)
 )
 #else // defined(ASIO_HAS_STD_CHRONO)
 ASIO_TEST_SUITE

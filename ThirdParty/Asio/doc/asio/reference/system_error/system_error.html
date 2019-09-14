@@ -20,33 +20,33 @@
 <a name="asio.reference.system_error.system_error"></a><a class="link" href="system_error.html" title="system_error::system_error">system_error::system_error</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm165082"></a> 
-Construct with an error code.
+          <a class="indexterm" name="asio.indexterm.system_error.system_error"></a> 
+Construct
+          with an error code.
         </p>
-<pre class="programlisting"><a class="link" href="system_error/overload1.html" title="system_error::system_error (1 of 3 overloads)">system_error</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="system_error/overload1.html" title="system_error::system_error (1 of 3 overloads)">system_error</a>(
+    const error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="system_error/overload1.html" title="system_error::system_error (1 of 3 overloads)">more...</a></em></span>
 </pre>
 <p>
           Construct with an error code and context.
         </p>
-<pre class="programlisting"><a class="link" href="system_error/overload2.html" title="system_error::system_error (2 of 3 overloads)">system_error</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">context</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="system_error/overload2.html" title="system_error::system_error (2 of 3 overloads)">system_error</a>(
+    const error_code &amp; ec,
+    const std::string &amp; context);
   <span class="emphasis"><em>&#187; <a class="link" href="system_error/overload2.html" title="system_error::system_error (2 of 3 overloads)">more...</a></em></span>
 </pre>
 <p>
           Copy constructor.
         </p>
-<pre class="programlisting"><a class="link" href="system_error/overload3.html" title="system_error::system_error (3 of 3 overloads)">system_error</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">system_error</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+<pre class="programlisting"><a class="link" href="system_error/overload3.html" title="system_error::system_error (3 of 3 overloads)">system_error</a>(
+    const system_error &amp; other);
   <span class="emphasis"><em>&#187; <a class="link" href="system_error/overload3.html" title="system_error::system_error (3 of 3 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -54,8 +54,8 @@
         </p>
 <div class="blockquote"><blockquote class="blockquote"><p>
             Executes asynchronous operations and queues events on a completion event
-            queue when operations complete. From a high-level point of view, services
-            like <code class="computeroutput"><span class="identifier">stream_socket_service</span></code>
+            queue when operations complete. From a high-level point of view, internal
+            services like <code class="computeroutput"><span class="identifier">reactive_socket_service</span></code>
             are asynchronous operation processors.
           </p></blockquote></div>
 <p>
@@ -85,7 +85,7 @@
 <div class="blockquote"><blockquote class="blockquote"><p>
             Calls the asynchronous event demultiplexer to dequeue events, and dispatches
             the completion handler (i.e. invokes the function object) associated
-            with the event. This abstraction is represented by the <code class="computeroutput"><span class="identifier">io_service</span></code> class.
+            with the event. This abstraction is represented by the <code class="computeroutput"><span class="identifier">io_context</span></code> class.
           </p></blockquote></div>
 <p>
           &#8212; Initiator
@@ -94,7 +94,7 @@
             Application-specific code that starts asynchronous operations. The initiator
             interacts with an asynchronous operation processor via a high-level interface
             such as <code class="computeroutput"><span class="identifier">basic_stream_socket</span></code>,
-            which in turn delegates to a service like <code class="computeroutput"><span class="identifier">stream_socket_service</span></code>.
+            which in turn delegates to a service like <code class="computeroutput"><span class="identifier">reactive_socket_service</span></code>.
           </p></blockquote></div>
 <h6>
 <a name="asio.overview.core.async.h1"></a>
@@ -152,7 +152,7 @@
         </p>
 <div class="blockquote"><blockquote class="blockquote"><p>
             This is implemented by the operating system, and is associated with an
-            I/O completion port. There is one I/O completion port for each <code class="computeroutput"><span class="identifier">io_service</span></code> instance.
+            I/O completion port. There is one I/O completion port for each <code class="computeroutput"><span class="identifier">io_context</span></code> instance.
           </p></blockquote></div>
 <p>
           &#8212; Asynchronous Event Demultiplexer
@@ -265,8 +265,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

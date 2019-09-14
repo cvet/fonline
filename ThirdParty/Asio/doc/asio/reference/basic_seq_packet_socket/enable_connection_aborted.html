@@ -23,15 +23,15 @@
           <span class="emphasis"><em>Inherited from socket_base.</em></span>
         </p>
 <p>
-          <a class="indexterm" name="idm54721"></a> 
-Socket option to report
-          aborted connections on accept.
+          <a class="indexterm" name="asio.indexterm.basic_seq_packet_socket.enable_connection_aborted"></a> 
+Socket
+          option to report aborted connections on accept.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">implementation_defined</span> <span class="identifier">enable_connection_aborted</span><span class="special">;</span>
+<pre class="programlisting">typedef implementation_defined enable_connection_aborted;
 </pre>
 <p>
           Implements a custom socket option that determines whether or not an accept
-          operation is permitted to fail with <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">connection_aborted</span></code>.
+          operation is permitted to fail with <code class="computeroutput">asio::error::connection_aborted</code>.
           By default the option is false.
         </p>
 <h6>
@@ -41,19 +41,19 @@ Socket option to report
 <p>
           Setting the option:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">acceptor</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">enable_connection_aborted</span> <span class="identifier">option</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
-<span class="identifier">acceptor</span><span class="special">.</span><span class="identifier">set_option</span><span class="special">(</span><span class="identifier">option</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::tcp::acceptor acceptor(io_context);
+...
+asio::socket_base::enable_connection_aborted option(true);
+acceptor.set_option(option);
 </pre>
 <p>
           Getting the current option value:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">acceptor</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">);</span>
-<span class="special">...</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">socket_base</span><span class="special">::</span><span class="identifier">enable_connection_aborted</span> <span class="identifier">option</span><span class="special">;</span>
-<span class="identifier">acceptor</span><span class="special">.</span><span class="identifier">get_option</span><span class="special">(</span><span class="identifier">option</span><span class="special">);</span>
-<span class="keyword">bool</span> <span class="identifier">is_set</span> <span class="special">=</span> <span class="identifier">option</span><span class="special">.</span><span class="identifier">value</span><span class="special">();</span>
+<pre class="programlisting">asio::ip::tcp::acceptor acceptor(io_context);
+...
+asio::socket_base::enable_connection_aborted option;
+acceptor.get_option(option);
+bool is_set = option.value();
 </pre>
 <h6>
 <a name="asio.reference.basic_seq_packet_socket.enable_connection_aborted.h1"></a>
@@ -68,8 +68,7 @@ Socket option to report
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -20,30 +20,30 @@
 <a name="asio.reference.basic_waitable_timer.expires_from_now"></a><a class="link" href="expires_from_now.html" title="basic_waitable_timer::expires_from_now">basic_waitable_timer::expires_from_now</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm93322"></a> 
-Get the timer's expiry time relative
-          to now.
+          <a class="indexterm" name="asio.indexterm.basic_waitable_timer.expires_from_now"></a> 
+(Deprecated:
+          Use <code class="computeroutput">expiry()</code>.) Get the timer's expiry time relative to now.
         </p>
-<pre class="programlisting"><span class="identifier">duration</span> <a class="link" href="expires_from_now/overload1.html" title="basic_waitable_timer::expires_from_now (1 of 3 overloads)">expires_from_now</a><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<pre class="programlisting">duration <a class="link" href="expires_from_now/overload1.html" title="basic_waitable_timer::expires_from_now (1 of 3 overloads)">expires_from_now</a>() const;
   <span class="emphasis"><em>&#187; <a class="link" href="expires_from_now/overload1.html" title="basic_waitable_timer::expires_from_now (1 of 3 overloads)">more...</a></em></span>
 </pre>
 <p>
-          Set the timer's expiry time relative to now.
+          (Deprecated: Use <code class="computeroutput">expires_after()</code>.) Set the timer's expiry
+          time relative to now.
         </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="expires_from_now/overload2.html" title="basic_waitable_timer::expires_from_now (2 of 3 overloads)">expires_from_now</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">duration</span> <span class="special">&amp;</span> <span class="identifier">expiry_time</span><span class="special">);</span>
+<pre class="programlisting">std::size_t <a class="link" href="expires_from_now/overload2.html" title="basic_waitable_timer::expires_from_now (2 of 3 overloads)">expires_from_now</a>(
+    const duration &amp; expiry_time);
   <span class="emphasis"><em>&#187; <a class="link" href="expires_from_now/overload2.html" title="basic_waitable_timer::expires_from_now (2 of 3 overloads)">more...</a></em></span>
 
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="expires_from_now/overload3.html" title="basic_waitable_timer::expires_from_now (3 of 3 overloads)">expires_from_now</a><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">duration</span> <span class="special">&amp;</span> <span class="identifier">expiry_time</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+std::size_t <a class="link" href="expires_from_now/overload3.html" title="basic_waitable_timer::expires_from_now (3 of 3 overloads)">expires_from_now</a>(
+    const duration &amp; expiry_time,
+    asio::error_code &amp; ec);
   <span class="emphasis"><em>&#187; <a class="link" href="expires_from_now/overload3.html" title="basic_waitable_timer::expires_from_now (3 of 3 overloads)">more...</a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

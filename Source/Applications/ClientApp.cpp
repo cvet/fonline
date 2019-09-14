@@ -6,6 +6,7 @@
 #include "Debugger.h"
 #include "Client.h"
 #include "Keyboard.h"
+#include "Settings.h"
 #include <locale.h>
 
 #ifdef FO_IOS
@@ -44,9 +45,6 @@ static int main_disabled( int argc, char** argv )
     if( wcsstr( GetCommandLineW(), L" --restart" ) )
         Thread::Sleep( 500 );
     #endif
-
-    // Options
-    GetClientOptions();
 
     // Start message
     WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );

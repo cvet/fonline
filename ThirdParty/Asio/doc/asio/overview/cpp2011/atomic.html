@@ -20,20 +20,20 @@
 <a name="asio.overview.cpp2011.atomic"></a><a class="link" href="atomic.html" title="Atomics">Atomics</a>
 </h4></div></div></div>
 <p>
-          Asio's implementation can use <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">atomic</span><span class="special">&lt;&gt;</span></code> in preference to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">atomic_count</span></code>.
+          Asio's implementation can use <code class="computeroutput">std::atomic&lt;&gt;</code> in preference
+          to <code class="computeroutput">boost::detail::atomic_count</code>.
         </p>
 <p>
           Support for the standard atomic integer template is automatically enabled
           for <code class="literal">g++</code> 4.5 and later, when the <code class="literal">-std=c++0x</code>
           or <code class="literal">-std=gnu++0x</code> compiler options are used. It may be
-          disabled by defining <code class="computeroutput"><span class="identifier">ASIO_DISABLE_STD_ATOMIC</span></code>,
-          or explicitly enabled for other compilers by defining <code class="computeroutput"><span class="identifier">ASIO_HAS_STD_ATOMIC</span></code>.
+          disabled by defining <code class="computeroutput">ASIO_DISABLE_STD_ATOMIC</code>, or explicitly
+          enabled for other compilers by defining <code class="computeroutput">ASIO_HAS_STD_ATOMIC</code>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -21,10 +21,11 @@
           (1 of 2 overloads)</a>
 </h5></div></div></div>
 <p>
-            Move-assign a <a class="link" href="../../basic_socket_acceptor.html" title="basic_socket_acceptor"><code class="computeroutput"><span class="identifier">basic_socket_acceptor</span></code></a> from another.
+            Move-assign a <a class="link" href="../../basic_socket_acceptor.html" title="basic_socket_acceptor"><code class="computeroutput">basic_socket_acceptor</code></a>
+            from another.
           </p>
-<pre class="programlisting"><span class="identifier">basic_socket_acceptor</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span>
-    <span class="identifier">basic_socket_acceptor</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+<pre class="programlisting">basic_socket_acceptor &amp; operator=(
+    basic_socket_acceptor &amp;&amp; other);
 </pre>
 <p>
             This assignment operator moves an acceptor from one object to another.
@@ -38,7 +39,7 @@
 <dl>
 <dt><span class="term">other</span></dt>
 <dd><p>
-                  The other <a class="link" href="../../basic_socket_acceptor.html" title="basic_socket_acceptor"><code class="computeroutput"><span class="identifier">basic_socket_acceptor</span></code></a>
+                  The other <a class="link" href="../../basic_socket_acceptor.html" title="basic_socket_acceptor"><code class="computeroutput">basic_socket_acceptor</code></a>
                   object from which the move will occur.
                 </p></dd>
 </dl>
@@ -49,13 +50,12 @@
           </h6>
 <p>
             Following the move, the moved-from object is in the same state as if
-            constructed using the <code class="computeroutput"><span class="identifier">basic_socket_acceptor</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">&amp;)</span> <span class="identifier">constructor</span></code>.
+            constructed using the <code class="computeroutput">basic_socket_acceptor(io_context&amp;) constructor</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -20,22 +20,22 @@
 <a name="asio.reference.buffered_read_stream.async_write_some"></a><a class="link" href="async_write_some.html" title="buffered_read_stream::async_write_some">buffered_read_stream::async_write_some</a>
 </h4></div></div></div>
 <p>
-          <a class="indexterm" name="idm100138"></a> 
-Start an asynchronous write. The data
-          being written must be valid for the lifetime of the asynchronous operation.
+          <a class="indexterm" name="asio.indexterm.buffered_read_stream.async_write_some"></a> 
+Start
+          an asynchronous write. The data being written must be valid for the lifetime
+          of the asynchronous operation.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a><span class="special">&gt;</span>
-<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <span class="identifier">async_write_some</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="identifier">WriteHandler</span> <span class="identifier">handler</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>,
+    typename <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a>&gt;
+<a class="link" href="../asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> async_write_some(
+    const ConstBufferSequence &amp; buffers,
+    WriteHandler &amp;&amp; handler);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

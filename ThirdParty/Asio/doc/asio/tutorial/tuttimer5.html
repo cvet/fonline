@@ -21,16 +21,16 @@
       in multithreaded programs</a>
 </h3></div></div></div>
 <p>
-        This tutorial demonstrates the use of the asio::strand class to synchronise
-        callback handlers in a multithreaded program.
+        This tutorial demonstrates the use of the <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>
+        class to synchronise callback handlers in a multithreaded program.
       </p>
 <p>
         The previous four tutorials avoided the issue of handler synchronisation
-        by calling the <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
+        by calling the <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
         function from one thread only. As you already know, the asio library provides
         a guarantee that callback handlers will only be called from threads that
-        are currently calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>.
-        Consequently, calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>
+        are currently calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>.
+        Consequently, calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
         from only one thread ensures that callback handlers cannot run concurrently.
       </p>
 <p>
@@ -48,122 +48,129 @@
 </ul></div>
 <p>
         If you find yourself running into these limitations, an alternative approach
-        is to have a pool of threads calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>.
+        is to have a pool of threads calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>.
         However, as this allows handlers to execute concurrently, we need a method
         of synchronisation when handlers might be accessing a shared, thread-unsafe
         resource.
       </p>
-<pre class="programlisting"><span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">bind</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
+#include &lt;boost/bind.hpp&gt;
 </pre>
 <p>
-        We start by defining a class called <code class="computeroutput"><span class="identifier">printer</span></code>,
-        similar to the class in the previous tutorial. This class will extend the
-        previous tutorial by running two timers in parallel.
+        We start by defining a class called <code class="computeroutput">printer</code>, similar to the
+        class in the previous tutorial. This class will extend the previous tutorial
+        by running two timers in parallel.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">printer</span>
-<span class="special">{</span>
-<span class="keyword">public</span><span class="special">:</span>
+<pre class="programlisting">class printer
+{
+public:
 </pre>
 <p>
-        In addition to initialising a pair of asio::deadline_timer members, the constructor
-        initialises the <code class="computeroutput"><span class="identifier">strand_</span></code> member,
-        an object of type asio::strand.
+        In addition to initialising a pair of asio::steady_timer members, the constructor
+        initialises the <code class="computeroutput">strand_</code> member, an object of type <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>.
       </p>
 <p>
-        An asio::strand guarantees that, for those handlers that are dispatched through
-        it, an executing handler will be allowed to complete before the next one
-        is started. This is guaranteed irrespective of the number of threads that
-        are calling <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a>.
+        An <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>
+        is an executor that guarantees that, for those handlers that are dispatched
+        through it, an executing handler will be allowed to complete before the next
+        one is started. This is guaranteed irrespective of the number of threads
+        that are calling <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>.
         Of course, the handlers may still execute concurrently with other handlers
-        that were not dispatched through an asio::strand, or were dispatched through
-        a different asio::strand object.
+        that were not dispatched through an <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>,
+        or were dispatched through a different <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>
+        object.
       </p>
-<pre class="programlisting">  <span class="identifier">printer</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io</span><span class="special">)</span>
-    <span class="special">:</span> <span class="identifier">strand_</span><span class="special">(</span><span class="identifier">io</span><span class="special">),</span>
-      <span class="identifier">timer1_</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">)),</span>
-      <span class="identifier">timer2_</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">)),</span>
-      <span class="identifier">count_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span>
-  <span class="special">{</span>
+<pre class="programlisting">  printer(asio::io_context&amp; io)
+    : strand_(io),
+      timer1_(io, asio::chrono::seconds(1)),
+      timer2_(io, asio::chrono::seconds(1)),
+      count_(0)
+  {
 </pre>
 <p>
-        When initiating the asynchronous operations, each callback handler is "wrapped"
-        using the asio::strand object. The <a class="link" href="../reference/io_service__strand/wrap.html" title="io_service::strand::wrap">strand::wrap()</a>
-        function returns a new handler that automatically dispatches its contained
-        handler through the asio::strand object. By wrapping the handlers using the
-        same asio::strand, we are ensuring that they cannot execute concurrently.
+        When initiating the asynchronous operations, each callback handler is "bound"
+        to an <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>
+        object. The asio::io_context::strand::bind_executor() function returns a
+        new handler that automatically dispatches its contained handler through the
+        <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>
+        object. By binding the handlers to the same <a class="link" href="../reference/io_context__strand.html" title="io_context::strand">io_context::strand</a>,
+        we are ensuring that they cannot execute concurrently.
       </p>
-<pre class="programlisting">    <span class="identifier">timer1_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">strand_</span><span class="special">.</span><span class="identifier">wrap</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print1</span><span class="special">,</span> <span class="keyword">this</span><span class="special">)));</span>
-    <span class="identifier">timer2_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">strand_</span><span class="special">.</span><span class="identifier">wrap</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print2</span><span class="special">,</span> <span class="keyword">this</span><span class="special">)));</span>
-  <span class="special">}</span>
+<pre class="programlisting">    timer1_.async_wait(asio::bind_executor(strand_,
+          boost::bind(&amp;printer::print1, this)));
 
-  <span class="special">~</span><span class="identifier">printer</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Final count is "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count_</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
+    timer2_.async_wait(asio::bind_executor(strand_,
+          boost::bind(&amp;printer::print2, this)));
+  }
+
+  ~printer()
+  {
+    std::cout &lt;&lt; "Final count is " &lt;&lt; count_ &lt;&lt; std::endl;
+  }
 </pre>
 <p>
         In a multithreaded program, the handlers for asynchronous operations should
         be synchronised if they access shared resources. In this tutorial, the shared
-        resources used by the handlers (<code class="computeroutput"><span class="identifier">print1</span></code>
-        and <code class="computeroutput"><span class="identifier">print2</span></code>) are <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span></code>
-        and the <code class="computeroutput"><span class="identifier">count_</span></code> data member.
+        resources used by the handlers (<code class="computeroutput">print1</code> and <code class="computeroutput">print2</code>)
+        are <code class="computeroutput">std::cout</code> and the <code class="computeroutput">count_</code> data member.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">print1</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="keyword">if</span> <span class="special">(</span><span class="identifier">count_</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Timer 1: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count_</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-      <span class="special">++</span><span class="identifier">count_</span><span class="special">;</span>
+<pre class="programlisting">  void print1()
+  {
+    if (count_ &lt; 10)
+    {
+      std::cout &lt;&lt; "Timer 1: " &lt;&lt; count_ &lt;&lt; std::endl;
+      ++count_;
 
-      <span class="identifier">timer1_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">timer1_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
-      <span class="identifier">timer1_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">strand_</span><span class="special">.</span><span class="identifier">wrap</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print1</span><span class="special">,</span> <span class="keyword">this</span><span class="special">)));</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
+      timer1_.expires_at(timer1_.expiry() + asio::chrono::seconds(1));
 
-  <span class="keyword">void</span> <span class="identifier">print2</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="keyword">if</span> <span class="special">(</span><span class="identifier">count_</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Timer 2: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count_</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-      <span class="special">++</span><span class="identifier">count_</span><span class="special">;</span>
+      timer1_.async_wait(asio::bind_executor(strand_,
+            boost::bind(&amp;printer::print1, this)));
+    }
+  }
 
-      <span class="identifier">timer2_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">timer2_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
-      <span class="identifier">timer2_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">strand_</span><span class="special">.</span><span class="identifier">wrap</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print2</span><span class="special">,</span> <span class="keyword">this</span><span class="special">)));</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
+  void print2()
+  {
+    if (count_ &lt; 10)
+    {
+      std::cout &lt;&lt; "Timer 2: " &lt;&lt; count_ &lt;&lt; std::endl;
+      ++count_;
 
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">strand</span> <span class="identifier">strand_</span><span class="special">;</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">timer1_</span><span class="special">;</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">timer2_</span><span class="special">;</span>
-  <span class="keyword">int</span> <span class="identifier">count_</span><span class="special">;</span>
-<span class="special">};</span>
+      timer2_.expires_at(timer2_.expiry() + asio::chrono::seconds(1));
+
+      timer2_.async_wait(asio::bind_executor(strand_,
+            boost::bind(&amp;printer::print2, this)));
+    }
+  }
+
+private:
+  asio::io_context::strand strand_;
+  asio::steady_timer timer1_;
+  asio::steady_timer timer2_;
+  int count_;
+};
 </pre>
 <p>
-        The <code class="computeroutput"><span class="identifier">main</span></code> function now causes
-        <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a> to
-        be called from two threads: the main thread and one additional thread. This
-        is accomplished using an <a class="link" href="../reference/thread.html" title="thread">thread</a>
+        The <code class="computeroutput">main</code> function now causes <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a>
+        to be called from two threads: the main thread and one additional thread.
+        This is accomplished using an <a class="link" href="../reference/thread.html" title="thread">thread</a>
         object.
       </p>
 <p>
-        Just as it would with a call from a single thread, concurrent calls to <a class="link" href="../reference/io_service/run.html" title="io_service::run">io_service::run()</a> will continue
+        Just as it would with a call from a single thread, concurrent calls to <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_context::run()</a> will continue
         to execute while there is "work" left to do. The background thread
         will not exit until all asynchronous operations have completed.
       </p>
-<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
-  <span class="identifier">printer</span> <span class="identifier">p</span><span class="special">(</span><span class="identifier">io</span><span class="special">);</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">thread</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">::</span><span class="identifier">run</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">io</span><span class="special">));</span>
-  <span class="identifier">io</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
-  <span class="identifier">t</span><span class="special">.</span><span class="identifier">join</span><span class="special">();</span>
+<pre class="programlisting">int main()
+{
+  asio::io_context io;
+  printer p(io);
+  asio::thread t(boost::bind(&amp;asio::io_context::run, &amp;io));
+  io.run();
+  t.join();
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
         See the <a class="link" href="tuttimer5/src.html" title="Source listing for Timer.5">full source listing</a>
@@ -178,8 +185,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

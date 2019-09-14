@@ -2,7 +2,7 @@
 // chat_client.cpp
 // ~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,17 +22,17 @@ typedef std::deque<chat_message> chat_message_queue;
 class chat_client
 {
 public:
-  chat_client(asio::io_service& io_service,
-      tcp::resolver::iterator endpoint_iterator)
-    : io_service_(io_service),
-      socket_(io_service)
+  chat_client(asio::io_context& io_context,
+      const tcp::resolver::results_type& endpoints)
+    : io_context_(io_context),
+      socket_(io_context)
   {
-    do_connect(endpoint_iterator);
+    do_connect(endpoints);
   }
 
   void write(const chat_message& msg)
   {
-    io_service_.post(
+    asio::post(io_context_,
         [this, msg]()
         {
           bool write_in_progress = !write_msgs_.empty();
@@ -46,14 +46,14 @@ public:
 
   void close()
   {
-    io_service_.post([this]() { socket_.close(); });
+    asio::post(io_context_, [this]() { socket_.close(); });
   }
 
 private:
-  void do_connect(tcp::resolver::iterator endpoint_iterator)
+  void do_connect(const tcp::resolver::results_type& endpoints)
   {
-    asio::async_connect(socket_, endpoint_iterator,
-        [this](std::error_code ec, tcp::resolver::iterator)
+    asio::async_connect(socket_, endpoints,
+        [this](std::error_code ec, tcp::endpoint)
         {
           if (!ec)
           {
@@ -121,7 +121,7 @@ private:
   }
 
 private:
-  asio::io_service& io_service_;
+  asio::io_context& io_context_;
   tcp::socket socket_;
   chat_message read_msg_;
   chat_message_queue write_msgs_;
@@ -137,13 +137,13 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    asio::io_service io_service;
+    asio::io_context io_context;
 
-    tcp::resolver resolver(io_service);
-    auto endpoint_iterator = resolver.resolve({ argv[1], argv[2] });
-    chat_client c(io_service, endpoint_iterator);
+    tcp::resolver resolver(io_context);
+    auto endpoints = resolver.resolve(argv[1], argv[2]);
+    chat_client c(io_context, endpoints);
 
-    std::thread t([&io_service](){ io_service.run(); });
+    std::thread t([&io_context](){ io_context.run(); });
 
     char line[chat_message::max_body_length + 1];
     while (std::cin.getline(line, chat_message::max_body_length + 1))

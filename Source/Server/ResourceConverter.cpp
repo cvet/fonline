@@ -361,7 +361,6 @@ File* ResourceConverter::Convert3d( const string& name, File& file )
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_STRICT_MODE, false );
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true );
             aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, true );
-            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES, false );
         }
 
         // Load scene

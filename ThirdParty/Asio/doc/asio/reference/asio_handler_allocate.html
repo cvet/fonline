@@ -20,12 +20,13 @@
 <a name="asio.reference.asio_handler_allocate"></a><a class="link" href="asio_handler_allocate.html" title="asio_handler_allocate">asio_handler_allocate</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm26438"></a> 
-Default allocation function for handlers.
+        <a class="indexterm" name="asio.indexterm.asio_handler_allocate"></a> 
+Default allocation
+        function for handlers.
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="special">*</span> <span class="identifier">asio_handler_allocate</span><span class="special">(</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span>
-    <span class="special">...</span> <span class="special">);</span>
+<pre class="programlisting">void * asio_handler_allocate(
+    std::size_t size,
+    ... );
 </pre>
 <p>
         Asynchronous operations may need to allocate temporary objects. Since asynchronous
@@ -37,9 +38,8 @@ Default allocation function for handlers.
         handlers to provide custom allocation for these temporary objects.
       </p>
 <p>
-        The default implementation of these allocation hooks uses <code class="computeroutput"><span class="keyword">operator</span>
-        <span class="keyword">new</span></code> and <code class="computeroutput"><span class="keyword">operator</span>
-        <span class="keyword">delete</span></code>.
+        The default implementation of these allocation hooks uses <code class="computeroutput">operator
+        new</code> and <code class="computeroutput">operator delete</code>.
       </p>
 <h5>
 <a name="asio.reference.asio_handler_allocate.h0"></a>
@@ -54,18 +54,18 @@ Default allocation function for handlers.
 <a name="asio.reference.asio_handler_allocate.h1"></a>
         <span><a name="asio.reference.asio_handler_allocate.example"></a></span><a class="link" href="asio_handler_allocate.html#asio.reference.asio_handler_allocate.example">Example</a>
       </h5>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">my_handler</span><span class="special">;</span>
+<pre class="programlisting">class my_handler;
 
-<span class="keyword">void</span><span class="special">*</span> <span class="identifier">asio_handler_allocate</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">my_handler</span><span class="special">*</span> <span class="identifier">context</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">return</span> <span class="special">::</span><span class="keyword">operator</span> <span class="keyword">new</span><span class="special">(</span><span class="identifier">size</span><span class="special">);</span>
-<span class="special">}</span>
+void* asio_handler_allocate(std::size_t size, my_handler* context)
+{
+  return ::operator new(size);
+}
 
-<span class="keyword">void</span> <span class="identifier">asio_handler_deallocate</span><span class="special">(</span><span class="keyword">void</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span>
-    <span class="identifier">my_handler</span><span class="special">*</span> <span class="identifier">context</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="special">::</span><span class="keyword">operator</span> <span class="keyword">delete</span><span class="special">(</span><span class="identifier">pointer</span><span class="special">);</span>
-<span class="special">}</span>
+void asio_handler_deallocate(void* pointer, std::size_t size,
+    my_handler* context)
+{
+  ::operator delete(pointer);
+}
 </pre>
 <h5>
 <a name="asio.reference.asio_handler_allocate.h2"></a>
@@ -80,8 +80,7 @@ Default allocation function for handlers.
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

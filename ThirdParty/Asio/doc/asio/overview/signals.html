@@ -21,28 +21,28 @@
 </h3></div></div></div>
 <p>
         Asio supports signal handling using a class called <a class="link" href="../reference/signal_set.html" title="signal_set">signal_set</a>.
-        Programs may add one or more signals to the set, and then perform an <code class="computeroutput"><span class="identifier">async_wait</span><span class="special">()</span></code>
+        Programs may add one or more signals to the set, and then perform an <code class="computeroutput">async_wait()</code>
         operation. The specified handler will be called when one of the signals occurs.
         The same signal number may be registered with multiple <a class="link" href="../reference/signal_set.html" title="signal_set">signal_set</a>
         objects, however the signal number must be used only with Asio.
       </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">error</span><span class="special">,</span>
-    <span class="keyword">int</span> <span class="identifier">signal_number</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">error</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="comment">// A signal occurred.</span>
-  <span class="special">}</span>
-<span class="special">}</span>
+<pre class="programlisting">void handler(
+    const asio::error_code&amp; error,
+    int signal_number)
+{
+  if (!error)
+  {
+    // A signal occurred.
+  }
+}
 
-<span class="special">...</span>
+...
 
-<span class="comment">// Construct a signal set registered for process termination.</span>
-<span class="identifier">asio</span><span class="special">::</span><span class="identifier">signal_set</span> <span class="identifier">signals</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">,</span> <span class="identifier">SIGINT</span><span class="special">,</span> <span class="identifier">SIGTERM</span><span class="special">);</span>
+// Construct a signal set registered for process termination.
+asio::signal_set signals(io_context, SIGINT, SIGTERM);
 
-<span class="comment">// Start an asynchronous wait for one of the signals to occur.</span>
-<span class="identifier">signals</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">handler</span><span class="special">);</span>
+// Start an asynchronous wait for one of the signals to occur.
+signals.async_wait(handler);
 </pre>
 <p>
         Signal handling also works on Windows, as the Microsoft Visual C++ runtime
@@ -61,8 +61,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

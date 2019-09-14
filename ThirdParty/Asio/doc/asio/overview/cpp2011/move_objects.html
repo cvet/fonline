@@ -27,48 +27,47 @@
 <p>
           Move support allows you to write code like:
         </p>
-<pre class="programlisting"><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">make_socket</span><span class="special">(</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">i</span><span class="special">)</span>
-<span class="special">{</span>
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">s</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
-  <span class="special">...</span>
-  <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">s</span><span class="special">);</span>
-<span class="special">}</span>
+<pre class="programlisting">tcp::socket make_socket(io_context&amp; i)
+{
+  tcp::socket s(i);
+  ...
+  std::move(s);
+}
 </pre>
 <p>
           or:
         </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">connection</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">enable_shared_from_this</span><span class="special">&lt;</span><span class="identifier">connection</span><span class="special">&gt;</span>
-<span class="special">{</span>
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket_</span><span class="special">;</span>
-  <span class="special">...</span>
-<span class="keyword">public</span><span class="special">:</span>
-  <span class="identifier">connection</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;&amp;</span> <span class="identifier">s</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">socket_</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">s</span><span class="special">))</span> <span class="special">{}</span>
-  <span class="special">...</span>
-<span class="special">};</span>
+<pre class="programlisting">class connection : public enable_shared_from_this&lt;connection&gt;
+{
+private:
+  tcp::socket socket_;
+  ...
+public:
+  connection(tcp::socket&amp;&amp; s) : socket_(std::move(s)) {}
+  ...
+};
 
-<span class="special">...</span>
+...
 
-<span class="keyword">class</span> <span class="identifier">server</span>
-<span class="special">{</span>
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">acceptor</span> <span class="identifier">acceptor_</span><span class="special">;</span>
-  <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">socket_</span><span class="special">;</span>
-  <span class="special">...</span>
-  <span class="keyword">void</span> <span class="identifier">handle_accept</span><span class="special">(</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">)</span>
-  <span class="special">{</span>
-    <span class="keyword">if</span> <span class="special">(!</span><span class="identifier">ec</span><span class="special">)</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_shared</span><span class="special">&lt;</span><span class="identifier">connection</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">socket_</span><span class="special">))-&gt;</span><span class="identifier">go</span><span class="special">();</span>
-    <span class="identifier">acceptor_</span><span class="special">.</span><span class="identifier">async_accept</span><span class="special">(</span><span class="identifier">socket_</span><span class="special">,</span> <span class="special">...);</span>
-  <span class="special">}</span>
-  <span class="special">...</span>
-<span class="special">};</span>
+class server
+{
+private:
+  tcp::acceptor acceptor_;
+  ...
+  void handle_accept(error_code ec, tcp::socket socket)
+  {
+    if (!ec)
+      std::make_shared&lt;connection&gt;(std::move(socket))-&gt;go();
+    acceptor_.async_accept(...);
+  }
+  ...
+};
 </pre>
 <p>
           as well as:
         </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">sockets</span><span class="special">;</span>
-<span class="identifier">sockets</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">(...));</span>
+<pre class="programlisting">std::vector&lt;tcp::socket&gt; sockets;
+sockets.push_back(tcp::socket(...));
 </pre>
 <p>
           A word of warning: There is nothing stopping you from moving these objects
@@ -80,16 +79,15 @@
 <p>
           Move support is automatically enabled for <code class="literal">g++</code> 4.5 and
           later, when the <code class="literal">-std=c++0x</code> or <code class="literal">-std=gnu++0x</code>
-          compiler options are used. It may be disabled by defining <code class="computeroutput"><span class="identifier">ASIO_DISABLE_MOVE</span></code>, or explicitly enabled
-          for other compilers by defining <code class="computeroutput"><span class="identifier">ASIO_HAS_MOVE</span></code>.
+          compiler options are used. It may be disabled by defining <code class="computeroutput">ASIO_DISABLE_MOVE</code>,
+          or explicitly enabled for other compilers by defining <code class="computeroutput">ASIO_HAS_MOVE</code>.
           Note that these macros also affect the availability of <a class="link" href="move_handlers.html" title="Movable Handlers">movable
           handlers</a>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

@@ -23,11 +23,11 @@
 <p>
             Send raw data to the specified endpoint.
           </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">send_to</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">endpoint_type</span> <span class="special">&amp;</span> <span class="identifier">destination</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>&gt;
+std::size_t send_to(
+    const ConstBufferSequence &amp; buffers,
+    const endpoint_type &amp; destination);
 </pre>
 <p>
             This function is used to send raw data to the specified remote endpoint.
@@ -77,22 +77,22 @@
             <span><a name="asio.reference.basic_raw_socket.send_to.overload1.example"></a></span><a class="link" href="overload1.html#asio.reference.basic_raw_socket.send_to.overload1.example">Example</a>
           </h6>
 <p>
-            To send a single data buffer use the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a> function as follows:
+            To send a single data buffer use the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+            function as follows:
           </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">udp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">destination</span><span class="special">(</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">address</span><span class="special">::</span><span class="identifier">from_string</span><span class="special">(</span><span class="string">"1.2.3.4"</span><span class="special">),</span> <span class="number">12345</span><span class="special">);</span>
-<span class="identifier">socket</span><span class="special">.</span><span class="identifier">send_to</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">size</span><span class="special">),</span> <span class="identifier">destination</span><span class="special">);</span>
+<pre class="programlisting">asio::ip::udp::endpoint destination(
+    asio::ip::address::from_string("1.2.3.4"), 12345);
+socket.send_to(asio::buffer(data, size), destination);
 </pre>
 <p>
-            See the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput"><span class="identifier">buffer</span></code></a>
+            See the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
             documentation for information on sending multiple buffers in one go,
             and how to use it with arrays, boost::array or std::vector.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

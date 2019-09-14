@@ -23,11 +23,12 @@
           <span class="emphasis"><em>Inherited from basic_socket.</em></span>
         </p>
 <p>
-          <a class="indexterm" name="idm36532"></a> 
-A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="computeroutput"><span class="identifier">basic_socket</span></code></a> is always the lowest
-          layer.
+          <a class="indexterm" name="asio.indexterm.basic_datagram_socket.lowest_layer_type"></a> 
+A
+          <a class="link" href="../basic_socket.html" title="basic_socket"><code class="computeroutput">basic_socket</code></a>
+          is always the lowest layer.
         </p>
-<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">basic_socket</span><span class="special">&lt;</span> <span class="identifier">Protocol</span><span class="special">,</span> <span class="identifier">DatagramSocketService</span> <span class="special">&gt;</span> <span class="identifier">lowest_layer_type</span><span class="special">;</span>
+<pre class="programlisting">typedef basic_socket&lt; Protocol &gt; lowest_layer_type;
 </pre>
 <h6>
 <a name="asio.reference.basic_datagram_socket.lowest_layer_type.h0"></a>
@@ -127,12 +128,12 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_socket/implementation_type.html" title="basic_socket::implementation_type"><span class="bold"><strong>implementation_type</strong></span></a>
+                    <a class="link" href="../basic_socket/executor_type.html" title="basic_socket::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    The underlying implementation type of I/O object.
+                    The type of the executor associated with the object.
                   </p>
                 </td>
 </tr>
@@ -201,26 +202,12 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_socket/native_type.html" title="basic_socket::native_type"><span class="bold"><strong>native_type</strong></span></a>
+                    <a class="link" href="../basic_socket/out_of_band_inline.html" title="basic_socket::out_of_band_inline"><span class="bold"><strong>out_of_band_inline</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    (Deprecated: Use native_handle_type.) The native representation
-                    of a socket.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/non_blocking_io.html" title="basic_socket::non_blocking_io"><span class="bold"><strong>non_blocking_io</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use non_blocking().) IO control command to set the
-                    blocking mode of the socket.
+                    Socket option for putting received out-of-band data inline.
                   </p>
                 </td>
 </tr>
@@ -300,24 +287,24 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <tr>
 <td>
                   <p>
-                    <a class="link" href="../basic_socket/service_type.html" title="basic_socket::service_type"><span class="bold"><strong>service_type</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    The type of the service that will be used to provide I/O operations.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
                     <a class="link" href="../basic_socket/shutdown_type.html" title="basic_socket::shutdown_type"><span class="bold"><strong>shutdown_type</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
                     Different ways a socket may be shutdown.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket/wait_type.html" title="basic_socket::wait_type"><span class="bold"><strong>wait_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Wait types.
                   </p>
                 </td>
 </tr>
@@ -373,6 +360,19 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <tr>
 <td>
                   <p>
+                    <a class="link" href="../basic_socket/async_wait.html" title="basic_socket::async_wait"><span class="bold"><strong>async_wait</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Asynchronously wait for the socket to become ready to read, ready
+                    to write, or to have pending error conditions.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
                     <a class="link" href="../basic_socket/at_mark.html" title="basic_socket::at_mark"><span class="bold"><strong>at_mark</strong></span></a>
                   </p>
                 </td>
@@ -402,24 +402,13 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                 </td>
 <td>
                   <p>
-                    Construct a basic_socket without opening it.
-                  </p>
-                  <p>
-                    Construct and open a basic_socket.
-                  </p>
-                  <p>
-                    Construct a basic_socket, opening it and binding it to the given
-                    local endpoint.
-                  </p>
-                  <p>
-                    Construct a basic_socket on an existing native socket.
-                  </p>
-                  <p>
-                    Move-construct a basic_socket from another.
-                  </p>
-                  <p>
-                    Move-construct a basic_socket from a socket of another protocol
-                    type.
+                    Construct a basic_socket without opening it. <br> <span class="silver"> &#8212;</span><br> Construct
+                    and open a basic_socket. <br> <span class="silver"> &#8212;</span><br> Construct a basic_socket,
+                    opening it and binding it to the given local endpoint. <br>
+                    <span class="silver"> &#8212;</span><br> Construct a basic_socket on an existing native socket.
+                    <br> <span class="silver"> &#8212;</span><br> Move-construct a basic_socket from another. <br>
+                    <span class="silver"> &#8212;</span><br> Move-construct a basic_socket from a socket of another
+                    protocol type.
                   </p>
                 </td>
 </tr>
@@ -474,12 +463,38 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <tr>
 <td>
                   <p>
+                    <a class="link" href="../basic_socket/get_executor.html" title="basic_socket::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Get the executor associated with the object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket/get_io_context.html" title="basic_socket::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use get_executor().) Get the io_context associated
+                    with the object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
                     <a class="link" href="../basic_socket/get_io_service.html" title="basic_socket::get_io_service"><span class="bold"><strong>get_io_service</strong></span></a>
                   </p>
                 </td>
 <td>
                   <p>
-                    Get the io_service associated with the object.
+                    (Deprecated: Use get_executor().) Get the io_context associated
+                    with the object.
                   </p>
                 </td>
 </tr>
@@ -539,22 +554,8 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                 </td>
 <td>
                   <p>
-                    Get a reference to the lowest layer.
-                  </p>
-                  <p>
-                    Get a const reference to the lowest layer.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/native.html" title="basic_socket::native"><span class="bold"><strong>native</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use native_handle().) Get the native socket representation.
+                    Get a reference to the lowest layer. <br> <span class="silver"> &#8212;</span><br> Get a const
+                    reference to the lowest layer.
                   </p>
                 </td>
 </tr>
@@ -579,9 +580,8 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <td>
                   <p>
                     Gets the non-blocking mode of the native socket implementation.
-                  </p>
-                  <p>
-                    Sets the non-blocking mode of the native socket implementation.
+                    <br> <span class="silver"> &#8212;</span><br> Sets the non-blocking mode of the native socket
+                    implementation.
                   </p>
                 </td>
 </tr>
@@ -593,10 +593,8 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                 </td>
 <td>
                   <p>
-                    Gets the non-blocking mode of the socket.
-                  </p>
-                  <p>
-                    Sets the non-blocking mode of the socket.
+                    Gets the non-blocking mode of the socket. <br> <span class="silver"> &#8212;</span><br> Sets
+                    the non-blocking mode of the socket.
                   </p>
                 </td>
 </tr>
@@ -620,11 +618,20 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                 </td>
 <td>
                   <p>
-                    Move-assign a basic_socket from another.
+                    Move-assign a basic_socket from another. <br> <span class="silver"> &#8212;</span><br> Move-assign
+                    a basic_socket from a socket of another protocol type.
                   </p>
+                </td>
+</tr>
+<tr>
+<td>
                   <p>
-                    Move-assign a basic_socket from a socket of another protocol
-                    type.
+                    <a class="link" href="../basic_socket/release.html" title="basic_socket::release"><span class="bold"><strong>release</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Release ownership of the underlying native socket.
                   </p>
                 </td>
 </tr>
@@ -664,6 +671,19 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                   </p>
                 </td>
 </tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket/wait.html" title="basic_socket::wait"><span class="bold"><strong>wait</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Wait for the socket to become ready to read, ready to write,
+                    or to have pending error conditions.
+                  </p>
+                </td>
+</tr>
 </tbody>
 </table></div>
 <h6>
@@ -688,32 +708,7 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                   </p>
                 </th>
 </tr></thead>
-<tbody>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/get_implementation.html" title="basic_socket::get_implementation"><span class="bold"><strong>get_implementation</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    Get the underlying implementation of the I/O object.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/get_service.html" title="basic_socket::get_service"><span class="bold"><strong>get_service</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    Get the service associated with the I/O object.
-                  </p>
-                </td>
-</tr>
-<tr>
+<tbody><tr>
 <td>
                   <p>
                     <a class="link" href="../basic_socket/_basic_socket.html" title="basic_socket::~basic_socket"><span class="bold"><strong>~basic_socket</strong></span></a>
@@ -724,8 +719,7 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
                     Protected destructor to prevent deletion through this type.
                   </p>
                 </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table></div>
 <h6>
 <a name="asio.reference.basic_datagram_socket.lowest_layer_type.h3"></a>
@@ -754,6 +748,19 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 <td>
                   <p>
                     <a class="link" href="../basic_socket/max_connections.html" title="basic_socket::max_connections"><span class="bold"><strong>max_connections</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    (Deprecated: Use max_listen_connections.) The maximum length
+                    of the queue of pending incoming connections.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../basic_socket/max_listen_connections.html" title="basic_socket::max_listen_connections"><span class="bold"><strong>max_listen_connections</strong></span></a>
                   </p>
                 </td>
 <td>
@@ -812,64 +819,13 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 </tr>
 </tbody>
 </table></div>
-<h6>
-<a name="asio.reference.basic_datagram_socket.lowest_layer_type.h4"></a>
-          <span><a name="asio.reference.basic_datagram_socket.lowest_layer_type.protected_data_members"></a></span><a class="link" href="lowest_layer_type.html#asio.reference.basic_datagram_socket.lowest_layer_type.protected_data_members">Protected
-          Data Members</a>
-        </h6>
-<div class="informaltable"><table class="table">
-<colgroup>
-<col>
-<col>
-</colgroup>
-<thead><tr>
-<th>
-                  <p>
-                    Name
-                  </p>
-                </th>
-<th>
-                  <p>
-                    Description
-                  </p>
-                </th>
-</tr></thead>
-<tbody>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/implementation.html" title="basic_socket::implementation"><span class="bold"><strong>implementation</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use get_implementation().) The underlying implementation
-                    of the I/O object.
-                  </p>
-                </td>
-</tr>
-<tr>
-<td>
-                  <p>
-                    <a class="link" href="../basic_socket/service.html" title="basic_socket::service"><span class="bold"><strong>service</strong></span></a>
-                  </p>
-                </td>
-<td>
-                  <p>
-                    (Deprecated: Use get_service().) The service associated with
-                    the I/O object.
-                  </p>
-                </td>
-</tr>
-</tbody>
-</table></div>
 <p>
-          The <a class="link" href="../basic_socket.html" title="basic_socket"><code class="computeroutput"><span class="identifier">basic_socket</span></code></a>
+          The <a class="link" href="../basic_socket.html" title="basic_socket"><code class="computeroutput">basic_socket</code></a>
           class template provides functionality that is common to both stream-oriented
           and datagram-oriented sockets.
         </p>
 <h6>
-<a name="asio.reference.basic_datagram_socket.lowest_layer_type.h5"></a>
+<a name="asio.reference.basic_datagram_socket.lowest_layer_type.h4"></a>
           <span><a name="asio.reference.basic_datagram_socket.lowest_layer_type.thread_safety"></a></span><a class="link" href="lowest_layer_type.html#asio.reference.basic_datagram_socket.lowest_layer_type.thread_safety">Thread
           Safety</a>
         </h6>
@@ -880,7 +836,7 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
           <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Unsafe.
         </p>
 <h6>
-<a name="asio.reference.basic_datagram_socket.lowest_layer_type.h6"></a>
+<a name="asio.reference.basic_datagram_socket.lowest_layer_type.h5"></a>
           <span><a name="asio.reference.basic_datagram_socket.lowest_layer_type.requirements"></a></span><a class="link" href="lowest_layer_type.html#asio.reference.basic_datagram_socket.lowest_layer_type.requirements">Requirements</a>
         </h6>
 <p>
@@ -892,8 +848,7 @@ A <a class="link" href="../basic_socket.html" title="basic_socket"><code class="
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

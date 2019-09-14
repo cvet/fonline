@@ -23,8 +23,8 @@
 <p>
             Add certification authority for performing verification.
           </p>
-<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">add_certificate_authority</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">const_buffer</span> <span class="special">&amp;</span> <span class="identifier">ca</span><span class="special">);</span>
+<pre class="programlisting">void add_certificate_authority(
+    const const_buffer &amp; ca);
 </pre>
 <p>
             This function is used to add one trusted certification authority from
@@ -62,14 +62,12 @@
             <span><a name="asio.reference.ssl__context.add_certificate_authority.overload1.remarks"></a></span><a class="link" href="overload1.html#asio.reference.ssl__context.add_certificate_authority.overload1.remarks">Remarks</a>
           </h6>
 <p>
-            Calls <code class="computeroutput"><span class="identifier">SSL_CTX_get_cert_store</span></code>
-            and <code class="computeroutput"><span class="identifier">X509_STORE_add_cert</span></code>.
+            Calls <code class="computeroutput">SSL_CTX_get_cert_store</code> and <code class="computeroutput">X509_STORE_add_cert</code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

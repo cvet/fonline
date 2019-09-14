@@ -7,7 +7,7 @@
 <link rel="home" href="../../index.html" title="Asio">
 <link rel="up" href="../reference.html" title="Reference">
 <link rel="prev" href="async_read_at/overload4.html" title="async_read_at (4 of 4 overloads)">
-<link rel="next" href="async_read_until/overload1.html" title="async_read_until (1 of 4 overloads)">
+<link rel="next" href="async_read_until/overload1.html" title="async_read_until (1 of 8 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
@@ -20,56 +20,127 @@
 <a name="asio.reference.async_read_until"></a><a class="link" href="async_read_until.html" title="async_read_until">async_read_until</a>
 </h3></div></div></div>
 <p>
-        <a class="indexterm" name="idm29311"></a> 
-Start an asynchronous operation to read data into a streambuf
-        until it contains a delimiter, matches a regular expression, or a function
+        <a class="indexterm" name="asio.indexterm.async_read_until"></a> 
+The <code class="computeroutput">async_read_until</code>
+        function is a composed asynchronous operation that reads data into a dynamic
+        buffer sequence, or into a streambuf, until it contains a delimiter, matches
+        a regular expression, or a function object indicates a match.
+      </p>
+<p>
+        Start an asynchronous operation to read data into a dynamic buffer sequence
+        until it contains a specified delimiter.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload1.html" title="async_read_until (1 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    char delim,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload1.html" title="async_read_until (1 of 8 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload2.html" title="async_read_until (2 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    string_view delim,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload2.html" title="async_read_until (2 of 8 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start an asynchronous operation to read data into a dynamic buffer sequence
+        until some part of its data matches a regular expression.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload3.html" title="async_read_until (3 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    const boost::regex &amp; expr,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload3.html" title="async_read_until (3 of 8 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start an asynchronous operation to read data into a dynamic buffer sequence
+        until a function object indicates a match.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename <a class="link" href="DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>,
+    typename MatchCondition,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload4.html" title="async_read_until (4 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    MatchCondition match_condition,
+    ReadHandler &amp;&amp; handler,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload4.html" title="async_read_until (4 of 8 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start an asynchronous operation to read data into a streambuf until it contains
+        a specified delimiter.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename Allocator,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload5.html" title="async_read_until (5 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    char delim,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload5.html" title="async_read_until (5 of 8 overloads)">more...</a></em></span>
+
+template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename Allocator,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload6.html" title="async_read_until (6 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    string_view delim,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload6.html" title="async_read_until (6 of 8 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start an asynchronous operation to read data into a streambuf until some
+        part of its data matches a regular expression.
+      </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename Allocator,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload7.html" title="async_read_until (7 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    const boost::regex &amp; expr,
+    ReadHandler &amp;&amp; handler);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload7.html" title="async_read_until (7 of 8 overloads)">more...</a></em></span>
+</pre>
+<p>
+        Start an asynchronous operation to read data into a streambuf until a function
         object indicates a match.
       </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_read_until/overload1.html" title="async_read_until (1 of 4 overloads)">async_read_until</a><span class="special">(</span>
-    <span class="identifier">AsyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">char</span> <span class="identifier">delim</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload1.html" title="async_read_until (1 of 4 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_read_until/overload2.html" title="async_read_until (2 of 4 overloads)">async_read_until</a><span class="special">(</span>
-    <span class="identifier">AsyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">delim</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload2.html" title="async_read_until (2 of 4 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_read_until/overload3.html" title="async_read_until (3 of 4 overloads)">async_read_until</a><span class="special">(</span>
-    <span class="identifier">AsyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">regex</span> <span class="special">&amp;</span> <span class="identifier">expr</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload3.html" title="async_read_until (3 of 4 overloads)">more...</a></em></span>
-
-<span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">MatchCondition</span><span class="special">,</span>
-    <span class="keyword">typename</span> <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a><span class="special">&gt;</span>
-<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.return_type_of_an_initiating_function"><span class="emphasis"><em>void-or-deduced</em></span></a> <a class="link" href="async_read_until/overload4.html" title="async_read_until (4 of 4 overloads)">async_read_until</a><span class="special">(</span>
-    <span class="identifier">AsyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">MatchCondition</span> <span class="identifier">match_condition</span><span class="special">,</span>
-    <span class="identifier">ReadHandler</span> <span class="identifier">handler</span><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_match_condition</span><span class="special">&lt;</span> <span class="identifier">MatchCondition</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">*</span>  <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
-  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload4.html" title="async_read_until (4 of 4 overloads)">more...</a></em></span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="AsyncReadStream.html" title="Buffer-oriented asynchronous read stream requirements">AsyncReadStream</a>,
+    typename Allocator,
+    typename MatchCondition,
+    typename <a class="link" href="ReadHandler.html" title="Read handler requirements">ReadHandler</a>&gt;
+<a class="link" href="asynchronous_operations.html#asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type"><span class="emphasis"><em>DEDUCED</em></span></a> <a class="link" href="async_read_until/overload8.html" title="async_read_until (8 of 8 overloads)">async_read_until</a>(
+    AsyncReadStream &amp; s,
+    asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    MatchCondition match_condition,
+    ReadHandler &amp;&amp; handler,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+  <span class="emphasis"><em>&#187; <a class="link" href="async_read_until/overload8.html" title="async_read_until (8 of 8 overloads)">more...</a></em></span>
 </pre>
 <h5>
 <a name="asio.reference.async_read_until.h0"></a>
@@ -84,8 +155,7 @@ Start an asynchronous operation to read data into a streambuf
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

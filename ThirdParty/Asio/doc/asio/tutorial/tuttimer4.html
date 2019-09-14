@@ -25,92 +25,88 @@
         handler. The program should execute identically to the tutorial program from
         tutorial Timer.3.
       </p>
-<pre class="programlisting"><span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">bind</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="special">#</span><span class="identifier">include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">date_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">/</span><span class="identifier">posix_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting">#include &lt;iostream&gt;
+#include &lt;asio.hpp&gt;
+#include &lt;boost/bind.hpp&gt;
 </pre>
 <p>
-        Instead of defining a free function <code class="computeroutput"><span class="identifier">print</span></code>
-        as the callback handler, as we did in the earlier tutorial programs, we now
-        define a class called <code class="computeroutput"><span class="identifier">printer</span></code>.
+        Instead of defining a free function <code class="computeroutput">print</code> as the callback handler,
+        as we did in the earlier tutorial programs, we now define a class called
+        <code class="computeroutput">printer</code>.
       </p>
-<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">printer</span>
-<span class="special">{</span>
-<span class="keyword">public</span><span class="special">:</span>
+<pre class="programlisting">class printer
+{
+public:
 </pre>
 <p>
-        The constructor of this class will take a reference to the io_service object
-        and use it when initialising the <code class="computeroutput"><span class="identifier">timer_</span></code>
-        member. The counter used to shut down the program is now also a member of
-        the class.
+        The constructor of this class will take a reference to the io_context object
+        and use it when initialising the <code class="computeroutput">timer_</code> member. The counter
+        used to shut down the program is now also a member of the class.
       </p>
-<pre class="programlisting">  <span class="identifier">printer</span><span class="special">(</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span><span class="special">&amp;</span> <span class="identifier">io</span><span class="special">)</span>
-    <span class="special">:</span> <span class="identifier">timer_</span><span class="special">(</span><span class="identifier">io</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">)),</span>
-      <span class="identifier">count_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span>
-  <span class="special">{</span>
+<pre class="programlisting">  printer(asio::io_context&amp; io)
+    : timer_(io, asio::chrono::seconds(1)),
+      count_(0)
+  {
 </pre>
 <p>
         The <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a> function
         works just as well with class member functions as with free functions. Since
-        all non-static class member functions have an implicit <code class="computeroutput"><span class="keyword">this</span></code>
-        parameter, we need to bind <code class="computeroutput"><span class="keyword">this</span></code>
-        to the function. As in tutorial Timer.3, <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a>
-        converts our callback handler (now a member function) into a function object
-        that can be invoked as though it has the signature <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;)</span></code>.
+        all non-static class member functions have an implicit <code class="computeroutput">this</code>
+        parameter, we need to bind <code class="computeroutput">this</code> to the function. As in tutorial
+        Timer.3, <a class="link" href="boost_bind.html" title="boost::bind">boost::bind</a> converts
+        our callback handler (now a member function) into a function object that
+        can be invoked as though it has the signature <code class="computeroutput">void(const asio::error_code&amp;)</code>.
       </p>
 <p>
         You will note that the asio::placeholders::error placeholder is not specified
-        here, as the <code class="computeroutput"><span class="identifier">print</span></code> member
-        function does not accept an error object as a parameter.
+        here, as the <code class="computeroutput">print</code> member function does not accept an error
+        object as a parameter.
       </p>
-<pre class="programlisting">    <span class="identifier">timer_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print</span><span class="special">,</span> <span class="keyword">this</span><span class="special">));</span>
-  <span class="special">}</span>
+<pre class="programlisting">    timer_.async_wait(boost::bind(&amp;printer::print, this));
+  }
 </pre>
 <p>
         In the class destructor we will print out the final value of the counter.
       </p>
-<pre class="programlisting">  <span class="special">~</span><span class="identifier">printer</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Final count is "</span> <span class="special">&lt;&lt;</span> <span class="identifier">count_</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-  <span class="special">}</span>
+<pre class="programlisting">  ~printer()
+  {
+    std::cout &lt;&lt; "Final count is " &lt;&lt; count_ &lt;&lt; std::endl;
+  }
 </pre>
 <p>
-        The <code class="computeroutput"><span class="identifier">print</span></code> member function
-        is very similar to the <code class="computeroutput"><span class="identifier">print</span></code>
+        The <code class="computeroutput">print</code> member function is very similar to the <code class="computeroutput">print</code>
         function from tutorial Timer.3, except that it now operates on the class
         data members instead of having the timer and counter passed in as parameters.
       </p>
-<pre class="programlisting">  <span class="keyword">void</span> <span class="identifier">print</span><span class="special">()</span>
-  <span class="special">{</span>
-    <span class="keyword">if</span> <span class="special">(</span><span class="identifier">count_</span> <span class="special">&lt;</span> <span class="number">5</span><span class="special">)</span>
-    <span class="special">{</span>
-      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">count_</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
-      <span class="special">++</span><span class="identifier">count_</span><span class="special">;</span>
+<pre class="programlisting">  void print()
+  {
+    if (count_ &lt; 5)
+    {
+      std::cout &lt;&lt; count_ &lt;&lt; std::endl;
+      ++count_;
 
-      <span class="identifier">timer_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">(</span><span class="identifier">timer_</span><span class="special">.</span><span class="identifier">expires_at</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
-      <span class="identifier">timer_</span><span class="special">.</span><span class="identifier">async_wait</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">printer</span><span class="special">::</span><span class="identifier">print</span><span class="special">,</span> <span class="keyword">this</span><span class="special">));</span>
-    <span class="special">}</span>
-  <span class="special">}</span>
+      timer_.expires_at(timer_.expiry() + asio::chrono::seconds(1));
+      timer_.async_wait(boost::bind(&amp;printer::print, this));
+    }
+  }
 
-<span class="keyword">private</span><span class="special">:</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">deadline_timer</span> <span class="identifier">timer_</span><span class="special">;</span>
-  <span class="keyword">int</span> <span class="identifier">count_</span><span class="special">;</span>
-<span class="special">};</span>
+private:
+  asio::steady_timer timer_;
+  int count_;
+};
 </pre>
 <p>
-        The <code class="computeroutput"><span class="identifier">main</span></code> function is much
-        simpler than before, as it now declares a local <code class="computeroutput"><span class="identifier">printer</span></code>
-        object before running the io_service as normal.
+        The <code class="computeroutput">main</code> function is much simpler than before, as it now declares
+        a local <code class="computeroutput">printer</code> object before running the io_context as normal.
       </p>
-<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
-<span class="special">{</span>
-  <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_service</span> <span class="identifier">io</span><span class="special">;</span>
-  <span class="identifier">printer</span> <span class="identifier">p</span><span class="special">(</span><span class="identifier">io</span><span class="special">);</span>
-  <span class="identifier">io</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+<pre class="programlisting">int main()
+{
+  asio::io_context io;
+  printer p(io);
+  io.run();
 
-  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
-<span class="special">}</span>
+  return 0;
+}
 </pre>
 <p>
         See the <a class="link" href="tuttimer4/src.html" title="Source listing for Timer.4">full source listing</a>
@@ -129,8 +125,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>

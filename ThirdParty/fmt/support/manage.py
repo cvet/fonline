@@ -5,10 +5,13 @@
 Usage:
   manage.py release [<branch>]
   manage.py site
+
+For the release command $FMT_TOKEN should contain a GitHub personal access token
+obtained from https://github.com/settings/tokens.
 """
 
 from __future__ import print_function
-import datetime, docopt, fileinput, json, os
+import datetime, docopt, errno, fileinput, json, os
 import re, requests, shutil, sys, tempfile
 from contextlib import contextmanager
 from distutils.version import LooseVersion
@@ -80,6 +83,7 @@ def create_build_env():
     import build
 
     env.build_dir = 'build'
+    env.versions = build.versions
 
     # Virtualenv and repos are cached to speed up builds.
     build.create_build_env(os.path.join(env.build_dir, 'virtualenv'))
@@ -113,7 +117,7 @@ def update_site(env):
     doc_repo = Git(os.path.join(env.build_dir, 'fmtlib.github.io'))
     doc_repo.update('git@github.com:fmtlib/fmtlib.github.io')
 
-    for version in ['1.0.0', '1.1.0', '2.0.0', '3.0.0']:
+    for version in env.versions:
         clean_checkout(env.fmt_repo, version)
         target_doc_dir = os.path.join(env.fmt_repo.dir, 'doc')
         # Remove the old theme.
@@ -140,6 +144,8 @@ def update_site(env):
                 b.data = re.sub(pattern, r'doxygenfunction:: \1(int)', b.data)
                 b.data = b.data.replace('std::FILE*', 'std::FILE *')
                 b.data = b.data.replace('unsigned int', 'unsigned')
+                b.data = b.data.replace('operator""_', 'operator"" _')
+                b.data = b.data.replace(', size_t', ', std::size_t')
         # Fix a broken link in index.rst.
         index = os.path.join(target_doc_dir, 'index.rst')
         with rewrite(index) as b:
@@ -150,7 +156,9 @@ def update_site(env):
         if os.path.exists(html_dir):
             shutil.rmtree(html_dir)
         include_dir = env.fmt_repo.dir
-        if LooseVersion(version) >= LooseVersion('3.0.0'):
+        if LooseVersion(version) >= LooseVersion('5.0.0'):
+            include_dir = os.path.join(include_dir, 'include', 'fmt')
+        elif LooseVersion(version) >= LooseVersion('3.0.0'):
             include_dir = os.path.join(include_dir, 'fmt')
         import build
         build.build_docs(version, doc_dir=target_doc_dir,
@@ -165,7 +173,11 @@ def update_site(env):
                 os.symlink(target, link)
         # Copy docs to the website.
         version_doc_dir = os.path.join(doc_repo.dir, version)
-        shutil.rmtree(version_doc_dir)
+        try:
+            shutil.rmtree(version_doc_dir)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
         shutil.move(html_dir, version_doc_dir)
 
 
@@ -204,27 +216,45 @@ def release(args):
             line = '-' * title_len + '\n'
             title_len = 0
         sys.stdout.write(line)
-    # TODO: add new version to manage.py
+
+    # Add the version to the build script.
+    script = os.path.join('doc', 'build.py')
+    script_path = os.path.join(fmt_repo.dir, script)
+    for line in fileinput.input(script_path, inplace=True):
+      m = re.match(r'( *versions = )\[(.+)\]', line)
+      if m:
+        line = '{}[{}, \'{}\']\n'.format(m.group(1), m.group(2), version)
+      sys.stdout.write(line)
+
     fmt_repo.checkout('-B', 'release')
-    fmt_repo.add(changelog, cmakelists)
+    fmt_repo.add(changelog, cmakelists, script)
     fmt_repo.commit('-m', 'Update version')
 
     # Build the docs and package.
     run = Runner(fmt_repo.dir)
     run('cmake', '.')
     run('make', 'doc', 'package_source')
-
     update_site(env)
 
     # Create a release on GitHub.
     fmt_repo.push('origin', 'release')
+    params = {'access_token': os.getenv('FMT_TOKEN')}
     r = requests.post('https://api.github.com/repos/fmtlib/fmt/releases',
-                      params={'access_token': os.getenv('FMT_TOKEN')},
+                      params=params,
                       data=json.dumps({'tag_name': version,
                                        'target_commitish': 'release',
                                        'body': changes, 'draft': True}))
     if r.status_code != 201:
         raise Exception('Failed to create a release ' + str(r))
+    id = r.json()['id']
+    uploads_url = 'https://uploads.github.com/repos/fmtlib/fmt/releases'
+    package = 'fmt-{}.zip'.format(version)
+    r = requests.post(
+        '{}/{}/assets?name={}'.format(uploads_url, id, package),
+        headers={'Content-Type': 'application/zip'},
+        params=params, data=open('build/fmt/' + package, 'rb'))
+    if r.status_code != 201:
+        raise Exception('Failed to upload an asset ' + str(r))
 
 
 if __name__ == '__main__':

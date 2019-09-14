@@ -1,13 +1,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
-<title>read (6 of 8 overloads)</title>
+<title>read (6 of 12 overloads)</title>
 <link rel="stylesheet" href="../../../boostbook.css" type="text/css">
 <meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
 <link rel="home" href="../../../index.html" title="Asio">
 <link rel="up" href="../read.html" title="read">
-<link rel="prev" href="overload5.html" title="read (5 of 8 overloads)">
-<link rel="next" href="overload7.html" title="read (7 of 8 overloads)">
+<link rel="prev" href="overload5.html" title="read (5 of 12 overloads)">
+<link rel="next" href="overload7.html" title="read (7 of 12 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../../asio.png"></td></tr></table>
@@ -17,18 +17,19 @@
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
-<a name="asio.reference.read.overload6"></a><a class="link" href="overload6.html" title="read (6 of 8 overloads)">read (6 of 8 overloads)</a>
+<a name="asio.reference.read.overload6"></a><a class="link" href="overload6.html" title="read (6 of 12 overloads)">read (6 of 12 overloads)</a>
 </h4></div></div></div>
 <p>
           Attempt to read a certain amount of data from a stream before returning.
         </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">typename</span> <a class="link" href="../SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a><span class="special">,</span>
-    <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
-<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">read</span><span class="special">(</span>
-    <span class="identifier">SyncReadStream</span> <span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span>
-    <span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename <a class="link" href="../DynamicBuffer.html" title="Dynamic buffer requirements">DynamicBuffer</a>&gt;
+std::size_t read(
+    SyncReadStream &amp; s,
+    DynamicBuffer &amp;&amp; buffers,
+    asio::error_code &amp; ec,
+    typename enable_if&lt; is_dynamic_buffer&lt; typename decay&lt; DynamicBuffer &gt;::type &gt;::value &gt;::type *  = 0);
 </pre>
 <p>
           This function is used to read a certain number of bytes of data from a
@@ -58,10 +59,9 @@
                 The stream from which the data is to be read. The type must support
                 the SyncReadStream concept.
               </p></dd>
-<dt><span class="term">b</span></dt>
+<dt><span class="term">buffers</span></dt>
 <dd><p>
-                The <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput"><span class="identifier">basic_streambuf</span></code></a> object into
-                which the data will be read.
+                The dynamic buffer sequence into which the data will be read.
               </p></dd>
 <dt><span class="term">ec</span></dt>
 <dd><p>
@@ -84,15 +84,14 @@
 <p>
           This overload is equivalent to calling:
         </p>
-<pre class="programlisting"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">read</span><span class="special">(</span>
-    <span class="identifier">s</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span>
-    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">transfer_all</span><span class="special">(),</span> <span class="identifier">ec</span><span class="special">);</span>
+<pre class="programlisting">asio::read(
+    s, buffers,
+    asio::transfer_all(), ec);
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
-      M. Kohlhoff<p>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2018 Christopher M. Kohlhoff<p>
         Distributed under the Boost Software License, Version 1.0. (See accompanying
         file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
       </p>
