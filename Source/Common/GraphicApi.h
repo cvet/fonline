@@ -58,7 +58,9 @@
 # define GL_PROGRAM_BINARY_LENGTH                0
 # define GL_FRAMEBUFFER_COMPLETE_EXT             GL_FRAMEBUFFER_COMPLETE
 # define GL_FRAMEBUFFER_EXT                      GL_FRAMEBUFFER
-# define GL_COLOR_ATTACHMENT0_EXT                GL_COLOR_ATTACHMENT0
+# ifndef GL_COLOR_ATTACHMENT0_EXT
+#  define GL_COLOR_ATTACHMENT0_EXT               GL_COLOR_ATTACHMENT0
+# endif
 # define GL_RENDERBUFFER_EXT                     GL_RENDERBUFFER
 # define GL_DEPTH_ATTACHMENT_EXT                 GL_DEPTH_ATTACHMENT
 # define GL_RENDERBUFFER_BINDING_EXT             GL_RENDERBUFFER_BINDING
@@ -69,8 +71,10 @@
 # define glGetTexImage( a, b, c, d, e )
 # define glDrawBuffer( a )
 # ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
-#  define GL_MAX_COLOR_TEXTURE_SAMPLES           0
-#  define GL_TEXTURE_2D_MULTISAMPLE              0
+#  define GL_MAX_COLOR_TEXTURE_SAMPLES           0x910E
+# endif
+# ifndef GL_TEXTURE_2D_MULTISAMPLE
+#  define GL_TEXTURE_2D_MULTISAMPLE              0x9100
 # endif
 # ifndef GL_MAX
 #  define GL_MAX                                 GL_MAX_EXT
@@ -87,11 +91,11 @@
 #  define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
 #  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
 #  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
-extern PFNGLBINDVERTEXARRAYOESPROC             glBindVertexArrayOES_;
-extern PFNGLDELETEVERTEXARRAYSOESPROC          glDeleteVertexArraysOES_;
-extern PFNGLGENVERTEXARRAYSOESPROC             glGenVertexArraysOES_;
-extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG glFramebufferTexture2DMultisampleIMG_;
-extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG  glRenderbufferStorageMultisampleIMG_;
+extern PFNGLBINDVERTEXARRAYOESPROC                 glBindVertexArrayOES_;
+extern PFNGLDELETEVERTEXARRAYSOESPROC              glDeleteVertexArraysOES_;
+extern PFNGLGENVERTEXARRAYSOESPROC                 glGenVertexArraysOES_;
+extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC glFramebufferTexture2DMultisampleIMG_;
+extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC  glRenderbufferStorageMultisampleIMG_;
 # elif defined ( FO_WEB )
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 #  define glRenderbufferStorageMultisample( a, b, c, d, e )

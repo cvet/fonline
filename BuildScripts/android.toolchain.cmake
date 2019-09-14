@@ -902,6 +902,8 @@ if( BUILD_WITH_STANDALONE_TOOLCHAIN )
  set( ANDROID_CLANG_TOOLCHAIN_ROOT "${ANDROID_STANDALONE_TOOLCHAIN}" )
  set( ANDROID_SYSROOT "${ANDROID_STANDALONE_TOOLCHAIN}/sysroot" )
 
+ set( ANDROID_STL_INCLUDE_DIRS "${ANDROID_STANDALONE_TOOLCHAIN}/include/c++/4.9.x" ) #!
+
  if( NOT ANDROID_STL STREQUAL "none" )
   set( ANDROID_STL_INCLUDE_DIRS "${ANDROID_STANDALONE_TOOLCHAIN}/include/c++/${ANDROID_COMPILER_VERSION}" )
   if( NOT EXISTS "${ANDROID_STL_INCLUDE_DIRS}" )
@@ -1171,6 +1173,8 @@ endforeach()
 # flags and definitions
 remove_definitions( -DANDROID )
 add_definitions( -DANDROID )
+remove_definitions( -D__ANDROID_API__ ) #!
+add_definitions( "-D__ANDROID_API__=$ENV{ANDROID_NATIVE_API_LEVEL_NUMBER}" ) #!
 
 if( ANDROID_SYSROOT MATCHES "[ ;\"]" )
  if( CMAKE_HOST_WIN32 )
@@ -1456,7 +1460,8 @@ if( DEFINED ANDROID_EXCEPTIONS AND ANDROID_STL_FORCE_FEATURES )
 endif()
 
 # global includes and link directories
-include_directories( SYSTEM "${ANDROID_SYSROOT}/usr/include" ${ANDROID_STL_INCLUDE_DIRS} )
+#! include_directories( SYSTEM "${ANDROID_SYSROOT}/usr/include" ${ANDROID_STL_INCLUDE_DIRS} )
+include_directories( SYSTEM ${ANDROID_STL_INCLUDE_DIRS} ) #!
 get_filename_component(__android_install_path "${CMAKE_INSTALL_PREFIX}/libs/${ANDROID_NDK_ABI_NAME}" ABSOLUTE) # avoid CMP0015 policy warning
 #link_directories( "${__android_install_path}" ) #!
 link_directories( "${ANDROID_SYSROOT}/usr/lib" ) #!
