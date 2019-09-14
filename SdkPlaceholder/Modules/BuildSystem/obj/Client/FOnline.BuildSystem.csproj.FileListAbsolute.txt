@@ -1,0 +1,9 @@
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Client\FOnline.BuildSystem.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Client\FOnline.BuildSystem.pdb
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Client\FOnline.Core.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Client\FOnline.Core.pdb
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Client\FOnline.BuildSystem.csprojAssemblyReference.cache
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Client\FOnline.BuildSystem.csproj.CoreCompileInputs.cache
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Client\FOnline.BuildSystem.csproj.CopyComplete
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Client\FOnline.BuildSystem.dll
+D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Client\FOnline.BuildSystem.pdb
