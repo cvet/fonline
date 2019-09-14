@@ -49,7 +49,7 @@ fi
 
 export ANDROID_HOME="$PWD/sdk"
 
-export ANDROID_STANDALONE_TOOLCHAIN=arm-toolchain
+export ANDROID_STANDALONE_TOOLCHAIN=$PWD/arm-toolchain
 export ANDROID_ABI=armeabi-v7a
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
@@ -57,7 +57,7 @@ cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" 
 make -j$(nproc)
 cd ../
 
-export ANDROID_STANDALONE_TOOLCHAIN=arm64-toolchain
+export ANDROID_STANDALONE_TOOLCHAIN=$PWD/arm64-toolchain
 export ANDROID_ABI=arm64-v8a
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
@@ -65,7 +65,7 @@ cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" 
 make -j$(nproc)
 cd ../
 
-export ANDROID_STANDALONE_TOOLCHAIN=x86-toolchain
+export ANDROID_STANDALONE_TOOLCHAIN=$PWD/x86-toolchain
 export ANDROID_ABI=x86
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
