@@ -289,7 +289,16 @@ class DefaultBuildSystem: public IBuildSystem
 public:
     bool BuildAll()
     {
-        return false;
+        try
+        {
+            // ...
+            return true;
+        }
+        catch( const fo_exception& ex )
+        {
+            // ...
+            return false;
+        }
     }
 };
 
