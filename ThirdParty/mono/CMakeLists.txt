@@ -620,9 +620,21 @@ if( APPLE AND IOS_PLATFORM )
 		"repo/mono/utils/mono-hwcap-arm64.c"
 		"repo/mono/utils/mach-support-arm64.c" )
 elseif( ANDROID )
-	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
-		"repo/mono/utils/mono-hwcap-arm.c"
-		"repo/mono/utils/mach-support-arm.c" )
+	if( ANDROID_ABI STREQUAL "armeabi-v7a" )
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mono-hwcap-arm.c"
+			"repo/mono/utils/mach-support-arm.c" )
+	elseif( ANDROID_ABI STREQUAL "arm64-v8a" )
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mono-hwcap-arm64.c"
+			"repo/mono/utils/mach-support-arm64.c" )
+	elseif( ANDROID_ABI STREQUAL "x86" )
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mono-hwcap-x86.c"
+			"repo/mono/utils/mach-support-x86.c" )
+	else()
+		message( FATAL_ERROR "Unknown ANDROID_ABI" )
+	endif()
 elseif( EMSCRIPTEN )
 	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
 		"repo/mono/utils/mono-hwcap-wasm.c"
@@ -852,7 +864,7 @@ set( LIBMONOUTILS_WIN32_SOURCE
 	"repo/mono/utils/mono-os-wait-win32.c"
 )
 
-if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+if( WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8 )
 	set( LIBMONOUTILS_WIN32_SOURCE ${LIBMONOUTILS_WIN32_SOURCE}
 		"repo/mono/utils/win64.asm" )
 endif()
