@@ -1361,6 +1361,7 @@
 /* Define to 1 if `major', `minor', and `makedev' are declared in
    <sysmacros.h>. */
 /* #undef MAJOR_IN_SYSMACROS */
+#define MAJOR_IN_SYSMACROS 1
 
 /* The architecture this is running on */
 #ifdef __LP64__

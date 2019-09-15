@@ -26,7 +26,7 @@
 #   define C4_WORDSIZE 8
 #   define C4_BYTE_ORDER _C4EL
 
-#elif defined(__i386) || defined(__i386__) || defined(_M_IX86)
+#elif defined(__i386) || defined(__i386__) || defined(_M_IX86) || defined(EMSCRIPTEN) //! Emscripten compilation workaround
 #   define C4_CPU_X86
 #   define C4_WORDSIZE 4
 #   define C4_BYTE_ORDER _C4EL
