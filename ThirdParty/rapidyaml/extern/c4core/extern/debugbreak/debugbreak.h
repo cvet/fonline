@@ -102,6 +102,8 @@ __inline__ static void trap_instruction(void)
 }
 #else
 enum { HAVE_TRAP_INSTRUCTION = 0, };
+__attribute__((gnu_inline, always_inline))
+__inline__ static void trap_instruction(void) { (void)0; } //! Fix for - use of undeclared identifier 'trap_instruction'
 #endif
 
 __attribute__((gnu_inline, always_inline))
