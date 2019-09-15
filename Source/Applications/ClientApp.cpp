@@ -7,6 +7,7 @@
 #include "Client.h"
 #include "Keyboard.h"
 #include "Settings.h"
+#include "Version_Include.h"
 #include <locale.h>
 
 #ifdef FO_IOS
@@ -47,7 +48,7 @@ static int main_disabled( int argc, char** argv )
     #endif
 
     // Start message
-    WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );
+    WriteLog( "Starting FOnline (version {:#x})...\n", FO_VERSION );
 
     // Loop
     #if defined ( FO_IOS )
