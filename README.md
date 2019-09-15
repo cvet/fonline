@@ -29,7 +29,6 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 * Supporting of Fallout 1/2/Tactics, Arcanum and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal/square map tiling
-* ...write more
 
 ## Work in progress
 
@@ -62,7 +61,6 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 ## Repository structure
 
 * *BuildScripts* - scripts for automatical build in command line or any ci/cd system
-* *Other* - historical stuff, deprecated and not used
 * *Resources* - resources for build applications but not related to code
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
@@ -71,7 +69,6 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 ## Clone / Build / Setup
 
-Before clone make sure that you [install Git LFS](https://github.com/git-lfs/git-lfs/wiki/Installation).  
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.10.2.
 
