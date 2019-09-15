@@ -6,6 +6,8 @@
 #include "FileUtils.h"
 #include "IniFile.h"
 #include "Settings.h"
+#include "Threading.h"
+
 #include "AngelScriptExt/reflection.h"
 #include "preprocessor.h"
 #include "scriptstdstring/scriptstdstring.h"

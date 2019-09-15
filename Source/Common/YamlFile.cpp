@@ -4,28 +4,29 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-IniFile::IniFile()
-{
+/*
+   IniFile::IniFile()
+   {
     //
-}
+   }
 
-void IniFile::AppendStr( const string& buf )
-{
+   void IniFile::AppendStr( const string& buf )
+   {
     ParseStr( buf );
-}
+   }
 
-bool IniFile::AppendFile( const string& fname )
-{
+   bool IniFile::AppendFile( const string& fname )
+   {
     File fm;
     if( !fm.LoadFile( fname ) )
         return false;
 
     ParseStr( fm.GetCStr() );
     return true;
-}
+   }
 
-void IniFile::ParseStr( const string& str )
-{
+   void IniFile::ParseStr( const string& str )
+   {
     StrMap* cur_app;
     auto    it_app = appKeyValues.find( "" );
     if( it_app == appKeyValues.end() )
@@ -147,10 +148,10 @@ void IniFile::ParseStr( const string& str )
     // Store current section content
     if( collectContent )
         ( *cur_app )[ "" ] = app_content;
-}
+   }
 
-bool IniFile::SaveFile( const string& fname )
-{
+   bool IniFile::SaveFile( const string& fname )
+   {
     string str;
     str.reserve( 10000000 );
     for( auto& app_it : appKeyValuesOrder )
@@ -168,21 +169,21 @@ bool IniFile::SaveFile( const string& fname )
     f.LoadStream( (uchar*) str.c_str(), (uint) str.length() );
     f.SwitchToWrite();
     return f.SaveFile( fname );
-}
+   }
 
-void IniFile::Clear()
-{
+   void IniFile::Clear()
+   {
     appKeyValues.clear();
     appKeyValuesOrder.clear();
-}
+   }
 
-bool IniFile::IsLoaded()
-{
+   bool IniFile::IsLoaded()
+   {
     return !appKeyValues.empty();
-}
+   }
 
-string* IniFile::GetRawValue( const string& app_name, const string& key_name )
-{
+   string* IniFile::GetRawValue( const string& app_name, const string& key_name )
+   {
     auto it_app = appKeyValues.find( app_name );
     if( it_app == appKeyValues.end() )
         return nullptr;
@@ -192,26 +193,26 @@ string* IniFile::GetRawValue( const string& app_name, const string& key_name )
         return nullptr;
 
     return &it_key->second;
-}
+   }
 
-string IniFile::GetStr( const string& app_name, const string& key_name, const string& def_val /* = "" */ )
-{
+   string IniFile::GetStr( const string& app_name, const string& key_name, const string& def_val )
+   {
     string* str = GetRawValue( app_name, key_name );
     return str ? *str : def_val;
-}
+   }
 
-int IniFile::GetInt( const string& app_name, const string& key_name, int def_val /* = 0 */  )
-{
+   int IniFile::GetInt( const string& app_name, const string& key_name, int def_val )
+   {
     string* str = GetRawValue( app_name, key_name );
     if( str && str->length() == 4 && _str( *str ).compareIgnoreCase( "true" ) )
         return 1;
     if( str && str->length() == 5 && _str( *str ).compareIgnoreCase( "false" ) )
         return 0;
     return str ? _str( *str ).toInt() : def_val;
-}
+   }
 
-void IniFile::SetStr( const string& app_name, const string& key_name, const string& val )
-{
+   void IniFile::SetStr( const string& app_name, const string& key_name, const string& val )
+   {
     auto it_app = appKeyValues.find( app_name );
     if( it_app == appKeyValues.end() )
     {
@@ -224,59 +225,59 @@ void IniFile::SetStr( const string& app_name, const string& key_name, const stri
     {
         it_app->second[ key_name ] = val;
     }
-}
+   }
 
-void IniFile::SetInt( const string& app_name, const string& key_name, int val )
-{
+   void IniFile::SetInt( const string& app_name, const string& key_name, int val )
+   {
     SetStr( app_name, key_name, _str( "{}", val ) );
-}
+   }
 
-StrMap& IniFile::GetApp( const string& app_name )
-{
+   StrMap& IniFile::GetApp( const string& app_name )
+   {
     auto it = appKeyValues.find( app_name );
     RUNTIME_ASSERT( it != appKeyValues.end() );
     return it->second;
-}
+   }
 
-void IniFile::GetApps( const string& app_name, PStrMapVec& key_values )
-{
+   void IniFile::GetApps( const string& app_name, PStrMapVec& key_values )
+   {
     size_t count = appKeyValues.count( app_name );
     auto   it = appKeyValues.find( app_name );
     key_values.reserve( key_values.size() + count );
     for( size_t i = 0; i < count; i++, it++ )
         key_values.push_back( &it->second );
-}
+   }
 
-StrMap& IniFile::SetApp( const string& app_name )
-{
+   StrMap& IniFile::SetApp( const string& app_name )
+   {
     auto it = appKeyValues.insert( std::make_pair( app_name, StrMap() ) );
     appKeyValuesOrder.push_back( it );
     return it->second;
-}
+   }
 
-bool IniFile::IsApp( const string& app_name )
-{
+   bool IniFile::IsApp( const string& app_name )
+   {
     auto it_app = appKeyValues.find( app_name );
     return it_app != appKeyValues.end();
-}
+   }
 
-bool IniFile::IsKey( const string& app_name, const string& key_name )
-{
+   bool IniFile::IsKey( const string& app_name, const string& key_name )
+   {
     auto it_app = appKeyValues.find( app_name );
     if( it_app == appKeyValues.end() )
         return false;
 
     return it_app->second.find( key_name ) != it_app->second.end();
-}
+   }
 
-void IniFile::GetAppNames( StrSet& apps )
-{
+   void IniFile::GetAppNames( StrSet& apps )
+   {
     for( const auto& kv : appKeyValues )
         apps.insert( kv.first );
-}
+   }
 
-void IniFile::GotoNextApp( const string& app_name )
-{
+   void IniFile::GotoNextApp( const string& app_name )
+   {
     auto it_app = appKeyValues.find( app_name );
     if( it_app == appKeyValues.end() )
         return;
@@ -285,16 +286,16 @@ void IniFile::GotoNextApp( const string& app_name )
     RUNTIME_ASSERT( it != appKeyValuesOrder.end() );
     appKeyValuesOrder.erase( it );
     appKeyValues.erase( it_app );
-}
+   }
 
-const StrMap* IniFile::GetAppKeyValues( const string& app_name )
-{
+   const StrMap* IniFile::GetAppKeyValues( const string& app_name )
+   {
     auto it_app = appKeyValues.find( app_name );
     return it_app != appKeyValues.end() ? &it_app->second : nullptr;
-}
+   }
 
-string IniFile::GetAppContent( const string& app_name )
-{
+   string IniFile::GetAppContent( const string& app_name )
+   {
     RUNTIME_ASSERT( collectContent );
 
     auto it_app = appKeyValues.find( app_name );
@@ -303,4 +304,5 @@ string IniFile::GetAppContent( const string& app_name )
 
     auto it_key = it_app->second.find( "" );
     return it_key != it_app->second.end() ? it_key->second : nullptr;
-}
+   }
+ */

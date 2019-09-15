@@ -1,7 +1,7 @@
 #pragma once
 
 // Versions
-#define FONLINE_VERSION    ( 840 )
+#define FONLINE_VERSION    ( 2019 )
 
 // Debugging
 // #define DEV_VERSION

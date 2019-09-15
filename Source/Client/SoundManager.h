@@ -1,10 +1,9 @@
-#ifndef __SOUND_MANAGER__
-#define __SOUND_MANAGER__
+#pragma once
 
 #include "Common.h"
 
 class Sound;
-typedef vector< Sound* > SoundVec;
+using SoundVec = vector< Sound* >;
 
 class SoundManager
 {
@@ -35,5 +34,3 @@ private:
 };
 
 extern SoundManager SndMngr;
-
-#endif // __SOUND_MANAGER__

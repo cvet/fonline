@@ -214,6 +214,12 @@ else()
 endif()
 set( CMAKE_CXX_STANDARD 17 )
 
+# Basic includes
+include_directories( "Source/Common" )
+include_directories( "Source/Server" )
+include_directories( "Source/Client" )
+include_directories( "Source/Editor" )
+
 # Embedded resources generation
 function( CreateResources dir output )
 	# Generate file content
@@ -608,7 +614,7 @@ set( SPARK_DIR "ThirdParty/spark" )
 set( SPARK_STATIC_BUILD ON CACHE BOOL "" FORCE )
 add_subdirectory( "${SPARK_DIR}/projects/engine/core" )
 include_directories( "${CMAKE_BINARY_DIR}/${SPARK_DIR}/include" )
-DisableLibWarnings( spark )
+DisableLibWarnings( SPARK_Core )
 
 # glslang & SPIRV-Cross
 if( NOT BUILD_ONLY_CLIENT )
@@ -764,12 +770,6 @@ set( EDITOR_SOURCE
 )
 list( REMOVE_DUPLICATES EDITOR_SOURCE )
 
-# Basic includes
-include_directories( "Source/Common" )
-include_directories( "Source/Server" )
-include_directories( "Source/Client" )
-include_directories( "Source/Editor" )
-
 # Applications
 StatusMessage( "Applications:" )
 
@@ -796,7 +796,7 @@ if( NOT FONLINE_BUILD_ONLY_EDITOR )
 	endif()
 	set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" )
 	set_target_properties( FOnline PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_CLIENT" )
-	target_link_libraries( FOnline "ryml" "spark" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${BACKWARDCPP_LIBS}" "${CLIENT_LIBS}" )
+	target_link_libraries( FOnline "ryml" "SPARK_Core" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "zlibstatic" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${BACKWARDCPP_LIBS}" "${CLIENT_LIBS}" )
 	target_link_libraries( FOnline "Acm" "Ogg" "Vorbis" "Theora" "${PNG16}" )
 endif()
 
@@ -817,7 +817,7 @@ if( NOT BUILD_ONLY_CLIENT )
 			set_target_properties( FOnlineServerService PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 			set_target_properties( FOnlineServerService PROPERTIES OUTPUT_NAME "FOnlineServerService${NON_CLIENT_POSTFIX}" )
 			set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_SERVER;FO_NO_GRAPHIC" )
-			target_link_libraries( FOnlineServerService "ryml" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )		else()
+			target_link_libraries( FOnlineServerService "ryml" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK_LIB}" "${FBXSDK_LIB}" "assimp" "mongoc_static" "bson_static" "${UNQLITE_LIB}" "ssl" "crypto" "${BACKWARDCPP_LIBS}" "${CMAKE_DL_LIBS}" )
 			StatusMessage( "+ FOnlineServerDaemon" )
 			list( APPEND ALL_TARGETS "FOnlineServerDaemon" )
 			add_executable( FOnlineServerDaemon ${SERVER_SOURCE_NO_GUI} "Source/Applications/ServerDaemonApp.cpp" )
@@ -834,7 +834,7 @@ if( NOT BUILD_ONLY_CLIENT )
 			set_target_properties( FOnlineUnitTests PROPERTIES ${RO0} ${TESTS_OUTPUT} ${RO1} ${TESTS_OUTPUT} ${RO2} ${TESTS_OUTPUT} ${RO3} ${TESTS_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 			set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests${NON_CLIENT_POSTFIX}" )
 			set_target_properties( FOnlineUnitTests PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR;FO_TESTING" )
-			target_link_libraries( FOnlineUnitTests "ryml" "spark" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
+			target_link_libraries( FOnlineUnitTests "ryml" "SPARK_Core" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
 		endif()
 		if( BUILD_CODE_COVERAGE )
 			StatusMessage( "+ FOnlineCodeCoverage" )
@@ -844,7 +844,7 @@ if( NOT BUILD_ONLY_CLIENT )
 			set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage${NON_CLIENT_POSTFIX}" )
 			set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR;FO_TESTING" )
 			target_compile_options( FOnlineCodeCoverage PRIVATE "-O0;-fprofile-arcs;-ftest-coverage" )
-			target_link_libraries( FOnlineCodeCoverage "gcov" "ryml" "spark" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
+			target_link_libraries( FOnlineCodeCoverage "gcov" "ryml" "SPARK_Core" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
 		endif()
 	endif()
 
@@ -854,9 +854,9 @@ if( NOT BUILD_ONLY_CLIENT )
 	set_target_properties( FOnlineEditor PROPERTIES ${RO0} ${EDITOR_OUTPUT} ${RO1} ${EDITOR_OUTPUT} ${RO2} ${EDITOR_OUTPUT} ${RO3} ${EDITOR_OUTPUT} ${RO4} ${EDITOR_OUTPUT} )
 	set_target_properties( FOnlineEditor PROPERTIES OUTPUT_NAME "FOnlineEditor${NON_CLIENT_POSTFIX}" )
 	set_target_properties( FOnlineEditor PROPERTIES COMPILE_DEFINITIONS "${BUILD_DEFINES};FONLINE_EDITOR" )
-	target_link_libraries( FOnlineEditor "ryml" "spark" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineEditor "ryml" "SPARK_Core" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET ${ALL_TARGETS} PROPERTY FOLDER "Binaries" )
-	set_property( TARGET spark libmono ImGui fmt Acm Angelscript AngelscriptExt ${GLEW_LIB} Ogg Vorbis Theora ${NCODEHOOK_LIB} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE_LIB} mbedcrypto mbedtls mbedx509 ssl crypto ${GLSLANG_LIBS} ${SPIRV_CROSS_LIBS} PROPERTY FOLDER "Libraries" )
+	set_property( TARGET ryml c4core SPARK_Core libmono ImGui fmt Acm Angelscript AngelscriptExt ${GLEW_LIB} Ogg Vorbis Theora ${NCODEHOOK_LIB} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static ${UNQLITE_LIB} mbedcrypto mbedtls mbedx509 ssl crypto ${GLSLANG_LIBS} ${SPIRV_CROSS_LIBS} PROPERTY FOLDER "Libraries" )
 endif()
