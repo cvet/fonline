@@ -10,6 +10,7 @@
 #include "sha1.h"
 #include "sha2.h"
 #include <fcntl.h>
+#include "Version_Include.h"
 
 static bool                 ASDbgMemoryCanWork = false;
 static THREAD bool          ASDbgMemoryInUse = false;
@@ -2215,7 +2216,7 @@ void FOClient::Net_SendUpdate()
     Bout << NETMSG_UPDATE;
 
     // Protocol version
-    Bout << (ushort) FONLINE_VERSION;
+    Bout << (ushort) FO_VERSION;
 
     // Data encrypting
     uint encrypt_key = 0x00420042;
@@ -2234,7 +2235,7 @@ void FOClient::Net_SendLogIn()
     Str::Copy( pass_, LoginPassword.c_str() );
 
     Bout << NETMSG_LOGIN;
-    Bout << (ushort) FONLINE_VERSION;
+    Bout << (ushort) FO_VERSION;
 
     // Begin data encrypting
     Bout.SetEncryptKey( 12345 );
@@ -2256,7 +2257,7 @@ void FOClient::Net_SendCreatePlayer()
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
 
-    Bout << (ushort) FONLINE_VERSION;
+    Bout << (ushort) FO_VERSION;
 
     // Begin data encrypting
     Bout.SetEncryptKey( 1234567890 );
@@ -5348,7 +5349,7 @@ bool FOClient::ReloadScripts()
     // Options
     Script::Undef( "" );
     Script::Define( "__CLIENT" );
-    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
+    Script::Define( _str( "__VERSION {}", FO_VERSION ) );
 
     // Store dlls
     for( int i = STR_INTERNAL_SCRIPT_DLLS; ; i += 2 )
@@ -6087,7 +6088,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "Version" )
     {
-        return _str( "{}", FONLINE_VERSION );
+        return _str( "{}", FO_VERSION );
     }
     else if( cmd == "BytesSend" )
     {

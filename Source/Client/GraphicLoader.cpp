@@ -9,6 +9,7 @@
 #include "ResourceManager.h"
 #include "Crypt.h"
 #include "GraphicStructures.h"
+#include "Version_Include.h"
 
 StrVec  GraphicLoader::processedFiles;
 BoneVec GraphicLoader::loadedModels;
@@ -363,7 +364,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
     {
         bool loaded = false;
         uint version = file_binary.GetBEUInt();
-        if( version == FONLINE_VERSION )
+        if( version == (uint) FO_VERSION )
         {
             GLenum  format = file_binary.GetBEUInt();
             UNUSED_VARIABLE( format );             // OGL ES
@@ -541,7 +542,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
             buf.resize( buf_size );
             GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );
 
-            file_binary.SetBEUInt( FONLINE_VERSION );
+            file_binary.SetBEUInt( (uint) FO_VERSION );
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );

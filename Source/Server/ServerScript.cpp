@@ -5,6 +5,7 @@
 #include "Settings.h"
 #include "IniFile.h"
 #include "GraphicStructures.h"
+#include "Version_Include.h"
 #include "preprocessor.h"
 #include "curl/curl.h"
 #include "sha1.h"
@@ -133,7 +134,7 @@ bool FOServer::InitScriptSystem()
     // Load script modules
     Script::Undef( "" );
     Script::Define( "__SERVER" );
-    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
+    Script::Define( _str( "__VERSION {}", FO_VERSION ) );
     if( !Script::ReloadScripts( "Server" ) )
     {
         Script::Finish();
@@ -340,7 +341,7 @@ bool FOServer::ReloadClientScripts()
     // Load script modules
     Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
-    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
+    Script::Define( _str( "__VERSION {}", FO_VERSION ) );
     Script::SetLoadLibraryCompiler( true );
 
     FOMsg msg_script;

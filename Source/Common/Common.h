@@ -1,8 +1,5 @@
 #pragma once
 
-// Versions
-#define FONLINE_VERSION    ( 2019 )
-
 // Debugging
 // #define DEV_VERSION
 // #define SHOW_DEPRECTAED // All known places with deprecated stuff
@@ -54,9 +51,9 @@
 
 // Function name
 #if defined ( FO_MSVC )
-# define _FUNC_            __FUNCTION__
+# define _FUNC_      __FUNCTION__
 #elif defined ( FO_GCC )
-# define _FUNC_            __PRETTY_FUNCTION__
+# define _FUNC_      __PRETTY_FUNCTION__
 #endif
 
 // Disable deprecated notification in GCC
@@ -73,7 +70,7 @@
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>
-# define ERRORSTR          strerror( errno )
+# define ERRORSTR    strerror( errno )
 # define ExitProcess( code )    exit( code )
 #endif
 

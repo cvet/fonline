@@ -243,8 +243,26 @@ function( CreateResources dir output )
 		file( WRITE ${output} "${outputString}" )
 	endif()
 endfunction()
-CreateResources( "Resources/Embedded" "${CMAKE_BINARY_DIR}/EmbeddedResources/EmbeddedResources.h" )
+CreateResources( "Resources/Embedded" "${CMAKE_BINARY_DIR}/EmbeddedResources/EmbeddedResources_Include.h" )
 include_directories( "${CMAKE_BINARY_DIR}/EmbeddedResources" )
+
+# Unique hash for build
+execute_process( COMMAND git rev-parse --short=15 HEAD WORKING_DIRECTORY "${CMAKE_HOME_DIRECTORY}" RESULT_VARIABLE GIT_HASH_RESULT OUTPUT_VARIABLE GIT_HASH )
+string( STRIP "${GIT_HASH}" GIT_HASH )
+if( NOT GIT_HASH_RESULT STREQUAL "0" )
+	set( GIT_HASH "42" )
+endif()
+StatusMessage( "Build version: ${GIT_HASH}" )
+
+set( NEW_VERSION_CONTENT "const int64 FO_VERSION = 0x${GIT_HASH};" )
+set( CUR_VERSION_CONTENT "" )
+set( VERSION_FILE_PATH "${CMAKE_BINARY_DIR}/EmbeddedResources/Version_Include.h" )
+if( EXISTS "${VERSION_FILE_PATH}" )
+	file( READ "${VERSION_FILE_PATH}" CUR_VERSION_CONTENT )
+endif()
+if( NOT "${CUR_VERSION_CONTENT}" STREQUAL "${NEW_VERSION_CONTENT}" )
+	file( WRITE "${VERSION_FILE_PATH}" "${NEW_VERSION_CONTENT}" )
+endif()
 
 # Third-party libs
 StatusMessage( "Third-party libs:" )

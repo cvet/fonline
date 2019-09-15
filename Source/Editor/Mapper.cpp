@@ -8,6 +8,7 @@
 #include "Threading.h"
 #include "StringUtils.h"
 #include "Settings.h"
+#include "Version_Include.h"
 
 bool          FOMapper::SpritesCanDraw = false;
 FOMapper*     FOMapper::Self = nullptr;
@@ -4237,7 +4238,7 @@ bool FOMapper::InitScriptSystem()
     // Load scripts
     Script::Undef( "" );
     Script::Define( "__MAPPER" );
-    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
+    Script::Define( _str( "__VERSION {}", FO_VERSION ) );
     File::SetCurrentDir( ServerWritePath, "./" );
     if( !Script::ReloadScripts( "Mapper" ) )
     {

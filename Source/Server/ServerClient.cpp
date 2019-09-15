@@ -3,6 +3,7 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Settings.h"
+#include "Version_Include.h"
 
 void FOServer::ProcessCritter( Critter* cr )
 {
@@ -235,7 +236,7 @@ void FOServer::Process_Update( Client* cl )
     // Net protocol
     ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
-    bool   outdated = ( proto_ver != FONLINE_VERSION );
+    bool   outdated = ( proto_ver != (ushort) FO_VERSION );
 
     // Begin data encrypting
     uint encrypt_key;
@@ -335,7 +336,7 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Connection->Bout.SetEncryptKey( 1234567890 );
 
     // Check protocol
-    if( proto_ver != FONLINE_VERSION )
+    if( proto_ver != (ushort) FO_VERSION )
     {
         cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
         cl->Disconnect();
@@ -494,7 +495,7 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->Connection->Bout.SetEncryptKey( 12345 );
 
     // Check protocol
-    if( proto_ver != FONLINE_VERSION )
+    if( proto_ver != (ushort) FO_VERSION )
     {
         cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
         cl->Disconnect();

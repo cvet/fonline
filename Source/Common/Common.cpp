@@ -11,6 +11,7 @@
 #include "Settings.h"
 #include "Randomizer.h"
 #include "SDL.h"
+#include "Version_Include.h"
 
 // Check the sizes of base types
 STATIC_ASSERT( sizeof( char ) == 1 );
@@ -41,7 +42,7 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 void InitialSetup( const string& app_name, uint argc, char** argv )
 {
     // Exceptions catcher
-    CatchExceptions( app_name, FONLINE_VERSION );
+    CatchExceptions( app_name, FO_VERSION );
 
     // Disable SIGPIPE signal
     #ifndef FO_WINDOWS

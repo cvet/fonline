@@ -8,6 +8,7 @@
 #include "IniFile.h"
 #include "AdminPanel.h"
 #include "Settings.h"
+#include "Version_Include.h"
 #include <chrono>
 
 FOServer* FOServer::Self;
@@ -34,7 +35,7 @@ int FOServer::Run()
     AllowServerNativeCalls = ( MainConfig->GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
     AllowClientNativeCalls = ( MainConfig->GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
 
-    WriteLog( "FOnline Server, version {}.\n", FONLINE_VERSION );
+    WriteLog( "FOnline Server ({:#x}).\n", FO_VERSION );
     if( !GameOpt.CommandLine.empty() )
         WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
 
@@ -542,7 +543,7 @@ void FOServer::Process( Client* cl )
                 cl->Connection->Bout << (uint) 0;
                 cl->Connection->Bout << (uchar) 0;
                 cl->Connection->Bout << (uchar) 0xF0;
-                cl->Connection->Bout << (ushort) FONLINE_VERSION;
+                cl->Connection->Bout << (ushort) FO_VERSION;
                 BOUT_END( cl );
                 cl->Disconnect();
                 BIN_END( cl );
@@ -1342,7 +1343,7 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
 
         Script::Undef( "" );
         Script::Define( "__SERVER" );
-        Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
+        Script::Define( _str( "__VERSION {}", FO_VERSION ) );
         if( Script::ReloadScripts( "Server" ) )
             logcb( "Success." );
         else
@@ -1892,9 +1893,9 @@ bool FOServer::InitReal()
 
     // Delete intermediate files if engine have been updated
     File fm;
-    if( !fm.LoadFile( File::GetWritePath( "Version.txt" ) ) || _str( fm.GetCStr() ).toInt() != FONLINE_VERSION || GameOpt.ForceRebuildResources )
+    if( !fm.LoadFile( File::GetWritePath( "Version.txt" ) ) || _str( "0x{}", fm.GetCStr() ).toInt64() != FO_VERSION || GameOpt.ForceRebuildResources )
     {
-        fm.SetStr( _str( "{}", FONLINE_VERSION ) );
+        fm.SetStr( _str( "{:#x}", FO_VERSION ) );
         fm.SaveFile( "Version.txt" );
         File::DeleteDir( "Update/" );
         File::DeleteDir( "Binaries/" );

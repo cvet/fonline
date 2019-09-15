@@ -9,6 +9,7 @@
 #include "Threading.h"
 #include "StringUtils.h"
 #include "Timer.h"
+#include "Version_Include.h"
 
 static string AppName;
 static string AppVer;
@@ -56,10 +57,10 @@ typedef struct _IMAGEHLP_MODULE64_V2
     CHAR     LoadedImageName[ 256 ]; // symbol file name
 } IMAGEHLP_MODULE64_V2;
 
-void CatchExceptions( const string& app_name, int app_ver )
+void CatchExceptions( const string& app_name, int64 app_ver )
 {
     AppName = app_name;
-    AppVer = _str( "{}", app_ver );
+    AppVer = _str( "{:#x}", app_ver );
 
     if( !app_name.empty() )
         SetUnhandledExceptionFilter( TopLevelFilterReadableDump );
@@ -490,10 +491,10 @@ static struct sigaction OldSIGFPE;
 
 static void DumpAngelScript( FILE* f );
 
-void CatchExceptions( const string& app_name, int app_ver )
+void CatchExceptions( const string& app_name, int64 app_ver )
 {
     AppName = app_name;
-    AppVer = _str( "{}", app_ver );
+    AppVer = _str( "{:#x}", app_ver );
 
     if( !app_name.empty() && !SigactionsSetted )
     {
@@ -650,7 +651,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 #else
 # pragma MESSAGE( "Exception handling is disabled" )
 
-void CatchExceptions( const string& app_name, int app_ver )
+void CatchExceptions( const string& app_name, int64 app_ver )
 {
     //
 }
@@ -676,7 +677,7 @@ bool RaiseAssert( const string& message, const string& file, int line )
 
     #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
     // Create dump
-    CreateDump( _str( "AssertFailed_v{}_{}({})", FONLINE_VERSION, name, line ), message );
+    CreateDump( _str( "AssertFailed_v{:#x}_{}({})", FO_VERSION, name, line ), message );
 
     // Show message
     string traceback = "";
@@ -690,7 +691,7 @@ bool RaiseAssert( const string& message, const string& file, int line )
     traceback = ss.str();
     # endif
 
-    ShowErrorMessage( _str( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ), traceback );
+    ShowErrorMessage( _str( "Assert failed!\nVersion: {:#x}\nFile: {} ({})\n\n{}", FO_VERSION, name, line, message ), traceback );
     #endif
 
     // Shut down

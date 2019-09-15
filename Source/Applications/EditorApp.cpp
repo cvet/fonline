@@ -10,6 +10,7 @@
 #include "Settings.h"
 #include "ResourceConverter.h"
 #include "BuildSystem.h"
+#include "Version_Include.h"
 
 static void DockSpaceBegin();
 static void DockSpaceEnd();
@@ -275,7 +276,7 @@ static int main_disabled( int argc, char** argv )
     // Logging
     LogToFile( "FOnlineEditor.log" );
     LogToBuffer( true );
-    WriteLog( "FOnline Editor v.{}.\n", FONLINE_VERSION );
+    WriteLog( "FOnline Editor ({:#x}).\n", FO_VERSION );
 
     // Initialize Gui
     bool use_dx = ( MainConfig->GetInt( "", "UseDirectX" ) != 0 );
