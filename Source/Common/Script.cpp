@@ -1215,6 +1215,7 @@ bool Script::RaiseInternalEvent( EventData* ev_data, ... )
     if( ev_data->MMethod )
     {
         void*         mono_args[ 16 ];
+        int64         mono_args_data[ 16 ];
         const IntVec& arg_infos = edata->PragmaCB->GetInternalEventArgInfos( ev_data->ASEvent );
         va_start( args, ev_data );
         for( size_t i = 0; i < arg_infos.size(); i++ )
@@ -1225,9 +1226,9 @@ bool Script::RaiseInternalEvent( EventData* ev_data, ... )
             else if( arg_info == -3 )
                 mono_args[ i ] = va_arg( args, void* );
             else if( arg_info == 1 || arg_info == 2 || arg_info == 4 )
-                mono_args[ i ] = &va_arg( args, int );
+                mono_args[ i ] = &( mono_args_data[ i ] = (int64) va_arg( args, int ) );
             else if( arg_info == 8 )
-                mono_args[ i ] = &va_arg( args, int64 );
+                mono_args[ i ] = &( mono_args_data[ i ] = (int64) va_arg( args, int64 ) );
             else
                 RUNTIME_ASSERT( !"Unreachable place" );
         }
