@@ -48,7 +48,7 @@ if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 elseif( CMAKE_SIZEOF_VOID_P EQUAL 4 )
 	StatusMessage( "CPU architecture: 32-bit" )
 	set( ARCH_STR "x86" )
-else
+else()
 	message( FATAL_ERROR "Invalid pointer size, nor 8 or 4 bytes" )
 endif()
 
