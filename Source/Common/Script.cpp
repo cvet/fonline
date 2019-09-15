@@ -264,7 +264,7 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
         {
             MonoImageOpenStatus status = MONO_IMAGE_OK;
             MonoImage*          image = mono_image_open_from_data( (char*) &kv.second[ 0 ], (uint) kv.second.size(), TRUE, &status );
-            RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+            RUNTIME_ASSERT( ( status == MONO_IMAGE_OK && image ) );
 
             EngineAssemblyImages[ kv.first ] = image;
         }
@@ -662,10 +662,10 @@ static MonoAssembly* LoadNetAssembly( const string& name )
 
     MonoImageOpenStatus status = MONO_IMAGE_OK;
     MonoImage*          image = mono_image_open_from_data( (char*) file.GetBuf(), file.GetFsize(), TRUE, &status );
-    RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+    RUNTIME_ASSERT( ( status == MONO_IMAGE_OK && image ) );
 
     MonoAssembly* assembly = mono_assembly_load_from( image, name.c_str(), &status );
-    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+    RUNTIME_ASSERT( ( status == MONO_IMAGE_OK && assembly ) );
 
     return assembly;
 }
@@ -677,7 +677,7 @@ static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImag
 
     MonoImageOpenStatus status = MONO_IMAGE_OK;
     MonoAssembly*       assembly = mono_assembly_load_from( image, name.c_str(), &status );
-    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+    RUNTIME_ASSERT( ( status == MONO_IMAGE_OK && assembly ) );
 
     return assembly;
 }
@@ -726,7 +726,7 @@ static bool CompileGameAssemblies( const string& target, map< string, MonoImage*
 
         MonoImageOpenStatus status = MONO_IMAGE_OK;
         MonoImage*          image = mono_image_open_from_data( (char*) assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status );
-        RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+        RUNTIME_ASSERT( ( status == MONO_IMAGE_OK && image ) );
 
         assembly_images[ assembly_name ] = image;
     }
