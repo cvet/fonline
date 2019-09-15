@@ -7,11 +7,13 @@
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-master-050919](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
+* glslang - [glslang-0919](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
 * NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.0.10](https://www.libsdl.org/download-2.0.php) ([2](https://github.com/spurious/SDL-mirror))
 * SHA - SHA-1 & SHA-2 hash generators
+* SPIRV-Cross - [SPIRV-Cross-0919](https://github.com/KhronosGroup/SPIRV-Cross)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * cURL - [curl-7.61.1](https://curl.haxx.se/)

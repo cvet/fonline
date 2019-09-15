@@ -99,12 +99,14 @@ Todo:
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
+* [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
 * SHA1 by Steve Reid - hash generator
 * SHA2 by Olivier Gay - hash generator
+* [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
 * [cURL](https://curl.haxx.se/) - transferring data via different network protocols
