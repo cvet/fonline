@@ -1,7 +1,11 @@
 title: fonline
-description: ""
+description: Work in progress
 email: cvet@tut.by
 theme: jekyll-theme-minimal
 exclude:
-  - ThirdParty/
+  - BuildScripts/
+  - Resources/
   - SdkPlaceholder/
+  - Source/
+  - SourceTools/
+  - ThirdParty/
