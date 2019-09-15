@@ -1427,10 +1427,12 @@ size_t Tree::_next_node(lookup_result * r, bool modify, _lookup_path_token *pare
         C4_ASSERT(tk.begins_with('[') && tk.ends_with(']'));
         tk = tk.offs(1, 1).trim(' ');
         size_t idx;
-        if( ! from_chars(tk, &idx))
+        uint64_t idx_ = 0; //! Workaround for compilation error
+        if( ! from_chars(tk, &idx_))
         {
              goto failure;
         }
+        idx = idx_;
         if( ! modify)
         {
             node = child(r->closest, idx);
