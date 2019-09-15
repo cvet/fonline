@@ -247,6 +247,10 @@ bool File::LoadDataFile( const string& path, bool skip_inner /* = false */ )
     }
 
     // Put to begin of list
+    auto it = std::find( dataFiles.begin(), dataFiles.end(), data_file );
+    if( it != dataFiles.end() )
+        dataFiles.erase( it );
+
     dataFiles.insert( dataFiles.begin(), data_file );
     return true;
 }

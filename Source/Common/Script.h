@@ -56,10 +56,17 @@ struct ScriptEntry
 };
 using ScriptEntryVec = vector< ScriptEntry >;
 
+struct EventData;
+
 class Script
 {
 public:
     static bool Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
+    static bool InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data );
+    static bool GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data );
+    static uint CreateMonoObject( const string& type_name );
+    static void CallMonoObjectMethod( const string& type_name, const string& method_name, uint obj, void* arg );
+    static void DestroyMonoObject( uint obj );
     static void Finish();
 
     static void* LoadDynamicLibrary( const string& dll_name );
@@ -105,9 +112,9 @@ public:
     static bool RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
     #endif
 
-    static void* FindInternalEvent( const string& event_name );
-    static bool  RaiseInternalEvent( void* event_ptr, ... );
-    static void  RemoveEventsEntity( Entity* entity );
+    static EventData* FindInternalEvent( const string& event_name );
+    static bool       RaiseInternalEvent( EventData* event_ptr, ... );
+    static void       RemoveEventsEntity( Entity* entity );
 
     static void HandleRpc( void* context );
 
@@ -263,116 +270,122 @@ public:
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 struct ServerScriptFunctions
 {
-    void* ResourcesGenerated;
-    void* Init;
-    void* GenerateWorld;
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* GlobalMapCritterIn;
-    void* GlobalMapCritterOut;
-    void* LocationInit;
-    void* LocationFinish;
-    void* MapInit;
-    void* MapFinish;
-    void* MapLoop;
-    void* MapCritterIn;
-    void* MapCritterOut;
-    void* MapCheckLook;
-    void* MapCheckTrapLook;
-    void* CritterInit;
-    void* CritterFinish;
-    void* CritterIdle;
-    void* CritterGlobalMapIdle;
-    void* CritterCheckMoveItem;
-    void* CritterMoveItem;
-    void* CritterShow;
-    void* CritterShowDist1;
-    void* CritterShowDist2;
-    void* CritterShowDist3;
-    void* CritterHide;
-    void* CritterHideDist1;
-    void* CritterHideDist2;
-    void* CritterHideDist3;
-    void* CritterShowItemOnMap;
-    void* CritterHideItemOnMap;
-    void* CritterChangeItemOnMap;
-    void* CritterMessage;
-    void* CritterTalk;
-    void* CritterBarter;
-    void* CritterGetAttackDistantion;
-    void* PlayerRegistration;
-    void* PlayerLogin;
-    void* PlayerGetAccess;
-    void* PlayerAllowCommand;
-    void* PlayerLogout;
-    void* ItemInit;
-    void* ItemFinish;
-    void* ItemWalk;
-    void* ItemCheckMove;
-    void* StaticItemWalk;
+    EventData* ResourcesGenerated;
+    EventData* Init;
+    EventData* GenerateWorld;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* GlobalMapCritterIn;
+    EventData* GlobalMapCritterOut;
+
+    EventData* LocationInit;
+    EventData* LocationFinish;
+
+    EventData* MapInit;
+    EventData* MapFinish;
+    EventData* MapLoop;
+    EventData* MapCritterIn;
+    EventData* MapCritterOut;
+    EventData* MapCheckLook;
+    EventData* MapCheckTrapLook;
+
+    EventData* CritterInit;
+    EventData* CritterFinish;
+    EventData* CritterIdle;
+    EventData* CritterGlobalMapIdle;
+    EventData* CritterCheckMoveItem;
+    EventData* CritterMoveItem;
+    EventData* CritterShow;
+    EventData* CritterShowDist1;
+    EventData* CritterShowDist2;
+    EventData* CritterShowDist3;
+    EventData* CritterHide;
+    EventData* CritterHideDist1;
+    EventData* CritterHideDist2;
+    EventData* CritterHideDist3;
+    EventData* CritterShowItemOnMap;
+    EventData* CritterHideItemOnMap;
+    EventData* CritterChangeItemOnMap;
+    EventData* CritterMessage;
+    EventData* CritterTalk;
+    EventData* CritterBarter;
+    EventData* CritterGetAttackDistantion;
+    EventData* PlayerRegistration;
+    EventData* PlayerLogin;
+    EventData* PlayerGetAccess;
+    EventData* PlayerAllowCommand;
+    EventData* PlayerLogout;
+
+    EventData* ItemInit;
+    EventData* ItemFinish;
+    EventData* ItemWalk;
+    EventData* ItemCheckMove;
+
+    EventData* StaticItemWalk;
 } extern ServerFunctions;
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 struct ClientScriptFunctions
 {
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* AutoLogin;
-    void* GetActiveScreens;
-    void* ScreenChange;
-    void* ScreenScroll;
-    void* RenderIface;
-    void* RenderMap;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* CritterIn;
-    void* CritterOut;
-    void* ItemMapIn;
-    void* ItemMapChanged;
-    void* ItemMapOut;
-    void* ItemInvAllIn;
-    void* ItemInvIn;
-    void* ItemInvChanged;
-    void* ItemInvOut;
-    void* MapLoad;
-    void* MapUnload;
-    void* ReceiveItems;
-    void* MapMessage;
-    void* InMessage;
-    void* OutMessage;
-    void* MessageBox;
-    void* CombatResult;
-    void* ItemCheckMove;
-    void* CritterAction;
-    void* Animation2dProcess;
-    void* Animation3dProcess;
-    void* CritterAnimation;
-    void* CritterAnimationSubstitute;
-    void* CritterAnimationFallout;
-    void* CritterCheckMoveItem;
-    void* CritterGetAttackDistantion;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* AutoLogin;
+    EventData* GetActiveScreens;
+    EventData* ScreenChange;
+    EventData* ScreenScroll;
+    EventData* RenderIface;
+    EventData* RenderMap;
+    EventData* MouseDown;
+    EventData* MouseUp;
+    EventData* MouseMove;
+    EventData* KeyDown;
+    EventData* KeyUp;
+    EventData* InputLost;
+    EventData* CritterIn;
+    EventData* CritterOut;
+    EventData* ItemMapIn;
+    EventData* ItemMapChanged;
+    EventData* ItemMapOut;
+    EventData* ItemInvAllIn;
+    EventData* ItemInvIn;
+    EventData* ItemInvChanged;
+    EventData* ItemInvOut;
+    EventData* MapLoad;
+    EventData* MapUnload;
+    EventData* ReceiveItems;
+    EventData* MapMessage;
+    EventData* InMessage;
+    EventData* OutMessage;
+    EventData* MessageBox;
+    EventData* CombatResult;
+    EventData* ItemCheckMove;
+    EventData* CritterAction;
+    EventData* Animation2dProcess;
+    EventData* Animation3dProcess;
+    EventData* CritterAnimation;
+    EventData* CritterAnimationSubstitute;
+    EventData* CritterAnimationFallout;
+    EventData* CritterCheckMoveItem;
+    EventData* CritterGetAttackDistantion;
 } extern ClientFunctions;
+
 struct MapperScriptFunctions
 {
-    void* Start;
-    void* Finish;
-    void* Loop;
-    void* ConsoleMessage;
-    void* RenderIface;
-    void* MouseDown;
-    void* MouseUp;
-    void* MouseMove;
-    void* KeyDown;
-    void* KeyUp;
-    void* InputLost;
-    void* MapLoad;
-    void* MapSave;
-    void* InspectorProperties;
+    EventData* Start;
+    EventData* Finish;
+    EventData* Loop;
+    EventData* ConsoleMessage;
+    EventData* RenderIface;
+    EventData* MouseDown;
+    EventData* MouseUp;
+    EventData* MouseMove;
+    EventData* KeyDown;
+    EventData* KeyUp;
+    EventData* InputLost;
+    EventData* MapLoad;
+    EventData* MapSave;
+    EventData* InspectorProperties;
 } extern MapperFunctions;
 #endif

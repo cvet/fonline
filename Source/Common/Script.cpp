@@ -17,6 +17,18 @@
 #include "weakref/weakref.h"
 #include "scripthelper/scripthelper.h"
 
+#include <mono/mini/jit.h>
+#include <mono/metadata/assembly.h>
+#include <mono/metadata/mono-config.h>
+#include <mono/metadata/debug-helpers.h>
+#include <mono/dis/meta.h>
+
+static map< string, MonoImage* > EngineAssemblyImages;
+static void          SetMonoInternalCalls();
+static MonoAssembly* LoadNetAssembly( const string& name );
+static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images );
+static bool          CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images );
+
 #pragma MESSAGE("Rework native calls.")
 #if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false
 # define ALLOW_NATIVE_CALLS
@@ -105,6 +117,12 @@ static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 #endif
 
+struct EventData
+{
+    void*       ASEvent;
+    MonoMethod* MMethod;
+};
+
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 ServerScriptFunctions ServerFunctions;
 #endif
@@ -168,6 +186,188 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     return true;
 }
 
+bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data )
+{
+    g_set_print_handler([] ( const gchar * string ) { WriteLog( "{}", string );
+                        } );
+    g_set_printerr_handler([] ( const gchar * string ) { WriteLog( "{}", string );
+                           } );
+
+    mono_config_parse_memory( R"(
+    <configuration>
+        <dllmap dll="i:cygwin1.dll" target="libc.so.6" os="!windows" />
+        <dllmap dll="libc" target="libc.so.6" os="!windows"/>
+        <dllmap dll="intl" target="libc.so.6" os="!windows"/>
+        <dllmap dll="intl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
+        <dllmap dll="libintl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
+        <dllmap dll="libintl" target="libc.so.6" os="!windows"/>
+        <dllmap dll="i:libxslt.dll" target="libxslt.so" os="!windows"/>
+        <dllmap dll="i:odbc32.dll" target="libodbc.so" os="!windows"/>
+        <dllmap dll="i:odbc32.dll" target="libiodbc.dylib" os="osx"/>
+        <dllmap dll="oci" target="libclntsh.so" os="!windows"/>
+        <dllmap dll="db2cli" target="libdb2_36.so" os="!windows"/>
+        <dllmap dll="MonoPosixHelper" target="$mono_libdir/libMonoPosixHelper.so" os="!windows" />
+        <dllmap dll="System.Native" target="$mono_libdir/libmono-system-native.so" os="!windows" />
+        <dllmap dll="libmono-btls-shared" target="$mono_libdir/libmono-btls-shared.so" os="!windows" />
+        <dllmap dll="i:msvcrt" target="libc.so.6" os="!windows"/>
+        <dllmap dll="i:msvcrt.dll" target="libc.so.6" os="!windows"/>
+        <dllmap dll="sqlite" target="libsqlite.so.0" os="!windows"/>
+        <dllmap dll="sqlite3" target="libsqlite3.so.0" os="!windows"/>
+        <dllmap dll="libX11" target="libX11.so" os="!windows" />
+        <dllmap dll="libgdk-x11-2.0" target="libgdk-x11-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgdk_pixbuf-2.0" target="libgdk_pixbuf-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgtk-x11-2.0" target="libgtk-x11-2.0.so.0" os="!windows"/>
+        <dllmap dll="libglib-2.0" target="libglib-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgobject-2.0" target="libgobject-2.0.so.0" os="!windows"/>
+        <dllmap dll="libgnomeui-2" target="libgnomeui-2.so.0" os="!windows"/>
+        <dllmap dll="librsvg-2" target="librsvg-2.so.2" os="!windows"/>
+        <dllmap dll="libXinerama" target="libXinerama.so.1" os="!windows" />
+        <dllmap dll="libasound" target="libasound.so.2" os="!windows" />
+        <dllmap dll="libcairo-2.dll" target="libcairo.so.2" os="!windows"/>
+        <dllmap dll="libcairo-2.dll" target="libcairo.2.dylib" os="osx"/>
+        <dllmap dll="libcups" target="libcups.so.2" os="!windows"/>
+        <dllmap dll="libcups" target="libcups.dylib" os="osx"/>
+        <dllmap dll="i:kernel32.dll">
+            <dllentry dll="__Internal" name="CopyMemory" target="mono_win32_compat_CopyMemory"/>
+            <dllentry dll="__Internal" name="FillMemory" target="mono_win32_compat_FillMemory"/>
+            <dllentry dll="__Internal" name="MoveMemory" target="mono_win32_compat_MoveMemory"/>
+            <dllentry dll="__Internal" name="ZeroMemory" target="mono_win32_compat_ZeroMemory"/>
+        </dllmap>
+        <dllmap dll="gdiplus" target="libgdiplus.so" os="!windows"/>
+        <dllmap dll="gdiplus.dll" target="libgdiplus.so"  os="!windows"/>
+        <dllmap dll="gdi32" target="libgdiplus.so" os="!windows"/>
+        <dllmap dll="gdi32.dll" target="libgdiplus.so" os="!windows"/>
+    </configuration>)" );
+
+    mono_set_dirs( "./dummy/lib", "./dummy/etc" );
+    mono_set_assemblies_path( "./dummy/lib/gac" );
+
+    RUNTIME_ASSERT( EngineAssemblyImages.empty() );
+    mono_install_assembly_preload_hook([] ( MonoAssemblyName * aname, char** assemblies_path, void* user_data )->MonoAssembly *
+                                       {
+                                           auto assembly_images = ( map< string, MonoImage* >* )user_data;
+                                           if( assembly_images->count( aname->name ) )
+                                               return LoadGameAssembly( aname->name, *assembly_images );
+                                           return LoadNetAssembly( aname->name );
+                                       }, (void*) &EngineAssemblyImages );
+
+    MonoDomain* domain = mono_jit_init_version( "FOnlineDomain", "v4.0.30319" );
+    RUNTIME_ASSERT( domain );
+
+    SetMonoInternalCalls();
+
+    if( assemblies_data )
+    {
+        for( auto& kv :* assemblies_data )
+        {
+            MonoImageOpenStatus status = MONO_IMAGE_OK;
+            MonoImage*          image = mono_image_open_from_data( (char*) &kv.second[ 0 ], (uint) kv.second.size(), TRUE, &status );
+            RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+            EngineAssemblyImages[ kv.first ] = image;
+        }
+    }
+    else
+    {
+        bool ok = CompileGameAssemblies( dll_target, EngineAssemblyImages );
+        RUNTIME_ASSERT( ok );
+    }
+
+    for( auto& kv : EngineAssemblyImages )
+    {
+        bool ok = LoadGameAssembly( kv.first, EngineAssemblyImages );
+        RUNTIME_ASSERT( ok );
+    }
+
+    MonoClass*      global_events_class = mono_class_from_name( EngineAssemblyImages[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
+    RUNTIME_ASSERT( global_events_class );
+    MonoMethodDesc* init_method_desc = mono_method_desc_new( ":Initialize()", FALSE );
+    RUNTIME_ASSERT( init_method_desc );
+    MonoMethod*     init_method = mono_method_desc_search_in_class( init_method_desc, global_events_class );
+    RUNTIME_ASSERT( init_method );
+    mono_method_desc_free( init_method_desc );
+
+    MonoObject* exc;
+    MonoObject* init_method_result = mono_runtime_invoke( init_method, NULL, NULL, &exc );
+    if( exc )
+        mono_print_unhandled_exception( exc );
+
+    if( exc || *(bool*) mono_object_unbox( init_method_result ) == false )
+        return false;
+
+    return true;
+}
+
+bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data )
+{
+    map< string, MonoImage* > assembly_images;
+    if( !CompileGameAssemblies( dll_target, assembly_images ) )
+        return false;
+
+    for( auto& kv : assembly_images )
+    {
+        UCharVec data( kv.second->raw_data_len );
+        memcpy( &data[ 0 ], kv.second->raw_data, data.size() );
+        assemblies_data[ kv.first ] = std::move( data );
+    }
+    return true;
+}
+
+uint Script::CreateMonoObject( const string& type_name )
+{
+    MonoImage* image = EngineAssemblyImages[ "FOnline.Core.dll" ];
+    RUNTIME_ASSERT( image );
+    MonoClass* obj_class = mono_class_from_name( image, "FOnlineEngine", type_name.c_str() );
+    RUNTIME_ASSERT( obj_class );
+
+    MonoObject* mono_obj = mono_object_new( mono_domain_get(), obj_class );
+    RUNTIME_ASSERT( mono_obj );
+    mono_runtime_object_init( mono_obj );
+
+    return mono_gchandle_new( mono_obj, TRUE );
+}
+
+void Script::CallMonoObjectMethod( const string& type_name, const string& method_name, uint obj, void* arg )
+{
+    MonoImage*      image = EngineAssemblyImages[ "FOnline.Core.dll" ];
+    RUNTIME_ASSERT( image );
+    MonoClass*      obj_class = mono_class_from_name( image, "FOnlineEngine", type_name.c_str() );
+    RUNTIME_ASSERT( obj_class );
+    MonoMethodDesc* method_desc = mono_method_desc_new( _str( ":{}", method_name ).c_str(), FALSE );
+    RUNTIME_ASSERT( method_desc );
+    MonoMethod*     method = mono_method_desc_search_in_class( method_desc, obj_class );
+    RUNTIME_ASSERT( method );
+    mono_method_desc_free( method_desc );
+
+    RUNTIME_ASSERT( obj );
+    MonoObject* mono_obj = mono_gchandle_get_target( obj );
+    RUNTIME_ASSERT( mono_obj );
+
+    MonoObject* exc;
+    void*       args[ 1 ] = { arg };
+    mono_runtime_invoke( method, mono_obj, args, &exc );
+    if( exc )
+        mono_print_unhandled_exception( exc );
+}
+
+void Script::DestroyMonoObject( uint obj )
+{
+    RUNTIME_ASSERT( obj );
+    mono_gchandle_free( obj );
+}
+
+static void Engine_Log( MonoString* s )
+{
+    const char* utf8 = mono_string_to_utf8( s );
+    WriteLog( "{}\n", utf8 );
+    mono_free( (void*) utf8 );
+}
+
+static void SetMonoInternalCalls()
+{
+    mono_add_internal_call( "FOnlineEngine.Engine::Log", Engine_Log );
+}
+
 void Script::Finish()
 {
     if( !Engine )
@@ -203,6 +403,8 @@ void Script::Finish()
         FinishContext( FreeContexts[ 0 ] );
 
     FinishEngine( Engine );     // Finish default engine
+
+    mono_jit_cleanup( mono_domain_get() );
 }
 
 void* Script::LoadDynamicLibrary( const string& dll_name )
@@ -361,6 +563,173 @@ void Script::UnloadScripts()
 
     while( Engine->GetModuleCount() > 0 )
         Engine->GetModuleByIndex( 0 )->Discard();
+}
+
+static int SystemCall( const string& command, string& output )
+{
+    #if defined ( FO_WINDOWS )
+    HANDLE              out_read = nullptr;
+    HANDLE              out_write = nullptr;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof( SECURITY_ATTRIBUTES );
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    if( !CreatePipe( &out_read, &out_write, &sa, 0 ) )
+        return -1;
+    if( !SetHandleInformation( out_read, HANDLE_FLAG_INHERIT, 0 ) )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    STARTUPINFOW si;
+    ZeroMemory( &si, sizeof( STARTUPINFO ) );
+    si.cb = sizeof( STARTUPINFO );
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi;
+    ZeroMemory( &pi, sizeof( PROCESS_INFORMATION ) );
+
+    wchar_t* cmd_line = _wcsdup( _str( command ).toWideChar().c_str() );
+    BOOL     result = CreateProcessW( nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi );
+    SAFEDELA( cmd_line );
+    if( !result )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    string log;
+    while( true )
+    {
+        Thread::Sleep( 1 );
+
+        DWORD bytes;
+        while( PeekNamedPipe( out_read, nullptr, 0, nullptr, &bytes, nullptr ) && bytes > 0 )
+        {
+            char buf[ TEMP_BUF_SIZE ];
+            if( ReadFile( out_read, buf, sizeof( buf ), &bytes, nullptr ) )
+                output.append( buf, bytes );
+        }
+
+        if( WaitForSingleObject( pi.hProcess, 0 ) != WAIT_TIMEOUT )
+            break;
+    }
+
+    DWORD retval;
+    GetExitCodeProcess( pi.hProcess, &retval );
+    CloseHandle( out_read );
+    CloseHandle( out_write );
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+    return (int) retval;
+
+    #elif !defined ( FO_WEB )
+    FILE* in = popen( command.c_str(), "r" );
+    if( !in )
+        return -1;
+
+    string log;
+    char   buf[ TEMP_BUF_SIZE ];
+    while( fgets( buf, sizeof( buf ), in ) )
+        output.append( buf );
+
+    return pclose( in );
+
+    #else
+    WriteLog( "Not supported!" );
+    return -1;
+    #endif
+}
+
+static MonoAssembly* LoadNetAssembly( const string& name )
+{
+    string assemblies_path = "Assemblies/" + name + ( _str( name ).endsWith( ".dll" ) ? "" : ".dll" );
+    #ifdef FONLINE_SERVER
+    assemblies_path = "Resources/Mono/" + assemblies_path;
+    #endif
+
+    File file;
+    file.LoadFile( assemblies_path );
+    RUNTIME_ASSERT( file.IsLoaded() );
+
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
+    MonoImage*          image = mono_image_open_from_data( (char*) file.GetBuf(), file.GetFsize(), TRUE, &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+    MonoAssembly* assembly = mono_assembly_load_from( image, name.c_str(), &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+
+    return assembly;
+}
+
+static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images )
+{
+    RUNTIME_ASSERT( assembly_images.count( name ) );
+    MonoImage*          image = assembly_images[ name ];
+
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
+    MonoAssembly*       assembly = mono_assembly_load_from( image, name.c_str(), &status );
+    RUNTIME_ASSERT( status == MONO_IMAGE_OK && assembly );
+
+    return assembly;
+}
+
+static bool CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images )
+{
+    string         mono_path = MainConfig->GetStr( "", "MonoPath" );
+    string         xbuild_path = _str( mono_path + "/bin/xbuild.bat" ).resolvePath();
+
+    FileCollection proj_files( "csproj" );
+    while( proj_files.IsNextFile() )
+    {
+        string name, path;
+        File&  file = proj_files.GetNextFile( &name, &path );
+        RUNTIME_ASSERT( file.IsLoaded() );
+
+        // Compile
+        string command = _str( "{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path );
+        string output;
+        int    call_result = SystemCall( command, output );
+        if( call_result )
+        {
+            StrVec errors = _str( output ).split( '\n' );
+            WriteLog( "Compilation failed! Error{}:", errors.size() > 1 ? "s" : "" );
+            for( string& error : errors )
+                WriteLog( "{}\n", error );
+            return false;
+        }
+
+        // Get output path
+        string file_content = (char*) file.GetBuf();
+        size_t pos = file_content.find( "'$(Configuration)|$(Platform)' == '" + target + "|" );
+        RUNTIME_ASSERT( pos != string::npos );
+        pos = file_content.find( "<OutputPath>", pos );
+        RUNTIME_ASSERT( pos != string::npos );
+        size_t epos = file_content.find( "</OutputPath>", pos );
+        RUNTIME_ASSERT( epos != string::npos );
+        pos += _str( "<OutputPath>" ).length();
+
+        string assembly_name = name + ".dll";
+        string assembly_path = _str( "{}/{}/{}", _str( path ).extractDir(), file_content.substr( pos, epos - pos ), assembly_name ).resolvePath();
+
+        File   assembly_file;
+        assembly_file.LoadFile( assembly_path );
+        RUNTIME_ASSERT( assembly_file.IsLoaded() );
+
+        MonoImageOpenStatus status = MONO_IMAGE_OK;
+        MonoImage*          image = mono_image_open_from_data( (char*) assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status );
+        RUNTIME_ASSERT( status == MONO_IMAGE_OK && image );
+
+        assembly_images[ assembly_name ] = image;
+    }
+
+    return true;
 }
 
 bool Script::ReloadScripts( const string& target )
@@ -806,21 +1175,70 @@ bool Script::RestoreCustomEntity( const string& type_name, uint id, const DataBa
 }
 #endif
 
-void* Script::FindInternalEvent( const string& event_name )
+EventData* Script::FindInternalEvent( const string& event_name )
 {
+    EventData* ev_data = new EventData;
+    memzero( ev_data, sizeof( EventData ) );
+
+    // AngelScript part
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    void*       result = edata->PragmaCB->FindInternalEvent( event_name );
-    RUNTIME_ASSERT( result );
-    return result;
+    void*       as_event = edata->PragmaCB->FindInternalEvent( event_name );
+    RUNTIME_ASSERT( as_event );
+    ev_data->ASEvent = as_event;
+
+    // Mono part
+    MonoClass*      global_events_class = mono_class_from_name( EngineAssemblyImages[ "FOnline.Core.dll" ], "FOnlineEngine", "GlobalEvents" );
+    RUNTIME_ASSERT( global_events_class );
+    string          mono_event_name = ":On" + _str( event_name ).erase( 'E', 't' ) + "Event";
+    MonoMethodDesc* init_method_desc = mono_method_desc_new( mono_event_name.c_str(), FALSE );
+    RUNTIME_ASSERT( init_method_desc );
+    MonoMethod*     init_method = mono_method_desc_search_in_class( init_method_desc, global_events_class );
+    // RUNTIME_ASSERT(init_method);
+    mono_method_desc_free( init_method_desc );
+    ev_data->MMethod = init_method;
+
+    return ev_data;
 }
 
-bool Script::RaiseInternalEvent( void* event_ptr, ... )
+bool Script::RaiseInternalEvent( EventData* ev_data, ... )
 {
+    // AngelScript part
     EngineData* edata = (EngineData*) Engine->GetUserData();
     va_list     args;
-    va_start( args, event_ptr );
-    bool        result = edata->PragmaCB->RaiseInternalEvent( event_ptr, args );
+    va_start( args, ev_data );
+    bool        result = edata->PragmaCB->RaiseInternalEvent( ev_data->ASEvent, args );
     va_end( args );
+
+    // Mono part
+    if( ev_data->MMethod )
+    {
+        void*         mono_args[ 16 ];
+        const IntVec& arg_infos = edata->PragmaCB->GetInternalEventArgInfos( ev_data->ASEvent );
+        va_start( args, ev_data );
+        for( size_t i = 0; i < arg_infos.size(); i++ )
+        {
+            int arg_info = arg_infos[ i ];
+            if( arg_info == -2 )
+                mono_args[ i ] = mono_gchandle_get_target( va_arg( args, Entity* )->MonoHandle );
+            else if( arg_info == -3 )
+                mono_args[ i ] = va_arg( args, void* );
+            else if( arg_info == 1 || arg_info == 2 || arg_info == 4 )
+                mono_args[ i ] = &va_arg( args, int );
+            else if( arg_info == 8 )
+                mono_args[ i ] = &va_arg( args, int64 );
+            else
+                RUNTIME_ASSERT( !"Unreachable place" );
+        }
+        va_end( args );
+
+        MonoObject* exc;
+        MonoObject* method_result = mono_runtime_invoke( ev_data->MMethod, nullptr, mono_args, &exc );
+        if( exc )
+            mono_print_unhandled_exception( exc );
+        if( exc || ( method_result && *(bool*) mono_object_unbox( method_result ) == false ) )
+            return false;
+    }
+
     return result;
 }
 

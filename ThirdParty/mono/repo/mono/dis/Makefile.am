@@ -1,0 +1,66 @@
+include $(top_srcdir)/mk/common.mk
+
+AM_CPPFLAGS = $(GLIB_CFLAGS) -I$(top_srcdir)
+
+if HOST_WIN32
+export HOST_CC
+endif
+
+glib_libs = $(top_builddir)/mono/eglib/libeglib.la
+
+if SUPPORT_SGEN
+metadata_lib=$(top_builddir)/mono/metadata/libmonoruntimesgen.la
+gc_lib=$(top_builddir)/mono/sgen/libmonosgen.la
+else
+metadata_lib=$(top_builddir)/mono/metadata/libmonoruntime.la
+gc_lib=$(LIBGC_STATIC_LIBS)
+endif
+
+runtime_lib=	\
+	$(metadata_lib) \
+	$(gc_lib)	\
+	$(top_builddir)/mono/utils/libmonoutils.la \
+	$(glib_libs)
+
+if DISABLE_EXECUTABLES
+bin_PROGRAMS =
+else
+if DISABLE_LIBRARIES
+bin_PROGRAMS =
+else
+bin_PROGRAMS = monodis
+endif
+endif
+
+noinst_LIBRARIES = libmonodis.a
+
+libmonodis_a_SOURCES =	\
+	get.c		\
+	get.h		\
+	dis-cil.c	\
+	dis-cil.h	\
+	util.c		\
+	util.h
+
+monodis_SOURCES =	\
+	dump.c		\
+	dump.h		\
+	main.c		\
+	meta.h		\
+	declsec.c	\
+	declsec.h
+
+monodis_LDADD = 			\
+	libmonodis.a			\
+	$(runtime_lib)			\
+	$(LLVM_LIBS)			\
+	$(LLVM_LDFLAGS)			\
+	$(glib_libs)
+
+if HOST_DARWIN
+monodis_LDFLAGS=-framework CoreFoundation -framework Foundation
+endif
+
+man_MANS = monodis.1
+
+EXTRA_DIST = $(man_MANS)

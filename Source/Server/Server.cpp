@@ -1883,7 +1883,12 @@ bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ***\n" );
 
+    // Root data file
     File::InitDataFiles( "./" );
+
+    // Modules data files
+    for( auto& module_path : ProjectFiles )
+        File::LoadDataFile( module_path );
 
     // Delete intermediate files if engine have been updated
     File fm;

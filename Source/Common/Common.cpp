@@ -76,6 +76,11 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
     #ifdef FONLINE_EDITOR
     Script::SetRunTimeout( 0, 0 );
     #endif
+
+    // Fix Mono path
+    string mono_path = MainConfig->GetStr( "", "MonoPath" );
+    mono_path = _str( GameOpt.WorkDir ).combinePath( mono_path ).normalizeLineEndings().resolvePath();
+    MainConfig->SetStr( "", "MonoPath", mono_path );
 }
 
 // Default randomizer

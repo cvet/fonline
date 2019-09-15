@@ -24,7 +24,7 @@ bool ProtoEntity::HaveComponent( hash name ) const
     return Components.count( name ) > 0;
 }
 
-Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto ): Props( registartor ), Id( id ), Type( type ), Proto( proto ), RefCounter( 1 ), IsDestroyed( false ), IsDestroying( false )
+Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto ): Props( registartor ), Id( id ), Type( type ), Proto( proto ), MonoHandle( 0 ), RefCounter( 1 ), IsDestroyed( false ), IsDestroying( false )
 {
     RUNTIME_ASSERT( Type != EntityType::None );
 

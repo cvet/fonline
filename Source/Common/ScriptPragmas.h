@@ -56,10 +56,11 @@ public:
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     bool RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );
     #endif
-    void* FindInternalEvent( const string& event_name );
-    bool  RaiseInternalEvent( void* event_ptr, va_list args );
-    void  RemoveEventsEntity( Entity* entity );
-    void  HandleRpc( void* context );
+    void*         FindInternalEvent( const string& event_name );
+    bool          RaiseInternalEvent( void* event_ptr, va_list args );
+    const IntVec& GetInternalEventArgInfos( void* event_ptr );
+    void          RemoveEventsEntity( Entity* entity );
+    void          HandleRpc( void* context );
 };
 
 #endif // __SCRIPT_PRAGMAS__

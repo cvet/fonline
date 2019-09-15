@@ -93,6 +93,13 @@ bool FOServer::InitScriptSystem()
 {
     WriteLog( "Script system initialization...\n" );
 
+    // Mono
+    if( !Script::InitMono( "Server", nullptr ) )
+    {
+        WriteLog( "Can't initialize Mono script subsystem.\n" );
+        return false;
+    }
+
     // Memory debugging
     asThreadCleanup();
     if( MemoryDebugLevel > 1 )
@@ -465,6 +472,21 @@ bool FOServer::ReloadClientScripts()
     // Exit if have errors
     if( errors )
         return false;
+
+    // Mono assemblies
+    std::map< string, UCharVec > assemblies_data;
+    if( !Script::GetMonoAssemblies( "Client", assemblies_data ) )
+    {
+        WriteLog( "Can't compile client scripts.\n" );
+        return false;
+    }
+
+    uint mono_assembly_index = STR_INTERNAL_SCRIPT_MONO_DLLS;
+    for( auto& kv : assemblies_data )
+    {
+        msg_script.AddStr( mono_assembly_index++, kv.first );
+        msg_script.AddBinary( mono_assembly_index++, &kv.second[ 0 ], (uint) kv.second.size() );
+    }
 
     // Copy generated MSG to language packs
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )

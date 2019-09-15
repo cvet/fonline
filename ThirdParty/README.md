@@ -21,6 +21,7 @@
 * libbson - [libbson-1.8.2](http://mongoc.org/libbson/current/index.html)
 * mbedTLS - [mbedtls-2.13.0-apache](https://tls.mbed.org/)
 * mongo-c-driver - [mongo-c-driver-1.8.2](https://github.com/mongodb/mongo-c-driver)
+* mono - [mono-5.16.0.209](https://www.mono-project.com/)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * openssl - [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
