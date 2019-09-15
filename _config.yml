@@ -1,1 +1,6 @@
+title: FOnline Engine
+email: cvet@tut.by
 theme: jekyll-theme-minimal
+title-img: "/Resources/Radiation.png"
+exclude:
+  - ThirdParty/
