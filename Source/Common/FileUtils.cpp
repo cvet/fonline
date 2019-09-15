@@ -15,12 +15,6 @@ class DefaultFileSystem: public IFileSystem
     DataFileVec dataFiles;
     string      writeDir;
 
-public:
-    DefaultFileSystem( const string& data_files_path )
-    {
-        InitDataFiles( data_files_path );
-    }
-
     void InitDataFiles( const string& path, bool set_write_dir )
     {
         // Format path
@@ -99,6 +93,12 @@ public:
 
         // Put to begin of list
         dataFiles.insert( dataFiles.begin(), data_file );
+    }
+
+public:
+    DefaultFileSystem( const string& data_files_path )
+    {
+        InitDataFiles( data_files_path, true );
     }
 
     virtual bool MakeDir( const string& path ) override

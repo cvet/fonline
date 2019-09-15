@@ -9,7 +9,7 @@ public:
     }
 };
 
-FileUtils Fabric::CreateDefaultSystem()
+System Fabric::CreateDefaultSystem()
 {
     return std::make_shared< DefaultSystem >();
 }
