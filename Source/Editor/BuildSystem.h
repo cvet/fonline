@@ -17,7 +17,6 @@ public:
     virtual bool BuildAll() = 0;
     virtual ~IBuildSystem() {}
 };
-
 using BuildSystem = std::shared_ptr< IBuildSystem >;
 
 namespace Fabric

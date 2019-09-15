@@ -514,7 +514,8 @@ NetServerBase* NetServerBase::StartWebSocketsServer( ushort port, string wss_cre
         else
         {
             StrVec keys = _str( wss_credentials ).split( ' ' );
-            if( keys.size() != 2 ) throw std::runtime_error( "Invalid 'WssCredentials' option" );
+            if( keys.size() != 2 )
+                throw fo_exception( "Invalid 'WssCredentials' option" );
 
             return new NetTlsWebSocketsServer( port, keys[ 0 ], keys[ 1 ], callback );
         }

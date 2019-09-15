@@ -59,7 +59,7 @@ private:
     void CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree_names );
 
 public:
-    bool Init( const string& fname );
+    FolderFile( const string& fname );
 
     const string& GetPackName() { return basePath; }
     bool          IsFilePresent( const string& path, const string& path_lower, uint& size, uint64& write_time );
@@ -83,7 +83,7 @@ private:
     bool ReadTree();
 
 public:
-    bool Init( const string& fname );
+    FalloutDatFile( const string& fname );
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
@@ -111,7 +111,7 @@ private:
     bool ReadTree();
 
 public:
-    bool Init( const string& fname );
+    ZipFile( const string& fname );
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
@@ -136,7 +136,7 @@ private:
     FileNameVec   filesTreeNames;
 
 public:
-    bool Init( const string& fname );
+    BundleFile( const string& fname );
 
     const string& GetPackName() { return packName; }
     bool          IsFilePresent( const string& path, const string& path_lower, uint& size, uint64& write_time );
@@ -153,60 +153,25 @@ DataFile Fabric::OpenDataFile( const string& path )
 {
     string ext = _str( path ).getFileExtension();
     if( path == "$Bundle" )
-    {
-        auto bundle = std::make_shared< BundleFile >();
-        if( !bundle->Init( path ) )
-        {
-            WriteLog( "Unable to open bundle data files.\n", path );
-            return nullptr;
-        }
-        return bundle;
-    }
+        return std::make_shared< BundleFile >( path );
     else if( ext == "dat" )
-    {
-        auto dat = std::make_shared< FalloutDatFile >();
-        if( !dat->Init( path ) )
-        {
-            WriteLog( "Unable to open DAT file '{}'.\n", path );
-            return nullptr;
-        }
-        return dat;
-    }
+        return std::make_shared< FalloutDatFile >( path );
     else if( ext == "zip" || ext == "bos" || path[ 0 ] == '$' )
-    {
-        auto zip = std::make_shared< ZipFile >();
-        if( !zip->Init( path ) )
-        {
-            WriteLog( "Unable to open ZIP file '{}'.\n", path );
-            return nullptr;
-        }
-        return zip;
-    }
+        return std::make_shared< ZipFile >( path );
     else
-    {
-        auto folder = std::make_shared< FolderFile >();
-        if( !folder->Init( path ) )
-        {
-            WriteLog( "Unable to open folder '{}'.\n", path );
-            return nullptr;
-        }
-        return folder;
-    }
-    return nullptr;
+        return std::make_shared< FolderFile >( path );
 }
 
 /************************************************************************/
 /* Folder file                                                          */
 /************************************************************************/
 
-bool FolderFile::Init( const string& fname )
+FolderFile::FolderFile( const string& fname )
 {
     basePath = fname;
     #ifndef DISABLE_FOLDER_CACHING
     CollectFilesTree( filesTree, filesTreeNames );
     #endif
-
-    return true;
 }
 
 void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree_names )
@@ -319,7 +284,7 @@ void FolderFile::GetFileNames( const string& path, bool include_subdirs, const s
 /* Dat file                                                             */
 /************************************************************************/
 
-bool FalloutDatFile::Init( const string& fname )
+FalloutDatFile::FalloutDatFile( const string& fname )
 {
     datHandle = nullptr;
     memTree = nullptr;
@@ -328,20 +293,12 @@ bool FalloutDatFile::Init( const string& fname )
 
     datHandle = FileOpen( fname, false );
     if( !datHandle )
-    {
-        WriteLog( "Cannot open file.\n" );
-        return false;
-    }
+        throw fo_exception( "Cannot open file '{}'", fname );
 
     writeTime = FileGetWriteTime( datHandle );
 
     if( !ReadTree() )
-    {
-        WriteLog( "Read file tree fail.\n" );
-        return false;
-    }
-
-    return true;
+        throw fo_exception( "Read file tree fail" );
 }
 
 FalloutDatFile::~FalloutDatFile()
@@ -579,7 +536,7 @@ uchar* FalloutDatFile::OpenFile( const string& path, const string& path_lower, u
 /* Zip file                                                             */
 /************************************************************************/
 
-bool ZipFile::Init( const string& fname )
+ZipFile::ZipFile( const string& fname )
 {
     fileName = fname;
     zipHandle = nullptr;
@@ -589,10 +546,8 @@ bool ZipFile::Init( const string& fname )
     {
         void* file = FileOpen( fname, false );
         if( !file )
-        {
-            WriteLog( "Can't open ZIP file '{}'.\n", fname );
-            return false;
-        }
+            throw fo_exception( "Can't open ZIP file '{}'", fname );
+
         writeTime = FileGetWriteTime( file );
 
         ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
@@ -719,18 +674,10 @@ bool ZipFile::Init( const string& fname )
 
     zipHandle = unzOpen2( fname.c_str(), &ffunc );
     if( !zipHandle )
-    {
-        WriteLog( "Can't read ZIP file '{}'.\n", fname );
-        return false;
-    }
+        throw fo_exception( "Can't read ZIP file '{}'", fname );
 
     if( !ReadTree() )
-    {
-        WriteLog( "Read file tree fail.\n" );
-        return false;
-    }
-
-    return true;
+        throw fo_exception( "Read file tree fail" );
 }
 
 ZipFile::~ZipFile()
@@ -832,7 +779,7 @@ uchar* ZipFile::OpenFile( const string& path, const string& path_lower, uint& si
 /* Bundle file                                                          */
 /************************************************************************/
 
-bool BundleFile::Init( const string& fname )
+BundleFile::BundleFile( const string& fname )
 {
     filesTree.clear();
     filesTreeNames.clear();
@@ -840,34 +787,29 @@ bool BundleFile::Init( const string& fname )
     // Read tree
     void* f_tree = FileOpen( "FilesTree.txt", false );
     if( !f_tree )
-    {
-        WriteLog( "Can't open 'FilesTree.txt'.\n" );
-        return false;
-    }
+        throw fo_exception( "Can't open 'FilesTree.txt'" );
 
-    uint  len = FileGetSize( f_tree );
-    char* buf = new char[ len + 1 ];
+    uint  len = FileGetSize( f_tree ) + 1;
+    char* buf = new char[ len ];
+    buf[ len - 1 ] = 0;
+
     if( !FileRead( f_tree, buf, len ) )
     {
-        WriteLog( "Can't read 'FilesTree.txt'.\n" );
+        delete[] buf;
         FileClose( f_tree );
-        return false;
+        throw fo_exception( "Can't read 'FilesTree.txt'" );
     }
-    FileClose( f_tree );
 
-    buf[ len ] = 0;
     StrVec names = _str( buf ).normalizeLineEndings().split( '\n' );
     delete[] buf;
+    FileClose( f_tree );
 
     // Parse
     for( const string& name : names )
     {
         void* f = FileOpen( name, false );
         if( !f )
-        {
-            WriteLog( "Can't open file '{}' in bundle.\n", name );
-            return false;
-        }
+            throw fo_exception( "Can't open file '{}' in bundle", name );
 
         FileEntry fe;
         fe.FileName = name;
@@ -880,8 +822,6 @@ bool BundleFile::Init( const string& fname )
 
         FileClose( f );
     }
-
-    return true;
 }
 
 bool BundleFile::IsFilePresent( const string& path, const string& path_lower, uint& size, uint64& write_time )

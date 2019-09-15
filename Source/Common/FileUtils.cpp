@@ -10,17 +10,95 @@
 DataFileVec File::dataFiles;
 string      File::writeDir;
 
-class DefaultFileUtils: public IFileUtils
+class DefaultFileSystem: public IFileSystem
 {
+    DataFileVec dataFiles;
+    string      writeDir;
+
 public:
-    virtual bool InitDataFiles( const string& path ) override
+    DefaultFileSystem( const string& data_files_path )
     {
-        return false;
+        InitDataFiles( data_files_path );
     }
 
-    bool LoadDataFile( const string& path, bool skip_inner = false )
+    void InitDataFiles( const string& path, bool set_write_dir )
     {
-        return false;
+        // Format path
+        string fixed_path = _str( path ).formatPath();
+        if( !fixed_path.empty() && fixed_path.front() != '$' && fixed_path.back() != '/' )
+            fixed_path += "/";
+
+        // Check special files
+        if( fixed_path.empty() || fixed_path.front() != '$' )
+        {
+            // Redirect path
+            void* redirection_link = FileOpen( fixed_path + "Redirection.link", false );
+            if( redirection_link )
+            {
+                uint  len = FileGetSize( redirection_link );
+                char* link = (char*) alloca( len + 1 );
+                FileRead( redirection_link, link, len );
+                FileClose( redirection_link );
+                link[ len ] = 0;
+                InitDataFiles( _str( fixed_path + link ).formatPath(), set_write_dir );
+                return;
+            }
+
+            // Additional path
+            void* extension_link = FileOpen( fixed_path + "Extension.link", false );
+            if( extension_link )
+            {
+                uint  len = FileGetSize( extension_link );
+                char* link = (char*) alloca( len + 1 );
+                FileRead( extension_link, link, len );
+                FileClose( extension_link );
+                link[ len ] = 0;
+                InitDataFiles( _str( fixed_path + link ).formatPath(), false );
+            }
+        }
+
+        // Write path first
+        if( set_write_dir && ( fixed_path.empty() || fixed_path[ 0 ] != '$' ) )
+            writeDir = fixed_path;
+
+        // Process dir
+        LoadDataFile( fixed_path, false );
+    }
+
+    void LoadDataFile( const string& path, bool skip_inner )
+    {
+        DataFile data_file;
+
+        // Find already loaded
+        for( DataFile df : dataFiles )
+        {
+            if( df->GetPackName() == path )
+            {
+                data_file = df;
+                break;
+            }
+        }
+
+        // Add new
+        if( !data_file )
+            data_file = Fabric::OpenDataFile( path );
+
+        // Inner data files
+        if( !skip_inner )
+        {
+            StrVec files;
+            data_file->GetFileNames( "", false, "dat", files );
+            data_file->GetFileNames( "", false, "zip", files );
+            data_file->GetFileNames( "", false, "bos", files );
+
+            std::sort( files.begin(), files.end(), std::less< string >() );
+
+            for( size_t i = 0; i < files.size(); i++ )
+                LoadDataFile( ( path[ 0 ] != '$' ? path : "" ) + files[ i ], true );
+        }
+
+        // Put to begin of list
+        dataFiles.insert( dataFiles.begin(), data_file );
     }
 
     virtual bool MakeDir( const string& path ) override
@@ -42,16 +120,11 @@ public:
     {
         return false;
     }
-
-    virtual bool SystemCall( const string& path, const StrVec& args ) override
-    {
-        return false;
-    }
 };
 
-FileUtils Fabric::CreateDefaultFileUtils()
+FileSystem Fabric::CreateDefaultFileSystem( const string& data_files_path )
 {
-    return std::make_shared< DefaultFileUtils >();
+    return std::make_shared< DefaultFileSystem >( data_files_path );
 }
 
 

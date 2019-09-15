@@ -8,22 +8,21 @@
 # undef DeleteFile
 #endif
 
-class IFileUtils
+class IFileSystem
 {
 public:
-    virtual bool InitDataFiles( const string& path ) = 0;
+    // LoadFile
     virtual bool MakeDir( const string& path ) = 0;
     virtual bool Copy( const string& from_path, const string& to_path ) = 0;
     virtual bool Move( const string& from_path, const string& to_path ) = 0;
     virtual bool PatchFile( const string& path, const string& drom_str, const string& to_str ) = 0;
-    virtual bool SystemCall( const string& path, const StrVec& args ) = 0;
-    virtual ~IFileUtils() = default;
+    virtual ~IFileSystem() = default;
 };
-using FileUtils = std::shared_ptr< IFileUtils >;
+using FileSystem = std::shared_ptr< IFileSystem >;
 
 namespace Fabric
 {
-    FileUtils CreateDefaultFileUtils();
+    FileSystem CreateDefaultFileSystem( const string& data_files_path );
 }
 
 

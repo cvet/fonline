@@ -625,6 +625,7 @@ set( COMMON_SOURCE
 	Source/Common/Crypt.cpp Source/Common/Crypt.h
 	Source/Common/Settings.h Source/Common/Settings.cpp
 	Source/Common/Randomizer.h Source/Common/Randomizer.cpp
+	Source/Common/System.h Source/Common/System.cpp
 )
 
 # Server source

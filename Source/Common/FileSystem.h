@@ -1,5 +1,4 @@
-#ifndef __FILE_SYSTEM__
-#define __FILE_SYSTEM__
+#pragma once
 
 #include "Common.h"
 
@@ -32,5 +31,3 @@ void NormalizePathSlashesInplace( string& path );
 void ResolvePathInplace( string& path );
 void MakeDirectory( const string& path );
 void MakeDirectoryTree( const string& path );
-
-#endif // __FILE_SYSTEM__

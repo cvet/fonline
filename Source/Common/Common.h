@@ -245,6 +245,18 @@ using UIntHashVecMap = map< uint, HashVec >;
 # define SD_BOTH                     SHUT_RDWR
 #endif
 
+// Generic exception
+class fo_exception: public std::exception
+{
+    string exceptionMessage;
+
+public:
+    fo_exception( const char* message ): exceptionMessage( message ) {}
+    template< typename ... Args > fo_exception( const char* format, Args ... args ): exceptionMessage( std::move( fmt::format( format, args ... ) ) ) {}
+    ~fo_exception() noexcept = default;
+    const char* what() const noexcept { return exceptionMessage.c_str(); }
+};
+
 // Generic helpers
 #define STATIC_ASSERT( a )                    static_assert( a, # a )
 #define OFFSETOF( s, m )                      ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
