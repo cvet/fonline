@@ -43,7 +43,6 @@ if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	cd $ANDROID_NDK_VERSION/build/tools
 	python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
 	python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
-	python make_standalone_toolchain.py --arch x86 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../x86-toolchain
 	cd ../../../
 fi
 
@@ -59,14 +58,6 @@ cd ../
 
 export ANDROID_STANDALONE_TOOLCHAIN=$PWD/arm64-toolchain
 export ANDROID_ABI=arm64-v8a
-mkdir -p $ANDROID_ABI
-cd $ANDROID_ABI
-cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
-make -j$(nproc)
-cd ../
-
-export ANDROID_STANDALONE_TOOLCHAIN=$PWD/x86-toolchain
-export ANDROID_ABI=x86
 mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
