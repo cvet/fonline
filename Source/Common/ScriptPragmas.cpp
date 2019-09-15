@@ -116,80 +116,6 @@ public:
     }
 };
 
-// #pragma bindfunc "int MyObject::MyMethod(int, uint) -> my.dll MyDllFunc"
-class BindFuncPragma
-{
-public:
-    bool Call( const string& text )
-    {
-        asIScriptEngine* engine = Script::GetEngine();
-        string           func_name, dll_name, func_dll_name;
-        istringstream    str( text );
-        while( true )
-        {
-            string s;
-            str >> s;
-            if( str.fail() || s == "->" )
-                break;
-            if( func_name != "" )
-                func_name += " ";
-            func_name += s;
-        }
-        str >> dll_name;
-        str >> func_dll_name;
-
-        if( str.fail() )
-        {
-            WriteLog( "Error in 'bindfunc' pragma '{}', parse fail.\n", text );
-            return false;
-        }
-
-        void* dll = Script::LoadDynamicLibrary( dll_name );
-        if( !dll )
-        {
-            WriteLog( "Error in 'bindfunc' pragma '{}', dll not found, error '{}'.\n", text, DLL_Error() );
-            return false;
-        }
-
-        // Find function
-        size_t* func = DLL_GetAddress( dll, func_dll_name );
-        if( !func )
-        {
-            WriteLog( "Error in 'bindfunc' pragma '{}', function not found, error '{}'.\n", text, DLL_Error() );
-            return false;
-        }
-
-        int result = 0;
-        if( func_name.find( "::" ) == string::npos )
-        {
-            // Register global function
-            result = engine->RegisterGlobalFunction( func_name.c_str(), asFUNCTION( func ), SCRIPT_FUNC_CONV );
-        }
-        else
-        {
-            // Register class method
-            string::size_type i = func_name.find( " " );
-            string::size_type j = func_name.find( "::" );
-            if( i == string::npos || i + 1 >= j )
-            {
-                WriteLog( "Error in 'bindfunc' pragma '{}', parse class name fail.\n", text );
-                return false;
-            }
-            i++;
-            string class_name;
-            class_name.assign( func_name, i, j - i );
-            func_name.erase( i, j - i + 2 );
-            result = engine->RegisterObjectMethod( class_name.c_str(), func_name.c_str(), asFUNCTION( func ), SCRIPT_FUNC_THIS_CONV );
-        }
-        if( result < 0 )
-        {
-            WriteLog( "Error in 'bindfunc' pragma '{}', script registration fail, error '{}'.\n", text, result );
-            return false;
-        }
-        return true;
-    }
-};
-
 // #pragma entity EntityName Movable = true
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "EntityManager.h"
@@ -1648,7 +1574,6 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 
     ignorePragma = nullptr;
     globalVarPragma = nullptr;
-    bindFuncPragma = nullptr;
     entityPragma = nullptr;
     propertyPragma = nullptr;
     contentPragma = nullptr;
@@ -1660,7 +1585,6 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     {
         ignorePragma = new IgnorePragma();
         globalVarPragma = new GlobalVarPragma();
-        bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
         propertyPragma = new PropertyPragma( pragmaType, entityPragma );
         contentPragma = new ContentPragma();
@@ -1674,7 +1598,6 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
 {
     SAFEDEL( ignorePragma );
     SAFEDEL( globalVarPragma );
-    SAFEDEL( bindFuncPragma );
     SAFEDEL( entityPragma );
     SAFEDEL( propertyPragma );
     SAFEDEL( contentPragma );
@@ -1692,8 +1615,6 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = ignorePragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "globalvar" ) && globalVarPragma )
         ok = globalVarPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "bindfunc" ) && bindFuncPragma )
-        ok = bindFuncPragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
     else if( _str( pragma.Name ).compareIgnoreCase( "entity" ) && entityPragma )

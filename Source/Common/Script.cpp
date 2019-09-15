@@ -31,11 +31,6 @@ static MonoAssembly* LoadNetAssembly( const string& name );
 static MonoAssembly* LoadGameAssembly( const string& name, map< string, MonoImage* >& assembly_images );
 static bool          CompileGameAssemblies( const string& target, map< string, MonoImage* >& assembly_images );
 
-#pragma MESSAGE("Rework native calls.")
-#if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false
-# define ALLOW_NATIVE_CALLS
-#endif
-
 static const string ContextStatesStr[] =
 {
     "Finished",
@@ -51,33 +46,19 @@ static const string ContextStatesStr[] =
 class BindFunction
 {
 public:
-    bool               IsScriptCall;
     asIScriptFunction* ScriptFunc;
     string             FuncName;
-    size_t             NativeFuncAddr;
 
     BindFunction()
     {
-        IsScriptCall = false;
         ScriptFunc = nullptr;
-        NativeFuncAddr = 0;
     }
 
     BindFunction( asIScriptFunction* func )
     {
-        IsScriptCall = true;
         ScriptFunc = func;
         FuncName = func->GetDeclaration();
         func->AddRef();
-        NativeFuncAddr = 0;
-    }
-
-    BindFunction( size_t native_func_addr, const string& func_name )
-    {
-        IsScriptCall = false;
-        NativeFuncAddr = native_func_addr;
-        FuncName = func_name;
-        ScriptFunc = nullptr;
     }
 
     void Clear()
@@ -92,7 +73,6 @@ typedef vector< BindFunction > BindFunctionVec;
 static asIScriptEngine*  Engine = nullptr;
 static BindFunctionVec   BindedFunctions;
 static HashIntMap        ScriptFuncBinds;  // Func Num -> Bind Id
-static bool              LoadLibraryCompiler = false;
 static ExceptionCallback OnException;
 
 // Contexts
@@ -133,11 +113,10 @@ ClientScriptFunctions ClientFunctions;
 MapperScriptFunctions MapperFunctions;
 #endif
 
-bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls,
-                   uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
+bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& target, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
 {
     // Create default engine
-    Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
+    Engine = CreateEngine( pragma_callback, target );
     if( !Engine )
     {
         WriteLog( "Can't create AS engine.\n" );
@@ -188,7 +167,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     return true;
 }
 
-bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data )
+bool Script::InitMono( const string& target, map< string, UCharVec >* assemblies_data )
 {
     g_set_print_handler([] ( const gchar * string ) { WriteLog( "{}", string );
                         } );
@@ -271,7 +250,7 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     }
     else
     {
-        bool ok = CompileGameAssemblies( dll_target, EngineAssemblyImages );
+        bool ok = CompileGameAssemblies( target, EngineAssemblyImages );
         RUNTIME_ASSERT( ok );
     }
 
@@ -300,10 +279,10 @@ bool Script::InitMono( const string& dll_target, map< string, UCharVec >* assemb
     return true;
 }
 
-bool Script::GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data )
+bool Script::GetMonoAssemblies( const string& target, map< string, UCharVec >& assemblies_data )
 {
     map< string, MonoImage* > assembly_images;
-    if( !CompileGameAssemblies( dll_target, assembly_images ) )
+    if( !CompileGameAssemblies( target, assembly_images ) )
         return false;
 
     for( auto& kv : assembly_images )
@@ -407,147 +386,6 @@ void Script::Finish()
     FinishEngine( Engine );     // Finish default engine
 
     mono_jit_cleanup( mono_domain_get() );
-}
-
-void* Script::LoadDynamicLibrary( const string& dll_name )
-{
-    // Check for disabled client native calls
-    EngineData* edata = (EngineData*) Engine->GetUserData();
-    if( !edata->AllowNativeCalls )
-    {
-        WriteLog( "Unable to load dll '{}', native calls not allowed.\n", dll_name );
-        return nullptr;
-    }
-
-    // Find in already loaded
-    string dll_name_entry = dll_name;
-    #ifdef FO_WINDOWS
-    dll_name_entry = _str( dll_name_entry ).lower();
-    #endif
-    auto it = edata->LoadedDlls.find( dll_name_entry );
-    if( it != edata->LoadedDlls.end() )
-        return it->second.second;
-
-    // Make path
-    string dll_path = _str( dll_name_entry ).eraseFileExtension();
-
-    // Add '64' appendix
-    #if defined ( FO_X64 )
-    dll_path += "64";
-    #endif
-
-    // Client path fixes
-    #ifdef FONLINE_CLIENT
-    std::replace( dll_path.begin(), dll_path.end(), '\\', '.' );
-    std::replace( dll_path.begin(), dll_path.end(), '/', '.' );
-    #endif
-
-    // Server path fixes
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    # ifdef FO_WINDOWS
-    FileCollection dlls( "dll" );
-    # else
-    FileCollection dlls( "so" );
-    # endif
-    bool           founded = false;
-    while( dlls.IsNextFile() )
-    {
-        string name, path;
-        dlls.GetNextFile( &name, &path, nullptr, true );
-        if( _str( dll_path ).compareIgnoreCase( name ) )
-        {
-            founded = true;
-            dll_path = path;
-            break;
-        }
-    }
-    if( !founded )
-    {
-        # ifdef FO_WINDOWS
-        dll_path += ".dll";
-        # else
-        dll_path += ".so";
-        # endif
-    }
-    #endif
-
-    // Set current directory to DLL
-    string  new_path = _str( dll_path ).extractDir().resolvePath();
-    #ifdef FO_WINDOWS
-    wchar_t prev_path[ MAX_FOPATH ];
-    GetCurrentDirectoryW( MAX_FOPATH, prev_path );
-    SetCurrentDirectoryW( _str( new_path ).toWideChar().c_str() );
-    #else
-    char  prev_path[ MAX_FOPATH ];
-    char* r1 = getcwd( prev_path, MAX_FOPATH );
-    UNUSED_VARIABLE( r1 );
-    int   r2 = chdir( new_path.c_str() );
-    UNUSED_VARIABLE( r2 );
-    #endif
-
-    // Load dynamic library
-    void* dll = DLL_Load( _str( dll_path ).extractFileName() );
-    #ifdef FO_WINDOWS
-    SetCurrentDirectoryW( prev_path );
-    #else
-    int r3 = chdir( prev_path );
-    UNUSED_VARIABLE( r3 );
-    #endif
-    if( !dll )
-        return nullptr;
-
-    // Verify compilation target
-    size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
-    if( !ptr )
-    {
-        WriteLog( "Wrong script DLL '{}', expected target '{}', but found '{}{}{}{}'.\n", dll_name, edata->DllTarget,
-                  DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
-                  !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
-        DLL_Free( dll );
-        return nullptr;
-    }
-
-    // Register variables
-    ptr = DLL_GetAddress( dll, "FOnline" );
-    if( ptr )
-        *ptr = (size_t) &GameOpt;
-    ptr = DLL_GetAddress( dll, "ASEngine" );
-    if( ptr )
-        *ptr = (size_t) Engine;
-
-    // Register functions
-    ptr = DLL_GetAddress( dll, "RaiseAssert" );
-    if( ptr )
-        *ptr = (size_t) &RaiseAssert;
-    ptr = DLL_GetAddress( dll, "Log" );
-    if( ptr )
-        *ptr = (size_t) &WriteLogMessage;
-    ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
-    if( ptr )
-        *ptr = (size_t) &asGetActiveContext;
-    ptr = DLL_GetAddress( dll, "ScriptGetLibraryOptions" );
-    if( ptr )
-        *ptr = (size_t) &asGetLibraryOptions;
-    ptr = DLL_GetAddress( dll, "ScriptGetLibraryVersion" );
-    if( ptr )
-        *ptr = (size_t) &asGetLibraryVersion;
-
-    // Call init function
-    typedef void ( *DllMainEx )( bool );
-    DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
-    if( func )
-        (func) ( LoadLibraryCompiler );
-
-    // Add to collection for current engine
-    auto value = std::make_pair( dll_path, dll );
-    edata->LoadedDlls.insert( std::make_pair( dll_name_entry, value ) );
-
-    return dll;
-}
-
-void Script::SetLoadLibraryCompiler( bool enabled )
-{
-    LoadLibraryCompiler = enabled;
 }
 
 void Script::UnloadScripts()
@@ -901,7 +739,7 @@ void Script::SetEngine( asIScriptEngine* engine )
     Engine = engine;
 }
 
-asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls )
+asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, const string& target )
 {
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
@@ -939,12 +777,6 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
 
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
-    edata->DllTarget = dll_target;
-    #ifdef ALLOW_NATIVE_CALLS
-    edata->AllowNativeCalls = allow_native_calls;
-    #else
-    edata->AllowNativeCalls = false;
-    #endif
     edata->Invoker = new ScriptInvoker();
     edata->Profiler = nullptr;
     engine->SetUserData( edata );
@@ -957,8 +789,6 @@ void Script::FinishEngine( asIScriptEngine*& engine )
     {
         EngineData* edata = (EngineData*) engine->SetUserData( nullptr );
         delete edata->PragmaCB;
-        for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
-            DLL_Free( it->second.second );
         delete edata;
         engine->ShutDownAndRelease();
         engine = nullptr;
@@ -1527,105 +1357,29 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
 
 uint Script::BindByFuncName( const string& func_name, const string& decl, bool is_temp, bool disable_log /* = false */ )
 {
-    // Detect native dll
-    size_t dll_pos = func_name.find( ".dll::" );
-    if( dll_pos == string::npos )
-    {
-        // Collect functions in all modules
-        RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+    // Collect functions in all modules
+    RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
 
-        // Find function
-        string func_decl;
-        if( !decl.empty() )
-            func_decl = _str( decl ).replace( "%s", func_name );
-        else
-            func_decl = func_name;
-
-        asIScriptModule*   module = Engine->GetModuleByIndex( 0 );
-        asIScriptFunction* func = module->GetFunctionByDecl( func_decl.c_str() );
-        if( !func )
-        {
-            if( !disable_log )
-                WriteLog( "Function '{}' not found.\n", func_decl );
-            return 0;
-        }
-
-        // Save to temporary bind
-        if( is_temp )
-        {
-            BindedFunctions[ 1 ].IsScriptCall = true;
-            BindedFunctions[ 1 ].ScriptFunc = func;
-            BindedFunctions[ 1 ].NativeFuncAddr = 0;
-            return 1;
-        }
-
-        // Find already binded
-        for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
-        {
-            BindFunction& bf = BindedFunctions[ i ];
-            if( bf.IsScriptCall && bf.ScriptFunc == func )
-                return i;
-        }
-
-        // Create new bind
-        BindedFunctions.push_back( BindFunction( func ) );
-    }
+    // Find function
+    string func_decl;
+    if( !decl.empty() )
+        func_decl = _str( decl ).replace( "%s", func_name );
     else
+        func_decl = func_name;
+
+    asIScriptModule*   module = Engine->GetModuleByIndex( 0 );
+    asIScriptFunction* func = module->GetFunctionByDecl( func_decl.c_str() );
+    if( !func )
     {
-        // my.dll::Func1
-        string dll_name = func_name.substr( 0, dll_pos + 4 );
-        string dll_func_name = func_name.substr( dll_pos + 6 );
-
-        // Load dynamic library
-        void* dll = LoadDynamicLibrary( dll_name );
-        if( !dll )
-        {
-            if( !disable_log )
-                WriteLog( "Dll '{}' not found in scripts folder, error '{}'.\n", dll_name, DLL_Error() );
-            return 0;
-        }
-
-        // Load function
-        size_t func = (size_t) DLL_GetAddress( dll, dll_func_name );
-        if( !func )
-        {
-            if( !disable_log )
-                WriteLog( "Function '{}' in dll '{}' not found, error '{}'.\n", dll_func_name, dll_name, DLL_Error() );
-            return 0;
-        }
-
-        // Save to temporary bind
-        if( is_temp )
-        {
-            BindedFunctions[ 1 ].IsScriptCall = false;
-            BindedFunctions[ 1 ].ScriptFunc = nullptr;
-            BindedFunctions[ 1 ].NativeFuncAddr = func;
-            return 1;
-        }
-
-        // Find already binded
-        for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
-        {
-            BindFunction& bf = BindedFunctions[ i ];
-            if( !bf.IsScriptCall && bf.NativeFuncAddr == func )
-                return i;
-        }
-
-        // Create new bind
-        BindedFunctions.push_back( BindFunction( func, func_name ) );
+        if( !disable_log )
+            WriteLog( "Function '{}' not found.\n", func_decl );
+        return 0;
     }
-    return (uint) BindedFunctions.size() - 1;
-    return 0;
-}
 
-uint Script::BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
-{
     // Save to temporary bind
     if( is_temp )
     {
-        BindedFunctions[ 1 ].IsScriptCall = true;
         BindedFunctions[ 1 ].ScriptFunc = func;
-        BindedFunctions[ 1 ].NativeFuncAddr = 0;
         return 1;
     }
 
@@ -1633,7 +1387,28 @@ uint Script::BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log
     for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
     {
         BindFunction& bf = BindedFunctions[ i ];
-        if( bf.IsScriptCall && bf.ScriptFunc == func )
+        if( bf.ScriptFunc == func )
+            return i;
+    }
+
+    // Create new bind
+    BindedFunctions.push_back( BindFunction( func ) );
+    return (uint) BindedFunctions.size() - 1;
+}
+
+uint Script::BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
+{
+    // Save to temporary bind
+    if( is_temp )
+    {
+        BindedFunctions[ 1 ].ScriptFunc = func;
+        return 1;
+    }
+
+    // Find already binded
+    for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
+    {
+        if( BindedFunctions[ i ].ScriptFunc == func )
             return i;
     }
 
@@ -1660,9 +1435,7 @@ asIScriptFunction* Script::GetBindFunc( uint bind_id )
     RUNTIME_ASSERT( bind_id );
     RUNTIME_ASSERT( bind_id < BindedFunctions.size() );
 
-    BindFunction& bf = BindedFunctions[ bind_id ];
-    RUNTIME_ASSERT( bf.IsScriptCall );
-    return bf.ScriptFunc;
+    return BindedFunctions[ bind_id ].ScriptFunc;
 }
 
 string Script::GetBindFuncName( uint bind_id )
@@ -1716,7 +1489,7 @@ hash Script::BindScriptFuncNumByFuncName( const string& func_name, const string&
 
     // Native and broken binds not allowed
     BindFunction& bf = BindedFunctions[ bind_id ];
-    if( !bf.IsScriptCall || !bf.ScriptFunc )
+    if( !bf.ScriptFunc )
         return 0;
 
     // Get func num
@@ -1884,10 +1657,7 @@ string Script::GetEnumValueName( const string& enum_name, int value )
 /* Contexts                                                             */
 /************************************************************************/
 
-static bool              ScriptCall = false;
 static asIScriptContext* CurrentCtx = nullptr;
-static size_t            NativeFuncAddr = 0;
-static size_t            NativeArgs[ 256 ] = { 0 };
 static size_t            CurrentArg = 0;
 static void*             RetValue;
 
@@ -1897,110 +1667,70 @@ void Script::PrepareContext( uint bind_id, const string& ctx_info )
     RUNTIME_ASSERT( bind_id < (uint) BindedFunctions.size() );
 
     BindFunction&      bf = BindedFunctions[ bind_id ];
-    bool               is_script = bf.IsScriptCall;
     asIScriptFunction* script_func = bf.ScriptFunc;
-    size_t             func_addr = bf.NativeFuncAddr;
 
-    if( is_script )
-    {
-        RUNTIME_ASSERT( script_func );
+    RUNTIME_ASSERT( script_func );
 
-        asIScriptContext* ctx = RequestContext();
-        RUNTIME_ASSERT( ctx );
+    asIScriptContext* ctx = RequestContext();
+    RUNTIME_ASSERT( ctx );
 
-        ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-        Str::Copy( ctx_data->Info, ctx_info.c_str() );
+    ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    Str::Copy( ctx_data->Info, ctx_info.c_str() );
 
-        int result = ctx->Prepare( script_func );
-        RUNTIME_ASSERT( result >= 0 );
+    int result = ctx->Prepare( script_func );
+    RUNTIME_ASSERT( result >= 0 );
 
-        RUNTIME_ASSERT( !CurrentCtx );
-        CurrentCtx = ctx;
-        ScriptCall = true;
-    }
-    else
-    {
-        RUNTIME_ASSERT( func_addr );
-
-        NativeFuncAddr = func_addr;
-        ScriptCall = false;
-    }
+    RUNTIME_ASSERT( !CurrentCtx );
+    CurrentCtx = ctx;
 
     CurrentArg = 0;
 }
 
 void Script::SetArgUChar( uchar value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgByte( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = value;
+    CurrentCtx->SetArgByte( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgUShort( ushort value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgWord( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = value;
+    CurrentCtx->SetArgWord( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgUInt( uint value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgDWord( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = value;
+    CurrentCtx->SetArgDWord( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgUInt64( uint64 value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgQWord( (asUINT) CurrentArg, value );
-    else
-    {
-        *( (uint64*) &NativeArgs[ CurrentArg ] ) = value;
-        CurrentArg++;
-    }
+    CurrentCtx->SetArgQWord( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgBool( bool value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgByte( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = value;
+    CurrentCtx->SetArgByte( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgFloat( float value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgFloat( (asUINT) CurrentArg, value );
-    else
-        *( (float*) &NativeArgs[ CurrentArg ] ) = value;
+    CurrentCtx->SetArgFloat( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgDouble( double value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgDouble( (asUINT) CurrentArg, value );
-    else
-        *( (double*) &NativeArgs[ CurrentArg++ ] ) = value;
+    CurrentCtx->SetArgDouble( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
 void Script::SetArgObject( void* value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = (size_t) value;
+    CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
@@ -2008,7 +1738,7 @@ void Script::SetArgEntity( Entity* value )
 {
     RUNTIME_ASSERT( ( !value || !value->IsDestroyed ) );
 
-    if( ScriptCall && value )
+    if( value )
     {
         ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
         value->AddRef();
@@ -2022,203 +1752,69 @@ void Script::SetArgEntity( Entity* value )
 
 void Script::SetArgAddress( void* value )
 {
-    if( ScriptCall )
-        CurrentCtx->SetArgAddress( (asUINT) CurrentArg, value );
-    else
-        NativeArgs[ CurrentArg ] = (size_t) value;
+    CurrentCtx->SetArgAddress( (asUINT) CurrentArg, value );
     CurrentArg++;
 }
 
-// Taked from AS sources
-#ifdef ALLOW_NATIVE_CALLS
-# if defined ( FO_MSVC )
-static uint64 CallCDeclFunction32( const size_t* args, size_t paramSize, size_t func )
-# else
-static uint64 __attribute( ( __noinline__ ) ) CallCDeclFunction32( const size_t * args, size_t paramSize, size_t func )
-# endif
-{
-    volatile uint64 retQW = 0;
-
-    # if defined ( FO_MSVC )
-    // Copy the data to the real stack. If we fail to do
-    // this we may run into trouble in case of exceptions.
-    __asm
-    {
-        // We must save registers that are used
-        push ecx
-
-        // Clear the FPU stack, in case the called function doesn't do it by itself
-        fninit
-
-        // Copy arguments from script
-        // stack to application stack
-        mov ecx, paramSize
-        mov  eax, args
-        add  eax, ecx
-        cmp  ecx, 0
-        je   endcopy
-copyloop:
-        sub  eax, 4
-        push dword ptr[ eax ]
-        sub  ecx, 4
-        jne  copyloop
-endcopy:
-
-        // Call function
-        call[ func ]
-
-        // Pop arguments from stack
-        add  esp, paramSize
-
-        // Copy return value from EAX:EDX
-        lea  ecx, retQW
-            mov[ ecx ], eax
-            mov  4[ ecx ], edx
-
-        // Restore registers
-        pop  ecx
-    }
-
-    # elif defined ( FO_GCC )
-    // It is not possible to rely on ESP or BSP to refer to variables or arguments on the stack
-    // depending on compiler settings BSP may not even be used, and the ESP is not always on the
-    // same offset from the local variables. Because the code adjusts the ESP register it is not
-    // possible to inform the arguments through symbolic names below.
-
-    // It's not also not possible to rely on the memory layout of the function arguments, because
-    // on some compiler versions and settings the arguments may be copied to local variables with a
-    // different ordering before they are accessed by the rest of the code.
-
-    // I'm copying the arguments into this array where I know the exact memory layout. The address
-    // of this array will then be passed to the inline asm in the EDX register.
-    volatile size_t a[] = { size_t( args ), size_t( paramSize ), size_t( func ) };
-
-    asm __volatile__ (
-        "fninit                 \n"
-        "pushl %%ebx            \n"
-        "movl  %%edx, %%ebx     \n"
-
-        // Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
-        // It is assumed that when entering this function, the stack pointer is already aligned, so we need
-        // to calculate how much we will put on the stack during this call.
-        "movl  4(%%ebx), %%eax  \n"         // paramSize
-        "addl  $4, %%eax        \n"         // counting esp that we will push on the stack
-        "movl  %%esp, %%ecx     \n"
-        "subl  %%eax, %%ecx     \n"
-        "andl  $15, %%ecx       \n"
-        "movl  %%esp, %%eax     \n"
-        "subl  %%ecx, %%esp     \n"
-        "pushl %%eax            \n"         // Store the original stack pointer
-
-        // Copy all arguments to the stack and call the function
-        "movl  4(%%ebx), %%ecx  \n"         // paramSize
-        "movl  0(%%ebx), %%eax  \n"         // args
-        "addl  %%ecx, %%eax     \n"         // push arguments on the stack
-        "cmp   $0, %%ecx        \n"
-        "je    endcopy          \n"
-        "copyloop:              \n"
-        "subl  $4, %%eax        \n"
-        "pushl (%%eax)          \n"
-        "subl  $4, %%ecx        \n"
-        "jne   copyloop         \n"
-        "endcopy:               \n"
-        "call  *8(%%ebx)        \n"
-        "addl  4(%%ebx), %%esp  \n"         // pop arguments
-
-        // Pop the alignment bytes
-        "popl  %%esp            \n"
-        "popl  %%ebx            \n"
-
-        // Copy EAX:EDX to retQW. As the stack pointer has been
-        // restored it is now safe to access the local variable
-        "leal  %1, %%ecx        \n"
-        "movl  %%eax, 0(%%ecx)  \n"
-        "movl  %%edx, 4(%%ecx)  \n"
-        :                                   // output
-        : "d" ( a ), "m" ( retQW )          // input - pass pointer of args in edx, pass pointer of retQW in memory argument
-        : "%eax", "%ecx"                    // clobber
-        );
-    # else
-    #  error Invalid configuration
-    # endif
-
-    return retQW;
-}
-#endif
-
 bool Script::RunPrepared()
 {
-    if( ScriptCall )
+    RUNTIME_ASSERT( CurrentCtx );
+    asIScriptContext* ctx = CurrentCtx;
+    ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+    uint              tick = Timer::FastTick();
+    CurrentCtx = nullptr;
+    ctx_data->StartTick = tick;
+    ctx_data->Parent = asGetActiveContext();
+
+    int result = ctx->Execute();
+
+    #ifdef SCRIPT_WATCHER
+    uint delta = Timer::FastTick() - tick;
+    #endif
+
+    asEContextState state = ctx->GetState();
+    if( state == asEXECUTION_SUSPENDED )
     {
-        RUNTIME_ASSERT( CurrentCtx );
-        asIScriptContext* ctx = CurrentCtx;
-        ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-        uint              tick = Timer::FastTick();
-        CurrentCtx = nullptr;
-        ctx_data->StartTick = tick;
-        ctx_data->Parent = asGetActiveContext();
-
-        int result = ctx->Execute();
-
-        #ifdef SCRIPT_WATCHER
-        uint delta = Timer::FastTick() - tick;
-        #endif
-
-        asEContextState state = ctx->GetState();
-        if( state == asEXECUTION_SUSPENDED )
+        RetValue = 0;
+        return true;
+    }
+    else if( state != asEXECUTION_FINISHED )
+    {
+        if( state != asEXECUTION_EXCEPTION )
         {
-            RetValue = 0;
-            return true;
+            if( state == asEXECUTION_ABORTED )
+                HandleException( ctx, "Execution of script aborted (due to timeout)." );
+            else
+                HandleException( ctx, _str( "Execution of script stopped due to {}.", ContextStatesStr[ (int) state ] ) );
         }
-        else if( state != asEXECUTION_FINISHED )
-        {
-            if( state != asEXECUTION_EXCEPTION )
-            {
-                if( state == asEXECUTION_ABORTED )
-                    HandleException( ctx, "Execution of script aborted (due to timeout)." );
-                else
-                    HandleException( ctx, _str( "Execution of script stopped due to {}.", ContextStatesStr[ (int) state ] ) );
-            }
-            ctx->Abort();
-            ReturnContext( ctx );
-            return false;
-        }
-        #ifdef SCRIPT_WATCHER
-        else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
-        {
-            WriteLog( "Script work time {} in context '{}'.\n", delta, ctx_data->Info );
-        }
-        #endif
-
-        if( result < 0 )
-        {
-            WriteLog( "Context '{}' execute error {}, state '{}'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
-            ctx->Abort();
-            ReturnContext( ctx );
-            return false;
-        }
-
-        RetValue = ctx->GetAddressOfReturnValue();
-        ScriptCall = true;
-
+        ctx->Abort();
         ReturnContext( ctx );
+        return false;
     }
-    else
+    #ifdef SCRIPT_WATCHER
+    else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
     {
-        #ifdef ALLOW_NATIVE_CALLS
-        *(uint64*) RetValue = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
-        ScriptCall = false;
-        #else
-        RUNTIME_ASSERT( !"Native calls is not allowed" );
-        #endif
+        WriteLog( "Script work time {} in context '{}'.\n", delta, ctx_data->Info );
     }
+    #endif
+
+    if( result < 0 )
+    {
+        WriteLog( "Context '{}' execute error {}, state '{}'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
+        ctx->Abort();
+        ReturnContext( ctx );
+        return false;
+    }
+
+    RetValue = ctx->GetAddressOfReturnValue();
+
+    ReturnContext( ctx );
 
     return true;
 }
 
 void Script::RunPreparedSuspend()
 {
-    RUNTIME_ASSERT( ScriptCall );
     RUNTIME_ASSERT( CurrentCtx );
 
     asIScriptContext* ctx = CurrentCtx;
@@ -2283,7 +1879,6 @@ void Script::RunSuspended()
         }
 
         CurrentCtx = ctx;
-        ScriptCall = true;
         RunPrepared();
     }
 }
@@ -2319,7 +1914,6 @@ void Script::RunMandatorySuspended()
             }
 
             CurrentCtx = ctx;
-            ScriptCall = true;
             RunPrepared();
         }
 
@@ -2355,42 +1949,12 @@ void* Script::GetReturnedObject()
 
 float Script::GetReturnedFloat()
 {
-    if( ScriptCall )
-    {
-        return *(float*) RetValue;
-    }
-    else
-    {
-        float f = 0.0f;
-        #ifdef ALLOW_NATIVE_CALLS
-        # ifdef FO_MSVC
-        __asm fstp dword ptr[ f ]
-        # else
-        asm ( "fstps %0 \n" : "=m" ( f ) );
-        # endif
-        #endif
-        return f;
-    }
+    return *(float*) RetValue;
 }
 
 double Script::GetReturnedDouble()
 {
-    if( ScriptCall )
-    {
-        return *(double*) RetValue;
-    }
-    else
-    {
-        double d = 0.0;
-        #ifdef ALLOW_NATIVE_CALLS
-        # ifdef FO_MSVC
-        __asm fstp qword ptr[ d ]
-        # else
-        asm ( "fstpl %0 \n" : "=m" ( d ) );
-        # endif
-        #endif
-        return d;
-    }
+    return *(double*) RetValue;
 }
 
 void* Script::GetReturnedRawAddress()

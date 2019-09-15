@@ -36,14 +36,11 @@ typedef std::function< void ( const string& ) > ExceptionCallback;
 
 struct EngineData
 {
-    ScriptPragmaCallback*                PragmaCB;
-    string                               DllTarget;
-    bool                                 AllowNativeCalls;
-    map< string, pair< string, void* > > LoadedDlls;
-    ScriptInvoker*                       Invoker;
-    ScriptProfiler*                      Profiler;
-    StrIntMap                            CachedEnums;
-    map< string, IntStrMap >             CachedEnumNames;
+    ScriptPragmaCallback*    PragmaCB;
+    ScriptInvoker*           Invoker;
+    ScriptProfiler*          Profiler;
+    StrIntMap                CachedEnums;
+    map< string, IntStrMap > CachedEnumNames;
 };
 
 struct ScriptEntry
@@ -61,16 +58,13 @@ struct EventData;
 class Script
 {
 public:
-    static bool Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
-    static bool InitMono( const string& dll_target, map< string, UCharVec >* assemblies_data );
-    static bool GetMonoAssemblies( const string& dll_target, map< string, UCharVec >& assemblies_data );
+    static bool Init( ScriptPragmaCallback* pragma_callback, const string& target, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
+    static bool InitMono( const string& target, map< string, UCharVec >* assemblies_data );
+    static bool GetMonoAssemblies( const string& target, map< string, UCharVec >& assemblies_data );
     static uint CreateMonoObject( const string& type_name );
     static void CallMonoObjectMethod( const string& type_name, const string& method_name, uint obj, void* arg );
     static void DestroyMonoObject( uint obj );
     static void Finish();
-
-    static void* LoadDynamicLibrary( const string& dll_name );
-    static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
     static bool ReloadScripts( const string& target );
@@ -79,7 +73,7 @@ public:
 
     static asIScriptEngine* GetEngine();
     static void             SetEngine( asIScriptEngine* engine );
-    static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls );
+    static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const string& target );
     static void             RegisterScriptArrayExtensions( asIScriptEngine* engine );
     static void             RegisterScriptDictExtensions( asIScriptEngine* engine );
     static void             RegisterScriptStdStringExtensions( asIScriptEngine* engine );

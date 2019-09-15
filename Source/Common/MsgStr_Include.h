@@ -464,7 +464,6 @@
 
 #define STR_INTERNAL_SCRIPT_MODULE         ( 100 )
 #define STR_INTERNAL_SCRIPT_MONO_DLLS      ( 10000 )
-#define STR_INTERNAL_SCRIPT_DLLS           ( 50000 )
 #define STR_INTERNAL_SCRIPT_PRAGMAS        ( 90000 )
 
 // ***************************************************************************************

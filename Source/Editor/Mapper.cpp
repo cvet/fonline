@@ -4216,7 +4216,7 @@ bool FOMapper::InitScriptSystem()
 
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_MAPPER );
-    if( !Script::Init( pragma_callback, "MAPPER", true, 0, 0, false ) )
+    if( !Script::Init( pragma_callback, "MAPPER", 0, false, false ) )
     {
         WriteLog( "Script system initialization fail.\n" );
         return false;

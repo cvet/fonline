@@ -16,7 +16,6 @@
 class PropertyRegistrator;
 class IgnorePragma;    // just delete
 class GlobalVarPragma; // just delete
-class BindFuncPragma;  // [Extern = ...]
 class EntityPragma;    // class NewEntity { [Protected] uint Field1; }
 class PropertyPragma;  // extend class Critter { [Protected] uint LockerId; }
 class ContentPragma;   // improve dynamic scan
@@ -36,7 +35,6 @@ private:
     bool             isError;
     IgnorePragma*    ignorePragma;
     GlobalVarPragma* globalVarPragma;
-    BindFuncPragma*  bindFuncPragma;
     EntityPragma*    entityPragma;
     PropertyPragma*  propertyPragma;
     ContentPragma*   contentPragma;

@@ -5323,7 +5323,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
-    if( !Script::Init( pragma_callback, "CLIENT", true, 0, 0, false ) )
+    if( !Script::Init( pragma_callback, "CLIENT", 0, false, false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -5350,27 +5350,6 @@ bool FOClient::ReloadScripts()
     Script::Undef( "" );
     Script::Define( "__CLIENT" );
     Script::Define( _str( "__VERSION {}", FO_VERSION ) );
-
-    // Store dlls
-    for( int i = STR_INTERNAL_SCRIPT_DLLS; ; i += 2 )
-    {
-        if( !msg_script.Count( i ) )
-            break;
-        RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
-
-        string   dll_name = msg_script.GetStr( i );
-        UCharVec dll_binary;
-        if( !msg_script.GetBinary( i + 1, dll_binary ) )
-            break;
-
-        // Save to cache
-        File dll;
-        if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
-        {
-            dll.SwitchToWrite();
-            dll.SaveFile( _str( dll_name ).normalizePathSlashes().replace( '/', '.' ) );
-        }
-    }
 
     // Pragmas
     Pragmas pragmas;

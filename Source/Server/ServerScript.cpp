@@ -118,8 +118,7 @@ bool FOServer::InitScriptSystem()
 
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_SERVER );
-    if( !Script::Init( pragma_callback, "SERVER", AllowServerNativeCalls,
-                       sample_time, ( profiler_mode & 1 ) != 0, ( profiler_mode & 2 ) != 0 ) )
+    if( !Script::Init( pragma_callback, "SERVER", sample_time, ( profiler_mode & 1 ) != 0, ( profiler_mode & 2 ) != 0 ) )
     {
         WriteLog( "Script system initialization failed.\n" );
         return false;
@@ -306,7 +305,7 @@ bool FOServer::ReloadClientScripts()
     // Swap engine
     asIScriptEngine*      old_engine = Script::GetEngine();
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
-    asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "CLIENT", AllowClientNativeCalls );
+    asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "CLIENT" );
     if( engine )
         Script::SetEngine( engine );
 
@@ -342,7 +341,6 @@ bool FOServer::ReloadClientScripts()
     Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
     Script::Define( _str( "__VERSION {}", FO_VERSION ) );
-    Script::SetLoadLibraryCompiler( true );
 
     FOMsg msg_script;
     int   errors = 0;
@@ -374,51 +372,12 @@ bool FOServer::ReloadClientScripts()
         errors++;
     }
 
-    // Add native dlls to MSG
-    int         dll_num = STR_INTERNAL_SCRIPT_DLLS;
-    EngineData* ed = (EngineData*) engine->GetUserData();
-    for( auto it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
-    {
-        const string& dll_name = it->first;
-        const string& dll_path = it->second.first;
-
-        // Load libraries for all platforms
-        // Windows, Linux
-        for( int d = 0; d < 2; d++ )
-        {
-            // Make file name
-            const char* extensions[] = { ".dll", ".so" };
-            string      fname = _str( dll_path ).eraseFileExtension() + extensions[ d ];
-
-            // Erase first './'
-            if( _str( fname ).startsWith( "./" ) )
-                fname.erase( 0, 2 );
-
-            // Load dll
-            File dll;
-            if( !dll.LoadFile( fname ) )
-            {
-                if( !d )
-                {
-                    WriteLog( "Can't load dll '{}'.\n", dll_name );
-                    errors++;
-                }
-                continue;
-            }
-
-            // Add dll name and binary
-            msg_script.AddStr( dll_num, fname );
-            msg_script.AddBinary( dll_num + 1, dll.GetBuf(), dll.GetFsize() );
-            dll_num += 2;
-        }
-    }
-
     // Finish
-    Pragmas pragmas = ed->PragmaCB->GetProcessedPragmas();
+    EngineData* ed = (EngineData*) engine->GetUserData();
+    Pragmas     pragmas = ed->PragmaCB->GetProcessedPragmas();
     Script::FinishEngine( engine );
     Script::Undef( "__CLIENT" );
     Script::Define( "__SERVER" );
-    Script::SetLoadLibraryCompiler( false );
 
     asThreadCleanup();
     if( MemoryDebugLevel > 1 )
