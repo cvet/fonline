@@ -10,9 +10,8 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 
 ## Features
 
-* C++17 *(not all refactored but wip)*
 * OpenGL/ES/WebGL and DirectX *(wip)* rendering
-* AngelScript and C# *(wip)* scripting languages
+* C++17, AngelScript, C#/Mono and Fallout Star-Trek as scripting languages *(wip)*
 * Editor and Server target platforms
   * Windows
   * Linux
@@ -32,29 +31,31 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 
 ## Work in progress
 
-Bugs, performance cases and feature requests see at [Issues page](https://github.com/cvet/fonline/issues/12).
+Bugs, performance cases and feature requests see at [Issues page](https://github.com/cvet/fonline/issues).
 
-#### Some major issues
+#### Some major issues (that I work currently)
 
+* Code refactoring (see separate section below)
+* C++ as native scripting language with additional optional submodules for AngelScript, C# and Fallout Star-Trek SL
 * [Multifunctional editor](https://github.com/cvet/fonline/issues/31)
-* [C# as scripting language (Mono)](https://github.com/cvet/fonline/issues/37)
 * [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
-* [Parallelism for server](https://github.com/cvet/fonline/issues/32)
 * [Documentation](https://github.com/cvet/fonline/issues/49)
 
 #### Some minor issues
 
-* [Supporting of UDP](https://github.com/cvet/fonline/issues/14)
 * [Direct X rendering](https://github.com/cvet/fonline/issues/47)
+* [Supporting of UDP](https://github.com/cvet/fonline/issues/14)
 * [Exclude FBX SDK from dependencies](https://github.com/cvet/fonline/issues/22)
+* [Parallelism for server](https://github.com/cvet/fonline/issues/32)
 * [Steam integration](https://github.com/cvet/fonline/issues/38)
 
 #### Code refactoring plans
 
-* Exclude singletons
-* Preprocessor defines to constants
+* Move errors handling model from error code based to exception based
+* Eliminate singletons, statics, global functions
+* Preprocessor defines to constants and enums
 * Eliminate raw pointers, use only smart
-* Hide implementation from headers by pimpl or abstraction
+* Hide implementation details from headers using abstraction
 * Fix all warnings from PVS Studio and other static analyzer tools
 * Improve more unit tests and gain code coverage to at least 80%
 
@@ -73,19 +74,14 @@ You can build project by sh/bat script or directly use [CMake](https://cmake.org
 In any way first you must install CMake version equal or higher then 3.10.2.
 
 For build just run from repository root one of the following scripts:
-* BuildScripts\windows.bat - build Windows binaries (windows only)
-* BuildScripts/linux.sh - build Linux binaries (Unix platforms)
-* BuildScripts/web.sh - build Web binaries (Unix platforms)
-* BuildScripts/android.sh - build Android binaries (Unix platforms)
-* BuildScripts/mac.sh - build macOS binaries (macOS only)
-* BuildScripts/ios.sh - build iOS binaries (macOS only)
+* BuildScripts\windows.bat - build Windows binaries (run on Windows only)
+* BuildScripts/linux.sh - build Linux binaries (run on Unix platforms)
+* BuildScripts/web.sh - build Web binaries (run on Unix platforms)
+* BuildScripts/android.sh - build Android binaries (run on Unix platforms)
+* BuildScripts/mac.sh - build macOS binaries (run on macOS only)
+* BuildScripts/ios.sh - build iOS binaries (run on macOS only)
 
 All output binaries you can find in Build/Binaries directory.
-
-Todo:  
-...write about build with cmake  
-...write about how make final sdk  
-...write about how setup own test environment
 
 ## Third-party packages
 
