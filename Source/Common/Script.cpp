@@ -367,7 +367,7 @@ static void Engine_Log( MonoString* s )
 
 static void SetMonoInternalCalls()
 {
-    mono_add_internal_call( "FOnlineEngine.Engine::Log", Engine_Log );
+    mono_add_internal_call( "FOnlineEngine.Engine::Log", (void*) &Engine_Log );
 }
 
 void Script::Finish()
