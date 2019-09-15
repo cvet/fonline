@@ -104,14 +104,44 @@ set( LIBGCMONOSGEN_SOURCE
 	"repo/mono/sgen/sgen-workers.c"
 	"repo/mono/sgen/sgen-workers.h"
 )
+
 if( EMSCRIPTEN )
 	set( LIBMINI_ARCH_SOURCE
 		"repo/mono/mini/mini-wasm.c"
 		"repo/mono/mini/mini-wasm.h"
 		"repo/mono/mini/exceptions-wasm.c"
 		"repo/mono/mini/tramp-wasm.c" )
-elseif( CMAKE_SIZEOF_VOID_P EQUAL 8 )
-	if( ANDROID OR ( APPLE AND IOS_PLATFORM ) )
+elseif( ANDROID )
+	if( ANDROID_ABI STREQUAL "armeabi-v7a" )
+		set( LIBMINI_ARCH_SOURCE
+			"repo/mono/mini/mini-arm.c"
+			"repo/mono/mini/mini-arm.h"
+			"repo/mono/mini/exceptions-arm.c"
+			"repo/mono/mini/tramp-arm.c"
+			"repo/mono/mini/mini-arm-gsharedvt.c"
+			"repo/mono/mini/tramp-arm-gsharedvt.c" )
+	elseif( ANDROID_ABI STREQUAL "arm64-v8a" )
+		set( LIBMINI_ARCH_SOURCE
+			"repo/mono/mini/mini-arm64.c"
+			"repo/mono/mini/mini-arm64.h"
+			"repo/mono/mini/exceptions-arm64.c"
+			"repo/mono/mini/tramp-arm64.c"
+			"repo/mono/mini/mini-arm64-gsharedvt.h"
+			"repo/mono/mini/mini-arm64-gsharedvt.c"
+			"repo/mono/mini/tramp-arm64-gsharedvt.c" )
+	elseif( ANDROID_ABI STREQUAL "x86" )
+		set( LIBMINI_ARCH_SOURCE
+			"repo/mono/mini/mini-x86.c"
+			"repo/mono/mini/mini-x86.h"
+			"repo/mono/mini/exceptions-x86.c"
+			"repo/mono/mini/tramp-x86.c"
+			"repo/mono/mini/mini-x86-gsharedvt.c"
+			"repo/mono/mini/tramp-x86-gsharedvt.c" )
+	else()
+		message( FATAL_ERROR "Unknown ANDROID_ABI" )
+	endif()
+elseif( APPLE AND IOS_PLATFORM )
+	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMINI_ARCH_SOURCE
 			"repo/mono/mini/mini-arm64.c"
 			"repo/mono/mini/mini-arm64.h"
@@ -121,33 +151,25 @@ elseif( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 			"repo/mono/mini/mini-arm64-gsharedvt.c"
 			"repo/mono/mini/tramp-arm64-gsharedvt.c" )
 	else()
-		set( LIBMINI_ARCH_SOURCE
-			"repo/mono/mini/mini-amd64.c"
-			"repo/mono/mini/mini-amd64.h"
-			"repo/mono/mini/exceptions-amd64.c"
-			"repo/mono/mini/tramp-amd64.c"
-			"repo/mono/mini/mini-amd64-gsharedvt.h"
-			"repo/mono/mini/mini-amd64-gsharedvt.c"
-			"repo/mono/mini/tramp-amd64-gsharedvt.c" )
+		message( FATAL_ERROR "Invalid size pointer" )
 	endif()
+elseif( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	set( LIBMINI_ARCH_SOURCE
+		"repo/mono/mini/mini-amd64.c"
+		"repo/mono/mini/mini-amd64.h"
+		"repo/mono/mini/exceptions-amd64.c"
+		"repo/mono/mini/tramp-amd64.c"
+		"repo/mono/mini/mini-amd64-gsharedvt.h"
+		"repo/mono/mini/mini-amd64-gsharedvt.c"
+		"repo/mono/mini/tramp-amd64-gsharedvt.c" )
 else()
-	if( ANDROID OR ( APPLE AND IOS_PLATFORM ) )
-		set( LIBMINI_ARCH_SOURCE
-			"repo/mono/mini/mini-arm.c"
-			"repo/mono/mini/mini-arm.h"
-			"repo/mono/mini/exceptions-arm.c"
-			"repo/mono/mini/tramp-arm.c"
-			"repo/mono/mini/mini-arm-gsharedvt.c"
-			"repo/mono/mini/tramp-arm-gsharedvt.c" )
-	else()
-		set( LIBMINI_ARCH_SOURCE
-			"repo/mono/mini/mini-x86.c"
-			"repo/mono/mini/mini-x86.h"
-			"repo/mono/mini/exceptions-x86.c"
-			"repo/mono/mini/tramp-x86.c"
-			"repo/mono/mini/mini-x86-gsharedvt.c"
-			"repo/mono/mini/tramp-x86-gsharedvt.c" )
-	endif()
+	set( LIBMINI_ARCH_SOURCE
+		"repo/mono/mini/mini-x86.c"
+		"repo/mono/mini/mini-x86.h"
+		"repo/mono/mini/exceptions-x86.c"
+		"repo/mono/mini/tramp-x86.c"
+		"repo/mono/mini/mini-x86-gsharedvt.c"
+		"repo/mono/mini/tramp-x86-gsharedvt.c" )
 endif()
 #set( LIBMINI_ARCH_SOURCE
 	#"repo/mono/mini/mini-ppc.c"
