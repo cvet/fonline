@@ -85,17 +85,9 @@
 #  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 # elif defined ( FO_ANDROID )
-#  define glGenVertexArraysOES                   glGenVertexArraysOES_
-#  define glBindVertexArrayOES                   glBindVertexArrayOES_
-#  define glDeleteVertexArraysOES                glDeleteVertexArraysOES_
-#  define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG_
-#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG_
-#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG_
-extern PFNGLBINDVERTEXARRAYOESPROC                 glBindVertexArrayOES_;
-extern PFNGLDELETEVERTEXARRAYSOESPROC              glDeleteVertexArraysOES_;
-extern PFNGLGENVERTEXARRAYSOESPROC                 glGenVertexArraysOES_;
-extern PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC glFramebufferTexture2DMultisampleIMG_;
-extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC  glRenderbufferStorageMultisampleIMG_;
+#  define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG
+#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
+#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
 # elif defined ( FO_WEB )
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 #  define glRenderbufferStorageMultisample( a, b, c, d, e )
