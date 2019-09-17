@@ -3,14 +3,22 @@ name: FOnline Build
 on: [push, pull_request]
 
 jobs:
-  windows-build:
-    name: Windows Build
+  windows32-build:
+    name: Windows 32-bit Build
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildScripts\windows.bat
+    - run: BuildScripts\windows32.bat
+  windows64-build:
+    name: Windows 64-bit Build
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts\windows64.bat
   linux-build:
     name: Linux Build
     runs-on: ubuntu-latest
