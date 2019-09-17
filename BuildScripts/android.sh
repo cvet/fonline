@@ -11,21 +11,21 @@ export ANDROID_NATIVE_API_LEVEL_NUMBER=21
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	echo apt-get update
-	(sudo apt-get -y update > /dev/null) || true
+	sudo apt-get -qq -y update || true
 	echo install build-essential
-	sudo apt-get -y install build-essential > /dev/null
+	sudo apt-get -qq -y install build-essential
 	echo install cmake
-	sudo apt-get -y install cmake > /dev/null
+	sudo apt-get -qq -y install cmake
 	echo install unzip
-	sudo apt-get -y install unzip > /dev/null
+	sudo apt-get -qq -y install unzip
 	echo install wput
-	sudo apt-get -y install wput > /dev/null
+	sudo apt-get -qq -y install wput
 	echo install ant
-	sudo apt-get -y install ant > /dev/null
+	sudo apt-get -qq -y install ant
 	echo install openjdk-8-jdk
-	sudo apt-get -y install openjdk-8-jdk > /dev/null
+	sudo apt-get -qq -y install openjdk-8-jdk
 	echo install python
-	sudo apt-get -y install python > /dev/null
+	sudo apt-get -qq -y install python
 fi
 
 mkdir -p $FO_BUILD_DEST

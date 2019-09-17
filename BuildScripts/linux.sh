@@ -7,29 +7,29 @@ export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	echo apt-get update
-	(sudo apt-get -y update > /dev/null) || true
+	sudo apt-get -qq -y update || true
 	echo install clang
-	sudo apt-get -y install clang > /dev/null
+	sudo apt-get -qq -y install clang
 	echo install build-essential
-	sudo apt-get -y install build-essential > /dev/null
+	sudo apt-get -qq -y install build-essential
 	echo install cmake
-	sudo apt-get -y install cmake > /dev/null
+	sudo apt-get -qq -y install cmake
 	echo install wput
-	sudo apt-get -y install wput > /dev/null
+	sudo apt-get -qq -y install wput
 	echo install libx11-dev
-	sudo apt-get -y install libx11-dev > /dev/null
+	sudo apt-get -qq -y install libx11-dev
 	echo install freeglut3-dev
-	sudo apt-get -y install freeglut3-dev > /dev/null
+	sudo apt-get -qq -y install freeglut3-dev
 	echo install libssl-dev
-	sudo apt-get -y install libssl-dev > /dev/null
+	sudo apt-get -qq -y install libssl-dev
 	echo install libevent-dev
-	sudo apt-get -y install libevent-dev > /dev/null
+	sudo apt-get -qq -y install libevent-dev
 	echo install libxi-dev
-	sudo apt-get -y install libxi-dev > /dev/null
+	sudo apt-get -qq -y install libxi-dev
 	echo install curl
-	sudo apt-get -y install curl > /dev/null
+	sudo apt-get -qq -y install curl
 	echo install binutils-dev
-	sudo apt-get -y install binutils-dev > /dev/null
+	sudo apt-get -qq -y install binutils-dev
 fi
 
 mkdir -p $FO_BUILD_DEST

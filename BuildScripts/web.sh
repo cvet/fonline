@@ -9,21 +9,21 @@ export EMSCRIPTEN_VERSION="sdk-1.38.31-64bit"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
 	echo apt-get update
-	(sudo apt-get -y update > /dev/null) || true
+	sudo apt-get -qq -y update || true
 	echo install build-essential
-	sudo apt-get -y install build-essential > /dev/null
+	sudo apt-get -qq -y install build-essential
 	echo install cmake
-	sudo apt-get -y install cmake > /dev/null
+	sudo apt-get -qq -y install cmake
 	echo install wput
-	sudo apt-get -y install wput > /dev/null
+	sudo apt-get -qq -y install wput
 	echo install python
-	sudo apt-get -y install python > /dev/null
+	sudo apt-get -qq -y install python
 	echo install nodejs
-	sudo apt-get -y install nodejs > /dev/null
+	sudo apt-get -qq -y install nodejs
 	echo install default-jre
-	sudo apt-get -y install default-jre > /dev/null
+	sudo apt-get -qq -y install default-jre
 	echo install git-core
-	sudo apt-get -y install git-core > /dev/null
+	sudo apt-get -qq -y install git-core
 fi
 
 mkdir -p $FO_BUILD_DEST
