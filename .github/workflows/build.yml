@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-      runs-on: windows-latest
+    runs-on: windows-latest
     steps:
     - uses: actions/checkout
     - name: Windows Build
@@ -16,25 +16,25 @@ jobs:
     - name: Linux Build
       run: BuildScripts/linux.sh
   build:
-      runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout
     - name: Android Build
       run: BuildScripts/android.sh
   build:
-      runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout
     - name: Web Build
       run: BuildScripts/web.sh
   build:
-      runs-on: macOS-latest
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout
     - name: macOS Build
       run: BuildScripts/mac.sh
   build:
-      runs-on: macOS-latest
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout
     - name: iOS Build
