@@ -11,6 +11,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts\windows32.bat
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-windows32
+        path: Build/Binaries
   windows64-build:
     name: Windows 64-bit Build
     runs-on: windows-2019
@@ -19,6 +23,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts\windows64.bat
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-windows64
+        path: Build/Binaries
   linux-build:
     name: Linux Build
     runs-on: ubuntu-18.04
@@ -27,6 +35,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts/linux.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-linux
+        path: Build/Binaries
   android-build:
     name: Android Build
     runs-on: ubuntu-18.04
@@ -35,6 +47,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts/android.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-android
+        path: Build/Binaries
   web-build:
     name: Web Build
     runs-on: ubuntu-18.04
@@ -43,6 +59,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts/web.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-web
+        path: Build/Binaries
   mac-build:
     name: macOS Build
     runs-on: macOS-10.14
@@ -51,6 +71,10 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts/mac.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-mac
+        path: Build/Binaries
   ios-build:
     name: iOS Build
     runs-on: macOS-10.14
@@ -59,3 +83,7 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildScripts/ios.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-ios
+        path: Build/Binaries
