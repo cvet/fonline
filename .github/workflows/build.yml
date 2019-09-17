@@ -3,39 +3,39 @@ name: FOnline Build
 on: [push, pull_request]
 
 jobs:
-  build:
+  windows-build:
+    name: Windows Build
     runs-on: windows-latest
     steps:
     - uses: actions/checkout
-    - name: Windows Build
       run: BuildScripts\windows.bat
-  build:
+  linux-build:
+    name: Linux Build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout
-    - name: Linux Build
       run: BuildScripts/linux.sh
-  build:
+  android-build:
+    name: Android Build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout
-    - name: Android Build
       run: BuildScripts/android.sh
-  build:
+  web-build:
+    name: Web Build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout
-    - name: Web Build
       run: BuildScripts/web.sh
-  build:
+  mac-build:
+    name: macOS Build
     runs-on: macOS-latest
     steps:
     - uses: actions/checkout
-    - name: macOS Build
       run: BuildScripts/mac.sh
-  build:
+  ios-build:
+    name: iOS Build
     runs-on: macOS-latest
     steps:
     - uses: actions/checkout
-    - name: iOS Build
       run: BuildScripts/ios.sh
