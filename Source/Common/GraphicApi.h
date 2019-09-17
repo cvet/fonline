@@ -85,7 +85,7 @@
 #  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 # elif defined ( FO_ANDROID )
-#  define glTexImage2DMultisample                glFramebufferTexture2DMultisampleIMG
+#  define glTexImage2DMultisample( a, b, c, d, e, f )
 #  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
 #  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
 # elif defined ( FO_WEB )

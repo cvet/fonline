@@ -46,9 +46,8 @@ bool GraphicApi::Init()
     OGL_vertex_array_object = false;
     OGL_get_program_binary = false;
     # ifdef FO_ANDROID
-    OGL_vertex_array_object = true;
-    OGL_framebuffer_multisample = true;
-    OGL_texture_multisample = true;
+    OGL_vertex_array_object = SDL_GL_ExtensionSupported( "GL_OES_vertex_array_object" );
+    OGL_framebuffer_multisample = SDL_GL_ExtensionSupported( "GL_IMG_multisampled_render_to_texture" );
     # endif
     # ifdef FO_IOS
     OGL_vertex_array_object = true;
