@@ -10,14 +10,22 @@ export ANDROID_SDK_VERSION="tools_r25.2.3"
 export ANDROID_NATIVE_API_LEVEL_NUMBER=21
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
-	sudo apt-get -y update || true
-	sudo apt-get -y install build-essential
-	sudo apt-get -y install cmake
-	sudo apt-get -y install unzip
-	sudo apt-get -y install wput
-	sudo apt-get -y install ant
-	sudo apt-get -y install openjdk-8-jdk
-	sudo apt-get -y install python
+	echo apt-get update
+	(sudo apt-get -y update > /dev/null) || true
+	echo install build-essential
+	sudo apt-get -y install build-essential > /dev/null
+	echo install cmake
+	sudo apt-get -y install cmake > /dev/null
+	echo install unzip
+	sudo apt-get -y install unzip > /dev/null
+	echo install wput
+	sudo apt-get -y install wput > /dev/null
+	echo install ant
+	sudo apt-get -y install ant > /dev/null
+	echo install openjdk-8-jdk
+	sudo apt-get -y install openjdk-8-jdk > /dev/null
+	echo install python
+	sudo apt-get -y install python > /dev/null
 fi
 
 mkdir -p $FO_BUILD_DEST

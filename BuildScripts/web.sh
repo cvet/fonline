@@ -8,14 +8,22 @@ export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 export EMSCRIPTEN_VERSION="sdk-1.38.31-64bit"
 
 if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
-	sudo apt-get -y update || true
-	sudo apt-get -y install build-essential
-	sudo apt-get -y install cmake
-	sudo apt-get -y install wput
-	sudo apt-get -y install python
-	sudo apt-get -y install nodejs
-	sudo apt-get -y install default-jre
-	sudo apt-get -y install git-core
+	echo apt-get update
+	(sudo apt-get -y update > /dev/null) || true
+	echo install build-essential
+	sudo apt-get -y install build-essential > /dev/null
+	echo install cmake
+	sudo apt-get -y install cmake > /dev/null
+	echo install wput
+	sudo apt-get -y install wput > /dev/null
+	echo install python
+	sudo apt-get -y install python > /dev/null
+	echo install nodejs
+	sudo apt-get -y install nodejs > /dev/null
+	echo install default-jre
+	sudo apt-get -y install default-jre > /dev/null
+	echo install git-core
+	sudo apt-get -y install git-core > /dev/null
 fi
 
 mkdir -p $FO_BUILD_DEST
