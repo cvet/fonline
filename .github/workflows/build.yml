@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   windows32-build:
     name: Windows 32-bit Build
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -13,7 +13,7 @@ jobs:
     - run: BuildScripts\windows32.bat
   windows64-build:
     name: Windows 64-bit Build
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -21,7 +21,7 @@ jobs:
     - run: BuildScripts\windows64.bat
   linux-build:
     name: Linux Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -29,7 +29,7 @@ jobs:
     - run: BuildScripts/linux.sh
   android-build:
     name: Android Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -37,7 +37,7 @@ jobs:
     - run: BuildScripts/android.sh
   web-build:
     name: Web Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -45,7 +45,7 @@ jobs:
     - run: BuildScripts/web.sh
   mac-build:
     name: macOS Build
-    runs-on: macOS-latest
+    runs-on: macOS-10.14
     steps:
     - uses: actions/checkout@v1
       with:
@@ -53,7 +53,7 @@ jobs:
     - run: BuildScripts/mac.sh
   ios-build:
     name: iOS Build
-    runs-on: macOS-latest
+    runs-on: macOS-10.14
     steps:
     - uses: actions/checkout@v1
       with:
