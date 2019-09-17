@@ -7,35 +7,47 @@ jobs:
     name: Windows Build
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts\windows.bat
   linux-build:
     name: Linux Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts/linux.sh
   android-build:
     name: Android Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts/android.sh
   web-build:
     name: Web Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts/web.sh
   mac-build:
     name: macOS Build
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts/mac.sh
   ios-build:
     name: iOS Build
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
       run: BuildScripts/ios.sh
