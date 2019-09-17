@@ -4,8 +4,38 @@ on: [push]
 
 jobs:
   build:
+      runs-on: windows-latest
+    steps:
+    - uses: actions/checkout
+    - name: Windows Build
+      run: BuildScripts\windows.bat
+  build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout
     - name: Linux Build
       run: BuildScripts/linux.sh
+  build:
+      runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout
+    - name: Android Build
+      run: BuildScripts/android.sh
+  build:
+      runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout
+    - name: Web Build
+      run: BuildScripts/web.sh
+  build:
+      runs-on: macOS-latest
+    steps:
+    - uses: actions/checkout
+    - name: macOS Build
+      run: BuildScripts/mac.sh
+  build:
+      runs-on: macOS-latest
+    steps:
+    - uses: actions/checkout
+    - name: iOS Build
+      run: BuildScripts/ios.sh
