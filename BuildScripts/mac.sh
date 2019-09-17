@@ -5,11 +5,17 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
+if [ -x "$(command -v cmake)" ]; then
+    CMAKE=cmake
+else
+    CMAKE=/Applications/CMake.app/Contents/bin/cmake
+fi
+
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 
 mkdir -p macOS
 cd macOS
-/Applications/CMake.app/Contents/bin/cmake -G Xcode -DFONLINE_OUTPUT_BINARIES_PATH="../" "$ROOT_FULL_PATH"
-/Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline
+$CMAKE -G Xcode -DFONLINE_OUTPUT_BINARIES_PATH="../" "$ROOT_FULL_PATH"
+$CMAKE --build . --config RelWithDebInfo --target FOnline
 cd ../
