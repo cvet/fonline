@@ -91,11 +91,17 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-18.04
     steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
     - run: BuildScripts/linux-unit-tests.sh
   code-coverage:
     name: Code Coverage
     runs-on: ubuntu-18.04
     steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: BuildScripts/linux-code-coverage.sh
@@ -104,6 +110,9 @@ jobs:
     needs: [windows32-build, windows64-build, linux-build, android-build, web-build, mac-build, ios-build, unit-tests, code-coverage]
     runs-on: ubuntu-18.04
     steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
     - uses: actions/download-artifact@v1
       with:
         name: binaries-windows32
