@@ -40,6 +40,14 @@ export CXX=/usr/bin/clang++
 
 mkdir -p Linux
 cd Linux
-cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="../" "$ROOT_FULL_PATH"
+
+if [[ -z "$FO_UNIT_TESTS" ]]; then
+	cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="../" -DFONLINE_UNIT_TESTS=1 "$ROOT_FULL_PATH"
+elif [[ -z "$FO_CODE_COVERAGE" ]]; then
+	cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="../" -DFONLINE_CODE_COVERAGE=1 "$ROOT_FULL_PATH"
+else
+	cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="../" "$ROOT_FULL_PATH"
+fi
+
 make -j$(nproc)
 cd ../
