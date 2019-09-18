@@ -35,8 +35,8 @@ fi
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 
-# export CC=/usr/bin/clang
-# export CXX=/usr/bin/clang++
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
 
 mkdir -p Linux
 cd Linux
