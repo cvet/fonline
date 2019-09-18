@@ -1,4 +1,4 @@
-name: FOnline Build
+name: FOnline SDK
 
 on: [push, pull_request]
 
@@ -87,3 +87,44 @@ jobs:
       with:
         name: binaries-ios
         path: Build/Binaries
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-18.04
+	  steps:
+    - run: BuildScripts/linux-unit-tests.sh
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-18.04
+	  steps:
+    - run: BuildScripts/linux-unit-tests.sh
+  make-sdk:
+    name: Make SDK
+    needs: [windows32-build, windows64-build, linux-build, android-build, web-build, mac-build, ios-build, unit-tests, code-coverage]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-windows32
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-windows64
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-linux
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-android
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-web
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-mac
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-ios
+    - run: BuildScripts/make-sdk.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: FOnlineSDK_${GITHUB_SHA:0:7}
+        path: FOnlineSDK_${GITHUB_SHA:0:7}
