@@ -50,4 +50,3 @@ else
 fi
 
 make -j$(nproc)
-cd ../
