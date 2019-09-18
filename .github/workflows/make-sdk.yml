@@ -97,6 +97,7 @@ jobs:
     - run: BuildScripts/linux-unit-tests.sh
   code-coverage:
     name: Code Coverage
+    needs: [unit-tests]
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -137,5 +138,5 @@ jobs:
     - run: BuildScripts/make-sdk.sh
     - uses: actions/upload-artifact@master
       with:
-        name: FOnlineSDK_${GITHUB_SHA:0:7}
-        path: FOnlineSDK_${GITHUB_SHA:0:7}
+        name: FOnlineSDK
+        path: FOnlineSDK
