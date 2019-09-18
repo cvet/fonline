@@ -28,11 +28,13 @@ mkdir "$FO_SDK_PATH/FOnlineTemp"
 cp -r "$ROOT_FULL_PATH/SdkPlaceholder/." "$FO_SDK_PATH/FOnlineData"
 
 if [ "$GITHUB_SHA" ]; then
-	cp -r "$ROOT_FULL_PATH/binaries-windows32/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-windows64/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-windows-win32/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-windows-win64/." "$FO_SDK_PATH/FOnlineData"
 	cp -r "$ROOT_FULL_PATH/binaries-linux/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-android/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-web/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-android-arm32/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-android-arm64/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-web-release/." "$FO_SDK_PATH/FOnlineData"
+	cp -r "$ROOT_FULL_PATH/binaries-web-debug/." "$FO_SDK_PATH/FOnlineData"
 	cp -r "$ROOT_FULL_PATH/binaries-mac/." "$FO_SDK_PATH/FOnlineData"
 	cp -r "$ROOT_FULL_PATH/binaries-ios/." "$FO_SDK_PATH/FOnlineData"
 else
