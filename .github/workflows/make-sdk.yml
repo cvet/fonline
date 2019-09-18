@@ -1,4 +1,4 @@
-name: FOnline SDK
+name: make-sdk
 
 on: [push, pull_request]
 
