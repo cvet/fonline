@@ -1,8 +1,9 @@
 #!/bin/bash -e
 
-export FO_UNIT_TESTS=1
+[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
+
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source "$CUR_DIR/linux.sh"
+$CUR_DIR/linux.sh unit-tests
 
 echo "Run unit tests"
 cd $FO_BUILD_DEST

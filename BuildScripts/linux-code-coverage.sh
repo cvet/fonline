@@ -1,12 +1,13 @@
 #!/bin/bash -e
 
-export FO_CODE_COVERAGE=1
+[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
+
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source "$CUR_DIR/linux.sh"
+$CUR_DIR/linux.sh code-coverage
 
 echo "Run code coverage"
 cd $FO_BUILD_DEST
-$FO_BUILD_DEST/Binaries/Tests/FOnlineCodeCoverage
+./Binaries/Tests/FOnlineCodeCoverage
 
 if [[ -z "$CODECOV_TOKEN" ]]; then
 	echo "Upload reports to codecov.io"

@@ -75,16 +75,20 @@ You can build project by sh/bat script or directly use [CMake](https://cmake.org
 In any way first you must install CMake version equal or higher then 3.10.2.
 
 For build just run from repository root one of the following scripts:
-* BuildScripts\windows.bat - build Windows (both 32-bit and 64-bit) binaries *(run on Windows only)*
-* BuildScripts\windows32.bat - build Windows (32-bit only) binaries *(run on Windows only)*
-* BuildScripts\windows64.bat - build Windows (64-bit only) binaries *(run on Windows only)*
-* BuildScripts/linux.sh - build Linux binaries *(run on Unix platforms)*
-* BuildScripts/web.sh - build Web binaries *(run on Unix platforms)*
-* BuildScripts/android.sh - build Android binaries *(run on Unix platforms)*
-* BuildScripts/mac.sh - build macOS binaries *(run on macOS only)*
-* BuildScripts/ios.sh - build iOS binaries *(run on macOS only)*
+* BuildScripts\windows.bat - build Windows binaries (both win32 and win64) *(run on Windows only)*
+* BuildScripts\windows-win32.bat - build Windows binaries (win32 only) *(run on Windows only)*
+* BuildScripts\windows-win64.bat - build Windows binaries (win64 only) *(run on Windows only)*
+* BuildScripts/linux.sh - build Linux binaries (unit-tests and code-coverage not included) *(run on Unix platforms)*
 * BuildScripts/linux-unit-tests.sh - build and run unit tests *(run on Unix platforms)*
-* BuildScripts/linux-code-coverage.sh - build and run code coverage app *(run on Unix platforms)*
+* BuildScripts/linux-code-coverage.sh - build and run code coverage inspection *(run on Unix platforms)*
+* BuildScripts/web.sh - build Web binaries (both release and debug) *(run on Unix platforms)*
+* BuildScripts/web-release.sh - build Web binaries (release only) *(run on Unix platforms)*
+* BuildScripts/web-debug.sh - build Web binaries (debug only) *(run on Unix platforms)*
+* BuildScripts/android.sh - build Android binaries (both arm32 and arm64) *(run on Unix platforms)*
+* BuildScripts/android-arm32.sh - build Android binaries (arm32 only) *(run on Unix platforms)*
+* BuildScripts/android-arm64.sh - build Android binaries (arm64 only) *(run on Unix platforms)*
+* BuildScripts/mac.sh - build macOS binaries *(run on macOS only)*
+* BuildScripts/ios.sh - build iOS binaries (arm64) *(run on macOS only)*
 * BuildScripts/make-sdk.sh - make final sdk from previous builds *(run on Unix platforms)*
 
 All output binaries you can find in Build/Binaries directory.
