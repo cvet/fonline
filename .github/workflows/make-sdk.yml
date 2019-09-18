@@ -3,32 +3,29 @@ name: make-sdk
 on: [push, pull_request]
 
 jobs:
-  windows32-build:
-    name: Windows 32-bit Build
+  windows-win32:
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildScripts\windows32.bat
+    - run: BuildScripts\windows-win32.bat
     - uses: actions/upload-artifact@master
       with:
-        name: binaries-windows32
+        name: binaries-windows-win32
         path: Build/Binaries
-  windows64-build:
-    name: Windows 64-bit Build
+  windows-win64:
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildScripts\windows64.bat
+    - run: BuildScripts\windows-win64.bat
     - uses: actions/upload-artifact@master
       with:
-        name: binaries-windows64
+        name: binaries-windows-win64
         path: Build/Binaries
-  linux-build:
-    name: Linux Build
+  linux:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -39,32 +36,51 @@ jobs:
       with:
         name: binaries-linux
         path: Build/Binaries
-  android-build:
-    name: Android Build
+  android-arm32:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildScripts/android.sh
+    - run: BuildScripts/android-arm32.sh
     - uses: actions/upload-artifact@master
       with:
-        name: binaries-android
+        name: android-arm32
         path: Build/Binaries
-  web-build:
-    name: Web Build
+  android-arm64:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildScripts/web.sh
+    - run: BuildScripts/android-arm64.sh
     - uses: actions/upload-artifact@master
       with:
-        name: binaries-web
+        name: android-arm64
         path: Build/Binaries
-  mac-build:
-    name: macOS Build
+  web-release:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/web-release.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: web-release
+        path: Build/Binaries
+  web-debug:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/web-debug.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: web-debug
+        path: Build/Binaries
+  mac:
     runs-on: macOS-10.14
     steps:
     - uses: actions/checkout@v1
@@ -75,8 +91,7 @@ jobs:
       with:
         name: binaries-mac
         path: Build/Binaries
-  ios-build:
-    name: iOS Build
+  ios:
     runs-on: macOS-10.14
     steps:
     - uses: actions/checkout@v1
@@ -88,7 +103,6 @@ jobs:
         name: binaries-ios
         path: Build/Binaries
   unit-tests:
-    name: Unit Tests
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -96,7 +110,6 @@ jobs:
         fetch-depth: 1
     - run: BuildScripts/linux-unit-tests.sh
   code-coverage:
-    name: Code Coverage
     needs: [unit-tests]
     runs-on: ubuntu-18.04
     steps:
@@ -108,7 +121,7 @@ jobs:
       run: BuildScripts/linux-code-coverage.sh
   make-sdk:
     name: Make SDK
-    needs: [windows32-build, windows64-build, linux-build, android-build, web-build, mac-build, ios-build, unit-tests, code-coverage]
+    needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage]
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -116,19 +129,25 @@ jobs:
         fetch-depth: 1
     - uses: actions/download-artifact@v1
       with:
-        name: binaries-windows32
+        name: binaries-windows-win32
     - uses: actions/download-artifact@v1
       with:
-        name: binaries-windows64
+        name: binaries-windows-win64
     - uses: actions/download-artifact@v1
       with:
         name: binaries-linux
     - uses: actions/download-artifact@v1
       with:
-        name: binaries-android
+        name: binaries-android-arm32
     - uses: actions/download-artifact@v1
       with:
-        name: binaries-web
+        name: binaries-android-arm64
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-web-release
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-web-debug
     - uses: actions/download-artifact@v1
       with:
         name: binaries-mac
