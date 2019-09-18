@@ -19,7 +19,7 @@ else
 fi
 
 echo "Make FOnline SDK version: ${FO_VERSION}"
-FO_SDK_PATH="FOnlineSDK_$FO_VERSION"
+FO_SDK_PATH="FOnlineSDK"
 
 rm -rf "$FO_SDK_PATH"
 mkdir "$FO_SDK_PATH"
