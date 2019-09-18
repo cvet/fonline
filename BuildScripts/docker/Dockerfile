@@ -10,6 +10,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update && apt-get install -y default-jdk git openssh-client bash unzip curl python-minimal nodejs default-jre git-core wget lftp cmake ant \
   build-essential cmake freeglut3-dev libssl-dev libevent-dev libx11-dev libxi-dev libsdl2-dev binutils-dev clang
 
+# Install git-lfs for pulling large binaries
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN apt-get -qq update && apt-get install -y git-lfs
+
 # Cleaning a bit
 RUN apt-get autoclean
 
