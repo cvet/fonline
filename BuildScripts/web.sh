@@ -60,7 +60,7 @@ if [ "$1" = "" ] || [ "$1" = "release" ]; then
 	cd ../
 fi
 
-if [ "$1" = "" ] || [ "$1" = "release" ]; then
+if [ "$1" = "" ] || [ "$1" = "debug" ]; then
 	echo "Build debug binaries"
 	mkdir -p debug && cd debug
 	cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" -DFONLINE_WEB_DEBUG=ON "$ROOT_FULL_PATH"
