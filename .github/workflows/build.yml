@@ -96,7 +96,9 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-18.04
     steps:
-    - run: BuildScripts/linux-unit-tests.sh
+    - env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: BuildScripts/linux-code-coverage.sh
   make-sdk:
     name: Make SDK
     needs: [windows32-build, windows64-build, linux-build, android-build, web-build, mac-build, ios-build, unit-tests, code-coverage]
