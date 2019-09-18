@@ -90,12 +90,12 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-18.04
-	  steps:
+    steps:
     - run: BuildScripts/linux-unit-tests.sh
   code-coverage:
     name: Code Coverage
     runs-on: ubuntu-18.04
-	  steps:
+    steps:
     - run: BuildScripts/linux-unit-tests.sh
   make-sdk:
     name: Make SDK
