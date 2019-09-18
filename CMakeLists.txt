@@ -886,7 +886,7 @@ if( FONLINE_CODE_COVERAGE AND NOT BUILD_ONLY_CLIENT AND NOT FONLINE_BUILD_ONLY_E
 	target_link_libraries( FOnlineCodeCoverage "gcov" "ryml" "SPARK_Core" "libmono" "ImGui" "fmt" "Angelscript" "AngelscriptExt" "${GLEW_LIB}" "Ogg" "Vorbis" "Theora" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK_LIB}" "${UNQLITE_LIB}" "${FBXSDK_LIB}" "assimp" "${RENDER_LIBS}" "ssl" "crypto" "mongoc_static" "bson_static" "libcurl" "${BACKWARDCPP_LIBS}" "${GLSLANG_LIBS}" "${SPIRV_CROSS_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
-if( FONLINE_BUILD_ONLY_EDITOR OR ( NOT FONLINE_UNIT_TESTS AND NOT FONLINE_CODE_COVERAGE ) )
+if( FONLINE_BUILD_ONLY_EDITOR OR ( NOT BUILD_ONLY_CLIENT AND NOT FONLINE_UNIT_TESTS AND NOT FONLINE_CODE_COVERAGE ) )
 	StatusMessage( "+ FOnlineEditor" )
 	list( APPEND ALL_TARGETS "FOnlineEditor" )
 	add_executable( FOnlineEditor WIN32 ${EDITOR_SOURCE} "Source/Applications/EditorApp.cpp" "Resources/Default.rc" )
