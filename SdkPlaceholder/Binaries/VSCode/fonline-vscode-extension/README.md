@@ -1,3 +1,0 @@
-# fonline-vscode
-
-**Enjoy!**

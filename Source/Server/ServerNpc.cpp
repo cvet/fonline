@@ -993,7 +993,7 @@ void FOServer::Process_Dialog( Client* cl )
         // Special links
         switch( dlg_id )
         {
-        case -3:
+        case uint( -3 ):
         case DIALOG_BARTER:
 label_Barter:
             if( cur_dialog->DlgScript )
@@ -1009,14 +1009,14 @@ label_Barter:
                 cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
             }
             return;
-        case -2:
+        case uint( -2 ):
         case DIALOG_BACK:
             if( cl->Talk.LastDialogId )
             {
                 dlg_id = cl->Talk.LastDialogId;
                 break;
             }
-        case -1:
+        case uint( -1 ):
         case DIALOG_END:
             cl->CloseTalk();
             return;

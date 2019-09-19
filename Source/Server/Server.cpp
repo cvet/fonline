@@ -1893,7 +1893,7 @@ bool FOServer::InitReal()
 
     // Delete intermediate files if engine have been updated
     File fm;
-    if( !fm.LoadFile( File::GetWritePath( "Version.txt" ) ) || _str( "0x{}", fm.GetCStr() ).toInt64() != FO_VERSION || GameOpt.ForceRebuildResources )
+    if( !fm.LoadFile( File::GetWritePath( "Version.txt" ) ) || _str( "0x{}", fm.GetCStr() ).toInt() != FO_VERSION || GameOpt.ForceRebuildResources )
     {
         fm.SetStr( _str( "{:#x}", FO_VERSION ) );
         fm.SaveFile( "Version.txt" );

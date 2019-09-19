@@ -1,0 +1,177 @@
+name: make-sdk
+
+on: [push, pull_request]
+
+jobs:
+  windows-win32:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts\windows-win32.bat
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-windows-win32
+        path: Build/Binaries
+    - uses: actions/upload-artifact@master
+      with:
+        name: sdk-version
+        path: Build/FOnlineVersion.txt
+  windows-win64:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts\windows-win64.bat
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-windows-win64
+        path: Build/Binaries
+  linux:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/linux.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-linux
+        path: Build/Binaries
+  android-arm32:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/android-arm32.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-android-arm32
+        path: Build/Binaries
+  android-arm64:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/android-arm64.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-android-arm64
+        path: Build/Binaries
+  web-release:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/web-release.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-web-release
+        path: Build/Binaries
+  web-debug:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/web-debug.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-web-debug
+        path: Build/Binaries
+  mac:
+    runs-on: macOS-10.14
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/mac.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-mac
+        path: Build/Binaries
+  ios:
+    runs-on: macOS-10.14
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/ios.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: binaries-ios
+        path: Build/Binaries
+  unit-tests:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildScripts/linux-unit-tests.sh
+  code-coverage:
+    needs: [unit-tests]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: BuildScripts/linux-code-coverage.sh
+  make:
+    needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - uses: actions/download-artifact@v1
+      with:
+        name: sdk-version
+    - run: cp -r sdk-version/. Build
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-windows-win32
+    - run: cp -r binaries-windows-win32/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-windows-win64
+    - run: cp -r binaries-windows-win64/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-linux
+    - run: cp -r binaries-linux/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-android-arm32
+    - run: cp -r binaries-android-arm32/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-android-arm64
+    - run: cp -r binaries-android-arm64/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-web-release
+    - run: cp -r binaries-web-release/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-web-debug
+    - run: cp -r binaries-web-debug/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-mac
+    - run: cp -r binaries-mac/. Build/Binaries
+    - uses: actions/download-artifact@v1
+      with:
+        name: binaries-ios
+    - run: cp -r binaries-ios/. Build/Binaries
+    - run: BuildScripts/make-sdk.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: FOnlineSDK
+        path: FOnlineSDK

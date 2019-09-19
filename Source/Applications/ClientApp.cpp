@@ -48,7 +48,7 @@ static int main_disabled( int argc, char** argv )
     #endif
 
     // Start message
-    WriteLog( "Starting FOnline (version {:#x})...\n", FO_VERSION );
+    WriteLog( "Starting FOnline ({:#x})...\n", FO_VERSION );
 
     // Loop
     #if defined ( FO_IOS )

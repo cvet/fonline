@@ -18,9 +18,6 @@ pipeline {
           }
           steps {
             sh './BuildScripts/android.sh'
-            dir('Build/') {
-              stash name: 'android', includes: 'Binaries/**'
-            }
           }
         }
         stage('Build Linux') {
@@ -33,9 +30,6 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/linux.sh'
-              dir('Build/') {
-                stash name: 'linux', includes: 'Binaries/**'
-              }
             }
           }
         }
@@ -49,9 +43,6 @@ pipeline {
           steps {
             container('jnlp') {
               sh './BuildScripts/web.sh'
-              dir('Build/') {
-                stash name: 'web', includes: 'Binaries/**'
-              }
             }
           }
         }
@@ -63,9 +54,6 @@ pipeline {
           }
           steps {
             bat 'BuildScripts\\windows.bat'
-            dir('Build/') {
-              stash name: 'windows', includes: 'Binaries/**'
-            }
           }
           post {
             cleanup {
@@ -81,9 +69,6 @@ pipeline {
           }
           steps {
             sh './BuildScripts/mac.sh'
-            dir('Build/') {
-              stash name: 'mac', includes: 'Binaries/**'
-            }
           }
           post {
             cleanup {
@@ -99,9 +84,6 @@ pipeline {
           }
           steps {
             sh './BuildScripts/ios.sh'
-            dir('Build/') {
-              stash name: 'ios', includes: 'Binaries/**'
-            }
           }
           post {
             cleanup {
@@ -109,36 +91,6 @@ pipeline {
             }
           }
         }
-      }
-    }
-    stage('Create Build Artifacts') {
-      agent {
-        node {
-          label 'master'
-        }
-      }
-      steps {
-        dir('SdkPlaceholder')
-        {
-          sh 'rm -rf ./Binaries/ReadMe.txt'
-          unstash 'android'
-          unstash 'linux'
-          unstash 'web'
-          unstash 'windows'
-          unstash 'mac'
-          unstash 'ios'
-          sh 'zip -r -0 ${GIT_COMMIT}.zip ./'
-        }
-      }
-      post {
-        success {
-          dir('SdkPlaceholder') {
-            archiveArtifacts artifacts: "${GIT_COMMIT}.zip", fingerprint: true
-          }
-        }
-        cleanup {
-          deleteDir()
-        }        
       }
     }
   }

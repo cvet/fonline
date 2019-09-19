@@ -16,6 +16,6 @@
 # define TEST_SECTION()                     if( !!( __LINE__ ) )
 #endif
 
-extern void CatchExceptions( const string& app_name, int64 app_ver );
+extern void CatchExceptions( const string& app_name, int app_ver );
 extern void CreateDump( const string& appendix, const string& message );
 extern bool RaiseAssert( const string& message, const string& file, int line );
