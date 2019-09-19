@@ -129,30 +129,39 @@ jobs:
     - uses: actions/download-artifact@v1
       with:
         name: binaries-windows-win32
+    - run: cp -r binaries-windows-win32/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-windows-win64
+    - run: cp -r binaries-windows-win64/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-linux
+    - run: cp -r binaries-linux/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-android-arm32
+    - run: cp -r binaries-android-arm32/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-android-arm64
+    - run: cp -r binaries-android-arm64/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-web-release
+    - run: cp -r binaries-web-release/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-web-debug
+    - run: cp -r binaries-web-debug/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-mac
+    - run: cp -r binaries-mac/. Build
     - uses: actions/download-artifact@v1
       with:
         name: binaries-ios
+    - run: cp -r binaries-ios/. Build
     - run: BuildScripts/make-sdk.sh
     - uses: actions/upload-artifact@master
       with:
