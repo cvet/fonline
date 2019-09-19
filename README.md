@@ -29,6 +29,19 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal/square map tiling
 
+## Media
+
+Simplest way is:
+* [Ask google about "fonline" in images](https://www.google.com/search?q=fonline&tbm=isch)
+* [Or ask google about "fonline" in videos](https://www.google.com/search?q=fonline&tbm=vid)
+* [Or ask google about "fonline" in common](https://www.google.com/search?q=fonline)
+
+And two videos to who don't like to google:  
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=K_a0g-Lbqm0" target="_blank">
+<img src="http://img.youtube.com/vi/K_a0g-Lbqm0/0.jpg" alt="FOnline History" width="240" height="180" border="10" /></a>
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=eY5iqW8ssXg" target="_blank">
+<img src="http://img.youtube.com/vi/eY5iqW8ssXg/0.jpg" alt="Last Frintier" width="240" height="180" border="10" /></a>
+
 ## Work in progress
 
 Bugs, performance cases and feature requests see at [Issues page](https://github.com/cvet/fonline/issues).
@@ -71,25 +84,8 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 ## Clone / Build / Setup
 
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
-In any way first you must install CMake version equal or higher then 3.10.2.
-
-For build just run from repository root one of the following scripts:
-* BuildScripts\windows.bat - build Windows binaries (both win32 and win64) *(run on Windows only)*
-* BuildScripts\windows-win32.bat - build Windows binaries (win32 only) *(run on Windows only)*
-* BuildScripts\windows-win64.bat - build Windows binaries (win64 only) *(run on Windows only)*
-* BuildScripts/linux.sh - build Linux binaries (unit-tests and code-coverage not included) *(run on Unix platforms)*
-* BuildScripts/linux-unit-tests.sh - build and run unit tests *(run on Unix platforms)*
-* BuildScripts/linux-code-coverage.sh - build and run code coverage inspection *(run on Unix platforms)*
-* BuildScripts/web.sh - build Web binaries (both release and debug) *(run on Unix platforms)*
-* BuildScripts/web-release.sh - build Web binaries (release only) *(run on Unix platforms)*
-* BuildScripts/web-debug.sh - build Web binaries (debug only) *(run on Unix platforms)*
-* BuildScripts/android.sh - build Android binaries (both arm32 and arm64) *(run on Unix platforms)*
-* BuildScripts/android-arm32.sh - build Android binaries (arm32 only) *(run on Unix platforms)*
-* BuildScripts/android-arm64.sh - build Android binaries (arm64 only) *(run on Unix platforms)*
-* BuildScripts/mac.sh - build macOS binaries *(run on macOS only)*
-* BuildScripts/ios.sh - build iOS binaries (arm64) *(run on macOS only)*
-* BuildScripts/make-sdk.sh - make final sdk from previous builds *(run on Unix platforms)*
-
+In any way first you must install CMake version equal or higher then 3.6.3.  
+Unformation about build scripts you can find at BuildScripts/README.md.  
 All output binaries you can find in Build/Binaries directory.
 
 ## Third-party packages
