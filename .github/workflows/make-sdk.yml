@@ -137,39 +137,39 @@ jobs:
     - uses: actions/download-artifact@v1
       with:
         name: binaries-windows-win32
-    - run: cp -r binaries-windows-win32/. Build
+    - run: cp -r binaries-windows-win32/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-windows-win64
-    - run: cp -r binaries-windows-win64/. Build
+    - run: cp -r binaries-windows-win64/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-linux
-    - run: cp -r binaries-linux/. Build
+    - run: cp -r binaries-linux/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-android-arm32
-    - run: cp -r binaries-android-arm32/. Build
+    - run: cp -r binaries-android-arm32/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-android-arm64
-    - run: cp -r binaries-android-arm64/. Build
+    - run: cp -r binaries-android-arm64/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-web-release
-    - run: cp -r binaries-web-release/. Build
+    - run: cp -r binaries-web-release/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-web-debug
-    - run: cp -r binaries-web-debug/. Build
+    - run: cp -r binaries-web-debug/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-mac
-    - run: cp -r binaries-mac/. Build
+    - run: cp -r binaries-mac/. Build/Binaries
     - uses: actions/download-artifact@v1
       with:
         name: binaries-ios
-    - run: cp -r binaries-ios/. Build
+    - run: cp -r binaries-ios/. Build/Binaries
     - run: BuildScripts/make-sdk.sh
     - uses: actions/upload-artifact@master
       with:
