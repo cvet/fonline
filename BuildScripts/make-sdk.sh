@@ -27,8 +27,8 @@ echo "Copy binaries"
 cp -r "$FO_BUILD_DEST/Binaries/." "$FO_SDK_PATH/FOnlineData/Binaries"
 
 echo "Create symlincs for editor at sdk root"
-cp -r "$FO_SDK_PATH/FOnlineData/Binaries/Editor/." "$FO_SDK_PATH"
-rm -rf "$FO_SDK_PATH/FOnlineData/Binaries/Editor"
+ln -s -r $FO_SDK_PATH/FOnlineData/Binaries/Editor/FOnlineEditor.exe $FO_SDK_PATH/FOnlineEditor.exe.lnk
+ln -s -r $FO_SDK_PATH/FOnlineData/Binaries/Editor/FOnlineEditor $FO_SDK_PATH/FOnlineEditor.lnk
 
 echo "Generate sdk config file"
 echo "$FO_VERSION" > "$FO_SDK_PATH/FOnlineData/FOnlineVersion.txt"
