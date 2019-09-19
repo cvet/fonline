@@ -7,12 +7,13 @@ fi
 
 [ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
 [ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
+[ "$FO_INSTALL_PACKAGES" ] || export FO_INSTALL_PACKAGES=1
 
 echo "Setup environment"
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 export EMSCRIPTEN_VERSION="sdk-1.38.31-64bit"
 
-if [[ -z "$FO_INSTALL_PACKAGES" ]]; then
+if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
 	echo "Install packages"
 	echo "Sudo required"
 	sudo apt-get -qq -y update || true
