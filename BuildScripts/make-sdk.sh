@@ -5,13 +5,13 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
-if [ ! -f "${FO_BUILD_DEST}/FOnlineVersion.txt" ]; then
-	echo "File '${FO_BUILD_DEST}/FOnlineVersion.txt' not exists"
+if [ ! -f "$FO_BUILD_DEST/Binaries/FOnlineVersion.txt" ]; then
+	echo "File '$FO_BUILD_DEST/Binaries/FOnlineVersion.txt' not exists"
 	exit 1
 fi
-FO_VERSION=`cat ${FO_BUILD_DEST}/FOnlineVersion.txt`
+FO_VERSION=`cat $FO_BUILD_DEST/Binaries/FOnlineVersion.txt`
 
-echo "Make FOnline SDK version: ${FO_VERSION}"
+echo "Make FOnline SDK version: $FO_VERSION"
 FO_SDK_PATH="FOnlineSDK"
 
 echo "Make structure"
@@ -33,5 +33,6 @@ ln -s -r $FO_SDK_PATH/FOnlineData/Binaries/Editor/FOnlineEditor $FO_SDK_PATH/FOn
 echo "Generate sdk config file"
 echo "$FO_VERSION" > "$FO_SDK_PATH/FOnlineData/FOnlineVersion.txt"
 echo "$FO_VERSION" > "$FO_SDK_PATH/FOnlineTemp/FOnlineVersion.txt"
+rm -rf "$FO_SDK_PATH/FOnlineData/Binaries/FOnlineVersion.txt"
 
 echo "FOnline SDK ready!"
