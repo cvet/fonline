@@ -5,44 +5,32 @@
 
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
-if [ "$GITHUB_SHA" ]; then
-	FO_VERSION=${GITHUB_SHA:0:7}
-elif [ -d "$FO_BUILD_DEST" ]; then
-	if [ ! -f "${FO_BUILD_DEST}/FOnlineVersion.txt" ]; then
-		echo "File '${FO_BUILD_DEST}/FOnlineVersion.txt' not exists"
-		exit 1
-	fi
-	FO_VERSION=`cat ${FO_BUILD_DEST}/FOnlineVersion.txt`
-else
-	echo "Path '$FO_BUILD_DEST' not exists"
+if [ ! -f "${FO_BUILD_DEST}/FOnlineVersion.txt" ]; then
+	echo "File '${FO_BUILD_DEST}/FOnlineVersion.txt' not exists"
 	exit 1
 fi
+FO_VERSION=`cat ${FO_BUILD_DEST}/FOnlineVersion.txt`
 
 echo "Make FOnline SDK version: ${FO_VERSION}"
 FO_SDK_PATH="FOnlineSDK"
 
+echo "Make structure"
 rm -rf "$FO_SDK_PATH"
 mkdir "$FO_SDK_PATH"
 mkdir "$FO_SDK_PATH/FOnlineData"
 mkdir "$FO_SDK_PATH/FOnlineTemp"
+
+echo "Copy placeholder"
 cp -r "$ROOT_FULL_PATH/SdkPlaceholder/." "$FO_SDK_PATH/FOnlineData"
 
-if [ "$GITHUB_SHA" ]; then
-	cp -r "$ROOT_FULL_PATH/binaries-windows-win32/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-windows-win64/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-linux/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-android-arm32/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-android-arm64/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-web-release/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-web-debug/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-mac/." "$FO_SDK_PATH/FOnlineData"
-	cp -r "$ROOT_FULL_PATH/binaries-ios/." "$FO_SDK_PATH/FOnlineData"
-else
-	cp -r "$FO_BUILD_DEST/Binaries/." "$FO_SDK_PATH/FOnlineData/Binaries"
-fi
+echo "Copy binaries"
+cp -r "$FO_BUILD_DEST/Binaries/." "$FO_SDK_PATH/FOnlineData/Binaries"
 
+echo "Create symlincs for editor at sdk root"
 cp -r "$FO_SDK_PATH/FOnlineData/Binaries/Editor/." "$FO_SDK_PATH"
 rm -rf "$FO_SDK_PATH/FOnlineData/Binaries/Editor"
+
+echo "Generate sdk config file"
 echo "$FO_VERSION" > "$FO_SDK_PATH/FOnlineData/FOnlineVersion.txt"
 echo "$FO_VERSION" > "$FO_SDK_PATH/FOnlineTemp/FOnlineVersion.txt"
 
