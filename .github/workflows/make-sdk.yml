@@ -45,7 +45,7 @@ jobs:
     - run: BuildScripts/android-arm32.sh
     - uses: actions/upload-artifact@master
       with:
-        name: android-arm32
+        name: binaries-android-arm32
         path: Build/Binaries
   android-arm64:
     runs-on: ubuntu-18.04
@@ -56,7 +56,7 @@ jobs:
     - run: BuildScripts/android-arm64.sh
     - uses: actions/upload-artifact@master
       with:
-        name: android-arm64
+        name: binaries-android-arm64
         path: Build/Binaries
   web-release:
     runs-on: ubuntu-18.04
@@ -67,7 +67,7 @@ jobs:
     - run: BuildScripts/web-release.sh
     - uses: actions/upload-artifact@master
       with:
-        name: web-release
+        name: binaries-web-release
         path: Build/Binaries
   web-debug:
     runs-on: ubuntu-18.04
@@ -78,7 +78,7 @@ jobs:
     - run: BuildScripts/web-debug.sh
     - uses: actions/upload-artifact@master
       with:
-        name: web-debug
+        name: binaries-web-debug
         path: Build/Binaries
   mac:
     runs-on: macOS-10.14
