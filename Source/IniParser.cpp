@@ -7,6 +7,8 @@
 #define STR_PRIVATE_APP_END      ']'
 #define STR_PRIVATE_KEY_CHAR     '='
 
+string IniParser::strbuffer = "";
+
 IniParser::IniParser()
 {
     bufPtr = NULL;
@@ -43,14 +45,34 @@ bool IniParser::LoadFilePtr( const char* buf, uint len )
 {
     UnloadFile();
 
-    bufPtr = new char[ len + 1 ];
-    if( !bufPtr )
-        return false;
+	if (strbuffer.capacity() < len)
+		strbuffer.reserve(len);
 
-    memcpy( bufPtr, buf, len );
-    bufPtr[ len ] = 0;
-    Str::Replacement( bufPtr, '\r', '\n', '\n' );
-    bufLen = Str::Length( bufPtr );
+	size_t pos = 0;
+	while ( pos != len )
+	{
+		if (buf[pos] == '\r')
+		{
+			if(pos + 1 != len && buf[pos + 1] == '\n')
+			{
+				strbuffer += '\n';
+				pos++;
+			}
+		}
+		else strbuffer += buf[pos];
+		pos++;
+	}
+
+	len = strbuffer.length();
+	bufPtr = new char[len + 1];
+	if (!bufPtr)
+		return false;
+	strcpy(bufPtr, strbuffer.c_str());
+	bufPtr[ len ] = 0;
+    bufLen = len;
+
+	strbuffer.clear();
+
     return true;
 }
 
@@ -579,3 +601,10 @@ StrSet& IniParser::GetCachedKeys()
 {
     return cachedKeys;
 }
+
+void IniParser::ClearBuffer()
+{
+	strbuffer.clear();
+	strbuffer.resize(0);
+}
+

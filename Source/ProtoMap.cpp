@@ -740,11 +740,11 @@ bool ProtoMap::ReadObjects( FileManager& fm, int version )
 
 bool ProtoMap::LoadTextFormat( const char* buf )
 {
-    IniParser map_ini;
-    map_ini.LoadFilePtr( buf, Str::Length( buf ) );
+	IniParser map_ini;
+	map_ini.LoadFilePtr( buf, Str::Length( buf ) );
 
     // Header
-    memzero( &Header, sizeof( Header ) );
+	memzero( &Header, sizeof( Header ) );
     char* header_str = map_ini.GetApp( APP_HEADER );
     if( header_str )
     {
@@ -848,7 +848,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         return false;
 
     // Tiles
-    char* tiles_str = map_ini.GetApp( APP_TILES );
+	char* tiles_str = map_ini.GetApp( APP_TILES );
     if( tiles_str )
     {
         istrstream istr( tiles_str );
@@ -940,7 +940,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     }
 
     // Objects
-    char* objects_str = map_ini.GetApp( APP_OBJECTS );
+	char* objects_str = map_ini.GetApp( APP_OBJECTS );
     if( objects_str )
     {
         istrstream istr( objects_str );
@@ -1177,7 +1177,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
         delete[] objects_str;
     }
-
+	
     return true;
 }
 
@@ -1722,7 +1722,8 @@ bool ProtoMap::Refresh()
     }
     else
     {
-        // Deprecated
+
+		// Deprecated
         // Check map format version
         // Read version
         uint version_full = fm.GetLEUInt();

@@ -287,15 +287,18 @@ void Str::Replacement( char* str, char from, char to )
 
 void Str::Replacement( char* str, char from1, char from2, char to )
 {
-    while( *str && *( str + 1 ) )
-    {
-        if( *str == from1 && *( str + 1 ) == from2 )
-        {
-            CopyBack( str );
-            *str = to;
-        }
-        ++str;
-    }
+	while (*str && *(str + 1))
+	{
+		if (*str == from1 && *(str + 1) == from2)
+		{
+			CopyBack(str);
+			*str = to;
+		}
+		else
+		{
+			++str;
+		}
+	}
 }
 
 char* Str::EraseFrontBackSpecificChars( char* str )
