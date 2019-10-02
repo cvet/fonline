@@ -1714,6 +1714,10 @@ bool Map::ParseScript( const char* script, bool first_time )
     return true;
 }
 
+void Map::EventInit(bool firsttime)
+{
+}
+
 void Map::EventFinish( bool to_delete )
 {
     if( PrepareScriptFunc( MAP_EVENT_FINISH ) )

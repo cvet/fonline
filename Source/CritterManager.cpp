@@ -537,7 +537,7 @@ Npc* CritterManager::CreateNpc( ushort proto_id, bool copy_data )
     npc->Data.Multihex = -1;
 
     SYNC_LOCK( npc );
-    Job::PushBack( JOB_CRITTER, npc );
+    //Job::PushBack( JOB_CRITTER, npc );
     return npc;
 }
 

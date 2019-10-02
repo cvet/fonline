@@ -288,6 +288,7 @@ public:
     static MutexSynchronizer LogicThreadSync;
     static void SynchronizeLogicThreads();
     static void ResynchronizeLogicThreads();
+	static bool Logic_CritterProccess(Critter* cr);
     static void Logic_Work( void* data );
 
     // Net IO

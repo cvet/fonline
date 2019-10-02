@@ -686,6 +686,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint Id", OFFSETOF( M
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedRound", OFFSETOF( Map, TurnBasedRound ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedTurn", OFFSETOF( Map, TurnBasedTurn ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTurn", OFFSETOF( Map, TurnBasedWholeTurn ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Map", "uint ProccessSleep", OFFSETOF(Map, Data.ProccessSleep))); 
 
 /************************************************************************/
 /* Location                                                             */

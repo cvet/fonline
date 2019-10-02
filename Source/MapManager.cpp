@@ -715,7 +715,15 @@ Map* MapManager::CreateMap( ushort pid_map, Location* loc_map, uint map_id )
     }
 
     SYNC_LOCK( map );
-    Job::PushBack( JOB_MAP, map );
+    
+	if (Script::PrepareContext(ServerFunctions.MapInit, _FUNC_, "map_create"))
+	{
+		Script::SetArgObject(map);
+		Script::SetArgBool(map_id == 0);
+		Script::RunPrepared();
+	}
+	
+	Job::PushBack( JOB_MAP, map );
 
     mapLocker.Lock();
     allMaps.insert( PAIR( map->GetId(), map ) );

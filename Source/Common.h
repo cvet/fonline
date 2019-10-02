@@ -413,6 +413,7 @@ struct ServerScriptFunctions
     int PlayerGetAccess;
     int PlayerAllowCommand;
     int CheckTrapLook;
+	int MapInit;
 } extern ServerFunctions;
 
 // Net events

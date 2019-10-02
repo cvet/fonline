@@ -55,7 +55,9 @@ public:
         uint   ScriptId;
         int    MapDayTime[ 4 ];
         uchar  MapDayColor[ 12 ];
-        uint   Reserved[ 20 ];
+        uint   ProccessSleep;
+        uint   ProccessTick;
+        uint   Reserved[ 18 ];
         int    UserData[ MAP_MAX_DATA ];
     } Data;
 
@@ -191,6 +193,7 @@ private:
 
 public:
     bool ParseScript( const char* script, bool first_time );
+	void EventInit(bool firsttime);
     void EventFinish( bool to_delete );
     void EventLoop( int loop_num );
     void EventInCritter( Critter* cr );

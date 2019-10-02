@@ -594,6 +594,23 @@ void FOServer::ResynchronizeLogicThreads()
     LogicThreadSync.Resynchronize();
 }
 
+bool FOServer::Logic_CritterProccess(Critter* cr)
+{
+	SYNC_LOCK(cr);
+
+	// Player specific
+	if (cr->CanBeRemoved)
+		RemoveClient((Client*)cr);                           // Todo: rework, add to garbage collector
+
+	// Check for removing
+	if (cr->IsNotValid)
+		return false;
+
+	// Process logic
+	ProcessCritter(cr);
+	return true;
+}
+
 void FOServer::Logic_Work( void* data )
 {
     Sleep( 10 );
@@ -679,19 +696,8 @@ void FOServer::Logic_Work( void* data )
         }
         else if( job.Type == JOB_CRITTER )
         {
-            Critter* cr = (Critter*) job.Data;
-            SYNC_LOCK( cr );
-
-            // Player specific
-            if( cr->CanBeRemoved )
-                RemoveClient( (Client*) cr );                           // Todo: rework, add to garbage collector
-
-            // Check for removing
-            if( cr->IsNotValid )
-                continue;
-
-            // Process logic
-            ProcessCritter( cr );
+			if (!Logic_CritterProccess((Critter*)job.Data))
+				continue;
         }
         else if( job.Type == JOB_MAP )
         {
@@ -701,6 +707,17 @@ void FOServer::Logic_Work( void* data )
             // Check for removing
             if( map->IsNotValid )
                 continue;
+
+			// Npc proccess:
+			if( map->GetPlayersCount() != 0 || ( map->Data.ProccessSleep == 0 || map->Data.ProccessTick-- == 0 ) )
+			{
+				map->Data.ProccessTick = map->Data.ProccessSleep;
+
+				PcVec npcs;
+				map->GetNpcs( npcs, false );
+				for (uint i = 0, iend = npcs.size(); i < iend; i++)
+					Logic_CritterProccess(npcs[i]);
+			}
 
             // Process logic
             map->Process();
