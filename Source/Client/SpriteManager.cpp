@@ -117,7 +117,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    #ifdef FO_OGL_ES
+    #ifdef FO_OPENGL_ES
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
@@ -279,7 +279,7 @@ bool SpriteManager::Init()
     GL( glActiveTexture( GL_TEXTURE0 ) );
     GL( glPixelStorei( GL_PACK_ALIGNMENT, 1 ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     GL( glDisable( GL_LIGHTING ) );
     GL( glDisable( GL_COLOR_MATERIAL ) );
     GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
@@ -460,7 +460,7 @@ void SpriteManager::EndScene()
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
     {
         WriteLog( "Unknown place of OpenGL error.\n" );
-        ExitProcess( 0 );
+        exit( 0 );
     }
     sceneBeginned = false;
 }
@@ -974,16 +974,14 @@ void SpriteManager::BindVertexArray( VertexArray* va )
 {
     GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
-    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, X ) ) );
-    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, Diffuse ) ) );
-    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, TU ) ) );
+    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), ATTRIB_OFFSET( Vertex2D, X ) ) );
+    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex2D ), ATTRIB_OFFSET( Vertex2D, Diffuse ) ) );
+    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), ATTRIB_OFFSET( Vertex2D, TU ) ) );
     GL( glEnableVertexAttribArray( 0 ) );
     GL( glEnableVertexAttribArray( 1 ) );
     GL( glEnableVertexAttribArray( 2 ) );
-    #ifndef DISABLE_EGG
-    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, TUEgg ) ) );
+    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), ATTRIB_OFFSET( Vertex2D, TUEgg ) ) );
     GL( glEnableVertexAttribArray( 3 ) );
-    #endif
 }
 
 void SpriteManager::EnableVertexArray( VertexArray* va, uint vertices_count )
@@ -3989,7 +3987,6 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
 
 void SpriteManager::InitializeEgg( const string& egg_name )
 {
-    #ifndef DISABLE_EGG
     eggValid = false;
     eggHx = eggHy = eggX = eggY = 0;
     AnyFrames* egg_frames = LoadAnimation( egg_name );
@@ -4014,7 +4011,6 @@ void SpriteManager::InitializeEgg( const string& egg_name )
     {
         WriteLog( "Load sprite '{}' fail. Egg disabled.\n", egg_name );
     }
-    #endif
 }
 
 bool SpriteManager::CompareHexEgg( ushort hx, ushort hy, int egg_type )
@@ -4194,7 +4190,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         }
 
         // Egg process
-        #ifndef DISABLE_EGG
         bool egg_added = false;
         if( use_egg && spr->EggType && CompareHexEgg( spr->HexX, spr->HexY, spr->EggType ) )
         {
@@ -4234,7 +4229,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 egg_added = true;
             }
         }
-        #endif
 
         // Choose effect
         Effect* effect = ( spr->DrawEffect ? *spr->DrawEffect : nullptr );
@@ -4296,7 +4290,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         }
 
         // Set default texture coordinates for egg texture
-        #ifndef DISABLE_EGG
         if( !egg_added && vBuffer[ pos - 1 ].TUEgg != -1.0f )
         {
             vBuffer[ pos - 1 ].TUEgg = -1.0f;
@@ -4304,7 +4297,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             vBuffer[ pos - 3 ].TUEgg = -1.0f;
             vBuffer[ pos - 4 ].TUEgg = -1.0f;
         }
-        #endif
 
         // Draw
         if( ++curDrawQuad == drawQuadCount )
@@ -4518,7 +4510,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     // Enable smooth
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     if( zoom && *zoom != 1.0f )
         GL( glEnable( prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH ) );
     #endif
@@ -4550,7 +4542,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     DisableScissor();
 
     // Disable smooth
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     if( zoom && *zoom != 1.0f )
         GL( glDisable( prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH ) );
     #endif

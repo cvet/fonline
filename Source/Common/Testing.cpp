@@ -31,12 +31,15 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 # pragma warning( disable : 4091 )
 # pragma warning( disable : 4996 )
 # include <DbgHelp.h>
-# pragma comment(lib, "Dbghelp.lib")
 # include <Psapi.h>
-# pragma comment(lib, "Psapi.lib")
 # include <tlhelp32.h>
 # include "Timer.h"
 # include "FileUtils.h"
+
+# if UINTPTR_MAX == 0xFFFFFFFF
+#  define WIN32BIT
+#  pragma warning( disable : 4748 )
+# endif
 
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 
@@ -68,9 +71,6 @@ void CatchExceptions( const string& app_name, int app_ver )
         SetUnhandledExceptionFilter( nullptr );
 }
 
-# ifdef FO_X86
-#  pragma warning( disable : 4748 )
-# endif
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG   retval = EXCEPTION_CONTINUE_SEARCH;
@@ -237,13 +237,13 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 }
                 else
                 {
-                    # ifdef FO_X86
+                    # ifdef WIN32BIT
                     __asm     label :
                     __asm mov[ context.Ebp ], ebp;
                     __asm     mov[ context.Esp ], esp;
                     __asm mov eax, [ label ];
                     __asm     mov[ context.Eip ], eax;
-                    # else // FO_X64
+                    # else
                     RtlCaptureContext( &context );
                     # endif
                 }
@@ -258,7 +258,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             STACKFRAME64 stack;
             memset( &stack, 0, sizeof( stack ) );
 
-            # ifdef FO_X86
+            # ifdef WIN32BIT
             DWORD machine_type = IMAGE_FILE_MACHINE_I386;
             stack.AddrFrame.Mode   = AddrModeFlat;
             stack.AddrFrame.Offset = context.Ebp;
@@ -266,7 +266,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             stack.AddrPC.Offset    = context.Eip;
             stack.AddrStack.Mode   = AddrModeFlat;
             stack.AddrStack.Offset = context.Esp;
-            # else // FO_X64
+            # else
             DWORD machine_type = IMAGE_FILE_MACHINE_AMD64;
             stack.AddrPC.Offset = context.Rip;
             stack.AddrPC.Mode = AddrModeFlat;
@@ -644,7 +644,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     if( siginfo )
     {
         ShowErrorMessage( message, traceback );
-        ExitProcess( 1 );
+        exit( 1 );
     }
 }
 
@@ -695,7 +695,7 @@ bool RaiseAssert( const string& message, const string& file, int line )
     #endif
 
     // Shut down
-    ExitProcess( 1 );
+    exit( 1 );
     return true;
 }
 

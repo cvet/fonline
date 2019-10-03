@@ -1,17 +1,16 @@
 #pragma once
 
-// Debugging
-// #define DEV_VERSION
-// #define SHOW_DEPRECTAED // All known places with deprecated stuff
-// #define SHOW_ANDROID_TODO
-// #define DISABLE_EGG
-
-// FOnline build target
+// FOnline build target (passed outside)
 #if !defined ( FONLINE_SERVER ) && !defined ( FONLINE_CLIENT ) && !defined ( FONLINE_EDITOR )
-# error "Unknown fonline build target."
+# error "Build target not specified"
+#endif
+#if ( defined ( FONLINE_SERVER ) && ( defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )  ) ) || \
+    ( defined ( FONLINE_CLIENT ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )  ) ) || \
+    ( defined ( FONLINE_EDITOR ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )  ) )
+# error "Multiple build targets not allowed"
 #endif
 
-// Operating system (passed by cmake)
+// Operating system (passed outside)
 // FO_WINDOWS
 // FO_LINUX
 // FO_MAC
@@ -20,63 +19,53 @@
 // FO_WEB
 #if !defined ( FO_WINDOWS ) && !defined ( FO_LINUX ) && !defined ( FO_MAC ) && \
     !defined ( FO_ANDROID ) && !defined ( FO_IOS ) && !defined ( FO_WEB )
-# error "Unknown operating system."
+# error "Unknown operating system"
+#endif
+#if ( defined ( FO_WINDOWS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
+    ( defined ( FO_LINUX ) && ( defined ( FO_WINDOWS ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
+    ( defined ( FO_MAC ) && ( defined ( FO_LINUX ) || defined ( FO_WINDOWS ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
+    ( defined ( FO_ANDROID ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_WINDOWS ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
+    ( defined ( FO_IOS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_WINDOWS ) || defined ( FO_WEB )  ) ) || \
+    ( defined ( FO_WEB ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WINDOWS )  ) )
+# error "Multiple operating systems not allowed"
 #endif
 
 // Rendering
 #if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WEB )
-# define FO_OGL_ES
+# define FO_OPENGL_ES
 #endif
 #if defined ( FO_WINDOWS )
 # define FO_HAVE_DX
 #endif
 
-// Detect compiler
-#if defined ( __GNUC__ )
-# define FO_GCC
-#elif defined ( _MSC_VER ) && !defined ( __MWERKS__ )
-# define FO_MSVC
-#else
-# error "Unknown compiler."
-#endif
-
-// Detect CPU
-#if ( defined ( FO_MSVC ) && defined ( _M_IX86 ) ) || ( defined ( FO_GCC ) && !defined ( __LP64__ ) )
-# define FO_X86
-#elif ( defined ( FO_MSVC ) && defined ( _M_X64 ) ) || ( defined ( FO_GCC ) && defined ( __LP64__ ) )
-# define FO_X64
-#else
-# error "Unknown CPU."
-#endif
-
-// Function name
-#if defined ( FO_MSVC )
-# define _FUNC_      __FUNCTION__
-#elif defined ( FO_GCC )
-# define _FUNC_      __PRETTY_FUNCTION__
-#endif
-
-// Disable deprecated notification in GCC
-#if defined ( FO_GCC )
-# undef __DEPRECATED
-#endif
-
 // Standard API
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-
-#if !defined ( FO_WINDOWS )
-# include <errno.h>
-# include <string.h> // strerror
-# include <unistd.h>
-# define ERRORSTR    strerror( errno )
-# define ExitProcess( code )    exit( code )
-#endif
+#include <cstdlib>
+#include <cstdio>
+#include <cstdarg>
+#include <clocale>
+#include <ctime>
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <algorithm>
+#include <functional>
+#include <sstream>
+#include <map>
+#include <string>
+#include <set>
+#include <list>
+#include <vector>
+#include <deque>
+#include <tuple>
+#include <optional>
+#include <typeinfo>
+#include <typeindex>
+#include <chrono>
 
 #if defined ( FO_MAC ) || defined ( FO_IOS )
 # include <TargetConditionals.h>
 #endif
+
 #if defined ( FO_WEB )
 # include <emscripten.h>
 # include <emscripten/html5.h>
@@ -86,55 +75,46 @@
 # include <signal.h>
 #endif
 
-#include <memory>
-#include <algorithm>
-#include <functional>
-#include <math.h>
-#include <sstream>
-#include <locale.h>
-#include <time.h>
-
-#include <map>
-#include <string>
-#include <set>
-#include <list>
-#include <vector>
-#include <deque>
-#include <sstream>
-#include <tuple>
-
 // String formatting
 #include "fmt/format.h"
 
 // Types
-#if defined ( FO_MSVC )
-using uchar = unsigned char;
-using ushort = unsigned short;
-using uint = unsigned int;
-using uint64 = unsigned __int64;
-using int64 = __int64;
-#elif defined ( FO_GCC )
-# include <inttypes.h>
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
 using uint64 = uint64_t;
 using int64 = int64_t;
-#endif
-
 using hash = uint;
 using max_t = uint;
+
+// Check the sizes of base types
+static_assert( sizeof( char ) == 1 );
+static_assert( sizeof( short ) == 2 );
+static_assert( sizeof( int ) == 4 );
+static_assert( sizeof( int64 ) == 8 );
+static_assert( sizeof( uchar ) == 1 );
+static_assert( sizeof( ushort ) == 2 );
+static_assert( sizeof( uint ) == 4 );
+static_assert( sizeof( uint64 ) == 8 );
+static_assert( sizeof( bool ) == 1 );
+static_assert( sizeof( void* ) >= 4 );
+static_assert( sizeof( void* ) == sizeof( size_t ) );
 
 using std::string;
 using std::list;
 using std::vector;
 using std::map;
+using std::unordered_map;
 using std::multimap;
 using std::set;
 using std::deque;
 using std::pair;
 using std::tuple;
 using std::istringstream;
+using std::initializer_list;
+using std::type_index;
+using std::function;
+using std::optional;
 
 using StrUCharMap = map< string, uchar >;
 using UCharStrMap = map< uchar, string >;
@@ -222,10 +202,7 @@ using UIntHashVecMap = map< uint, HashVec >;
 
 // Network
 #ifdef FO_WINDOWS
-# include <winsock2.h>
-# if defined ( FO_MSVC )
-#  pragma comment( lib, "Ws2_32.lib" )
-# endif
+# include <WinSock2.h>
 #else
 # include <sys/types.h>
 # include <sys/socket.h>
@@ -251,11 +228,10 @@ public:
     fo_exception( const char* message ): exceptionMessage( message ) {}
     template< typename ... Args > fo_exception( const char* format, Args ... args ): exceptionMessage( std::move( fmt::format( format, args ... ) ) ) {}
     ~fo_exception() noexcept = default;
-    const char* what() const noexcept { return exceptionMessage.c_str(); }
+    const char* what() const noexcept override { return exceptionMessage.c_str(); }
 };
 
 // Generic helpers
-#define STATIC_ASSERT( a )                    static_assert( a, # a )
 #define OFFSETOF( s, m )                      ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )                  (void) ( x )
 #define memzero( ptr, size )                  memset( ptr, 0, size )
@@ -279,21 +255,8 @@ public:
 
 #define MAX( a, b )                           ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                           ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
-
 #define PACKUINT64( u32hi, u32lo )            ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
 #define MAKEUINT( ch0, ch1, ch2, ch3 )        ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
-
-#ifdef SHOW_DEPRECATED
-# define DEPRECATED                  MESSAGE( "Deprecated" )
-#else
-# define DEPRECATED
-#endif
-
-#ifdef SHOW_ANDROID_TODO
-# define ANDROID_TODO                MESSAGE( "Android todo" )
-#else
-# define ANDROID_TODO
-#endif
 
 // Floats
 #define PI_VALUE                     ( 3.14159265f )
@@ -606,11 +569,7 @@ public:
 #define ACCESS_TESTER                ( 1 )
 #define ACCESS_MODER                 ( 2 )
 #define ACCESS_ADMIN                 ( 3 )
-#ifdef DEV_VERSION
-# define ACCESS_DEFAULT              ACCESS_ADMIN
-#else
-# define ACCESS_DEFAULT              ACCESS_CLIENT
-#endif
+#define ACCESS_DEFAULT               ACCESS_CLIENT
 
 // Commands
 #define CMD_EXIT                     ( 1 )

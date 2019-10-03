@@ -82,7 +82,7 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.6.3.  
-Unformation about build scripts you can find at BuildScripts/README.md.  
+Information about build scripts you can find at BuildScripts/README.md.  
 All output binaries you can find in Build/Binaries directory.
 
 ## Third-party packages

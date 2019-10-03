@@ -255,7 +255,7 @@ static void AdminWork( void* session_ )
         else if( cmd == "kill" )
         {
             ADMIN_LOG( "Kill whole process.\n" );
-            ExitProcess( 0 );
+            exit( 0 );
         }
         else if( _str( cmd ).startsWith( "log " ) )
         {

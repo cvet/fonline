@@ -9,6 +9,7 @@
 #include "assimp/types.h"
 #include "assimp/scene.h"
 
+#define ATTRIB_OFFSET( s, m )    ( (void*) (size_t) ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 ) )
 #define EFFECT_TEXTURES         ( 10 )
 #define BONES_PER_VERTEX        ( 4 )
 #define MAX_BONES_PER_MODEL     ( 60 )
@@ -36,9 +37,7 @@ struct Vertex2D
     float X, Y;
     uint  Diffuse;
     float TU, TV;
-    #ifndef DISABLE_EGG
     float TUEgg, TVEgg;
-    #endif
 };
 typedef vector< Vertex2D > Vertex2DVec;
 

@@ -753,10 +753,6 @@ void FOServer::Process_ParseToGame( Client* cl )
         return;
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    #ifdef DEV_VERSION
-    cl->Access = ACCESS_ADMIN;
-    #endif
-
     cl->GameState = STATE_PLAYING;
     cl->PingOk( PING_CLIENT_LIFE_TIME * 5 );
 

@@ -4,7 +4,7 @@
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "GluStuff.h"
-#ifndef FO_OGL_ES
+#ifndef FO_OPENGL_ES
 # include "GL/glew.h"
 # include "SDL_opengl.h"
 #else
@@ -12,23 +12,11 @@
 #endif
 #include "SDL_vulkan.h"
 
-#ifdef FO_MSVC
-# pragma comment( lib, "opengl32.lib" )
-# pragma comment( lib, "glu32.lib" )
-# pragma comment( lib, "Version.lib" )
-# pragma comment( lib, "Winmm.lib" )
-# pragma comment( lib, "Imm32.lib" )
-#endif
-
 #ifdef FO_HAVE_DX
 # include <d3d9.h>
-# ifdef FO_MSVC
-#  pragma comment(lib, "d3d9")
-#  pragma comment(lib, "gdi32")
-# endif
 #endif
 
-#ifndef FO_OGL_ES
+#ifndef FO_OPENGL_ES
 # ifdef FO_MAC
 #  undef glGenVertexArrays
 #  undef glBindVertexArray

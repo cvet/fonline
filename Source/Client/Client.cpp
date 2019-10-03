@@ -481,7 +481,7 @@ void FOClient::UpdateBinary()
 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
-    ExitProcess( 0 );
+    exit( 0 );
     #else
     RUNTIME_ASSERT( !"Invalid platform for binary updating" );
     #endif

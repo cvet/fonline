@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "DataFile.h"
 
-#ifdef FO_MSVC
+#ifdef FO_WINDOWS
 # undef CopyFile
 # undef DeleteFile
 #endif

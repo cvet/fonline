@@ -9,15 +9,7 @@
 # include <XInput.h>
 # define DIRECTINPUT_VERSION    0x0800
 # include <dinput.h>
-
-# ifdef FO_MSVC
-#  pragma comment(lib, "xinput")
-# endif
-
-# ifdef FO_MSVC
-#  include <imm.h>
-#  pragma comment(lib, "imm32")
-# endif
+# include <imm.h>
 
 struct CustomVertex
 {
@@ -109,14 +101,12 @@ static void   Platform_SetWindowTitle( ImGuiViewport* viewport, const char* titl
 static void   Platform_SetWindowAlpha( ImGuiViewport* viewport, float alpha );
 static float  Platform_GetWindowDpiScale( ImGuiViewport* viewport );
 static void   Platform_OnChangedViewport( ImGuiViewport* viewport );
-# ifdef FO_MSVC
-static void Platform_SetImeInputPos( ImGuiViewport* viewport, ImVec2 pos );
-# endif
-static void Renderer_CreateWindow( ImGuiViewport* viewport );
-static void Renderer_DestroyWindow( ImGuiViewport* viewport );
-static void Renderer_SetWindowSize( ImGuiViewport* viewport, ImVec2 size );
-static void Renderer_RenderWindow( ImGuiViewport* viewport, void* );
-static void Renderer_SwapBuffers( ImGuiViewport* viewport, void* );
+static void   Platform_SetImeInputPos( ImGuiViewport* viewport, ImVec2 pos );
+static void   Renderer_CreateWindow( ImGuiViewport* viewport );
+static void   Renderer_DestroyWindow( ImGuiViewport* viewport );
+static void   Renderer_SetWindowSize( ImGuiViewport* viewport, ImVec2 size );
+static void   Renderer_RenderWindow( ImGuiViewport* viewport, void* );
+static void   Renderer_SwapBuffers( ImGuiViewport* viewport, void* );
 
 bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
 {
@@ -254,9 +244,7 @@ bool AppGui::InitDX( const string& app_name, bool docking, bool maximized )
         platform_io.Platform_UpdateWindow = Platform_UpdateWindow;
         platform_io.Platform_GetWindowDpiScale = Platform_GetWindowDpiScale;
         platform_io.Platform_OnChangedViewport = Platform_OnChangedViewport;
-        # ifdef FO_MSVC
         platform_io.Platform_SetImeInputPos = Platform_SetImeInputPos;
-        # endif
         platform_io.Renderer_CreateWindow = Renderer_CreateWindow;
         platform_io.Renderer_DestroyWindow = Renderer_DestroyWindow;
         platform_io.Renderer_SetWindowSize = Renderer_SetWindowSize;
@@ -1098,7 +1086,6 @@ static void Platform_OnChangedViewport( ImGuiViewport* viewport )
     UNUSED_VARIABLE( viewport );
 }
 
-# ifdef FO_MSVC
 static void Platform_SetImeInputPos( ImGuiViewport* viewport, ImVec2 pos )
 {
     COMPOSITIONFORM cf = { CFS_FORCE_POSITION, { (LONG) ( pos.x - viewport->Pos.x ), (LONG) ( pos.y - viewport->Pos.y ) }, { 0, 0, 0, 0 } };
@@ -1111,7 +1098,6 @@ static void Platform_SetImeInputPos( ImGuiViewport* viewport, ImVec2 pos )
         }
     }
 }
-# endif
 
 static void UpdateMonitors()
 {

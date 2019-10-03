@@ -106,7 +106,7 @@ static int main_disabled( int argc, char** argv )
     if( Script::GetEngine() )
     {
         Script::RunMandatorySuspended();
-        Script::RaiseInternalEvent( ClientFunctions.Finish, _FUNC_, "Game" );
+        Script::RaiseInternalEvent( ClientFunctions.Finish );
     }
 
     // Memory stats

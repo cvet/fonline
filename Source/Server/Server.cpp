@@ -451,7 +451,7 @@ void FOServer::DrawGui()
         if( Started() && !GameOpt.Quit && ImGui::Button( "Stop & Quit", Gui.ButtonSize ) )
             GameOpt.Quit = true;
         if( !Started() && !Stopping() && ImGui::Button( "Quit", Gui.ButtonSize ) )
-            ExitProcess( 0 );
+            exit( 0 );
         if( Started() && ImGui::Button( "Reload client scripts", Gui.ButtonSize ) )
             RequestReloadClientScripts = true;
         if( ImGui::Button( "Create dump", Gui.ButtonSize ) )

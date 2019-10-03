@@ -100,7 +100,7 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    #ifdef FO_OGL_ES
+    #ifdef FO_OPENGL_ES
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
@@ -140,7 +140,7 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_DEPTH_TEST ) );
     GL( glEnable( GL_TEXTURE_2D ) );
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     GL( glDisable( GL_LIGHTING ) );
     GL( glDisable( GL_COLOR_MATERIAL ) );
     GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
@@ -164,7 +164,7 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
             "}\n";
         const GLchar* fragment_shader =
             "#version 110\n"
-            #ifdef FO_OGL_ES
+            #ifdef FO_OPENGL_ES
             "precision mediump float;\n"
             #endif
             "uniform sampler2D Texture;\n"
@@ -234,7 +234,7 @@ bool AppGui::Init( const string& app_name, bool use_dx, bool docking, bool maxim
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
     #endif
 
@@ -607,7 +607,7 @@ static void RenderDrawData( ImDrawData* draw_data )
 
         if( FixedPipeline )
         {
-            #ifndef FO_OGL_ES
+            #ifndef FO_OPENGL_ES
             GL( glVertexPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, pos ) ) ) );
             GL( glTexCoordPointer( 2, GL_FLOAT, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, uv ) ) ) );
             GL( glColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( ImDrawVert ), (const GLvoid*) ( (const char*) vtx_buffer + IM_OFFSETOF( ImDrawVert, col ) ) ) );
@@ -644,7 +644,7 @@ static void RenderDrawData( ImDrawData* draw_data )
 
                     if( !FixedPipeline )
                     {
-                        #ifndef FO_OGL_ES
+                        #ifndef FO_OPENGL_ES
                         GL( glDrawElementsBaseVertex( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
                                                       (void*) (intptr_t) ( pcmd->IdxOffset * sizeof( ImDrawIdx ) ), (GLint) pcmd->VtxOffset ) );
                         #else
@@ -654,7 +654,7 @@ static void RenderDrawData( ImDrawData* draw_data )
                     }
                     else
                     {
-                        #ifndef FO_OGL_ES
+                        #ifndef FO_OPENGL_ES
                         GL( glDrawElements( GL_TRIANGLES, (GLsizei) pcmd->ElemCount, sizeof( ImDrawIdx ) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer ) );
                         #endif
                     }
@@ -712,7 +712,7 @@ static void SetupRenderState( ImDrawData* draw_data, int fb_width, int fb_height
     }
     else
     {
-        #ifndef FO_OGL_ES
+        #ifndef FO_OPENGL_ES
         GL( glEnableClientState( GL_VERTEX_ARRAY ) );
         GL( glEnableClientState( GL_TEXTURE_COORD_ARRAY ) );
         GL( glEnableClientState( GL_COLOR_ARRAY ) );

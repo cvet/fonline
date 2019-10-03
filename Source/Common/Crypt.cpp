@@ -52,9 +52,8 @@ uint CryptManager::MurmurHash2( const uchar* data, uint len )
     return h;
 }
 
-uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
+uint64 CryptManager::MurmurHash2_64on64( const uchar* data, uint len )
 {
-    #if defined ( FO_X64 )
     const uint    seed = 0;
 
     const uint64  m = 0xc6a4a7935bd1e995ULL;
@@ -103,8 +102,10 @@ uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
     h *= m;
     h ^= h >> r;
     return h;
+}
 
-    #elif defined ( FO_X86 )
+uint64 CryptManager::MurmurHash2_64on32( const uchar* data, uint len )
+{
     const uint  seed = 0;
 
     const uint  m = 0x5bd1e995;
@@ -169,7 +170,6 @@ uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
     uint64 h = h1;
     h = ( h << 32 ) | h2;
     return h;
-    #endif
 }
 
 void CryptManager::XOR( uchar* data, uint len, const uchar* xor_key, uint xor_len )
@@ -540,4 +540,6 @@ bool CryptManager::GetCache( const string& data_name, UCharVec& data )
 TEST_CASE()
 {
     RUNTIME_ASSERT( Crypt.MurmurHash2( (uchar*) "abcdef", 6 ) == 1271458169 );
+    RUNTIME_ASSERT( Crypt.MurmurHash2_64on64( (uchar*) "abcdef", 6 ) == 1271458169 );
+    RUNTIME_ASSERT( Crypt.MurmurHash2_64on32( (uchar*) "abcdef", 6 ) == 1271458169 );
 }

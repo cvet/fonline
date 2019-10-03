@@ -340,12 +340,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
                                  replace( '\r', '_' ).       // EOL's to '_'
                                  replace( '\n', '_' );       // EOL's to '_'
         }
-        #ifdef FO_X64
-        binary_cache_name += "_x64";
-        #endif
-        binary_cache_name += "_";
-        binary_cache_name += _str( "{}", pass );
-        binary_cache_name += ".glslb";
+        binary_cache_name += _str( "_{}_{}.glslb", sizeof( void* ) * 8, pass );
     }
 
     // Load from binary
@@ -411,7 +406,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
                 file_content = file_content.substr( ver_end + 1 );
             }
         }
-        #ifdef FO_OGL_ES
+        #ifdef FO_OPENGL_ES
         version = "precision lowp float;\n";
         #endif
 
@@ -495,9 +490,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
             GL( glBindAttribLocation( program, 0, "InPosition" ) );
             GL( glBindAttribLocation( program, 1, "InColor" ) );
             GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
-            #ifndef DISABLE_EGG
             GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
-            #endif
         }
         else
         {
@@ -511,7 +504,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, File& f
             GL( glBindAttribLocation( program, 7, "InBlendIndices" ) );
         }
 
-        #ifndef FO_OGL_ES
+        #ifndef FO_OPENGL_ES
         if( GL_HAS( get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
         #endif
@@ -784,15 +777,9 @@ bool GraphicLoader::LoadDefaultEffects()
 {
     // Default effects
     uint effect_errors = 0;
-    #ifndef DISABLE_EGG
     LOAD_EFFECT( Effect::Generic, "2D_Default", true, "" );
     LOAD_EFFECT( Effect::Critter, "2D_Default", true, "" );
     LOAD_EFFECT( Effect::Roof, "2D_Default", true, "" );
-    #else
-    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, "" );
-    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, "" );
-    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, "" );
-    #endif
     LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, "" );
     LOAD_EFFECT( Effect::Iface, "Interface_Default", true, "" );
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, "" );

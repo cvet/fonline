@@ -4,9 +4,6 @@
 
 #ifdef FO_WINDOWS
 # include <Mmsystem.h>
-# if defined ( FO_MSVC )
-#  pragma comment(lib,"Winmm.lib")
-# endif
 #else
 # include <sys/time.h>
 #endif
@@ -105,7 +102,7 @@ void Timer::GetCurrentDateTime( DateTimeStamp& dt )
     #endif
 }
 
-#ifdef FO_MSVC
+#ifdef _MSC_VER
 # pragma optimize( "", off )
 #endif
 void Timer::DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft )
@@ -186,7 +183,7 @@ void Timer::FullTimeToDateTime( uint64 ft, DateTimeStamp& dt )
     int m = dt.Month + 12 * a - 2;
     dt.DayOfWeek = ( 7000 + ( dt.Day + y + y / 4 - y / 100 + y / 400 + ( 31 * m ) / 12 ) ) % 7;
 }
-#ifdef FO_MSVC
+#ifdef _MSC_VER
 # pragma optimize( "", on )
 #endif
 
