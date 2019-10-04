@@ -57,7 +57,7 @@ static int main_disabled( int argc, char** argv )
         {
             // Immediate finish
             if( !StartServer || !Server || ( !Server->Started() && !Server->Stopping() ) )
-                ExitProcess( 0 );
+                exit( 0 );
 
             // Graceful finish
             GameOpt.Quit = true;

@@ -51,6 +51,7 @@
 #include <functional>
 #include <sstream>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <set>
 #include <list>
@@ -72,6 +73,7 @@
 #endif
 
 #if !defined ( FO_WINDOWS )
+# include <unistd.h>
 # include <signal.h>
 #endif
 

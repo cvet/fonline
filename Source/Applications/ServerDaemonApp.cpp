@@ -4,6 +4,8 @@
 
 #if defined ( FO_LINUX ) || defined ( FO_MAC )
 # include <sys/stat.h>
+# include <errno.h>
+# include <string.h>
 #endif
 
 #ifndef FO_TESTING
@@ -21,7 +23,7 @@ static int main_disabled( int argc, char** argv )
     pid_t parpid = fork();
     if( parpid < 0 )
     {
-        WriteLog( "Create child process (fork) fail, error '{}'.", ERRORSTR );
+        WriteLog( "Create child process (fork) fail, error '{}'.", strerror( errno ) );
         return 1;
     }
     else if( parpid != 0 )
@@ -36,7 +38,7 @@ static int main_disabled( int argc, char** argv )
 
     if( setsid() < 0 )
     {
-        WriteLog( "Generate process index (setsid) failed, error '{}'.\n", ERRORSTR );
+        WriteLog( "Generate process index (setsid) failed, error '{}'.\n", strerror( errno ) );
         return 1;
     }
 

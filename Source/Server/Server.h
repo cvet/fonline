@@ -20,7 +20,7 @@
 #include "imgui.h"
 
 // Check buffer for error
-#define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
+#define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, (void)0, return )
 #define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                      \
     if( client->Connection->Bin.IsError() )                                                         \
     {                                                                                               \

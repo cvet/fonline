@@ -811,7 +811,7 @@ void FOMapper::ParseKeyboard()
                 SprMngr.DumpAtlases();
                 break;
             case DIK_ESCAPE:
-                ExitProcess( 0 );
+                exit( 0 );
                 break;
             case DIK_ADD:
                 if( !ConsoleEdit && SelectedEntities.empty() )
@@ -4225,7 +4225,7 @@ bool FOMapper::InitScriptSystem()
                                  {
                                      CreateDump( "ScriptException", str );
                                      ShowErrorMessage( str, "" );
-                                     ExitProcess( 1 );
+                                     exit( 1 );
                                  } );
 
     // Bind vars and functions, look bind.h

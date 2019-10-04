@@ -14,7 +14,7 @@ bool OGL_get_program_binary = false;
 bool GraphicApi::Init()
 {
     // Initialize GLEW
-    #ifndef FO_OGL_ES
+    #ifndef FO_OPENGL_ES
     GLenum glew_result = glewInit();
     if( glew_result != GLEW_OK )
     {
@@ -36,7 +36,7 @@ bool GraphicApi::Init()
     #endif
 
     // OpenGL ES extensions
-    #ifdef FO_OGL_ES
+    #ifdef FO_OPENGL_ES
     OGL_version_2_0 = true;
     OGL_vertex_buffer_object = true;
     OGL_framebuffer_object = true;

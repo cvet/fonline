@@ -221,7 +221,7 @@ DialogPack* DialogManager::ParseDialog( const string& pack_name, const string& d
         pack->Texts.push_back( new FOMsg() );
 
         uint str_num = 0;
-        while( str_num = temp_msg.GetStrNumUpper( str_num ) )
+        while( ( str_num = temp_msg.GetStrNumUpper( str_num ) ) )
         {
             uint count = temp_msg.Count( str_num );
             uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000 ) );
