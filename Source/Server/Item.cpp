@@ -83,16 +83,8 @@ CLASS_PROPERTY_IMPL( Item, FlyEffectSpeed );
 Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
-
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
-
-    ChildItems = nullptr;
-    ViewPlaceOnMap = false;
-    SceneryScriptBindId = 0;
-    ViewByCritter = nullptr;
-
-    if( GetCount() == 0 )
-        SetCount( 1 );
+    RUNTIME_ASSERT( GetCount() > 0 );
 }
 
 Item::~Item()
@@ -144,19 +136,6 @@ void Item::SetSortValue( ItemVec& items )
             sort_value = item->GetSortValue() - 1;
     }
     SetSortValue( sort_value );
-}
-
-static bool SortItemsFunc( Item* l, Item* r ) { return l->GetSortValue() < r->GetSortValue(); }
-void        Item::SortItems( ItemVec& items )
-{
-    std::sort( items.begin(), items.end(), SortItemsFunc );
-}
-
-void Item::ClearItems( ItemVec& items )
-{
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-        ( *it )->Release();
-    items.clear();
 }
 
 void Item::ChangeCount( int val )

@@ -81,11 +81,7 @@ CLASS_PROPERTY_IMPL( ItemView, FlyEffectSpeed );
 ItemView::ItemView( uint id, ProtoItem* proto ): Entity( id, EntityType::ItemView, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
-
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemView ) + PropertiesRegistrator->GetWholeDataSize() );
-
-    ChildItems = nullptr;
-
     RUNTIME_ASSERT( GetCount() > 0 );
 }
 
@@ -94,95 +90,11 @@ ItemView::~ItemView()
     MEMORY_PROCESS( MEMORY_ITEM, -(int) ( sizeof( ItemView ) + PropertiesRegistrator->GetWholeDataSize() ) );
 }
 
-void ItemView::SetProto( ProtoItem* proto )
-{
-    RUNTIME_ASSERT( proto );
-    proto->AddRef();
-    Proto->Release();
-    Proto = proto;
-    Props = proto->Props;
-}
-
 ItemView* ItemView::Clone()
 {
-    RUNTIME_ASSERT( Type == EntityType::ItemView );
     ItemView* clone = new ItemView( Id, (ProtoItem*) Proto );
     clone->Props = Props;
     return clone;
-}
-
-void ItemView::SetSortValue( ItemViewVec& items )
-{
-    short sort_value = 0;
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-    {
-        ItemView* item = *it;
-        if( item == this )
-            continue;
-        if( sort_value >= item->GetSortValue() )
-            sort_value = item->GetSortValue() - 1;
-    }
-    SetSortValue( sort_value );
-}
-
-static bool SortItemsFunc( ItemView* l, ItemView* r ) { return l->GetSortValue() < r->GetSortValue(); }
-void        ItemView::SortItems( ItemViewVec& items )
-{
-    std::sort( items.begin(), items.end(), SortItemsFunc );
-}
-
-void ItemView::ClearItems( ItemViewVec& items )
-{
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-        ( *it )->Release();
-    items.clear();
-}
-
-void ItemView::ChangeCount( int val )
-{
-    SetCount( GetCount() + val );
-}
-
-void ItemView::ContSetItem( ItemView* item )
-{
-    if( !ChildItems )
-        ChildItems = new ItemViewVec();
-
-    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
-
-    ChildItems->push_back( item );
-    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
-    item->SetContainerId( Id );
-}
-
-void ItemView::ContEraseItem( ItemView* item )
-{
-    RUNTIME_ASSERT( ChildItems );
-    RUNTIME_ASSERT( item );
-
-    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
-    RUNTIME_ASSERT( it != ChildItems->end() );
-    ChildItems->erase( it );
-
-    item->SetAccessory( ITEM_ACCESSORY_NONE );
-    item->SetContainerId( 0 );
-    item->SetContainerStack( 0 );
-
-    if( ChildItems->empty() )
-        SAFEDEL( ChildItems );
-}
-
-void ItemView::ContGetItems( ItemViewVec& items, uint stack_id )
-{
-    if( !ChildItems )
-        return;
-
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
-    {
-        ItemView* item = *it;
-        if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
-            items.push_back( item );
-    }
 }
 
 uint ItemView::GetCurSprId()
@@ -242,3 +154,47 @@ uint ProtoItem::GetCurSprId()
     uint ticks = anim->Ticks / anim->CntFrm * count;
     return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
 }
+
+#ifdef FONLINE_EDITOR
+void ItemView::ContSetItem( ItemView* item )
+{
+    if( !ChildItems )
+        ChildItems = new ItemViewVec();
+
+    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
+
+    ChildItems->push_back( item );
+    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
+    item->SetContainerId( Id );
+}
+
+void ItemView::ContEraseItem( ItemView* item )
+{
+    RUNTIME_ASSERT( ChildItems );
+    RUNTIME_ASSERT( item );
+
+    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
+    RUNTIME_ASSERT( it != ChildItems->end() );
+    ChildItems->erase( it );
+
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    item->SetContainerId( 0 );
+    item->SetContainerStack( 0 );
+
+    if( ChildItems->empty() )
+        SAFEDEL( ChildItems );
+}
+
+void ItemView::ContGetItems( ItemViewVec& items, uint stack_id )
+{
+    if( !ChildItems )
+        return;
+
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    {
+        ItemView* item = *it;
+        if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
+            items.push_back( item );
+    }
+}
+#endif

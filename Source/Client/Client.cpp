@@ -6226,7 +6226,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
             Self->Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
             if( item->GetStackable() && item_count < item->GetCount() )
             {
-                item->ChangeCount( -(int) item->GetCount() );
+                item->SetCount( item->GetCount() - item_count );
             }
             else
             {

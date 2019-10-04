@@ -145,7 +145,11 @@ void CritterView::AddItem( ItemView* item )
     item->SetCritId( Id );
 
     InvItems.push_back( item );
-    ItemView::SortItems( InvItems );
+
+    std::sort( InvItems.begin(), InvItems.end(), [] ( ItemView * l, ItemView * r )
+               {
+                   return l->GetSortValue() < r->GetSortValue();
+               } );
 
     if( item->GetCritSlot() && !IsAnim() )
         AnimateStay();

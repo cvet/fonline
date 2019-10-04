@@ -1856,25 +1856,24 @@ void HexManager::CollectLightSources()
     #else
     for( auto& item : hexItems )
         if( item->IsStatic() && item->GetIsLight() )
-            lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
+            lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightIntensity(), item->GetLightFlags() ) );
     #endif
 
     // Items on ground
     for( auto& item : hexItems )
         if( !item->IsStatic() && item->GetIsLight() )
-            lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
+            lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightIntensity(), item->GetLightFlags() ) );
 
     // Items in critters slots
     for( auto& kv : allCritters )
     {
         CritterView* cr = kv.second;
         bool         added = false;
-        for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
+        for( auto item : cr->InvItems )
         {
-            ItemView* item = *it_;
             if( item->GetIsLight() && item->GetCritSlot() )
             {
-                lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
+                lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightIntensity(), item->GetLightFlags(), &cr->SprOx, &cr->SprOy ) );
                 added = true;
             }
         }
@@ -4211,8 +4210,8 @@ void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
 
     if( scenery->GetIsLight() )
     {
-        lightSourcesScen.push_back( LightSource( scenery->GetHexX(), scenery->GetHexY(), scenery->LightGetColor(),
-                                                 scenery->LightGetDistance(), scenery->LightGetIntensity(), scenery->LightGetFlags() ) );
+        lightSourcesScen.push_back( LightSource( scenery->GetHexX(), scenery->GetHexY(), scenery->GetLightColor(),
+                                                 scenery->GetLightDistance(), scenery->GetLightIntensity(), scenery->GetLightFlags() ) );
     }
 
     PushItem( scenery );

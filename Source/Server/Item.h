@@ -13,8 +13,7 @@ typedef vector< Item* >    ItemVec;
 class Item: public Entity
 {
 public:
-    // Properties
-    PROPERTIES_HEADER();
+     PROPERTIES_HEADER();
     CLASS_PROPERTY( bool, Stackable );
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
@@ -86,30 +85,19 @@ public:
     CLASS_PROPERTY( short, OffsetY );
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
-public:
+    ItemVec* ChildItems = nullptr;
+    bool     ViewPlaceOnMap = false;
+    uint     SceneryScriptBindId = 0;
+    Critter* ViewByCritter = nullptr;
+
     Item( uint id, ProtoItem* proto );
     ~Item();
 
-    // Internal fields
-    ItemVec* ChildItems;
-    bool     ViewPlaceOnMap;
-    uint     SceneryScriptBindId;
-    Critter* ViewByCritter;
-
-    ProtoItem* GetProtoItem()               { return (ProtoItem*) Proto; }
-    bool       operator==( const uint& id ) { return Id == id; }
+    ProtoItem* GetProtoItem() { return (ProtoItem*) Proto; }
+    void       SetProto( ProtoItem* proto );
     bool       SetScript( asIScriptFunction* func, bool first_time );
-
-    void        SetSortValue( ItemVec& items );
-    static void SortItems( ItemVec& items );
-    static void ClearItems( ItemVec& items );
-
-    bool IsStatic()     { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery()    { return GetIsScenery(); }
-    bool IsWall()       { return GetIsWall(); }
-
-    void ChangeCount( int val );
+    void       SetSortValue( ItemVec& items );
+    void       ChangeCount( int val );
 
     void  ContAddItem( Item*& item, uint stack_id );
     void  ContSetItem( Item* item );
@@ -121,22 +109,10 @@ public:
     bool  ContIsItems();
     void  ContDeleteItems();
 
-    // Colorize
-    bool  IsColorize()  { return GetIsColorize(); }
-    uint  GetColor()    { return GetLightColor() & 0xFFFFFF; }
-    uchar GetAlpha()    { return GetLightColor() >> 24; }
-    uint  GetInvColor() { return GetIsColorizeInv() ? GetLightColor() : 0; }
-
-    // Light
-    uint LightGetHash()      { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
-    int  LightGetIntensity() { return GetLightIntensity(); }
-    int  LightGetDistance()  { return GetLightDistance(); }
-    int  LightGetFlags()     { return GetLightFlags(); }
-    uint LightGetColor()     { return GetLightColor() & 0xFFFFFF; }
-
-    // Radio
+    bool IsStatic()          { return GetIsStatic(); }
+    bool IsAnyScenery()      { return IsScenery() || IsWall(); }
+    bool IsScenery()         { return GetIsScenery(); }
+    bool IsWall()            { return GetIsWall(); }
     bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }
     bool RadioIsRecvActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_RECV ); }
-
-    void SetProto( ProtoItem* proto );
 };

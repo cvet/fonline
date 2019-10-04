@@ -587,7 +587,7 @@ void FOServer::Process( Client* cl )
         }
         else
         {
-            CHECK_IN_BUFF_ERROR_EXT( cl, (void)0, (void)0 );
+            CHECK_IN_BUFF_ERROR_EXT( cl, (void) 0, (void) 0 );
             BIN_END( cl );
         }
 
@@ -636,7 +636,7 @@ void FOServer::Process( Client* cl )
         }
         else
         {
-            CHECK_IN_BUFF_ERROR_EXT( cl, (void)0, (void)0 );
+            CHECK_IN_BUFF_ERROR_EXT( cl, (void) 0, (void) 0 );
             BIN_END( cl );
         }
     }
@@ -659,7 +659,7 @@ void FOServer::Process( Client* cl )
             cl->Connection->Bin.Refresh();
             if( !cl->Connection->Bin.NeedProcess() )
             {
-                CHECK_IN_BUFF_ERROR_EXT( cl, (void)0, (void)0 );
+                CHECK_IN_BUFF_ERROR_EXT( cl, (void) 0, (void) 0 );
                 BIN_END( cl );
                 break;
             }

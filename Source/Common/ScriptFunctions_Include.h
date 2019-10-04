@@ -302,7 +302,6 @@ static int SystemCall( string command, std::function< void(const string&) > log_
 
     return pclose( in );
     #else
-
     return 1;
     #endif
 }

@@ -9,7 +9,6 @@
 class ItemView: public Entity
 {
 public:
-    // Properties
     PROPERTIES_HEADER();
     CLASS_PROPERTY( bool, Stackable );
     CLASS_PROPERTY( bool, Opened );
@@ -82,48 +81,29 @@ public:
     CLASS_PROPERTY( short, OffsetY );
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
-public:
     ItemView( uint id, ProtoItem* proto );
     ~ItemView();
 
-    ItemViewVec* ChildItems;
+    ProtoItem* GetProtoItem() { return (ProtoItem*) Proto; }
+    ItemView*  Clone();
 
-    ProtoItem*  GetProtoItem() { return (ProtoItem*) Proto; }
-    ItemView*   Clone();
-    bool        operator==( const uint& id ) { return Id == id; }
-    void        SetSortValue( ItemViewVec& items );
-    static void SortItems( ItemViewVec& items );
-    static void ClearItems( ItemViewVec& items );
-
-    bool IsStatic()     { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery()    { return GetIsScenery(); }
-    bool IsWall()       { return GetIsWall(); }
-
-    void ChangeCount( int val );
+    bool  IsStatic()     { return GetIsStatic(); }
+    bool  IsAnyScenery() { return IsScenery() || IsWall(); }
+    bool  IsScenery()    { return GetIsScenery(); }
+    bool  IsWall()       { return GetIsWall(); }
+    bool  IsColorize()   { return GetIsColorize(); }
+    uint  GetColor()     { return GetLightColor() & 0xFFFFFF; }
+    uchar GetAlpha()     { return GetLightColor() >> 24; }
+    uint  GetInvColor()  { return GetIsColorizeInv() ? GetLightColor() : 0; }
+    uint  LightGetHash() { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
 
     uint GetCurSprId();
+
+    #ifdef FONLINE_EDITOR
+    ItemViewVec* ChildItems = nullptr;
 
     void ContSetItem( ItemView* item );
     void ContEraseItem( ItemView* item );
     void ContGetItems( ItemViewVec& items, uint stack_id );
-
-    // Colorize
-    bool  IsColorize()  { return GetIsColorize(); }
-    uint  GetColor()    { return GetLightColor() & 0xFFFFFF; }
-    uchar GetAlpha()    { return GetLightColor() >> 24; }
-    uint  GetInvColor() { return GetIsColorizeInv() ? GetLightColor() : 0; }
-
-    // Light
-    uint LightGetHash()      { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
-    int  LightGetIntensity() { return GetLightIntensity(); }
-    int  LightGetDistance()  { return GetLightDistance(); }
-    int  LightGetFlags()     { return GetLightFlags(); }
-    uint LightGetColor()     { return GetLightColor() & 0xFFFFFF; }
-
-    // Radio
-    bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }
-    bool RadioIsRecvActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_RECV ); }
-
-    void SetProto( ProtoItem* proto );
+    #endif
 };
