@@ -7,8 +7,7 @@ class CryptManager
 {
 public:
     hash   MurmurHash2( const uchar* data, uint len );
-    uint64 MurmurHash2_64on64( const uchar* data, uint len );
-    uint64 MurmurHash2_64on32( const uchar* data, uint len );
+    uint64 MurmurHash2_64( const uchar* data, uint len );
     void   XOR( uchar* data, uint len, const uchar* xor_key, uint xor_len );
     string ClientPassHash( const string& name, const string& pass );
 

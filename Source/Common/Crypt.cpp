@@ -10,8 +10,8 @@ CryptManager Crypt;
 
 uint CryptManager::MurmurHash2( const uchar* data, uint len )
 {
-    const uint m = 0x5BD1E995;
     const uint seed = 0;
+    const uint m = 0x5BD1E995;
     const int  r = 24;
     uint       h = seed ^ len;
 
@@ -52,13 +52,11 @@ uint CryptManager::MurmurHash2( const uchar* data, uint len )
     return h;
 }
 
-uint64 CryptManager::MurmurHash2_64on64( const uchar* data, uint len )
+uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
 {
     const uint    seed = 0;
-
     const uint64  m = 0xc6a4a7935bd1e995ULL;
     const int     r = 47;
-
     uint64        h = seed ^ ( len * m );
 
     const uint64* data2 = (const uint64*) data;
@@ -101,74 +99,6 @@ uint64 CryptManager::MurmurHash2_64on64( const uchar* data, uint len )
     h ^= h >> r;
     h *= m;
     h ^= h >> r;
-    return h;
-}
-
-uint64 CryptManager::MurmurHash2_64on32( const uchar* data, uint len )
-{
-    const uint  seed = 0;
-
-    const uint  m = 0x5bd1e995;
-    const int   r = 24;
-
-    uint        h1 = seed ^ len;
-    uint        h2 = 0;
-
-    const uint* data2 = (const uint*) data;
-
-    while( len >= 8 )
-    {
-        uint k1 = *data2++;
-        k1 *= m;
-        k1 ^= k1 >> r;
-        k1 *= m;
-        h1 *= m;
-        h1 ^= k1;
-        len -= 4;
-
-        uint k2 = *data2++;
-        k2 *= m;
-        k2 ^= k2 >> r;
-        k2 *= m;
-        h2 *= m;
-        h2 ^= k2;
-        len -= 4;
-    }
-
-    if( len >= 4 )
-    {
-        uint k1 = *data2++;
-        k1 *= m;
-        k1 ^= k1 >> r;
-        k1 *= m;
-        h1 *= m;
-        h1 ^= k1;
-        len -= 4;
-    }
-
-    switch( len )
-    {
-    case 3:
-        h2 ^= ( (uchar*) data2 )[ 2 ] << 16;
-    case 2:
-        h2 ^= ( (uchar*) data2 )[ 1 ] << 8;
-    case 1:
-        h2 ^= ( (uchar*) data2 )[ 0 ];
-        h2 *= m;
-        break;
-    }
-
-    h1 ^= h2 >> 18;
-    h1 *= m;
-    h2 ^= h1 >> 22;
-    h2 *= m;
-    h1 ^= h2 >> 17;
-    h1 *= m;
-    h2 ^= h1 >> 19;
-    h2 *= m;
-
-    uint64 h = h1;
-    h = ( h << 32 ) | h2;
     return h;
 }
 
@@ -540,6 +470,5 @@ bool CryptManager::GetCache( const string& data_name, UCharVec& data )
 TEST_CASE()
 {
     RUNTIME_ASSERT( Crypt.MurmurHash2( (uchar*) "abcdef", 6 ) == 1271458169 );
-    RUNTIME_ASSERT( Crypt.MurmurHash2_64on64( (uchar*) "abcdef", 6 ) == 1271458169 );
-    RUNTIME_ASSERT( Crypt.MurmurHash2_64on32( (uchar*) "abcdef", 6 ) == 1271458169 );
+    RUNTIME_ASSERT( Crypt.MurmurHash2_64( (uchar*) "abcdef", 6 ) == 13226566493390071673ULL );
 }
