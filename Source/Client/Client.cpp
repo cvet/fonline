@@ -5915,7 +5915,9 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems( ItemView* cont, uint stack_i
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     ItemViewVec items;
+    #ifdef FONLINE_EDITOR
     cont->ContGetItems( items, stack_id );
+    #endif
     return Script::CreateArrayRef( "Item[]", items );
 }
 

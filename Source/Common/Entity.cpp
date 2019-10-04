@@ -99,6 +99,7 @@ EntityVec Entity::GetChildren() const
         for( auto& item : cr->InvItems )
             children.push_back( item );
     }
+    # if defined ( FONLINE_EDITOR )
     else if( Type == EntityType::ItemView || Type == EntityType::ItemHexView )
     {
         ItemView* cont = (ItemView*) this;
@@ -108,6 +109,7 @@ EntityVec Entity::GetChildren() const
                 children.push_back( item );
         }
     }
+    # endif
     #endif
     return children;
 }
