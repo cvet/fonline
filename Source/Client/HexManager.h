@@ -2,10 +2,7 @@
 
 #include "Common.h"
 #include "Entity.h"
-#include "SpriteManager.h"
-#include "ItemView.h"
-#include "CritterView.h"
-#include "ItemHexView.h"
+#include "Sprites.h"
 
 #define MAX_FIND_PATH    ( 600 )
 #define VIEW_WIDTH       ( (int) ( ( GameOpt.ScreenWidth / GameOpt.MapHexWidth + ( ( GameOpt.ScreenWidth % GameOpt.MapHexWidth ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
@@ -24,9 +21,11 @@
 #define MAX_MOVE_OX      ( 30000 )
 #define MAX_MOVE_OY      ( 30000 )
 
-/************************************************************************/
-/* ViewField                                                            */
-/************************************************************************/
+class ResourceManager;
+class ProtoManager;
+class SpriteManager;
+struct RenderTarget;
+struct AnyFrames;
 
 struct ViewField
 {
@@ -36,10 +35,6 @@ struct ViewField
 
     ViewField(): HexX( 0 ), HexY( 0 ), ScrX( 0 ), ScrY( 0 ), ScrXf( 0.0f ), ScrYf( 0.0f ) {};
 };
-
-/************************************************************************/
-/* LightSource                                                          */
-/************************************************************************/
 
 struct LightSource
 {
@@ -57,11 +52,7 @@ struct LightSource
     LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags, short* ox = nullptr, short* oy = nullptr ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ),
                                                                                                                                        OffsX( ox ), OffsY( oy ), LastOffsX( ox ? *ox : 0 ), LastOffsY( oy ? *oy : 0 ) {}
 };
-typedef vector< LightSource > LightSourceVec;
-
-/************************************************************************/
-/* Field                                                                */
-/************************************************************************/
+using LightSourceVec = vector< LightSource >;
 
 struct Field
 {
@@ -72,7 +63,7 @@ struct Field
         short      OffsY;
         uchar      Layer;
     };
-    typedef vector< Tile > TileVec;
+    using TileVec = vector< Tile >;
 
     bool            IsView;
     Sprite*         SpriteChain;
@@ -116,10 +107,6 @@ struct Field
     void  UnvalidateSpriteChain();
 };
 
-/************************************************************************/
-/* Rain                                                                 */
-/************************************************************************/
-
 struct Drop
 {
     uint  CurSprId;
@@ -131,28 +118,29 @@ struct Drop
     Drop(): CurSprId( 0 ), OffsX( 0 ), OffsY( 0 ), GroundOffsY( 0 ), DropCnt( 0 ) {};
     Drop( ushort id, short x, short y, short ground_y ): CurSprId( id ), OffsX( x ), OffsY( y ), GroundOffsY( ground_y ), DropCnt( -1 ) {};
 };
-typedef vector< Drop* > DropVec;
-
-/************************************************************************/
-/* HexField                                                             */
-/************************************************************************/
+using DropVec = vector< Drop* >;
 
 class HexManager
 {
-    // Hexes
-private:
-    ushort     maxHexX, maxHexY;
-    Field*     hexField;
-    char*      hexTrack;
-    AnyFrames* picTrack1, * picTrack2;
-    AnyFrames* picHexMask;
-    bool       isShowTrack;
-    bool       isShowHex;
-    AnyFrames* picHex[ 3 ];
-    string     curDataPrefix;
+    ProtoManager&    protoMngr;
+    SpriteManager&   sprMngr;
+    ResourceManager& resMngr;
+
+    ushort           maxHexX = 0;
+    ushort           maxHexY = 0;
+    Field*           hexField = nullptr;
+    char*            hexTrack = nullptr;
+    AnyFrames*       picTrack1 = nullptr;
+    AnyFrames*       picTrack2 = nullptr;
+    AnyFrames*       picHexMask = nullptr;
+    bool             isShowTrack = false;
+    bool             isShowHex = false;
+    AnyFrames*       picHex[ 3 ] = { nullptr, nullptr, nullptr };
+    string           curDataPrefix = "";
 
 public:
-    uchar SelectAlpha = 100;
+    HexManager( bool mapper_mode, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr );
+    ~HexManager();
 
     void   ResizeField( ushort w, ushort h );
     Field& GetField( ushort hx, ushort hy )    { return hexField[ hy * maxHexX + hx ]; }
@@ -167,22 +155,16 @@ public:
     bool FindPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, UCharVec& steps, int cut );
     bool CutPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut );
     bool TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, CritterViewVec* critters, int find_type, UShortPair* pre_block, UShortPair* block, UShortPairVec* steps, bool check_passed );
-
-    // Center
-public:
     void FindSetCenter( int cx, int cy );
-
-private:
-    void FindSetCenterDir( ushort & hx, ushort & hy, int dirs[ 2 ], int steps );
 
     // Map load
 private:
-    hash  curPidMap;
-    int   curMapTime;
-    int   dayTime[ 4 ];
-    uchar dayColor[ 12 ];
-    hash  curHashTiles;
-    hash  curHashScen;
+    hash  curPidMap = 0;
+    int   curMapTime = -1;
+    int   dayTime[ 4 ] = { 0 };
+    uchar dayColor[ 12 ] = { 0 };
+    hash  curHashTiles = 0;
+    hash  curHashScen = 0;
 
 public:
     bool   IsMapLoaded() { return curPidMap != 0; }
@@ -196,36 +178,41 @@ public:
     uchar* GetMapDayColor();
     void   OnResolutionChanged();
 
-    // Init, finish, restore
 private:
-    bool          mapperMode;
-    RenderTarget* rtMap;
-    RenderTarget* rtLight;
-    RenderTarget* rtFog;
-    uint          rtScreenOX, rtScreenOY;
+    bool          mapperMode = false;
+    RenderTarget* rtMap = nullptr;
+    RenderTarget* rtLight = nullptr;
+    RenderTarget* rtFog = nullptr;
+    uint          rtScreenOX = 0;
+    uint          rtScreenOY = 0;
     Sprites       mainTree;
-    ViewField*    viewField;
+    ViewField*    viewField = nullptr;
 
-    int           screenHexX, screenHexY;
-    int           hTop, hBottom, wLeft, wRight;
-    int           wVisible, hVisible;
+    int           screenHexX = 0;
+    int           screenHexY = 0;
+    int           hTop = 0;
+    int           hBottom = 0;
+    int           wLeft = 0;
+    int           wRight = 0;
+    int           wVisible = 0;
+    int           hVisible = 0;
 
     void InitView( int cx, int cy );
     void ResizeView();
     bool IsVisible( uint spr_id, int ox, int oy );
     bool ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map );
 
-    short*   fogOffsX, * fogOffsY;
-    short    fogLastOffsX, fogLastOffsY;
-    bool     fogForceRerender;
+    short*   fogOffsX = nullptr;
+    short*   fogOffsY = nullptr;
+    short    fogLastOffsX = 0;
+    short    fogLastOffsY = 0;
+    bool     fogForceRerender = false;
     PointVec fogLookPoints;
     PointVec fogShootPoints;
+
     void PrepareFogToDraw();
 
 public:
-    HexManager();
-    bool Init( bool mapper_mode );
-    void Finish();
     void ReloadSprites();
 
     void ChangeZoom( int zoom );     // <0 in, >0 out, 0 normalize
@@ -272,9 +259,10 @@ public:
     // Critters
 private:
     CritterViewMap allCritters;
-    uint           chosenId;
-    uint           critterContourCrId;
-    int            critterContour, crittersContour;
+    uint           chosenId = 0;
+    uint           critterContourCrId = 0;
+    int            critterContour = 0;
+    int            crittersContour = 0;
 
 public:
     void            SetCritter( CritterView* cr );
@@ -314,24 +302,24 @@ public:
 
     // Light
 private:
-    bool           requestRebuildLight;
-    bool           requestRenderLight;
-    uchar*         hexLight;
-    uint           lightPointsCount;
+    bool           requestRebuildLight = false;
+    bool           requestRenderLight = false;
+    uchar*         hexLight = nullptr;
+    uint           lightPointsCount = 0;
     PointVecVec    lightPoints;
     PointVec       lightSoftPoints;
     LightSourceVec lightSources;
     LightSourceVec lightSourcesScen;
 
     // Rebuild data
-    int lightCapacity;
-    int lightMinHx;
-    int lightMaxHx;
-    int lightMinHy;
-    int lightMaxHy;
-    int lightProcentR;
-    int lightProcentG;
-    int lightProcentB;
+    int lightCapacity = 0;
+    int lightMinHx = 0;
+    int lightMaxHx = 0;
+    int lightMinHy = 0;
+    int lightMaxHy = 0;
+    int lightProcentR = 0;
+    int lightProcentG = 0;
+    int lightProcentB = 0;
 
     void PrepareLightToDraw();
     void MarkLight( ushort hx, ushort hy, uint inten );
@@ -353,7 +341,7 @@ public:
 private:
     Sprites tilesTree;
     Sprites roofTree;
-    int     roofSkip;
+    int     roofSkip = 0;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 
@@ -364,24 +352,22 @@ public:
     void MarkRoofNum( int hx, int hy, int num );
 
     // Pixel get
-public:
     bool         GetHexPixel( int x, int y, ushort& hx, ushort& hy );
     ItemHexView* GetItemPixel( int x, int y, bool& item_egg );   // With transparent egg
     CritterView* GetCritterPixel( int x, int y, bool ignore_dead_and_chosen );
     void         GetSmthPixel( int x, int y, ItemHexView*& item, CritterView*& cr );
 
     // Effects
-public:
     bool RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
 
     // Rain
 private:
     DropVec    rainData;
-    int        rainCapacity;
+    int        rainCapacity = 0;
     string     picRainFallName;
     string     picRainDropName;
-    AnyFrames* picRainFall;
-    AnyFrames* picRainDrop;
+    AnyFrames* picRainFall = nullptr;
+    AnyFrames* picRainDrop = nullptr;
     Sprites    roofRainTree;
 
 public:
@@ -389,30 +375,29 @@ public:
     void SetRainAnimation( const char* fall_anim_name, const char* drop_anim_name );
 
     // Cursor
+private:
+    int        drawCursorX = 0;
+    AnyFrames* cursorPrePic = nullptr;
+    AnyFrames* cursorPostPic = nullptr;
+    AnyFrames* cursorXPic = nullptr;
+    int        cursorX = 0;
+    int        cursorY = 0;
+
 public:
     void SetCursorPos( int x, int y, bool show_steps, bool refresh );
     void DrawCursor( uint spr_id );
     void DrawCursor( const char* text );
 
-private:
-    int        drawCursorX;
-    AnyFrames* cursorPrePic, * cursorPostPic, * cursorXPic;
-    int        cursorX, cursorY;
-
-/************************************************************************/
-/* Mapper                                                               */
-/************************************************************************/
-
     #ifdef FONLINE_EDITOR
 public:
-    // Proto map
-    ProtoMap* CurProtoMap;
+    uchar     SelectAlpha = 100;
+    ProtoMap* CurProtoMap = nullptr;
+
     bool SetProtoMap( ProtoMap& pmap );
     void GetProtoMap( ProtoMap& pmap );
 
     // Selected tile, roof
-public:
-    typedef vector< ProtoMap::TileVec > TileVecVec;
+    using TileVecVec = vector< ProtoMap::TileVec >;
     TileVecVec TilesField;
     TileVecVec RoofsField;
     ProtoMap::TileVec& GetTiles( ushort hx, ushort hy, bool is_roof ) { return is_roof ? RoofsField[ hy * GetWidth() + hx ] : TilesField[ hy * GetWidth() + hx ]; }

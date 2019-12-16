@@ -1,6 +1,5 @@
 #include "NetBuffer.h"
 #include "Debugger.h"
-#include "Randomizer.h"
 
 NetBuffer::NetBuffer()
 {
@@ -30,9 +29,14 @@ void NetBuffer::SetEncryptKey( uint seed )
         return;
     }
 
-    auto rnd = Fabric::CreateMersenneTwistRandomizer( seed );
+    std::mt19937 rnd_generator {
+        seed
+    };
+    std::uniform_int_distribution rnd_distr {
+        1, 255
+    };
     for( int i = 0; i < CryptKeysCount; i++ )
-        encryptKeys[ i ] = (uchar) rnd->Next( 1, 255 );
+        encryptKeys[ i ] = static_cast< uchar >( rnd_distr( rnd_generator ) );
     encryptKeyPos = 0;
     encryptActive = true;
 }

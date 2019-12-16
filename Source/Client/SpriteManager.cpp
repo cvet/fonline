@@ -7,6 +7,9 @@
 #include "StringUtils.h"
 #include "Settings.h"
 #include "F2Palette_Include.h"
+#include "GraphicLoader.h"
+#include "3dStuff.h"
+#include "Sprites.h"
 #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
 # include "png.h"
 #endif
@@ -15,8 +18,7 @@
 # define SDL_GL_SwapWindow( a )    (void) 0
 #endif
 
-SpriteManager SprMngr;
-AnyFrames*    SpriteManager::DummyAnimation = nullptr;
+AnyFrames* SpriteManager::DummyAnimation = nullptr;
 
 #define MAX_ATLAS_SIZE           ( 4096 )
 #define SPRITES_BUFFER_SIZE      ( 10000 )
@@ -29,10 +31,8 @@ AnyFrames*    SpriteManager::DummyAnimation = nullptr;
 SDL_Window* SprMngr_MainWindow;
 #endif
 
-SpriteManager::SpriteManager()
+SpriteManager::SpriteManager( GraphicLoader& graphic_loader ): graphicLoader( graphic_loader )
 {
-    mainWindow = nullptr;
-
     drawQuadCount = 0;
     curDrawQuad = 0;
     sceneBeginned = false;
@@ -63,14 +63,13 @@ SpriteManager::SpriteManager()
 
     atlasWidth = atlasHeight = 0;
     accumulatorActive = false;
-}
-
-bool SpriteManager::Init()
-{
-    WriteLog( "Sprite manager initialization...\n" );
 
     drawQuadCount = 1024;
     curDrawQuad = 0;
+
+    // SDL
+    sdlInited = !!SDL_InitSubSystem( SDL_INIT_VIDEO );
+    RUNTIME_ASSERT_STR( sdlInited, _str( "SDL initialization failed, error '{}'.\n", SDL_GetError() ) );
 
     // Detect tablets
     bool is_tablet = false;
@@ -137,11 +136,7 @@ bool SpriteManager::Init()
 
     mainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
-    if( !mainWindow )
-    {
-        WriteLog( "SDL Window not created, error '{}'.\n", SDL_GetError() );
-        return false;
-    }
+    RUNTIME_ASSERT_STR( mainWindow, _str( "SDL Window not created, error '{}'.\n", SDL_GetError() ) );
 
     #ifdef FO_IOS
     SprMngr_MainWindow = mainWindow;
@@ -149,16 +144,10 @@ bool SpriteManager::Init()
 
     #ifndef FO_WEB
     SDL_GLContext gl_context = SDL_GL_CreateContext( mainWindow );
-    if( !gl_context )
-    {
-        WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
-        return false;
-    }
-    if( SDL_GL_MakeCurrent( mainWindow, gl_context ) < 0 )
-    {
-        WriteLog( "Can't set current context, error '{}'.\n", SDL_GetError() );
-        return false;
-    }
+    RUNTIME_ASSERT_STR( gl_context, _str( "OpenGL context not created, error '{}'.\n", SDL_GetError() ) );
+
+    int make_current = SDL_GL_MakeCurrent( mainWindow, gl_context );
+    RUNTIME_ASSERT_STR( make_current >= 0, _str( "Can't set current context, error '{}'.\n", SDL_GetError() ) );
 
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
 
@@ -185,15 +174,8 @@ bool SpriteManager::Init()
         attr.majorVersion = 1;
         attr.minorVersion = 0;
         gl_context = emscripten_webgl_create_context( nullptr, &attr );
-        if( gl_context <= 0 )
-        {
-            WriteLog( "Failed to create WebGL context, error '{}'.\n", (int) gl_context );
-            return false;
-        }
-        else
-        {
-            WriteLog( "Created WebGL1 context.\n" );
-        }
+        RUNTIME_ASSERT_STR( gl_context > 0, _str( "Failed to create WebGL context, error '{}'.\n", (int) gl_context ) );
+        WriteLog( "Created WebGL1 context.\n" );
     }
     else
     {
@@ -201,11 +183,7 @@ bool SpriteManager::Init()
     }
 
     EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current( gl_context );
-    if( r < 0 )
-    {
-        WriteLog( "Can't set current context, error '{}'.\n", r );
-        return false;
-    }
+    RUNTIME_ASSERT_STR( r >= 0, _str( "Can't set current context, error '{}'.\n", r ) );
     #endif
 
     SDL_ShowCursor( 0 );
@@ -224,15 +202,12 @@ bool SpriteManager::Init()
     atlasHeight = MIN( max_viewport_size[ 1 ], atlasHeight );
     atlasWidth = MIN( 2048, atlasWidth );
     atlasHeight = MIN( 2048, atlasHeight );
-    if( atlasWidth != 2048 || atlasHeight != 2048 )
-    {
-        WriteLog( "Max texture size must be at least 2048x2048, current is {}x{}.\n", atlasWidth, atlasHeight );
-        return false;
-    }
+    RUNTIME_ASSERT_STR( atlasWidth >= 2048, "Min texture width must be at least 2048" );
+    RUNTIME_ASSERT_STR( atlasHeight >= 2048, "Min texture height must be at least 2048" );
 
     // Init graphic
-    if( !GraphicApi::Init() )
-        return false;
+    bool graphic_ok = GraphicApi::Init();
+    RUNTIME_ASSERT( graphic_ok );
 
     #ifdef FO_WEB
     OGL_vertex_array_object = ( attr.majorVersion > 1 || emscripten_webgl_enable_extension( gl_context, "OES_vertex_array_object" ) );
@@ -260,12 +235,11 @@ bool SpriteManager::Init()
     CHECK_EXTENSION( texture_multisample, false );
     CHECK_EXTENSION( get_program_binary, false );
     #undef CHECK_EXTENSION
-    if( extension_errors )
-        return false;
+    RUNTIME_ASSERT( !extension_errors );
 
     // Default effects
-    if( !GraphicLoader::LoadMinimalEffects() )
-        return false;
+    bool effects_ok = graphicLoader.LoadMinimalEffects();
+    RUNTIME_ASSERT( effects_ok );
 
     // Render states
     GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) GameOpt.ScreenWidth, (float) GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f ) );
@@ -332,13 +306,15 @@ bool SpriteManager::Init()
 
     Sprites::GrowPool();
 
-    WriteLog( "Sprite manager initialization complete.\n" );
-    return true;
+    // 3d initialization
+    if( GameOpt.Enable3dRendering )
+        anim3dMngr = new Animation3dManager( graphicLoader );
 }
 
-void SpriteManager::Finish()
+SpriteManager::~SpriteManager()
 {
-    WriteLog( "Sprite manager finish...\n" );
+    if( sdlInited )
+        SDL_QuitSubSystem( SDL_INIT_VIDEO );
 
     DeleteRenderTarget( rtMain );
     DeleteRenderTarget( rtContours );
@@ -355,10 +331,7 @@ void SpriteManager::Finish()
     sprData.clear();
     dipQueue.clear();
 
-    if( GameOpt.Enable3dRendering )
-        Animation3d::Finish();
-
-    WriteLog( "Sprite manager finish complete.\n" );
+    SAFEDEL( anim3dMngr );
 }
 
 void SpriteManager::GetWindowSize( int& w, int& h )
@@ -520,7 +493,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
             samples = MIN( GameOpt.MultiSampling > 0 ? GameOpt.MultiSampling : 8, max_samples );
 
             // Flush effect
-            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true, "", "Effects/" );
+            Effect::FlushRenderTargetMSDefault = graphicLoader.LoadEffect( "Flush_RenderTargetMS.glsl", true, "", "Effects/" );
             if( Effect::FlushRenderTargetMSDefault )
                 Effect::FlushRenderTargetMS = new Effect( *Effect::FlushRenderTargetMSDefault );
             else
@@ -1904,7 +1877,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 
     Effect* effect = nullptr;
     if( fofrm.IsKey( "", "effect" ) )
-        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ), true );
+        effect = graphicLoader.LoadEffect( fofrm.GetStr( "", "effect" ), true );
 
     struct frame_t
     {
@@ -2028,7 +2001,8 @@ AnyFrames* SpriteManager::LoadAnimation3d( const string& fname )
         return nullptr;
 
     // Load 3d animation
-    Animation3d* anim3d = Animation3d::GetAnimation( fname, false );
+    RUNTIME_ASSERT( anim3dMngr );
+    Animation3d* anim3d = anim3dMngr->GetAnimation( fname, false );
     if( !anim3d )
         return nullptr;
     anim3d->StartMeshGeneration();
@@ -3445,7 +3419,8 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
     PushRenderTarget( rt );
     ClearCurrentRenderTarget( 0 );
     ClearCurrentRenderTargetDepth();
-    Animation3d::SetScreenSize( rt->TargetTexture->Width, rt->TargetTexture->Height );
+    RUNTIME_ASSERT( anim3dMngr );
+    anim3dMngr->SetScreenSize( rt->TargetTexture->Width, rt->TargetTexture->Height );
 
     // Draw model
     anim3d->Draw( 0, 0 );
@@ -3486,7 +3461,8 @@ Animation3d* SpriteManager::LoadPure3dAnimation( const string& fname, bool auto_
         return nullptr;
 
     // Fill data
-    Animation3d* anim3d = Animation3d::GetAnimation( fname, false );
+    RUNTIME_ASSERT( anim3dMngr );
+    Animation3d* anim3d = anim3dMngr->GetAnimation( fname, false );
     if( !anim3d )
         return nullptr;
 
@@ -3682,13 +3658,13 @@ bool SpriteManager::Flush()
                 GL( glUniform4f( effect_pass.SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
 
             if( effect_pass.IsNeedProcess )
-                GraphicLoader::EffectProcessVariables( effect_pass, true );
+                graphicLoader.EffectProcessVariables( effect_pass, true );
 
             GLsizei count = 6 * dip.SpritesCount;
             GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) (size_t) ( pos * 2 ) ) );
 
             if( effect_pass.IsNeedProcess )
-                GraphicLoader::EffectProcessVariables( effect_pass, false );
+                graphicLoader.EffectProcessVariables( effect_pass, false );
         }
 
         pos += 6 * dip.SpritesCount;
@@ -4529,12 +4505,12 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
             GL( glUniformMatrix4fv( effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[ 0 ] ) );
 
         if( effect_pass.IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect_pass, true );
+            graphicLoader.EffectProcessVariables( effect_pass, true );
 
         GL( glDrawElements( prim_type, count, GL_UNSIGNED_SHORT, (void*) 0 ) );
 
         if( effect_pass.IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect_pass, false );
+            graphicLoader.EffectProcessVariables( effect_pass, false );
     }
 
     GL( glUseProgram( 0 ) );

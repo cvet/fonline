@@ -1,12 +1,17 @@
-#ifndef __CRITTER__
-#define __CRITTER__
+#pragma once
 
 #include "Common.h"
-#include "Timer.h"
-#include "Networking.h"
-#include "Item.h"
-#include "Dialogs.h"
 #include "Entity.h"
+#include "Networking.h"
+#include "Dialogs.h"
+#include "Timer.h"
+
+class MapManager;
+
+#define BIN_BEGIN( cl_ )     cl_->Connection->Bin.Lock()
+#define BIN_END( cl_ )       cl_->Connection->Bin.Unlock()
+#define BOUT_BEGIN( cl_ )    cl_->Connection->Bout.Lock()
+#define BOUT_END( cl_ )      cl_->Connection->Bout.Unlock(); cl_->Connection->Dispatch()
 
 // Client game states
 #define STATE_NONE            ( 0 )
@@ -14,27 +19,66 @@
 #define STATE_PLAYING         ( 2 )
 #define STATE_TRANSFERRING    ( 3 )
 
-class Critter;
-class Client;
-class Npc;
-class Map;
-class Location;
-
-typedef map< uint, Critter* > CritterMap;
-typedef map< uint, Client* >  ClMap;
-typedef map< uint, Npc* >     PcMap;
-
-typedef vector< Critter* >    CritterVec;
-typedef vector< Client* >     ClVec;
-typedef vector< Npc* >        PcVec;
-
 class Critter: public Entity
 {
+    friend class CritterManager;
+
+    uint startBreakTime;
+    uint breakTime;
+    uint waitEndTick;
+
+protected:
+    ItemVec invItems;
+
+    Critter( uint id, EntityType type, ProtoCritter* proto );
+    ~Critter();
+
 public:
-    // Properties
+    static bool SlotEnabled[ 0x100 ];
+    static bool SlotDataSendEnabled[ 0x100 ];
+
+    bool        CritterIsNpc;
+    uint        Flags;
+    string      Name;
+    bool        IsRunning;
+    int         LockMapTransfers;
+    uint        AllowedToDownloadMap;
+
+    CritterVec  VisCr;
+    CritterVec  VisCrSelf;
+    CritterMap  VisCrMap;
+    CritterMap  VisCrSelfMap;
+    UIntSet     VisCr1, VisCr2, VisCr3;
+    UIntSet     VisItem;
+    Mutex       VisItemLocker;
+    uint        ViewMapId;
+    hash        ViewMapPid;
+    ushort      ViewMapLook, ViewMapHx, ViewMapHy;
+    uchar       ViewMapDir;
+    uint        ViewMapLocId, ViewMapLocEnt;
+
+    struct
+    {
+        int    State;
+        uint   TargId;
+        ushort HexX;
+        ushort HexY;
+        uint   Cut;
+        bool   IsRun;
+        uint   PathNum;
+        uint   Iter;
+        uint   Trace;
+        uint   GagEntityId;
+    } Moving;
+
+    uint        CacheValuesNextTick;
+    uint        LookCacheValue;
+
+    int         DisableSend;
+    CritterVec* GlobalMapGroup;
+    bool        CanBeRemoved;
+
     PROPERTIES_HEADER();
-    // Core
-    // CritData
     CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( uint, MapId );
     CLASS_PROPERTY( hash, RefMapId );
@@ -102,43 +146,6 @@ public:
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
 
-protected:
-    Critter( uint id, EntityType type, ProtoCritter* proto );
-    ~Critter();
-
-public:
-    // Data
-    bool        CritterIsNpc;
-    uint        Flags;
-    string      Name;
-    bool        IsRunning;
-    int         LockMapTransfers;
-    uint        AllowedToDownloadMap;
-
-    static bool SlotEnabled[ 0x100 ];
-    static bool SlotDataSendEnabled[ 0x100 ];
-
-    void DeleteInventory();
-
-    // Visible critters and items
-    CritterVec VisCr;
-    CritterVec VisCrSelf;
-    CritterMap VisCrMap;
-    CritterMap VisCrSelfMap;
-    UIntSet    VisCr1, VisCr2, VisCr3;
-    UIntSet    VisItem;
-    Mutex      VisItemLocker;
-    uint       ViewMapId;
-    hash       ViewMapPid;
-    ushort     ViewMapLook, ViewMapHx, ViewMapHy;
-    uchar      ViewMapDir;
-    uint       ViewMapLocId, ViewMapLocEnt;
-
-    Map* GetMap();
-
-    void ProcessVisibleCritters();
-    void ProcessVisibleItems();
-    void ViewMap( Map* map, int look, ushort hx, ushort hy, int dir );
     void ClearVisible();
 
     Critter* GetCritSelf( uint crid );
@@ -159,18 +166,10 @@ public:
     bool DelIdVisItem( uint item_id );
     bool CountIdVisItem( uint item_id );
 
-    // Items
-protected:
-    ItemVec invItems;
-
-public:
-    void     AddItem( Item*& item, bool send );
     void     SetItem( Item* item );
-    void     EraseItem( Item* item, bool send );
     Item*    GetItem( uint item_id, bool skip_hide );
     ItemVec& GetItemsNoLock() { return invItems; }
     Item*    GetItemByPid( hash item_pid );
-    Item*    GetItemByPidInvPriority( hash item_pid );
     Item*    GetItemByPidSlot( hash item_pid, int slot );
     Item*    GetItemSlot( int slot );
     void     GetItemsSlot( int slot, ItemVec& items );
@@ -180,20 +179,8 @@ public:
     ItemVec& GetInventory();
     bool     IsHaveGeckItem();
 
-public:
     bool SetScript( asIScriptFunction* func, bool first_time );
 
-    // Cached values to avoid synchronization
-    uint CacheValuesNextTick;
-    uint LookCacheValue;        // Critter::GetLook()
-
-    // Break time
-private:
-    uint startBreakTime;
-    uint breakTime;
-    uint waitEndTick;
-
-public:
     bool IsFree() { return Timer::GameTick() - startBreakTime >= breakTime; }
     bool IsBusy() { return !IsFree(); }
     void SetBreakTime( uint ms );
@@ -201,38 +188,20 @@ public:
     void SetWait( uint ms ) { waitEndTick = Timer::GameTick() + ms; }
     bool IsWait()           { return Timer::GameTick() < waitEndTick; }
 
-    // Moving
-public:
-    struct
-    {
-        int    State;
-        uint   TargId;
-        ushort HexX;
-        ushort HexY;
-        uint   Cut;
-        bool   IsRun;
-        uint   PathNum;
-        uint   Iter;
-        uint   Trace;
-        uint   GagEntityId;
-    } Moving;
-
-    // Send
-    volatile int DisableSend;
     bool IsSendDisabled() { return DisableSend > 0; }
     void Send_Property( NetProperty::Type type, Property* prop, Entity* entity );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
     void Send_RemoveCritter( Critter* cr );
-    void Send_LoadMap( Map* map );
+    void Send_LoadMap( Map* map, MapManager& map_mngr );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
-    void Send_GlobalInfo( uchar flags );
+    void Send_GlobalInfo( uchar flags, MapManager& map_mngr );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
     void Send_CustomCommand( Critter* cr, ushort cmd, int val );
@@ -272,12 +241,12 @@ public:
 
     // Chosen data
     void Send_AddAllItems();
-    void Send_AllAutomapsInfo();
+    void Send_AllAutomapsInfo( MapManager& map_mngr );
 
     bool IsPlayer() { return !CritterIsNpc; }
     bool IsNpc()    { return CritterIsNpc; }
     void RefreshName();
-    void SendMessage( int num, int val, int to );
+    void SendMessage( int num, int val, int to, MapManager& map_mngr );
     uint GetAttackDist( Item* weap, int use );
     bool IsLife();
     bool IsDead();
@@ -287,33 +256,21 @@ public:
     // Timeouts
     bool IsTransferTimeouts( bool send );
 
-    // Locations
-    bool CheckKnownLocById( uint loc_id );
-    bool CheckKnownLocByPid( hash loc_pid );
-    void AddKnownLoc( uint loc_id );
-    void EraseKnownLoc( uint loc_id );
-
     // Time events
     void AddCrTimeEvent( hash func_num, uint rate, uint duration, int identifier );
     void EraseCrTimeEvent( int index );
     void ContinueTimeEvents( int offs_time );
-
-    // Other
-    CritterVec* GlobalMapGroup;
-    bool        CanBeRemoved;
 };
-
-#define BIN_BEGIN( cl_ )     cl_->Connection->Bin.Lock()
-#define BIN_END( cl_ )       cl_->Connection->Bin.Unlock()
-#define BOUT_BEGIN( cl_ )    cl_->Connection->Bout.Lock()
-#define BOUT_END( cl_ )      cl_->Connection->Bout.Unlock(); cl_->Connection->Dispatch()
 
 class Client: public Critter
 {
-public:
-    Client( NetConnection* conn, ProtoCritter* proto );
-    ~Client();
+    friend class CritterManager;
 
+    uint pingNextTick;
+    bool pingOk;
+    uint talkNextTick;
+
+public:
     NetConnection* Connection;
     uchar          Access;
     uint           LanguageMsg;
@@ -325,8 +282,11 @@ public:
     uint           RadioMessageSended;
     int            UpdateFileIndex;
     uint           UpdateFilePortion;
+    Talking        Talk;
 
-public:
+    Client( NetConnection* conn, ProtoCritter* proto );
+    ~Client();
+
     uint        GetIp();
     const char* GetIpStr();
     ushort      GetPort();
@@ -336,24 +296,16 @@ public:
     void        RemoveFromGame();
     uint        GetOfflineTime();
 
-    // Ping
-private:
-    uint pingNextTick;
-    bool pingOk;
-
-public:
     bool IsToPing();
     void PingClient();
     void PingOk( uint next_ping );
 
-    // Sends
-public:
     void Send_Property( NetProperty::Type type, Property* prop, Entity* entity );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
     void Send_RemoveCritter( Critter* cr );
-    void Send_LoadMap( Map* map );
+    void Send_LoadMap( Map* map, MapManager& map_mngr );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
     void Send_EraseItemFromMap( Item* item );
@@ -361,7 +313,7 @@ public:
     void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
     void Send_SomeItems( CScriptArray* items_arr, int param );
-    void Send_GlobalInfo( uchar flags );
+    void Send_GlobalInfo( uchar flags, MapManager& map_mngr );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
     void Send_CustomCommand( Critter* cr, ushort cmd, int val );
@@ -391,29 +343,19 @@ public:
     void Send_CustomMessage( uint msg );
     void Send_CustomMessage( uint msg, uchar* data, uint data_size );
 
-    // Dialogs
-private:
-    uint talkNextTick;
-
-public:
-    Talking Talk;
-    bool IsTalking() { return Talk.TalkType != TALK_NONE; }
-    void ProcessTalk( bool force );
-    void CloseTalk();
+    bool IsTalking();
 };
 
 class Npc: public Critter
 {
+    friend class CritterManager;
+
 public:
     Npc( uint id, ProtoCritter* proto );
     ~Npc();
 
-    // Dialogs
-public:
     uint GetTalkedPlayers();
     bool IsTalkedPlayers();
     uint GetBarterPlayers();
     bool IsFreeToTalk();
 };
-
-#endif // __CRITTER__

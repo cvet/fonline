@@ -28,7 +28,7 @@ enum class EntityType
     #endif
     Custom = 16,
     Global = 17,
-    Max = 18,
+    Max = 28,
 };
 
 class Entity;
@@ -41,6 +41,12 @@ using ItemMap = map< uint, Item* >;
 class Critter;
 using CritterMap = map< uint, Critter* >;
 using CritterVec = vector< Critter* >;
+class Npc;
+using NpcMap = map< uint, Npc* >;
+using NpcVec = vector< Npc* >;
+class Client;
+using ClientMap = map< uint, Client* >;
+using ClientVec = vector< Client* >;
 class Map;
 using MapVec = vector< Map* >;
 using MapMap = map< uint, Map* >;
@@ -81,6 +87,9 @@ class ProtoItem;
 using ProtoItemVec = vector< ProtoItem* >;
 using ProtoItemMap = map< hash, ProtoItem* >;
 
+class ProtoManager;
+class SpriteManager;
+class ResourceManager;
 class CScriptArray;
 
 class Entity
@@ -164,6 +173,21 @@ public:
 class ProtoMap: public ProtoEntity
 {
 public:
+    struct Tile
+    {
+        hash   Name {};
+        ushort HexX {};
+        ushort HexY {};
+        short  OffsX {};
+        short  OffsY {};
+        uchar  Layer {};
+        bool   IsRoof {};
+        #if defined ( FONLINE_EDITOR )
+        bool   IsSelected {};
+        #endif
+    };
+    using TileVec = vector< Tile >;
+
     PROPERTIES_HEADER();
     CLASS_PROPERTY( string, FileDir );
     CLASS_PROPERTY( ushort, Width );
@@ -176,66 +200,55 @@ public:
     CLASS_PROPERTY( CScriptArray *, DayColor );     // 12 uchar
     CLASS_PROPERTY( bool, IsNoLogOut );
 
-    // Entities
-    #ifdef FONLINE_EDITOR
-    EntityVec AllEntities;
-    uint      LastEntityId;
-    #endif
+    ProtoMap( hash pid );
+    ~ProtoMap();
 
-    // Tiles
-    struct Tile         // 16 bytes
-    {
-        hash   Name;
-        ushort HexX, HexY;
-        short  OffsX, OffsY;
-        uchar  Layer;
-        bool   IsRoof;
-        #ifdef FONLINE_EDITOR
-        bool   IsSelected = false;
-        #endif
+private:
+    using CrLoadFunc = std::function< bool(uint id, ProtoCritter* proto, const StrMap& kv) >;
+    using ItemLoadFunc = std::function< bool(uint id, ProtoItem* proto, const StrMap& kv) >;
+    using TileLoadFunc = std::function< void(Tile&& tile) >;
 
-        Tile() { memzero( this, sizeof( Tile ) ); }
-        Tile( hash name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof ): Name( name ), HexX( hx ), HexY( hy ), OffsX( ox ), OffsY( oy ), Layer( layer ), IsRoof( is_roof ) {}
-    };
-    typedef vector< Tile > TileVec;
-    TileVec Tiles;
+    bool BaseLoad( ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFunc item_load, TileLoadFunc tile_load );
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    bool Load_Server();
-    #endif
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    bool Load_Client();
-    bool Save_Client( const string& custom_name );
-    #endif
-
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
-    UCharVec   SceneryData;
-    hash       HashTiles;
-    hash       HashScen;
-
-    CritterVec CrittersVec;
-    ItemVec    HexItemsVec;
-    ItemVec    ChildItemsVec;
-    ItemVec    StaticItemsVec;
-    ItemVec    TriggerItemsVec;
-    uchar*     HexFlags;
-    #endif
-
-    #if defined ( FONLINE_EDITOR )
-    void        GenNew();
-    static bool IsMapFile( const string& fname );
-    #endif
-
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
+public:
+    bool  ServerLoad( ProtoManager& proto_mngr );
     void  GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers );
     Item* GetStaticItem( ushort hx, ushort hy, hash pid );
     void  GetStaticItemsHex( ushort hx, ushort hy, ItemVec& items );
     void  GetStaticItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
     void  GetStaticItemsByPid( hash pid, ItemVec& items );
+
+    # if !defined ( FONLINE_EDITOR )
+    TileVec    Tiles;
+    # endif
+    UCharVec   SceneryData;
+    hash       HashTiles;
+    hash       HashScen;
+    CritterVec CrittersVec;
+    ItemVec    AllItemsVec;
+    ItemVec    HexItemsVec;
+    ItemVec    ChildItemsVec;
+    ItemVec    StaticItemsVec;
+    ItemVec    TriggerItemsVec;
+    uchar*     HexFlags;
+
+private:
+    bool OnAfterLoad();
+    bool BindScripts();
     #endif
 
-    ProtoMap( hash pid );
-    ~ProtoMap();
+    #if defined ( FONLINE_EDITOR )
+public:
+    static bool IsMapFile( const string& fname );
+    void        GenNew();
+    bool        EditorLoad( ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr );
+    bool        EditorSave( const string& custom_name );
+
+    TileVec   Tiles;
+    EntityVec AllEntities;
+    uint      LastEntityId;
+    #endif
 };
 
 class ProtoCritter: public ProtoEntity
@@ -285,8 +298,4 @@ public:
     bool IsAnyScenery() { return IsScenery() || IsWall(); }
     bool IsScenery()    { return GetIsScenery(); }
     bool IsWall()       { return GetIsWall(); }
-
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
-    uint GetCurSprId();
-    #endif
 };

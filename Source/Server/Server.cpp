@@ -2,18 +2,23 @@
 #include "Log.h"
 #include "Testing.h"
 #include "Timer.h"
-#include "scripthelper/scripthelper.h"
-#include "minizip/zip.h"
 #include "FileSystem.h"
 #include "IniFile.h"
 #include "AdminPanel.h"
 #include "Settings.h"
 #include "Version_Include.h"
-#include <chrono>
+#include "FileUtils.h"
+#include "Crypt.h"
+#include "scripthelper/scripthelper.h"
+#include "minizip/zip.h"
 
 FOServer* FOServer::Self;
 
-FOServer::FOServer()
+FOServer::FOServer(): ProtoMngr(),
+                      EntityMngr( MapMngr, CrMngr, ItemMngr ),
+                      MapMngr( ProtoMngr, EntityMngr, CrMngr, ItemMngr ),
+                      CrMngr( ProtoMngr, EntityMngr, MapMngr, ItemMngr ),
+                      ItemMngr( ProtoMngr, EntityMngr, MapMngr, CrMngr )
 {
     Self = this;
     Active = true;
@@ -130,7 +135,7 @@ string FOServer::GetIngamePlayersStatistics()
     uint conn_count = (uint) ConnectedClients.size();
     ConnectedClientsLocker.Unlock();
 
-    ClVec players;
+    ClientVec players;
     CrMngr.GetClients( players );
 
     string result = _str( "Players in game: {}\nConnections: {}\n", players.size(), conn_count );
@@ -193,7 +198,8 @@ void FOServer::RemoveClient( Client* cl )
         if( cl->GetClientToDelete() )
             Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl );
 
-        MapMngr.EraseCrFromMap( cl, cl->GetMap() );
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
+        MapMngr.EraseCrFromMap( cl, map );
 
         // Destroy
         bool full_delete = cl->GetClientToDelete();
@@ -212,7 +218,7 @@ void FOServer::RemoveClient( Client* cl )
         // Full delete
         if( full_delete )
         {
-            cl->DeleteInventory();
+            CrMngr.DeleteInventory( cl );
             DbStorage->Delete( "Players", cl->Id );
         }
 
@@ -239,7 +245,7 @@ void FOServer::LogicTick()
 
     // Process clients
     ConnectedClientsLocker.Lock();
-    ClVec clients = ConnectedClients;
+    ClientVec clients = ConnectedClients;
     for( Client* cl : clients )
         cl->AddRef();
     ConnectedClientsLocker.Unlock();
@@ -719,7 +725,7 @@ void FOServer::Process( Client* cl )
             }
             case NETMSG_SEND_REFRESH_ME:
             {
-                cl->Send_LoadMap( nullptr );
+                cl->Send_LoadMap( nullptr, MapMngr );
                 BIN_END( cl );
                 continue;
             }
@@ -932,7 +938,7 @@ void FOServer::Process_Text( Client* cl )
     }
     else
     {
-        Map* map = cl->GetMap();
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
         hash pid = ( map ? map->GetProtoId() : 0 );
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
@@ -1434,16 +1440,9 @@ void FOServer::Process_CommandReal( NetBuffer& buf, LogFunc logcb, Client* cl_, 
         ushort hx = cl_->GetHexX();
         ushort hy = cl_->GetHexY();
         uchar  dir = cl_->GetDir();
-        if( RegenerateMap( map ) )
-        {
-            // Transit to old position
-            MapMngr.Transit( cl_, map, hx, hy, dir, 5, 0, true );
-            logcb( "Regenerate map success." );
-        }
-        else
-        {
-            logcb( "Regenerate map fail." );
-        }
+        MapMngr.RegenerateMap( map );
+        MapMngr.Transit( cl_, map, hx, hy, dir, 5, 0, true );
+        logcb( "Regenerate map complete." );
     }
     break;
     case CMD_RELOADDIALOGS:
@@ -2512,7 +2511,7 @@ void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, 
     else if( entity->Type == EntityType::Global )
         DbStorage->Update( "Globals", entity->Id, prop->GetName(), value );
     else
-        RUNTIME_ASSERT( !"Unreachable place" );
+        UNREACHABLE_PLACE;
 
     if( DbHistory && !prop->IsNoHistory() )
     {
@@ -2542,6 +2541,6 @@ void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, 
         else if( entity->Type == EntityType::Global )
             DbHistory->Insert( "GlobalsHistory", id, doc );
         else
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
     }
 }

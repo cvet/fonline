@@ -1,19 +1,19 @@
-#ifndef __MAPPER__
-#define __MAPPER__
+#pragma once
 
 #include "Common.h"
-#include "Timer.h"
+#include "Testing.h"
 #include "Keyboard.h"
+#include "ProtoManager.h"
 #include "SpriteManager.h"
+#include "SoundManager.h"
 #include "HexManager.h"
-#include "ItemView.h"
-#include "MapView.h"
-#include "CritterView.h"
 #include "ResourceManager.h"
+#include "Entity.h"
+#include "NetBuffer.h"
 #include "Script.h"
 #include "MsgFiles.h"
-#include "ProtoManager.h"
 #include "IniFile.h"
+#include "GraphicLoader.h"
 
 // Fonts
 #define FONT_FO                        ( 0 )
@@ -36,20 +36,24 @@ class FOMapper
 {
 public:
     static FOMapper* Self;
+    Keyboard         Keyb;
+    ProtoManager     ProtoMngr;
+    GraphicLoader    GraphicLoader;
+    SpriteManager    SprMngr;
     HexManager       HexMngr;
+    ResourceManager  ResMngr;
     IniFile          IfaceIni;
-    bool             IsMapperStarted;
     static string    ServerWritePath;
     static string    ClientWritePath;
     PropertyVec      ShowProps;
 
     FOMapper();
-    bool Init();
+    ~FOMapper();
     int  InitIface();
     bool IfaceLoadRect( Rect& comp, const char* name );
-    void Finish();
     void MainLoop();
     void RefreshTiles( int tab );
+    uint GetProtoItemCurSprId( ProtoItem* proto_item );
 
     void ParseKeyboard();
     void ParseMouse();
@@ -485,5 +489,3 @@ public:
         static LocationView* ClientCurLocation;
     };
 };
-
-#endif // __MAPPER__

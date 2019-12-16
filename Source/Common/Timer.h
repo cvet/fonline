@@ -1,5 +1,4 @@
-#ifndef __TIMER__
-#define __TIMER__
+#pragma once
 
 #include "Common.h"
 
@@ -40,5 +39,3 @@ namespace Timer
     uint          GameTimeMonthDay( ushort year, ushort month );
     bool          ProcessGameTime();
 };
-
-#endif // __TIMER__

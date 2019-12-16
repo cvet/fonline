@@ -97,8 +97,6 @@ public:
     uint  GetInvColor()  { return GetIsColorizeInv() ? GetLightColor() : 0; }
     uint  LightGetHash() { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
 
-    uint GetCurSprId();
-
     #ifdef FONLINE_EDITOR
     ItemViewVec* ChildItems = nullptr;
 

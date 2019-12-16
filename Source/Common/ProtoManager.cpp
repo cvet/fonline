@@ -6,8 +6,6 @@
 #include "StringUtils.h"
 #include "IniFile.h"
 
-ProtoManager ProtoMngr;
-
 template< class T >
 static void WriteProtosToBinary( UCharVec& data, const map< hash, T* >& protos )
 {
@@ -376,7 +374,7 @@ bool ProtoManager::LoadProtosFromFiles()
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     for( auto& kv : mapProtos )
     {
-        if( !kv.second->Load_Server() )
+        if( !kv.second->ServerLoad( *this ) )
         {
             WriteLog( "Load proto map '{}' fail.\n", kv.second->GetName() );
             errors++;

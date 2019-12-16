@@ -1,22 +1,21 @@
-#ifndef __CLIENT__
-#define __CLIENT__
+#pragma once
 
 #include "Common.h"
 #include "Testing.h"
 #include "Keyboard.h"
+#include "ProtoManager.h"
 #include "SpriteManager.h"
 #include "SoundManager.h"
 #include "HexManager.h"
-#include "ItemView.h"
-#include "CritterView.h"
-#include "NetBuffer.h"
 #include "ResourceManager.h"
+#include "Entity.h"
+#include "NetBuffer.h"
 #include "Script.h"
-#include "zlib.h"
 #include "MsgFiles.h"
-#include "MapView.h"
-#include "ProtoManager.h"
+#include "GraphicLoader.h"
+#include "3dStuff.h"
 #include "theora/theoradec.h"
+#include "zlib.h"
 
 // Fonts
 #ifndef FONT_DEFAULT
@@ -55,10 +54,9 @@ class FOClient
 public:
     static FOClient* Self;
     FOClient();
-    bool PreInit();
-    bool PostInit();
+    ~FOClient();
+    bool Reset();
     void ProcessAutoLogin();
-    void Finish(); // Not used
     void Restart();
     void UpdateBinary();
     void TryExit();
@@ -68,19 +66,26 @@ public:
     void NetDisconnect();
     void DrawIface();
 
-    int        InitCalls;
-    bool       DoRestart;
-    HexManager HexMngr;
-    hash       CurMapPid;
-    hash       CurMapLocPid;
-    uint       CurMapIndexInLoc;
-    StrVec     Preload3dFiles;
-    int        WindowResolutionDiffX;
-    int        WindowResolutionDiffY;
-    string     LoginName;
-    string     LoginPassword;
-    bool       CanDrawInScripts;
-    bool       IsAutoLogin;
+    int                InitCalls;
+    bool               DoRestart;
+    Keyboard           Keyb;
+    ProtoManager       ProtoMngr;
+    GraphicLoader      GraphicLoader;
+    SpriteManager      SprMngr;
+    HexManager         HexMngr;
+    ResourceManager    ResMngr;
+    SoundManager       SndMngr;
+    Animation3dManager Anim3dMngr;
+    hash               CurMapPid;
+    hash               CurMapLocPid;
+    uint               CurMapIndexInLoc;
+    StrVec             Preload3dFiles;
+    int                WindowResolutionDiffX;
+    int                WindowResolutionDiffY;
+    string             LoginName;
+    string             LoginPassword;
+    bool               CanDrawInScripts;
+    bool               IsAutoLogin;
 
     // Offscreen drawing
     EffectVec       OffscreenEffects;
@@ -660,5 +665,3 @@ public:
     #define FOMB_TALK               ( 1 )
     void AddMess( int mess_type, const string& msg, bool script_call = false );
 };
-
-#endif // __CLIENT__

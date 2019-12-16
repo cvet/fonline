@@ -1,27 +1,14 @@
-#include "Common.h"
+#include "Keyboard.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 
-static uchar  KeysMap[ 0x200 ] = { 0 };
-static ushort KeysMapRevert[ 0x100 ] = { 0 };
-static uchar  KeysMapUser[ 0x100 ] = { 0 };
-#define MAKE_KEY_CODE( name, index, code ) \
-    const uchar name = index;              \
-    struct name ## _INIT { name ## _INIT() { KeysMap[ code ] = index; KeysMapRevert[ index ] = code; } } name ## _INIT_;
-
-#include "Keyboard.h"
-
-namespace Keyb
+Keyboard::Keyboard( SpriteManager& spr_mngr ): sprMngr( spr_mngr )
 {
-    bool ShiftDwn = false;
-    bool CtrlDwn = false;
-    bool AltDwn = false;
+    #define MAKE_KEY_CODE( name, index, code ) \
+        KeysMap[ code ] = index;               \
+        KeysMapRevert[ index ] = code
+    #include "KeyCodes_Include.h"
 
-    bool IsInvalidChar( const char* str, uint flags, uint& length );
-}
-
-void Keyb::Init()
-{
     // User keys mapping
     for( uint i = 0; i < 0x100; i++ )
         KeysMapUser[ i ] = i;
@@ -39,14 +26,19 @@ void Keyb::Init()
     }
 }
 
-void Keyb::Lost()
+Keyboard::~Keyboard()
+{
+    // ...
+}
+
+void Keyboard::Lost()
 {
     CtrlDwn = false;
     AltDwn = false;
     ShiftDwn = false;
 }
 
-void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags )
+void Keyboard::GetChar( uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags )
 {
     if( AltDwn )
         return;
@@ -181,7 +173,7 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
     }
 }
 
-void Keyb::EraseInvalidChars( string& str, int flags )
+void Keyboard::EraseInvalidChars( string& str, int flags )
 {
     for( size_t i = 0; i < str.length();)
     {
@@ -193,7 +185,7 @@ void Keyb::EraseInvalidChars( string& str, int flags )
     }
 }
 
-bool Keyb::IsInvalidChar( const char* str, uint flags, uint& length )
+bool Keyboard::IsInvalidChar( const char* str, uint flags, uint& length )
 {
     uint ucs = utf8::Decode( str, &length );
     if( !utf8::IsValid( ucs ) )
@@ -227,15 +219,16 @@ bool Keyb::IsInvalidChar( const char* str, uint flags, uint& length )
             }
         }
     }
-    return !SprMngr.HaveLetter( -1, ucs );
+
+    return !sprMngr.HaveLetter( -1, ucs );
 }
 
-uchar Keyb::MapKey( ushort code )
+uchar Keyboard::MapKey( ushort code )
 {
     return KeysMapUser[ KeysMap[ code ] ];
 }
 
-ushort Keyb::UnmapKey( uchar key )
+ushort Keyboard::UnmapKey( uchar key )
 {
     return KeysMapRevert[ key ];
 }

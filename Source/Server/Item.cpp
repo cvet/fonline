@@ -7,6 +7,7 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "StringUtils.h"
+#include "Debugger.h"
 
 PROPERTIES_IMPL( Item );
 CLASS_PROPERTY_IMPL( Item, PicMap );
@@ -143,73 +144,14 @@ void Item::ChangeCount( int val )
     SetCount( GetCount() + val );
 }
 
-void Item::ContAddItem( Item*& item, uint stack_id )
-{
-    RUNTIME_ASSERT( item );
-
-    if( !ChildItems )
-    {
-        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
-        ChildItems = new ItemVec();
-    }
-
-    if( item->GetStackable() )
-    {
-        Item* item_ = ContGetItemByPid( item->GetProtoId(), stack_id );
-        if( item_ )
-        {
-            item_->ChangeCount( item->GetCount() );
-            ItemMngr.DeleteItem( item );
-            item = item_;
-            return;
-        }
-    }
-
-    item->SetContainerStack( stack_id );
-    item->SetSortValue( *ChildItems );
-    ContSetItem( item );
-}
-
-void Item::ContSetItem( Item* item )
-{
-    if( !ChildItems )
-    {
-        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
-        ChildItems = new ItemVec();
-    }
-
-    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
-
-    ChildItems->push_back( item );
-    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
-    item->SetContainerId( Id );
-}
-
-void Item::ContEraseItem( Item* item )
-{
-    RUNTIME_ASSERT( ChildItems );
-    RUNTIME_ASSERT( item );
-
-    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
-    RUNTIME_ASSERT( it != ChildItems->end() );
-    ChildItems->erase( it );
-
-    item->SetAccessory( ITEM_ACCESSORY_NONE );
-    item->SetContainerId( 0 );
-    item->SetContainerStack( 0 );
-
-    if( ChildItems->empty() )
-        SAFEDEL( ChildItems );
-}
-
 Item* Item::ContGetItem( uint item_id, bool skip_hide )
 {
     RUNTIME_ASSERT( item_id );
 
-    if( !ChildItems )
+    if( !childItems )
         return nullptr;
 
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = childItems->begin(), end = childItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
@@ -224,10 +166,10 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
 
 void Item::ContGetAllItems( ItemVec& items, bool skip_hide )
 {
-    if( !ChildItems )
+    if( !childItems )
         return;
 
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = childItems->begin(), end = childItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( !skip_hide || !item->GetIsHidden() )
@@ -237,10 +179,10 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide )
 
 Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
-    if( !ChildItems )
+    if( !childItems )
         return nullptr;
 
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = childItems->begin(), end = childItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid && ( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id ) )
@@ -251,10 +193,10 @@ Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 
 void Item::ContGetItems( ItemVec& items, uint stack_id )
 {
-    if( !ChildItems )
+    if( !childItems )
         return;
 
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    for( auto it = childItems->begin(), end = childItems->end(); it != end; ++it )
     {
         Item* item = *it;
         if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
@@ -264,14 +206,5 @@ void Item::ContGetItems( ItemVec& items, uint stack_id )
 
 bool Item::ContIsItems()
 {
-    return ChildItems && ChildItems->size();
-}
-
-void Item::ContDeleteItems()
-{
-    while( ChildItems )
-    {
-        RUNTIME_ASSERT( !ChildItems->empty() );
-        ItemMngr.DeleteItem( *ChildItems->begin() );
-    }
+    return childItems && childItems->size();
 }

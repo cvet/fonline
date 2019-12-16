@@ -4,22 +4,10 @@
 #include "ResourceManager.h"
 #include "StringUtils.h"
 #include "FileUtils.h"
-#include <functional>
-
-// Manager instance
-SoundManager SndMngr;
-
-// ACM
 #include "acmstrm.h"
-
-// OGG
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-static SDL_AudioDeviceID DeviceID = 0;
-static SDL_AudioSpec     SoundSpec;
-
-// Sound structure
 class Sound
 {
 public:
@@ -43,12 +31,13 @@ public:
 
     OggVorbis_File* OggStream;
 
-    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), CvtBuilded( false ), ConvertedBuf( nullptr ),
-             ConvertedBufRealSize( 0 ), ConvertedBufSize( 0 ), ConvertedBufCur( 0 ),
-             OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
-             IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
-             OggStream( nullptr )
-    {}
+    Sound(): BaseBuf {}, BaseBufSize {}, CvtBuilded {}, Cvt {}, ConvertedBuf {}, ConvertedBufRealSize {},
+    ConvertedBufSize {}, ConvertedBufCur {}, OriginalFormat {}, OriginalChannels {}, OriginalRate {},
+    IsMusic {}, NextPlay {}, RepeatTime {}, OggStream {}
+    {
+        // ...
+    }
+
     ~Sound()
     {
         SAFEDELA( BaseBuf );
@@ -59,24 +48,19 @@ public:
     }
 };
 
-// SoundManager
-bool SoundManager::Init()
+SoundManager::SoundManager(): isActive {}, deviceID {}, soundSpec {}, streamingPortion {}, soundsActive {}, outputBuf {}, soundsFunc {}
 {
     UNUSED_VARIABLE( OV_CALLBACKS_DEFAULT );
     UNUSED_VARIABLE( OV_CALLBACKS_NOCLOSE );
     UNUSED_VARIABLE( OV_CALLBACKS_STREAMONLY );
     UNUSED_VARIABLE( OV_CALLBACKS_STREAMONLY_NOCLOSE );
 
-    if( isActive )
-        return true;
-
-    WriteLog( "Sound manager initialization...\n" );
-
     // SDL
-    if( SDL_InitSubSystem( SDL_INIT_AUDIO ) )
+    bool sound_system_ok = SDL_InitSubSystem( SDL_INIT_AUDIO );
+    if( !sound_system_ok )
     {
         WriteLog( "SDL Audio initialization fail, error '{}'.\n", SDL_GetError() );
-        return false;
+        return;
     }
 
     // Create audio device
@@ -94,53 +78,52 @@ bool SoundManager::Init()
     #endif
     desired.callback = [] ( void* userdata, Uint8 * stream, int len )
     {
-        auto& func = *( std::function< void(const SoundManager&, uchar*) >* )userdata;
-        func( SndMngr, stream );
+        auto& func = *reinterpret_cast< SoundsFunc* >( userdata );
+        func( stream );
     };
-    desired.userdata = new std::function< void(SoundManager&, uchar*) >( &SoundManager::ProcessSounds );
+    soundsFunc = std::bind( &SoundManager::ProcessSounds, this, std::placeholders::_1 );
+    desired.userdata = &soundsFunc;
 
-    DeviceID = SDL_OpenAudioDevice( nullptr, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
-    if( DeviceID < 2 )
+    deviceID = SDL_OpenAudioDevice( nullptr, 0, &desired, &soundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
+    if( deviceID < 2 )
     {
         WriteLog( "SDL Open audio device fail, error '{}'.\n", SDL_GetError() );
-        return false;
+        return;
     }
 
-    outputBuf.resize( SoundSpec.size );
+    outputBuf.resize( soundSpec.size );
 
     // Start playing
-    SDL_PauseAudioDevice( DeviceID, 0 );
+    SDL_PauseAudioDevice( deviceID, 0 );
 
     isActive = true;
-    WriteLog( "Sound manager initialization complete.\n" );
-    return true;
 }
 
-void SoundManager::Finish()
+SoundManager::~SoundManager()
 {
-    WriteLog( "Sound manager finish.\n" );
+    if( !isActive )
+        return;
 
     StopSounds();
     StopMusic();
 
-    SDL_CloseAudioDevice( DeviceID );
-    DeviceID = 0;
+    SDL_CloseAudioDevice( deviceID );
+    deviceID = 0;
 
-    isActive = false;
-    WriteLog( "Sound manager finish complete.\n" );
+    SDL_QuitSubSystem( SDL_INIT_AUDIO );
 }
 
 void SoundManager::ProcessSounds( uchar* output )
 {
-    memset( output, SoundSpec.silence, SoundSpec.size );
+    memset( output, soundSpec.silence, soundSpec.size );
 
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
-        if( SndMngr.ProcessSound( sound, &outputBuf[ 0 ] ) )
+        if( ProcessSound( sound, &outputBuf[ 0 ] ) )
         {
             int volume = CLAMP( sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume, 0, 100 ) * SDL_MIX_MAXVOLUME / 100;
-            SDL_MixAudioFormat( output, &outputBuf[ 0 ], SoundSpec.format, SoundSpec.size, volume );
+            SDL_MixAudioFormat( output, &outputBuf[ 0 ], soundSpec.format, soundSpec.size, volume );
             ++it;
         }
         else
@@ -154,7 +137,7 @@ void SoundManager::ProcessSounds( uchar* output )
 bool SoundManager::ProcessSound( Sound* sound, uchar* output )
 {
     // Playing
-    uint whole = SoundSpec.size;
+    uint whole = soundSpec.size;
     if( sound->ConvertedBufCur < sound->ConvertedBufSize )
     {
         if( whole > sound->ConvertedBufSize - sound->ConvertedBufCur )
@@ -177,7 +160,7 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output )
 
             // Cut off end
             if( offset < whole )
-                memset( output + offset, SoundSpec.silence, whole - offset );
+                memset( output + offset, soundSpec.silence, whole - offset );
         }
         else
         {
@@ -217,12 +200,12 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output )
         }
 
         // Give silent
-        memset( output, SoundSpec.silence, whole );
+        memset( output, soundSpec.silence, whole );
         return true;
     }
 
     // Give silent
-    memset( output, SoundSpec.silence, whole );
+    memset( output, soundSpec.silence, whole );
     return false;
 }
 
@@ -247,9 +230,9 @@ Sound* SoundManager::Load( const string& fname, bool is_music )
         return nullptr;
     }
 
-    SDL_LockAudioDevice( DeviceID );
+    SDL_LockAudioDevice( deviceID );
     soundsActive.push_back( sound );
-    SDL_UnlockAudioDevice( DeviceID );
+    SDL_UnlockAudioDevice( deviceID );
     return sound;
 }
 
@@ -485,6 +468,7 @@ bool SoundManager::LoadOGG( Sound* sound, const string& fname )
         result = (int) ov_read( sound->OggStream, (char*) sound->BaseBuf + decoded, streamingPortion - decoded, 0, 2, 1, nullptr );
         if( result <= 0 )
             break;
+
         decoded += result;
         if( decoded >= streamingPortion )
             break;
@@ -530,7 +514,7 @@ bool SoundManager::ConvertData( Sound* sound )
     {
         sound->CvtBuilded = true;
         if( SDL_BuildAudioCVT( &sound->Cvt, sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
-                               SoundSpec.format, SoundSpec.channels, SoundSpec.freq ) == -1 )
+                               soundSpec.format, soundSpec.channels, soundSpec.freq ) == -1 )
         {
             WriteLog( "SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError() );
             return false;
@@ -555,11 +539,10 @@ bool SoundManager::ConvertData( Sound* sound )
 
     sound->ConvertedBufCur = 0;
     sound->ConvertedBufSize = sound->Cvt.len_cvt;
-
     return true;
 }
 
-bool SoundManager::PlaySound( const string& name )
+bool SoundManager::PlaySound( const StrMap& sound_names, const string& name )
 {
     if( !isActive || !GameOpt.SoundVolume )
         return true;
@@ -568,17 +551,16 @@ bool SoundManager::PlaySound( const string& name )
     string sound_name = _str( name ).eraseFileExtension().upper();
 
     // Find base
-    StrMap& names = ResMngr.GetSoundNames();
-    auto    it = names.find( sound_name );
-    if( it != names.end() )
+    auto it = sound_names.find( sound_name );
+    if( it != sound_names.end() )
         return Load( it->second, false ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
-    while( names.find( _str( "{}_{}", sound_name, count + 1 ) ) != names.end() )
+    while( sound_names.find( _str( "{}_{}", sound_name, count + 1 ) ) != sound_names.end() )
         count++;
     if( count )
-        return Load( names.find( _str( "{}_{}", sound_name, Random( 1, count ) ) )->second, false ) != nullptr;
+        return Load( sound_names.find( _str( "{}_{}", sound_name, Random( 1, count ) ) )->second, false ) != nullptr;
 
     return false;
 }
@@ -602,7 +584,8 @@ bool SoundManager::PlayMusic( const string& fname, uint repeat_time )
 
 void SoundManager::StopSounds()
 {
-    SDL_LockAudioDevice( DeviceID );
+    SDL_LockAudioDevice( deviceID );
+
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
@@ -616,12 +599,14 @@ void SoundManager::StopSounds()
             ++it;
         }
     }
-    SDL_UnlockAudioDevice( DeviceID );
+
+    SDL_UnlockAudioDevice( deviceID );
 }
 
 void SoundManager::StopMusic()
 {
-    SDL_LockAudioDevice( DeviceID );
+    SDL_LockAudioDevice( deviceID );
+
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
@@ -635,5 +620,6 @@ void SoundManager::StopMusic()
             ++it;
         }
     }
-    SDL_UnlockAudioDevice( DeviceID );
+
+    SDL_UnlockAudioDevice( deviceID );
 }

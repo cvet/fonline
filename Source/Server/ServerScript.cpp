@@ -117,7 +117,7 @@ bool FOServer::InitScriptSystem()
         sample_time = 0;
 
     // Init
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_SERVER );
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_SERVER, &ProtoMngr, &EntityMngr );
     if( !Script::Init( pragma_callback, "SERVER", sample_time, ( profiler_mode & 1 ) != 0, ( profiler_mode & 2 ) != 0 ) )
     {
         WriteLog( "Script system initialization failed.\n" );
@@ -304,7 +304,7 @@ bool FOServer::ReloadClientScripts()
 
     // Swap engine
     asIScriptEngine*      old_engine = Script::GetEngine();
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT, &ProtoMngr, nullptr );
     asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "CLIENT" );
     if( engine )
         Script::SetEngine( engine );
@@ -489,12 +489,12 @@ Item* FOServer::ScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uint
 {
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !ProtoMngr.GetProtoItem( pid ) )
+    if( !Self->ProtoMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid proto '{}' arg.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
-    return ItemMngr.AddItemContainer( cont, pid, count, stack_id );
+    return Self->ItemMngr.AddItemContainer( cont, pid, count, stack_id );
 }
 
 CScriptArray* FOServer::ScriptFunc::Item_GetItems( Item* cont, uint stack_id )
@@ -534,7 +534,7 @@ Map* FOServer::ScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& 
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->GetCritId() );
+        Critter* cr = Self->CrMngr.GetCritter( item->GetCritId() );
         if( !cr )
             SCRIPT_ERROR_R0( "Critter accessory, critter not found." );
         if( !cr->GetMapId() )
@@ -543,7 +543,7 @@ Map* FOServer::ScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& 
             hy = cr->GetWorldY();
             return nullptr;
         }
-        map = MapMngr.GetMap( cr->GetMapId() );
+        map = Self->MapMngr.GetMap( cr->GetMapId() );
         if( !map )
             SCRIPT_ERROR_R0( "Critter accessory, map not found." );
         hx = cr->GetHexX();
@@ -552,7 +552,7 @@ Map* FOServer::ScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& 
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        map = MapMngr.GetMap( item->GetMapId() );
+        map = Self->MapMngr.GetMap( item->GetMapId() );
         if( !map )
             SCRIPT_ERROR_R0( "Hex accessory, map not found." );
         hx = item->GetHexX();
@@ -563,7 +563,7 @@ Map* FOServer::ScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& 
     {
         if( item->GetId() == item->GetContainerId() )
             SCRIPT_ERROR_R0( "Container accessory, crosslink." );
-        Item* cont = ItemMngr.GetItem( item->GetContainerId() );
+        Item* cont = Self->ItemMngr.GetItem( item->GetContainerId() );
         if( !cont )
             SCRIPT_ERROR_R0( "Container accessory, container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion
@@ -580,7 +580,7 @@ bool FOServer::ScriptFunc::Item_ChangeProto( Item* item, hash pid )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
+    ProtoItem* proto_item = Self->ProtoMngr.GetProtoItem( pid );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Proto item not found." );
 
@@ -589,7 +589,7 @@ bool FOServer::ScriptFunc::Item_ChangeProto( Item* item, hash pid )
 
     if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->GetCritId() );
+        Critter* cr = Self->CrMngr.GetCritter( item->GetCritId() );
         if( !cr )
             return true;
         item->SetProto( old_proto_item );
@@ -600,7 +600,7 @@ bool FOServer::ScriptFunc::Item_ChangeProto( Item* item, hash pid )
     }
     else if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( !map )
             return true;
         ushort hx = item->GetHexX();
@@ -628,7 +628,7 @@ void FOServer::ScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_fr
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->AnimateItem( item, from_frm, to_frm );
     }
@@ -704,14 +704,14 @@ Map* FOServer::ScriptFunc::Crit_GetMap( Critter* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    return MapMngr.GetMap( cr->GetMapId() );
+    return Self->MapMngr.GetMap( cr->GetMapId() );
 }
 
 bool FOServer::ScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
+    Map* map = Self->MapMngr.GetMap( cr->GetMapId() );
     if( !map )
         SCRIPT_ERROR_R0( "Critter is on global." );
     if( direction >= DIRS_COUNT )
@@ -734,7 +734,7 @@ void FOServer::ScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy,
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
         SCRIPT_ERROR_R( "Transfers locked." );
-    Map* map = cr->GetMap();
+    Map* map = Self->MapMngr.GetMap( cr->GetMapId() );
     if( !map )
         SCRIPT_ERROR_R( "Critter is on global." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
@@ -744,7 +744,7 @@ void FOServer::ScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy,
     {
         if( dir < DIRS_COUNT && cr->GetDir() != dir )
             cr->SetDir( dir );
-        if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, 0, true ) )
+        if( !Self->MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, 0, true ) )
             SCRIPT_ERROR_R( "Transit fail." );
     }
     else if( dir < DIRS_COUNT && cr->GetDir() != dir )
@@ -768,7 +768,7 @@ void FOServer::ScriptFunc::Crit_TransitToMapHex( Critter* cr, Map* map, ushort h
     if( dir >= DIRS_COUNT )
         dir = 0;
 
-    if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
+    if( !Self->MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
         SCRIPT_ERROR_R( "Transit to map hex fail." );
 
     // Todo: need???
@@ -787,7 +787,7 @@ void FOServer::ScriptFunc::Crit_TransitToGlobal( Critter* cr )
     if( cr->LockMapTransfers )
         SCRIPT_ERROR_R( "Transfers locked." );
 
-    if( cr->GetMap() && !MapMngr.TransitToGlobal( cr, 0, true ) )
+    if( cr->GetMapId() && !Self->MapMngr.TransitToGlobal( cr, 0, true ) )
         SCRIPT_ERROR_R( "Transit fail." );
 }
 
@@ -802,14 +802,14 @@ void FOServer::ScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptAr
     if( !group )
         SCRIPT_ERROR_R( "Group arg is null." );
 
-    if( !MapMngr.TransitToGlobal( cr, 0, true ) )
+    if( !Self->MapMngr.TransitToGlobal( cr, 0, true ) )
         SCRIPT_ERROR_R( "Transit fail." );
 
     for( int i = 0, j = group->GetSize(); i < j; i++ )
     {
         Critter* cr_ = *(Critter**) group->At( i );
         if( cr_ && !cr_->IsDestroyed )
-            MapMngr.TransitToGlobal( cr_, cr->GetId(), true );
+            Self->MapMngr.TransitToGlobal( cr_, cr->GetId(), true );
     }
 }
 
@@ -828,7 +828,7 @@ void FOServer::ScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, Critter* lead
     if( !leader->GlobalMapGroup )
         SCRIPT_ERROR_R( "Leader is not on global map." );
 
-    if( !MapMngr.TransitToGlobal( cr, leader->GetId(), true ) )
+    if( !Self->MapMngr.TransitToGlobal( cr, leader->GetId(), true ) )
         SCRIPT_ERROR_R( "Transit fail." );
 }
 
@@ -891,8 +891,8 @@ void FOServer::ScriptFunc::Crit_RefreshVisible( Critter* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
-    cr->ProcessVisibleCritters();
-    cr->ProcessVisibleItems();
+    Self->MapMngr.ProcessVisibleCritters( cr );
+    Self->MapMngr.ProcessVisibleItems( cr );
 }
 
 void FOServer::ScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir )
@@ -922,7 +922,7 @@ void FOServer::ScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, ushor
     cr->ViewMapDir = dir;
     cr->ViewMapLocId = 0;
     cr->ViewMapLocEnt = 0;
-    cr->Send_LoadMap( map );
+    cr->Send_LoadMap( map, Self->MapMngr );
 }
 
 void FOServer::ScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
@@ -1089,7 +1089,7 @@ bool FOServer::ScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
 
     if( !count )
         count = cr->CountItemPid( pid );
-    return ItemMngr.SubItemCritter( cr, pid, count );
+    return Self->ItemMngr.SubItemCritter( cr, pid, count );
 }
 
 Item* FOServer::ScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
@@ -1098,12 +1098,12 @@ Item* FOServer::ScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
-    if( !ProtoMngr.GetProtoItem( pid ) )
+    if( !Self->ProtoMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid proto '{}'.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
-    return ItemMngr.AddItemCritter( cr, pid, count );
+    return Self->ItemMngr.AddItemCritter( cr, pid, count );
 }
 
 Item* FOServer::ScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
@@ -1155,7 +1155,7 @@ Item* FOServer::ScriptFunc::Crit_GetItemByPid( Critter* cr, hash proto_id )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    return cr->GetItemByPidInvPriority( proto_id );
+    return Self->CrMngr.GetItemByPidInvPriority( cr, proto_id );
 }
 
 CScriptArray* FOServer::ScriptFunc::Crit_GetItems( Critter* cr )
@@ -1252,7 +1252,7 @@ void FOServer::ScriptFunc::Crit_SetCond( Critter* cr, int cond )
 
     if( cr->GetMapId() )
     {
-        Map*   map = MapMngr.GetMap( cr->GetMapId() );
+        Map*   map = Self->MapMngr.GetMap( cr->GetMapId() );
         RUNTIME_ASSERT( map );
         ushort hx = cr->GetHexX();
         ushort hy = cr->GetHexY();
@@ -1269,7 +1269,7 @@ void FOServer::ScriptFunc::Crit_CloseDialog( Critter* cr )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
     if( cr->IsPlayer() && ( (Client*) cr )->IsTalking() )
-        ( (Client*) cr )->CloseTalk();
+        Self->CrMngr.CloseTalk( (Client*) cr );
 }
 
 void FOServer::ScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* arr )
@@ -1348,8 +1348,8 @@ bool FOServer::ScriptFunc::Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_nu
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     if( by_id )
-        return cr->CheckKnownLocById( loc_num );
-    return cr->CheckKnownLocByPid( loc_num );
+        return Self->MapMngr.CheckKnownLocById( cr, loc_num );
+    return Self->MapMngr.CheckKnownLocByPid( cr, loc_num );
 }
 
 bool FOServer::ScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_num )
@@ -1357,11 +1357,11 @@ bool FOServer::ScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_n
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    Location* loc = ( by_id ? MapMngr.GetLocation( loc_num ) : MapMngr.GetLocationByPid( loc_num, 0 ) );
+    Location* loc = ( by_id ? Self->MapMngr.GetLocation( loc_num ) : Self->MapMngr.GetLocationByPid( loc_num, 0 ) );
     if( !loc )
         SCRIPT_ERROR_R0( "Location not found." );
 
-    cr->AddKnownLoc( loc->GetId() );
+    Self->MapMngr.AddKnownLoc( cr, loc->GetId() );
     if( loc->IsNonEmptyAutomaps() )
         cr->Send_AutomapsInfo( nullptr, loc );
     if( !cr->GetMapId() )
@@ -1389,13 +1389,13 @@ bool FOServer::ScriptFunc::Crit_UnsetKnownLoc( Critter* cr, bool by_id, uint loc
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    Location* loc = ( by_id ? MapMngr.GetLocation( loc_num ) : MapMngr.GetLocationByPid( loc_num, 0 ) );
+    Location* loc = ( by_id ? Self->MapMngr.GetLocation( loc_num ) : Self->MapMngr.GetLocationByPid( loc_num, 0 ) );
     if( !loc )
         SCRIPT_ERROR_R0( "Location not found." );
-    if( !cr->CheckKnownLocById( loc->GetId() ) )
+    if( !Self->MapMngr.CheckKnownLocById( cr, loc->GetId() ) )
         SCRIPT_ERROR_R0( "Player is not know this location." );
 
-    cr->EraseKnownLoc( loc->GetId() );
+    Self->MapMngr.EraseKnownLoc( cr, loc->GetId() );
     if( !cr->GetMapId() )
         cr->Send_GlobalLocation( loc, false );
     return true;
@@ -1877,7 +1877,7 @@ Item* FOServer::ScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash pr
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
-    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    ProtoItem* proto = Self->ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
         SCRIPT_ERROR_R0( "Invalid proto '{}' arg.", _str().parseHash( proto_id ) );
     if( !map->IsPlaceForProtoItem( hx, hy, proto ) )
@@ -2192,7 +2192,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, i
     }
     else
     {
-        PcVec map_npcs = map->GetNpcs();
+        NpcVec map_npcs = map->GetNpcs();
         critters.reserve( map_npcs.size() );
         for( Npc* npc : map_npcs )
             if( npc->GetProtoId() == pid && npc->CheckFind( find_type ) )
@@ -2218,7 +2218,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPath( Map* map, ushort from
     trace.Angle = angle;
     trace.Critters = &critters;
     trace.FindType = find_type;
-    MapMngr.TraceBullet( trace );
+    Self->MapMngr.TraceBullet( trace );
 
     return Script::CreateArrayRef( "Critter[]", critters );
 }
@@ -2242,7 +2242,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort
     trace.FindType = find_type;
     trace.PreBlock = &pre_block;
     trace.Block = &block;
-    MapMngr.TraceBullet( trace );
+    Self->MapMngr.TraceBullet( trace );
 
     pre_block_hx = pre_block.first;
     pre_block_hy = pre_block.second;
@@ -2301,7 +2301,7 @@ void FOServer::ScriptFunc::Map_GetHexInPath( Map* map, ushort from_hx, ushort fr
     trace.Angle = angle;
     trace.PreBlock = &pre_block;
     trace.Block = &block;
-    MapMngr.TraceBullet( trace );
+    Self->MapMngr.TraceBullet( trace );
     to_hx = pre_block.first;
     to_hy = pre_block.second;
 }
@@ -2321,7 +2321,7 @@ void FOServer::ScriptFunc::Map_GetHexInPathWall( Map* map, ushort from_hx, ushor
     trace.Dist = dist;
     trace.Angle = angle;
     trace.LastPassed = &last_passed;
-    MapMngr.TraceBullet( trace );
+    Self->MapMngr.TraceBullet( trace );
     if( trace.IsHaveLastPassed )
     {
         to_hx = last_passed.first;
@@ -2344,17 +2344,16 @@ uint FOServer::ScriptFunc::Map_GetPathLengthHex( Map* map, ushort from_hx, ushor
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
 
     PathFindData pfd;
-    pfd.Clear();
     pfd.MapId = map->GetId();
     pfd.FromX = from_hx;
     pfd.FromY = from_hy;
     pfd.ToX = to_hx;
     pfd.ToY = to_hy;
     pfd.Cut = cut;
-    uint result = MapMngr.FindPath( pfd );
+    uint result = Self->MapMngr.FindPath( pfd );
     if( result != FPATH_OK )
         return 0;
-    PathStepVec& path = MapMngr.GetPath( pfd.PathNum );
+    PathStepVec& path = Self->MapMngr.GetPath( pfd.PathNum );
     return (uint) path.size();
 }
 
@@ -2370,7 +2369,6 @@ uint FOServer::ScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort to
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
 
     PathFindData pfd;
-    pfd.Clear();
     pfd.MapId = map->GetId();
     pfd.FromCritter = cr;
     pfd.FromX = cr->GetHexX();
@@ -2379,10 +2377,10 @@ uint FOServer::ScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort to
     pfd.ToY = to_hy;
     pfd.Multihex = cr->GetMultihex();
     pfd.Cut = cut;
-    uint result = MapMngr.FindPath( pfd );
+    uint result = Self->MapMngr.FindPath( pfd );
     if( result != FPATH_OK )
         return 0;
-    PathStepVec& path = MapMngr.GetPath( pfd.PathNum );
+    PathStepVec& path = Self->MapMngr.GetPath( pfd.PathNum );
     return (uint) path.size();
 }
 
@@ -2392,7 +2390,7 @@ Critter* FOServer::ScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, u
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
-    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
+    ProtoCritter* proto = Self->ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
         SCRIPT_ERROR_R0( "Proto '{}' not found.", _str().parseHash( proto_id ) );
 
@@ -2405,11 +2403,11 @@ Critter* FOServer::ScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, u
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
                 return nullptr;
 
-        npc = CrMngr.CreateNpc( proto_id, &props_, map, hx, hy, dir, false );
+        npc = Self->CrMngr.CreateNpc( proto_id, &props_, map, hx, hy, dir, false );
     }
     else
     {
-        npc = CrMngr.CreateNpc( proto_id, nullptr, map, hx, hy, dir, false );
+        npc = Self->CrMngr.CreateNpc( proto_id, nullptr, map, hx, hy, dir, false );
     }
 
     if( !npc )
@@ -2528,7 +2526,7 @@ bool FOServer::ScriptFunc::Map_CheckPlaceForItem( Map* map, ushort hx, ushort hy
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
+    ProtoItem* proto_item = Self->ProtoMngr.GetProtoItem( pid );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Proto item not found." );
 
@@ -2583,9 +2581,8 @@ bool FOServer::ScriptFunc::Map_Reload( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !Self->RegenerateMap( map ) )
-        SCRIPT_ERROR_R0( "Reload map fail." );
 
+    Self->MapMngr.RegenerateMap( map );
     return true;
 }
 
@@ -2722,8 +2719,8 @@ bool FOServer::ScriptFunc::Location_Reload( Location* loc )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     for( Map* map : loc->GetMaps() )
-        if( !Self->RegenerateMap( map ) )
-            SCRIPT_ERROR_R0( "Reload map in location fail." );
+        Self->MapMngr.RegenerateMap( map );
+
     return true;
 }
 
@@ -2748,7 +2745,7 @@ Item* FOServer::ScriptFunc::Global_GetItem( uint item_id )
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
 
-    Item* item = ItemMngr.GetItem( item_id );
+    Item* item = Self->ItemMngr.GetItem( item_id );
     if( !item || item->IsDestroyed )
         return nullptr;
     return item;
@@ -2770,7 +2767,7 @@ void FOServer::ScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* t
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_cr, skip_checks );
+    Self->ItemMngr.MoveItem( item, count, to_cr, skip_checks );
 }
 
 void FOServer::ScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
@@ -2791,7 +2788,7 @@ void FOServer::ScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_m
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy, skip_checks );
+    Self->ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy, skip_checks );
 }
 
 void FOServer::ScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
@@ -2810,7 +2807,7 @@ void FOServer::ScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_cont, stack_id, skip_checks );
+    Self->ItemMngr.MoveItem( item, count, to_cont, stack_id, skip_checks );
 }
 
 void FOServer::ScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to_cr, bool skip_checks )
@@ -2828,7 +2825,7 @@ void FOServer::ScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to_
         if( !item || item->IsDestroyed )
             continue;
 
-        ItemMngr.MoveItem( item, item->GetCount(), to_cr, skip_checks );
+        Self->ItemMngr.MoveItem( item, item->GetCount(), to_cr, skip_checks );
     }
 }
 
@@ -2849,7 +2846,7 @@ void FOServer::ScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_map
         if( !item || item->IsDestroyed )
             continue;
 
-        ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy, skip_checks );
+        Self->ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy, skip_checks );
     }
 }
 
@@ -2868,21 +2865,21 @@ void FOServer::ScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_c
         if( !item || item->IsDestroyed )
             continue;
 
-        ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id, skip_checks );
+        Self->ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id, skip_checks );
     }
 }
 
 void FOServer::ScriptFunc::Global_DeleteItem( Item* item )
 {
     if( item )
-        ItemMngr.DeleteItem( item );
+        Self->ItemMngr.DeleteItem( item );
 }
 
 void FOServer::ScriptFunc::Global_DeleteItemById( uint item_id )
 {
-    Item* item = ItemMngr.GetItem( item_id );
+    Item* item = Self->ItemMngr.GetItem( item_id );
     if( item )
-        ItemMngr.DeleteItem( item );
+        Self->ItemMngr.DeleteItem( item );
 }
 
 void FOServer::ScriptFunc::Global_DeleteItems( CScriptArray* items )
@@ -2891,7 +2888,7 @@ void FOServer::ScriptFunc::Global_DeleteItems( CScriptArray* items )
     {
         Item* item = *(Item**) items->At( i );
         if( item )
-            ItemMngr.DeleteItem( item );
+            Self->ItemMngr.DeleteItem( item );
     }
 }
 
@@ -2906,9 +2903,9 @@ void FOServer::ScriptFunc::Global_DeleteItemsById( CScriptArray* items )
         uint item_id = *(uint*) items->At( i );
         if( item_id )
         {
-            Item* item = ItemMngr.GetItem( item_id );
+            Item* item = Self->ItemMngr.GetItem( item_id );
             if( item )
-                ItemMngr.DeleteItem( item );
+                Self->ItemMngr.DeleteItem( item );
         }
     }
 }
@@ -2916,30 +2913,30 @@ void FOServer::ScriptFunc::Global_DeleteItemsById( CScriptArray* items )
 void FOServer::ScriptFunc::Global_DeleteNpc( Critter* npc )
 {
     if( npc )
-        CrMngr.DeleteNpc( npc );
+        Self->CrMngr.DeleteNpc( npc );
 }
 
 void FOServer::ScriptFunc::Global_DeleteNpcById( uint npc_id )
 {
-    Critter* npc = CrMngr.GetNpc( npc_id );
+    Critter* npc = Self->CrMngr.GetNpc( npc_id );
     if( npc )
-        CrMngr.DeleteNpc( npc );
+        Self->CrMngr.DeleteNpc( npc );
 }
 
 void FOServer::ScriptFunc::Global_RadioMessage( ushort channel, string text )
 {
     if( !text.empty() )
-        ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, nullptr );
+        Self->ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, nullptr );
 }
 
 void FOServer::ScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, nullptr );
+    Self->ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, nullptr );
 }
 
 void FOServer::ScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
+    Self->ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
 }
 
 uint FOServer::ScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
@@ -2985,7 +2982,7 @@ void FOServer::ScriptFunc::Global_GetGameTime( uint full_second, ushort& year, u
 Location* FOServer::ScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters )
 {
     // Create and generate location
-    Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
+    Location* loc = Self->MapMngr.CreateLocation( loc_pid, wx, wy );
     if( !loc )
         SCRIPT_ERROR_R0( "Unable to create location '{}'.", _str().parseHash( loc_pid ) );
 
@@ -2996,7 +2993,7 @@ Location* FOServer::ScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, 
         {
             Critter* cr = *(Critter**) critters->At( i );
 
-            cr->AddKnownLoc( loc->GetId() );
+            Self->MapMngr.AddKnownLoc( cr, loc->GetId() );
             if( !cr->GetMapId() )
                 cr->Send_GlobalLocation( loc, true );
             if( loc->IsNonEmptyAutomaps() )
@@ -3024,21 +3021,21 @@ Location* FOServer::ScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, 
 void FOServer::ScriptFunc::Global_DeleteLocation( Location* loc )
 {
     if( loc )
-        MapMngr.DeleteLocation( loc, nullptr );
+        Self->MapMngr.DeleteLocation( loc, nullptr );
 }
 
 void FOServer::ScriptFunc::Global_DeleteLocationById( uint loc_id )
 {
-    Location* loc = MapMngr.GetLocation( loc_id );
+    Location* loc = Self->MapMngr.GetLocation( loc_id );
     if( loc )
-        MapMngr.DeleteLocation( loc, nullptr );
+        Self->MapMngr.DeleteLocation( loc, nullptr );
 }
 
 Critter* FOServer::ScriptFunc::Global_GetCritter( uint crid )
 {
     if( !crid )
         return nullptr;          // SCRIPT_ERROR_R0("Critter id arg is zero.");
-    return CrMngr.GetCritter( crid );
+    return Self->CrMngr.GetCritter( crid );
 }
 
 Critter* FOServer::ScriptFunc::Global_GetPlayer( string name )
@@ -3050,7 +3047,7 @@ Critter* FOServer::ScriptFunc::Global_GetPlayer( string name )
         return nullptr;
 
     // Find online
-    Client* cl = CrMngr.GetPlayer( id );
+    Client* cl = Self->CrMngr.GetPlayer( id );
     if( cl )
     {
         cl->AddRef();
@@ -3058,7 +3055,7 @@ Critter* FOServer::ScriptFunc::Global_GetPlayer( string name )
     }
 
     // Load from db
-    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
+    ProtoCritter* cl_proto = Self->ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
     RUNTIME_ASSERT( cl_proto );
     cl = new Client( nullptr, cl_proto );
     cl->SetId( id );
@@ -3071,7 +3068,7 @@ Critter* FOServer::ScriptFunc::Global_GetPlayer( string name )
 CScriptArray* FOServer::ScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type )
 {
     CritterVec critters;
-    CrMngr.GetGlobalMapCritters( wx, wy, radius, find_type, critters );
+    Self->CrMngr.GetGlobalMapCritters( wx, wy, radius, find_type, critters );
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
@@ -3080,7 +3077,7 @@ Map* FOServer::ScriptFunc::Global_GetMap( uint map_id )
     if( !map_id )
         SCRIPT_ERROR_R0( "Map id arg is zero." );
 
-    return MapMngr.GetMap( map_id );
+    return Self->MapMngr.GetMap( map_id );
 }
 
 Map* FOServer::ScriptFunc::Global_GetMapByPid( hash map_pid, uint skip_count )
@@ -3088,7 +3085,7 @@ Map* FOServer::ScriptFunc::Global_GetMapByPid( hash map_pid, uint skip_count )
     if( !map_pid )
         SCRIPT_ERROR_R0( "Invalid zero map proto id arg." );
 
-    return MapMngr.GetMapByPid( map_pid, skip_count );
+    return Self->MapMngr.GetMapByPid( map_pid, skip_count );
 }
 
 Location* FOServer::ScriptFunc::Global_GetLocation( uint loc_id )
@@ -3096,7 +3093,7 @@ Location* FOServer::ScriptFunc::Global_GetLocation( uint loc_id )
     if( !loc_id )
         SCRIPT_ERROR_R0( "Location id arg is zero." );
 
-    return MapMngr.GetLocation( loc_id );
+    return Self->MapMngr.GetLocation( loc_id );
 }
 
 Location* FOServer::ScriptFunc::Global_GetLocationByPid( hash loc_pid, uint skip_count )
@@ -3104,14 +3101,14 @@ Location* FOServer::ScriptFunc::Global_GetLocationByPid( hash loc_pid, uint skip
     if( !loc_pid )
         SCRIPT_ERROR_R0( "Invalid zero location proto id arg." );
 
-    return MapMngr.GetLocationByPid( loc_pid, skip_count );
+    return Self->MapMngr.GetLocationByPid( loc_pid, skip_count );
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radius )
 {
     LocationVec locations;
     LocationVec all_locations;
-    MapMngr.GetLocations( all_locations );
+    Self->MapMngr.GetLocations( all_locations );
     for( auto it = all_locations.begin(), end = all_locations.end(); it != end; ++it )
     {
         Location* loc = *it;
@@ -3126,12 +3123,12 @@ CScriptArray* FOServer::ScriptFunc::Global_GetVisibleLocations( ushort wx, ushor
 {
     LocationVec locations;
     LocationVec all_locations;
-    MapMngr.GetLocations( all_locations );
+    Self->MapMngr.GetLocations( all_locations );
     for( auto it = all_locations.begin(), end = all_locations.end(); it != end; ++it )
     {
         Location* loc = *it;
         if( DistSqrt( wx, wy, loc->GetWorldX(), loc->GetWorldY() ) <= radius + loc->GetRadius() &&
-            ( loc->IsLocVisible() || ( cr && cr->IsPlayer() && ( (Client*) cr )->CheckKnownLocById( loc->GetId() ) ) ) )
+            ( loc->IsLocVisible() || ( cr && cr->IsPlayer() && Self->MapMngr.CheckKnownLocById( cr, loc->GetId() ) ) ) )
             locations.push_back( loc );
     }
 
@@ -3141,7 +3138,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetVisibleLocations( ushort wx, ushor
 CScriptArray* FOServer::ScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius )
 {
     UIntVec loc_ids;
-    MapMngr.GetZoneLocations( zx, zy, zone_radius, loc_ids );
+    Self->MapMngr.GetZoneLocations( zx, zy, zone_radius, loc_ids );
 
     CScriptArray* ids = Script::CreateArray( "uint[]" );
     Script::AppendVectorToArray< uint >( loc_ids, ids );
@@ -3212,10 +3209,10 @@ bool FOServer::ScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack, 
 
 int64 FOServer::ScriptFunc::Global_WorldItemCount( hash pid )
 {
-    if( !ProtoMngr.GetProtoItem( pid ) )
+    if( !Self->ProtoMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid protoId arg." );
 
-    return ItemMngr.GetItemStatistics( pid );
+    return Self->ItemMngr.GetItemStatistics( pid );
 }
 
 bool FOServer::ScriptFunc::Global_AddTextListener( int say_type, string first_str, uint parameter, asIScriptFunction* func )
@@ -3262,26 +3259,6 @@ static void SwapCrittersRefreshNpc( Npc* npc )
     SETFLAG( npc->Flags, FCRIT_NPC );
 }
 
-static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
-{
-    UNSETFLAG( cl->Flags, FCRIT_NPC );
-    SETFLAG( cl->Flags, FCRIT_PLAYER );
-
-    if( cl->Talk.TalkType != TALK_NONE )
-        cl->CloseTalk();
-
-    if( map != prev_map )
-    {
-        cl->Send_LoadMap( nullptr );
-    }
-    else
-    {
-        cl->Send_AllProperties();
-        cl->Send_AddAllItems();
-        cl->Send_AllAutomapsInfo();
-    }
-}
-
 bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory )
 {
     // Check
@@ -3301,16 +3278,16 @@ bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool
         SCRIPT_ERROR_R0( "Critter2 is on global map." );
 
     // Swap positions
-    Map* map1 = MapMngr.GetMap( cr1->GetMapId() );
+    Map* map1 = Self->MapMngr.GetMap( cr1->GetMapId() );
     if( !map1 )
         SCRIPT_ERROR_R0( "Map of Critter1 not found." );
-    Map* map2 = MapMngr.GetMap( cr2->GetMapId() );
+    Map* map2 = Self->MapMngr.GetMap( cr2->GetMapId() );
     if( !map2 )
         SCRIPT_ERROR_R0( "Map of Critter2 not found." );
 
     CritterVec& cr_map1 = map1->GetCrittersRaw();
-    ClVec&      cl_map1 = map1->GetPlayersRaw();
-    PcVec&      npc_map1 = map1->GetNpcsRaw();
+    ClientVec&  cl_map1 = map1->GetPlayersRaw();
+    NpcVec&     npc_map1 = map1->GetNpcsRaw();
     auto        it_cr = std::find( cr_map1.begin(), cr_map1.end(), cr1 );
     if( it_cr != cr_map1.end() )
         cr_map1.erase( it_cr );
@@ -3322,8 +3299,8 @@ bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool
         npc_map1.erase( it_pc );
 
     CritterVec& cr_map2 = map2->GetCrittersRaw();
-    ClVec&      cl_map2 = map2->GetPlayersRaw();
-    PcVec&      npc_map2 = map2->GetNpcsRaw();
+    ClientVec&  cl_map2 = map2->GetPlayersRaw();
+    NpcVec&     npc_map2 = map2->GetNpcsRaw();
     it_cr = std::find( cr_map2.begin(), cr_map2.end(), cr1 );
     if( it_cr != cr_map2.end() )
         cr_map2.erase( it_cr );
@@ -3357,27 +3334,49 @@ bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool
         ItemVec items1 = cr1->GetInventory();
         ItemVec items2 = cr2->GetInventory();
         for( auto it = items1.begin(), end = items1.end(); it != end; ++it )
-            cr1->EraseItem( *it, false );
+            Self->CrMngr.EraseItemFromCritter( cr1, *it, false );
         for( auto it = items2.begin(), end = items2.end(); it != end; ++it )
-            cr2->EraseItem( *it, false );
+            Self->CrMngr.EraseItemFromCritter( cr2, *it, false );
         for( auto it = items1.begin(), end = items1.end(); it != end; ++it )
-            cr2->AddItem( *it, false );
+            Self->CrMngr.AddItemToCritter( cr2, *it, false );
         for( auto it = items2.begin(), end = items2.end(); it != end; ++it )
-            cr1->AddItem( *it, false );
+            Self->CrMngr.AddItemToCritter( cr1, *it, false );
     }
 
     // Refresh
     cr1->ClearVisible();
     cr2->ClearVisible();
 
+    auto swap_critters_refresh_client = [] ( CritterManager & cr_mngr, Client * cl, Map * map, Map * prev_map )
+    {
+        UNSETFLAG( cl->Flags, FCRIT_NPC );
+        SETFLAG( cl->Flags, FCRIT_PLAYER );
+
+        if( cl->Talk.TalkType != TALK_NONE )
+            cr_mngr.CloseTalk( cl );
+
+        if( map != prev_map )
+        {
+            cl->Send_LoadMap( nullptr, Self->MapMngr );
+        }
+        else
+        {
+            cl->Send_AllProperties();
+            cl->Send_AddAllItems();
+            cl->Send_AllAutomapsInfo( Self->MapMngr );
+        }
+    };
+
     if( cr1->IsNpc() )
         SwapCrittersRefreshNpc( (Npc*) cr1 );
     else
-        SwapCrittersRefreshClient( (Client*) cr1, map2, map1 );
+        swap_critters_refresh_client( Self->CrMngr, (Client*) cr1, map2, map1 );
+
     if( cr2->IsNpc() )
         SwapCrittersRefreshNpc( (Npc*) cr2 );
     else
-        SwapCrittersRefreshClient( (Client*) cr2, map1, map2 );
+        swap_critters_refresh_client( Self->CrMngr, (Client*) cr2, map1, map2 );
+
     if( map1 == map2 )
     {
         cr1->Send_CustomCommand( cr1, OTHER_CLEAR_MAP, 0 );
@@ -3386,10 +3385,10 @@ bool FOServer::ScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool
         cr2->Send_Dir( cr2 );
         cr1->Send_CustomCommand( cr1, OTHER_TELEPORT, ( cr1->GetHexX() << 16 ) | ( cr1->GetHexY() ) );
         cr2->Send_CustomCommand( cr2, OTHER_TELEPORT, ( cr2->GetHexX() << 16 ) | ( cr2->GetHexY() ) );
-        cr1->ProcessVisibleCritters();
-        cr2->ProcessVisibleCritters();
-        cr1->ProcessVisibleItems();
-        cr2->ProcessVisibleItems();
+        Self->MapMngr.ProcessVisibleCritters( cr1 );
+        Self->MapMngr.ProcessVisibleCritters( cr2 );
+        Self->MapMngr.ProcessVisibleItems( cr1 );
+        Self->MapMngr.ProcessVisibleItems( cr2 );
     }
     return true;
 }
@@ -3398,7 +3397,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllItems( hash pid )
 {
     ItemVec items;
     ItemVec all_items;
-    ItemMngr.GetGameItems( all_items );
+    Self->ItemMngr.GetGameItems( all_items );
     for( auto it = all_items.begin(), end = all_items.end(); it != end; ++it )
     {
         Item* item = *it;
@@ -3412,8 +3411,8 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllItems( hash pid )
 CScriptArray* FOServer::ScriptFunc::Global_GetOnlinePlayers()
 {
     CritterVec players;
-    ClVec      all_players;
-    CrMngr.GetClients( all_players );
+    ClientVec  all_players;
+    Self->CrMngr.GetClients( all_players );
     for( auto it = all_players.begin(), end = all_players.end(); it != end; ++it )
     {
         Critter* player_ = *it;
@@ -3435,8 +3434,8 @@ CScriptArray* FOServer::ScriptFunc::Global_GetRegisteredPlayerIds()
 CScriptArray* FOServer::ScriptFunc::Global_GetAllNpc( hash pid )
 {
     CritterVec npcs;
-    PcVec      all_npcs;
-    CrMngr.GetNpcs( all_npcs );
+    NpcVec     all_npcs;
+    Self->CrMngr.GetNpcs( all_npcs );
     for( auto it = all_npcs.begin(), end = all_npcs.end(); it != end; ++it )
     {
         Npc* npc_ = *it;
@@ -3451,7 +3450,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllMaps( hash pid )
 {
     MapVec maps;
     MapVec all_maps;
-    MapMngr.GetMaps( all_maps );
+    Self->MapMngr.GetMaps( all_maps );
     for( auto it = all_maps.begin(), end = all_maps.end(); it != end; ++it )
     {
         Map* map = *it;
@@ -3466,7 +3465,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllLocations( hash pid )
 {
     LocationVec locations;
     LocationVec all_locations;
-    MapMngr.GetLocations( all_locations );
+    Self->MapMngr.GetLocations( all_locations );
     for( auto it = all_locations.begin(), end = all_locations.end(); it != end; ++it )
     {
         Location* loc = *it;

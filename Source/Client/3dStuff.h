@@ -1,5 +1,4 @@
-#ifndef __3D_STUFF__
-#define __3D_STUFF__
+#pragma once
 
 #include "Common.h"
 #include "GraphicApi.h"
@@ -23,6 +22,7 @@ class Animation3dEntity;
 using Animation3dEntityVec = vector< Animation3dEntity* >;
 class Animation3dXFile;
 using Animation3dXFileVec = vector< Animation3dXFile* >;
+class GraphicLoader;
 
 struct AnimParams
 {
@@ -65,39 +65,109 @@ struct AnimationCallback
 };
 using AnimationCallbackVec = vector< AnimationCallback >;
 
-class Animation3d
+class Animation3dManager: public NonCopyable
 {
-private:
+    friend class Animation3d;
     friend class Animation3dEntity;
     friend class Animation3dXFile;
 
-    // All loaded animations
-    static Animation3dVec loadedAnimations;
+public:
+    Animation3dManager( GraphicLoader& graphic_loader );
+    ~Animation3dManager();
 
-    // Parameters
-    uint               curAnim1;
-    uint               curAnim2;
-    CombinedMeshVec    combinedMeshes;
-    size_t             combinedMeshesSize;
-    bool               disableCulling;
-    MeshInstanceVec    allMeshes;
-    BoolVec            allMeshesDisabled;
-    Animation3dEntity* animEntity;
-    AnimController*    animController;
-    int                currentLayers[ LAYERS3D_COUNT + 1 ];        // +1 for actions
-    uint               currentTrack;
-    uint               lastDrawTick;
-    uint               endTick;
-    Matrix             matRot, matScale;
-    Matrix             matScaleBase, matRotBase, matTransBase;
-    float              speedAdjustBase, speedAdjustCur, speedAdjustLink;
-    bool               shadowDisabled;
-    float              dirAngle;
-    Vector             groundPos;
-    bool               useGameTimer;
-    float              animPosProc, animPosTime, animPosPeriod;
-    bool               allowMeshGeneration;
-    CutDataVec         allCuts;
+    void         SetScreenSize( int width, int height );
+    Animation3d* GetAnimation( const string& name, bool is_child );
+    void         PreloadEntity( const string& name );
+    Vector       Convert2dTo3d( int x, int y );
+    Point        Convert3dTo2d( Vector pos );
+
+private:
+    Animation3dEntity* GetEntity( const string& name );
+    Animation3dXFile*  GetXFile( const string& xname );
+    void               VecProject( const Vector& v, Vector& out );
+    void               VecUnproject( const Vector& v, Vector& out );
+    void               ProjectPosition( Vector& v );
+
+    GraphicLoader&       graphicLoader;
+    Animation3dVec       loadedAnimations;
+    Animation3dEntityVec allEntities;
+    Animation3dXFileVec  xFiles;
+
+    int                  ModeWidth = 0;
+    int                  ModeHeight = 0;
+    float                ModeWidthF = 0.0f;
+    float                ModeHeightF = 0.0f;
+    Matrix               MatrixProjRM; // Row or Column major order
+    Matrix               MatrixEmptyRM;
+    Matrix               MatrixProjCM;
+    Matrix               MatrixEmptyCM;
+    float                MoveTransitionTime = 0.25f;
+    float                GlobalSpeedAdjust = 1.0f;
+    bool                 SoftwareSkinning = false;
+    uint                 AnimDelay = 0;
+    Color                LightColor;
+    MatrixVec            WorldMatrices;
+};
+
+class Animation3d: public NonCopyable
+{
+    friend class Animation3dManager;
+    friend class Animation3dEntity;
+    friend class Animation3dXFile;
+
+public:
+    Animation3d( Animation3dManager& anim3d_mngr );
+    ~Animation3d();
+
+    void StartMeshGeneration();
+    bool SetAnimation( uint anim1, uint anim2, int* layers, int flags );
+    bool IsAnimation( uint anim1, uint anim2 );
+    bool CheckAnimation( uint& anim1, uint& anim2 );
+    int  GetAnim1();
+    int  GetAnim2();
+    void SetDir( int dir );
+    void SetDirAngle( int dir_angle );
+    void SetRotation( float rx, float ry, float rz );
+    void SetScale( float sx, float sy, float sz );
+    void SetSpeed( float speed );
+    void SetTimer( bool use_game_timer );
+    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool NeedDraw();
+    void Draw( int x, int y );
+    bool IsAnimationPlaying();
+    void GetRenderFramesData( float& period, int& proc_from, int& proc_to, int& dir );
+    void GetDrawSize( uint& draw_width, uint& draw_height );
+    bool GetBonePos( hash name_hash, int& x, int& y );
+
+    uint                 SprId;
+    int                  SprAtlasType;
+    AnimationCallbackVec AnimationCallbacks;
+
+private:
+    Animation3dManager& anim3dMngr;
+    uint                curAnim1;
+    uint                curAnim2;
+    CombinedMeshVec     combinedMeshes;
+    size_t              combinedMeshesSize;
+    bool                disableCulling;
+    MeshInstanceVec     allMeshes;
+    BoolVec             allMeshesDisabled;
+    Animation3dEntity*  animEntity;
+    AnimController*     animController;
+    int                 currentLayers[ LAYERS3D_COUNT + 1 ]; // +1 for actions
+    uint                currentTrack;
+    uint                lastDrawTick;
+    uint                endTick;
+    Matrix              matRot, matScale;
+    Matrix              matScaleBase, matRotBase, matTransBase;
+    float               speedAdjustBase, speedAdjustCur, speedAdjustLink;
+    bool                shadowDisabled;
+    float               dirAngle;
+    Vector              groundPos;
+    bool                useGameTimer;
+    float               animPosProc, animPosTime, animPosPeriod;
+    bool                allowMeshGeneration;
+    CutDataVec          allCuts;
 
     // Derived animations
     Animation3dVec childAnimations;
@@ -121,106 +191,66 @@ private:
     float GetSpeed();
     uint  GetTick();
     void  SetAnimData( AnimParams& data, bool clear );
-
-public:
-    uint                 SprId;
-    int                  SprAtlasType;
-    AnimationCallbackVec AnimationCallbacks;
-
-    Animation3d();
-    ~Animation3d();
-
-    void StartMeshGeneration();
-    bool SetAnimation( uint anim1, uint anim2, int* layers, int flags );
-    bool IsAnimation( uint anim1, uint anim2 );
-    bool CheckAnimation( uint& anim1, uint& anim2 );
-    int  GetAnim1();
-    int  GetAnim2();
-    void SetDir( int dir );
-    void SetDirAngle( int dir_angle );
-    void SetRotation( float rx, float ry, float rz );
-    void SetScale( float sx, float sy, float sz );
-    void SetSpeed( float speed );
-    void SetTimer( bool use_game_timer );
-    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool NeedDraw();
-    void Draw( int x, int y );
-    bool IsAnimationPlaying();
-    void GetRenderFramesData( float& period, int& proc_from, int& proc_to, int& dir );
-    void GetDrawSize( uint& draw_width, uint& draw_height );
-    bool GetBonePos( hash name_hash, int& x, int& y );
-
-    static bool         StartUp();
-    static void         SetScreenSize( int width, int height );
-    static void         Finish();
-    static Animation3d* GetAnimation( const string& name, bool is_child );
-    static void         AnimateFaster();
-    static void         AnimateSlower();
-    static Vector       Convert2dTo3d( int x, int y );
-    static Point        Convert3dTo2d( Vector pos );
 };
 
-class Animation3dEntity
+class Animation3dEntity: public NonCopyable
 {
-private:
+    friend class Animation3dManager;
     friend class Animation3d;
     friend class Animation3dXFile;
-    static Animation3dEntityVec allEntities;
 
-    string                      fileName;
-    string                      pathName;
-    Animation3dXFile*           xFile;
-    AnimController*             animController;
-    uint                        numAnimationSets;
-    IntMap                      anim1Equals, anim2Equals;
-    IntMap                      animIndexes;
-    IntFloatMap                 animSpeed;
-    UIntIntPairVecMap           animLayerValues;
-    HashSet                     fastTransitionBones;
-    AnimParams                  animDataDefault;
-    AnimParamsVec               animData;
-    int                         renderAnim;
-    int                         renderAnimProcFrom, renderAnimProcTo;
-    int                         renderAnimDir;
-    bool                        shadowDisabled;
-    bool                        calcualteTangetSpace;
-    uint                        drawWidth, drawHeight;
+public:
+    Animation3dEntity( Animation3dManager& anim3d_mngr );
+    ~Animation3dEntity();
+
+private:
+    Animation3dManager& anim3dMngr;
+    string              fileName;
+    string              pathName;
+    Animation3dXFile*   xFile;
+    AnimController*     animController;
+    uint                numAnimationSets;
+    IntMap              anim1Equals, anim2Equals;
+    IntMap              animIndexes;
+    IntFloatMap         animSpeed;
+    UIntIntPairVecMap   animLayerValues;
+    HashSet             fastTransitionBones;
+    AnimParams          animDataDefault;
+    AnimParamsVec       animData;
+    int                 renderAnim;
+    int                 renderAnimProcFrom, renderAnimProcTo;
+    int                 renderAnimDir;
+    bool                shadowDisabled;
+    bool                calcualteTangetSpace;
+    uint                drawWidth, drawHeight;
 
     int GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );
     int GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
 
     bool         Load( const string& name );
     Animation3d* CloneAnimation();
-
-public:
-    Animation3dEntity();
-    ~Animation3dEntity();
-    static Animation3dEntity* GetEntity( const string& name );
 };
 
-class Animation3dXFile
+class Animation3dXFile: public NonCopyable
 {
-private:
+    friend class Animation3dManager;
     friend class Animation3d;
     friend class Animation3dEntity;
-    static Animation3dXFileVec xFiles;
 
-    string                     fileName;
-    Bone*                      rootBone;
-    BoneVec                    allBones;
-    BoneVec                    allDrawBones;
+public:
+    Animation3dXFile( Animation3dManager& anim3d_mngr );
+    ~Animation3dXFile();
 
-    static Animation3dXFile* GetXFile( const string& xname );
+private:
+    Animation3dManager& anim3dMngr;
+    string              fileName;
+    Bone*               rootBone;
+    BoneVec             allBones;
+    BoneVec             allDrawBones;
 
     void SetupBones();
     void SetupAnimationOutput( AnimController* anim_controller );
 
     MeshTexture* GetTexture( const string& tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );
-
-public:
-    Animation3dXFile();
-    ~Animation3dXFile();
 };
-
-#endif // __3D_STUFF__

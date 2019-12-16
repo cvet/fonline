@@ -1,12 +1,9 @@
-#ifndef __SCRIPT_PRAGMAS__
-#define __SCRIPT_PRAGMAS__
+#pragma once
 
 #include "Common.h"
 #include "Entity.h"
 #include "angelscript.h"
 #include "preprocessor.h"
-#include <set>
-#include <string>
 
 #define PRAGMA_UNKNOWN    ( 0 )
 #define PRAGMA_SERVER     ( 1 )
@@ -25,7 +22,9 @@ class RpcPragma;       // [ServerRpc] void MyRpc(...)
 // add [Export] to allow access from other modules
 // ???
 
-typedef vector< Preprocessor::PragmaInstance > Pragmas;
+class EntityManager;
+class ProtoManager;
+using Pragmas = vector< Preprocessor::PragmaInstance >;
 
 class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 {
@@ -43,7 +42,7 @@ private:
     RpcPragma*       rpcPragma;
 
 public:
-    ScriptPragmaCallback( int pragma_type );
+    ScriptPragmaCallback( int pragma_type, ProtoManager* proto_mngr, EntityManager* entity_mngr );
     ~ScriptPragmaCallback();
     virtual void          CallPragma( const Preprocessor::PragmaInstance& pragma );
     const Pragmas&        GetProcessedPragmas();
@@ -60,5 +59,3 @@ public:
     void          RemoveEventsEntity( Entity* entity );
     void          HandleRpc( void* context );
 };
-
-#endif // __SCRIPT_PRAGMAS__

@@ -5,6 +5,8 @@
 #include "Script.h"
 #include "Critter.h"
 #include "Map.h"
+#include "Item.h"
+#include "Location.h"
 #include "StringUtils.h"
 
 DialogManager DlgMngr;

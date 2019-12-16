@@ -1,5 +1,4 @@
-#ifndef __SCRIPT_PROFILER__
-#define __SCRIPT_PROFILER__
+#pragma once
 
 #include "Common.h"
 
@@ -62,5 +61,3 @@ private:
     void   Finish();
     string GetStatistics();
 };
-
-#endif // __SCRIPT_PROFILER__

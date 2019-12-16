@@ -2,6 +2,7 @@
 #include "Testing.h"
 #include "Server.h"
 #include "Settings.h"
+#include "FileUtils.h"
 
 static FOServer* Server;
 static Thread    ServerThread;

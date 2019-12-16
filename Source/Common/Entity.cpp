@@ -1,17 +1,18 @@
 #include "Entity.h"
 #include "StringUtils.h"
 #include "Testing.h"
-
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
 # include "Map.h"
 # include "Critter.h"
 # include "Item.h"
+# include "Location.h"
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )
 # include "MapView.h"
 # include "CritterView.h"
 # include "ItemView.h"
 # include "ItemHexView.h"
+# include "LocationView.h"
 #endif
 
 ProtoEntity::ProtoEntity( hash proto_id, EntityType type, PropertyRegistrator* registrator ): Entity( 0, type, registrator, nullptr ), ProtoId( proto_id )
@@ -85,9 +86,9 @@ EntityVec Entity::GetChildren() const
     else if( Type == EntityType::Item )
     {
         Item* cont = (Item*) this;
-        if( cont->ChildItems )
+        if( cont->childItems )
         {
-            for( auto& item :* cont->ChildItems )
+            for( auto& item :* cont->childItems )
                 children.push_back( item );
         }
     }
@@ -123,7 +124,9 @@ void Entity::Release() const
 {
     if( --RefCounter == 0 )
     {
-        if( Type == EntityType::Global )
+        if( Type == EntityType::None )
+            delete (Entity*) this;
+        else if( Type == EntityType::Global )
             delete (GlobalVars*) this;
         else if( Type == EntityType::EntityProto )
             delete (ProtoEntity*) this;
@@ -162,7 +165,7 @@ void Entity::Release() const
             delete (LocationView*) this;
         #endif
         else
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
     }
 }
 
@@ -195,18 +198,6 @@ ProtoLocation::ProtoLocation( hash pid ): ProtoEntity( pid, EntityType::Location
 
 PROPERTIES_IMPL( ProtoLocation );
 CLASS_PROPERTY_IMPL( ProtoLocation, MapProtos );
-
-PROPERTIES_IMPL( ProtoMap );
-CLASS_PROPERTY_IMPL( ProtoMap, FileDir );
-CLASS_PROPERTY_IMPL( ProtoMap, Width );
-CLASS_PROPERTY_IMPL( ProtoMap, Height );
-CLASS_PROPERTY_IMPL( ProtoMap, WorkHexX );
-CLASS_PROPERTY_IMPL( ProtoMap, WorkHexY );
-CLASS_PROPERTY_IMPL( ProtoMap, CurDayTime );
-CLASS_PROPERTY_IMPL( ProtoMap, ScriptId );
-CLASS_PROPERTY_IMPL( ProtoMap, DayTime );    // 4 int
-CLASS_PROPERTY_IMPL( ProtoMap, DayColor );   // 12 uchar
-CLASS_PROPERTY_IMPL( ProtoMap, IsNoLogOut );
 
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, EntityType::CritterProto, ProtoCritter::PropertiesRegistrator )
 {

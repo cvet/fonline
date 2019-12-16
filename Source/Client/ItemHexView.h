@@ -1,22 +1,24 @@
-#ifndef __ITEM_HEX__
-#define __ITEM_HEX__
+#pragma once
 
 #include "Common.h"
 #include "ItemView.h"
 #include "SpriteManager.h"
 
+class ResourceManager;
 struct AnyFrames;
 
 class ItemHexView: public ItemView
 {
 private:
-    ItemHexView( uint id, ProtoItem* proto );
+    ItemHexView( uint id, ProtoItem* proto, ResourceManager& res_mngr );
     void AfterConstruction();
 
+    ResourceManager& resMngr;
+
 public:
-    ItemHexView( uint id, ProtoItem* proto, Properties& props );
-    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data );
-    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y );
+    ItemHexView( uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr );
+    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr );
+    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr );
 
 public:
     uint       SprId;
@@ -108,5 +110,3 @@ public:
 public: // Move some specific types to end
     UShortPairVec EffSteps;
 };
-
-#endif // __ITEM_HEX__

@@ -294,7 +294,7 @@ public:
             // ...
             return true;
         }
-        catch( const fo_exception& ex )
+        catch( const fo_exception& )
         {
             // ...
             return false;

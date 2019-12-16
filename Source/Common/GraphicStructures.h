@@ -1,5 +1,4 @@
-#ifndef __GRAPHIC_STRUCTURES__
-#define __GRAPHIC_STRUCTURES__
+#pragma once
 
 #include "Common.h"
 #include "GraphicApi.h"
@@ -528,5 +527,3 @@ struct MapSprite
     bool   IsTweakAlpha;
     uchar  TweakAlpha;
 };
-
-#endif // __GRAPHIC_STRUCTURES__

@@ -6,8 +6,18 @@
 #include "Crypt.h"
 #include "StringUtils.h"
 #include "Settings.h"
+#include "SpriteManager.h"
+#include "3dStuff.h"
 
-ResourceManager ResMngr;
+ResourceManager::ResourceManager( SpriteManager& spr_mngr ): sprMngr( spr_mngr )
+{
+    // ...
+}
+
+ResourceManager::~ResourceManager()
+{
+    // ...
+}
 
 void ResourceManager::Refresh()
 {
@@ -51,16 +61,10 @@ void ResourceManager::Refresh()
     }
 }
 
-void ResourceManager::Finish()
-{
-    WriteLog( "Resource manager finish...\n" );
-    loadedAnims.clear();
-    WriteLog( "Resource manager finish complete.\n" );
-}
-
 void ResourceManager::FreeResources( int type )
 {
-    SprMngr.DestroyAtlases( type );
+    sprMngr.DestroyAtlases( type );
+
     for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
     {
         int res_type = it->second.ResType;
@@ -77,7 +81,7 @@ void ResourceManager::FreeResources( int type )
 
     if( type == RES_ATLAS_STATIC )
     {
-        SprMngr.ClearFonts();
+        sprMngr.ClearFonts();
     }
 
     if( type == RES_ATLAS_DYNAMIC )
@@ -97,13 +101,13 @@ void ResourceManager::FreeResources( int type )
 void ResourceManager::ReinitializeDynamicAtlas()
 {
     FreeResources( RES_ATLAS_DYNAMIC );
-    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    SprMngr.InitializeEgg( "TransparentEgg.png" );
+    sprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    sprMngr.InitializeEgg( "TransparentEgg.png" );
     AnyFrames::Destroy( CritterDefaultAnim );
     AnyFrames::Destroy( ItemHexDefaultAnim );
-    CritterDefaultAnim = SprMngr.LoadAnimation( "CritterStub.png", true );
-    ItemHexDefaultAnim = SprMngr.LoadAnimation( "ItemStub.png", true );
-    SprMngr.PopAtlasType();
+    CritterDefaultAnim = sprMngr.LoadAnimation( "CritterStub.png", true );
+    ItemHexDefaultAnim = sprMngr.LoadAnimation( "ItemStub.png", true );
+    sprMngr.PopAtlasType();
 }
 
 AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
@@ -118,13 +122,13 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     if( fname.empty() )
         return nullptr;
 
-    SprMngr.PushAtlasType( res_type );
-    AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
-    SprMngr.PopAtlasType();
+    sprMngr.PushAtlasType( res_type );
+    AnyFrames* anim = sprMngr.LoadAnimation( fname, false, true );
+    sprMngr.PopAtlasType();
 
     anim->NameHash = name_hash;
 
-    loadedAnims.insert( std::make_pair( name_hash, LoadedAnim( res_type, anim ) ) );
+    loadedAnims.insert( std::make_pair( name_hash, LoadedAnim { res_type, anim } ) );
     return anim;
 }
 
@@ -175,9 +179,9 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 {
                     if( !str.empty() )
                     {
-                        SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                        anim = SprMngr.LoadAnimation( str );
-                        SprMngr.PopAtlasType();
+                        sprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+                        anim = sprMngr.LoadAnimation( str );
+                        sprMngr.PopAtlasType();
 
                         // Fix by dirs
                         for( int d = 0; anim && d < anim->DirCount(); d++ )
@@ -226,7 +230,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                                     }
                                     if( !fixed )
                                     {
-                                        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+                                        SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
                                         si->OffsX += ox;
                                         si->OffsY += oy;
                                     }
@@ -361,7 +365,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim( hash model_name, uint anim1, uint a
     return nullptr;
 }
 
-void FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
+void ResourceManager::FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
 {
     if( !stay_frm_base )
         return;
@@ -369,12 +373,12 @@ void FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
     {
         AnyFrames* frames = frames_base->GetDir( d );
         AnyFrames* stay_frm = stay_frm_base->GetDir( d );
-        SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
+        SpriteInfo* stay_si = sprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
         if( !stay_si )
             return;
         for( uint i = 0; i < frames->CntFrm; i++ )
         {
-            SpriteInfo* si = SprMngr.GetSpriteInfo( frames->Ind[ i ] );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( frames->Ind[ i ] );
             if( !si )
                 continue;
             si->OffsX += stay_si->OffsX;
@@ -383,7 +387,7 @@ void FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
     }
 }
 
-void FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
+void ResourceManager::FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
 {
     if( !stay_frm_base )
         return;
@@ -391,7 +395,7 @@ void FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
     {
         AnyFrames* frames = frames_base->GetDir( d );
         AnyFrames* stay_frm = stay_frm_base->GetDir( d );
-        SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
+        SpriteInfo* stay_si = sprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
         if( !stay_si )
             return;
         short ox = 0;
@@ -403,7 +407,7 @@ void FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
         }
         for( uint i = 0; i < frames->CntFrm; i++ )
         {
-            SpriteInfo* si = SprMngr.GetSpriteInfo( frames->Ind[ i ] );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( frames->Ind[ i ] );
             if( !si )
                 continue;
             si->OffsX += ox;
@@ -420,20 +424,20 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
 
     // Load file
     static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    sprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
 
     // Try load fofrm
     string name = _str().parseHash( model_name );
     string spr_name = _str( "{}{}{}.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-    AnyFrames* frames = SprMngr.LoadAnimation( spr_name.c_str() );
+    AnyFrames* frames = sprMngr.LoadAnimation( spr_name.c_str() );
 
     // Try load fallout frames
     if( !frames )
     {
         spr_name = _str( "{}{}{}.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-        frames = SprMngr.LoadAnimation( spr_name.c_str() );
+        frames = sprMngr.LoadAnimation( spr_name.c_str() );
     }
-    SprMngr.PopAtlasType();
+    sprMngr.PopAtlasType();
 
     critterFrames.insert( std::make_pair( AnimMapId( model_name, anim1, anim2, true ), frames ) );
     if( !frames )
@@ -577,7 +581,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
     return frames;
 }
 
-Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
+Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = nullptr */ )
 {
     if( critter3d.count( model_name ) )
     {
@@ -586,9 +590,9 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
         return critter3d[ model_name ];
     }
 
-    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), true );
-    SprMngr.PopAtlasType();
+    sprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    Animation3d* anim3d = sprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), true );
+    sprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;
 
@@ -623,8 +627,8 @@ AnyFrames* ResourceManager::GetRandomSplash()
         return 0;
     int rnd = Random( 0, (int) splashNames.size() - 1 );
     static AnyFrames* splash = nullptr;
-    SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
-    splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ] );
-    SprMngr.PopAtlasType();
+    sprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
+    splash = sprMngr.ReloadAnimation( splash, splashNames[ rnd ] );
+    sprMngr.PopAtlasType();
     return splash;
 }

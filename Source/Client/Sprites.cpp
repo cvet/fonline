@@ -3,66 +3,74 @@
 #include "Testing.h"
 #include "Settings.h"
 
+SpriteVec Sprites::spritesPool;
+
+Sprite::Sprite()
+{
+    memzero( this, sizeof( Sprite ) );
+}
+
 void Sprite::Unvalidate()
 {
-    if( Valid )
+    if( !Valid )
+        return;
+    Valid = false;
+
+    if( ValidCallback )
     {
-        if( ValidCallback )
-        {
-            *ValidCallback = false;
-            ValidCallback = nullptr;
-        }
-        Valid = false;
-
-        if( Parent )
-        {
-            Parent->Child = nullptr;
-            Parent->Unvalidate();
-        }
-        if( Child )
-        {
-            Child->Parent = nullptr;
-            Child->Unvalidate();
-        }
-
-        if( ExtraChainRoot )
-            *ExtraChainRoot = ExtraChainChild;
-        if( ExtraChainParent )
-            ExtraChainParent->ExtraChainChild = ExtraChainChild;
-        if( ExtraChainChild )
-            ExtraChainChild->ExtraChainParent = ExtraChainParent;
-        if( ExtraChainRoot && ExtraChainChild )
-            ExtraChainChild->ExtraChainRoot = ExtraChainRoot;
-        ExtraChainRoot = nullptr;
-        ExtraChainParent = nullptr;
-        ExtraChainChild = nullptr;
-
-        if( MapSpr )
-        {
-            MapSpr->Release();
-            MapSpr = nullptr;
-        }
-
-        UnvalidatedPlace->push_back( this );
-        UnvalidatedPlace = nullptr;
-
-        if( ChainRoot )
-            *ChainRoot = ChainChild;
-        if( ChainLast )
-            *ChainLast = ChainParent;
-        if( ChainParent )
-            ChainParent->ChainChild = ChainChild;
-        if( ChainChild )
-            ChainChild->ChainParent = ChainParent;
-        if( ChainRoot && ChainChild )
-            ChainChild->ChainRoot = ChainRoot;
-        if( ChainLast && ChainParent )
-            ChainParent->ChainLast = ChainLast;
-        ChainRoot = nullptr;
-        ChainLast = nullptr;
-        ChainParent = nullptr;
-        ChainChild = nullptr;
+        *ValidCallback = false;
+        ValidCallback = nullptr;
     }
+
+    if( Parent )
+    {
+        Parent->Child = nullptr;
+        Parent->Unvalidate();
+    }
+    if( Child )
+    {
+        Child->Parent = nullptr;
+        Child->Unvalidate();
+    }
+
+    if( ExtraChainRoot )
+        *ExtraChainRoot = ExtraChainChild;
+    if( ExtraChainParent )
+        ExtraChainParent->ExtraChainChild = ExtraChainChild;
+    if( ExtraChainChild )
+        ExtraChainChild->ExtraChainParent = ExtraChainParent;
+    if( ExtraChainRoot && ExtraChainChild )
+        ExtraChainChild->ExtraChainRoot = ExtraChainRoot;
+    ExtraChainRoot = nullptr;
+    ExtraChainParent = nullptr;
+    ExtraChainChild = nullptr;
+
+    if( MapSpr )
+    {
+        MapSpr->Release();
+        MapSpr = nullptr;
+    }
+
+    Root->unvalidatedSprites.push_back( this );
+
+    if( ChainRoot )
+        *ChainRoot = ChainChild;
+    if( ChainLast )
+        *ChainLast = ChainParent;
+    if( ChainParent )
+        ChainParent->ChainChild = ChainChild;
+    if( ChainChild )
+        ChainChild->ChainParent = ChainParent;
+    if( ChainRoot && ChainChild )
+        ChainChild->ChainRoot = ChainRoot;
+    if( ChainLast && ChainParent )
+        ChainParent->ChainLast = ChainLast;
+    ChainRoot = nullptr;
+    ChainLast = nullptr;
+    ChainParent = nullptr;
+    ChainChild = nullptr;
+
+    Root = nullptr;
 }
 
 Sprite* Sprite::GetIntersected( int ox, int oy )
@@ -71,7 +79,7 @@ Sprite* Sprite::GetIntersected( int ox, int oy )
     if( ox < 0 || oy < 0 )
         return nullptr;
     if( !CutType )
-        return SprMngr.IsPixNoTransp( PSprId ? *PSprId : SprId, ox, oy ) ? this : nullptr;
+        return Root->sprMngr.IsPixNoTransp( PSprId ? *PSprId : SprId, ox, oy ) ? this : nullptr;
 
     // Find root sprite
     Sprite* spr = this;
@@ -83,33 +91,102 @@ Sprite* Sprite::GetIntersected( int ox, int oy )
     while( spr )
     {
         if( oxf >= spr->CutX && oxf < spr->CutX + spr->CutW )
-            return SprMngr.IsPixNoTransp( spr->PSprId ? *spr->PSprId : spr->SprId, ox, oy ) ? spr : nullptr;
+            return Root->sprMngr.IsPixNoTransp( spr->PSprId ? *spr->PSprId : spr->SprId, ox, oy ) ? spr : nullptr;
         spr = spr->Child;
     }
     return nullptr;
 }
 
-#define SPRITE_SETTER( func, type, val )                                                           \
-    void Sprite::func( type val ## __ ) { if( !Valid )                                             \
-                                              return; Valid = false; val = val ## __; if( Parent ) \
-                                              Parent->func( val ## __ ); if( Child )               \
-                                              Child->func( val ## __ ); Valid = true; }
-#define SPRITE_SETTER2( func, type, val, type2, val2 )                                                                                  \
-    void Sprite::func( type val ## __, type2 val2 ## __ ) { if( !Valid )                                                                \
-                                                                return; Valid = false; val = val ## __; val2 = val2 ## __; if( Parent ) \
-                                                                Parent->func( val ## __, val2 ## __ ); if( Child )                      \
-                                                                Child->func( val ## __, val2 ## __ ); Valid = true; }
-SPRITE_SETTER( SetEgg, int, EggType );
-SPRITE_SETTER( SetContour, int, ContourType );
-SPRITE_SETTER2( SetContour, int, ContourType, uint, ContourColor );
-SPRITE_SETTER( SetColor, uint, Color );
-SPRITE_SETTER( SetAlpha, uchar *, Alpha );
-SPRITE_SETTER( SetFlash, uint, FlashMask );
+void Sprite::SetEgg( int egg )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    EggType = egg;
+    if( Parent )
+        Parent->SetEgg( egg );
+    if( Child )
+        Child->SetEgg( egg );
+    Valid = true;
+}
+
+void Sprite::SetContour( int contour )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    ContourType = contour;
+    if( Parent )
+        Parent->SetContour( contour );
+    if( Child )
+        Child->SetContour( contour );
+    Valid = true;
+}
+
+void Sprite::SetContour( int contour, uint color )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    ContourType = contour;
+    ContourColor = color;
+    if( Parent )
+        Parent->SetContour( contour, color );
+    if( Child )
+        Child->SetContour( contour, color );
+    Valid = true;
+}
+
+void Sprite::SetColor( uint color )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    Color = color;
+    if( Parent )
+        Parent->SetColor( color );
+    if( Child )
+        Child->SetColor( color );
+    Valid = true;
+}
+
+void Sprite::SetAlpha( uchar* alpha )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    Alpha = alpha;
+    if( Parent )
+        Parent->SetAlpha( alpha );
+    if( Child )
+        Child->SetAlpha( alpha );
+    Valid = true;
+}
+
+void Sprite::SetFlash( uint mask )
+{
+    if( !Valid )
+        return;
+
+    Valid = false;
+    FlashMask = mask;
+    if( Parent )
+        Parent->SetFlash( mask );
+    if( Child )
+        Child->SetFlash( mask );
+    Valid = true;
+}
 
 void Sprite::SetLight( int corner, uchar* light, int maxhx, int maxhy )
 {
     if( !Valid )
         return;
+
     Valid = false;
 
     if( HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1 )
@@ -150,6 +227,7 @@ void Sprite::SetLight( int corner, uchar* light, int maxhx, int maxhy )
         Parent->SetLight( corner, light, maxhx, maxhy );
     if( Child )
         Child->SetLight( corner, light, maxhx, maxhy );
+
     Valid = true;
 }
 
@@ -157,6 +235,7 @@ void Sprite::SetFixedAlpha( uchar alpha )
 {
     if( !Valid )
         return;
+
     Valid = false;
 
     Alpha = ( (uchar*) &Color ) + 3;
@@ -166,10 +245,9 @@ void Sprite::SetFixedAlpha( uchar alpha )
         Parent->SetFixedAlpha( alpha );
     if( Child )
         Child->SetFixedAlpha( alpha );
+
     Valid = true;
 }
-
-SpriteVec Sprites::spritesPool;
 
 void Sprites::GrowPool()
 {
@@ -178,11 +256,9 @@ void Sprites::GrowPool()
         spritesPool.push_back( new Sprite() );
 }
 
-Sprites::Sprites()
+Sprites::Sprites( SpriteManager& spr_mngr ): sprMngr( spr_mngr ), rootSprite {}, lastSprite {}, spriteCount {}, unvalidatedSprites {}
 {
-    rootSprite = nullptr;
-    lastSprite = nullptr;
-    spriteCount = 0;
+    // ...
 }
 
 Sprites::~Sprites()
@@ -214,7 +290,7 @@ Sprite& Sprites::PutSprite( Sprite* child, int draw_order, int hx, int hy, int c
         spritesPool.pop_back();
     }
 
-    spr->UnvalidatedPlace = &unvalidatedSprites;
+    spr->Root = this;
 
     if( !child )
     {
@@ -304,7 +380,7 @@ Sprite& Sprites::PutSprite( Sprite* child, int draw_order, int hx, int hy, int c
             stepi = ( GameOpt.MapHexWidth + GameOpt.MapHexWidth / 2 ) / 2;
         float       stepf = (float) stepi;
 
-        SpriteInfo* si = SprMngr.GetSpriteInfo( id_ptr ? *id_ptr : id );
+        SpriteInfo* si = sprMngr.GetSpriteInfo( id_ptr ? *id_ptr : id );
         if( !si || si->Width < stepi * 2 )
             return *spr;
 
@@ -411,29 +487,10 @@ void Sprites::Unvalidate()
     spriteCount = 0;
 }
 
-SprInfoVec* SortSpritesSurfSprData = nullptr;
 void Sprites::SortByMapPos()
 {
     if( !rootSprite )
         return;
-
-    struct Sorter
-    {
-        static bool SortBySurfaces( Sprite* spr1, Sprite* spr2 )
-        {
-            SpriteInfo* si1 = ( *SortSpritesSurfSprData )[ spr1->PSprId ? *spr1->PSprId : spr1->SprId ];
-            SpriteInfo* si2 = ( *SortSpritesSurfSprData )[ spr2->PSprId ? *spr2->PSprId : spr2->SprId ];
-            return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->TextureOwner < si2->Atlas->TextureOwner;
-        }
-
-        static bool SortByMapPos( Sprite* spr1, Sprite* spr2 )
-        {
-            if( spr1->DrawOrderPos == spr2->DrawOrderPos )
-                return spr1->TreeIndex < spr2->TreeIndex;
-            return spr1->DrawOrderPos < spr2->DrawOrderPos;
-        }
-    };
-    SortSpritesSurfSprData = &SprMngr.GetSpritesInfo();
 
     SpriteVec sprites;
     sprites.reserve( spriteCount );
@@ -444,8 +501,20 @@ void Sprites::SortByMapPos()
         spr = spr->ChainChild;
     }
 
-    std::sort( sprites.begin(), sprites.end(), Sorter::SortBySurfaces );
-    std::sort( sprites.begin(), sprites.end(), Sorter::SortByMapPos );
+    auto& spr_infos = sprMngr.GetSpritesInfo();
+    std::sort( sprites.begin(), sprites.end(), [ &spr_infos ] ( Sprite * spr1, Sprite * spr2 )
+               {
+                   SpriteInfo* si1 = spr_infos[ spr1->PSprId ? *spr1->PSprId : spr1->SprId ];
+                   SpriteInfo* si2 = spr_infos[ spr2->PSprId ? *spr2->PSprId : spr2->SprId ];
+                   return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->TextureOwner < si2->Atlas->TextureOwner;
+               } );
+
+    std::sort( sprites.begin(), sprites.end(), [] ( Sprite * spr1, Sprite * spr2 )
+               {
+                   if( spr1->DrawOrderPos == spr2->DrawOrderPos )
+                       return spr1->TreeIndex < spr2->TreeIndex;
+                   return spr1->DrawOrderPos < spr2->DrawOrderPos;
+               } );
 
     for( size_t i = 0; i < sprites.size(); i++ )
     {

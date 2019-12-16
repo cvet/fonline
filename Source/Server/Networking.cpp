@@ -4,7 +4,6 @@
 #include "Timer.h"
 #include "StringUtils.h"
 #include "Settings.h"
-#include <stdexcept>
 
 #define ASIO_STANDALONE
 #include "asio.hpp"

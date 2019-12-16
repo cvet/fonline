@@ -82,12 +82,12 @@ void Thread::Sleep( uint ms )
 
 void Thread::Start( ThreadFunc func, const string& name, void* arg /* = nullptr */ )
 {
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
 }
 
 void Thread::Wait()
 {
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
 }
 
 size_t Thread::GetId()

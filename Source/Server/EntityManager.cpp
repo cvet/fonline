@@ -1,16 +1,18 @@
 #include "EntityManager.h"
 #include "Log.h"
 #include "Testing.h"
-#include "ItemManager.h"
-#include "CritterManager.h"
-#include "MapManager.h"
 #include "Script.h"
 #include "DataBase.h"
 #include "StringUtils.h"
+#include "MapManager.h"
+#include "CritterManager.h"
+#include "ItemManager.h"
+#include "Location.h"
+#include "Map.h"
+#include "Critter.h"
+#include "Item.h"
 
-EntityManager EntityMngr;
-
-EntityManager::EntityManager()
+EntityManager::EntityManager( MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr ): mapMngr( map_mngr ), crMngr( cr_mngr ), itemMngr( item_mngr )
 {
     memzero( entitiesCount, sizeof( entitiesCount ) );
 }
@@ -46,7 +48,7 @@ static const char* GetEntityTypeMonoName( EntityType type )
         return "Map";
     #endif
 
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
     return nullptr;
 }
 
@@ -74,7 +76,7 @@ void EntityManager::RegisterEntity( Entity* entity )
         else if( entity->Type == EntityType::Custom )
             DbStorage->Insert( entity->Props.GetRegistrator()->GetClassName() + "s", id, doc );
         else
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
     }
 
     auto it = allEntities.insert( std::make_pair( entity->Id, entity ) );
@@ -292,7 +294,7 @@ bool EntityManager::LoadEntities()
 
             if( type == EntityType::Location )
             {
-                if( !MapMngr.RestoreLocation( id, proto_id, doc ) )
+                if( !mapMngr.RestoreLocation( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore location {}.\n", id );
                     continue;
@@ -300,7 +302,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Map )
             {
-                if( !MapMngr.RestoreMap( id, proto_id, doc ) )
+                if( !mapMngr.RestoreMap( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore map {}.\n", id );
                     continue;
@@ -308,7 +310,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Npc )
             {
-                if( !CrMngr.RestoreNpc( id, proto_id, doc ) )
+                if( !crMngr.RestoreNpc( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore npc {}.\n", id );
                     continue;
@@ -316,7 +318,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Item )
             {
-                if( !ItemMngr.RestoreItem( id, proto_id, doc ) )
+                if( !itemMngr.RestoreItem( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore item {}.\n", id );
                     continue;
@@ -332,7 +334,7 @@ bool EntityManager::LoadEntities()
             }
             else
             {
-                RUNTIME_ASSERT( !"Unreachable place" );
+                UNREACHABLE_PLACE;
             }
         }
     }
@@ -356,12 +358,12 @@ bool EntityManager::LinkMaps()
     // Link maps to locations
     int    errors = 0;
     MapVec maps;
-    MapMngr.GetMaps( maps );
+    mapMngr.GetMaps( maps );
     for( auto& map : maps )
     {
         uint      loc_id = map->GetLocId();
         uint      loc_map_index = map->GetLocMapIndex();
-        Location* loc = MapMngr.GetLocation( loc_id );
+        Location* loc = mapMngr.GetLocation( loc_id );
         if( !loc )
         {
             WriteLog( "Location {} for map '{}' ({}) not found.\n", loc_id, map->GetName(), map->Id );
@@ -378,7 +380,7 @@ bool EntityManager::LinkMaps()
 
     // Verify linkage result
     LocationVec locs;
-    MapMngr.GetLocations( locs );
+    mapMngr.GetLocations( locs );
     for( auto& loc : locs )
     {
         MapVec& maps = loc->GetMapsRaw();
@@ -403,7 +405,7 @@ bool EntityManager::LinkNpc()
 
     int        errors = 0;
     CritterVec critters;
-    CrMngr.GetCritters( critters );
+    crMngr.GetCritters( critters );
     CritterVec critters_groups;
     critters_groups.reserve( critters.size() );
 
@@ -417,7 +419,7 @@ bool EntityManager::LinkNpc()
             continue;
         }
 
-        Map* map = MapMngr.GetMap( cr->GetMapId() );
+        Map* map = mapMngr.GetMap( cr->GetMapId() );
         if( cr->GetMapId() && !map )
         {
             WriteLog( "Map {} not found, critter '{}', hx {}, hy {}.\n", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
@@ -425,13 +427,13 @@ bool EntityManager::LinkNpc()
             continue;
         }
 
-        if( !MapMngr.CanAddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 0 ) )
+        if( !mapMngr.CanAddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 0 ) )
         {
             WriteLog( "Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->Id, cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
-        MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0 );
+        mapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0 );
 
         if( !map )
             cr->SetGlobalMapTripId( cr->GetGlobalMapTripId() - 1 );
@@ -441,13 +443,13 @@ bool EntityManager::LinkNpc()
     for( auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !MapMngr.CanAddCrToMap( cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId() ) )
+        if( !mapMngr.CanAddCrToMap( cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId() ) )
         {
             WriteLog( "Error parsing npc to global group, critter '{}', rule id {}.\n", cr->GetName(), cr->GetGlobalMapLeaderId() );
             errors++;
             continue;
         }
-        MapMngr.AddCrToMap( cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId() );
+        mapMngr.AddCrToMap( cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId() );
     }
 
     WriteLog( "Link npc complete.\n" );
@@ -460,9 +462,9 @@ bool EntityManager::LinkItems()
 
     int        errors = 0;
     CritterVec critters;
-    CrMngr.GetCritters( critters );
+    crMngr.GetCritters( critters );
     ItemVec    game_items;
-    ItemMngr.GetGameItems( game_items );
+    itemMngr.GetGameItems( game_items );
     for( auto& item : game_items )
     {
         if( item->IsStatic() )
@@ -479,7 +481,7 @@ bool EntityManager::LinkItems()
             if( IS_CLIENT_ID( item->GetCritId() ) )
                 continue;                                                      // Skip player
 
-            Critter* npc = CrMngr.GetNpc( item->GetCritId() );
+            Critter* npc = crMngr.GetNpc( item->GetCritId() );
             if( !npc )
             {
                 WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->Id, item->GetCritId() );
@@ -492,7 +494,7 @@ bool EntityManager::LinkItems()
         break;
         case ITEM_ACCESSORY_HEX:
         {
-            Map* map = MapMngr.GetMap( item->GetMapId() );
+            Map* map = mapMngr.GetMap( item->GetMapId() );
             if( !map )
             {
                 WriteLog( "Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetMapId(), item->GetHexX(), item->GetHexY() );
@@ -512,7 +514,7 @@ bool EntityManager::LinkItems()
         break;
         case ITEM_ACCESSORY_CONTAINER:
         {
-            Item* cont = ItemMngr.GetItem( item->GetContainerId() );
+            Item* cont = itemMngr.GetItem( item->GetContainerId() );
             if( !cont )
             {
                 WriteLog( "Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->Id, item->GetContainerId() );
@@ -520,7 +522,7 @@ bool EntityManager::LinkItems()
                 continue;
             }
 
-            cont->ContSetItem( item );
+            itemMngr.SetItemToContainer( cont, item );
         }
         break;
         default:
@@ -540,11 +542,11 @@ void EntityManager::InitAfterLoad()
 
     // Process visible
     CritterVec critters;
-    CrMngr.GetCritters( critters );
+    crMngr.GetCritters( critters );
     for( auto& cr : critters )
     {
-        cr->ProcessVisibleCritters();
-        cr->ProcessVisibleItems();
+        mapMngr.ProcessVisibleCritters( cr );
+        mapMngr.ProcessVisibleItems( cr );
     }
 
     // Other initialization
@@ -585,7 +587,7 @@ void EntityManager::InitAfterLoad()
         {
             Item* item = (Item*) entity;
             if( item->GetIsRadio() )
-                ItemMngr.RadioRegister( item, true );
+                itemMngr.RadioRegister( item, true );
             if( !item->IsDestroyed )
                 Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, false );
             if( !item->IsDestroyed && item->GetScriptId() )

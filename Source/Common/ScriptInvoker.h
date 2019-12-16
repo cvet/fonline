@@ -1,5 +1,4 @@
-#ifndef __SCRIPT_INVOKER__
-#define __SCRIPT_INVOKER__
+#pragma once
 
 #include "Common.h"
 #include "scriptarray/scriptarray.h"
@@ -53,5 +52,3 @@ public:
     static bool Global_GetDeferredCallData( uint id, uint& delay, CScriptArray* values );
     static uint Global_GetDeferredCallsList( CScriptArray* ids );
 };
-
-#endif // __SCRIPT_INVOKER__

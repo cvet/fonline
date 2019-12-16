@@ -1,12 +1,9 @@
-#ifndef __SPRITE_MANAGER__
-#define __SPRITE_MANAGER__
+#pragma once
 
 #include "Common.h"
 #include "GraphicApi.h"
-#include "Sprites.h"
 #include "FileUtils.h"
-#include "3dStuff.h"
-#include "GraphicLoader.h"
+#include "GraphicStructures.h"
 #include "SDL_video.h"
 
 // Font flags
@@ -86,10 +83,20 @@
 #define PRIMITIVE_TRIANGLESTRIP    ( 5 )
 #define PRIMITIVE_TRIANGLEFAN      ( 6 )
 
+class GraphicLoader;
+class Animation3dManager;
+class Animation3d;
+using Animation3dVec = vector< Animation3d* >;
+class Sprites;
+class Sprite;
+
 class SpriteManager
 {
 private:
-    SDL_Window* mainWindow;
+    bool                sdlInited = false;
+    SDL_Window*         mainWindow = nullptr;
+    GraphicLoader&      graphicLoader;
+    Animation3dManager* anim3dMngr = nullptr;
 
 public:
     void GetWindowSize( int& w, int& h );
@@ -117,9 +124,9 @@ private:
 public:
     static AnyFrames* DummyAnimation;
 
-    SpriteManager();
-    bool Init();
-    void Finish();
+    SpriteManager( GraphicLoader& graphic_loader );
+    ~SpriteManager();
+
     void BeginScene( uint clear_color );
     void EndScene();
     void OnResolutionChanged();
@@ -176,7 +183,6 @@ private:
     SprInfoVec     sprData;
     Animation3dVec autoRedrawAnim3d;
 
-    AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const string& fname, bool anim_pix );
     AnyFrames* LoadAnimationRix( const string& fname );
     AnyFrames* LoadAnimationFofrm( const string& fname );
@@ -204,7 +210,6 @@ public:
 
     void PrepareSquare( PointVec& points, Rect r, uint color );
     void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
-    bool PrepareBuffer( Sprites& dtree, GLuint atlas, int ox, int oy, uchar alpha );
     void PushScissor( int l, int t, int r, int b );
     void PopScissor();
     bool Flush();
@@ -304,7 +309,3 @@ public:
     int  SplitLines( const Rect& r, const string& cstr, int num_font, StrVec& str_vec );
     bool HaveLetter( int num_font, uint letter );
 };
-
-extern SpriteManager SprMngr;
-
-#endif // __SPRITE_MANAGER__

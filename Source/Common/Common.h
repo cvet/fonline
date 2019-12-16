@@ -4,9 +4,7 @@
 #if !defined ( FONLINE_SERVER ) && !defined ( FONLINE_CLIENT ) && !defined ( FONLINE_EDITOR )
 # error "Build target not specified"
 #endif
-#if ( defined ( FONLINE_SERVER ) && ( defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )  ) ) || \
-    ( defined ( FONLINE_CLIENT ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )  ) ) || \
-    ( defined ( FONLINE_EDITOR ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )  ) )
+#if ( defined ( FONLINE_SERVER ) && ( defined ( FONLINE_CLIENT ) || defined ( FONLINE_EDITOR )  ) ) || ( defined ( FONLINE_CLIENT ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )  ) ) || ( defined ( FONLINE_EDITOR ) && ( defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )  ) )
 # error "Multiple build targets not allowed"
 #endif
 
@@ -17,16 +15,10 @@
 // FO_IOS
 // FO_ANDROID
 // FO_WEB
-#if !defined ( FO_WINDOWS ) && !defined ( FO_LINUX ) && !defined ( FO_MAC ) && \
-    !defined ( FO_ANDROID ) && !defined ( FO_IOS ) && !defined ( FO_WEB )
+#if !defined ( FO_WINDOWS ) && !defined ( FO_LINUX ) && !defined ( FO_MAC ) && !defined ( FO_ANDROID ) && !defined ( FO_IOS ) && !defined ( FO_WEB )
 # error "Unknown operating system"
 #endif
-#if ( defined ( FO_WINDOWS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
-    ( defined ( FO_LINUX ) && ( defined ( FO_WINDOWS ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
-    ( defined ( FO_MAC ) && ( defined ( FO_LINUX ) || defined ( FO_WINDOWS ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
-    ( defined ( FO_ANDROID ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_WINDOWS ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || \
-    ( defined ( FO_IOS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_WINDOWS ) || defined ( FO_WEB )  ) ) || \
-    ( defined ( FO_WEB ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WINDOWS )  ) )
+#if ( defined ( FO_WINDOWS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || ( defined ( FO_LINUX ) && ( defined ( FO_WINDOWS ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || ( defined ( FO_MAC ) && ( defined ( FO_LINUX ) || defined ( FO_WINDOWS ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || ( defined ( FO_ANDROID ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_WINDOWS ) || defined ( FO_IOS ) || defined ( FO_WEB )  ) ) || ( defined ( FO_IOS ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_WINDOWS ) || defined ( FO_WEB )  ) ) || ( defined ( FO_WEB ) && ( defined ( FO_LINUX ) || defined ( FO_MAC ) || defined ( FO_ANDROID ) || defined ( FO_IOS ) || defined ( FO_WINDOWS )  ) )
 # error "Multiple operating systems not allowed"
 #endif
 
@@ -39,29 +31,31 @@
 #endif
 
 // Standard API
-#include <cstdlib>
-#include <cstdio>
-#include <cstdarg>
-#include <clocale>
-#include <ctime>
-#include <cmath>
-#include <cstdint>
-#include <memory>
 #include <algorithm>
-#include <functional>
-#include <sstream>
-#include <map>
-#include <unordered_map>
-#include <string>
-#include <set>
-#include <list>
-#include <vector>
-#include <deque>
-#include <tuple>
-#include <optional>
-#include <typeinfo>
-#include <typeindex>
+#include <array>
 #include <chrono>
+#include <clocale>
+#include <cmath>
+#include <cstdarg>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <deque>
+#include <functional>
+#include <list>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
+#include <vector>
+#include <random>
 
 #if defined ( FO_MAC ) || defined ( FO_IOS )
 # include <TargetConditionals.h>
@@ -73,8 +67,8 @@
 #endif
 
 #if !defined ( FO_WINDOWS )
-# include <unistd.h>
 # include <signal.h>
+# include <unistd.h>
 #endif
 
 // String formatting
@@ -102,21 +96,22 @@ static_assert( sizeof( bool ) == 1 );
 static_assert( sizeof( void* ) >= 4 );
 static_assert( sizeof( void* ) == sizeof( size_t ) );
 
-using std::string;
-using std::list;
-using std::vector;
-using std::map;
-using std::unordered_map;
-using std::multimap;
-using std::set;
+using std::array;
 using std::deque;
-using std::pair;
-using std::tuple;
-using std::istringstream;
-using std::initializer_list;
-using std::type_index;
 using std::function;
+using std::initializer_list;
+using std::istringstream;
+using std::list;
+using std::map;
+using std::multimap;
 using std::optional;
+using std::pair;
+using std::set;
+using std::string;
+using std::tuple;
+using std::type_index;
+using std::unordered_map;
+using std::vector;
 
 using StrUCharMap = map< string, uchar >;
 using UCharStrMap = map< uchar, string >;
@@ -206,12 +201,12 @@ using UIntHashVecMap = map< uint, HashVec >;
 #ifdef FO_WINDOWS
 # include <WinSock2.h>
 #else
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <netinet/tcp.h>
 # include <arpa/inet.h>
 # include <netdb.h>
+# include <netinet/in.h>
+# include <netinet/tcp.h>
+# include <sys/socket.h>
+# include <sys/types.h>
 # define SOCKET                      int
 # define INVALID_SOCKET              ( -1 )
 # define SOCKET_ERROR                ( -1 )
@@ -227,10 +222,23 @@ class fo_exception: public std::exception
     string exceptionMessage;
 
 public:
-    fo_exception( const char* message ): exceptionMessage( message ) {}
-    template< typename ... Args > fo_exception( const char* format, Args ... args ): exceptionMessage( std::move( fmt::format( format, args ... ) ) ) {}
+    fo_exception( const char* message ): exceptionMessage( message )
+    {}
+    template< typename ... Args > fo_exception( const char* format, Args ... args ): exceptionMessage( std::move( fmt::format( format, args ... ) ) )
+    {}
     ~fo_exception() noexcept = default;
     const char* what() const noexcept override { return exceptionMessage.c_str(); }
+};
+
+// Non copyable (but movable) base class
+class NonCopyable
+{
+public:
+    NonCopyable() = default;
+    NonCopyable( const NonCopyable& ) = delete;
+    NonCopyable& operator=( const NonCopyable& ) = delete;
+    NonCopyable( NonCopyable && ) = default;
+    NonCopyable& operator=( NonCopyable && ) = default;
 };
 
 // Generic helpers
@@ -245,15 +253,24 @@ public:
 #define MERGE_ARGS2( a, b )                   a ## b
 #define MESSAGE( desc )                       message( __FILE__ "(" STRINGIZE_INT( __LINE__ ) "):" # desc )
 
-#define SAFEREL( x ) \
-    { if( x )        \
-          ( x )->Release(); ( x ) = nullptr; }
-#define SAFEDEL( x ) \
-    { if( x )        \
-          delete ( x ); ( x ) = nullptr; }
-#define SAFEDELA( x ) \
-    { if( x )         \
-          delete[] ( x ); ( x ) = nullptr; }
+#define SAFEREL( x )           \
+    {                          \
+        if( x )                \
+            ( x )->Release();  \
+        ( x ) = nullptr;       \
+    }
+#define SAFEDEL( x )       \
+    {                      \
+        if( x )            \
+            delete ( x );  \
+        ( x ) = nullptr;   \
+    }
+#define SAFEDELA( x )        \
+    {                        \
+        if( x )              \
+            delete[] ( x );  \
+        ( x ) = nullptr;     \
+    }
 
 #define MAX( a, b )                           ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                           ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -295,7 +312,7 @@ public:
 #define EFFECT_SCRIPT_VALUES         ( 10 )
 #define ABC_SIZE                     ( 26 )
 #define DIRS_COUNT                   ( GameOpt.MapHexagonal ? 6 : 8 )
-#define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 )         // 1, 3, 5, 7
+#define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 ) // 1, 3, 5, 7
 #define UTF8_BUF_SIZE( count )                ( ( count ) * 4 )
 #define DLGID_MASK                   ( 0xFFFFC000 )
 #define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
@@ -444,18 +461,18 @@ public:
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
-#define SHOW_SCREEN_CLOSE            ( 0 )    // Close top window.
-#define SHOW_SCREEN_TIMER            ( 1 )    // Timer box. Output: picture index in INVEN.LST. Input I: time in game minutes (1..599).
-#define SHOW_SCREEN_DIALOGBOX        ( 2 )    // Dialog box. Output: buttons count - 0..20 (exit button added automatically). Input I: Choosed button - 0..19.
-#define SHOW_SCREEN_SKILLBOX         ( 3 )    // Skill box. Input I: selected skill.
-#define SHOW_SCREEN_BAG              ( 4 )    // Bag box. Input I: id of selected item.
-#define SHOW_SCREEN_SAY              ( 5 )    // Say box. Output: all symbols - 0 or only numbers - any other number. Input S: typed string.
-#define SHOW_ELEVATOR                ( 6 )    // Elevator. Output: look ELEVATOR_* macro. Input I: Choosed level button.
-#define SHOW_SCREEN_INVENTORY        ( 7 )    // Inventory.
-#define SHOW_SCREEN_CHARACTER        ( 8 )    // Character.
-#define SHOW_SCREEN_FIXBOY           ( 9 )    // Fix-boy.
-#define SHOW_SCREEN_PIPBOY           ( 10 )   // Pip-boy.
-#define SHOW_SCREEN_MINIMAP          ( 11 )   // Mini-map.
+#define SHOW_SCREEN_CLOSE            ( 0 )  // Close top window.
+#define SHOW_SCREEN_TIMER            ( 1 )  // Timer box. Output: picture index in INVEN.LST. Input I: time in game minutes (1..599).
+#define SHOW_SCREEN_DIALOGBOX        ( 2 )  // Dialog box. Output: buttons count - 0..20 (exit button added automatically). Input I: Choosed button - 0..19.
+#define SHOW_SCREEN_SKILLBOX         ( 3 )  // Skill box. Input I: selected skill.
+#define SHOW_SCREEN_BAG              ( 4 )  // Bag box. Input I: id of selected item.
+#define SHOW_SCREEN_SAY              ( 5 )  // Say box. Output: all symbols - 0 or only numbers - any other number. Input S: typed string.
+#define SHOW_ELEVATOR                ( 6 )  // Elevator. Output: look ELEVATOR_* macro. Input I: Choosed level button.
+#define SHOW_SCREEN_INVENTORY        ( 7 )  // Inventory.
+#define SHOW_SCREEN_CHARACTER        ( 8 )  // Character.
+#define SHOW_SCREEN_FIXBOY           ( 9 )  // Fix-boy.
+#define SHOW_SCREEN_PIPBOY           ( 10 ) // Pip-boy.
+#define SHOW_SCREEN_MINIMAP          ( 11 ) // Mini-map.
 
 // Timeouts
 #define IS_TIMEOUT( to )                      ( ( to ) > GameOpt.FullSecond )
@@ -558,7 +575,7 @@ public:
 #define RADIO_BROADCAST_WORLD        ( 0 )
 #define RADIO_BROADCAST_MAP          ( 20 )
 #define RADIO_BROADCAST_LOCATION     ( 40 )
-#define RADIO_BROADCAST_ZONE( x )             ( 100 + CLAMP( x, 1, 100 ) )         // 1..100
+#define RADIO_BROADCAST_ZONE( x )             ( 100 + CLAMP( x, 1, 100 ) ) // 1..100
 #define RADIO_BROADCAST_FORCE_ALL    ( 250 )
 
 // Light flags
@@ -608,14 +625,12 @@ public:
 #define FOREACH_PROTO_ITEM_LINES( lines, hx, hy, maxhx, maxhy, work )        \
     int hx__ = hx, hy__ = hy;                                                \
     int maxhx__ = maxhx, maxhy__ = maxhy;                                    \
-    for( uint i__ = 0, j__ = ( lines )->GetSize() / 2; i__ < j__; i__++ )    \
-    {                                                                        \
+    for( uint i__ = 0, j__ = ( lines )->GetSize() / 2; i__ < j__; i__++ ) {  \
         uchar dir__ = *(uchar*) ( lines )->At( i__ * 2 );                    \
         uchar steps__ = *(uchar*) ( lines )->At( i__ * 2 + 1 );              \
         if( dir__ >= DIRS_COUNT || !steps__ || steps__ > 9 )                 \
             break;                                                           \
-        for( uchar k__ = 0; k__ < steps__; k__++ )                           \
-        {                                                                    \
+        for( uchar k__ = 0; k__ < steps__; k__++ ) {                         \
             MoveHexByDirUnsafe( hx__, hy__, dir__ );                         \
             if( hx__ < 0 || hy__ < 0 || hx__ >= maxhx__ || hy__ >= maxhy__ ) \
                 continue;                                                    \
@@ -644,7 +659,7 @@ extern void ShowErrorMessage( const string& message, const string& traceback );
 extern int  ConvertParamValue( const string& str, bool& fail );
 
 // Hex offsets
-#define MAX_HEX_OFFSET               ( 50 )              // Must be not odd
+#define MAX_HEX_OFFSET               ( 50 ) // Must be not odd
 extern void GetHexOffsets( bool odd, short*& sx, short*& sy );
 extern void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -763,11 +778,31 @@ struct FlexRect
 {
     Ty L, T, R, B;
 
-    FlexRect(): L( 0 ), T( 0 ), R( 0 ), B( 0 ) {}
-    template< typename Ty2 > FlexRect( const FlexRect< Ty2 >& fr ): L( ( Ty )fr.L ), T( ( Ty )fr.T ), R( ( Ty )fr.R ), B( ( Ty )fr.B ) {}
-    FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ), T( t ), R( r ), B( b ) {}
-    FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ), T( t + oy ), R( r + ox ), B( b + oy ) {}
-    FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ), T( fr.T + oy ), R( fr.R + ox ), B( fr.B + oy ) {}
+    FlexRect(): L( 0 ),
+                T( 0 ),
+                R( 0 ),
+                B( 0 )
+    {}
+    template< typename Ty2 > FlexRect( const FlexRect< Ty2 >& fr ): L( ( Ty )fr.L ),
+                                                                    T( ( Ty )fr.T ),
+                                                                    R( ( Ty )fr.R ),
+                                                                    B( ( Ty )fr.B )
+    {}
+    FlexRect( Ty l, Ty t, Ty r, Ty b ): L( l ),
+                                        T( t ),
+                                        R( r ),
+                                        B( b )
+    {}
+    FlexRect( Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy ): L( l + ox ),
+                                                      T( t + oy ),
+                                                      R( r + ox ),
+                                                      B( b + oy )
+    {}
+    FlexRect( const FlexRect& fr, Ty ox, Ty oy ): L( fr.L + ox ),
+                                                  T( fr.T + oy ),
+                                                  R( fr.R + ox ),
+                                                  B( fr.B + oy )
+    {}
 
     template< typename Ty2 >
     FlexRect& operator=( const FlexRect< Ty2 >& fr )
@@ -788,10 +823,10 @@ struct FlexRect
     }
 
     bool IsZero() const { return !L && !T && !R && !B; }
-    Ty   W()      const { return R - L + 1; }
-    Ty   H()      const { return B - T + 1; }
-    Ty   CX()     const { return L + W() / 2; }
-    Ty   CY()     const { return T + H() / 2; }
+    Ty   W() const      { return R - L + 1; }
+    Ty   H() const      { return B - T + 1; }
+    Ty   CX() const     { return L + W() / 2; }
+    Ty   CY() const     { return T + H() / 2; }
 
     Ty& operator[]( int index )
     {
@@ -849,10 +884,18 @@ struct FlexPoint
 {
     Ty X, Y;
 
-    FlexPoint(): X( 0 ), Y( 0 ) {}
-    template< typename Ty2 > FlexPoint( const FlexPoint< Ty2 >& r ): X( ( Ty )r.X ), Y( ( Ty )r.Y ) {}
-    FlexPoint( Ty x, Ty y ): X( x ), Y( y ) {}
-    FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ), Y( fp.Y + oy ) {}
+    FlexPoint(): X( 0 ),
+                 Y( 0 )
+    {}
+    template< typename Ty2 > FlexPoint( const FlexPoint< Ty2 >& r ): X( ( Ty )r.X ),
+                                                                     Y( ( Ty )r.Y )
+    {}
+    FlexPoint( Ty x, Ty y ): X( x ),
+                             Y( y )
+    {}
+    FlexPoint( const FlexPoint& fp, Ty ox, Ty oy ): X( fp.X + ox ),
+                                                    Y( fp.Y + oy )
+    {}
 
     template< typename Ty2 >
     FlexPoint& operator=( const FlexPoint< Ty2 >& fp )
@@ -900,3 +943,20 @@ using PointF = FlexPoint< float >;
 // Net command helper
 class NetBuffer;
 extern bool PackNetCommand( const string& str, NetBuffer* pbuf, std::function< void(const string&) > logcb, const string& name );
+
+class NetProperty
+{
+public:
+    enum Type
+    {
+        None = 0,
+        Global,      // 0
+        Critter,     // 1 cr_id
+        Chosen,      // 0
+        MapItem,     // 1 item_id
+        CritterItem, // 2 cr_id item_id
+        ChosenItem,  // 1 item_id
+        Map,         // 0
+        Location,    // 0
+    };
+};

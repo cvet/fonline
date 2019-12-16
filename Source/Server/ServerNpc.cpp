@@ -3,7 +3,6 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Settings.h"
-#include <random>
 
 void FOServer::ProcessMove( Critter* cr )
 {
@@ -69,7 +68,6 @@ void FOServer::ProcessMove( Critter* cr )
         }
 
         PathFindData pfd;
-        pfd.Clear();
         pfd.MapId = cr->GetMapId();
         pfd.FromCritter = cr;
         pfd.FromX = cr->GetHexX();
@@ -205,9 +203,9 @@ bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dia
 
     if( !GameOpt.NoAnswerShuffle && !compiled_dlg.IsNoShuffle() )
     {
-        static std::random_device rd;
-        static std::mt19937       g( rd() );
-        std::shuffle( compiled_dlg.Answers.begin(), compiled_dlg.Answers.end(), g );
+        static THREAD std::random_device rd;
+        static THREAD std::mt19937       rnd( rd() );
+        std::shuffle( compiled_dlg.Answers.begin(), compiled_dlg.Answers.end(), rnd );
     }
     return true;
 }
@@ -675,7 +673,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         return;
     }
     if( cl->Talk.TalkType != TALK_NONE )
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
 
     DialogPack* dialog_pack = nullptr;
     DialogsVec* dialogs = nullptr;
@@ -880,7 +878,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
                 map->SetTextMsg( hx, hy, 0, TEXTMSG_DLG, cl->Talk.CurDialog.TextId );
         }
 
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         return;
     }
 
@@ -901,14 +899,14 @@ void FOServer::Process_Dialog( Client* cl )
     if( ( is_npc && ( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != talk_id ) ) ||
         ( !is_npc && ( cl->Talk.TalkType != TALK_WITH_HEX || cl->Talk.DialogPackId != talk_id ) ) )
     {
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         WriteLog( "Invalid talk id {} {}, client '{}'.\n", is_npc, talk_id, cl->GetName() );
         return;
     }
 
     if( cl->GetIsHide() )
         cl->SetIsHide( false );
-    cl->ProcessTalk( true );
+    CrMngr.ProcessTalk( cl, true );
 
     Npc*        npc = nullptr;
     DialogPack* dialog_pack = nullptr;
@@ -921,7 +919,7 @@ void FOServer::Process_Dialog( Client* cl )
         if( !npc )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-            cl->CloseTalk();
+            CrMngr.CloseTalk( cl );
             WriteLog( "Npc with id {} not found, client '{}'.\n", talk_id, cl->GetName() );
             return;
         }
@@ -932,7 +930,7 @@ void FOServer::Process_Dialog( Client* cl )
     dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
     if( !dialogs || !dialogs->size() )
     {
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         WriteLog( "No dialogs, npc '{}', client '{}'.\n", npc->GetName(), cl->GetName() );
         return;
     }
@@ -960,7 +958,7 @@ void FOServer::Process_Dialog( Client* cl )
         // End
         if( num_answer == ANSWER_END )
         {
-            cl->CloseTalk();
+            CrMngr.CloseTalk( cl );
             return;
         }
 
@@ -979,7 +977,7 @@ void FOServer::Process_Dialog( Client* cl )
         if( !Dialog_CheckDemand( npc, cl, *answer, true ) )
         {
             WriteLog( "Secondary check of dialog demands fail, client '{}'.\n", cl->GetName() );
-            cl->CloseTalk();             // End
+            CrMngr.CloseTalk( cl );             // End
             return;
         }
 
@@ -1018,7 +1016,7 @@ label_Barter:
             }
         case uint( -1 ):
         case DIALOG_END:
-            cl->CloseTalk();
+            CrMngr.CloseTalk( cl );
             return;
         default:
             break;
@@ -1036,7 +1034,7 @@ label_Barter:
     auto it_d = std::find( dialogs->begin(), dialogs->end(), dlg_id );
     if( it_d == dialogs->end() )
     {
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         cl->Send_TextMsg( cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
         WriteLog( "Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cl->GetName(), dialog_pack->PackId );
         return;
@@ -1045,7 +1043,7 @@ label_Barter:
     // Compile
     if( !Dialog_Compile( npc, cl, *it_d, cl->Talk.CurDialog ) )
     {
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         cl->Send_TextMsg( cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         WriteLog( "Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId );
         return;
@@ -1085,7 +1083,7 @@ label_Barter:
                 map->SetTextMsg( cl->Talk.TalkHexX, cl->Talk.TalkHexY, 0, TEXTMSG_DLG, cl->Talk.CurDialog.TextId );
         }
 
-        cl->CloseTalk();
+        CrMngr.CloseTalk( cl );
         return;
     }
 

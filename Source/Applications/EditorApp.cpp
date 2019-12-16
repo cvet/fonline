@@ -11,6 +11,7 @@
 #include "ResourceConverter.h"
 #include "BuildSystem.h"
 #include "Version_Include.h"
+#include "MapView.h"
 
 static void DockSpaceBegin();
 static void DockSpaceEnd();
@@ -166,55 +167,43 @@ struct ClientWindow: GuiWindow
 
 struct MapperWindow: GuiWindow
 {
-    static FOMapper* MapperInstance;
-    MapView*         WindowMap = nullptr;
+    FOMapper* Mapper;
 
     MapperWindow( std::string map_name ): GuiWindow( "Map" )
     {
-        if( !MapperInstance )
-        {
-            MapperInstance = new FOMapper();
-            if( !MapperInstance->Init() )
-            {
-                SAFEDEL( MapperInstance );
-                return;
-            }
-        }
+        Mapper = new FOMapper();
 
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
-        File::SetCurrentDir( MapperInstance->ServerWritePath, "./" );
-        if( !pmap->Load_Client() )
+        File::SetCurrentDir( Mapper->ServerWritePath, "./" );
+        if( !pmap->EditorLoad( Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr ) )
         {
-            MapperInstance->AddMess( "File not found or truncated." );
-            File::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+            Mapper->AddMess( "File not found or truncated." );
+            File::SetCurrentDir( Mapper->ClientWritePath, CLIENT_DATA );
             return;
         }
-        File::SetCurrentDir( MapperInstance->ClientWritePath, CLIENT_DATA );
+        File::SetCurrentDir( Mapper->ClientWritePath, CLIENT_DATA );
 
-        if( MapperInstance->ActiveMap )
-            MapperInstance->HexMngr.GetProtoMap( *(ProtoMap*) MapperInstance->ActiveMap->Proto );
-        if( !MapperInstance->HexMngr.SetProtoMap( *pmap ) )
+        if( Mapper->ActiveMap )
+            Mapper->HexMngr.GetProtoMap( *(ProtoMap*) Mapper->ActiveMap->Proto );
+        if( !Mapper->HexMngr.SetProtoMap( *pmap ) )
         {
-            MapperInstance->AddMess( "Load map fail." );
+            Mapper->AddMess( "Load map fail." );
             return;
         }
 
-        MapperInstance->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
+        Mapper->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
 
-        WindowMap = new MapView( 0, pmap );
-        MapperInstance->ActiveMap = WindowMap;
-        MapperInstance->LoadedMaps.push_back( WindowMap );
-        MapperInstance->AddMess( "Load map complete." );
-        MapperInstance->RunMapLoadScript( WindowMap );
+        MapView* map_view = new MapView( 0, pmap );
+        Mapper->ActiveMap = map_view;
+        Mapper->LoadedMaps.push_back( map_view );
+        Mapper->AddMess( "Load map complete." );
+        Mapper->RunMapLoadScript( map_view );
     }
 
     virtual bool Draw() override
     {
-        if( !MapperInstance )
-            return false;
-
-        if( MapperInstance->ActiveMap != WindowMap )
-        {
+        /*if(Mapper->ActiveMap != WindowMap )
+           {
             if( MapperInstance->ActiveMap )
                 MapperInstance->HexMngr.GetProtoMap( *(ProtoMap*) MapperInstance->ActiveMap->Proto );
             if( !MapperInstance->HexMngr.SetProtoMap( *(ProtoMap*) WindowMap->Proto ) )
@@ -223,18 +212,12 @@ struct MapperWindow: GuiWindow
             ProtoMap* pmap = (ProtoMap*) WindowMap->Proto;
             MapperInstance->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
             MapperInstance->ActiveMap = WindowMap;
-        }
+           }*/
 
-        MapperInstance->MainLoop();
+        Mapper->MainLoop();
         return true;
     }
-
-    virtual ~MapperWindow() override
-    {
-        SAFEDEL( WindowMap );
-    }
 };
-FOMapper*              MapperWindow::MapperInstance;
 
 struct SettingsWindow: GuiWindow
 {

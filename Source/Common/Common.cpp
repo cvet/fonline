@@ -9,7 +9,6 @@
 #include "IniFile.h"
 #include "NetBuffer.h"
 #include "Settings.h"
-#include "Randomizer.h"
 #include "SDL.h"
 #include "Version_Include.h"
 
@@ -65,10 +64,16 @@ void InitialSetup( const string& app_name, uint argc, char** argv )
 }
 
 // Default randomizer
-static Randomizer DefaultRandomizer = Fabric::CreateMersenneTwistRandomizer();
+#ifndef FO_TESTING
+static std::mt19937 RandomGenerator( std::random_device {} ( ) );
+#else
+static std::mt19937 RandomGenerator( 42 );
+#endif
 int Random( int minimum, int maximum )
 {
-    return DefaultRandomizer->Next( minimum, maximum );
+    return std::uniform_int_distribution {
+               minimum, maximum
+    } ( RandomGenerator );
 }
 
 // Math stuff
@@ -1301,4 +1306,17 @@ bool PackNetCommand( const string& str, NetBuffer* pbuf, std::function< void(con
     }
 
     return true;
+}
+
+TEST_CASE()
+{
+    std::mt19937 rnd32;
+    for( int i = 1; i < 10000; i++ )
+        (void) rnd32();
+    RUNTIME_ASSERT( rnd32() == 4123659995 );
+
+    std::mt19937_64 rnd64;
+    for( int i = 1; i < 10000; i++ )
+        (void) rnd64();
+    RUNTIME_ASSERT( rnd64() == 9981545732273789042L );
 }

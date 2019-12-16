@@ -1,5 +1,4 @@
-#ifndef __PROPERTIES__
-#define __PROPERTIES__
+#pragma once
 
 #include "Common.h"
 #include "Testing.h"
@@ -358,5 +357,3 @@ private:
     bool   defaultTemporary;
     bool   defaultNoHistory;
 };
-
-#endif // __PROPERTIES__

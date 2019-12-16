@@ -1,5 +1,4 @@
-#ifndef __NETWORKING__
-#define __NETWORKING__
+#pragma once
 
 #include "Common.h"
 #include "NetBuffer.h"
@@ -30,5 +29,3 @@ public:
     static NetServerBase* StartTcpServer( ushort port, std::function< void(NetConnection*) > callback );
     static NetServerBase* StartWebSocketsServer( ushort port, string wss_credentials, std::function< void(NetConnection*) > callback );
 };
-
-#endif // __NETWORKING__

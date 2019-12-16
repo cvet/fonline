@@ -42,7 +42,7 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop )
         {
             if( is_public || is_protected )
             {
-                Critter* cr = CrMngr.GetCritter( item->GetCritId() );
+                Critter* cr = Self->CrMngr.GetCritter( item->GetCritId() );
                 if( cr )
                 {
                     if( is_public || is_protected )
@@ -56,7 +56,7 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop )
         {
             if( is_public )
             {
-                Map* map = MapMngr.GetMap( item->GetMapId() );
+                Map* map = Self->MapMngr.GetMap( item->GetMapId() );
                 if( map )
                     map->SendProperty( NetProperty::MapItem, prop, item );
             }
@@ -77,7 +77,7 @@ void FOServer::OnSetItemCount( Entity* entity, Property* prop, void* cur_value, 
     if( (int) cur > 0 && ( item->GetStackable() || cur == 1 ) )
     {
         int diff = (int) item->GetCount() - (int) old;
-        ItemMngr.ChangeItemStatistics( item->GetProtoId(), diff );
+        Self->ItemMngr.ChangeItemStatistics( item->GetProtoId(), diff );
     }
     else
     {
@@ -96,7 +96,7 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( map )
         {
             map->ChangeViewItem( item );
@@ -106,7 +106,7 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
     }
     else if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->GetCritId() );
+        Critter* cr = Self->CrMngr.GetCritter( item->GetCritId() );
         if( cr )
         {
             bool value = *(bool*) cur_value;
@@ -127,7 +127,7 @@ void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_va
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->RecacheHexFlags( item->GetHexX(), item->GetHexY() );
     }
@@ -139,7 +139,7 @@ void FOServer::OnSetItemBlockLines( Entity* entity, Property* prop, void* cur_va
     Item* item = (Item*) entity;
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( map )
         {
             #pragma MESSAGE( "Make BlockLines changable in runtime." )
@@ -154,7 +154,7 @@ void FOServer::OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value,
 
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->GetMapId() );
+        Map* map = Self->MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->GetLocation()->GeckCount += ( value ? 1 : -1 );
     }
@@ -165,7 +165,7 @@ void FOServer::OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value
     Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
-    ItemMngr.RadioRegister( item, value );
+    Self->ItemMngr.RadioRegister( item, value );
 }
 
 void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
@@ -182,7 +182,7 @@ void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
 
             if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
             {
-                Map* map = MapMngr.GetMap( item->GetMapId() );
+                Map* map = Self->MapMngr.GetMap( item->GetMapId() );
                 if( map )
                     map->RecacheHexFlags( item->GetHexX(), item->GetHexY() );
             }
@@ -193,7 +193,7 @@ void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
 
             if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
             {
-                Map* map = MapMngr.GetMap( item->GetMapId() );
+                Map* map = Self->MapMngr.GetMap( item->GetMapId() );
                 if( map )
                 {
                     map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );

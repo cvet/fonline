@@ -124,23 +124,25 @@ public:
 class EntityCreator
 {
 public:
-    EntityCreator( bool is_server, const string& class_name )
+    EntityManager*       EntityMngr;
+    string               ClassName;
+    PropertyRegistrator* Registrator;
+    uint                 SubType;
+
+    EntityCreator( bool is_server, const string& class_name, EntityManager* entity_mngr )
     {
+        EntityMngr = entity_mngr;
         ClassName = class_name;
         Registrator = new PropertyRegistrator( is_server, class_name );
         static uint sub_type_id = 0;
         SubType = ++sub_type_id;
     }
 
-    string               ClassName;
-    PropertyRegistrator* Registrator;
-    uint                 SubType;
-
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_EDITOR )
     CustomEntity* CreateEntity()
     {
         CustomEntity* entity = new CustomEntity( 0, SubType, Registrator );
-        EntityMngr.RegisterEntity( entity );
+        EntityMngr->RegisterEntity( entity );
         return entity;
     }
 
@@ -158,7 +160,7 @@ public:
             entity->Release();
             return false;
         }
-        EntityMngr.RegisterEntity( entity );
+        EntityMngr->RegisterEntity( entity );
         return true;
     }
 
@@ -166,7 +168,7 @@ public:
     {
         RUNTIME_ASSERT( entity->SubType == SubType );
         entity->IsDestroyed = true;
-        EntityMngr.UnregisterEntity( entity );
+        EntityMngr->UnregisterEntity( entity );
         entity->Release();
     }
 
@@ -177,11 +179,11 @@ public:
 
     void DeleteEntityById( uint id )
     {
-        CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
+        CustomEntity* entity = (CustomEntity*) EntityMngr->GetEntity( id, EntityType::Custom );
         if( !entity || entity->SubType != SubType )
             return;
         entity->IsDestroyed = true;
-        EntityMngr.UnregisterEntity( entity );
+        EntityMngr->UnregisterEntity( entity );
         entity->Release();
     }
 
@@ -192,7 +194,7 @@ public:
 
     CustomEntity* GetEntity( uint id )
     {
-        CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
+        CustomEntity* entity = (CustomEntity*) EntityMngr->GetEntity( id, EntityType::Custom );
         if( entity && entity->SubType == SubType )
             return entity;
         return nullptr;
@@ -223,12 +225,14 @@ class EntityPragma
     friend class PropertyPragma;
 
 private:
+    EntityManager*                entityMngr;
     map< string, EntityCreator* > entityCreators;
     bool                          isServer;
 
 public:
-    EntityPragma( int pragma_type )
+    EntityPragma( int pragma_type, EntityManager* entity_mngr )
     {
+        entityMngr = entity_mngr;
         isServer = ( pragma_type == PRAGMA_SERVER || pragma_type == PRAGMA_MAPPER );
     }
 
@@ -267,7 +271,7 @@ public:
         }
 
         // Create creator
-        EntityCreator* entity_creator = new EntityCreator( isServer, class_name );
+        EntityCreator* entity_creator = new EntityCreator( isServer, class_name, entityMngr );
         if( isServer )
         {
             #ifdef AS_MAX_PORTABILITY
@@ -587,10 +591,16 @@ public:
 class ContentPragma
 {
 private:
-    list< hash > dataStorage;
-    StrUIntMap   filesToCheck[ 5 ];
+    ProtoManager* protoMngr;
+    list< hash >  dataStorage;
+    StrUIntMap    filesToCheck[ 5 ];
 
 public:
+    ContentPragma( ProtoManager* proto_mngr )
+    {
+        protoMngr = proto_mngr;
+    }
+
     bool Call( const string& text )
     {
         // Read all
@@ -677,7 +687,7 @@ public:
         }
         for( auto it = filesToCheck[ 1 ].begin(); it != filesToCheck[ 1 ].end(); ++it )
         {
-            if( !ProtoMngr.GetProtoItem( it->second ) )
+            if( !protoMngr->GetProtoItem( it->second ) )
             {
                 WriteLog( "Item file '{}' not found.\n", it->first );
                 errors++;
@@ -685,7 +695,7 @@ public:
         }
         for( auto it = filesToCheck[ 2 ].begin(); it != filesToCheck[ 2 ].end(); ++it )
         {
-            if( !ProtoMngr.GetProtoCritter( it->second ) )
+            if( !protoMngr->GetProtoCritter( it->second ) )
             {
                 WriteLog( "Critter file '{}' not found.\n", it->first );
                 errors++;
@@ -693,7 +703,7 @@ public:
         }
         for( auto it = filesToCheck[ 3 ].begin(); it != filesToCheck[ 3 ].end(); ++it )
         {
-            if( !ProtoMngr.GetProtoLocation( it->second ) )
+            if( !protoMngr->GetProtoLocation( it->second ) )
             {
                 WriteLog( "Location file '{}' not found.\n", it->first );
                 errors++;
@@ -701,7 +711,7 @@ public:
         }
         for( auto it = filesToCheck[ 4 ].begin(); it != filesToCheck[ 4 ].end(); ++it )
         {
-            if( !ProtoMngr.GetProtoMap( it->second ) )
+            if( !protoMngr->GetProtoMap( it->second ) )
             {
                 WriteLog( "Map file '{}' not found.\n", it->first );
                 errors++;
@@ -974,7 +984,7 @@ public:
                 else if( arg_info.PodSize == 8 )
                     va_args.push_back( (uint64) va_arg( args, int64 ) );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
             }
 
             return event->RaiseImpl( nullptr, &va_args );
@@ -1012,7 +1022,7 @@ public:
                 else if( arg_info.PodSize == 8 )
                     memcpy( &value, GET_ARG_ADDR, arg_info.PodSize );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
 
                 auto range = arg_info.Callbacks.equal_range( value );
                 for( auto it = range.first; it != range.second; ++it )
@@ -1057,7 +1067,7 @@ public:
                     else if( arg_info.PodSize == 8 )
                         Script::SetArgUInt64( GET_ARG( uint64 ) );
                     else
-                        RUNTIME_ASSERT( !"Unreachable place" );
+                        UNREACHABLE_PLACE;
                 }
 
                 if( !Deferred )
@@ -1552,7 +1562,7 @@ public:
                 else if( size == 8 )
                     Script::SetArgUInt64( *(uint64*) value );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
             }
             else
             {
@@ -1565,7 +1575,7 @@ public:
     }
 };
 
-ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
+ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, ProtoManager* proto_mngr, EntityManager* entity_mngr )
 {
     isError = false;
     pragmaType = pragma_type;
@@ -1585,9 +1595,9 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     {
         ignorePragma = new IgnorePragma();
         globalVarPragma = new GlobalVarPragma();
-        entityPragma = new EntityPragma( pragmaType );
+        entityPragma = new EntityPragma( pragmaType, entity_mngr );
         propertyPragma = new PropertyPragma( pragmaType, entityPragma );
-        contentPragma = new ContentPragma();
+        contentPragma = new ContentPragma( proto_mngr );
         enumPragma = new EnumPragma();
         eventPragma = new EventPragma();
         rpcPragma = new RpcPragma( pragmaType );

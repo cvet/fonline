@@ -1,18 +1,26 @@
-#ifndef __MAP__
-#define __MAP__
+#pragma once
 
 #include "Common.h"
-#include "Item.h"
-#include "Critter.h"
 #include "Entity.h"
-
-class Map;
-class Location;
 
 using ItemVecMap = map< uint, ItemVec >;
 
 class Map: public Entity
 {
+    friend class MapManager;
+
+    uchar*     hexFlags;
+    int        hexFlagsSize;
+    CritterVec mapCritters;
+    ClientVec  mapPlayers;
+    NpcVec     mapNpcs;
+    ItemVec    mapItems;
+    ItemMap    mapItemsById;
+    ItemVecMap mapItemsByHex;
+    ItemVecMap mapBlockLinesByHex;
+    Location*  mapLocation;
+    uint       loopLastTick[ 5 ];
+
 public:
     PROPERTIES_HEADER();
     CLASS_PROPERTY( uint, LoopTime1 );
@@ -37,25 +45,9 @@ public:
     Map( uint id, ProtoMap* proto, Location* location );
     ~Map();
 
-private:
-    uchar*     hexFlags;
-    int        hexFlagsSize;
-    CritterVec mapCritters;
-    ClVec      mapPlayers;
-    PcVec      mapNpcs;
-    ItemVec    mapItems;
-    ItemMap    mapItemsById;
-    ItemVecMap mapItemsByHex;
-    ItemVecMap mapBlockLinesByHex;
-    Location*  mapLocation;
-    uint       loopLastTick[ 5 ];
-
     void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
     void RemoveItemBlocks( ushort hx, ushort hy, Item* item );
 
-public:
-    bool Generate();
-    void DeleteContent();
     void Process();
     void ProcessLoop( int index, uint time, uint tick );
 
@@ -71,7 +63,6 @@ public:
 
     void AddCritter( Critter* cr );
     void EraseCritter( Critter* cr );
-    void KickPlayersToGlobalMap();
 
     bool AddItem( Item* item, ushort hx, ushort hy );
     void SetItem( Item* item, ushort hx, ushort hy );
@@ -100,10 +91,10 @@ public:
     bool IsHexRaked( ushort hx, ushort hy );
     bool IsHexesPassed( ushort hx, ushort hy, uint radius );
     bool IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex );
-    bool IsHexTrigger( ushort hx, ushort hy )       { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_TRIGGER ); }
-    bool IsHexCritter( ushort hx, ushort hy )       { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER | FH_DEAD_CRITTER ); }
-    bool IsHexGag( ushort hx, ushort hy )           { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_GAG_ITEM ); }
-    bool IsHexStaticTrigger( ushort hx, ushort hy ) { return FLAG( GetProtoMap()->HexFlags[ hy * GetWidth() + hx ], FH_STATIC_TRIGGER ); }
+    bool IsHexTrigger( ushort hx, ushort hy );
+    bool IsHexCritter( ushort hx, ushort hy );
+    bool IsHexGag( ushort hx, ushort hy );
+    bool IsHexStaticTrigger( ushort hx, ushort hy );
 
     bool     IsFlagCritter( ushort hx, ushort hy, bool dead );
     void     SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead );
@@ -115,11 +106,11 @@ public:
     void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters ); // Critters append
 
     CritterVec  GetCritters();
-    ClVec       GetPlayers();
-    PcVec       GetNpcs();
+    ClientVec   GetPlayers();
+    NpcVec      GetNpcs();
     CritterVec& GetCrittersRaw()   { return mapCritters; }
-    ClVec&      GetPlayersRaw()    { return mapPlayers; }
-    PcVec&      GetNpcsRaw()       { return mapNpcs; }
+    ClientVec&  GetPlayersRaw()    { return mapPlayers; }
+    NpcVec&     GetNpcsRaw()       { return mapNpcs; }
     uint        GetCrittersCount() { return (uint) mapCritters.size(); }
     uint        GetPlayersCount()  { return (uint) mapPlayers.size(); }
     uint        GetNpcsCount()     { return (uint) mapNpcs.size(); }
@@ -131,54 +122,3 @@ public:
     // Script
     bool SetScript( asIScriptFunction* func, bool first_time );
 };
-using MapMap = map< uint, Map* >;
-using MapVec = vector< Map* >;
-
-class Location: public Entity
-{
-public:
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY( CScriptArray *, MapProtos );    // hash[]
-    CLASS_PROPERTY( CScriptArray *, MapEntrances ); // hash[]
-    CLASS_PROPERTY( CScriptArray *, Automaps );     // hash[]
-    CLASS_PROPERTY( uint, MaxPlayers );
-    CLASS_PROPERTY( bool, AutoGarbage );
-    CLASS_PROPERTY( bool, GeckVisible );
-    CLASS_PROPERTY( hash, EntranceScript );
-    CLASS_PROPERTY( ushort, WorldX );
-    CLASS_PROPERTY( ushort, WorldY );
-    CLASS_PROPERTY( ushort, Radius );
-    CLASS_PROPERTY( bool, Hidden );
-    CLASS_PROPERTY( bool, ToGarbage );
-    CLASS_PROPERTY( uint, Color );
-
-    Location( uint id, ProtoLocation* proto );
-    ~Location();
-
-private:
-    MapVec locMaps;
-
-public:
-    uint EntranceScriptBindId;
-    int  GeckCount;
-
-    void           BindScript();
-    ProtoLocation* GetProtoLoc()  { return (ProtoLocation*) Proto; }
-    bool           IsLocVisible() { return !GetHidden() || ( GetGeckVisible() && GeckCount > 0 ); }
-    MapVec&        GetMapsRaw()   { return locMaps; };
-    MapVec         GetMaps();
-    uint           GetMapsCount() { return (uint) locMaps.size(); }
-    Map*           GetMapByIndex( uint index );
-    Map*           GetMapByPid( hash map_pid );
-    uint           GetMapIndex( hash map_pid );
-    bool           IsCanEnter( uint players_count );
-
-    bool IsNoCrit();
-    bool IsNoPlayer();
-    bool IsNoNpc();
-    bool IsCanDelete();
-};
-using LocationMap = map< uint, Location* >;
-using LocationVec = vector< Location* >;
-
-#endif // __MAP__

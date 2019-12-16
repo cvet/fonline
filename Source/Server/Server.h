@@ -1,5 +1,4 @@
-#ifndef __SERVER__
-#define __SERVER__
+#pragma once
 
 #include "Common.h"
 #include "Log.h"
@@ -9,14 +8,15 @@
 #include "Item.h"
 #include "Critter.h"
 #include "Map.h"
-#include "MapManager.h"
-#include "CritterManager.h"
-#include "ItemManager.h"
-#include "Dialogs.h"
-#include "EntityManager.h"
+#include "Location.h"
 #include "ProtoManager.h"
+#include "EntityManager.h"
+#include "ItemManager.h"
+#include "CritterManager.h"
+#include "MapManager.h"
 #include "DataBase.h"
 #include "StringUtils.h"
+#include "Dialogs.h"
 #include "imgui.h"
 
 // Check buffer for error
@@ -44,6 +44,12 @@ public:
     int              ServerGameSleep = 10;
     bool             AllowServerNativeCalls = false;
     bool             AllowClientNativeCalls = false;
+
+    ProtoManager     ProtoMngr;
+    EntityManager    EntityMngr;
+    MapManager       MapMngr;
+    CritterManager   CrMngr;
+    ItemManager      ItemMngr;
 
     static void EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
@@ -81,7 +87,6 @@ public:
     // Actions
     bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
 
-    bool RegenerateMap( Map* map );
     void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
 
     // Scripting
@@ -150,7 +155,7 @@ public:
     void ProcessMove( Critter* cr );
 
     // Log to client
-    ClVec LogClients;
+    ClientVec LogClients;
     void LogToClients( const string& str );
 
     // Game time
@@ -198,7 +203,7 @@ public:
     // Net
     NetServerBase* TcpServer = nullptr;
     NetServerBase* WebSocketsServer = nullptr;
-    ClVec          ConnectedClients;
+    ClientVec      ConnectedClients;
     Mutex          ConnectedClientsLocker;
 
     void OnNewConnection( NetConnection* connection );
@@ -239,7 +244,7 @@ public:
     void          LoadBans();
 
     // Statistics
-    struct Statistics_
+    struct
     {
         uint  ServerStartTick;
         uint  Uptime;
@@ -462,5 +467,3 @@ public:
         static void          Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
     };
 };
-
-#endif // __SERVER__

@@ -1,17 +1,19 @@
-#ifndef __SPRITES__
-#define __SPRITES__
+#pragma once
 
 #include "Common.h"
 #include "GraphicStructures.h"
 
 #define SPRITES_POOL_GROW_SIZE    ( 10000 )
 
+class SpriteManager;
+class Sprites;
 class Sprite;
 typedef vector< Sprite* > SpriteVec;
 
 class Sprite
 {
 public:
+    Sprites*   Root;
     int        DrawOrderType;
     uint       DrawOrderPos;
     uint       TreeIndex;
@@ -44,13 +46,12 @@ public:
     Sprite**   ChainLast;
     Sprite*    ChainParent;
     Sprite*    ChainChild;
-    SpriteVec* UnvalidatedPlace;
 
     #ifdef FONLINE_EDITOR
     int CutOyL, CutOyR;
     #endif
 
-    Sprite() { memzero( this, sizeof( Sprite ) ); }
+    Sprite();
     void    Unvalidate();
     Sprite* GetIntersected( int ox, int oy );
 
@@ -66,17 +67,11 @@ public:
 
 class Sprites
 {
-private:
-    static SpriteVec spritesPool;
-    Sprite*          rootSprite;
-    Sprite*          lastSprite;
-    uint             spriteCount;
-    SpriteVec        unvalidatedSprites;
-    Sprite&          PutSprite( Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+    friend class Sprite;
 
 public:
     static void GrowPool();
-    Sprites();
+    Sprites( SpriteManager& spr_mngr );
     ~Sprites();
     Sprite* RootSprite();
     Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
@@ -85,6 +80,15 @@ public:
     void    SortByMapPos();
     uint    Size();
     void    Clear();
-};
 
-#endif // __SPRITES__
+private:
+    static SpriteVec spritesPool;
+    SpriteManager&   sprMngr;
+    Sprite*          rootSprite;
+    Sprite*          lastSprite;
+    uint             spriteCount;
+    SpriteVec        unvalidatedSprites;
+
+    Sprite&          PutSprite( Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+
+};

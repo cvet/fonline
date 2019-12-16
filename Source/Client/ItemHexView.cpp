@@ -3,8 +3,9 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "ResourceManager.h"
+#include "Sprites.h"
 
-ItemHexView::ItemHexView( uint id, ProtoItem* proto ): ItemView( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, ResourceManager& res_mngr ): ItemView( id, proto ), resMngr( res_mngr )
 {
     const_cast< EntityType& >( Type ) = EntityType::ItemHexView;
 
@@ -60,20 +61,20 @@ ItemHexView::ItemHexView( uint id, ProtoItem* proto ): ItemView( id, proto )
     DrawEffect = Effect::Generic;
 }
 
-ItemHexView::ItemHexView( uint id, ProtoItem* proto, Properties& props ): ItemHexView( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr ): ItemHexView( id, proto, res_mngr )
 {
     Props = props;
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data ): ItemHexView( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr ): ItemHexView( id, proto, res_mngr )
 {
     RUNTIME_ASSERT( props_data );
     Props.RestoreData( *props_data );
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y ): ItemHexView( id, proto )
+ItemHexView::ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr ): ItemHexView( id, proto, res_mngr )
 {
     if( props_data )
         Props.RestoreData( *props_data );
@@ -240,13 +241,13 @@ void ItemHexView::RefreshAnim()
     Anim = nullptr;
     hash name_hash = GetPicMap();
     if( name_hash )
-        Anim = ResMngr.GetItemAnim( name_hash );
+        Anim = resMngr.GetItemAnim( name_hash );
     if( name_hash && !Anim )
         WriteLog( "PicMap for item '{}' not found.\n", GetName() );
     if( Anim && isEffect )
         Anim = Anim->GetDir( effDir );
     if( !Anim )
-        Anim = ResMngr.ItemHexDefaultAnim;
+        Anim = resMngr.ItemHexDefaultAnim;
 
     SetStayAnim();
     animBegSpr = begSpr;

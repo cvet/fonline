@@ -7,10 +7,14 @@
 #include "IniFile.h"
 #include "Debugger.h"
 #include "Settings.h"
+#include "ItemView.h"
+#include "ItemHexView.h"
+#include "CritterView.h"
+#include "MapView.h"
+#include "LocationView.h"
+#include "Version_Include.h"
 #include "sha1.h"
 #include "sha2.h"
-#include <fcntl.h>
-#include "Version_Include.h"
 
 static bool                 ASDbgMemoryCanWork = false;
 static THREAD bool          ASDbgMemoryInUse = false;
@@ -118,10 +122,15 @@ int HandleAppEvents( void* userdata, SDL_Event* event )
 
 FOClient* FOClient::Self = nullptr;
 
-FOClient::FOClient()
+FOClient::FOClient(): Keyb( SprMngr ),
+                      ProtoMngr(),
+                      GraphicLoader( SprMngr ),
+                      SprMngr( GraphicLoader ),
+                      ResMngr( SprMngr ),
+                      HexMngr( false, ProtoMngr, SprMngr, ResMngr ),
+                      SndMngr(),
+                      Anim3dMngr( GraphicLoader )
 {
-    WriteLog( "Engine initialization...\n" );
-
     RUNTIME_ASSERT( !Self );
     Self = this;
 
@@ -173,35 +182,19 @@ FOClient::FOClient()
     GmapFog = nullptr;
     CanDrawInScripts = false;
     IsAutoLogin = false;
-}
 
-bool FOClient::PreInit()
-{
     // SDL
-    if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
-    {
-        WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
-        return false;
-    }
+    bool sdl_events_ok = SDL_InitSubSystem( SDL_INIT_EVENTS );
+    RUNTIME_ASSERT( sdl_events_ok );
 
     // SDL events
     #if defined ( FO_ANDROID ) || defined ( FO_IOS )
     SDL_SetEventFilter( HandleAppEvents, nullptr );
     #endif
 
-    // Input
-    Keyb::Init();
-
     // Cache
-    if( !Crypt.InitCache() )
-    {
-        WriteLog( "Can't create cache file.\n" );
-        return false;
-    }
-
-    // Sprite manager
-    if( !SprMngr.Init() )
-        return false;
+    bool cache_ok = Crypt.InitCache();
+    RUNTIME_ASSERT_STR( cache_ok, "Can't create cache file" );
 
     // Cursor position
     int sw = 0, sh = 0;
@@ -212,22 +205,35 @@ bool FOClient::PreInit()
     GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, sh - 1 );
 
     // Sound manager
-    SndMngr.Init();
     GameOpt.SoundVolume = MainConfig->GetInt( "", "SoundVolume", 100 );
     GameOpt.MusicVolume = MainConfig->GetInt( "", "MusicVolume", 100 );
 
     // Language Packs
     string lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
     CurLang.LoadFromCache( lang_name );
-
-    return true;
 }
 
-bool FOClient::PostInit()
+FOClient::~FOClient()
+{
+    SDL_QuitSubSystem( SDL_INIT_EVENTS );
+
+    NetDisconnect();
+    Script::Finish();
+
+    SAFEDELA( ComBuf );
+    SAFEDEL( GmapFog );
+
+    File::ClearDataFiles();
+
+    Self = nullptr;
+}
+
+bool FOClient::Reset()
 {
     // Reload cache
     if( !CurLang.IsAllMsgLoaded )
         CurLang.LoadFromCache( CurLang.NameStr );
+
     if( !CurLang.IsAllMsgLoaded )
     {
         WriteLog( "Language packs not found!\n" );
@@ -235,7 +241,7 @@ bool FOClient::PostInit()
     }
 
     // Basic effects
-    if( !GraphicLoader::LoadDefaultEffects() )
+    if( !GraphicLoader.LoadDefaultEffects() )
         return false;
 
     // Resource manager
@@ -275,14 +281,6 @@ bool FOClient::PostInit()
     if( !Script::RaiseInternalEvent( ClientFunctions.Start ) )
     {
         WriteLog( "Execute start script fail.\n" );
-        return false;
-    }
-
-    // 3d initialization
-    WriteLog( "3d rendering is {}.\n", GameOpt.Enable3dRendering ? "enabled" : "disabled" );
-    if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
-    {
-        WriteLog( "Can't initialize 3d rendering.\n" );
         return false;
     }
 
@@ -326,7 +324,7 @@ bool FOClient::PostInit()
     {
         WriteLog( "Preload 3d files...\n" );
         for( size_t i = 0, j = Preload3dFiles.size(); i < j; i++ )
-            Animation3dEntity::GetEntity( Preload3dFiles[ i ] );
+            Anim3dMngr.PreloadEntity( Preload3dFiles[ i ] );
         WriteLog( "Preload 3d files complete.\n" );
     }
 
@@ -334,11 +332,6 @@ bool FOClient::PostInit()
     UCharVec protos_data;
     Crypt.GetCache( "$protos.cache", protos_data );
     ProtoMngr.LoadProtosFromBinaryData( protos_data );
-
-    // Hex manager
-    HexMngr.Finish();
-    if( !HexMngr.Init( false ) )
-        return false;
 
     // Other
     SetGameColor( COLOR_IFACE );
@@ -409,36 +402,13 @@ void FOClient::ProcessAutoLogin()
     }
 }
 
-void FOClient::Finish()
-{
-    RUNTIME_ASSERT( !"Not used" );
-
-    WriteLog( "Engine finish...\n" );
-
-    NetDisconnect();
-    ResMngr.Finish();
-    HexMngr.Finish();
-    SprMngr.Finish();
-    SndMngr.Finish();
-    Script::Finish();
-
-    SAFEDELA( ComBuf );
-    SAFEDEL( GmapFog );
-
-    File::ClearDataFiles();
-
-    Self = nullptr;
-
-    WriteLog( "Engine finish complete.\n" );
-}
-
 void FOClient::Restart()
 {
     WriteLog( "Engine reinitialization.\n" );
 
     NetDisconnect();
 
-    if( PostInit() )
+    if( Reset() )
         ScreenFadeOut();
     else
         GameOpt.Quit = true;
@@ -908,7 +878,7 @@ void FOClient::MainLoop()
 
     if( InitCalls < 2 )
     {
-        if( ( InitCalls == 0 && !PreInit() ) || ( InitCalls == 1 && !PostInit() ) )
+        if( InitCalls == 1 && !Reset() )
         {
             WriteLog( "FOnline engine initialization failed.\n" );
             GameOpt.Quit = true;
@@ -1026,7 +996,7 @@ void FOClient::MainLoop()
             // else if( reason == INIT_NET_REASON_LOAD )
             //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
             else if( reason != INIT_NET_REASON_CUSTOM )
-                RUNTIME_ASSERT( !"Unreachable place" );
+                UNREACHABLE_PLACE;
         }
     }
 
@@ -1211,7 +1181,7 @@ void FOClient::ParseKeyboard()
     {
         MainWindowKeyboardEvents.clear();
         MainWindowKeyboardEventsText.clear();
-        Keyb::Lost();
+        Keyb.Lost();
         Script::RaiseInternalEvent( ClientFunctions.InputLost );
         return;
     }
@@ -1236,9 +1206,9 @@ void FOClient::ParseKeyboard()
         uchar dikdw = 0;
         uchar dikup = 0;
         if( event == SDL_KEYDOWN )
-            dikdw = Keyb::MapKey( event_key );
+            dikdw = Keyb.MapKey( event_key );
         else if( event == SDL_KEYUP )
-            dikup = Keyb::MapKey( event_key );
+            dikup = Keyb.MapKey( event_key );
         if( !dikdw  && !dikup )
             continue;
 
@@ -1265,17 +1235,17 @@ void FOClient::ParseKeyboard()
 
         // Control keys
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
-            Keyb::CtrlDwn = true;
+            Keyb.CtrlDwn = true;
         else if( dikdw == DIK_LMENU || dikdw == DIK_RMENU )
-            Keyb::AltDwn = true;
+            Keyb.AltDwn = true;
         else if( dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT )
-            Keyb::ShiftDwn = true;
+            Keyb.ShiftDwn = true;
         if( dikup == DIK_RCONTROL || dikup == DIK_LCONTROL )
-            Keyb::CtrlDwn = false;
+            Keyb.CtrlDwn = false;
         else if( dikup == DIK_LMENU || dikup == DIK_RMENU )
-            Keyb::AltDwn = false;
+            Keyb.AltDwn = false;
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
-            Keyb::ShiftDwn = false;
+            Keyb.ShiftDwn = false;
     }
 }
 
@@ -1331,133 +1301,21 @@ void FOClient::ParseMouse()
     }
 }
 
-void ContainerWheelScroll( int items_count, int cont_height, int item_height, int& cont_scroll, int wheel_data )
-{
-    int height_items = cont_height / item_height;
-    int scroll = 1;
-    if( Keyb::ShiftDwn )
-        scroll = height_items;
-    if( wheel_data > 0 )
-        scroll = -scroll;
-    cont_scroll += scroll;
-    if( cont_scroll < 0 )
-        cont_scroll = 0;
-    else if( cont_scroll > items_count - height_items )
-        cont_scroll = MAX( 0, items_count - height_items );
-}
-
-#ifdef FO_WINDOWS
 static string GetLastSocketError()
 {
-    string result;
-    int    error = WSAGetLastError();
-    # define CASE_SOCK_ERROR( code, message ) \
-    case code:                                \
-        result += _str( "{}, {}, {}", # code, code, message ); break
+    #ifdef FO_WINDOWS
+    int      error_code = WSAGetLastError();
+    wchar_t* ws = nullptr;
+    FormatMessageW( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                    nullptr, error_code, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ), (LPWSTR) &ws, 0, nullptr );
+    string error_str = _str().parseWideChar( ws );
+    LocalFree( ws );
 
-    switch( error )
-    {
-    default:
-        result += _str( "{}, unknown error code.", error );
-        break;
-        CASE_SOCK_ERROR( WSAEINTR, "A blocking operation was interrupted by a call to WSACancelBlockingCall." );
-        CASE_SOCK_ERROR( WSAEBADF, "The file handle supplied is not valid." );
-        CASE_SOCK_ERROR( WSAEACCES, "An attempt was made to access a socket in a way forbidden by its access permissions." );
-        CASE_SOCK_ERROR( WSAEFAULT, "The system detected an invalid pointer address in attempting to use a pointer argument in a call." );
-        CASE_SOCK_ERROR( WSAEINVAL, "An invalid argument was supplied." );
-        CASE_SOCK_ERROR( WSAEMFILE, "Too many open sockets." );
-        CASE_SOCK_ERROR( WSAEWOULDBLOCK, "A non-blocking socket operation could not be completed immediately." );
-        CASE_SOCK_ERROR( WSAEINPROGRESS, "A blocking operation is currently executing." );
-        CASE_SOCK_ERROR( WSAEALREADY, "An operation was attempted on a non-blocking socket that already had an operation in progress." );
-        CASE_SOCK_ERROR( WSAENOTSOCK, "An operation was attempted on something that is not a socket." );
-        CASE_SOCK_ERROR( WSAEDESTADDRREQ, "A required address was omitted from an operation on a socket." );
-        CASE_SOCK_ERROR( WSAEMSGSIZE, "A message sent on a datagram socket was larger than the internal message buffer or some other network limit, or the buffer used to receive a datagram into was smaller than the datagram itself." );
-        CASE_SOCK_ERROR( WSAEPROTOTYPE, "A protocol was specified in the socket function call that does not support the semantics of the socket type requested." );
-        CASE_SOCK_ERROR( WSAENOPROTOOPT, "An unknown, invalid, or unsupported option or level was specified in a getsockopt or setsockopt call." );
-        CASE_SOCK_ERROR( WSAEPROTONOSUPPORT, "The requested protocol has not been configured into the system, or no implementation for it exists." );
-        CASE_SOCK_ERROR( WSAESOCKTNOSUPPORT, "The support for the specified socket type does not exist in this address family." );
-        CASE_SOCK_ERROR( WSAEOPNOTSUPP, "The attempted operation is not supported for the type of object referenced." );
-        CASE_SOCK_ERROR( WSAEPFNOSUPPORT, "The protocol family has not been configured into the system or no implementation for it exists." );
-        CASE_SOCK_ERROR( WSAEAFNOSUPPORT, "An address incompatible with the requested protocol was used." );
-        CASE_SOCK_ERROR( WSAEADDRINUSE, "Only one usage of each socket address (protocol/network address/port) is normally permitted." );
-        CASE_SOCK_ERROR( WSAEADDRNOTAVAIL, "The requested address is not valid in its context." );
-        CASE_SOCK_ERROR( WSAENETDOWN, "A socket operation encountered a dead network." );
-        CASE_SOCK_ERROR( WSAENETUNREACH, "A socket operation was attempted to an unreachable network." );
-        CASE_SOCK_ERROR( WSAENETRESET, "The connection has been broken due to keep-alive activity detecting a failure while the operation was in progress." );
-        CASE_SOCK_ERROR( WSAECONNABORTED, "An established connection was aborted by the software in your host machine." );
-        CASE_SOCK_ERROR( WSAECONNRESET, "An existing connection was forcibly closed by the remote host." );
-        CASE_SOCK_ERROR( WSAENOBUFS, "An operation on a socket could not be performed because the system lacked sufficient buffer space or because a queue was full." );
-        CASE_SOCK_ERROR( WSAEISCONN, "A connect request was made on an already connected socket." );
-        CASE_SOCK_ERROR( WSAENOTCONN, "A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied." );
-        CASE_SOCK_ERROR( WSAESHUTDOWN, "A request to send or receive data was disallowed because the socket had already been shut down in that direction with a previous shutdown call." );
-        CASE_SOCK_ERROR( WSAETOOMANYREFS, "Too many references to some kernel object." );
-        CASE_SOCK_ERROR( WSAETIMEDOUT, "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond." );
-        CASE_SOCK_ERROR( WSAECONNREFUSED, "No connection could be made because the target machine actively refused it." );
-        CASE_SOCK_ERROR( WSAELOOP, "Cannot translate name." );
-        CASE_SOCK_ERROR( WSAENAMETOOLONG, "Name component or name was too long." );
-        CASE_SOCK_ERROR( WSAEHOSTDOWN, "A socket operation failed because the destination host was down." );
-        CASE_SOCK_ERROR( WSAEHOSTUNREACH, "A socket operation was attempted to an unreachable host." );
-        CASE_SOCK_ERROR( WSAENOTEMPTY, "Cannot remove a directory that is not empty." );
-        CASE_SOCK_ERROR( WSAEPROCLIM, "A Windows Sockets implementation may have a limit on the number of applications that may use it simultaneously." );
-        CASE_SOCK_ERROR( WSAEUSERS, "Ran out of quota." );
-        CASE_SOCK_ERROR( WSAEDQUOT, "Ran out of disk quota." );
-        CASE_SOCK_ERROR( WSAESTALE, "File handle reference is no longer available." );
-        CASE_SOCK_ERROR( WSAEREMOTE, "Item is not available locally." );
-        CASE_SOCK_ERROR( WSASYSNOTREADY, "WSAStartup cannot function at this time because the underlying system it uses to provide network services is currently unavailable." );
-        CASE_SOCK_ERROR( WSAVERNOTSUPPORTED, "The Windows Sockets version requested is not supported." );
-        CASE_SOCK_ERROR( WSANOTINITIALISED, "Either the application has not called WSAStartup, or WSAStartup failed." );
-        CASE_SOCK_ERROR( WSAEDISCON, "Returned by WSARecv or WSARecvFrom to indicate the remote party has initiated a graceful shutdown sequence." );
-        CASE_SOCK_ERROR( WSAENOMORE, "No more results can be returned by WSALookupServiceNext." );
-        CASE_SOCK_ERROR( WSAECANCELLED, "A call to WSALookupServiceEnd was made while this call was still processing. The call has been canceled." );
-        CASE_SOCK_ERROR( WSAEINVALIDPROCTABLE, "The procedure call table is invalid." );
-        CASE_SOCK_ERROR( WSAEINVALIDPROVIDER, "The requested service provider is invalid." );
-        CASE_SOCK_ERROR( WSAEPROVIDERFAILEDINIT, "The requested service provider could not be loaded or initialized." );
-        CASE_SOCK_ERROR( WSASYSCALLFAILURE, "A system call that should never fail has failed." );
-        CASE_SOCK_ERROR( WSASERVICE_NOT_FOUND, "No such service is known. The service cannot be found in the specified name space." );
-        CASE_SOCK_ERROR( WSATYPE_NOT_FOUND, "The specified class was not found." );
-        CASE_SOCK_ERROR( WSA_E_NO_MORE, "No more results can be returned by WSALookupServiceNext." );
-        CASE_SOCK_ERROR( WSA_E_CANCELLED, "A call to WSALookupServiceEnd was made while this call was still processing. The call has been canceled." );
-        CASE_SOCK_ERROR( WSAEREFUSED, "A database query failed because it was actively refused." );
-        CASE_SOCK_ERROR( WSAHOST_NOT_FOUND, "No such host is known." );
-        CASE_SOCK_ERROR( WSATRY_AGAIN, "This is usually a temporary error during hostname resolution and means that the local server did not receive a response from an authoritative server." );
-        CASE_SOCK_ERROR( WSANO_RECOVERY, "A non-recoverable error occurred during a database lookup." );
-        CASE_SOCK_ERROR( WSANO_DATA, "The requested name is valid, but no data of the requested type was found." );
-        CASE_SOCK_ERROR( WSA_QOS_RECEIVERS, "At least one reserve has arrived." );
-        CASE_SOCK_ERROR( WSA_QOS_SENDERS, "At least one path has arrived." );
-        CASE_SOCK_ERROR( WSA_QOS_NO_SENDERS, "There are no senders." );
-        CASE_SOCK_ERROR( WSA_QOS_NO_RECEIVERS, "There are no receivers." );
-        CASE_SOCK_ERROR( WSA_QOS_REQUEST_CONFIRMED, "Reserve has been confirmed." );
-        CASE_SOCK_ERROR( WSA_QOS_ADMISSION_FAILURE, "Error due to lack of resources." );
-        CASE_SOCK_ERROR( WSA_QOS_POLICY_FAILURE, "Rejected for administrative reasons - bad credentials." );
-        CASE_SOCK_ERROR( WSA_QOS_BAD_STYLE, "Unknown or conflicting style." );
-        CASE_SOCK_ERROR( WSA_QOS_BAD_OBJECT, "Problem with some part of the filterspec or providerspecific buffer in general." );
-        CASE_SOCK_ERROR( WSA_QOS_TRAFFIC_CTRL_ERROR, "Problem with some part of the flowspec." );
-        CASE_SOCK_ERROR( WSA_QOS_GENERIC_ERROR, "General QOS error." );
-        CASE_SOCK_ERROR( WSA_QOS_ESERVICETYPE, "An invalid or unrecognized service type was found in the flowspec." );
-        CASE_SOCK_ERROR( WSA_QOS_EFLOWSPEC, "An invalid or inconsistent flowspec was found in the QOS structure." );
-        CASE_SOCK_ERROR( WSA_QOS_EPROVSPECBUF, "Invalid QOS provider-specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_EFILTERSTYLE, "An invalid QOS filter style was used." );
-        CASE_SOCK_ERROR( WSA_QOS_EFILTERTYPE, "An invalid QOS filter type was used." );
-        CASE_SOCK_ERROR( WSA_QOS_EFILTERCOUNT, "An incorrect number of QOS FILTERSPECs were specified in the FLOWDESCRIPTOR." );
-        CASE_SOCK_ERROR( WSA_QOS_EOBJLENGTH, "An object with an invalid ObjectLength field was specified in the QOS provider-specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_EFLOWCOUNT, "An incorrect number of flow descriptors was specified in the QOS structure." );
-        CASE_SOCK_ERROR( WSA_QOS_EPOLICYOBJ, "An invalid policy object was found in the QOS provider-specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_EFLOWDESC, "An invalid QOS flow descriptor was found in the flow descriptor list." );
-        CASE_SOCK_ERROR( WSA_QOS_EPSFLOWSPEC, "An invalid or inconsistent flowspec was found in the QOS provider specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_EPSFILTERSPEC, "An invalid FILTERSPEC was found in the QOS provider-specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_ESDMODEOBJ, "An invalid shape discard mode object was found in the QOS provider specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_ESHAPERATEOBJ, "An invalid shaping rate object was found in the QOS provider-specific buffer." );
-        CASE_SOCK_ERROR( WSA_QOS_RESERVED_PETYPE, "A reserved policy element was found in the QOS provider-specific buffer." );
-    }
-    return result;
-}
-#else
-
-static string GetLastSocketError()
-{
+    return _str( "{} ({})", error_str, error_code );
+    #else
     return _str( "{} ({})", strerror( errno ), errno );
+    #endif
 }
-#endif
 
 bool FOClient::CheckSocketStatus( bool for_write )
 {
@@ -2533,7 +2391,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( is_npc ? npc_pid : _str( "Player" ).toHash() );
         RUNTIME_ASSERT( proto );
-        CritterView*  cr = new CritterView( crid, proto );
+        CritterView*  cr = new CritterView( crid, proto, SprMngr, ResMngr );
         cr->Props.RestoreData( TempPropertiesData );
         cr->SetHexX( hx );
         cr->SetHexY( hy );
@@ -2611,7 +2469,7 @@ void FOClient::Net_OnText()
     }
 
     if( unsafe_text )
-        Keyb::EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
+        Keyb.EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
     OnText( text, crid, how_say );
 }
 
@@ -2810,7 +2668,7 @@ void FOClient::Net_OnMapText()
     }
 
     if( unsafe_text )
-        Keyb::EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
+        Keyb.EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
     OnMapText( text, hx, hy, color );
 }
 
@@ -3600,7 +3458,7 @@ void FOClient::Net_OnPlaySound()
 
     CHECK_IN_BUFF_ERROR;
 
-    SndMngr.PlaySound( sound_name );
+    SndMngr.PlaySound( ResMngr.GetSoundNames(), sound_name );
 }
 
 void FOClient::Net_OnPing()
@@ -5322,7 +5180,7 @@ bool FOClient::ReloadScripts()
     Script::Finish();
 
     // Reinitialize engine
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT, &ProtoMngr, nullptr );
     if( !Script::Init( pragma_callback, "CLIENT", 0, false, false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
@@ -5715,7 +5573,35 @@ ItemView* FOClient::SScriptFunc::Crit_GetItemByPid( CritterView* cr, hash proto_
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    return cr->GetItemByPidInvPriority( proto_id );
+    ProtoItem* proto_item = Self->ProtoMngr.GetProtoItem( proto_id );
+    if( !proto_item )
+        return nullptr;
+
+    if( proto_item->GetStackable() )
+    {
+        for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
+        {
+            ItemView* item = *it;
+            if( item->GetProtoId() == proto_id )
+                return item;
+        }
+    }
+    else
+    {
+        ItemView* another_slot = nullptr;
+        for( auto it = cr->InvItems.begin(), end = cr->InvItems.end(); it != end; ++it )
+        {
+            ItemView* item = *it;
+            if( item->GetProtoId() == proto_id )
+            {
+                if( !item->GetCritSlot() )
+                    return item;
+                another_slot = item;
+            }
+        }
+        return another_slot;
+    }
+    return nullptr;
 }
 
 CScriptArray* FOClient::SScriptFunc::Crit_GetItems( CritterView* cr )
@@ -5970,7 +5856,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "DumpAtlases" )
     {
-        SprMngr.DumpAtlases();
+        Self->SprMngr.DumpAtlases();
     }
     else if( cmd == "SwitchShowTrack" )
     {
@@ -5984,29 +5870,29 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     {
         if( !GameOpt.FullScreen )
         {
-            if( SprMngr.EnableFullscreen() )
+            if( Self->SprMngr.EnableFullscreen() )
                 GameOpt.FullScreen = true;
         }
         else
         {
-            if( SprMngr.DisableFullscreen() )
+            if( Self->SprMngr.DisableFullscreen() )
             {
                 GameOpt.FullScreen = false;
 
                 if( Self->WindowResolutionDiffX || Self->WindowResolutionDiffY )
                 {
                     int x, y;
-                    SprMngr.GetWindowPosition( x, y );
-                    SprMngr.SetWindowPosition( x - Self->WindowResolutionDiffX, y - Self->WindowResolutionDiffY );
+                    Self->SprMngr.GetWindowPosition( x, y );
+                    Self->SprMngr.SetWindowPosition( x - Self->WindowResolutionDiffX, y - Self->WindowResolutionDiffY );
                     Self->WindowResolutionDiffX = Self->WindowResolutionDiffY = 0;
                 }
             }
         }
-        SprMngr.RefreshViewport();
+        Self->SprMngr.RefreshViewport();
     }
     else if( cmd == "MinimizeWindow" )
     {
-        SprMngr.MinimizeWindow();
+        Self->SprMngr.MinimizeWindow();
     }
     else if( cmd == "SwitchLookBorders" )
     {
@@ -6039,12 +5925,12 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         bool motion = _str( args[ 3 ] ).toBool();
         if( motion )
         {
-            SprMngr.SetMousePosition( x, y );
+            Self->SprMngr.SetMousePosition( x, y );
         }
         else
         {
             SDL_EventState( SDL_MOUSEMOTION, SDL_DISABLE );
-            SprMngr.SetMousePosition( x, y );
+            Self->SprMngr.SetMousePosition( x, y );
             SDL_EventState( SDL_MOUSEMOTION, SDL_ENABLE );
             GameOpt.MouseX = GameOpt.LastMouseX = x;
             GameOpt.MouseY = GameOpt.LastMouseY = y;
@@ -6054,7 +5940,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     else if( cmd == "SetCursorPos" )
     {
         if( Self->HexMngr.IsMapLoaded() )
-            Self->HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, true );
+            Self->HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Self->Keyb.CtrlDwn, true );
     }
     else if( cmd == "NetDisconnect" )
     {
@@ -6097,13 +5983,13 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 
         GameOpt.ScreenWidth = w;
         GameOpt.ScreenHeight = h;
-        SprMngr.SetWindowSize( w, h );
+        Self->SprMngr.SetWindowSize( w, h );
 
         if( !GameOpt.FullScreen )
         {
             int x, y;
-            SprMngr.GetWindowPosition( x, y );
-            SprMngr.SetWindowPosition( x - diff_w / 2, y - diff_h / 2 );
+            Self->SprMngr.GetWindowPosition( x, y );
+            Self->SprMngr.SetWindowPosition( x - diff_w / 2, y - diff_h / 2 );
         }
         else
         {
@@ -6111,13 +5997,13 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
             Self->WindowResolutionDiffY += diff_h / 2;
         }
 
-        SprMngr.OnResolutionChanged();
+        Self->SprMngr.OnResolutionChanged();
         if( Self->HexMngr.IsMapLoaded() )
             Self->HexMngr.OnResolutionChanged();
     }
     else if( cmd == "RefreshAlwaysOnTop" )
     {
-        SprMngr.SetAlwaysOnTop( GameOpt.AlwaysOnTop );
+        Self->SprMngr.SetAlwaysOnTop( GameOpt.AlwaysOnTop );
     }
     else if( cmd == "Command" && args.size() >= 2 )
     {
@@ -6189,7 +6075,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
             Self->LmapPrepareMap();
         }
 
-        SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
+        Self->SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
     }
     else if( cmd == "RefreshMe" )
     {
@@ -6557,23 +6443,23 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
 
 bool FOClient::SScriptFunc::Global_PlaySound( string sound_name )
 {
-    return SndMngr.PlaySound( sound_name );
+    return Self->SndMngr.PlaySound( Self->ResMngr.GetSoundNames(), sound_name );
 }
 
 bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint repeat_time )
 {
     if( music_name.empty() )
     {
-        SndMngr.StopMusic();
+        Self->SndMngr.StopMusic();
         return true;
     }
 
-    return SndMngr.PlayMusic( music_name, repeat_time );
+    return Self->SndMngr.PlayMusic( music_name, repeat_time );
 }
 
 void FOClient::SScriptFunc::Global_PlayVideo( string video_name, bool can_stop )
 {
-    SndMngr.StopMusic();
+    Self->SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
 }
 
@@ -6880,21 +6766,21 @@ void FOClient::SScriptFunc::Global_WaitPing()
 
 bool FOClient::SScriptFunc::Global_LoadFont( int font_index, string font_fname )
 {
-    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+    Self->SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     bool result;
     if( font_fname.length() > 0 && font_fname[ 0 ] == '*' )
-        result = SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false, false );
+        result = Self->SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false, false );
     else
-        result = SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
-    if( result && !SprMngr.IsAccumulateAtlasActive() )
-        SprMngr.BuildFonts();
-    SprMngr.PopAtlasType();
+        result = Self->SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+    if( result && !Self->SprMngr.IsAccumulateAtlasActive() )
+        Self->SprMngr.BuildFonts();
+    Self->SprMngr.PopAtlasType();
     return result;
 }
 
 void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 {
-    SprMngr.SetDefaultFont( font, color );
+    Self->SprMngr.SetDefaultFont( font, color );
 }
 
 bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, string effect_name, string effect_defines )
@@ -6924,7 +6810,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( !effect_name.empty() )
     {
         bool use_in_2d = !( effect_type & EFFECT_3D_SKINNED );
-        effect = GraphicLoader::LoadEffect( effect_name, use_in_2d, effect_defines );
+        effect = Self->GraphicLoader.LoadEffect( effect_name, use_in_2d, effect_defines );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }
@@ -6964,7 +6850,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( effect_type & EFFECT_FONT && effect_subtype == -1 )
         *Effect::Font = ( effect ? *effect : *Effect::ContourDefault );
     if( effect_type & EFFECT_FONT && effect_subtype >= 0 )
-        SprMngr.SetFontEffect( effect_subtype, effect );
+        Self->SprMngr.SetFontEffect( effect_subtype, effect );
 
     if( effect_type & EFFECT_PRIMITIVE_GENERIC )
         *Effect::Primitive = ( effect ? *effect : *Effect::PrimitiveDefault );
@@ -7046,22 +6932,22 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, string
     if( key1 )
     {
         MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEvents.push_back( Self->Keyb.UnmapKey( key1 ) );
         MainWindowKeyboardEventsText.push_back( key1_text );
     }
     if( key2 )
     {
         MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEvents.push_back( Self->Keyb.UnmapKey( key2 ) );
         MainWindowKeyboardEventsText.push_back( key2_text );
         MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEvents.push_back( Self->Keyb.UnmapKey( key2 ) );
         MainWindowKeyboardEventsText.push_back( "" );
     }
     if( key1 )
     {
         MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEvents.push_back( Self->Keyb.UnmapKey( key1 ) );
         MainWindowKeyboardEventsText.push_back( "" );
     }
     Self->ParseKeyboard();
@@ -7178,7 +7064,7 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
     if( File::LoadDataFile( dat_name ) )
     {
-        ResMngr.Refresh();
+        Self->ResMngr.Refresh();
         return true;
     }
     return false;
@@ -7199,7 +7085,7 @@ int FOClient::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int frame_index )
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return 0;
-    SpriteInfo* si = SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
+    SpriteInfo* si = Self->SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( !si )
         return 0;
     return si->Width;
@@ -7210,7 +7096,7 @@ int FOClient::SScriptFunc::Global_GetSpriteHeight( uint spr_id, int frame_index 
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return 0;
-    SpriteInfo* si = SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
+    SpriteInfo* si = Self->SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( !si )
         return 0;
     return si->Height;
@@ -7238,12 +7124,12 @@ uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
         return 0;
 
     uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
-    return SprMngr.GetPixColor( spr_id_, x, y, false );
+    return Self->SprMngr.GetPixColor( spr_id_, x, y, false );
 }
 
 void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text, font, flags, tw, th, lines );
+    Self->SprMngr.GetTextInfo( w, h, text, font, flags, tw, th, lines );
 }
 
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
@@ -7260,14 +7146,14 @@ void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int
     uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
+        SpriteInfo* si = Self->SprMngr.GetSpriteInfo( spr_id_ );
         if( !si )
             return;
         x += -si->Width / 2 + si->OffsX;
         y += -si->Height + si->OffsY;
     }
 
-    SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
+    Self->SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
@@ -7284,14 +7170,14 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index,
     uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
+        SpriteInfo* si = Self->SprMngr.GetSpriteInfo( spr_id_ );
         if( !si )
             return;
         x += si->OffsX;
         y += si->OffsY;
     }
 
-    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE( color ) );
+    Self->SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
@@ -7305,7 +7191,7 @@ void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
 
-    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
+    Self->SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags )
@@ -7321,7 +7207,7 @@ void FOClient::SScriptFunc::Global_DrawText( string text, int x, int y, int w, i
         h = -h, y -= h;
 
     Rect r = Rect( x, y, x + w, y + h );
-    SprMngr.DrawStr( r, text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
+    Self->SprMngr.DrawStr( r, text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray* data )
@@ -7370,7 +7256,7 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
         pp.PointOffsY = nullptr;
     }
 
-    SprMngr.DrawPoints( points, prim );
+    Self->SprMngr.DrawPoints( points, prim );
 }
 
 void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
@@ -7400,7 +7286,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
     if( map_spr->ProtoId )
     {
-        ProtoItem* proto_item = ProtoMngr.GetProtoItem( map_spr->ProtoId );
+        ProtoItem* proto_item = Self->ProtoMngr.GetProtoItem( map_spr->ProtoId );
         if( !proto_item )
             return;
 
@@ -7463,9 +7349,9 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
 void FOClient::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color )
 {
-    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir );
+    AnyFrames* anim = Self->ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir );
     if( anim )
-        SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
+        Self->SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 static Animation3dVec DrawCritter3dAnim;
@@ -7493,10 +7379,10 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
     if( !anim3d || DrawCritter3dCrType[ instance ] != model_name )
     {
         if( anim3d )
-            SprMngr.FreePure3dAnimation( anim3d );
-        SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-        anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), false );
-        SprMngr.PopAtlasType();
+            Self->SprMngr.FreePure3dAnimation( anim3d );
+        Self->SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+        anim3d = Self->SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), false );
+        Self->SprMngr.PopAtlasType();
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;
 
@@ -7525,7 +7411,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
     float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
     float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
     if( count > 13 )
-        SprMngr.PushScissor( (int) stl, (int) stt, (int) str, (int) stb );
+        Self->SprMngr.PushScissor( (int) stl, (int) stt, (int) str, (int) stb );
 
     memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
     for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
@@ -7537,20 +7423,20 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
     anim3d->SetSpeed( speed );
     anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD( (int) ( period * 100.0f ) ) | ANIMATION_NO_SMOOTH );
 
-    SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
+    Self->SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
 
     if( count > 13 )
-        SprMngr.PopScissor();
+        Self->SprMngr.PopScissor();
 }
 
 void FOClient::SScriptFunc::Global_PushDrawScissor( int x, int y, int w, int h )
 {
-    SprMngr.PushScissor( x, y, x + w, y + h );
+    Self->SprMngr.PushScissor( x, y, x + w, y + h );
 }
 
 void FOClient::SScriptFunc::Global_PopDrawScissor()
 {
-    SprMngr.PopScissor();
+    Self->SprMngr.PopScissor();
 }
 
 void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
@@ -7560,7 +7446,7 @@ void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
 
     if( Self->OffscreenSurfaces.empty() )
     {
-        RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false );
+        RenderTarget* rt = Self->SprMngr.CreateRenderTarget( false, false, true, 0, 0, false );
         if( !rt )
             SCRIPT_ERROR_R( "Can't create offscreen surface." );
 
@@ -7571,7 +7457,7 @@ void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
     Self->OffscreenSurfaces.pop_back();
     Self->ActiveOffscreenSurfaces.push_back( rt );
 
-    SprMngr.PushRenderTarget( rt );
+    Self->SprMngr.PushRenderTarget( rt );
 
     auto it = std::find( Self->DirtyOffscreenSurfaces.begin(), Self->DirtyOffscreenSurfaces.end(), rt );
     if( it != Self->DirtyOffscreenSurfaces.end() || force_clear )
@@ -7579,7 +7465,7 @@ void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
         if( it != Self->DirtyOffscreenSurfaces.end() )
             Self->DirtyOffscreenSurfaces.erase( it );
 
-        SprMngr.ClearCurrentRenderTarget( 0 );
+        Self->SprMngr.ClearCurrentRenderTarget( 0 );
     }
 
     if( std::find( Self->PreDirtyOffscreenSurfaces.begin(), Self->PreDirtyOffscreenSurfaces.end(), rt ) == Self->PreDirtyOffscreenSurfaces.end() )
@@ -7597,14 +7483,14 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
     Self->ActiveOffscreenSurfaces.pop_back();
     Self->OffscreenSurfaces.push_back( rt );
 
-    SprMngr.PopRenderTarget();
+    Self->SprMngr.PopRenderTarget();
 
     if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
 
-    SprMngr.DrawRenderTarget( rt, true );
+    Self->SprMngr.DrawRenderTarget( rt, true );
 }
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtype, int x, int y, int w, int h )
@@ -7618,7 +7504,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
     Self->ActiveOffscreenSurfaces.pop_back();
     Self->OffscreenSurfaces.push_back( rt );
 
-    SprMngr.PopRenderTarget();
+    Self->SprMngr.PopRenderTarget();
 
     if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
@@ -7628,7 +7514,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
     Rect from( CLAMP( x, 0, GameOpt.ScreenWidth ), CLAMP( y, 0, GameOpt.ScreenHeight ),
                CLAMP( x + w, 0, GameOpt.ScreenWidth ), CLAMP( y + h, 0, GameOpt.ScreenHeight ) );
     Rect to = from;
-    SprMngr.DrawRenderTarget( rt, true, &from, &to );
+    Self->SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h )
@@ -7642,7 +7528,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subty
     Self->ActiveOffscreenSurfaces.pop_back();
     Self->OffscreenSurfaces.push_back( rt );
 
-    SprMngr.PopRenderTarget();
+    Self->SprMngr.PopRenderTarget();
 
     if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
@@ -7653,7 +7539,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subty
                CLAMP( from_x + from_w, 0, GameOpt.ScreenWidth ), CLAMP( from_y + from_h, 0, GameOpt.ScreenHeight ) );
     Rect to( CLAMP( to_x, 0, GameOpt.ScreenWidth ), CLAMP( to_y, 0, GameOpt.ScreenHeight ),
              CLAMP( to_x + to_w, 0, GameOpt.ScreenWidth ), CLAMP( to_y + to_h, 0, GameOpt.ScreenHeight ) );
-    SprMngr.DrawRenderTarget( rt, true, &from, &to );
+    Self->SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, CScriptDictionary* params )
@@ -7762,7 +7648,7 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
-    SprMngr.SaveTexture( nullptr, _str( file_path ).formatPath(), true );
+    Self->SprMngr.SaveTexture( nullptr, _str( file_path ).formatPath(), true );
     return true;
 }
 

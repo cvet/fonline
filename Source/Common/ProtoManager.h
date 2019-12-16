@@ -1,17 +1,10 @@
-#ifndef __PROTO_MANAGER__
-#define __PROTO_MANAGER__
+#pragma once
 
 #include "Common.h"
 #include "Entity.h"
 
 class ProtoManager
 {
-private:
-    ProtoItemMap     itemProtos;
-    ProtoCritterMap  crProtos;
-    ProtoMapMap      mapProtos;
-    ProtoLocationMap locProtos;
-
 public:
     void ClearProtos();
     bool LoadProtosFromFiles();
@@ -28,8 +21,10 @@ public:
     const ProtoCritterMap&  GetProtoCritters()  { return crProtos; }
     const ProtoMapMap&      GetProtoMaps()      { return mapProtos; }
     const ProtoLocationMap& GetProtoLocations() { return locProtos; }
+
+private:
+    ProtoItemMap     itemProtos;
+    ProtoCritterMap  crProtos;
+    ProtoMapMap      mapProtos;
+    ProtoLocationMap locProtos;
 };
-
-extern ProtoManager ProtoMngr;
-
-#endif // __PROTO_MANAGER__

@@ -1,17 +1,20 @@
-#ifndef __ENTITY_MANAGER__
-#define __ENTITY_MANAGER__
+#pragma once
 
 #include "Common.h"
 #include "Entity.h"
-#include "Item.h"
-#include "Critter.h"
-#include "Map.h"
+
+class MapManager;
+class CritterManager;
+class ItemManager;
 
 class EntityManager
 {
-private:
-    EntityMap allEntities;
-    uint      entitiesCount[ (int) EntityType::Max ];
+    MapManager&     mapMngr;
+    CritterManager& crMngr;
+    ItemManager&    itemMngr;
+
+    EntityMap       allEntities;
+    uint            entitiesCount[ (int) EntityType::Max ];
 
     bool LinkMaps();
     bool LinkNpc();
@@ -19,7 +22,7 @@ private:
     void InitAfterLoad();
 
 public:
-    EntityManager();
+    EntityManager( MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr );
 
     void    RegisterEntity( Entity* entity );
     void    UnregisterEntity( Entity* entity );
@@ -39,7 +42,3 @@ public:
     bool LoadEntities();
     void ClearEntities();
 };
-
-extern EntityManager EntityMngr;
-
-#endif // __ENTITY_MANAGER__

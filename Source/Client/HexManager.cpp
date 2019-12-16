@@ -8,10 +8,9 @@
 #include "Script.h"
 #include "StringUtils.h"
 #include "Settings.h"
-
-/************************************************************************/
-/* FIELD                                                                */
-/************************************************************************/
+#include "SpriteManager.h"
+#include "CritterView.h"
+#include "ItemHexView.h"
 
 Field::~Field()
 {
@@ -235,48 +234,28 @@ void Field::UnvalidateSpriteChain()
     }
 }
 
-/************************************************************************/
-/* HEX FIELD                                                            */
-/************************************************************************/
-
-HexManager::HexManager()
+HexManager::HexManager( bool mapper_mode, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr ): protoMngr( proto_mngr ), sprMngr( spr_mngr ), resMngr( res_mngr ),
+                                                                                                                          mainTree( spr_mngr ), tilesTree( spr_mngr ), roofTree( spr_mngr ), roofRainTree( spr_mngr )
 {
-    curPidMap = 0;
-    viewField = nullptr;
-    isShowHex = false;
-    roofSkip = 0;
-    rainCapacity = 0;
-    chosenId = 0;
-    critterContourCrId = 0;
-    crittersContour = 0;
-    critterContour = 0;
-    maxHexX = 0;
-    maxHexY = 0;
-    hexField = nullptr;
-    hexTrack = nullptr;
-    hexLight = nullptr;
-    hTop = 0;
-    hBottom = 0;
-    wLeft = 0;
-    wRight = 0;
-    drawCursorX = 0;
-    cursorPrePic = nullptr;
-    cursorPostPic = nullptr;
-    cursorXPic = nullptr;
-    cursorX = 0;
-    cursorY = 0;
+    mapperMode = mapper_mode;
+
+    rtMap = sprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
+    RUNTIME_ASSERT( rtMap );
+
+    rtScreenOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
+    rtScreenOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
+
+    rtLight = sprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
+    RUNTIME_ASSERT( rtLight );
+
+    if( !mapperMode )
+    {
+        rtFog = sprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
+        RUNTIME_ASSERT( rtFog );
+    }
+
     memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
-    requestRebuildLight = false;
-    requestRenderLight = false;
-    lightPointsCount = 0;
-    lightCapacity = 0;
-    lightMinHx = 0;
-    lightMaxHx = 0;
-    lightMinHy = 0;
-    lightMaxHy = 0;
-    lightProcentR = 0;
-    lightProcentG = 0;
-    lightProcentB = 0;
+
     dayTime[ 0 ] = 300;
     dayTime[ 1 ] = 600;
     dayTime[ 2 ] = 1140;
@@ -293,56 +272,17 @@ HexManager::HexManager()
     dayColor[ 9 ] = 128;
     dayColor[ 10 ] = 86;
     dayColor[ 11 ] = 29;
+
     picRainFallName = "Rain/Fall.fofrm";
     picRainDropName = "Rain/Drop.fofrm";
-    picRainFall = nullptr;
-    picRainDrop = nullptr;
-    picTrack1 = picTrack2 = picHexMask = nullptr;
-    rtMap = rtLight = rtFog = nullptr;
-    rtScreenOX = rtScreenOY = 0;
-    fogOffsX = fogOffsY = nullptr;
-    fogLastOffsX = fogLastOffsY = 0;
-    fogForceRerender = false;
-}
-
-bool HexManager::Init( bool mapper_mode )
-{
-    WriteLog( "Hex field initialization...\n" );
-
-    mapperMode = mapper_mode;
-
-    rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
-
-    rtScreenOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
-    rtScreenOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
-    rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
-    if( !mapperMode )
-        rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
-
-    isShowTrack = false;
-    curPidMap = 0;
-    curMapTime = -1;
-    curHashTiles = 0;
-    curHashScen = 0;
-    cursorX = 0;
-    cursorY = 0;
-    chosenId = 0;
-    memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
-    maxHexX = 0;
-    maxHexY = 0;
 
     #ifdef FONLINE_EDITOR
     ClearSelTiles();
     #endif
-
-    WriteLog( "Hex field initialization complete.\n" );
-    return true;
 }
 
-void HexManager::Finish()
+HexManager::~HexManager()
 {
-    WriteLog( "Hex field finish...\n" );
-
     mainTree.Clear();
     roofRainTree.Clear();
     roofTree.Clear();
@@ -358,9 +298,6 @@ void HexManager::Finish()
 
     SAFEDELA( viewField );
     ResizeField( 0, 0 );
-
-    chosenId = 0;
-    WriteLog( "Hex field finish complete.\n" );
 }
 
 void HexManager::ReloadSprites()
@@ -368,17 +305,17 @@ void HexManager::ReloadSprites()
     curDataPrefix = GameOpt.MapDataPrefix;
 
     // Must be valid
-    picHex[ 0 ] = SprMngr.LoadAnimation( curDataPrefix + "hex1.png", true );
-    picHex[ 1 ] = SprMngr.LoadAnimation( curDataPrefix + "hex2.png", true );
-    picHex[ 2 ] = SprMngr.LoadAnimation( curDataPrefix + "hex3.png", true );
-    cursorPrePic = SprMngr.LoadAnimation( curDataPrefix + "move_pre.png", true );
-    cursorPostPic = SprMngr.LoadAnimation( curDataPrefix + "move_post.png", true );
-    cursorXPic = SprMngr.LoadAnimation( curDataPrefix + "move_x.png", true );
-    picTrack1 = SprMngr.LoadAnimation( curDataPrefix + "track1.png", true );
-    picTrack2 = SprMngr.LoadAnimation( curDataPrefix + "track2.png", true );
+    picHex[ 0 ] = sprMngr.LoadAnimation( curDataPrefix + "hex1.png", true );
+    picHex[ 1 ] = sprMngr.LoadAnimation( curDataPrefix + "hex2.png", true );
+    picHex[ 2 ] = sprMngr.LoadAnimation( curDataPrefix + "hex3.png", true );
+    cursorPrePic = sprMngr.LoadAnimation( curDataPrefix + "move_pre.png", true );
+    cursorPostPic = sprMngr.LoadAnimation( curDataPrefix + "move_post.png", true );
+    cursorXPic = sprMngr.LoadAnimation( curDataPrefix + "move_x.png", true );
+    picTrack1 = sprMngr.LoadAnimation( curDataPrefix + "track1.png", true );
+    picTrack2 = sprMngr.LoadAnimation( curDataPrefix + "track2.png", true );
 
     // May be null
-    picHexMask = SprMngr.LoadAnimation( curDataPrefix + "hex_mask.png" );
+    picHexMask = sprMngr.LoadAnimation( curDataPrefix + "hex_mask.png" );
 
     // Rain
     SetRainAnimation( nullptr, nullptr );
@@ -426,7 +363,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
         return 0;
     }
 
-    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
+    ProtoItem* proto = protoMngr.GetProtoItem( pid );
     if( !proto )
     {
         WriteLog( "Proto not found '{}'.\n", _str().parseHash( pid ) );
@@ -454,7 +391,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
 
     // Parse
     Field&       f = GetField( hx, hy );
-    ItemHexView* item = new ItemHexView( id, proto, data, hx, hy, &f.ScrX, &f.ScrY );
+    ItemHexView* item = new ItemHexView( id, proto, data, hx, hy, &f.ScrX, &f.ScrY, resMngr );
     if( is_added )
         item->SetShowAnim();
     PushItem( item );
@@ -678,7 +615,7 @@ Rect HexManager::GetRectForText( ushort hx, ushort hy )
     {
         for( uint i = 0, j = (uint) f.Items->size(); i < j; i++ )
         {
-            SpriteInfo* si = SprMngr.GetSpriteInfo( f.Items->at( i )->SprId );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( f.Items->at( i )->SprId );
             if( si )
             {
                 int w = si->Width - si->OffsX;
@@ -704,7 +641,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         return false;
     }
 
-    ProtoItem* proto = ProtoMngr.GetProtoItem( eff_pid );
+    ProtoItem* proto = protoMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
         WriteLog( "Proto '{}' not found.\n", _str().parseHash( eff_pid ) );
@@ -712,7 +649,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     }
 
     Field&       f = GetField( from_hx, from_hy );
-    ItemHexView* item = new ItemHexView( 0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY );
+    ItemHexView* item = new ItemHexView( 0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY, resMngr );
 
     float        sx = 0;
     float        sy = 0;
@@ -809,8 +746,8 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
     else
         AnyFrames::Destroy( picRainDrop );
 
-    picRainFall = SprMngr.LoadAnimation( picRainFallName, true );
-    picRainDrop = SprMngr.LoadAnimation( picRainDropName, true );
+    picRainFall = sprMngr.LoadAnimation( picRainFallName, true );
+    picRainDrop = sprMngr.LoadAnimation( picRainDropName, true );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
@@ -873,10 +810,10 @@ void HexManager::DrawCursor( uint spr_id )
     if( GameOpt.HideCursor || !GameOpt.ShowMoveCursor )
         return;
 
-    SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+    SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
     if( si )
     {
-        SprMngr.DrawSpriteSize( spr_id,
+        sprMngr.DrawSpriteSize( spr_id,
                                 (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom ),
                                 (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom ),
                                 (int) ( (float) si->Width / GameOpt.SpritesZoom ),
@@ -891,7 +828,7 @@ void HexManager::DrawCursor( const char* text )
 
     int x = (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom );
     int y = (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom );
-    SprMngr.DrawStr( Rect( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),
+    sprMngr.DrawStr( Rect( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),
                            (int) ( (float) ( y + HEX_REAL_H ) / GameOpt.SpritesZoom ) ), text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
 }
 
@@ -930,7 +867,7 @@ void HexManager::RebuildMap( int rx, int ry )
         delete ( *it );
     rainData.clear();
 
-    SprMngr.EggNotValid();
+    sprMngr.EggNotValid();
 
     // Begin generate new sprites
     for( int i = 0, j = hVisible * wVisible; i < j; i++ )
@@ -950,7 +887,7 @@ void HexManager::RebuildMap( int rx, int ry )
         if( isShowTrack && GetHexTrack( nx, ny ) )
         {
             uint        spr_id = ( GetHexTrack( nx, ny ) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId() );
-            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
             Sprite&     spr = mainTree.AddSprite( DRAW_ORDER_TRACK, nx, ny, 0, HEX_OX, HEX_OY + ( si ? si->Height / 2 : 0 ), &f.ScrX, &f.ScrY, spr_id,
                                                   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             f.AddSpriteToChain( &spr );
@@ -960,7 +897,7 @@ void HexManager::RebuildMap( int rx, int ry )
         if( isShowHex )
         {
             uint        spr_id = picHex[ 0 ]->GetCurSprId();
-            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
             Sprite&     spr = mainTree.AddSprite( DRAW_ORDER_HEX_GRID, nx, ny, 0, si ? si->Width / 2 : 0, si ? si->Height : 0, &f.ScrX, &f.ScrY, spr_id,
                                                   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             f.AddSpriteToChain( &spr );
@@ -1195,7 +1132,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
         if( isShowTrack && GetHexTrack( nx, ny ) )
         {
             uint        spr_id = ( GetHexTrack( nx, ny ) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId() );
-            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
             Sprite&     spr = mainTree.InsertSprite( DRAW_ORDER_TRACK, nx, ny, 0, HEX_OX, HEX_OY + ( si ? si->Height / 2 : 0 ), &f.ScrX, &f.ScrY, spr_id,
                                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             f.AddSpriteToChain( &spr );
@@ -1205,7 +1142,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
         if( isShowHex )
         {
             uint        spr_id = picHex[ 0 ]->GetCurSprId();
-            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+            SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
             Sprite&     spr = mainTree.InsertSprite( DRAW_ORDER_HEX_GRID, nx, ny, 0, si ? si->Width / 2 : 0, si ? si->Height : 0, &f.ScrX, &f.ScrY, spr_id,
                                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             f.AddSpriteToChain( &spr );
@@ -1350,7 +1287,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 ProtoMap::TileVec& tiles = GetTiles( nx, ny, false );
                 Sprite&            spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                 tiles[ i ].IsSelected ? (uchar*) &SelectAlpha : nullptr, &Effect::Tile, nullptr );
+                                                                 tiles[ i ].IsSelected ? &SelectAlpha : nullptr, &Effect::Tile, nullptr );
                 #else
                 Sprite& spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                       &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1373,7 +1310,7 @@ void HexManager::RebuildMapOffset( int ox, int oy )
                 ProtoMap::TileVec& roofs = GetTiles( nx, ny, true );
                 Sprite&            spr = roofTree.InsertSprite( DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                 &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                roofs[ i ].IsSelected ? (uchar*) &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
+                                                                roofs[ i ].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
                 #else
                 Sprite& spr = roofTree.InsertSprite( DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                      &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1450,13 +1387,13 @@ void HexManager::PrepareLightToDraw()
     if( requestRenderLight )
     {
         requestRenderLight = false;
-        SprMngr.PushRenderTarget( rtLight );
-        SprMngr.ClearCurrentRenderTarget( 0 );
+        sprMngr.PushRenderTarget( rtLight );
+        sprMngr.ClearCurrentRenderTarget( 0 );
         PointF offset( (float) rtScreenOX, (float) rtScreenOY );
         for( uint i = 0; i < lightPointsCount; i++ )
-            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Light );
-        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, &offset, Effect::Light );
-        SprMngr.PopRenderTarget();
+            sprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Light );
+        sprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, &offset, Effect::Light );
+        sprMngr.PopRenderTarget();
     }
 }
 
@@ -1933,7 +1870,7 @@ void HexManager::RebuildTiles()
                 ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
                 Sprite&            spr = tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                               &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                              tiles[ i ].IsSelected ? (uchar*) &SelectAlpha : nullptr, &Effect::Tile, nullptr );
+                                                              tiles[ i ].IsSelected ? &SelectAlpha : nullptr, &Effect::Tile, nullptr );
                 #else
                 Sprite& spr = tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
                                                    &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -1985,7 +1922,7 @@ void HexManager::RebuildRoof()
                     ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                     Sprite&            spr = roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                                  &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                                                                 roofs[ i ].IsSelected ? (uchar*) &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
+                                                                 roofs[ i ].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha, &Effect::Roof, nullptr );
                     #else
                     Sprite& spr = roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX, roof.OffsY + ROOF_OY,
                                                       &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
@@ -2039,7 +1976,7 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
 {
     if( !spr_id )
         return false;
-    SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+    SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
     if( !si )
         return false;
 
@@ -2057,7 +1994,7 @@ bool HexManager::ProcessHexBorders( ItemHexView* item )
 
 bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map )
 {
-    SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+    SpriteInfo* si = sprMngr.GetSpriteInfo( spr_id );
     if( !si )
         return false;
 
@@ -2343,41 +2280,41 @@ void HexManager::DrawMap()
     // Separate render target
     if( rtMap )
     {
-        SprMngr.PushRenderTarget( rtMap );
-        SprMngr.ClearCurrentRenderTarget( 0 );
+        sprMngr.PushRenderTarget( rtMap );
+        sprMngr.ClearCurrentRenderTarget( 0 );
     }
 
     // Tiles
     if( GameOpt.ShowTile )
-        SprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+        sprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
     // Flat sprites
-    SprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
+    sprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
 
     // Light
     if( rtLight )
-        SprMngr.DrawRenderTarget( rtLight, true, &prerenderedRect );
+        sprMngr.DrawRenderTarget( rtLight, true, &prerenderedRect );
 
     // Cursor flat
     DrawCursor( cursorPrePic->GetCurSprId() );
 
     // Sprites
-    SprMngr.DrawSprites( mainTree, true, true, DRAW_ORDER_LIGHT, DRAW_ORDER_LAST );
+    sprMngr.DrawSprites( mainTree, true, true, DRAW_ORDER_LIGHT, DRAW_ORDER_LAST );
 
     // Roof
     if( GameOpt.ShowRoof )
     {
-        SprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+        sprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
         if( rainCapacity )
-            SprMngr.DrawSprites( roofRainTree, false, false, DRAW_ORDER_RAIN, DRAW_ORDER_RAIN );
+            sprMngr.DrawSprites( roofRainTree, false, false, DRAW_ORDER_RAIN, DRAW_ORDER_RAIN );
     }
 
     // Contours
-    SprMngr.DrawContours();
+    sprMngr.DrawContours();
 
     // Fog
     if( rtFog )
-        SprMngr.DrawRenderTarget( rtFog, true, &prerenderedRect );
+        sprMngr.DrawRenderTarget( rtFog, true, &prerenderedRect );
 
     // Cursor
     DrawCursor( cursorPostPic->GetCurSprId() );
@@ -2389,8 +2326,8 @@ void HexManager::DrawMap()
     // Draw map from render target
     if( rtMap )
     {
-        SprMngr.PopRenderTarget();
-        SprMngr.DrawRenderTarget( rtMap, false );
+        sprMngr.PopRenderTarget();
+        sprMngr.DrawRenderTarget( rtMap, false );
     }
 }
 
@@ -2422,11 +2359,11 @@ void HexManager::PrepareFogToDraw()
     fogForceRerender = false;
 
     PointF offset( (float) rtScreenOX, (float) rtScreenOY );
-    SprMngr.PushRenderTarget( rtFog );
-    SprMngr.ClearCurrentRenderTarget( 0 );
-    SprMngr.DrawPoints( fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
-    SprMngr.DrawPoints( fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
-    SprMngr.PopRenderTarget();
+    sprMngr.PushRenderTarget( rtFog );
+    sprMngr.ClearCurrentRenderTarget( 0 );
+    sprMngr.DrawPoints( fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
+    sprMngr.DrawPoints( fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
+    sprMngr.PopRenderTarget();
 }
 
 bool HexManager::Scroll()
@@ -3064,7 +3001,7 @@ bool HexManager::GetHexPixel( int x, int y, ushort& hx, ushort& hy )
                 // Correct with hex color mask
                 if( picHexMask )
                 {
-                    uint r = ( SprMngr.GetPixColor( picHexMask->Ind[ 0 ], (int) ( xf - x_ ), (int) ( yf - y_ ) ) & 0x00FF0000 ) >> 16;
+                    uint r = ( sprMngr.GetPixColor( picHexMask->Ind[ 0 ], (int) ( xf - x_ ), (int) ( yf - y_ ) ) & 0x00FF0000 ) >> 16;
                     if( r == 50 )
                         MoveHexByDirUnsafe( hx_, hy_, GameOpt.MapHexagonal ? 5 : 6 );
                     else if( r == 100 )
@@ -3096,7 +3033,7 @@ ItemHexView* HexManager::GetItemPixel( int x, int y, bool& item_egg )
 
     ItemHexViewVec pix_item;
     ItemHexViewVec pix_item_egg;
-    bool           is_egg = SprMngr.IsEggTransp( x, y );
+    bool           is_egg = sprMngr.IsEggTransp( x, y );
 
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -3135,7 +3072,7 @@ ItemHexView* HexManager::GetItemPixel( int x, int y, bool& item_egg )
             #endif
         }
 
-        SpriteInfo* si = SprMngr.GetSpriteInfo( item->SprId );
+        SpriteInfo* si = sprMngr.GetSpriteInfo( item->SprId );
         if( !si )
             continue;
 
@@ -3150,7 +3087,7 @@ ItemHexView* HexManager::GetItemPixel( int x, int y, bool& item_egg )
             if( spr )
             {
                 item->SprTemp = spr;
-                if( is_egg && SprMngr.CompareHexEgg( hx, hy, item->GetEggType() ) )
+                if( is_egg && sprMngr.CompareHexEgg( hx, hy, item->GetEggType() ) )
                     pix_item_egg.push_back( item );
                 else
                     pix_item.push_back( item );
@@ -3205,7 +3142,7 @@ CritterView* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_cho
 
         if( x >= ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom && x <= ( cr->DRect.R + GameOpt.ScrOx ) / GameOpt.SpritesZoom &&
             y >= ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom && y <= ( cr->DRect.B + GameOpt.ScrOy ) / GameOpt.SpritesZoom &&
-            SprMngr.IsPixNoTransp( cr->SprId, (int) ( x - ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom ), (int) ( y - ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom ) ) )
+            sprMngr.IsPixNoTransp( cr->SprId, (int) ( x - ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom ), (int) ( y - ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom ) ) )
         {
             crits.push_back( cr );
         }
@@ -3244,13 +3181,8 @@ bool HexManager::FindPath( CritterView* cr, ushort start_x, ushort start_y, usho
     static short*        grid = nullptr;
     static UShortPairVec coords;
 
-    // Allocate temporary grid
     if( !grid )
-    {
         grid = new short[ ( MAX_FIND_PATH * 2 + 2 ) * ( MAX_FIND_PATH * 2 + 2 ) ];
-        if( !grid )
-            return false;
-    }
 
     if( !IsMapLoaded() )
         return false;
@@ -3743,6 +3675,8 @@ label_FindOk:
         }
     }
     return true;
+
+    #undef GRID
 }
 
 bool HexManager::CutPath( CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut )
@@ -3826,82 +3760,79 @@ void HexManager::FindSetCenter( int cx, int cy )
         int    ih = VIEW_HEIGHT / 2 + 2;
         ushort hx = cx;
         ushort hy = cy;
-        int    dirs[ 2 ];
+
+        auto   find_set_center_dir = [ this, &hx, &hy ] ( const array< int, 2 >&dirs, int steps )
+        {
+            ushort sx = hx;
+            ushort sy = hy;
+            int    dirs_count = ( dirs[ 1 ] == -1 ? 1 : 2 );
+
+            int    i;
+            for( i = 0; i < steps; i++ )
+            {
+                if( !MoveHexByDir( sx, sy, dirs[ i % dirs_count ], maxHexX, maxHexY ) )
+                    break;
+
+                GetHexTrack( sx, sy ) = 1;
+                if( GetField( sx, sy ).Flags.ScrollBlock )
+                    break;
+                GetHexTrack( sx, sy ) = 2;
+            }
+
+            for( ; i < steps; i++ )
+                MoveHexByDir( hx, hy, ReverseDir( dirs[ i % dirs_count ] ), maxHexX, maxHexY );
+        };
 
         // Up
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 0, dirs[ 1 ] = 5;
+            find_set_center_dir( { 0, 5 }, ih );
         else
-            dirs[ 0 ] = 0, dirs[ 1 ] = 6;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 0, 6 }, ih );
+
         // Down
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 3, dirs[ 1 ] = 2;
+            find_set_center_dir( { 3, 2 }, ih );
         else
-            dirs[ 0 ] = 4, dirs[ 1 ] = 2;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 4, 2 }, ih );
+
         // Right
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 1, dirs[ 1 ] = -1;
+            find_set_center_dir( { 1, -1 }, iw );
         else
-            dirs[ 0 ] = 1, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, iw );
+            find_set_center_dir( { 1, -1 }, iw );
+
         // Left
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 4, dirs[ 1 ] = -1;
+            find_set_center_dir( { 4, -1 }, iw );
         else
-            dirs[ 0 ] = 5, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, iw );
+            find_set_center_dir( { 5, -1 }, iw );
 
         // Up-Right
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 0, dirs[ 1 ] = -1;
+            find_set_center_dir( { 0, -1 }, ih );
         else
-            dirs[ 0 ] = 0, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 0, -1 }, ih );
+
         // Down-Left
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 3, dirs[ 1 ] = -1;
+            find_set_center_dir( { 3, -1 }, ih );
         else
-            dirs[ 0 ] = 4, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 4, -1 }, ih );
+
         // Up-Left
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 5, dirs[ 1 ] = -1;
+            find_set_center_dir( { 5, -1 }, ih );
         else
-            dirs[ 0 ] = 6, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 6, -1 }, ih );
+
         // Down-Right
         if( GameOpt.MapHexagonal )
-            dirs[ 0 ] = 2, dirs[ 1 ] = -1;
+            find_set_center_dir( { 2, -1 }, ih );
         else
-            dirs[ 0 ] = 2, dirs[ 1 ] = -1;
-        FindSetCenterDir( hx, hy, dirs, ih );
+            find_set_center_dir( { 2, 1 }, ih );
 
         RebuildMap( hx, hy );
     }
-}
-
-void HexManager::FindSetCenterDir( ushort& hx, ushort& hy, int dirs[ 2 ], int steps )
-{
-    ushort sx = hx;
-    ushort sy = hy;
-    int    dirs_count = ( dirs[ 1 ] == -1 ? 1 : 2 );
-
-    int    i;
-    for( i = 0; i < steps; i++ )
-    {
-        if( !MoveHexByDir( sx, sy, dirs[ i % dirs_count ], maxHexX, maxHexY ) )
-            break;
-
-        GetHexTrack( sx, sy ) = 1;
-        if( GetField( sx, sy ).Flags.ScrollBlock )
-            break;
-        GetHexTrack( sx, sy ) = 2;
-    }
-
-    for( ; i < steps; i++ )
-        MoveHexByDir( hx, hy, ReverseDir( dirs[ i % dirs_count ] ), maxHexX, maxHexY );
 }
 
 bool HexManager::LoadMap( hash map_pid )
@@ -3984,7 +3915,7 @@ bool HexManager::LoadMap( hash map_pid )
             continue;
 
         Field&     f = GetField( tile.HexX, tile.HexY );
-        AnyFrames* anim = ResMngr.GetItemAnim( tile.Name );
+        AnyFrames* anim = resMngr.GetItemAnim( tile.Name );
         if( anim )
         {
             Field::Tile& ftile = f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof );
@@ -4200,10 +4131,10 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
 
 void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
 {
-    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    ProtoItem* proto = protoMngr.GetProtoItem( proto_id );
     RUNTIME_ASSERT( proto );
 
-    ItemHexView* scenery = new ItemHexView( id, proto, props );
+    ItemHexView* scenery = new ItemHexView( id, proto, props, resMngr );
     Field&       f = GetField( scenery->GetHexX(), scenery->GetHexY() );
     scenery->HexScrX = &f.ScrX;
     scenery->HexScrY = &f.ScrY;
@@ -4267,7 +4198,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     Globals->SetMinute( day_time % 60 );
     Globals->SetHour( day_time / 60 % 24 );
     uint color = GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr );
-    SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
+    sprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
 
     CScriptArray* dt = pmap.GetDayTime();
     CScriptArray* dc = pmap.GetDayColor();
@@ -4309,7 +4240,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
                 {
                     ProtoMap::Tile& tile = tiles[ i ];
-                    AnyFrames*      anim = ResMngr.GetItemAnim( tile.Name );
+                    AnyFrames*      anim = resMngr.GetItemAnim( tile.Name );
                     if( anim )
                     {
                         Field::Tile& ftile = f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof );
@@ -4344,20 +4275,20 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             }
             else
             {
-                RUNTIME_ASSERT( !"Unreachable place" );
+                UNREACHABLE_PLACE;
             }
         }
         else if( entity->Type == EntityType::CritterView )
         {
             CritterView* entity_cr = (CritterView*) entity;
-            CritterView* cr = new CritterView( entity_cr->Id, (ProtoCritter*) entity_cr->Proto );
+            CritterView* cr = new CritterView( entity_cr->Id, (ProtoCritter*) entity_cr->Proto, sprMngr, resMngr );
             cr->Props = entity_cr->Props;
             cr->Init();
             AddCritter( cr );
         }
         else
         {
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
         }
     }
 
@@ -4379,15 +4310,19 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
     for( auto& entity : pmap.AllEntities )
         entity->Release();
     pmap.AllEntities.clear();
-    std::function< void(Entity*) > fill_recursively = [ &fill_recursively, &pmap ] ( Entity * entity )
+
+    auto*                          spr_mngr = &sprMngr;
+    auto*                          res_mngr = &resMngr;
+    std::function< void(Entity*) > fill_recursively = [ &fill_recursively, &pmap, spr_mngr, res_mngr ] ( Entity * entity )
     {
         Entity* store_entity = nullptr;
         if( entity->Type == EntityType::ItemHexView || entity->Type == EntityType::Item )
             store_entity = new ItemView( entity->Id, (ProtoItem*) entity->Proto );
         else if( entity->Type == EntityType::CritterView )
-            store_entity = new CritterView( entity->Id, (ProtoCritter*) entity->Proto );
+            store_entity = new CritterView( entity->Id, (ProtoCritter*) entity->Proto, *spr_mngr, *res_mngr );
         else
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
+
         store_entity->Props = entity->Props;
         pmap.AllEntities.push_back( store_entity );
         for( auto& child : entity->GetChildren() )
@@ -4396,6 +4331,7 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
             fill_recursively( child );
         }
     };
+
     for( auto& kv : allCritters )
         fill_recursively( kv.second );
     for( auto& item : hexItems )
@@ -4496,7 +4432,7 @@ void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, u
         return;
     Field&     f = GetField( hx, hy );
 
-    AnyFrames* anim = ResMngr.GetItemAnim( name );
+    AnyFrames* anim = resMngr.GetItemAnim( name );
     if( !anim )
         return;
 
@@ -4505,7 +4441,7 @@ void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, u
 
     Field::Tile&       ftile = f.AddTile( anim, 0, 0, layer, is_roof );
     ProtoMap::TileVec& tiles = GetTiles( hx, hy, is_roof );
-    tiles.push_back( ProtoMap::Tile( name, hx, hy, (char) ox, (char) oy, layer, is_roof ) );
+    tiles.push_back( { name, hx, hy, ox, oy, layer, is_roof } );
     tiles.back().      IsSelected = select;
 
     if( CheckTilesBorder( ftile, is_roof ) )

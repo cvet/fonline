@@ -8,7 +8,6 @@
 #include "Keyboard.h"
 #include "Settings.h"
 #include "Version_Include.h"
-#include <locale.h>
 
 #ifdef FO_IOS
 extern SDL_Window* SprMngr_MainWindow;

@@ -1,5 +1,4 @@
-#ifndef __CRYPT__
-#define __CRYPT__
+#pragma once
 
 #include "Common.h"
 
@@ -30,5 +29,3 @@ public:
 };
 
 extern CryptManager Crypt;
-
-#endif // __CRYPT__

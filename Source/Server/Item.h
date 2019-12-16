@@ -1,19 +1,21 @@
 #pragma once
 
 #include "Common.h"
-#include "FileUtils.h"
-#include "Crypt.h"
-#include "MsgFiles.h"
 #include "Entity.h"
 
-class Critter;
-class Item;
-typedef map< uint, Item* > ItemMap;
-typedef vector< Item* >    ItemVec;
 class Item: public Entity
 {
+    friend class Entity;
+    friend class ItemManager;
+
+    ItemVec* childItems = nullptr;
+
 public:
-     PROPERTIES_HEADER();
+    bool     ViewPlaceOnMap = false;
+    uint     SceneryScriptBindId = 0;
+    Critter* ViewByCritter = nullptr;
+
+    PROPERTIES_HEADER();
     CLASS_PROPERTY( bool, Stackable );
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
@@ -85,11 +87,6 @@ public:
     CLASS_PROPERTY( short, OffsetY );
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
-    ItemVec* ChildItems = nullptr;
-    bool     ViewPlaceOnMap = false;
-    uint     SceneryScriptBindId = 0;
-    Critter* ViewByCritter = nullptr;
-
     Item( uint id, ProtoItem* proto );
     ~Item();
 
@@ -99,15 +96,11 @@ public:
     void       SetSortValue( ItemVec& items );
     void       ChangeCount( int val );
 
-    void  ContAddItem( Item*& item, uint stack_id );
-    void  ContSetItem( Item* item );
-    void  ContEraseItem( Item* item );
     Item* ContGetItem( uint item_id, bool skip_hide );
     void  ContGetAllItems( ItemVec& items, bool skip_hide );
     Item* ContGetItemByPid( hash pid, uint stack_id );
     void  ContGetItems( ItemVec& items, uint stack_id );
     bool  ContIsItems();
-    void  ContDeleteItems();
 
     bool IsStatic()          { return GetIsStatic(); }
     bool IsAnyScenery()      { return IsScenery() || IsWall(); }

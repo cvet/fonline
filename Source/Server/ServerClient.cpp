@@ -63,7 +63,7 @@ void FOServer::ProcessCritter( Critter* cr )
         Client* cl = (Client*) cr;
 
         // Talk
-        cl->ProcessTalk( false );
+        CrMngr.ProcessTalk( cl, false );
 
         // Ping client
         if( cl->IsToPing() )
@@ -151,24 +151,13 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     }
 
     cr->SendA_Move( move_params );
-    cr->ProcessVisibleCritters();
-    cr->ProcessVisibleItems();
+    MapMngr.ProcessVisibleCritters( cr );
+    MapMngr.ProcessVisibleItems( cr );
 
     // Triggers
     if( cr->GetMapId() == map->GetId() )
         VerifyTrigger( map, cr, fx, fy, hx, hy, dir );
 
-    return true;
-}
-
-bool FOServer::RegenerateMap( Map* map )
-{
-    Script::RaiseInternalEvent( ServerFunctions.MapFinish, map );
-    map->DeleteContent();
-    map->Generate();
-    for( auto item : map->GetItems() )
-        Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
-    Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
     return true;
 }
 
@@ -744,7 +733,7 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->Connection->Bin.SetEncryptKey( bin_seed );
     cl->Connection->Bout.SetEncryptKey( bout_seed );
 
-    cl->Send_LoadMap( nullptr );
+    cl->Send_LoadMap( nullptr, MapMngr );
 }
 
 void FOServer::Process_ParseToGame( Client* cl )
@@ -762,7 +751,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         cl->ViewMapId = 0;
         if( map )
         {
-            cl->ViewMap( map, cl->ViewMapLook, cl->ViewMapHx, cl->ViewMapHy, cl->ViewMapDir );
+            MapMngr.ViewMap( cl, map, cl->ViewMapLook, cl->ViewMapHx, cl->ViewMapHy, cl->ViewMapDir );
             cl->Send_ViewMap();
             return;
         }
@@ -777,17 +766,17 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         RUNTIME_ASSERT( cl->GlobalMapGroup );
 
-        cl->Send_GlobalInfo( GM_INFO_ALL );
+        cl->Send_GlobalInfo( GM_INFO_ALL, MapMngr );
         for( auto it = cl->GlobalMapGroup->begin(), end = cl->GlobalMapGroup->end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr != cl )
                 cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
         }
-        cl->Send_AllAutomapsInfo();
+        cl->Send_AllAutomapsInfo( MapMngr );
         if( cl->Talk.TalkType != TALK_NONE )
         {
-            cl->ProcessTalk( true );
+            CrMngr.ProcessTalk( cl, true );
             cl->Send_Talk();
         }
     }
@@ -807,7 +796,7 @@ void FOServer::Process_ParseToGame( Client* cl )
 
         // Send all data
         cl->Send_AddAllItems();
-        cl->Send_AllAutomapsInfo();
+        cl->Send_AllAutomapsInfo( MapMngr );
 
         // Send current critters
         CritterVec critters = cl->VisCrSelf;
@@ -828,7 +817,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         // Check active talk
         if( cl->Talk.TalkType != TALK_NONE )
         {
-            cl->ProcessTalk( true );
+            CrMngr.ProcessTalk( cl, true );
             cl->Send_Talk();
         }
     }
@@ -869,7 +858,7 @@ void FOServer::Process_GiveMap( Client* cl )
 
     if( automap )
     {
-        if( !cl->CheckKnownLocById( loc_id ) )
+        if( !MapMngr.CheckKnownLocById( cl, loc_id ) )
         {
             WriteLog( "Request for loading unknown automap, client '{}'.\n", cl->GetName() );
             return;
@@ -898,7 +887,7 @@ void FOServer::Process_GiveMap( Client* cl )
     }
     else
     {
-        Map* map = cl->GetMap();
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( ( !map || map_pid != map->GetProtoId() ) && map_pid != cl->ViewMapPid )
         {
             WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetName() );
@@ -913,7 +902,7 @@ void FOServer::Process_GiveMap( Client* cl )
         Map* map = nullptr;
         if( cl->ViewMapId )
             map = MapMngr.GetMap( cl->ViewMapId );
-        cl->Send_LoadMap( map );
+        cl->Send_LoadMap( map, MapMngr );
     }
 }
 
@@ -1171,7 +1160,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         prop = Location::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
-            Map* map = cl->GetMap();
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
                 entity = map->GetLocation();
         }
@@ -1204,8 +1193,8 @@ void FOServer::OnSendGlobalValue( Entity* entity, Property* prop )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
-        ClVec players;
-        CrMngr.GetClients( players );
+        ClientVec players;
+        Self->CrMngr.GetClients( players );
         for( auto it = players.begin(); it != players.end(); ++it )
         {
             Client* cl = *it;

@@ -1,5 +1,4 @@
-#ifndef __RESOURCE_CONVERTER__
-#define __RESOURCE_CONVERTER__
+#pragma once
 
 #include "Common.h"
 #include "FileUtils.h"
@@ -14,5 +13,3 @@ private:
     static File* ConvertImage( const string& name, File& file );
     static File* Convert3d( const string& name, File& file );
 };
-
-#endif // __RESOURCE_CONVERTER__

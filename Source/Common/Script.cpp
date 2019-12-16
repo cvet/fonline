@@ -19,11 +19,11 @@
 #include "weakref/weakref.h"
 #include "scripthelper/scripthelper.h"
 
-#include <mono/mini/jit.h>
-#include <mono/metadata/assembly.h>
-#include <mono/metadata/mono-config.h>
-#include <mono/metadata/debug-helpers.h>
-#include <mono/dis/meta.h>
+#include "mono/mini/jit.h"
+#include "mono/metadata/assembly.h"
+#include "mono/metadata/mono-config.h"
+#include "mono/metadata/debug-helpers.h"
+#include "mono/dis/meta.h"
 
 static map< string, MonoImage* > EngineAssemblyImages;
 static void          SetMonoInternalCalls();
@@ -1060,7 +1060,7 @@ bool Script::RaiseInternalEvent( EventData* ev_data, ... )
             else if( arg_info == 8 )
                 mono_args[ i ] = &( mono_args_data[ i ] = (int64) va_arg( args, int64 ) );
             else
-                RUNTIME_ASSERT( !"Unreachable place" );
+                UNREACHABLE_PLACE;
         }
         va_end( args );
 

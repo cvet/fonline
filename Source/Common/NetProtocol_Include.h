@@ -689,23 +689,6 @@
 // Properties
 // ************************************************************************
 
-class NetProperty
-{
-public:
-    enum Type
-    {
-        None = 0,
-        Global,                      // 0
-        Critter,                     // 1 cr_id
-        Chosen,                      // 0
-        MapItem,                     // 1 item_id
-        CritterItem,                 // 2 cr_id item_id
-        ChosenItem,                  // 1 item_id
-        Map,                         // 0
-        Location,                    // 0
-    };
-};
-
 #define NETMSG_POD_PROPERTY( b, x )              MAKE_NETMSG_HEADER( 190 + ( b ) + ( x ) * 10 )
 #define NETMSG_POD_PROPERTY_SIZE( b, x )         ( sizeof( uint ) + sizeof( char ) + sizeof( uint ) * ( x ) + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////

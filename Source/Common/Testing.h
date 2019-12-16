@@ -15,6 +15,8 @@
 # define TEST_CASE()                        static void UNIQUE_FUNCTION_NAME( test_case_ )
 # define TEST_SECTION()                     if( !!( __LINE__ ) )
 #endif
+#define UNREACHABLE_PLACE \
+    throw fo_exception( "Unreachable place" )
 
 extern void CatchExceptions( const string& app_name, int app_ver );
 extern void CreateDump( const string& appendix, const string& message );

@@ -1,6 +1,7 @@
 #include "CritterView.h"
 #include "Testing.h"
 #include "Timer.h"
+#include "SpriteManager.h"
 #include "ResourceManager.h"
 #include "ProtoManager.h"
 #include "SoundManager.h"
@@ -46,7 +47,7 @@ CLASS_PROPERTY_IMPL( CritterView, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterView, IsHide );
 CLASS_PROPERTY_IMPL( CritterView, IsNoFlatten );
 
-CritterView::CritterView( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterView, PropertiesRegistrator, proto )
+CritterView::CritterView( uint id, ProtoCritter* proto, SpriteManager& spr_mngr, ResourceManager& res_mngr ): Entity( id, EntityType::CritterView, PropertiesRegistrator, proto ), sprMngr( spr_mngr ), resMngr( res_mngr )
 {
     SprId = 0;
     NameColor = 0;
@@ -94,8 +95,8 @@ CritterView::CritterView( uint id, ProtoCritter* proto ): Entity( id, EntityType
 
 CritterView::~CritterView()
 {
-    SprMngr.FreePure3dAnimation( Anim3d );
-    SprMngr.FreePure3dAnimation( Anim3dStay );
+    sprMngr.FreePure3dAnimation( Anim3d );
+    sprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
 }
 
@@ -104,7 +105,7 @@ void CritterView::Init()
     RefreshAnim();
     AnimateStay();
 
-    SpriteInfo* si = SprMngr.GetSpriteInfo( SprId );
+    SpriteInfo* si = sprMngr.GetSpriteInfo( SprId );
     if( si )
         textRect( 0, 0, si->Width, si->Height );
 
@@ -198,50 +199,6 @@ ItemView* CritterView::GetItemByPid( hash item_pid )
     return nullptr;
 }
 
-ItemView* CritterView::GetItemByPidInvPriority( hash item_pid )
-{
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
-    if( !proto_item )
-        return nullptr;
-
-    if( proto_item->GetStackable() )
-    {
-        for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        {
-            ItemView* item = *it;
-            if( item->GetProtoId() == item_pid )
-                return item;
-        }
-    }
-    else
-    {
-        ItemView* another_slot = nullptr;
-        for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        {
-            ItemView* item = *it;
-            if( item->GetProtoId() == item_pid )
-            {
-                if( !item->GetCritSlot() )
-                    return item;
-                another_slot = item;
-            }
-        }
-        return another_slot;
-    }
-    return nullptr;
-}
-
-ItemView* CritterView::GetItemByPidSlot( hash item_pid, int slot )
-{
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        ItemView* item = *it;
-        if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
-            return item;
-    }
-    return nullptr;
-}
-
 ItemView* CritterView::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
@@ -315,18 +272,18 @@ void CritterView::DrawStay( Rect r )
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+        AnyFrames* anim = resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
         if( anim )
         {
             uint spr_id = ( IsLife() ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
-            SprMngr.DrawSpriteSize( spr_id, r.L, r.T, r.W(), r.H(), false, true );
+            sprMngr.DrawSpriteSize( spr_id, r.L, r.T, r.W(), r.H(), false, true );
         }
     }
     else if( Anim3dStay )
     {
         Anim3dStay->SetDir( dir );
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
-        SprMngr.Draw3d( r.CX(), r.B, Anim3dStay, COLOR_IFACE );
+        sprMngr.Draw3d( r.CX(), r.B, Anim3dStay, COLOR_IFACE );
     }
 }
 
@@ -375,9 +332,9 @@ void CritterView::Move( int dir )
         {
             uint       anim1 = ( IsRunning ? ANIM1_UNARMED : GetAnim1() );
             uint       anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+            AnyFrames* anim = resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
             if( !anim )
-                anim = ResMngr.CritterDefaultAnim;
+                anim = resMngr.CritterDefaultAnim;
 
             int step, beg_spr, end_spr;
             curSpr = lastEndSpr;
@@ -460,9 +417,9 @@ void CritterView::Move( int dir )
             if( GetIsHide() )
                 anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
 
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+            AnyFrames* anim = resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
             if( !anim )
-                anim = ResMngr.CritterDefaultAnim;
+                anim = resMngr.CritterDefaultAnim;
 
             int m1 = 0;
             if( m1 <= 0 )
@@ -599,7 +556,7 @@ void CritterView::Animate( uint anim1, uint anim2, ItemView* item )
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+        AnyFrames* anim = resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
         if( !anim )
         {
             if( !IsAnim() )
@@ -639,9 +596,9 @@ void CritterView::AnimateStay()
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() );
+        AnyFrames* anim = resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() );
         if( !anim )
-            anim = ResMngr.CritterDefaultAnim;
+            anim = resMngr.CritterDefaultAnim;
 
         if( stayAnim.Anim != anim )
         {
@@ -790,14 +747,14 @@ bool CritterView::IsAnimAviable( uint anim1, uint anim2 )
     if( Anim3d )
         return Anim3d->IsAnimation( anim1, anim2 );
     // 2d
-    return ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() ) != nullptr;
+    return resMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() ) != nullptr;
 }
 
 void CritterView::RefreshAnim()
 {
     // Release previous
-    SprMngr.FreePure3dAnimation( Anim3d );
-    SprMngr.FreePure3dAnimation( Anim3dStay );
+    sprMngr.FreePure3dAnimation( Anim3d );
+    sprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = nullptr;
     Anim3dStay = nullptr;
 
@@ -808,12 +765,12 @@ void CritterView::RefreshAnim()
         return;
 
     // Try load
-    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( model_name, true );
+    sprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    Animation3d* anim3d = sprMngr.LoadPure3dAnimation( model_name, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( model_name, false );
+        Anim3dStay = sprMngr.LoadPure3dAnimation( model_name, false );
 
         Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;
@@ -826,7 +783,7 @@ void CritterView::RefreshAnim()
         Anim3dStay->StartMeshGeneration();
         #endif
     }
-    SprMngr.PopAtlasType();
+    sprMngr.PopAtlasType();
 }
 
 void CritterView::ChangeDir( uchar dir, bool animate /* = true */ )
@@ -975,15 +932,15 @@ void CritterView::SetOffs( short set_ox, short set_oy, bool move_text )
     SprOy = set_oy + OyExtI;
     if( SprDrawValid )
     {
-        SprMngr.GetDrawRect( SprDraw, DRect );
+        sprMngr.GetDrawRect( SprDraw, DRect );
         if( move_text )
         {
             textRect = DRect;
             if( Anim3d )
-                textRect.T += SprMngr.GetSpriteInfo( SprId )->Height / 6;
+                textRect.T += sprMngr.GetSpriteInfo( SprId )->Height / 6;
         }
         if( IsChosen() )
-            SprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
+            sprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
     }
 }
 
@@ -992,14 +949,14 @@ void CritterView::SetSprRect()
     if( SprDrawValid )
     {
         Rect old = DRect;
-        SprMngr.GetDrawRect( SprDraw, DRect );
+        sprMngr.GetDrawRect( SprDraw, DRect );
         textRect.L += DRect.L - old.L;
         textRect.R += DRect.L - old.L;
         textRect.T += DRect.T - old.T;
         textRect.B += DRect.T - old.T;
 
         if( IsChosen() )
-            SprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
+            sprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
     }
 }
 
@@ -1071,7 +1028,7 @@ void CritterView::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, in
     x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
     y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
 
-    SprMngr.GetTextInfo( 200, 70, str.c_str(), -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines );
+    sprMngr.GetTextInfo( 200, 70, str.c_str(), -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines );
     x += 100 - ( w / 2 );
     y += 70 - h;
 }
@@ -1124,11 +1081,11 @@ void CritterView::DrawTextOnHead()
         if( fadingEnable )
         {
             uint alpha = GetFadeAlpha();
-            SprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, ( alpha << 24 ) | ( color & 0xFFFFFF ) );
+            sprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, ( alpha << 24 ) | ( color & 0xFFFFFF ) );
         }
         else if( !IsFinishing() )
         {
-            SprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color );
+            sprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color );
         }
     }
 

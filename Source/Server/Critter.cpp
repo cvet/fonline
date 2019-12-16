@@ -1,7 +1,6 @@
 #include "Critter.h"
 #include "Log.h"
 #include "Testing.h"
-#include "Timer.h"
 #include "Script.h"
 #include "MapManager.h"
 #include "ItemManager.h"
@@ -9,10 +8,9 @@
 #include "ProtoManager.h"
 #include "StringUtils.h"
 #include "Settings.h"
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
+#include "Location.h"
+#include "Map.h"
+#include "Item.h"
 
 bool Critter::SlotEnabled[ 0x100 ];
 bool Critter::SlotDataSendEnabled[ 0x100 ];
@@ -129,12 +127,6 @@ void Critter::SetBreakTimeDelta( uint ms )
     SetBreakTime( ms - dt );
 }
 
-void Critter::DeleteInventory()
-{
-    while( !invItems.empty() )
-        ItemMngr.DeleteItem( *invItems.begin() );
-}
-
 uint Critter::GetAttackDist( Item* weap, int use )
 {
     uint dist = 1;
@@ -172,579 +164,6 @@ bool Critter::CheckFind( int find_type )
     return ( FLAG( find_type, FIND_LIFE ) && IsLife() ) ||
            ( FLAG( find_type, FIND_KO ) && IsKnockout() ) ||
            ( FLAG( find_type, FIND_DEAD ) && IsDead() );
-}
-
-Map* Critter::GetMap()
-{
-    Map* map = nullptr;
-    uint map_id = GetMapId();
-    if( map_id )
-    {
-        map = MapMngr.GetMap( map_id );
-        RUNTIME_ASSERT( map );
-    }
-    return map;
-}
-
-void Critter::ProcessVisibleCritters()
-{
-    if( IsDestroyed )
-        return;
-
-    Map* map = GetMap();
-
-    // Global map
-    if( !map )
-    {
-        RUNTIME_ASSERT( GlobalMapGroup );
-
-        if( IsPlayer() )
-        {
-            Client* cl = (Client*) this;
-            for( auto it = GlobalMapGroup->begin(), end = GlobalMapGroup->end(); it != end; ++it )
-            {
-                Critter* cr = *it;
-                if( this == cr )
-                {
-                    SETFLAG( Flags, FCRIT_CHOSEN );
-                    cl->Send_AddCritter( this );
-                    UNSETFLAG( Flags, FCRIT_CHOSEN );
-                    cl->Send_AddAllItems();
-                }
-                else
-                {
-                    cl->Send_AddCritter( cr );
-                }
-            }
-        }
-
-        return;
-    }
-
-    // Local map
-    int  vis;
-    int  look_base_self = GetLookDistance();
-    int  dir_self = GetDir();
-    int  dirs_count = DIRS_COUNT;
-    uint show_cr_dist1 = GetShowCritterDist1();
-    uint show_cr_dist2 = GetShowCritterDist2();
-    uint show_cr_dist3 = GetShowCritterDist3();
-    bool show_cr1 = ( show_cr_dist1 > 0 );
-    bool show_cr2 = ( show_cr_dist2 > 0 );
-    bool show_cr3 = ( show_cr_dist3 > 0 );
-
-    bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
-    // Sneak self
-    int  sneak_base_self = GetSneakCoefficient();
-
-    for( Critter* cr : map->GetCritters() )
-    {
-        if( cr == this || cr->IsDestroyed )
-            continue;
-
-        int dist = DistGame( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY() );
-
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
-        {
-            bool allow_self = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, this, cr );
-            bool allow_opp = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, cr, this );
-
-            if( allow_self )
-            {
-                if( cr->AddCrIntoVisVec( this ) )
-                {
-                    Send_AddCritter( cr );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, this, cr );
-                }
-            }
-            else
-            {
-                if( cr->DelCrFromVisVec( this ) )
-                {
-                    Send_RemoveCritter( cr );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, this, cr );
-                }
-            }
-
-            if( allow_opp )
-            {
-                if( AddCrIntoVisVec( cr ) )
-                {
-                    cr->Send_AddCritter( this );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, this );
-                }
-            }
-            else
-            {
-                if( DelCrFromVisVec( cr ) )
-                {
-                    cr->Send_RemoveCritter( this );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, this );
-                }
-            }
-
-            if( show_cr )
-            {
-                if( show_cr1 )
-                {
-                    if( (int) show_cr_dist1 >= dist )
-                    {
-                        if( AddCrIntoVisSet1( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, this, cr );
-                    }
-                    else
-                    {
-                        if( DelCrFromVisSet1( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, this, cr );
-                    }
-                }
-                if( show_cr2 )
-                {
-                    if( (int) show_cr_dist2 >= dist )
-                    {
-                        if( AddCrIntoVisSet2( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, this, cr );
-                    }
-                    else
-                    {
-                        if( DelCrFromVisSet2( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, this, cr );
-                    }
-                }
-                if( show_cr3 )
-                {
-                    if( (int) show_cr_dist3 >= dist )
-                    {
-                        if( AddCrIntoVisSet3( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, this, cr );
-                    }
-                    else
-                    {
-                        if( DelCrFromVisSet3( cr->GetId() ) )
-                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, this, cr );
-                    }
-                }
-            }
-
-            uint cr_dist = cr->GetShowCritterDist1();
-            if( cr_dist )
-            {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet1( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet1( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, this );
-                }
-            }
-            cr_dist = cr->GetShowCritterDist2();
-            if( cr_dist )
-            {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet2( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet2( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, this );
-                }
-            }
-            cr_dist = cr->GetShowCritterDist3();
-            if( cr_dist )
-            {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet3( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet3( GetId() ) )
-                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, this );
-                }
-            }
-            continue;
-        }
-
-        int look_self = look_base_self;
-        int look_opp = cr->GetLookDistance();
-
-        // Dir modifier
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
-        {
-            // Self
-            int real_dir = GetFarDir( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY() );
-            int i = ( dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self );
-            if( i > dirs_count / 2 )
-                i = dirs_count - i;
-            look_self -= look_self * GameOpt.LookDir[ i ] / 100;
-            // Opponent
-            int dir_opp = cr->GetDir();
-            real_dir = ( ( real_dir + dirs_count / 2 ) % dirs_count );
-            i = ( dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp );
-            if( i > dirs_count / 2 )
-                i = dirs_count - i;
-            look_opp -= look_opp * GameOpt.LookDir[ i ] / 100;
-        }
-
-        if( dist > look_self && dist > look_opp )
-            dist = MAX_INT;
-
-        // Trace
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) && dist != MAX_INT )
-        {
-            TraceData trace;
-            trace.TraceMap = map;
-            trace.BeginHx = GetHexX();
-            trace.BeginHy = GetHexY();
-            trace.EndHx = cr->GetHexX();
-            trace.EndHy = cr->GetHexY();
-            MapMngr.TraceBullet( trace );
-            if( !trace.IsFullTrace )
-                dist = MAX_INT;
-        }
-
-        // Self
-        if( cr->GetIsHide() && dist != MAX_INT )
-        {
-            int sneak_opp = cr->GetSneakCoefficient();
-            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
-            {
-                int real_dir = GetFarDir( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY() );
-                int i = ( dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self );
-                if( i > dirs_count / 2 )
-                    i = dirs_count - i;
-                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[ i ] / 100;
-            }
-            sneak_opp /= (int) GameOpt.SneakDivider;
-            if( sneak_opp < 0 )
-                sneak_opp = 0;
-            vis = look_self - sneak_opp;
-        }
-        else
-        {
-            vis = look_self;
-        }
-        if( vis < (int) GameOpt.LookMinimum )
-            vis = GameOpt.LookMinimum;
-
-        if( vis >= dist )
-        {
-            if( cr->AddCrIntoVisVec( this ) )
-            {
-                Send_AddCritter( cr );
-                Script::RaiseInternalEvent( ServerFunctions.CritterShow, this, cr );
-            }
-        }
-        else
-        {
-            if( cr->DelCrFromVisVec( this ) )
-            {
-                Send_RemoveCritter( cr );
-                Script::RaiseInternalEvent( ServerFunctions.CritterHide, this, cr );
-            }
-        }
-
-        if( show_cr1 )
-        {
-            if( (int) show_cr_dist1 >= dist )
-            {
-                if( AddCrIntoVisSet1( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, this, cr );
-            }
-            else
-            {
-                if( DelCrFromVisSet1( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, this, cr );
-            }
-        }
-        if( show_cr2 )
-        {
-            if( (int) show_cr_dist2 >= dist )
-            {
-                if( AddCrIntoVisSet2( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, this, cr );
-            }
-            else
-            {
-                if( DelCrFromVisSet2( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, this, cr );
-            }
-        }
-        if( show_cr3 )
-        {
-            if( (int) show_cr_dist3 >= dist )
-            {
-                if( AddCrIntoVisSet3( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, this, cr );
-            }
-            else
-            {
-                if( DelCrFromVisSet3( cr->GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, this, cr );
-            }
-        }
-
-        // Opponent
-        if( GetIsHide() && dist != MAX_INT )
-        {
-            int sneak_self = sneak_base_self;
-            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
-            {
-                int dir_opp = cr->GetDir();
-                int real_dir = GetFarDir( cr->GetHexX(), cr->GetHexY(), GetHexX(), GetHexY() );
-                int i = ( dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp );
-                if( i > dirs_count / 2 )
-                    i = dirs_count - i;
-                sneak_self -= sneak_self * GameOpt.LookSneakDir[ i ] / 100;
-            }
-            sneak_self /= (int) GameOpt.SneakDivider;
-            if( sneak_self < 0 )
-                sneak_self = 0;
-            vis = look_opp - sneak_self;
-        }
-        else
-        {
-            vis = look_opp;
-        }
-        if( vis < (int) GameOpt.LookMinimum )
-            vis = GameOpt.LookMinimum;
-
-        if( vis >= dist )
-        {
-            if( AddCrIntoVisVec( cr ) )
-            {
-                cr->Send_AddCritter( this );
-                Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, this );
-            }
-        }
-        else
-        {
-            if( DelCrFromVisVec( cr ) )
-            {
-                cr->Send_RemoveCritter( this );
-                Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, this );
-            }
-        }
-
-        uint cr_dist = cr->GetShowCritterDist1();
-        if( cr_dist )
-        {
-            if( (int) cr_dist >= dist )
-            {
-                if( cr->AddCrIntoVisSet1( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
-            }
-            else
-            {
-                if( cr->DelCrFromVisSet1( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, this );
-            }
-        }
-        cr_dist = cr->GetShowCritterDist2();
-        if( cr_dist )
-        {
-            if( (int) cr_dist >= dist )
-            {
-                if( cr->AddCrIntoVisSet2( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, this );
-            }
-            else
-            {
-                if( cr->DelCrFromVisSet2( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, this );
-            }
-        }
-        cr_dist = cr->GetShowCritterDist3();
-        if( cr_dist )
-        {
-            if( (int) cr_dist >= dist )
-            {
-                if( cr->AddCrIntoVisSet3( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, cr, this );
-            }
-            else
-            {
-                if( cr->DelCrFromVisSet3( GetId() ) )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, this );
-            }
-        }
-    }
-}
-
-void Critter::ProcessVisibleItems()
-{
-    if( IsDestroyed )
-        return;
-
-    Map* map = MapMngr.GetMap( GetMapId() );
-    if( !map )
-        return;
-
-    int look = GetLookDistance();
-    for( Item* item : map->GetItems() )
-    {
-        if( item->GetIsHidden() )
-        {
-            continue;
-        }
-        else if( item->GetIsAlwaysView() )
-        {
-            if( AddIdVisItem( item->GetId() ) )
-            {
-                Send_AddItemOnMap( item );
-                Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
-            }
-        }
-        else
-        {
-            bool allowed = false;
-            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
-            {
-                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, this, item );
-            }
-            else
-            {
-                int dist = DistGame( GetHexX(), GetHexY(), item->GetHexX(), item->GetHexY() );
-                if( item->GetIsTrap() )
-                    dist += item->GetTrapValue();
-                allowed = look >= dist;
-            }
-
-            if( allowed )
-            {
-                if( AddIdVisItem( item->GetId() ) )
-                {
-                    Send_AddItemOnMap( item );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
-                }
-            }
-            else
-            {
-                if( DelIdVisItem( item->GetId() ) )
-                {
-                    Send_EraseItemFromMap( item );
-                    Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
-                }
-            }
-        }
-    }
-}
-
-void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
-{
-    if( IsDestroyed )
-        return;
-
-    Send_GameInfo( map );
-
-    // Critters
-    int dirs_count = DIRS_COUNT;
-    int vis;
-    for( Critter* cr : map->GetCritters() )
-    {
-        if( cr == this || cr->IsDestroyed )
-            continue;
-
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
-        {
-            if( Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, this, cr ) )
-                Send_AddCritter( cr );
-            continue;
-        }
-
-        int dist = DistGame( hx, hy, cr->GetHexX(), cr->GetHexY() );
-        int look_self = look;
-
-        // Dir modifier
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
-        {
-            int real_dir = GetFarDir( hx, hy, cr->GetHexX(), cr->GetHexY() );
-            int i = ( dir > real_dir ? dir - real_dir : real_dir - dir );
-            if( i > dirs_count / 2 )
-                i = dirs_count - i;
-            look_self -= look_self * GameOpt.LookDir[ i ] / 100;
-        }
-
-        if( dist > look_self )
-            continue;
-
-        // Trace
-        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) && dist != MAX_INT )
-        {
-            TraceData trace;
-            trace.TraceMap = map;
-            trace.BeginHx = hx;
-            trace.BeginHy = hy;
-            trace.EndHx = cr->GetHexX();
-            trace.EndHy = cr->GetHexY();
-            MapMngr.TraceBullet( trace );
-            if( !trace.IsFullTrace )
-                continue;
-        }
-
-        // Hide modifier
-        if( cr->GetIsHide() )
-        {
-            int sneak_opp = cr->GetSneakCoefficient();
-            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
-            {
-                int real_dir = GetFarDir( hx, hy, cr->GetHexX(), cr->GetHexY() );
-                int i = ( dir > real_dir ? dir - real_dir : real_dir - dir );
-                if( i > dirs_count / 2 )
-                    i = dirs_count - i;
-                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[ i ] / 100;
-            }
-            sneak_opp /= (int) GameOpt.SneakDivider;
-            if( sneak_opp < 0 )
-                sneak_opp = 0;
-            vis = look_self - sneak_opp;
-        }
-        else
-        {
-            vis = look_self;
-        }
-        if( vis < (int) GameOpt.LookMinimum )
-            vis = GameOpt.LookMinimum;
-        if( vis >= dist )
-            Send_AddCritter( cr );
-    }
-
-    // Items
-    for( Item* item : map->GetItems() )
-    {
-        if( item->GetIsHidden() )
-        {
-            continue;
-        }
-        else if( item->GetIsAlwaysView() )
-        {
-            Send_AddItemOnMap( item );
-        }
-        else
-        {
-            bool allowed = false;
-            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
-            {
-                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, this, item );
-            }
-            else
-            {
-                int dist = DistGame( hx, hy, item->GetHexX(), item->GetHexY() );
-                if( item->GetIsTrap() )
-                    dist += item->GetTrapValue();
-                allowed = look >= dist;
-            }
-
-            if( allowed )
-                Send_AddItemOnMap( item );
-        }
-    }
 }
 
 void Critter::ClearVisible()
@@ -903,39 +322,6 @@ bool Critter::CountIdVisItem( uint item_id )
     return result;
 }
 
-void Critter::AddItem( Item*& item, bool send )
-{
-    RUNTIME_ASSERT( item );
-
-    // Add
-    if( item->GetStackable() )
-    {
-        Item* item_already = GetItemByPid( item->GetProtoId() );
-        if( item_already )
-        {
-            uint count = item->GetCount();
-            ItemMngr.DeleteItem( item );
-            item = item_already;
-            item->ChangeCount( count );
-            return;
-        }
-    }
-
-    item->SetSortValue( invItems );
-    SetItem( item );
-
-    // Send
-    if( send )
-    {
-        Send_AddItem( item );
-        if( item->GetCritSlot() )
-            SendAA_MoveItem( item, ACTION_REFRESH, 0 );
-    }
-
-    // Change item
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, -1 );
-}
-
 void Critter::SetItem( Item* item )
 {
     RUNTIME_ASSERT( item );
@@ -946,24 +332,6 @@ void Critter::SetItem( Item* item )
         item->SetCritSlot( 0 );
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Id );
-}
-
-void Critter::EraseItem( Item* item, bool send )
-{
-    RUNTIME_ASSERT( item );
-
-    auto it = std::find( invItems.begin(), invItems.end(), item );
-    RUNTIME_ASSERT( it != invItems.end() );
-    invItems.erase( it );
-
-    item->SetAccessory( ITEM_ACCESSORY_NONE );
-
-    if( send )
-        Send_EraseItem( item );
-    if( item->GetCritSlot() )
-        SendAA_MoveItem( item, ACTION_REFRESH, 0 );
-
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, item->GetCritSlot() );
 }
 
 Item* Critter::GetItem( uint item_id, bool skip_hide )
@@ -1002,39 +370,6 @@ Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
         Item* item = *it;
         if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
             return item;
-    }
-    return nullptr;
-}
-
-Item* Critter::GetItemByPidInvPriority( hash item_pid )
-{
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
-    if( !proto_item )
-        return nullptr;
-
-    if( proto_item->GetStackable() )
-    {
-        for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-        {
-            Item* item = *it;
-            if( item->GetProtoId() == item_pid )
-                return item;
-        }
-    }
-    else
-    {
-        Item* another_slot = nullptr;
-        for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-        {
-            Item* item = *it;
-            if( item->GetProtoId() == item_pid )
-            {
-                if( !item->GetCritSlot() )
-                    return item;
-                another_slot = item;
-            }
-        }
-        return another_slot;
     }
     return nullptr;
 }
@@ -1149,10 +484,10 @@ void Critter::Send_RemoveCritter( Critter* cr )
     if( IsPlayer() )
         ( (Client*) this )->Send_RemoveCritter( cr );
 }
-void Critter::Send_LoadMap( Map* map )
+void Critter::Send_LoadMap( Map* map, MapManager& map_mngr )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_LoadMap( map );
+        ( (Client*) this )->Send_LoadMap( map, map_mngr );
 }
 void Critter::Send_XY( Critter* cr )
 {
@@ -1184,10 +519,10 @@ void Critter::Send_EraseItem( Item* item )
     if( IsPlayer() )
         ( (Client*) this )->Send_EraseItem( item );
 }
-void Critter::Send_GlobalInfo( uchar flags )
+void Critter::Send_GlobalInfo( uchar flags, MapManager& map_mngr )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_GlobalInfo( flags );
+        ( (Client*) this )->Send_GlobalInfo( flags, map_mngr );
 }
 void Critter::Send_GlobalLocation( Location* loc, bool add )
 {
@@ -1548,7 +883,7 @@ void Critter::Send_AddAllItems()
     BOUT_END( cl );
 }
 
-void Critter::Send_AllAutomapsInfo()
+void Critter::Send_AllAutomapsInfo( MapManager& map_mngr )
 {
     if( !IsPlayer() )
         return;
@@ -1558,7 +893,7 @@ void Critter::Send_AllAutomapsInfo()
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
         uint      loc_id = *(uint*) known_locs->At( i );
-        Location* loc = MapMngr.GetLocation( loc_id );
+        Location* loc = map_mngr.GetLocation( loc_id );
         if( loc && loc->IsNonEmptyAutomaps() )
             locs.push_back( loc );
     }
@@ -1567,7 +902,7 @@ void Critter::Send_AllAutomapsInfo()
     Send_AutomapsInfo( &locs, nullptr );
 }
 
-void Critter::SendMessage( int num, int val, int to )
+void Critter::SendMessage( int num, int val, int to, MapManager& map_mngr )
 {
     switch( to )
     {
@@ -1593,7 +928,7 @@ void Critter::SendMessage( int num, int val, int to )
     break;
     case MESSAGE_TO_ALL_ON_MAP:
     {
-        Map* map = GetMap();
+        Map* map = map_mngr.GetMap( GetMapId() );
         if( !map )
             break;
 
@@ -1619,10 +954,6 @@ void Critter::RefreshName()
     }
 }
 
-/************************************************************************/
-/* Timeouts                                                             */
-/************************************************************************/
-
 bool Critter::IsTransferTimeouts( bool send )
 {
     if( IS_TIMEOUT( GetTimeoutTransfer() ) )
@@ -1639,72 +970,6 @@ bool Critter::IsTransferTimeouts( bool send )
     }
     return false;
 }
-
-/************************************************************************/
-/* Locations                                                            */
-/************************************************************************/
-
-bool Critter::CheckKnownLocById( uint loc_id )
-{
-    CScriptArray* known_locs = GetKnownLocations();
-    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
-    {
-        if( *(uint*) known_locs->At( i ) == loc_id )
-        {
-            SAFEREL( known_locs );
-            return true;
-        }
-    }
-    SAFEREL( known_locs );
-    return false;
-}
-
-bool Critter::CheckKnownLocByPid( hash loc_pid )
-{
-    CScriptArray* known_locs = GetKnownLocations();
-    SAFEREL( known_locs );
-    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
-    {
-        Location* loc = MapMngr.GetLocation( *(uint*) known_locs->At( i ) );
-        if( loc && loc->GetProtoId() == loc_pid )
-        {
-            SAFEREL( known_locs );
-            return true;
-        }
-    }
-    SAFEREL( known_locs );
-    return false;
-}
-
-void Critter::AddKnownLoc( uint loc_id )
-{
-    if( CheckKnownLocById( loc_id ) )
-        return;
-
-    CScriptArray* known_locs = GetKnownLocations();
-    known_locs->InsertLast( &loc_id );
-    SetKnownLocations( known_locs );
-    SAFEREL( known_locs );
-}
-
-void Critter::EraseKnownLoc( uint loc_id )
-{
-    CScriptArray* known_locs = GetKnownLocations();
-    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
-    {
-        if( *(uint*) known_locs->At( i ) == loc_id )
-        {
-            known_locs->RemoveAt( i );
-            SetKnownLocations( known_locs );
-            break;
-        }
-    }
-    SAFEREL( known_locs );
-}
-
-/************************************************************************/
-/* Misc events                                                          */
-/************************************************************************/
 
 void Critter::AddCrTimeEvent( hash func_num, uint rate, uint duration, int identifier )
 {
@@ -1781,10 +1046,6 @@ void Critter::ContinueTimeEvents( int offs_time )
     }
     te_next_time->Release();
 }
-
-/************************************************************************/
-/* Client                                                               */
-/************************************************************************/
 
 Client::Client( NetConnection* conn, ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 {
@@ -1947,7 +1208,7 @@ void Client::Send_RemoveCritter( Critter* cr )
     BOUT_END( this );
 }
 
-void Client::Send_LoadMap( Map* map )
+void Client::Send_LoadMap( Map* map, MapManager& map_mngr )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -1962,7 +1223,7 @@ void Client::Send_LoadMap( Map* map )
     hash      hash_scen = 0;
 
     if( !map )
-        map = GetMap();
+        map = map_mngr.GetMap( GetMapId() );
 
     if( map )
     {
@@ -2334,7 +1595,7 @@ void Client::Send_SomeItems( CScriptArray* items_arr, int param )
 }
 
 #define SEND_LOCATION_SIZE    ( sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( ushort ) + sizeof( uint ) + sizeof( uchar ) )
-void Client::Send_GlobalInfo( uchar info_flags )
+void Client::Send_GlobalInfo( uchar info_flags, MapManager& map_mngr )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -2367,7 +1628,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
         for( ushort i = 0; i < loc_count;)
         {
             uint      loc_id = *(uint*) known_locs->At( i );
-            Location* loc = MapMngr.GetLocation( loc_id );
+            Location* loc = map_mngr.GetLocation( loc_id );
             if( loc && !loc->GetToGarbage() )
             {
                 i++;
@@ -2389,7 +1650,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
             else
             {
                 loc_count--;
-                EraseKnownLoc( loc_id );
+                map_mngr.EraseKnownLoc( this, loc_id );
                 Connection->Bout.Push( empty_loc, sizeof( empty_loc ) );
             }
         }
@@ -2407,7 +1668,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
     BOUT_END( this );
 
     if( FLAG( info_flags, GM_INFO_CRITTERS ) )
-        ProcessVisibleCritters();
+        map_mngr.ProcessVisibleCritters( this );
 }
 
 void Client::Send_GlobalLocation( Location* loc, bool add )
@@ -2976,112 +2237,10 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
     BOUT_END( this );
 }
 
-/************************************************************************/
-/* Dialogs                                                              */
-/************************************************************************/
-
-void Client::ProcessTalk( bool force )
+bool Client::IsTalking()
 {
-    if( !force && Timer::GameTick() < talkNextTick )
-        return;
-    talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
-    if( Talk.TalkType == TALK_NONE )
-        return;
-
-    // Check time of talk
-    if( Talk.TalkTime && Timer::GameTick() - Talk.StartTick > Talk.TalkTime )
-    {
-        CloseTalk();
-        return;
-    }
-
-    // Check npc
-    Npc* npc = nullptr;
-    if( Talk.TalkType == TALK_WITH_NPC )
-    {
-        npc = CrMngr.GetNpc( Talk.TalkNpc );
-        if( !npc )
-        {
-            CloseTalk();
-            return;
-        }
-
-        if( !npc->IsLife() )
-        {
-            Send_TextMsg( this, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME );
-            CloseTalk();
-            return;
-        }
-
-        // Todo: IsPlaneNoTalk
-    }
-
-    // Check distance
-    if( !Talk.IgnoreDistance )
-    {
-        uint   map_id = 0;
-        ushort hx = 0, hy = 0;
-        uint   talk_distance = 0;
-        if( Talk.TalkType == TALK_WITH_NPC )
-        {
-            map_id = npc->GetMapId();
-            hx = npc->GetHexX();
-            hy = npc->GetHexY();
-            talk_distance = npc->GetTalkDistance();
-            talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + GetMultihex();
-        }
-        else if( Talk.TalkType == TALK_WITH_HEX )
-        {
-            map_id = Talk.TalkHexMap;
-            hx = Talk.TalkHexX;
-            hy = Talk.TalkHexY;
-            talk_distance = GameOpt.TalkDistance + GetMultihex();
-        }
-
-        if( GetMapId() != map_id || !CheckDist( GetHexX(), GetHexY(), hx, hy, talk_distance ) )
-        {
-            Send_TextMsg( this, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
-            CloseTalk();
-        }
-    }
+    return Talk.TalkType != TALK_NONE;
 }
-
-void Client::CloseTalk()
-{
-    if( Talk.TalkType != TALK_NONE )
-    {
-        Npc* npc = nullptr;
-        if( Talk.TalkType == TALK_WITH_NPC )
-        {
-            Talk.TalkType = TALK_NONE;
-            npc = CrMngr.GetNpc( Talk.TalkNpc );
-            if( npc )
-            {
-                if( Talk.Barter )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterBarter, this, npc, false, npc->GetBarterPlayers() );
-                Script::RaiseInternalEvent( ServerFunctions.CritterTalk, this, npc, false, npc->GetTalkedPlayers() );
-            }
-        }
-
-        if( Talk.CurDialog.DlgScript )
-        {
-            Script::PrepareContext( Talk.CurDialog.DlgScript, GetName() );
-            Script::SetArgEntity( this );
-            Script::SetArgEntity( npc );
-            Script::SetArgEntity( nullptr );
-            Talk.Locked = true;
-            Script::RunPrepared();
-            Talk.Locked = false;
-        }
-    }
-
-    Talk.Clear();
-    Send_Talk();
-}
-
-/************************************************************************/
-/* NPC                                                                  */
-/************************************************************************/
 
 Npc::Npc( uint id, ProtoCritter* proto ): Critter( id, EntityType::Npc, proto )
 {

@@ -2,64 +2,84 @@
 #include "Log.h"
 #include "Testing.h"
 #include "Script.h"
-#include "MapManager.h"
-#include "EntityManager.h"
-#include "ProtoManager.h"
 #include "StringUtils.h"
 #include "Settings.h"
+#include "ProtoManager.h"
+#include "EntityManager.h"
+#include "MapManager.h"
+#include "ItemManager.h"
+#include "Item.h"
+#include "Critter.h"
+#include "Map.h"
+#include "Location.h"
 
-CritterManager CrMngr;
-
-void CritterManager::DeleteNpc( Critter* cr )
+CritterManager::CritterManager( ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr ): protoMngr( proto_mngr ), entityMngr( entity_mngr ), mapMngr( map_mngr ), itemMngr( item_mngr )
 {
-    RUNTIME_ASSERT( cr->IsNpc() );
+    // ...
+}
 
-    // Redundant calls
-    if( cr->IsDestroying || cr->IsDestroyed )
-        return;
-    cr->IsDestroying = true;
+void CritterManager::AddItemToCritter( Critter* cr, Item*& item, bool send )
+{
+    RUNTIME_ASSERT( cr );
+    RUNTIME_ASSERT( item );
 
-    // Finish event
-    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr );
-
-    // Tear off from environment
-    cr->LockMapTransfers++;
-    while( cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountItems() )
+    // Add
+    if( item->GetStackable() )
     {
-        // Delete inventory
-        cr->DeleteInventory();
-
-        // Delete from maps
-        Map* map = cr->GetMap();
-        if( map )
-            MapMngr.EraseCrFromMap( cr, map );
-        else if( cr->GlobalMapGroup )
-            MapMngr.EraseCrFromMap( cr, nullptr );
+        Item* item_already = cr->GetItemByPid( item->GetProtoId() );
+        if( item_already )
+        {
+            uint count = item->GetCount();
+            itemMngr.DeleteItem( item );
+            item = item_already;
+            item->ChangeCount( count );
+            return;
+        }
     }
-    cr->LockMapTransfers--;
 
-    // Erase from main collection
-    EntityMngr.UnregisterEntity( cr );
+    item->SetSortValue( cr->invItems );
+    cr->SetItem( item );
 
-    // Invalidate for use
-    cr->IsDestroyed = true;
-    cr->Release();
+    // Send
+    if( send )
+    {
+        cr->Send_AddItem( item );
+        if( item->GetCritSlot() )
+            cr->SendAA_MoveItem( item, ACTION_REFRESH, 0 );
+    }
+
+    // Change item
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, -1 );
+}
+
+void CritterManager::EraseItemFromCritter( Critter* cr, Item* item, bool send )
+{
+    RUNTIME_ASSERT( cr );
+    RUNTIME_ASSERT( item );
+
+    auto it = std::find( cr->invItems.begin(), cr->invItems.end(), item );
+    RUNTIME_ASSERT( it != cr->invItems.end() );
+    cr->invItems.erase( it );
+
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+
+    if( send )
+        cr->Send_EraseItem( item );
+    if( item->GetCritSlot() )
+        cr->SendAA_MoveItem( item, ACTION_REFRESH, 0 );
+
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, item->GetCritSlot() );
 }
 
 Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
-    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
-    if( !proto )
-    {
-        WriteLog( "Critter proto '{}' not found.\n", _str().parseHash( proto_id ) );
-        return nullptr;
-    }
+    RUNTIME_ASSERT( map );
+    RUNTIME_ASSERT( proto_id );
+    RUNTIME_ASSERT( hx < map->GetWidth() );
+    RUNTIME_ASSERT( hy < map->GetHeight() );
 
-    if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
-    {
-        WriteLog( "Wrong map values, hx {}, hy {}, map is nullptr '{}'.\n", hx, hy, !map ? "true" : "false" );
-        return nullptr;
-    }
+    ProtoCritter* proto = protoMngr.GetProtoCritter( proto_id );
+    RUNTIME_ASSERT( proto );
 
     uint multihex;
     if( !props )
@@ -70,10 +90,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     if( !map->IsHexesPassed( hx, hy, multihex ) )
     {
         if( accuracy )
-        {
-            WriteLog( "Accuracy position busy, map '{}', hx {}, hy {}.\n", map->GetName(), hx, hy );
             return nullptr;
-        }
 
         short  hx_ = hx;
         short  hy_ = hy;
@@ -86,10 +103,8 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
         {
             pos++;
             if( pos >= 18 )
-            {
-                WriteLog( "All positions busy, map '{}', hx {}, hy {}.\n", map->GetName(), hx, hy );
                 return nullptr;
-            }
+
             if( hx_ + sx[ pos ] < 0 || hx_ + sx[ pos ] >= map->GetWidth() )
                 continue;
             if( hy_ + sy[ pos ] < 0 || hy_ + sy[ pos ] >= map->GetHeight() )
@@ -109,11 +124,10 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     if( props )
         npc->Props = *props;
 
-    EntityMngr.RegisterEntity( npc );
+    entityMngr.RegisterEntity( npc );
 
     npc->SetCond( COND_LIFE );
 
-    // Flags and coords
     Location* loc = map->GetLocation();
 
     if( dir >= DIRS_COUNT )
@@ -128,21 +142,21 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     npc->SetHexY( hy );
     npc->RefreshName();
 
-    bool can = MapMngr.CanAddCrToMap( npc, map, hx, hy, 0 );
+    bool can = mapMngr.CanAddCrToMap( npc, map, hx, hy, 0 );
     RUNTIME_ASSERT( can );
-    MapMngr.AddCrToMap( npc, map, hx, hy, dir, 0 );
+    mapMngr.AddCrToMap( npc, map, hx, hy, dir, 0 );
 
     Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, true );
     npc->SetScript( nullptr, true );
 
-    npc->ProcessVisibleCritters();
-    npc->ProcessVisibleItems();
+    mapMngr.ProcessVisibleCritters( npc );
+    mapMngr.ProcessVisibleItems( npc );
     return npc;
 }
 
 bool CritterManager::RestoreNpc( uint id, hash proto_id, const DataBase::Document& doc )
 {
-    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
+    ProtoCritter* proto = protoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
         WriteLog( "Proto critter '{}' is not loaded.\n", _str().parseHash( proto_id ) );
@@ -157,14 +171,58 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const DataBase::Documen
         return false;
     }
 
-    EntityMngr.RegisterEntity( npc );
+    entityMngr.RegisterEntity( npc );
     return true;
+}
+
+void CritterManager::DeleteNpc( Critter* cr )
+{
+    RUNTIME_ASSERT( cr->IsNpc() );
+
+    // Redundant calls
+    if( cr->IsDestroying || cr->IsDestroyed )
+        return;
+    cr->IsDestroying = true;
+
+    // Finish event
+    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr );
+
+    // Tear off from environment
+    cr->LockMapTransfers++;
+    while( cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountItems() )
+    {
+        // Delete inventory
+        DeleteInventory( cr );
+
+        // Delete from maps
+        Map* map = mapMngr.GetMap( cr->GetMapId() );
+        if( map )
+            mapMngr.EraseCrFromMap( cr, map );
+        else if( cr->GlobalMapGroup )
+            mapMngr.EraseCrFromMap( cr, nullptr );
+        else if( cr->GetMapId() )
+            cr->SetMapId( 0 );
+    }
+    cr->LockMapTransfers--;
+
+    // Erase from main collection
+    entityMngr.UnregisterEntity( cr );
+
+    // Invalidate for use
+    cr->IsDestroyed = true;
+    cr->Release();
+}
+
+void CritterManager::DeleteInventory( Critter* cr )
+{
+    while( !cr->invItems.empty() )
+        itemMngr.DeleteItem( *cr->invItems.begin() );
 }
 
 void CritterManager::GetCritters( CritterVec& critters )
 {
     CritterVec all_critters;
-    EntityMngr.GetCritters( all_critters );
+    entityMngr.GetCritters( all_critters );
 
     CritterVec find_critters;
     find_critters.reserve( all_critters.size() );
@@ -174,12 +232,12 @@ void CritterManager::GetCritters( CritterVec& critters )
     critters = find_critters;
 }
 
-void CritterManager::GetNpcs( PcVec& npcs )
+void CritterManager::GetNpcs( NpcVec& npcs )
 {
     CritterVec all_critters;
-    EntityMngr.GetCritters( all_critters );
+    entityMngr.GetCritters( all_critters );
 
-    PcVec find_npcs;
+    NpcVec find_npcs;
     find_npcs.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
@@ -191,12 +249,12 @@ void CritterManager::GetNpcs( PcVec& npcs )
     npcs = find_npcs;
 }
 
-void CritterManager::GetClients( ClVec& players, bool on_global_map /* = false */ )
+void CritterManager::GetClients( ClientVec& players, bool on_global_map /* = false */ )
 {
     CritterVec all_critters;
-    EntityMngr.GetCritters( all_critters );
+    entityMngr.GetCritters( all_critters );
 
-    ClVec find_players;
+    ClientVec find_players;
     find_players.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
@@ -211,7 +269,7 @@ void CritterManager::GetClients( ClVec& players, bool on_global_map /* = false *
 void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters )
 {
     CritterVec all_critters;
-    EntityMngr.GetCritters( all_critters );
+    entityMngr.GetCritters( all_critters );
 
     CritterVec find_critters;
     find_critters.reserve( all_critters.size() );
@@ -227,20 +285,21 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
 
 Critter* CritterManager::GetCritter( uint crid )
 {
-    return EntityMngr.GetCritter( crid );
+    return entityMngr.GetCritter( crid );
 }
 
 Client* CritterManager::GetPlayer( uint crid )
 {
     if( !IS_CLIENT_ID( crid ) )
         return nullptr;
-    return (Client*) EntityMngr.GetEntity( crid, EntityType::Client );
+
+    return (Client*) entityMngr.GetEntity( crid, EntityType::Client );
 }
 
 Client* CritterManager::GetPlayer( const char* name )
 {
     EntityVec entities;
-    EntityMngr.GetEntities( EntityType::Client, entities );
+    entityMngr.GetEntities( EntityType::Client, entities );
 
     Client* cl = nullptr;
     for( auto it = entities.begin(); it != entities.end(); ++it )
@@ -259,17 +318,146 @@ Npc* CritterManager::GetNpc( uint crid )
 {
     if( IS_CLIENT_ID( crid ) )
         return nullptr;
-    return (Npc*) EntityMngr.GetEntity( crid, EntityType::Npc );
+
+    return (Npc*) entityMngr.GetEntity( crid, EntityType::Npc );
+}
+
+Item* CritterManager::GetItemByPidInvPriority( Critter* cr, hash item_pid )
+{
+    ProtoItem* proto_item = protoMngr.GetProtoItem( item_pid );
+    if( !proto_item )
+        return nullptr;
+
+    if( proto_item->GetStackable() )
+    {
+        for( auto item : cr->invItems )
+            if( item->GetProtoId() == item_pid )
+                return item;
+    }
+    else
+    {
+        Item* another_slot = nullptr;
+        for( auto item : cr->invItems )
+        {
+            if( item->GetProtoId() == item_pid )
+            {
+                if( !item->GetCritSlot() )
+                    return item;
+                another_slot = item;
+            }
+        }
+        return another_slot;
+    }
+    return nullptr;
+}
+
+void CritterManager::ProcessTalk( Client* cl, bool force )
+{
+    if( !force && Timer::GameTick() < cl->talkNextTick )
+        return;
+    cl->talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
+    if( cl->Talk.TalkType == TALK_NONE )
+        return;
+
+    // Check time of talk
+    if( cl->Talk.TalkTime && Timer::GameTick() - cl->Talk.StartTick > cl->Talk.TalkTime )
+    {
+        CloseTalk( cl );
+        return;
+    }
+
+    // Check npc
+    Npc* npc = nullptr;
+    if( cl->Talk.TalkType == TALK_WITH_NPC )
+    {
+        npc = GetNpc( cl->Talk.TalkNpc );
+        if( !npc )
+        {
+            CloseTalk( cl );
+            return;
+        }
+
+        if( !npc->IsLife() )
+        {
+            cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME );
+            CloseTalk( cl );
+            return;
+        }
+
+        // Todo: IsPlaneNoTalk
+    }
+
+    // Check distance
+    if( !cl->Talk.IgnoreDistance )
+    {
+        uint   map_id = 0;
+        ushort hx = 0, hy = 0;
+        uint   talk_distance = 0;
+        if( cl->Talk.TalkType == TALK_WITH_NPC )
+        {
+            map_id = npc->GetMapId();
+            hx = npc->GetHexX();
+            hy = npc->GetHexY();
+            talk_distance = npc->GetTalkDistance();
+            talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + cl->GetMultihex();
+        }
+        else if( cl->Talk.TalkType == TALK_WITH_HEX )
+        {
+            map_id = cl->Talk.TalkHexMap;
+            hx = cl->Talk.TalkHexX;
+            hy = cl->Talk.TalkHexY;
+            talk_distance = GameOpt.TalkDistance + cl->GetMultihex();
+        }
+
+        if( cl->GetMapId() != map_id || !CheckDist( cl->GetHexX(), cl->GetHexY(), hx, hy, talk_distance ) )
+        {
+            cl->Send_TextMsg( cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
+            CloseTalk( cl );
+        }
+    }
+}
+
+void CritterManager::CloseTalk( Client* cl )
+{
+    if( cl->Talk.TalkType != TALK_NONE )
+    {
+        Npc* npc = nullptr;
+        if( cl->Talk.TalkType == TALK_WITH_NPC )
+        {
+            cl->Talk.TalkType = TALK_NONE;
+            npc = GetNpc( cl->Talk.TalkNpc );
+            if( npc )
+            {
+                if( cl->Talk.Barter )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers() );
+                Script::RaiseInternalEvent( ServerFunctions.CritterTalk, cl, npc, false, npc->GetTalkedPlayers() );
+            }
+        }
+
+        if( cl->Talk.CurDialog.DlgScript )
+        {
+            Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetName() );
+            Script::SetArgEntity( cl );
+            Script::SetArgEntity( npc );
+            Script::SetArgEntity( nullptr );
+            cl->Talk.Locked = true;
+            Script::RunPrepared();
+            cl->Talk.Locked = false;
+        }
+    }
+
+    cl->Talk.Clear();
+    cl->Send_Talk();
 }
 
 uint CritterManager::PlayersInGame()
 {
-    return EntityMngr.GetEntitiesCount( EntityType::Client );
+    return entityMngr.GetEntitiesCount( EntityType::Client );
 }
 
 uint CritterManager::NpcInGame()
 {
-    return EntityMngr.GetEntitiesCount( EntityType::Npc );
+    return entityMngr.GetEntitiesCount( EntityType::Npc );
 }
 
 uint CritterManager::CrittersInGame()

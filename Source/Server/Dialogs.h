@@ -1,5 +1,4 @@
-#ifndef __DIALOGS__
-#define __DIALOGS__
+#pragma once
 
 #include "Common.h"
 #include "MsgFiles.h"
@@ -191,5 +190,3 @@ private:
 };
 
 extern DialogManager DlgMngr;
-
-#endif // __DIALOGS__

@@ -1,5 +1,4 @@
-#ifndef _DATA_BASE_
-#define _DATA_BASE_
+#pragma once
 
 #include "Common.h"
 #include "mapbox/variant.hpp"
@@ -52,5 +51,3 @@ extern DataBase* DbStorage;
 extern DataBase* DbHistory;
 
 DataBase* GetDataBase( const string& connection_info );
-
-#endif // _DATA_BASE_

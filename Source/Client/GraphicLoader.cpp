@@ -11,10 +11,22 @@
 #include "GraphicStructures.h"
 #include "Version_Include.h"
 
-StrVec  GraphicLoader::processedFiles;
-BoneVec GraphicLoader::loadedModels;
-StrVec  GraphicLoader::loadedModelNames;
-PtrVec  GraphicLoader::loadedAnimations;
+GraphicLoader::GraphicLoader( SpriteManager& spr_mngr ): sprMngr( spr_mngr )
+{
+    // ...
+}
+
+GraphicLoader::~GraphicLoader()
+{
+    for( auto* model : loadedModels )
+        delete model;
+    for( auto* anim : loadedAnimations )
+        delete anim;
+    for( auto* tex : loadedMeshTextures )
+        delete tex;
+    for( auto* effect : loadedEffects )
+        delete effect;
+}
 
 Bone* GraphicLoader::LoadModel( const string& fname )
 {
@@ -78,7 +90,7 @@ AnimSet* GraphicLoader::LoadAnimation( const string& anim_fname, const string& a
     bool take_first = anim_name == "Base";
     for( size_t i = 0; i < loadedAnimations.size(); i++ )
     {
-        AnimSet* anim = (AnimSet*) loadedAnimations[ i ];
+        AnimSet* anim = loadedAnimations[ i ];
         if( _str( anim->GetFileName() ).compareIgnoreCase( anim_fname ) && ( take_first || _str( anim->GetName() ).compareIgnoreCase( anim_name ) ) )
             return anim;
     }
@@ -94,12 +106,6 @@ AnimSet* GraphicLoader::LoadAnimation( const string& anim_fname, const string& a
 
     return nullptr;
 }
-
-/************************************************************************/
-/* Textures                                                             */
-/************************************************************************/
-
-MeshTextureVec GraphicLoader::loadedMeshTextures;
 
 MeshTexture* GraphicLoader::LoadTexture( const string& texture_name, const string& model_path )
 {
@@ -121,13 +127,13 @@ MeshTexture* GraphicLoader::LoadTexture( const string& texture_name, const strin
     loadedMeshTextures.push_back( mesh_tex );
 
     // First try load from textures folder
-    SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
-    AnyFrames* anim = SprMngr.LoadAnimation( _str( model_path ).extractDir() + texture_name );
-    SprMngr.PopAtlasType();
+    sprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
+    AnyFrames* anim = sprMngr.LoadAnimation( _str( model_path ).extractDir() + texture_name );
+    sprMngr.PopAtlasType();
     if( !anim )
         return nullptr;
 
-    SpriteInfo* si = SprMngr.GetSpriteInfo( anim->Ind[ 0 ] );
+    SpriteInfo* si = sprMngr.GetSpriteInfo( anim->Ind[ 0 ] );
     mesh_tex->Id = si->Atlas->TextureOwner->Id;
     memcpy( mesh_tex->SizeData, si->Atlas->TextureOwner->SizeData, sizeof( mesh_tex->SizeData ) );
     mesh_tex->AtlasOffsetData[ 0 ] = si->SprRect[ 0 ];
@@ -144,12 +150,6 @@ void GraphicLoader::DestroyTextures()
         delete *it;
     loadedMeshTextures.clear();
 }
-
-/************************************************************************/
-/* Effects                                                              */
-/************************************************************************/
-
-EffectVec GraphicLoader::loadedEffects;
 
 Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, const string& defines /* = "" */, const string& model_path /* = "" */, EffectDefault* defaults /* = nullptr */, uint defaults_count /* = 0 */ )
 {
@@ -813,3 +813,5 @@ bool GraphicLoader::Load3dEffects()
     }
     return true;
 }
+
+#undef LOAD_EFFECT

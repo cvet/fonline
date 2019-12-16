@@ -1,5 +1,4 @@
 #include "GluStuff.h"
-#include <math.h>
 
 void gluStuffOrtho( float* matrix, float left, float right, float bottom, float top, float near, float far )
 {

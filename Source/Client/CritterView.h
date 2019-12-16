@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Common.h"
-#include "SpriteManager.h"
 #include "ItemView.h"
 #include "3dStuff.h"
 #include "Entity.h"
+
+class ResourceManager;
+class SpriteManager;
+class Sprite;
 
 class CritterView: public Entity
 {
@@ -60,9 +63,14 @@ public:
     string      Avatar;
     ItemViewVec InvItems;
 
+private:
+    SpriteManager&   sprMngr;
+    ResourceManager& resMngr;
+
+public:
     static bool SlotEnabled[ 0x100 ];
 
-    CritterView( uint id, ProtoCritter* proto );
+    CritterView( uint id, ProtoCritter* proto, SpriteManager& spr_mngr, ResourceManager& res_mngr );
     ~CritterView();
     void Init();
     void Finish();
@@ -101,8 +109,6 @@ public:
     void      DeleteAllItems();
     ItemView* GetItem( uint item_id );
     ItemView* GetItemByPid( hash item_pid );
-    ItemView* GetItemByPidInvPriority( hash item_pid );
-    ItemView* GetItemByPidSlot( hash item_pid, int slot );
     ItemView* GetItemSlot( int slot );
     void      GetItemsSlot( int slot, ItemViewVec& items );
     uint      CountItemPid( hash item_pid );

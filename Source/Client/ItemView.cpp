@@ -97,64 +97,6 @@ ItemView* ItemView::Clone()
     return clone;
 }
 
-uint ItemView::GetCurSprId()
-{
-    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
-    if( !anim )
-        return 0;
-
-    uint beg = 0, end = 0;
-    if( GetIsShowAnim() )
-    {
-        beg = 0;
-        end = anim->CntFrm - 1;
-    }
-    if( GetIsShowAnimExt() )
-    {
-        beg = GetAnimStay0();
-        end = GetAnimStay1();
-    }
-    if( beg >= anim->CntFrm )
-        beg = anim->CntFrm - 1;
-    if( end >= anim->CntFrm )
-        end = anim->CntFrm - 1;
-    if( beg > end )
-        std::swap( beg, end );
-
-    uint count = end - beg + 1;
-    uint ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
-}
-
-uint ProtoItem::GetCurSprId()
-{
-    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
-    if( !anim )
-        return 0;
-
-    uint beg = 0, end = 0;
-    if( GetIsShowAnim() )
-    {
-        beg = 0;
-        end = anim->CntFrm - 1;
-    }
-    if( GetIsShowAnimExt() )
-    {
-        beg = GetAnimStay0();
-        end = GetAnimStay1();
-    }
-    if( beg >= anim->CntFrm )
-        beg = anim->CntFrm - 1;
-    if( end >= anim->CntFrm )
-        end = anim->CntFrm - 1;
-    if( beg > end )
-        std::swap( beg, end );
-
-    uint count = end - beg + 1;
-    uint ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
-}
-
 #ifdef FONLINE_EDITOR
 void ItemView::ContSetItem( ItemView* item )
 {

@@ -1,33 +1,161 @@
 #include "MapManager.h"
 #include "Log.h"
 #include "Testing.h"
-#include "CritterManager.h"
-#include "ItemManager.h"
 #include "Script.h"
 #include "LineTracer.h"
-#include "EntityManager.h"
-#include "ProtoManager.h"
 #include "StringUtils.h"
 #include "Settings.h"
+#include "ProtoManager.h"
+#include "EntityManager.h"
+#include "CritterManager.h"
+#include "ItemManager.h"
+#include "Critter.h"
+#include "Map.h"
+#include "Item.h"
+#include "Location.h"
 
-MapManager MapMngr;
-
-MapManager::MapManager(): runGarbager( true )
+MapManager::MapManager( ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr ): protoMngr( proto_mngr ), entityMngr( entity_mngr ), crMngr( cr_mngr ), itemMngr( item_mngr )
 {
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( MapManager ) );
     MEMORY_PROCESS( MEMORY_STATIC, ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ); // Grid, see below
 
-    pathNumCur = 0;
     for( int i = 1; i < FPATH_DATA_SIZE; i++ )
         pathesPool[ i ].reserve( 100 );
+}
 
-    runGarbager = false;
-    smoothSwitcher = false;
+void MapManager::GenerateMapContent( Map* map )
+{
+    UIntMap id_map;
+
+    // Generate npc
+    for( Critter* base_cr : map->GetProtoMap()->CrittersVec )
+    {
+        // Create npc
+        Npc* npc = crMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
+        if( !npc )
+        {
+            WriteLog( "Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName() );
+            continue;
+        }
+        id_map.insert( std::make_pair( base_cr->GetId(), npc->GetId() ) );
+
+        // Check condition
+        if( npc->GetCond() != COND_LIFE )
+        {
+            if( npc->GetCond() == COND_DEAD )
+            {
+                npc->SetCurrentHp( GameOpt.DeadHitPoints - 1 );
+
+                uint multihex = npc->GetMultihex();
+                map->UnsetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, false );
+                map->SetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, true );
+            }
+        }
+    }
+
+    // Generate hex items
+    for( Item* base_item : map->GetProtoMap()->HexItemsVec )
+    {
+        // Create item
+        Item* item = itemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
+        if( !item )
+        {
+            WriteLog( "Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName() );
+            continue;
+        }
+        id_map.insert( std::make_pair( base_item->GetId(), item->GetId() ) );
+
+        // Other values
+        if( item->GetIsCanOpen() && item->GetOpened() )
+            item->SetIsLightThru( true );
+
+        if( !map->AddItem( item, item->GetHexX(), item->GetHexY() ) )
+        {
+            WriteLog( "Add item '{}' to map '{}' failure, continue generate.\n", item->GetName(), map->GetName() );
+            itemMngr.DeleteItem( item );
+        }
+    }
+
+    // Add children items
+    for( Item* base_item : map->GetProtoMap()->ChildItemsVec )
+    {
+        // Map id
+        uint parent_id = 0;
+        if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+            parent_id = base_item->GetCritId();
+        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
+            parent_id = base_item->GetContainerId();
+        else
+            UNREACHABLE_PLACE;
+
+        if( !id_map.count( parent_id ) )
+            continue;
+        parent_id = id_map[ parent_id ];
+
+        // Create item
+        Item* item = itemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
+        if( !item )
+        {
+            WriteLog( "Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName() );
+            continue;
+        }
+
+        // Add to parent
+        if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+        {
+            Critter* cr_cont = map->GetCritter( parent_id );
+            RUNTIME_ASSERT( cr_cont );
+            crMngr.AddItemToCritter( cr_cont, item, false );
+        }
+        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
+        {
+            Item* item_cont = map->GetItem( parent_id );
+            RUNTIME_ASSERT( item_cont );
+            itemMngr.AddItemToContainer( item_cont, item, 0 );
+        }
+        else
+        {
+            UNREACHABLE_PLACE;
+        }
+    }
+
+    // Visible
+    for( Npc* npc : map->GetNpcs() )
+    {
+        ProcessVisibleCritters( npc );
+        ProcessVisibleItems( npc );
+    }
+
+    // Map script
+    map->SetScript( nullptr, true );
+}
+
+void MapManager::DeleteMapContent( Map* map )
+{
+    while( !map->mapCritters.empty() || !map->mapItems.empty() )
+    {
+        // Transit players to global map
+        KickPlayersToGlobalMap( map );
+
+        // Delete npc
+        NpcVec del_npcs = map->mapNpcs;
+        for( Npc* del_npc : del_npcs )
+            crMngr.DeleteNpc( del_npc );
+
+        // Delete items
+        ItemVec del_items = map->mapItems;
+        for( Item* del_item : del_items )
+            itemMngr.DeleteItem( del_item );
+    }
+
+    RUNTIME_ASSERT( map->mapItemsById.empty() );
+    RUNTIME_ASSERT( map->mapItemsByHex.empty() );
+    RUNTIME_ASSERT( map->mapBlockLinesByHex.empty() );
 }
 
 bool MapManager::RestoreLocation( uint id, hash proto_id, const DataBase::Document& doc )
 {
-    ProtoLocation* proto = ProtoMngr.GetProtoLocation( proto_id );
+    ProtoLocation* proto = protoMngr.GetProtoLocation( proto_id );
     if( !proto )
     {
         WriteLog( "Location proto '{}' is not loaded.\n", _str().parseHash( proto_id ) );
@@ -43,16 +171,16 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, const DataBase::Docume
     }
 
     loc->BindScript();
-    EntityMngr.RegisterEntity( loc );
+    entityMngr.RegisterEntity( loc );
     return true;
 }
 
 string MapManager::GetLocationsMapsStatistics()
 {
     EntityVec locations;
-    EntityMngr.GetEntities( EntityType::Location, locations );
+    entityMngr.GetEntities( EntityType::Location, locations );
     EntityVec maps;
-    EntityMngr.GetEntities( EntityType::Map, maps );
+    entityMngr.GetEntities( EntityType::Map, maps );
 
     string result = _str( "Locations count: {}\n", (uint) locations.size() );
     result += _str( "Maps count: {}\n", (uint) maps.size() );
@@ -78,18 +206,18 @@ string MapManager::GetLocationsMapsStatistics()
     return result;
 }
 
-Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
+Location* MapManager::CreateLocation( hash proto_id, ushort wx, ushort wy )
 {
-    ProtoLocation* proto = ProtoMngr.GetProtoLocation( loc_pid );
+    ProtoLocation* proto = protoMngr.GetProtoLocation( proto_id );
     if( !proto )
     {
-        WriteLog( "Location proto '{}' is not loaded.\n", _str().parseHash( loc_pid ) );
+        WriteLog( "Location proto '{}' is not loaded.\n", _str().parseHash( proto_id ) );
         return nullptr;
     }
 
     if( wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
-        WriteLog( "Invalid location '{}' coordinates.\n", _str().parseHash( loc_pid ) );
+        WriteLog( "Invalid location '{}' coordinates.\n", _str().parseHash( proto_id ) );
         return nullptr;
     }
 
@@ -103,7 +231,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         Map* map = CreateMap( map_pid, loc );
         if( !map )
         {
-            WriteLog( "Create map '{}' for location '{}' fail.\n", _str().parseHash( map_pid ), _str().parseHash( loc_pid ) );
+            WriteLog( "Create map '{}' for location '{}' fail.\n", _str().parseHash( map_pid ), _str().parseHash( proto_id ) );
             for( auto& map : loc->GetMapsRaw() )
                 map->Release();
             loc->Release();
@@ -114,20 +242,14 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
     pids->Release();
     loc->BindScript();
 
-    EntityMngr.RegisterEntity( loc );
+    entityMngr.RegisterEntity( loc );
 
     // Generate location maps
     MapVec maps = loc->GetMaps();
     for( Map* map : maps )
     {
         map->SetLocId( loc->GetId() );
-        if( !map->Generate() )
-        {
-            WriteLog( "Generate map '{}' fail.\n", _str().parseHash( map->GetProtoId() ) );
-            loc->SetToGarbage( true );
-            MapMngr.RunGarbager();
-            return nullptr;
-        }
+        GenerateMapContent( map );
     }
 
     // Init scripts
@@ -144,7 +266,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 
 Map* MapManager::CreateMap( hash proto_id, Location* loc )
 {
-    ProtoMap* proto_map = ProtoMngr.GetProtoMap( proto_id );
+    ProtoMap* proto_map = protoMngr.GetProtoMap( proto_id );
     if( !proto_map )
     {
         WriteLog( "Proto map '{}' is not loaded.\n", _str().parseHash( proto_id ) );
@@ -157,13 +279,13 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     map->SetLocMapIndex( (uint) maps.size() );
     maps.push_back( map );
 
-    EntityMngr.RegisterEntity( map );
+    entityMngr.RegisterEntity( map );
     return map;
 }
 
 bool MapManager::RestoreMap( uint id, hash proto_id, const DataBase::Document& doc )
 {
-    ProtoMap* proto = ProtoMngr.GetProtoMap( proto_id );
+    ProtoMap* proto = protoMngr.GetProtoMap( proto_id );
     if( !proto )
     {
         WriteLog( "Map proto '{}' is not loaded.\n", _str().parseHash( proto_id ) );
@@ -178,32 +300,42 @@ bool MapManager::RestoreMap( uint id, hash proto_id, const DataBase::Document& d
         return false;
     }
 
-    EntityMngr.RegisterEntity( map );
+    entityMngr.RegisterEntity( map );
     return true;
+}
+
+void MapManager::RegenerateMap( Map* map )
+{
+    Script::RaiseInternalEvent( ServerFunctions.MapFinish, map );
+    DeleteMapContent( map );
+    GenerateMapContent( map );
+    for( auto item : map->GetItems() )
+        Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
+    Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
 }
 
 Map* MapManager::GetMap( uint map_id )
 {
     if( !map_id )
         return nullptr;
-    return (Map*) EntityMngr.GetEntity( map_id, EntityType::Map );
+    return (Map*) entityMngr.GetEntity( map_id, EntityType::Map );
 }
 
 Map* MapManager::GetMapByPid( hash map_pid, uint skip_count )
 {
     if( !map_pid )
         return nullptr;
-    return EntityMngr.GetMapByPid( map_pid, skip_count );
+    return entityMngr.GetMapByPid( map_pid, skip_count );
 }
 
 void MapManager::GetMaps( MapVec& maps )
 {
-    EntityMngr.GetMaps( maps );
+    entityMngr.GetMaps( maps );
 }
 
 uint MapManager::GetMapsCount()
 {
-    return EntityMngr.GetEntitiesCount( EntityType::Map );
+    return entityMngr.GetEntitiesCount( EntityType::Map );
 }
 
 Location* MapManager::GetLocationByMap( uint map_id )
@@ -218,14 +350,14 @@ Location* MapManager::GetLocation( uint loc_id )
 {
     if( !loc_id )
         return nullptr;
-    return (Location*) EntityMngr.GetEntity( loc_id, EntityType::Location );
+    return (Location*) entityMngr.GetEntity( loc_id, EntityType::Location );
 }
 
 Location* MapManager::GetLocationByPid( hash loc_pid, uint skip_count )
 {
     if( !loc_pid )
         return nullptr;
-    return (Location*) EntityMngr.GetLocationByPid( loc_pid, skip_count );
+    return (Location*) entityMngr.GetLocationByPid( loc_pid, skip_count );
 }
 
 bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones )
@@ -239,7 +371,7 @@ bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int 
 void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids )
 {
     LocationVec locs;
-    EntityMngr.GetLocations( locs );
+    entityMngr.GetLocations( locs );
     int         wx = zx * GM_ZONE_LEN;
     int         wy = zy * GM_ZONE_LEN;
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
@@ -250,14 +382,20 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
     }
 }
 
+void MapManager::KickPlayersToGlobalMap( Map* map )
+{
+    for( Client* player : map->GetPlayers() )
+        TransitToGlobal( player, 0, true );
+}
+
 void MapManager::GetLocations( LocationVec& locs )
 {
-    EntityMngr.GetLocations( locs );
+    entityMngr.GetLocations( locs );
 }
 
 uint MapManager::GetLocationsCount()
 {
-    return EntityMngr.GetEntitiesCount( EntityType::Location );
+    return entityMngr.GetEntitiesCount( EntityType::Location );
 }
 
 void MapManager::LocationGarbager()
@@ -267,10 +405,10 @@ void MapManager::LocationGarbager()
         runGarbager = false;
 
         LocationVec locs;
-        EntityMngr.GetLocations( locs );
+        entityMngr.GetLocations( locs );
 
-        ClVec* gmap_players = nullptr;
-        ClVec  players;
+        ClientVec* gmap_players = nullptr;
+        ClientVec  players;
         for( auto it = locs.begin(); it != locs.end(); ++it )
         {
             Location* loc = *it;
@@ -278,7 +416,7 @@ void MapManager::LocationGarbager()
             {
                 if( !gmap_players )
                 {
-                    CrMngr.GetClients( players, true );
+                    crMngr.GetClients( players, true );
                     gmap_players = &players;
                 }
                 DeleteLocation( loc, gmap_players );
@@ -287,7 +425,7 @@ void MapManager::LocationGarbager()
     }
 }
 
-void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
+void MapManager::DeleteLocation( Location* loc, ClientVec* gmap_players )
 {
     // Start deleting
     MapVec maps = loc->GetMaps();
@@ -295,6 +433,7 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
     // Redundant calls
     if( loc->IsDestroying || loc->IsDestroyed )
         return;
+
     loc->IsDestroying = true;
     for( auto it = maps.begin(); it != maps.end(); ++it )
         ( *it )->IsDestroying = true;
@@ -305,25 +444,26 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
         Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it );
 
     // Send players on global map about this
-    ClVec players;
+    ClientVec players;
     if( !gmap_players )
     {
-        CrMngr.GetClients( players, true );
+        crMngr.GetClients( players, true );
         gmap_players = &players;
     }
+
     for( Client* cl :* gmap_players )
-        if( cl->CheckKnownLocById( loc->GetId() ) )
+        if( CheckKnownLocById( cl, loc->GetId() ) )
             cl->Send_GlobalLocation( loc, false );
 
     // Delete maps
     for( Map* map : maps )
-        map->DeleteContent();
+        DeleteMapContent( map );
     loc->GetMapsRaw().clear();
 
     // Erase from main collections
-    EntityMngr.UnregisterEntity( loc );
+    entityMngr.UnregisterEntity( loc );
     for( auto it = maps.begin(); it != maps.end(); ++it )
-        EntityMngr.UnregisterEntity( *it );
+        entityMngr.UnregisterEntity( *it );
 
     // Invalidate for use
     loc->IsDestroyed = true;
@@ -397,13 +537,17 @@ void MapManager::TraceBullet( TraceData& trace )
                 trace.IsHaveLastPassed = true;
             }
             else if( !map->IsHexCritter( cx, cy ) || !trace.LastPassedSkipCritters )
+            {
                 last_passed_ok = true;
+            }
         }
 
         if( !map->IsHexRaked( cx, cy ) )
             break;
+
         if( trace.Critters != nullptr && map->IsHexCritter( cx, cy ) )
             map->GetCrittersHex( cx, cy, 0, trace.FindType, *trace.Critters );
+
         if( trace.FindCr && map->IsFlagCritter( cx, cy, false ) )
         {
             Critter* cr = map->GetHexCritter( cx, cy, false );
@@ -1206,7 +1350,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
 
     uint map_id = ( map ? map->GetId() : 0 );
     uint old_map_id = cr->GetMapId();
-    Map* old_map = MapMngr.GetMap( old_map_id );
+    Map* old_map = GetMap( old_map_id );
 
     // Recheck after synchronization
     if( cr->GetMapId() != old_map_id )
@@ -1238,8 +1382,8 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         cr->SetBreakTime( 0 );
         cr->Send_CustomCommand( cr, OTHER_TELEPORT, ( cr->GetHexX() << 16 ) | ( cr->GetHexY() ) );
         cr->ClearVisible();
-        cr->ProcessVisibleCritters();
-        cr->ProcessVisibleItems();
+        ProcessVisibleCritters( cr );
+        ProcessVisibleItems( cr );
         cr->Send_XY( cr );
 
         cr->LockMapTransfers--;
@@ -1267,12 +1411,12 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
 
         AddCrToMap( cr, map, hx, hy, dir, leader_id );
 
-        cr->Send_LoadMap( nullptr );
+        cr->Send_LoadMap( nullptr, *this );
 
         // Visible critters / items
         cr->DisableSend++;
-        cr->ProcessVisibleCritters();
-        cr->ProcessVisibleItems();
+        ProcessVisibleCritters( cr );
+        ProcessVisibleItems( cr );
         cr->DisableSend--;
 
         cr->LockMapTransfers--;
@@ -1301,7 +1445,7 @@ bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uin
     {
         if( leader_id && leader_id != cr->GetId() )
         {
-            Critter* leader = CrMngr.GetCritter( leader_id );
+            Critter* leader = crMngr.GetCritter( leader_id );
             if( !leader || leader->GetMapId() )
                 return false;
         }
@@ -1349,7 +1493,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
         }
         else
         {
-            Critter* leader = CrMngr.GetCritter( leader_id );
+            Critter* leader = crMngr.GetCritter( leader_id );
             RUNTIME_ASSERT( leader );
             RUNTIME_ASSERT( !leader->GetMapId() );
 
@@ -1389,6 +1533,8 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
         map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
 
         cr->SetMapId( 0 );
+
+        runGarbager = true;
     }
     else
     {
@@ -1419,4 +1565,627 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
     }
 
     cr->LockMapTransfers--;
+}
+
+void MapManager::ProcessVisibleCritters( Critter* view_cr )
+{
+    if( view_cr->IsDestroyed )
+        return;
+
+    // Global map
+    if( !view_cr->GetMapId() )
+    {
+        RUNTIME_ASSERT( view_cr->GlobalMapGroup );
+
+        if( view_cr->IsPlayer() )
+        {
+            Client* cl = (Client*) view_cr;
+            for( auto it = view_cr->GlobalMapGroup->begin(), end = view_cr->GlobalMapGroup->end(); it != end; ++it )
+            {
+                Critter* cr = *it;
+                if( view_cr == cr )
+                {
+                    SETFLAG( view_cr->Flags, FCRIT_CHOSEN );
+                    cl->Send_AddCritter( view_cr );
+                    UNSETFLAG( view_cr->Flags, FCRIT_CHOSEN );
+                    cl->Send_AddAllItems();
+                }
+                else
+                {
+                    cl->Send_AddCritter( cr );
+                }
+            }
+        }
+
+        return;
+    }
+
+    // Local map
+    Map* map = GetMap( view_cr->GetMapId() );
+    RUNTIME_ASSERT( map );
+
+    int  vis;
+    int  look_base_self = view_cr->GetLookDistance();
+    int  dir_self = view_cr->GetDir();
+    int  dirs_count = DIRS_COUNT;
+    uint show_cr_dist1 = view_cr->GetShowCritterDist1();
+    uint show_cr_dist2 = view_cr->GetShowCritterDist2();
+    uint show_cr_dist3 = view_cr->GetShowCritterDist3();
+    bool show_cr1 = ( show_cr_dist1 > 0 );
+    bool show_cr2 = ( show_cr_dist2 > 0 );
+    bool show_cr3 = ( show_cr_dist3 > 0 );
+
+    bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
+    // Sneak self
+    int  sneak_base_self = view_cr->GetSneakCoefficient();
+
+    for( Critter* cr : map->GetCritters() )
+    {
+        if( cr == view_cr || cr->IsDestroyed )
+            continue;
+
+        int dist = DistGame( view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY() );
+
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
+        {
+            bool allow_self = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, view_cr, cr );
+            bool allow_opp = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, cr, view_cr );
+
+            if( allow_self )
+            {
+                if( cr->AddCrIntoVisVec( view_cr ) )
+                {
+                    view_cr->Send_AddCritter( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, view_cr, cr );
+                }
+            }
+            else
+            {
+                if( cr->DelCrFromVisVec( view_cr ) )
+                {
+                    view_cr->Send_RemoveCritter( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, view_cr, cr );
+                }
+            }
+
+            if( allow_opp )
+            {
+                if( view_cr->AddCrIntoVisVec( cr ) )
+                {
+                    cr->Send_AddCritter( view_cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, view_cr );
+                }
+            }
+            else
+            {
+                if( view_cr->DelCrFromVisVec( cr ) )
+                {
+                    cr->Send_RemoveCritter( view_cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, view_cr );
+                }
+            }
+
+            if( show_cr )
+            {
+                if( show_cr1 )
+                {
+                    if( (int) show_cr_dist1 >= dist )
+                    {
+                        if( view_cr->AddCrIntoVisSet1( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, view_cr, cr );
+                    }
+                    else
+                    {
+                        if( view_cr->DelCrFromVisSet1( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, view_cr, cr );
+                    }
+                }
+                if( show_cr2 )
+                {
+                    if( (int) show_cr_dist2 >= dist )
+                    {
+                        if( view_cr->AddCrIntoVisSet2( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, view_cr, cr );
+                    }
+                    else
+                    {
+                        if( view_cr->DelCrFromVisSet2( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, view_cr, cr );
+                    }
+                }
+                if( show_cr3 )
+                {
+                    if( (int) show_cr_dist3 >= dist )
+                    {
+                        if( view_cr->AddCrIntoVisSet3( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, view_cr, cr );
+                    }
+                    else
+                    {
+                        if( view_cr->DelCrFromVisSet3( cr->GetId() ) )
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, view_cr, cr );
+                    }
+                }
+            }
+
+            uint cr_dist = cr->GetShowCritterDist1();
+            if( cr_dist )
+            {
+                if( (int) cr_dist >= dist )
+                {
+                    if( cr->AddCrIntoVisSet1( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, view_cr );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet1( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, view_cr );
+                }
+            }
+            cr_dist = cr->GetShowCritterDist2();
+            if( cr_dist )
+            {
+                if( (int) cr_dist >= dist )
+                {
+                    if( cr->AddCrIntoVisSet2( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, view_cr );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet2( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, view_cr );
+                }
+            }
+            cr_dist = cr->GetShowCritterDist3();
+            if( cr_dist )
+            {
+                if( (int) cr_dist >= dist )
+                {
+                    if( cr->AddCrIntoVisSet3( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, view_cr );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet3( view_cr->GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, view_cr );
+                }
+            }
+            continue;
+        }
+
+        int look_self = look_base_self;
+        int look_opp = cr->GetLookDistance();
+
+        // Dir modifier
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
+        {
+            // Self
+            int real_dir = GetFarDir( view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY() );
+            int i = ( dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self );
+            if( i > dirs_count / 2 )
+                i = dirs_count - i;
+            look_self -= look_self * GameOpt.LookDir[ i ] / 100;
+            // Opponent
+            int dir_opp = cr->GetDir();
+            real_dir = ( ( real_dir + dirs_count / 2 ) % dirs_count );
+            i = ( dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp );
+            if( i > dirs_count / 2 )
+                i = dirs_count - i;
+            look_opp -= look_opp * GameOpt.LookDir[ i ] / 100;
+        }
+
+        if( dist > look_self && dist > look_opp )
+            dist = MAX_INT;
+
+        // Trace
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) && dist != MAX_INT )
+        {
+            TraceData trace;
+            trace.TraceMap = map;
+            trace.BeginHx = view_cr->GetHexX();
+            trace.BeginHy = view_cr->GetHexY();
+            trace.EndHx = cr->GetHexX();
+            trace.EndHy = cr->GetHexY();
+            TraceBullet( trace );
+            if( !trace.IsFullTrace )
+                dist = MAX_INT;
+        }
+
+        // Self
+        if( cr->GetIsHide() && dist != MAX_INT )
+        {
+            int sneak_opp = cr->GetSneakCoefficient();
+            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
+            {
+                int real_dir = GetFarDir( view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY() );
+                int i = ( dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self );
+                if( i > dirs_count / 2 )
+                    i = dirs_count - i;
+                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[ i ] / 100;
+            }
+            sneak_opp /= (int) GameOpt.SneakDivider;
+            if( sneak_opp < 0 )
+                sneak_opp = 0;
+            vis = look_self - sneak_opp;
+        }
+        else
+        {
+            vis = look_self;
+        }
+        if( vis < (int) GameOpt.LookMinimum )
+            vis = GameOpt.LookMinimum;
+
+        if( vis >= dist )
+        {
+            if( cr->AddCrIntoVisVec( view_cr ) )
+            {
+                view_cr->Send_AddCritter( cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShow, view_cr, cr );
+            }
+        }
+        else
+        {
+            if( cr->DelCrFromVisVec( view_cr ) )
+            {
+                view_cr->Send_RemoveCritter( cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterHide, view_cr, cr );
+            }
+        }
+
+        if( show_cr1 )
+        {
+            if( (int) show_cr_dist1 >= dist )
+            {
+                if( view_cr->AddCrIntoVisSet1( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, view_cr, cr );
+            }
+            else
+            {
+                if( view_cr->DelCrFromVisSet1( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, view_cr, cr );
+            }
+        }
+        if( show_cr2 )
+        {
+            if( (int) show_cr_dist2 >= dist )
+            {
+                if( view_cr->AddCrIntoVisSet2( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, view_cr, cr );
+            }
+            else
+            {
+                if( view_cr->DelCrFromVisSet2( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, view_cr, cr );
+            }
+        }
+        if( show_cr3 )
+        {
+            if( (int) show_cr_dist3 >= dist )
+            {
+                if( view_cr->AddCrIntoVisSet3( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, view_cr, cr );
+            }
+            else
+            {
+                if( view_cr->DelCrFromVisSet3( cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, view_cr, cr );
+            }
+        }
+
+        // Opponent
+        if( view_cr->GetIsHide() && dist != MAX_INT )
+        {
+            int sneak_self = sneak_base_self;
+            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
+            {
+                int dir_opp = cr->GetDir();
+                int real_dir = GetFarDir( cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY() );
+                int i = ( dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp );
+                if( i > dirs_count / 2 )
+                    i = dirs_count - i;
+                sneak_self -= sneak_self * GameOpt.LookSneakDir[ i ] / 100;
+            }
+            sneak_self /= (int) GameOpt.SneakDivider;
+            if( sneak_self < 0 )
+                sneak_self = 0;
+            vis = look_opp - sneak_self;
+        }
+        else
+        {
+            vis = look_opp;
+        }
+        if( vis < (int) GameOpt.LookMinimum )
+            vis = GameOpt.LookMinimum;
+
+        if( vis >= dist )
+        {
+            if( view_cr->AddCrIntoVisVec( cr ) )
+            {
+                cr->Send_AddCritter( view_cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, view_cr );
+            }
+        }
+        else
+        {
+            if( view_cr->DelCrFromVisVec( cr ) )
+            {
+                cr->Send_RemoveCritter( view_cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, view_cr );
+            }
+        }
+
+        uint cr_dist = cr->GetShowCritterDist1();
+        if( cr_dist )
+        {
+            if( (int) cr_dist >= dist )
+            {
+                if( cr->AddCrIntoVisSet1( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, view_cr );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet1( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, view_cr );
+            }
+        }
+        cr_dist = cr->GetShowCritterDist2();
+        if( cr_dist )
+        {
+            if( (int) cr_dist >= dist )
+            {
+                if( cr->AddCrIntoVisSet2( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, view_cr );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet2( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, view_cr );
+            }
+        }
+        cr_dist = cr->GetShowCritterDist3();
+        if( cr_dist )
+        {
+            if( (int) cr_dist >= dist )
+            {
+                if( cr->AddCrIntoVisSet3( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, cr, view_cr );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet3( view_cr->GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, view_cr );
+            }
+        }
+    }
+}
+
+void MapManager::ProcessVisibleItems( Critter* view_cr )
+{
+    if( view_cr->IsDestroyed )
+        return;
+
+    uint map_id = view_cr->GetMapId();
+    if( !map_id )
+        return;
+
+    Map* map = GetMap( map_id );
+    RUNTIME_ASSERT( map );
+
+    int look = view_cr->GetLookDistance();
+    for( Item* item : map->GetItems() )
+    {
+        if( item->GetIsHidden() )
+        {
+            continue;
+        }
+        else if( item->GetIsAlwaysView() )
+        {
+            if( view_cr->AddIdVisItem( item->GetId() ) )
+            {
+                view_cr->Send_AddItemOnMap( item );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter );
+            }
+        }
+        else
+        {
+            bool allowed = false;
+            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            {
+                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, view_cr, item );
+            }
+            else
+            {
+                int dist = DistGame( view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY() );
+                if( item->GetIsTrap() )
+                    dist += item->GetTrapValue();
+                allowed = look >= dist;
+            }
+
+            if( allowed )
+            {
+                if( view_cr->AddIdVisItem( item->GetId() ) )
+                {
+                    view_cr->Send_AddItemOnMap( item );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter );
+                }
+            }
+            else
+            {
+                if( view_cr->DelIdVisItem( item->GetId() ) )
+                {
+                    view_cr->Send_EraseItemFromMap( item );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter );
+                }
+            }
+        }
+    }
+}
+
+void MapManager::ViewMap( Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir )
+{
+    if( view_cr->IsDestroyed )
+        return;
+
+    view_cr->Send_GameInfo( map );
+
+    // Critters
+    int dirs_count = DIRS_COUNT;
+    int vis;
+    for( Critter* cr : map->GetCritters() )
+    {
+        if( cr == view_cr || cr->IsDestroyed )
+            continue;
+
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
+        {
+            if( Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, view_cr, cr ) )
+                view_cr->Send_AddCritter( cr );
+            continue;
+        }
+
+        int dist = DistGame( hx, hy, cr->GetHexX(), cr->GetHexY() );
+        int look_self = look;
+
+        // Dir modifier
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
+        {
+            int real_dir = GetFarDir( hx, hy, cr->GetHexX(), cr->GetHexY() );
+            int i = ( dir > real_dir ? dir - real_dir : real_dir - dir );
+            if( i > dirs_count / 2 )
+                i = dirs_count - i;
+            look_self -= look_self * GameOpt.LookDir[ i ] / 100;
+        }
+
+        if( dist > look_self )
+            continue;
+
+        // Trace
+        if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) && dist != MAX_INT )
+        {
+            TraceData trace;
+            trace.TraceMap = map;
+            trace.BeginHx = hx;
+            trace.BeginHy = hy;
+            trace.EndHx = cr->GetHexX();
+            trace.EndHy = cr->GetHexY();
+            TraceBullet( trace );
+            if( !trace.IsFullTrace )
+                continue;
+        }
+
+        // Hide modifier
+        if( cr->GetIsHide() )
+        {
+            int sneak_opp = cr->GetSneakCoefficient();
+            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
+            {
+                int real_dir = GetFarDir( hx, hy, cr->GetHexX(), cr->GetHexY() );
+                int i = ( dir > real_dir ? dir - real_dir : real_dir - dir );
+                if( i > dirs_count / 2 )
+                    i = dirs_count - i;
+                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[ i ] / 100;
+            }
+            sneak_opp /= (int) GameOpt.SneakDivider;
+            if( sneak_opp < 0 )
+                sneak_opp = 0;
+            vis = look_self - sneak_opp;
+        }
+        else
+        {
+            vis = look_self;
+        }
+        if( vis < (int) GameOpt.LookMinimum )
+            vis = GameOpt.LookMinimum;
+        if( vis >= dist )
+            view_cr->Send_AddCritter( cr );
+    }
+
+    // Items
+    for( Item* item : map->GetItems() )
+    {
+        if( item->GetIsHidden() )
+        {
+            continue;
+        }
+        else if( item->GetIsAlwaysView() )
+        {
+            view_cr->Send_AddItemOnMap( item );
+        }
+        else
+        {
+            bool allowed = false;
+            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            {
+                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, view_cr, item );
+            }
+            else
+            {
+                int dist = DistGame( hx, hy, item->GetHexX(), item->GetHexY() );
+                if( item->GetIsTrap() )
+                    dist += item->GetTrapValue();
+                allowed = look >= dist;
+            }
+
+            if( allowed )
+                view_cr->Send_AddItemOnMap( item );
+        }
+    }
+}
+
+bool MapManager::CheckKnownLocById( Critter* cr, uint loc_id )
+{
+    CScriptArray* known_locs = cr->GetKnownLocations();
+    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
+    {
+        if( *(uint*) known_locs->At( i ) == loc_id )
+        {
+            SAFEREL( known_locs );
+            return true;
+        }
+    }
+    SAFEREL( known_locs );
+    return false;
+}
+
+bool MapManager::CheckKnownLocByPid( Critter* cr, hash loc_pid )
+{
+    CScriptArray* known_locs = cr->GetKnownLocations();
+    SAFEREL( known_locs );
+    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
+    {
+        Location* loc = GetLocation( *(uint*) known_locs->At( i ) );
+        if( loc && loc->GetProtoId() == loc_pid )
+        {
+            SAFEREL( known_locs );
+            return true;
+        }
+    }
+    SAFEREL( known_locs );
+    return false;
+}
+
+void MapManager::AddKnownLoc( Critter* cr, uint loc_id )
+{
+    if( CheckKnownLocById( cr, loc_id ) )
+        return;
+
+    CScriptArray* known_locs = cr->GetKnownLocations();
+    known_locs->InsertLast( &loc_id );
+    cr->SetKnownLocations( known_locs );
+    SAFEREL( known_locs );
+}
+
+void MapManager::EraseKnownLoc( Critter* cr, uint loc_id )
+{
+    CScriptArray* known_locs = cr->GetKnownLocations();
+    for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
+    {
+        if( *(uint*) known_locs->At( i ) == loc_id )
+        {
+            known_locs->RemoveAt( i );
+            cr->SetKnownLocations( known_locs );
+            break;
+        }
+    }
+    SAFEREL( known_locs );
 }

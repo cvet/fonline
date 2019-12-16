@@ -947,7 +947,7 @@ int Property::GetPODValueAsInt( Entity* entity )
         if( baseSize == 8 )
             return (int) GetValue< uint64 >( entity );
     }
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
     return 0;
 }
 
@@ -1550,7 +1550,7 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
             result.append( "}" );
         return result;
     }
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
     return "";
 }
 
@@ -1640,7 +1640,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         }
         return dict;
     }
-    RUNTIME_ASSERT( !"Unreachable place" );
+    UNREACHABLE_PLACE;
     return nullptr;
 }
 
@@ -1868,7 +1868,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                     else if( prop->asObjTypeId == asTYPEID_BOOL )         \
                         *(bool*) pod_data = value.get< t >() != 0;        \
                     else                                                  \
-                        RUNTIME_ASSERT( !"Unreachable place" );           \
+                        UNREACHABLE_PLACE;                                \
                 }                                                         \
                 while( false )
 
@@ -1882,7 +1882,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
             else if( value.which() == DataBase::BoolValue )
                 PARSE_VALUE( bool );
             else
-                RUNTIME_ASSERT( !"Unreachable place" );
+                UNREACHABLE_PLACE;
 
             # undef PARSE_VALUE
 
@@ -1990,7 +1990,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                             else if( arr_element_index == DataBase::BoolValue )                    \
                                 *(t*) ( data + i * element_size ) = (t) arr[ i ].get< bool >();    \
                             else                                                                   \
-                                RUNTIME_ASSERT( !"Unreachable place" );                            \
+                                UNREACHABLE_PLACE;                                                 \
                         }                                                                          \
                     } while( false )
 
@@ -2017,7 +2017,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 else if( element_type_id == asTYPEID_BOOL )
                     PARSE_VALUE( bool );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
 
                 # undef PARSE_VALUE
 
@@ -2255,7 +2255,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 else if( !( key_element_type_id & asTYPEID_MASK_OBJECT ) && key_element_type_id > asTYPEID_DOUBLE )
                     *(int*) ( data + data_pos ) = Script::GetEnumValue( key_element_type_name, kv.first, is_error );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
 
                 data_pos += key_element_size;
 
@@ -2317,7 +2317,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                                     else if( e.which() == DataBase::BoolValue )             \
                                         *(t*) ( data + data_pos ) = (t) e.get< bool >();    \
                                     else                                                    \
-                                        RUNTIME_ASSERT( !"Unreachable place" );             \
+                                        UNREACHABLE_PLACE;                                  \
                                 } while( false )
 
                             if( arr_element_type_id == asTYPEID_INT8 )
@@ -2343,7 +2343,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                             else if( arr_element_type_id == asTYPEID_BOOL )
                                 PARSE_VALUE( bool );
                             else
-                                RUNTIME_ASSERT( !"Unreachable place" );
+                                UNREACHABLE_PLACE;
 
                             # undef PARSE_VALUE
 
@@ -2381,7 +2381,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                             else if( kv.second.which() == DataBase::BoolValue )             \
                                 *(t*) ( data + data_pos ) = (t) kv.second.get< bool >();    \
                             else                                                            \
-                                RUNTIME_ASSERT( !"Unreachable place" );                     \
+                                UNREACHABLE_PLACE;                                          \
                         } while( false )
 
                     if( prop->isHashSubType1 )
@@ -2426,7 +2426,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
         }
         else
         {
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
         }
     }
     return !is_error;
@@ -2541,7 +2541,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
                 else if( !( element_type_id & asTYPEID_MASK_OBJECT ) && element_type_id > asTYPEID_DOUBLE )
                     arr.push_back( Script::GetEnumValueName( element_type_name, *(int*) ( data + i * element_size ) ) );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
             }
             return arr;
         }
@@ -2580,7 +2580,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
                 else if( !( type_id & asTYPEID_MASK_OBJECT ) && type_id > asTYPEID_DOUBLE )
                     return Script::GetEnumValueName( type_name, *(int*) p );
                 else
-                    RUNTIME_ASSERT( !"Unreachable place" );
+                    UNREACHABLE_PLACE;
                 return string();
             };
 
@@ -2649,7 +2649,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
                                 else if( !( arr_element_type_id & asTYPEID_MASK_OBJECT ) && arr_element_type_id > asTYPEID_DOUBLE )
                                     arr.push_back( Script::GetEnumValueName( arr_element_type_name, *(int*) ( data + i * arr_element_size ) ) );
                                 else
-                                    RUNTIME_ASSERT( !"Unreachable place" );
+                                    UNREACHABLE_PLACE;
                             }
 
                             data += arr_size * arr_element_size;
@@ -2717,7 +2717,7 @@ DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
                     else if( !( value_type_id & asTYPEID_MASK_OBJECT ) && value_type_id > asTYPEID_DOUBLE )
                         dict.insert( std::make_pair( std::move( key_str ), Script::GetEnumValueName( value_element_type_name, *(int*) pvalue ) ) );
                     else
-                        RUNTIME_ASSERT( !"Unreachable place" );
+                        UNREACHABLE_PLACE;
                 }
             }
         }
@@ -3374,7 +3374,7 @@ Property* PropertyRegistrator::Register(
         }
         else
         {
-            RUNTIME_ASSERT( !"Unreachable place" );
+            UNREACHABLE_PLACE;
         }
     }
 
