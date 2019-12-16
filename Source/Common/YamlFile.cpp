@@ -1,6 +1,6 @@
-#include "IniFile.h"
 #include "Crypt.h"
 #include "FileUtils.h"
+#include "IniFile.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
@@ -62,7 +62,8 @@
         if( line.empty() )
             continue;
 
-        if( line.length() >= 2 && line.back() == '\\' && ( line[ line.length() - 2 ] == ' ' || line[ line.length() - 2 ] == '\t' ) )
+        if( line.length() >= 2 && line.back() == '\\' && ( line[ line.length() - 2 ] == ' ' || line[ line.length() - 2 ]
+   == '\t' ) )
         {
             line.pop_back();
             accum_line = _str( line ).trim() + " ";
@@ -117,9 +118,8 @@
                     if( i == 0 && !num )
                         num = ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() );
                     else if( i == 1 && num )
-                        num += ( !str.empty() ? ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() ) : 0 );
-                    else if( i == 2 && num )
-                        ( *cur_app )[ _str( "{}", num ) ] = str;
+                        num += ( !str.empty() ? ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() )
+   : 0 ); else if( i == 2 && num ) ( *cur_app )[ _str( "{}", num ) ] = str;
                 }
             }
             else

@@ -7,24 +7,24 @@ class asIScriptContext;
 
 struct Call
 {
-    Call(): Id( 0 ), Line( 0 ) {}
-    Call( int id, uint line ): Id( id ), Line( line ) {}
-    int  Id;
+    Call() : Id(0), Line(0) {}
+    Call(int id, uint line) : Id(id), Line(line) {}
+    int Id;
     uint Line;
 };
-typedef vector< Call > CallStack;
+typedef vector<Call> CallStack;
 
 struct CallPath
 {
-    uint                  Id;
-    map< int, CallPath* > Children;
-    uint                  Incl;
-    uint                  Excl;
-    CallPath( int id ): Id( id ), Incl( 1 ), Excl( 0 ) {}
-    CallPath* AddChild( int id );
-    void      StackEnd();
+    uint Id;
+    map<int, CallPath*> Children;
+    uint Incl;
+    uint Excl;
+    CallPath(int id) : Id(id), Incl(1), Excl(0) {}
+    CallPath* AddChild(int id);
+    void StackEnd();
 };
-typedef map< int, CallPath* > IntCallPathMap;
+typedef map<int, CallPath*> IntCallPathMap;
 
 class ScriptProfiler
 {
@@ -39,25 +39,25 @@ private:
     };
 
     asIScriptEngine* scriptEngine;
-    ProfilerStage    curStage;
-    uint             sampleInterval;
-    CallStack        callStack;
+    ProfilerStage curStage;
+    uint sampleInterval;
+    CallStack callStack;
 
     // Save stacks
     void* saveFileHandle;
 
     // Dynamic display
-    bool           isDynamicDisplay;
+    bool isDynamicDisplay;
     IntCallPathMap callPaths;
-    uint           totalCallPaths;
+    uint totalCallPaths;
 
     ScriptProfiler();
-    bool   Init( asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display );
-    void   AddModule( const string& module_name, const string& script_code );
-    void   EndModules();
-    bool   IsNeedProcess();
-    void   Process( asIScriptContext* ctx );
-    void   ProcessStack( CallStack& stack );
-    void   Finish();
+    bool Init(asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display);
+    void AddModule(const string& module_name, const string& script_code);
+    void EndModules();
+    bool IsNeedProcess();
+    void Process(asIScriptContext* ctx);
+    void ProcessStack(CallStack& stack);
+    void Finish();
     string GetStatistics();
 };

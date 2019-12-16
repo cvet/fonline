@@ -1,10 +1,10 @@
 #include "BuildSystem.h"
-#include "Log.h"
 #include "FileUtils.h"
+#include "Log.h"
 
-class DefaultBuildSystem: public IBuildSystem
+class DefaultBuildSystem : public IBuildSystem
 {
-    bool BuildTarget( string target )
+    bool BuildTarget(string target)
     {
         /*gameOutputPath = targetOutputPath + '/' + gameName
 
@@ -21,9 +21,8 @@ class DefaultBuildSystem: public IBuildSystem
                         icoPath = os.path.join(gameOutputPath, 'Windows.ico')
                         logo.save(icoPath, 'ico')
                         resHackPath = os.path.abspath(os.path.join(curPath, '_other', 'ReplaceVistaIcon.exe'))
-                        r = subprocess.call([resHackPath, gameOutputPath + '/' + gameName + '.exe', icoPath], shell = True)
-                        os.remove(icoPath)
-                        assert r == 0
+                        r = subprocess.call([resHackPath, gameOutputPath + '/' + gameName + '.exe', icoPath], shell =
+         True) os.remove(icoPath) assert r == 0
 
          # Zip
                 makeZip(targetOutputPath + '/' + gameName + '.zip', gameOutputPath)
@@ -154,13 +153,12 @@ class DefaultBuildSystem: public IBuildSystem
                 os.makedirs(gameOutputPath)
 
                 if os.path.isfile(os.path.join(outputPath, 'WebIndex.html')):
-                        shutil.copy(os.path.join(outputPath, 'WebIndex.html'), os.path.join(gameOutputPath, 'index.html'))
-                else:
-                        shutil.copy(os.path.join(binariesPath, 'Web', 'index.html'), os.path.join(gameOutputPath, 'index.html'))
-                shutil.copy(binariesPath + '/Web/FOnline.js', os.path.join(gameOutputPath, 'FOnline.js'))
+                        shutil.copy(os.path.join(outputPath, 'WebIndex.html'), os.path.join(gameOutputPath,
+         'index.html')) else: shutil.copy(os.path.join(binariesPath, 'Web', 'index.html'), os.path.join(gameOutputPath,
+         'index.html')) shutil.copy(binariesPath + '/Web/FOnline.js', os.path.join(gameOutputPath, 'FOnline.js'))
                 shutil.copy(binariesPath + '/Web/FOnline.wasm', os.path.join(gameOutputPath, 'FOnline.wasm'))
-                shutil.copy(binariesPath + '/Web/SimpleWebServer.py', os.path.join(gameOutputPath, 'SimpleWebServer.py'))
-                patchConfig(gameOutputPath + '/FOnline.wasm')
+                shutil.copy(binariesPath + '/Web/SimpleWebServer.py', os.path.join(gameOutputPath,
+         'SimpleWebServer.py')) patchConfig(gameOutputPath + '/FOnline.wasm')
 
          # Debug version
                 shutil.copy(binariesPath + '/Web/index.html', gameOutputPath + '/debug.html')
@@ -171,9 +169,8 @@ class DefaultBuildSystem: public IBuildSystem
 
          # Generate resources
                 r = subprocess.call(['python', os.environ['EMSCRIPTEN'] + '/tools/file_packager.py', \
-                                'Resources.data', '--preload', resourcesPath + '@/Data', '--js-output=Resources.js'], shell = True)
-                assert r == 0
-                shutil.move('Resources.js', gameOutputPath + '/Resources.js')
+                                'Resources.data', '--preload', resourcesPath + '@/Data', '--js-output=Resources.js'],
+         shell = True) assert r == 0 shutil.move('Resources.js', gameOutputPath + '/Resources.js')
                 shutil.move('Resources.data', gameOutputPath + '/Resources.data')
 
          # Patch *.html
@@ -291,12 +288,10 @@ public:
     {
         try
         {
-            // ...
             return true;
         }
-        catch( const fo_exception& )
+        catch (const fo_exception&)
         {
-            // ...
             return false;
         }
     }
@@ -304,5 +299,5 @@ public:
 
 BuildSystem Fabric::CreateDefaultBuildSystem()
 {
-    return std::make_shared< DefaultBuildSystem >();
+    return std::make_shared<DefaultBuildSystem>();
 }

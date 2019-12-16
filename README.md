@@ -75,7 +75,6 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * *Resources* - resources for build applications but not related to code
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
-* *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependencies of engine, included to repository
 
 ## Clone / Build / Setup

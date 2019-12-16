@@ -13,12 +13,12 @@ bool OGL_get_program_binary = false;
 
 bool GraphicApi::Init()
 {
-    // Initialize GLEW
-    #ifndef FO_OPENGL_ES
+// Initialize GLEW
+#ifndef FO_OPENGL_ES
     GLenum glew_result = glewInit();
-    if( glew_result != GLEW_OK )
+    if (glew_result != GLEW_OK)
     {
-        WriteLog( "GLEW not initialized, result {}.\n", glew_result );
+        WriteLog("GLEW not initialized, result {}.\n", glew_result);
         return false;
     }
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
@@ -27,16 +27,16 @@ bool GraphicApi::Init()
     OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
     OGL_framebuffer_multisample = GLEW_EXT_framebuffer_multisample != 0;
     OGL_texture_multisample = GLEW_ARB_texture_multisample != 0;
-    # ifdef FO_MAC
+#ifdef FO_MAC
     OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
-    # else
+#else
     OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
-    # endif
+#endif
     OGL_get_program_binary = GLEW_ARB_get_program_binary != 0;
-    #endif
+#endif
 
-    // OpenGL ES extensions
-    #ifdef FO_OPENGL_ES
+// OpenGL ES extensions
+#ifdef FO_OPENGL_ES
     OGL_version_2_0 = true;
     OGL_vertex_buffer_object = true;
     OGL_framebuffer_object = true;
@@ -45,15 +45,15 @@ bool GraphicApi::Init()
     OGL_texture_multisample = false;
     OGL_vertex_array_object = false;
     OGL_get_program_binary = false;
-    # ifdef FO_ANDROID
-    OGL_vertex_array_object = SDL_GL_ExtensionSupported( "GL_OES_vertex_array_object" );
-    OGL_framebuffer_multisample = SDL_GL_ExtensionSupported( "GL_IMG_multisampled_render_to_texture" );
-    # endif
-    # ifdef FO_IOS
+#ifdef FO_ANDROID
+    OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
+    OGL_framebuffer_multisample = SDL_GL_ExtensionSupported("GL_IMG_multisampled_render_to_texture");
+#endif
+#ifdef FO_IOS
     OGL_vertex_array_object = true;
     OGL_framebuffer_multisample = true;
-    # endif
-    #endif
+#endif
+#endif
 
     return true;
 }

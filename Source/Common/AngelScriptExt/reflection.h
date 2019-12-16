@@ -3,7 +3,7 @@
 
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
-# include <angelscript.h>
+#include <angelscript.h>
 #endif
 
 #include <string>
@@ -15,51 +15,52 @@ class CScriptArray;
 class ScriptType
 {
 public:
-    ScriptType( asITypeInfo* type );
-    void          AddRef() const;
-    void          Release() const;
-    std::string   GetName() const;
-    std::string   GetNameWithoutNamespace() const;
-    std::string   GetNamespace() const;
-    std::string   GetModule() const;
-    asUINT        GetSize() const;
-    bool          IsGlobal() const;
-    bool          IsClass() const;
-    bool          IsInterface() const;
-    bool          IsEnum() const;
-    bool          IsFunction() const;
-    bool          IsShared() const;
-    ScriptType*   GetBaseType() const;
-    asUINT        GetInterfaceCount() const;
-    ScriptType*   GetInterface( asUINT index ) const;
-    bool          Implements( const ScriptType* other ) const;
-    bool          Equals( const ScriptType* other );
-    bool          DerivesFrom( const ScriptType* other );
-    void          Instantiate( void* out, int out_type_id ) const;
-    void          InstantiateCopy( void* in, int in_type_id, void* out, int out_type_id ) const;
-    asUINT        GetMethodsCount() const;
-    std::string   GetMethodDeclaration( asUINT index, bool include_object_name, bool include_namespace, bool include_param_names ) const;
-    asUINT        GetPropertiesCount() const;
-    std::string   GetPropertyDeclaration( asUINT index, bool include_namespace ) const;
-    asUINT        GetEnumLength() const;
+    ScriptType(asITypeInfo* type);
+    void AddRef() const;
+    void Release() const;
+    std::string GetName() const;
+    std::string GetNameWithoutNamespace() const;
+    std::string GetNamespace() const;
+    std::string GetModule() const;
+    asUINT GetSize() const;
+    bool IsGlobal() const;
+    bool IsClass() const;
+    bool IsInterface() const;
+    bool IsEnum() const;
+    bool IsFunction() const;
+    bool IsShared() const;
+    ScriptType* GetBaseType() const;
+    asUINT GetInterfaceCount() const;
+    ScriptType* GetInterface(asUINT index) const;
+    bool Implements(const ScriptType* other) const;
+    bool Equals(const ScriptType* other);
+    bool DerivesFrom(const ScriptType* other);
+    void Instantiate(void* out, int out_type_id) const;
+    void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
+    asUINT GetMethodsCount() const;
+    std::string GetMethodDeclaration(
+        asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const;
+    asUINT GetPropertiesCount() const;
+    std::string GetPropertyDeclaration(asUINT index, bool include_namespace) const;
+    asUINT GetEnumLength() const;
     CScriptArray* GetEnumNames() const;
     CScriptArray* GetEnumValues() const;
 
 protected:
-    mutable int  refCount;
+    mutable int refCount;
     asITypeInfo* objType;
 };
 
-class ScriptTypeOf: public ScriptType
+class ScriptTypeOf : public ScriptType
 {
 public:
-    ScriptTypeOf( asITypeInfo* type );
+    ScriptTypeOf(asITypeInfo* type);
     ScriptType* ConvertToType() const;
 };
 
-void RegisterScriptReflection( asIScriptEngine* engine );
-void RegisterScriptReflection_Native( asIScriptEngine* engine );
-void RegisterScriptReflection_Generic( asIScriptEngine* engine );
+void RegisterScriptReflection(asIScriptEngine* engine);
+void RegisterScriptReflection_Native(asIScriptEngine* engine);
+void RegisterScriptReflection_Generic(asIScriptEngine* engine);
 
 END_AS_NAMESPACE
 
