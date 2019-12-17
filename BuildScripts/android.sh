@@ -48,13 +48,13 @@ if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	echo "Download Android NDK"
 	wget -q "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
 	echo "Unzip Android NDK"
-	unzip -qq "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
+	unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
 
 	echo "Download Android SDK"
 	wget -q "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
 	echo "Unzip Android SDK"
 	mkdir -p sdk
-	unzip -qq "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
+	unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
 	echo "Update Android SDK"
 	cd sdk/tools
 	( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui

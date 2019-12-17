@@ -3,9 +3,9 @@
 if( NOT DEFINED "ENV{ROOT_FULL_PATH}" )
 	message( FATAL_ERROR "Define ROOT_FULL_PATH" )
 endif()
-if( NOT DEFINED "ENV{EMSCRIPTEN}" )
-	message( FATAL_ERROR "Define EMSCRIPTEN" )
+if( NOT DEFINED "ENV{EMSDK}" )
+	message( FATAL_ERROR "Define EMSDK" )
 endif()
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{EMSCRIPTEN}/cmake/Modules/Platform/Emscripten.cmake" CACHE PATH "" FORCE )
-set( EMSCRIPTEN $ENV{EMSCRIPTEN} CACHE STRING "" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" CACHE PATH "" FORCE )
+set( EMSCRIPTEN YES CACHE STRING "" FORCE )

@@ -1,30 +1,36 @@
 # This script is sourced by the user and uses
-# their shell. Try not to use bashisms.
+# their shell. Try not to use tcshisms.
 
 # Do not execute this script without sourcing,
 # because it won't have any effect then.
 # That is, always run this script with
 #
-#     . ./emsdk_env.sh
+#     . ./emsdk_env.csh
 # or
-#     source ./emsdk_env.sh
+#     source ./emsdk_env.csh
 #
 # instead of just plainly running with
 #
-#     ./emsdk_env.sh
+#     ./emsdk_env.csh
 #
 # which won't have any effect.
-SRC="$BASH_SOURCE"
-if [ "$SRC" = "" ]; then
-  SRC="$0"
-fi
-CURDIR="$(pwd)"
-cd "$(dirname "$SRC")"
+set SRC=($_)
+if ("$SRC" == "") then
+  set SRC="$0"
+else
+  set SRC="$SRC[2]"
+endif
+set CURDIR=`pwd`
+cd `dirname "$SRC"`
 unset SRC
 
-tmpfile=`mktemp` || exit 1
+setenv EMSDK_CSH 1
+
+set tmpfile=`mktemp` || exit 1
 ./emsdk construct_env $tmpfile
-. $tmpfile
+source $tmpfile
 rm -f $tmpfile
+
+unsetenv EMSDK_CSH
 
 cd "$CURDIR"

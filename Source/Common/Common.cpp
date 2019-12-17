@@ -1283,6 +1283,24 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
     return true;
 }
 
+// Dummy symbols for web build to avoid linker errors
+#ifdef FO_WEB
+void* SDL_LoadObject(const char* sofile)
+{
+    UNREACHABLE_PLACE;
+}
+
+void* SDL_LoadFunction(void* handle, const char* name)
+{
+    UNREACHABLE_PLACE;
+}
+
+void SDL_UnloadObject(void* handle)
+{
+    UNREACHABLE_PLACE;
+}
+#endif
+
 TEST_CASE()
 {
     std::mt19937 rnd32;
@@ -1293,5 +1311,5 @@ TEST_CASE()
     std::mt19937_64 rnd64;
     for (int i = 1; i < 10000; i++)
         (void)rnd64();
-    RUNTIME_ASSERT(rnd64() == 9981545732273789042L);
+    RUNTIME_ASSERT(rnd64() == 9981545732273789042UL);
 }
