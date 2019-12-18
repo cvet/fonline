@@ -1481,45 +1481,47 @@ bool FOClient::NetConnect(const char* host, ushort port)
             return false;
         }
     }
-// Proxy connect
-#if !defined(FO_IOS) && !defined(FO_ANDROID) && !defined(FO_WEB)
     else
     {
+#if !defined(FO_IOS) && !defined(FO_ANDROID) && !defined(FO_WEB)
+        // Proxy connect
         if (connect(Sock, (sockaddr*)&ProxyAddr, sizeof(sockaddr_in)))
         {
             WriteLog("Can't connect to proxy server, error '{}'.\n", GetLastSocketError());
             return false;
         }
 
-        // ==========================================
-#define SEND_RECV \
-    do \
-    { \
-        if (!NetOutput()) \
-        { \
-            WriteLog("Net output error.\n"); \
-            return false; \
-        } \
-        uint tick = Timer::FastTick(); \
-        while (true) \
-        { \
-            int receive = NetInput(false); \
-            if (receive > 0) \
-                break; \
-            if (receive < 0) \
-            { \
-                WriteLog("Net input error.\n"); \
-                return false; \
-            } \
-            if (Timer::FastTick() - tick > 10000) \
-            { \
-                WriteLog("Proxy answer timeout.\n"); \
-                return false; \
-            } \
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); \
-        } \
-    } while (0)
-        // ==========================================
+        auto send_recv = [this]() {
+            if (!NetOutput())
+            {
+                WriteLog("Net output error.\n");
+                return false;
+            }
+
+            uint tick = Timer::FastTick();
+            while (true)
+            {
+                int receive = NetInput(false);
+                if (receive > 0)
+                    break;
+
+                if (receive < 0)
+                {
+                    WriteLog("Net input error.\n");
+                    return false;
+                }
+
+                if (Timer::FastTick() - tick > 10000)
+                {
+                    WriteLog("Proxy answer timeout.\n");
+                    return false;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+
+            return true;
+        };
 
         uchar b1, b2;
         Bin.Reset();
@@ -1533,7 +1535,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
             Bout << ushort(SockAddr.sin_port);
             Bout << uint(SockAddr.sin_addr.s_addr);
             Bout << uchar(0);
-            SEND_RECV;
+
+            if (!send_recv())
+                return false;
+
             Bin >> b1; // Null byte
             Bin >> b2; // Answer code
             if (b2 != 0x5A)
@@ -1563,7 +1568,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
             Bout << uchar(5); // Socks version
             Bout << uchar(1); // Count methods
             Bout << uchar(2); // Method
-            SEND_RECV;
+
+            if (!send_recv())
+                return false;
+
             Bin >> b1; // Socks version
             Bin >> b2; // Method
             if (b2 == 2) // User/Password
@@ -1573,7 +1581,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
                 Bout.Push(GameOpt.ProxyUser.c_str(), (uint)GameOpt.ProxyUser.length()); // Name
                 Bout << uchar(GameOpt.ProxyPass.length()); // Pass length
                 Bout.Push(GameOpt.ProxyPass.c_str(), (uint)GameOpt.ProxyPass.length()); // Pass
-                SEND_RECV;
+
+                if (!send_recv())
+                    return false;
+
                 Bin >> b1; // Subnegotiation version
                 Bin >> b2; // Status
                 if (b2 != 0)
@@ -1594,7 +1605,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
             Bout << uchar(1); // IP v4 address
             Bout << uint(SockAddr.sin_addr.s_addr);
             Bout << ushort(SockAddr.sin_port);
-            SEND_RECV;
+
+            if (!send_recv())
+                return false;
+
             Bin >> b1; // Socks version
             Bin >> b2; // Answer code
             if (b2 != 0)
@@ -1636,7 +1650,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
         {
             string buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa(SockAddr.sin_addr), port);
             Bout.Push(buf.c_str(), (uint)buf.length());
-            SEND_RECV;
+
+            if (!send_recv())
+                return false;
+
             buf = (const char*)Bin.GetCurData();
             if (buf.find(" 200 ") == string::npos)
             {
@@ -1650,14 +1667,15 @@ bool FOClient::NetConnect(const char* host, ushort port)
             return false;
         }
 
-#undef SEND_RECV
-
         Bin.Reset();
         Bout.Reset();
 
         IsConnected = true;
-    }
+
+#else
+        throw fo_exception("Proxy connection is not supported on this platform");
 #endif
+    }
 
     IsConnecting = true;
     return true;
