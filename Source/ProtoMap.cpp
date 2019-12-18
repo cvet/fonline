@@ -1714,11 +1714,13 @@ bool ProtoMap::Refresh()
     // Load
     if( text )
     {
+        uint start_time = Timer::FastTick();
         if( !LoadTextFormat( (const char*) fm.GetBuf() ) )
         {
             WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", map_info );
             return false;
         }
+        WriteLogF( _FUNC_, " - Map<%s>. Loaded in %d ms.\n", map_info, (Timer::FastTick() - start_time) );
     }
     else
     {
