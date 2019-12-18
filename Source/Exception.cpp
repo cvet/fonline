@@ -280,7 +280,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                             if( entry.moduleName[ 0 ] == 0 )
                                 strcpy_s( entry.moduleName, "???" );
 
-                            fprintf( f, "\t%s, %s + %d", entry.moduleName, entry.name, entry.offsetFromSmybol );
+                            fprintf( f, "\t%08X: %s, %s + %d", entry.offset, entry.moduleName, entry.name, entry.offsetFromSmybol );
                             if( entry.lineFileName[ 0 ] != 0 )
                                 fprintf( f, ", %s (%d)\n", entry.lineFileName, entry.lineNumber );
                             else
