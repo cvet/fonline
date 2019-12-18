@@ -6,6 +6,7 @@
 #define MAX_BLOCKS (25)
 #define MAX_ENTRY (2000)
 #define MAX_PROCESS (20)
+
 static double Ticks[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
 static int Identifiers[MAX_BLOCKS][MAX_ENTRY][MAX_PROCESS];
 static uint CurTick[MAX_BLOCKS][MAX_ENTRY];
@@ -24,6 +25,7 @@ void Debugger::BeginBlock(int num_block)
 {
     if (CurEntry[num_block] + 1 >= MAX_ENTRY)
         return;
+
     CurEntry[num_block]++;
     CurTick[num_block][CurEntry[num_block]] = 0;
     Ticks[num_block][CurEntry[num_block]][0] = Timer::AccurateTick();
@@ -33,6 +35,7 @@ void Debugger::ProcessBlock(int num_block, int identifier)
 {
     if (CurEntry[num_block] + 1 >= MAX_ENTRY)
         return;
+
     CurTick[num_block][CurEntry[num_block]]++;
     Ticks[num_block][CurEntry[num_block]][CurTick[num_block][CurEntry[num_block]]] = Timer::AccurateTick();
     Identifiers[num_block][CurEntry[num_block]][CurTick[num_block][CurEntry[num_block]]] = identifier;
@@ -55,9 +58,11 @@ void Debugger::EndCycle(double lag_to_show)
                         WriteLog("Lag in block {}...", num_block);
                         is_first = false;
                     }
+
                     WriteLog("<{},{}>", Identifiers[num_block][entry][i], diff);
                 }
             }
+
             if (!is_first)
                 WriteLog("\n");
         }
@@ -91,7 +96,7 @@ struct MemNode
     int64 MaxAlloc;
 } static MemNodes[MAX_MEM_NODES];
 
-const char* MemBlockNames[MAX_MEM_NODES] = {
+static const char* MemBlockNames[MAX_MEM_NODES] = {
     "Static       ",
     "Npc          ",
     "Clients      ",
@@ -145,7 +150,7 @@ struct MemNodeStr
     int64 MaxAlloc;
     bool operator==(const char* str) const { return Str::Compare(str, Name); }
 };
-typedef vector<MemNodeStr> MemNodeStrVec;
+using MemNodeStrVec = vector<MemNodeStr>;
 static MemNodeStrVec MemNodesStr;
 
 void Debugger::MemoryStr(const char* block, int value)
@@ -293,6 +298,18 @@ const char* Debugger::GetMemoryStatistics()
     return result.c_str();
 }
 
+#ifdef FO_WINDOWS
+#include "FileUtils.h"
+#include "WinApi_Include.h"
+
+#pragma warning(disable : 4748)
+#pragma warning(disable : 4091)
+#pragma warning(disable : 4996)
+#include <DbgHelp.h>
+
+// Hooks
+#include "NCodeHookInstantiation.h"
+
 // Memory tracing
 struct StackInfo
 {
@@ -302,8 +319,9 @@ struct StackInfo
     size_t Chunks;
     size_t Size;
 };
+using StackInfoSize = pair<StackInfo*, size_t>;
+
 static bool MemoryTrace;
-typedef pair<StackInfo*, size_t> StackInfoSize;
 static map<size_t, StackInfoSize> PtrStackInfoSize;
 static map<size_t, StackInfo*> StackHashStackInfo;
 static std::mutex MemoryAllocLocker;
@@ -330,27 +348,15 @@ static uint MemoryAllocRecursion;
         } \
     }
 
-#ifdef FO_WINDOWS
-#include "FileUtils.h"
-#include "WinApi_Include.h"
-
-#pragma warning(disable : 4748)
-#pragma warning(disable : 4091)
-#pragma warning(disable : 4996)
-#include <DbgHelp.h>
-
-// Hooks
-#include "NCodeHookInstantiation.h"
-
 #define STACKWALK_MAX_NAMELEN (2048)
 
 static HANDLE ProcessHandle;
 static NCodeHookIA32 CodeHooker;
 
-bool PatchWindowsAlloc();
-void PatchWindowsDealloc();
+static bool PatchWindowsAlloc();
+static void PatchWindowsDealloc();
 
-StackInfo* GetStackInfo(HANDLE heap)
+static StackInfo* GetStackInfo(HANDLE heap)
 {
     void* blocks[63];
     ULONG hash;
@@ -486,8 +492,8 @@ public:
 };
 
 #define DECLARE_PATCH(ret, name, args) \
-    Patch<decltype(&name)> Patch_##name; \
-    ret WINAPI Hooked_##name##args
+    static Patch<decltype(&name)> Patch_##name; \
+    static ret WINAPI Hooked_##name##args
 #define INSTALL_PATCH(name) \
     if (!Patch_##name.Install(GetProcAddress(hkernel32, #name), &(Hooked_##name))) \
     return false
@@ -564,7 +570,7 @@ DECLARE_PATCH(BOOL, HeapFree, (HANDLE hHeap, DWORD dwFlags, LPVOID lpMem))
     return Patch_HeapFree.Call(hHeap, dwFlags, lpMem);
 }
 
-bool PatchWindowsAlloc()
+static bool PatchWindowsAlloc()
 {
     HMODULE hkernel32 = GetModuleHandleW(L"kernel32");
     if (!hkernel32)
@@ -578,7 +584,7 @@ bool PatchWindowsAlloc()
     return true;
 }
 
-void PatchWindowsDealloc()
+static void PatchWindowsDealloc()
 {
     UNINSTALL_PATCH(HeapCreate);
     UNINSTALL_PATCH(HeapDestroy);
@@ -586,81 +592,6 @@ void PatchWindowsDealloc()
     UNINSTALL_PATCH(HeapReAlloc);
     UNINSTALL_PATCH(HeapFree);
 }
-
-#else
-
-StackInfo* GetStackInfo(const void* caller)
-{
-    auto it = StackHashStackInfo.find((size_t)caller);
-    if (it != StackHashStackInfo.end())
-        return it->second;
-
-    string str;
-    str.reserve(16384);
-
-    char buf[64];
-    sprintf(buf, "\t%p\n\n", caller);
-    str += buf;
-
-    StackInfo* si = new StackInfo();
-    si->Hash = (size_t)caller;
-    si->Name = strdup(str.c_str());
-    si->Heap = 0;
-    si->Chunks = 0;
-    si->Size = 0;
-    StackHashStackInfo.insert(std::make_pair((size_t)caller, si));
-    return si;
-}
-
-#endif
-
-#ifdef FO_LINUX
-
-#include <malloc.h>
-
-static std::mutex HookLocker;
-
-static void* malloc_hook(size_t size, const void* caller);
-static void* realloc_hook(void* ptr, size_t size, const void* caller);
-static void free_hook(void* ptr, const void* caller);
-
-static void* malloc_hook(size_t size, const void* caller)
-{
-    SCOPE_LOCK(HookLocker);
-
-    __malloc_hook = nullptr;
-    void* ptr = malloc(size);
-    if (MemoryTrace)
-        ALLOCATE_PTR(ptr, size, caller);
-    __malloc_hook = malloc_hook;
-    return ptr;
-}
-
-static void* realloc_hook(void* ptr, size_t size, const void* caller)
-{
-    SCOPE_LOCK(HookLocker);
-
-    __realloc_hook = nullptr;
-    if (MemoryTrace)
-        DEALLOCATE_PTR(ptr);
-    ptr = realloc(ptr, size);
-    if (MemoryTrace)
-        ALLOCATE_PTR(ptr, size, caller);
-    __realloc_hook = realloc_hook;
-    return ptr;
-}
-
-static void free_hook(void* ptr, const void* caller)
-{
-    SCOPE_LOCK(HookLocker);
-
-    __free_hook = nullptr;
-    free(ptr);
-    if (MemoryTrace)
-        DEALLOCATE_PTR(ptr);
-    __free_hook = free_hook;
-}
-
 #endif
 
 void Debugger::StartTraceMemory()
@@ -673,24 +604,15 @@ void Debugger::StartTraceMemory()
 
     // Allocators
     PatchWindowsAlloc();
-#endif
-
-#ifdef FO_LINUX
-    __malloc_hook = malloc_hook;
-    __realloc_hook = realloc_hook;
-    __free_hook = free_hook;
-#endif
 
     // Begin catching
     MemoryTrace = true;
+#endif
 }
 
-struct ChunkSorter
-{
-    static bool Compare(StackInfo* a, StackInfo* b) { return a->Chunks > b->Chunks; }
-};
 string Debugger::GetTraceMemory()
 {
+#ifdef FO_WINDOWS
     SCOPE_LOCK(MemoryAllocLocker);
 
     MemoryAllocRecursion++;
@@ -708,7 +630,7 @@ string Debugger::GetTraceMemory()
             whole_size += (int64)si->Size;
         }
     }
-    std::sort(blocks_chunks.begin(), blocks_chunks.end(), ChunkSorter::Compare);
+    std::sort(blocks_chunks.begin(), blocks_chunks.end(), [](auto* a, auto* b) { return a->Chunks > b->Chunks; });
 
     // Print
     string str;
@@ -724,4 +646,8 @@ string Debugger::GetTraceMemory()
 
     MemoryAllocRecursion--;
     return str;
+#else
+
+    return "";
+#endif
 }
