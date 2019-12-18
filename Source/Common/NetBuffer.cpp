@@ -54,16 +54,6 @@ uchar NetBuffer::EncryptKey(int move)
     return key;
 }
 
-void NetBuffer::Lock()
-{
-    bufLocker.lock();
-}
-
-void NetBuffer::Unlock()
-{
-    bufLocker.unlock();
-}
-
 void NetBuffer::Refresh()
 {
     if (isError)
@@ -95,13 +85,6 @@ void NetBuffer::Reset()
         bufData = new uchar[bufLen];
         memzero(bufData, bufLen);
     }
-}
-
-void NetBuffer::LockReset()
-{
-    Lock();
-    Reset();
-    Unlock();
 }
 
 void NetBuffer::GrowBuf(uint len)

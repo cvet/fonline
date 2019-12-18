@@ -530,23 +530,34 @@ void FOServer::OnNewConnection(NetConnection* connection)
     }
 }
 
+#define CHECK_BUSY \
+    if (cl->IsBusy()) \
+    { \
+        cl->Connection->Bin.MoveReadPos(-int(sizeof(msg))); \
+        return; \
+    }
+
 void FOServer::Process(Client* cl)
 {
     if (cl->IsOffline() || cl->IsDestroyed)
     {
-        cl->Connection->Bin.LockReset();
+        SCOPE_LOCK(cl->Connection->BinLocker);
+        cl->Connection->Bin.Reset();
         return;
     }
 
-    uint msg = 0;
     if (cl->GameState == STATE_CONNECTED)
     {
-        BIN_BEGIN(cl);
+        SCOPE_LOCK(cl->Connection->BinLocker);
+
         if (cl->Connection->Bin.IsEmpty())
             cl->Connection->Bin.Reset();
+
         cl->Connection->Bin.Refresh();
+
         if (cl->Connection->Bin.NeedProcess())
         {
+            uint msg = 0;
             cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
@@ -555,7 +566,7 @@ void FOServer::Process(Client* cl)
             case 0xFFFFFFFF: {
                 // At least 16 bytes should be sent for backward compatibility,
                 // even if answer data will change its meaning
-                BOUT_BEGIN(cl);
+                CLIENT_OUTPUT_BEGIN(cl);
                 cl->Connection->DisableCompression();
                 cl->Connection->Bout << (uint)Statistics.CurOnline - 1;
                 cl->Connection->Bout << (uint)Statistics.Uptime;
@@ -563,42 +574,34 @@ void FOServer::Process(Client* cl)
                 cl->Connection->Bout << (uchar)0;
                 cl->Connection->Bout << (uchar)0xF0;
                 cl->Connection->Bout << (ushort)FO_VERSION;
-                BOUT_END(cl);
+                CLIENT_OUTPUT_END(cl);
+
                 cl->Disconnect();
-                BIN_END(cl);
                 break;
             }
             case NETMSG_PING:
                 Process_Ping(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_LOGIN:
                 Process_LogIn(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_CREATE_CLIENT:
                 Process_CreateClient(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_UPDATE:
                 Process_Update(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_GET_UPDATE_FILE:
                 Process_UpdateFile(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_GET_UPDATE_FILE_DATA:
                 Process_UpdateFileData(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_RPC:
                 Script::HandleRpc(cl);
-                BIN_END(cl);
                 break;
             default:
                 cl->Connection->Bin.SkipMsg(msg);
-                BIN_END(cl);
                 break;
             }
 
@@ -607,7 +610,6 @@ void FOServer::Process(Client* cl)
         else
         {
             CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
-            BIN_END(cl);
         }
 
         if (cl->GameState == STATE_CONNECTED && cl->LastActivityTime &&
@@ -619,20 +621,16 @@ void FOServer::Process(Client* cl)
     }
     else if (cl->GameState == STATE_TRANSFERRING)
     {
-#define CHECK_BUSY \
-    if (cl->IsBusy()) \
-    { \
-        cl->Connection->Bin.MoveReadPos(-int(sizeof(msg))); \
-        BIN_END(cl); \
-        return; \
-    }
+        SCOPE_LOCK(cl->Connection->BinLocker);
 
-        BIN_BEGIN(cl);
         if (cl->Connection->Bin.IsEmpty())
             cl->Connection->Bin.Reset();
+
         cl->Connection->Bin.Refresh();
+
         if (cl->Connection->Bin.NeedProcess())
         {
+            uint msg = 0;
             cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
@@ -640,163 +638,118 @@ void FOServer::Process(Client* cl)
             {
             case NETMSG_PING:
                 Process_Ping(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_SEND_GIVE_MAP:
                 CHECK_BUSY;
                 Process_GiveMap(cl);
-                BIN_END(cl);
                 break;
             case NETMSG_SEND_LOAD_MAP_OK:
                 CHECK_BUSY;
                 Process_ParseToGame(cl);
-                BIN_END(cl);
                 break;
             default:
                 cl->Connection->Bin.SkipMsg(msg);
-                BIN_END(cl);
                 break;
             }
         }
         else
         {
             CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
-            BIN_END(cl);
         }
     }
     else if (cl->GameState == STATE_PLAYING)
     {
-#define MESSAGES_PER_CYCLE (5)
-#define CHECK_BUSY \
-    if (cl->IsBusy()) \
-    { \
-        cl->Connection->Bin.MoveReadPos(-int(sizeof(msg))); \
-        BIN_END(cl); \
-        return; \
-    }
-
-        for (int i = 0; i < MESSAGES_PER_CYCLE; i++)
+        static const int messages_per_cycle = 5;
+        for (int i = 0; i < messages_per_cycle; i++)
         {
-            BIN_BEGIN(cl);
+            SCOPE_LOCK(cl->Connection->BinLocker);
+
             if (cl->Connection->Bin.IsEmpty())
                 cl->Connection->Bin.Reset();
+
             cl->Connection->Bin.Refresh();
+
             if (!cl->Connection->Bin.NeedProcess())
             {
                 CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
-                BIN_END(cl);
                 break;
             }
+
+            uint msg = 0;
             cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
             switch (msg)
             {
-            case NETMSG_PING: {
+            case NETMSG_PING:
                 Process_Ping(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_TEXT: {
+            case NETMSG_SEND_TEXT:
                 Process_Text(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_COMMAND: {
+            case NETMSG_SEND_COMMAND:
                 Process_Command(
                     cl->Connection->Bin, [cl](auto s) { cl->Send_Text(cl, _str(s).trim(), SAY_NETMSG); }, cl, "");
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_DIR: {
+            case NETMSG_DIR:
                 CHECK_BUSY;
                 Process_Dir(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_MOVE_WALK: {
+            case NETMSG_SEND_MOVE_WALK:
                 CHECK_BUSY;
                 Process_Move(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_MOVE_RUN: {
+            case NETMSG_SEND_MOVE_RUN:
                 CHECK_BUSY;
                 Process_Move(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_TALK_NPC: {
+            case NETMSG_SEND_TALK_NPC:
                 CHECK_BUSY;
                 Process_Dialog(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_REFRESH_ME: {
+            case NETMSG_SEND_REFRESH_ME:
                 cl->Send_LoadMap(nullptr, MapMngr);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_GET_INFO: {
-                Map* map = MapMngr.GetMap(cl->GetMapId());
-                cl->Send_GameInfo(map);
-                BIN_END(cl);
+            case NETMSG_SEND_GET_INFO:
+                cl->Send_GameInfo(MapMngr.GetMap(cl->GetMapId()));
                 continue;
-            }
-            case NETMSG_SEND_GIVE_MAP: {
+            case NETMSG_SEND_GIVE_MAP:
                 CHECK_BUSY;
                 Process_GiveMap(cl);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_RPC: {
+            case NETMSG_RPC:
                 CHECK_BUSY;
                 Script::HandleRpc(cl);
-                BIN_END(cl);
                 continue;
-            }
             case NETMSG_SEND_POD_PROPERTY(1, 0):
             case NETMSG_SEND_POD_PROPERTY(1, 1):
-            case NETMSG_SEND_POD_PROPERTY(1, 2): {
+            case NETMSG_SEND_POD_PROPERTY(1, 2):
                 Process_Property(cl, 1);
-                BIN_END(cl);
                 continue;
-            }
             case NETMSG_SEND_POD_PROPERTY(2, 0):
             case NETMSG_SEND_POD_PROPERTY(2, 1):
-            case NETMSG_SEND_POD_PROPERTY(2, 2): {
+            case NETMSG_SEND_POD_PROPERTY(2, 2):
                 Process_Property(cl, 2);
-                BIN_END(cl);
                 continue;
-            }
             case NETMSG_SEND_POD_PROPERTY(4, 0):
             case NETMSG_SEND_POD_PROPERTY(4, 1):
-            case NETMSG_SEND_POD_PROPERTY(4, 2): {
+            case NETMSG_SEND_POD_PROPERTY(4, 2):
                 Process_Property(cl, 4);
-                BIN_END(cl);
                 continue;
-            }
             case NETMSG_SEND_POD_PROPERTY(8, 0):
             case NETMSG_SEND_POD_PROPERTY(8, 1):
-            case NETMSG_SEND_POD_PROPERTY(8, 2): {
+            case NETMSG_SEND_POD_PROPERTY(8, 2):
                 Process_Property(cl, 8);
-                BIN_END(cl);
                 continue;
-            }
-            case NETMSG_SEND_COMPLEX_PROPERTY: {
+            case NETMSG_SEND_COMPLEX_PROPERTY:
                 Process_Property(cl, 0);
-                BIN_END(cl);
                 continue;
-            }
-            default: {
+            default:
                 cl->Connection->Bin.SkipMsg(msg);
-                BIN_END(cl);
                 continue;
-            }
             }
 
             cl->Connection->Bin.SkipMsg(msg);
-            BIN_END(cl);
         }
     }
 }

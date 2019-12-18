@@ -8,12 +8,12 @@
 
 class MapManager;
 
-#define BIN_BEGIN(cl_) cl_->Connection->Bin.Lock()
-#define BIN_END(cl_) cl_->Connection->Bin.Unlock()
-#define BOUT_BEGIN(cl_) cl_->Connection->Bout.Lock()
-#define BOUT_END(cl_) \
-    cl_->Connection->Bout.Unlock(); \
-    cl_->Connection->Dispatch()
+#define CLIENT_OUTPUT_BEGIN(cl) \
+    { \
+        SCOPE_LOCK(cl->Connection->BoutLocker)
+#define CLIENT_OUTPUT_END(cl) \
+    } \
+    cl->Connection->Dispatch()
 
 // Client game states
 #define STATE_NONE (0)

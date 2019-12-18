@@ -11,7 +11,7 @@
 
 static FOServer* Server;
 static std::thread ServerThread;
-static std::atomic<bool> StartServer;
+static std::atomic_bool StartServer;
 
 static void ServerEntry()
 {

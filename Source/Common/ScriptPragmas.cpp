@@ -1483,7 +1483,7 @@ public:
 #endif
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        BOUT_BEGIN(cl);
+        CLIENT_OUTPUT_BEGIN(cl);
 #endif
         net_buf << NETMSG_RPC;
         net_buf << msg_len;
@@ -1496,7 +1496,7 @@ public:
                 net_buf.Push(&args[i][0], len);
         }
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        BOUT_END(cl);
+        CLIENT_OUTPUT_END(cl);
 #endif
     }
 

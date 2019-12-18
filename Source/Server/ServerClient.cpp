@@ -244,7 +244,7 @@ void FOServer::Process_Update(Client* cl)
     if (!outdated)
         msg_len += sizeof(ushort) + Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
-    BOUT_BEGIN(cl);
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << NETMSG_UPDATE_FILES_LIST;
     cl->Connection->Bout << msg_len;
     cl->Connection->Bout << outdated;
@@ -253,7 +253,7 @@ void FOServer::Process_Update(Client* cl)
         cl->Connection->Bout.Push(&UpdateFilesList[0], (uint)UpdateFilesList.size());
     if (!outdated)
         NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes);
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 }
 
 void FOServer::Process_UpdateFile(Client* cl)
@@ -305,10 +305,10 @@ void FOServer::Process_UpdateFileData(Client* cl)
         memzero(&data[remaining_size], sizeof(data) - remaining_size);
     }
 
-    BOUT_BEGIN(cl);
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << NETMSG_UPDATE_FILE_DATA;
     cl->Connection->Bout.Push(data, sizeof(data));
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 }
 
 void FOServer::Process_CreateClient(Client* cl)
@@ -459,9 +459,9 @@ void FOServer::Process_CreateClient(Client* cl)
     // Notify
     cl->Send_TextMsg(cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
-    BOUT_BEGIN(cl);
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << (uint)NETMSG_REGISTER_SUCCESS;
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 
     cl->Disconnect();
 
@@ -731,13 +731,14 @@ void FOServer::Process_LogIn(Client*& cl)
     UIntVec* global_vars_data_sizes;
     uint whole_data_size = Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
-    BOUT_BEGIN(cl);
+
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << NETMSG_LOGIN_SUCCESS;
     cl->Connection->Bout << msg_len;
     cl->Connection->Bout << bin_seed;
     cl->Connection->Bout << bout_seed;
     NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes);
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 
     cl->Connection->Bin.SetEncryptKey(bin_seed);
     cl->Connection->Bout.SetEncryptKey(bout_seed);
@@ -926,8 +927,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool se
     if (send_scenery)
         msg_len += sizeof(uint) + (uint)pmap->SceneryData.size();
 
-    // Header
-    BOUT_BEGIN(cl);
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << msg;
     cl->Connection->Bout << msg_len;
     cl->Connection->Bout << map_pid;
@@ -947,7 +947,7 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool se
         if (pmap->SceneryData.size())
             cl->Connection->Bout.Push(&pmap->SceneryData[0], (uint)pmap->SceneryData.size());
     }
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 }
 
 void FOServer::Process_Move(Client* cl)
@@ -1045,10 +1045,10 @@ void FOServer::Process_Ping(Client* cl)
         return;
     }
 
-    BOUT_BEGIN(cl);
+    CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << NETMSG_PING;
     cl->Connection->Bout << ping;
-    BOUT_END(cl);
+    CLIENT_OUTPUT_END(cl);
 }
 
 void FOServer::Process_Property(Client* cl, uint data_size)

@@ -4,6 +4,7 @@
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+#include "WinApi_Include.h"
 
 #define ASIO_STANDALONE
 #include "asio.hpp"
@@ -22,23 +23,6 @@ using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = websocketpp::lib::asio::ssl::context;
 
-static void* ZlibAlloc(void* opaque, unsigned int items, unsigned int size)
-{
-    return calloc(items, size);
-}
-static void ZlibFree(void* opaque, void* address)
-{
-    free(address);
-}
-
-#ifndef FO_WINDOWS
-#define InterlockedExchange(val, newval) __sync_lock_test_and_set(val, newval)
-#endif
-
-NetConnection::~NetConnection()
-{
-}
-
 class NetConnectionImpl : public NetConnection
 {
     z_stream* zStream;
@@ -55,8 +39,8 @@ public:
         if (!GameOpt.DisableZlibCompression)
         {
             zStream = new z_stream();
-            zStream->zalloc = ZlibAlloc;
-            zStream->zfree = ZlibFree;
+            zStream->zalloc = [](void* opaque, unsigned int items, unsigned int size) { return calloc(items, size); };
+            zStream->zfree = [](void* opaque, void* address) { free(address); };
             zStream->opaque = nullptr;
             int result = deflateInit(zStream, Z_BEST_SPEED);
             RUNTIME_ASSERT(result == Z_OK);
@@ -86,13 +70,11 @@ public:
             return;
 
         // Nothing to send
-        Bout.Lock();
-        if (Bout.IsEmpty())
         {
-            Bout.Unlock();
-            return;
+            SCOPE_LOCK(BoutLocker);
+            if (Bout.IsEmpty())
+                return;
         }
-        Bout.Unlock();
 
         DispatchImpl();
     }
@@ -115,12 +97,10 @@ protected:
 
     const uchar* SendCallback(uint& out_len)
     {
-        Bout.Lock();
+        SCOPE_LOCK(BoutLocker);
+
         if (Bout.IsEmpty())
-        {
-            Bout.Unlock();
             return nullptr;
-        }
 
         // Compress
         if (zStream)
@@ -157,31 +137,30 @@ protected:
         if (Bout.IsEmpty())
             Bout.Reset();
 
-        Bout.Unlock();
-
         RUNTIME_ASSERT(out_len > 0);
         return outBuf;
     }
 
     void ReceiveCallback(const uchar* buf, uint len)
     {
-        Bin.Lock();
-        if (Bin.GetCurPos() + len >= GameOpt.FloodSize)
+        SCOPE_LOCK(BinLocker);
+
+        if (Bin.GetCurPos() + len < GameOpt.FloodSize)
+        {
+            Bin.Push(buf, len, true);
+        }
+        else
         {
             Bin.Reset();
-            Bin.Unlock();
             Disconnect();
-            return;
         }
-        Bin.Push(buf, len, true);
-        Bin.Unlock();
     }
 };
 
 class NetConnectionAsio : public NetConnectionImpl
 {
     asio::ip::tcp::socket* socket;
-    volatile long writePending;
+    std::atomic_bool writePending;
     uchar inBuf[NetBuffer::DefaultBufSize];
     asio::error_code dummyError;
 
@@ -206,7 +185,7 @@ class NetConnectionAsio : public NetConnectionImpl
 
     void AsyncWrite(std::error_code error, size_t bytes)
     {
-        InterlockedExchange(&writePending, 0);
+        writePending = false;
 
         if (!error)
             DispatchImpl();
@@ -216,7 +195,8 @@ class NetConnectionAsio : public NetConnectionImpl
 
     virtual void DispatchImpl() override
     {
-        if (InterlockedExchange(&writePending, 1) == 0)
+        bool expected = false;
+        if (writePending.compare_exchange_strong(expected, true))
         {
             uint len = 0;
             const uchar* buf = SendCallback(len);
@@ -233,7 +213,7 @@ class NetConnectionAsio : public NetConnectionImpl
                     socket->close(dummyError);
                 }
 
-                InterlockedExchange(&writePending, 0);
+                writePending = false;
             }
         }
     }
@@ -262,13 +242,9 @@ public:
     virtual ~NetConnectionAsio() override { delete socket; }
 };
 
-NetServerBase::~NetServerBase()
-{
-}
-
 class NetTcpServer : public NetServerBase
 {
-    std::function<void(NetConnection*)> connectionCallback;
+    ConnectionCallback connectionCallback;
     asio::io_service ioService;
     asio::ip::tcp::acceptor acceptor;
     std::thread runThread;
@@ -301,7 +277,7 @@ class NetTcpServer : public NetServerBase
     }
 
 public:
-    NetTcpServer(ushort port, std::function<void(NetConnection*)> callback) :
+    NetTcpServer(ushort port, ConnectionCallback callback) :
         acceptor(ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port))
     {
         connectionCallback = callback;
@@ -390,7 +366,7 @@ public:
 
 class NetNoTlsWebSocketsServer : public NetServerBase
 {
-    std::function<void(NetConnection*)> connectionCallback;
+    ConnectionCallback connectionCallback;
     web_sockets_no_tls server;
     std::thread runThread;
 
@@ -411,7 +387,7 @@ class NetNoTlsWebSocketsServer : public NetServerBase
     }
 
 public:
-    NetNoTlsWebSocketsServer(ushort port, std::function<void(NetConnection*)> callback)
+    NetNoTlsWebSocketsServer(ushort port, ConnectionCallback callback)
     {
         connectionCallback = callback;
 
@@ -435,7 +411,7 @@ public:
 
 class NetTlsWebSocketsServer : public NetServerBase
 {
-    std::function<void(NetConnection*)> connectionCallback;
+    ConnectionCallback connectionCallback;
     web_sockets_tls server;
     std::thread runThread;
     string privateKey;
@@ -468,7 +444,7 @@ class NetTlsWebSocketsServer : public NetServerBase
     }
 
 public:
-    NetTlsWebSocketsServer(ushort port, string private_key, string cert, std::function<void(NetConnection*)> callback)
+    NetTlsWebSocketsServer(ushort port, string private_key, string cert, ConnectionCallback callback)
     {
         connectionCallback = callback;
         privateKey = private_key;
@@ -494,7 +470,7 @@ public:
     }
 };
 
-NetServerBase* NetServerBase::StartTcpServer(ushort port, std::function<void(NetConnection*)> callback)
+NetServerBase* NetServerBase::StartTcpServer(ushort port, ConnectionCallback callback)
 {
     try
     {
@@ -507,8 +483,7 @@ NetServerBase* NetServerBase::StartTcpServer(ushort port, std::function<void(Net
     }
 }
 
-NetServerBase* NetServerBase::StartWebSocketsServer(
-    ushort port, string wss_credentials, std::function<void(NetConnection*)> callback)
+NetServerBase* NetServerBase::StartWebSocketsServer(ushort port, string wss_credentials, ConnectionCallback callback)
 {
     try
     {

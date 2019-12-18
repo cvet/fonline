@@ -11,11 +11,13 @@ public:
     string Host;
     ushort Port;
     NetBuffer Bin;
+    std::mutex BinLocker;
     NetBuffer Bout;
+    std::mutex BoutLocker;
     bool IsDisconnected;
     uint DisconnectTick;
 
-    virtual ~NetConnection() = 0;
+    virtual ~NetConnection() = default;
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;
     virtual void Disconnect() = 0;
@@ -24,9 +26,10 @@ public:
 class NetServerBase
 {
 public:
-    virtual ~NetServerBase() = 0;
+    using ConnectionCallback = std::function<void(NetConnection*)>;
 
-    static NetServerBase* StartTcpServer(ushort port, std::function<void(NetConnection*)> callback);
-    static NetServerBase* StartWebSocketsServer(
-        ushort port, string wss_credentials, std::function<void(NetConnection*)> callback);
+    static NetServerBase* StartTcpServer(ushort port, ConnectionCallback callback);
+    static NetServerBase* StartWebSocketsServer(ushort port, string wss_credentials, ConnectionCallback callback);
+
+    virtual ~NetServerBase() = default;
 };

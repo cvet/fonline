@@ -13,7 +13,6 @@ public:
 
 private:
     bool isError;
-    std::mutex bufLocker;
     uchar* bufData;
     uint bufLen;
     uint bufEndPos;
@@ -30,11 +29,8 @@ public:
     ~NetBuffer();
 
     void SetEncryptKey(uint seed);
-    void Lock();
-    void Unlock();
     void Refresh();
     void Reset();
-    void LockReset();
     void Push(const void* buf, uint len, bool no_crypt = false);
     void Pop(void* buf, uint len);
     void Cut(uint len);
