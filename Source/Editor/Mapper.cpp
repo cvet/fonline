@@ -1,5 +1,7 @@
 #include "Mapper.h"
+#include "3dStuff.h"
 #include "CritterView.h"
+#include "Crypt.h"
 #include "Debugger.h"
 #include "FileSystem.h"
 #include "IniFile.h"
@@ -13,6 +15,7 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+#include "WinApi_Include.h"
 #include "sha1.h"
 #include "sha2.h"
 
@@ -1370,12 +1373,12 @@ void FOMapper::MainLoop()
             {
                 double sleep = need_elapsed - elapsed + balance;
                 balance = fmod(sleep, 1.0);
-                Thread::Sleep((uint)floor(sleep));
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
             }
         }
         else
         {
-            Thread::Sleep(-GameOpt.FixedFPS);
+            std::this_thread::sleep_for(std::chrono::milliseconds(-GameOpt.FixedFPS));
         }
     }
 }

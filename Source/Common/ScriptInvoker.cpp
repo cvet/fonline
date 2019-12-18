@@ -252,15 +252,15 @@ bool ScriptInvoker::LoadDeferredCalls()
         DataBase::Document call_doc = DbStorage->Get("DeferredCalls", call_id);
 
         DeferredCall call;
-        call.Id = call_doc["Id"].get<int>();
-        call.FireFullSecond = (uint)call_doc["FireFullSecond"].get<int64>();
+        call.Id = std::get<int>(call_doc["Id"]);
+        call.FireFullSecond = (uint)std::get<int64>(call_doc["FireFullSecond"]);
         RUNTIME_ASSERT(call.FireFullSecond != 0);
 
         call.IsValue = (call_doc.count("Value") > 0);
         if (call.IsValue)
         {
-            call.ValueSigned = call_doc["ValueSigned"].get<bool>();
-            call.Value = call_doc["Value"].get<int>();
+            call.ValueSigned = std::get<bool>(call_doc["ValueSigned"]);
+            call.Value = std::get<int>(call_doc["Value"]);
         }
         else
         {
@@ -271,10 +271,10 @@ bool ScriptInvoker::LoadDeferredCalls()
         call.IsValues = (call_doc.count("Values") > 0);
         if (call.IsValues)
         {
-            call.ValuesSigned = call_doc["ValuesSigned"].get<bool>();
-            const DataBase::Array& arr = call_doc["Values"].get<DataBase::Array>();
+            call.ValuesSigned = std::get<bool>(call_doc["ValuesSigned"]);
+            const DataBase::Array& arr = std::get<DataBase::Array>(call_doc["Values"]);
             for (auto& v : arr)
-                call.Values.push_back(v.get<int>());
+                call.Values.push_back(std::get<int>(v));
         }
         else
         {
@@ -301,11 +301,11 @@ bool ScriptInvoker::LoadDeferredCalls()
         else
             decl = "void %s()";
 
-        call.FuncNum = Script::BindScriptFuncNumByFuncName(call_doc["Script"].get<string>(), decl);
+        call.FuncNum = Script::BindScriptFuncNumByFuncName(std::get<string>(call_doc["Script"]), decl);
         if (!call.FuncNum)
         {
             WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}.\n",
-                call_doc["Script"].get<string>(), decl, call.Id);
+                std::get<string>(call_doc["Script"]), decl, call.Id);
             errors++;
             continue;
         }

@@ -4,9 +4,6 @@
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
 
-#define LAYERS3D_COUNT (30)
-#define DEFAULT_DRAW_SIZE (128)
-
 #define ANIMATION_STAY (0x01)
 #define ANIMATION_ONE_TIME (0x02)
 #define ANIMATION_PERIOD(proc) (0x04 | ((proc) << 16))

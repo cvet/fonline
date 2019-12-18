@@ -253,9 +253,6 @@ static int main_disabled(int argc, char** argv)
 {
     InitialSetup("FOnlineEditor", argc, argv);
 
-    // Threading
-    Thread::SetName("Editor");
-
     // Logging
     LogToFile("FOnlineEditor.log");
     LogToBuffer(true);

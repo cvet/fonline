@@ -1,7 +1,6 @@
 #include "Debugger.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Threading.h"
 #include "Timer.h"
 
 #define MAX_BLOCKS (25)
@@ -113,7 +112,7 @@ const char* MemBlockNames[MAX_MEM_NODES] = {
     "Angel Script ",
 };
 
-static Mutex MemLocker;
+static std::mutex MemLocker;
 
 void Debugger::Memory(int block, int value)
 {
@@ -307,7 +306,7 @@ static bool MemoryTrace;
 typedef pair<StackInfo*, size_t> StackInfoSize;
 static map<size_t, StackInfoSize> PtrStackInfoSize;
 static map<size_t, StackInfo*> StackHashStackInfo;
-static Mutex MemoryAllocLocker;
+static std::mutex MemoryAllocLocker;
 static uint MemoryAllocRecursion;
 
 #define ALLOCATE_PTR(ptr, size, param) \
@@ -332,15 +331,18 @@ static uint MemoryAllocRecursion;
     }
 
 #ifdef FO_WINDOWS
-// Stack
+#include "FileUtils.h"
+#include "WinApi_Include.h"
+
 #pragma warning(disable : 4748)
 #pragma warning(disable : 4091)
 #pragma warning(disable : 4996)
-#include "FileUtils.h"
 #include <DbgHelp.h>
 
 // Hooks
 #include "NCodeHookInstantiation.h"
+
+#define STACKWALK_MAX_NAMELEN (2048)
 
 static HANDLE ProcessHandle;
 static NCodeHookIA32 CodeHooker;
@@ -361,7 +363,6 @@ StackInfo* GetStackInfo(HANDLE heap)
     string str;
     str.reserve(16384);
 
-#define STACKWALK_MAX_NAMELEN (2048)
     char symbol_buffer[sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN];
     SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbol_buffer;
     memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
@@ -463,6 +464,7 @@ class Patch
 public:
     Patch<T>() : Call(nullptr), PatchFunc(nullptr) {}
     ~Patch<T>() { Uninstall(); }
+
     bool Install(void* orig, void* patch)
     {
         if (orig && patch)
@@ -470,6 +472,7 @@ public:
         PatchFunc = (T)patch;
         return Call != nullptr;
     }
+
     void Uninstall()
     {
         if (PatchFunc)
@@ -477,6 +480,7 @@ public:
         PatchFunc = nullptr;
         Call = nullptr;
     }
+
     T Call;
     T PatchFunc;
 };
@@ -614,7 +618,7 @@ StackInfo* GetStackInfo(const void* caller)
 
 #include <malloc.h>
 
-static Mutex HookLocker;
+static std::mutex HookLocker;
 
 static void* malloc_hook(size_t size, const void* caller);
 static void* realloc_hook(void* ptr, size_t size, const void* caller);

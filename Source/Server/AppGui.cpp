@@ -4,7 +4,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Threading.h"
+#include "WinApi_Include.h"
 
 struct ImGuiViewportDataSDL2
 {
@@ -556,7 +556,7 @@ void AppGui::EndFrame()
 
     SDL_GL_SwapWindow(SdlWindow);
 
-    Thread::Sleep(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 static const char* GetClipboardText(void*)

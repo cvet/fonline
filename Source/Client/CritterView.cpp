@@ -1,4 +1,6 @@
 #include "CritterView.h"
+#include "3dStuff.h"
+#include "ItemView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Script.h"
@@ -117,6 +119,16 @@ void CritterView::Finish()
 {
     SetFade(false);
     finishingTime = FadingTick;
+}
+
+bool CritterView::IsFinishing()
+{
+    return finishingTime != 0;
+}
+
+bool CritterView::IsFinish()
+{
+    return finishingTime && Timer::GameTick() > finishingTime;
 }
 
 void CritterView::SetFade(bool fade_up)
@@ -567,7 +579,8 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
         bool move_text = true;
         //			(Cond==COND_DEAD || Cond==COND_KNOCKOUT ||
         //			(anim2!=ANIM2_SHOW_WEAPON && anim2!=ANIM2_HIDE_WEAPON && anim2!=ANIM2_PREPARE_WEAPON &&
-        // anim2!=ANIM2_TURNOFF_WEAPON && 			anim2!=ANIM2_DODGE_FRONT && anim2!=ANIM2_DODGE_BACK && anim2!=ANIM2_USE
+        // anim2!=ANIM2_TURNOFF_WEAPON && 			anim2!=ANIM2_DODGE_FRONT && anim2!=ANIM2_DODGE_BACK &&
+        // anim2!=ANIM2_USE
         // &&
         // anim2!=ANIM2_PICKUP && 			anim2!=ANIM2_DAMAGE_FRONT && anim2!=ANIM2_DAMAGE_BACK && anim2!=ANIM2_IDLE
         // && anim2!=ANIM2_IDLE_COMBAT));
@@ -676,6 +689,16 @@ bool CritterView::IsHaveLightSources()
             return true;
     }
     return false;
+}
+
+bool CritterView::IsNeedReSet()
+{
+    return needReSet && Timer::GameTick() >= reSetTick;
+}
+
+void CritterView::ReSetOk()
+{
+    needReSet = false;
 }
 
 void CritterView::TickStart(uint ms)

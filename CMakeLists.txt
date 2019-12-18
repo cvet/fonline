@@ -663,13 +663,6 @@ if( NOT EMSCRIPTEN )
 	DisableLibWarnings( unqlite )
 endif()
 
-# Variant
-if( NOT FO_BUILD_ONLY_CLIENT )
-	StatusMessage( "+ Variant" )
-	set( FO_VARIANT_DIR "ThirdParty/variant" )
-	include_directories( "${FO_VARIANT_DIR}/include" )
-endif()
-
 # OpenSSL
 if( NOT FO_BUILD_ONLY_CLIENT )
 	StatusMessage( "+ OpenSSL" )

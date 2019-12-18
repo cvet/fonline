@@ -1,14 +1,12 @@
 #pragma once
 
 #include "Common.h"
-#include "SDL_audio.h"
-
-#ifdef FO_WINDOWS
-#undef PlaySound
-#endif
 
 class Sound;
 using SoundVec = vector<Sound*>;
+using Uint32 = uint32_t;
+using SDL_AudioDeviceID = Uint32;
+struct SDL_AudioSpec;
 
 class SoundManager
 {
@@ -33,8 +31,8 @@ private:
     bool ConvertData(Sound* sound);
 
     bool isActive;
-    SDL_AudioDeviceID deviceID;
-    SDL_AudioSpec soundSpec;
+    unique_ptr<SDL_AudioDeviceID> deviceID;
+    unique_ptr<SDL_AudioSpec> soundSpec;
     uint streamingPortion;
     SoundVec soundsActive;
     UCharVec outputBuf;

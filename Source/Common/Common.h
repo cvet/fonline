@@ -47,6 +47,7 @@
 // Standard API
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <clocale>
 #include <cmath>
@@ -60,15 +61,18 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <random>
 #include <set>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #if defined(FO_MAC) || defined(FO_IOS)
@@ -112,7 +116,6 @@ static_assert(sizeof(void*) == sizeof(size_t));
 
 using std::array;
 using std::deque;
-using std::function;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -121,9 +124,11 @@ using std::multimap;
 using std::optional;
 using std::pair;
 using std::set;
+using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::type_index;
+using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
 
@@ -197,40 +202,6 @@ using UIntUIntPairMap = map<uint, UIntPair>;
 using UIntIntPairVecMap = map<uint, IntPairVec>;
 using UIntHashVecMap = map<uint, HashVec>;
 
-// DLL
-#ifdef FO_WINDOWS
-#define DLL_Load(name) (void*)LoadLibraryA(fmt::format("{}", name).c_str())
-#define DLL_Free(h) FreeLibrary((HMODULE)h)
-#define DLL_GetAddress(h, name) (size_t*)GetProcAddress((HMODULE)h, fmt::format("{}", name).c_str())
-#define DLL_Error() fmt::format("{}", GetLastError())
-#else
-#include <dlfcn.h>
-#define DLL_Load(name) (void*)dlopen(fmt::format("{}", name).c_str(), RTLD_NOW | RTLD_LOCAL)
-#define DLL_Free(h) dlclose(h)
-#define DLL_GetAddress(h, name) (size_t*)dlsym(h, fmt::format("{}", name).c_str())
-#define DLL_Error() fmt::format("{}", dlerror())
-#endif
-
-// Network
-#ifdef FO_WINDOWS
-#include <WinSock2.h>
-#else
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#define SOCKET int
-#define INVALID_SOCKET (-1)
-#define SOCKET_ERROR (-1)
-#define closesocket close
-#define SD_RECEIVE SHUT_RD
-#define SD_SEND SHUT_WR
-#define SD_BOTH SHUT_RDWR
-#endif
-
 // Generic exception
 class fo_exception : public std::exception
 {
@@ -258,6 +229,7 @@ public:
 };
 
 // Generic helpers
+#define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
 #define OFFSETOF(s, m) ((int)(size_t)(&reinterpret_cast<s*>(100000)->m) - 100000)
 #define UNUSED_VARIABLE(x) (void)(x)
 #define memzero(ptr, size) memset(ptr, 0, size)
@@ -639,6 +611,9 @@ public:
 #define CMD_DEV_EXEC (38)
 #define CMD_DEV_FUNC (39)
 #define CMD_DEV_GVAR (40)
+
+#define LAYERS3D_COUNT (30)
+#define DEFAULT_DRAW_SIZE (128)
 
 // Lines foreach helper
 #define FOREACH_PROTO_ITEM_LINES(lines, hx, hy, maxhx, maxhy, work) \

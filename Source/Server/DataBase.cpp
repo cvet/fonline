@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "WinApi_Include.h"
 #include "json.hpp"
 #include "unqlite.h"
 
@@ -22,31 +23,31 @@ DataBase* DbHistory;
 
 static void ValueToBson(const string& key, const DataBase::Value& value, bson_t* bson)
 {
-    int value_index = value.which();
+    size_t value_index = value.index();
     if (value_index == DataBase::IntValue)
     {
-        bool bson_ok = bson_append_int32(bson, key.c_str(), (int)key.length(), value.get<int>());
+        bool bson_ok = bson_append_int32(bson, key.c_str(), (int)key.length(), std::get<int>(value));
         RUNTIME_ASSERT(bson_ok);
     }
     else if (value_index == DataBase::Int64Value)
     {
-        bool bson_ok = bson_append_int64(bson, key.c_str(), (int)key.length(), value.get<int64>());
+        bool bson_ok = bson_append_int64(bson, key.c_str(), (int)key.length(), std::get<int64>(value));
         RUNTIME_ASSERT(bson_ok);
     }
     else if (value_index == DataBase::DoubleValue)
     {
-        bool bson_ok = bson_append_double(bson, key.c_str(), (int)key.length(), value.get<double>());
+        bool bson_ok = bson_append_double(bson, key.c_str(), (int)key.length(), std::get<double>(value));
         RUNTIME_ASSERT(bson_ok);
     }
     else if (value_index == DataBase::BoolValue)
     {
-        bool bson_ok = bson_append_bool(bson, key.c_str(), (int)key.length(), value.get<bool>());
+        bool bson_ok = bson_append_bool(bson, key.c_str(), (int)key.length(), std::get<bool>(value));
         RUNTIME_ASSERT(bson_ok);
     }
     else if (value_index == DataBase::StringValue)
     {
-        bool bson_ok = bson_append_utf8(
-            bson, key.c_str(), (int)key.length(), value.get<string>().c_str(), (int)value.get<string>().length());
+        bool bson_ok = bson_append_utf8(bson, key.c_str(), (int)key.length(), std::get<string>(value).c_str(),
+            (int)std::get<string>(value).length());
         RUNTIME_ASSERT(bson_ok);
     }
     else if (value_index == DataBase::ArrayValue)
@@ -55,42 +56,42 @@ static void ValueToBson(const string& key, const DataBase::Value& value, bson_t*
         bool bson_ok = bson_append_array_begin(bson, key.c_str(), (int)key.length(), &bson_arr);
         RUNTIME_ASSERT(bson_ok);
 
-        const DataBase::Array& arr = value.get<DataBase::Array>();
+        const DataBase::Array& arr = std::get<DataBase::Array>(value);
         int arr_key_index = 0;
         for (auto& arr_value : arr)
         {
             string arr_key = _str("{}", arr_key_index);
             arr_key_index++;
 
-            int arr_value_index = arr_value.which();
+            size_t arr_value_index = arr_value.index();
             if (arr_value_index == DataBase::IntValue)
             {
                 bool bson_ok =
-                    bson_append_int32(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<int>());
+                    bson_append_int32(&bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<int>(arr_value));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (arr_value_index == DataBase::Int64Value)
             {
                 bool bson_ok =
-                    bson_append_int64(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<int64>());
+                    bson_append_int64(&bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<int64>(arr_value));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (arr_value_index == DataBase::DoubleValue)
             {
                 bool bson_ok =
-                    bson_append_double(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<double>());
+                    bson_append_double(&bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<double>(arr_value));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (arr_value_index == DataBase::BoolValue)
             {
                 bool bson_ok =
-                    bson_append_bool(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<bool>());
+                    bson_append_bool(&bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<bool>(arr_value));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (arr_value_index == DataBase::StringValue)
             {
                 bool bson_ok = bson_append_utf8(&bson_arr, arr_key.c_str(), (int)arr_key.length(),
-                    arr_value.get<string>().c_str(), (int)arr_value.get<string>().length());
+                    std::get<string>(arr_value).c_str(), (int)std::get<string>(arr_value).length());
                 RUNTIME_ASSERT(bson_ok);
             }
             else
@@ -108,38 +109,38 @@ static void ValueToBson(const string& key, const DataBase::Value& value, bson_t*
         bool bson_ok = bson_append_document_begin(bson, key.c_str(), (int)key.length(), &bson_doc);
         RUNTIME_ASSERT(bson_ok);
 
-        const DataBase::Dict& dict = value.get<DataBase::Dict>();
+        const DataBase::Dict& dict = std::get<DataBase::Dict>(value);
         for (auto& kv : dict)
         {
-            int dict_value_index = kv.second.which();
+            size_t dict_value_index = kv.second.index();
             if (dict_value_index == DataBase::IntValue)
             {
                 bool bson_ok =
-                    bson_append_int32(&bson_doc, kv.first.c_str(), (int)kv.first.length(), kv.second.get<int>());
+                    bson_append_int32(&bson_doc, kv.first.c_str(), (int)kv.first.length(), std::get<int>(kv.second));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (dict_value_index == DataBase::Int64Value)
             {
                 bool bson_ok =
-                    bson_append_int64(&bson_doc, kv.first.c_str(), (int)kv.first.length(), kv.second.get<int64>());
+                    bson_append_int64(&bson_doc, kv.first.c_str(), (int)kv.first.length(), std::get<int64>(kv.second));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (dict_value_index == DataBase::DoubleValue)
             {
-                bool bson_ok =
-                    bson_append_double(&bson_doc, kv.first.c_str(), (int)kv.first.length(), kv.second.get<double>());
+                bool bson_ok = bson_append_double(
+                    &bson_doc, kv.first.c_str(), (int)kv.first.length(), std::get<double>(kv.second));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (dict_value_index == DataBase::BoolValue)
             {
                 bool bson_ok =
-                    bson_append_bool(&bson_doc, kv.first.c_str(), (int)kv.first.length(), kv.second.get<bool>());
+                    bson_append_bool(&bson_doc, kv.first.c_str(), (int)kv.first.length(), std::get<bool>(kv.second));
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (dict_value_index == DataBase::StringValue)
             {
                 bool bson_ok = bson_append_utf8(&bson_doc, kv.first.c_str(), (int)kv.first.length(),
-                    kv.second.get<string>().c_str(), (int)kv.second.get<string>().length());
+                    std::get<string>(kv.second).c_str(), (int)std::get<string>(kv.second).length());
                 RUNTIME_ASSERT(bson_ok);
             }
             else if (dict_value_index == DataBase::ArrayValue)
@@ -148,42 +149,42 @@ static void ValueToBson(const string& key, const DataBase::Value& value, bson_t*
                 bool bson_ok = bson_append_array_begin(&bson_doc, kv.first.c_str(), (int)kv.first.length(), &bson_arr);
                 RUNTIME_ASSERT(bson_ok);
 
-                const DataBase::Array& arr = kv.second.get<DataBase::Array>();
+                const DataBase::Array& arr = std::get<DataBase::Array>(kv.second);
                 int arr_key_index = 0;
                 for (auto& arr_value : arr)
                 {
                     string arr_key = _str("{}", arr_key_index);
                     arr_key_index++;
 
-                    int arr_value_index = arr_value.which();
+                    size_t arr_value_index = arr_value.index();
                     if (arr_value_index == DataBase::IntValue)
                     {
-                        bool bson_ok =
-                            bson_append_int32(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<int>());
+                        bool bson_ok = bson_append_int32(
+                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<int>(arr_value));
                         RUNTIME_ASSERT(bson_ok);
                     }
                     else if (arr_value_index == DataBase::Int64Value)
                     {
                         bool bson_ok = bson_append_int64(
-                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<int64>());
+                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<int64>(arr_value));
                         RUNTIME_ASSERT(bson_ok);
                     }
                     else if (arr_value_index == DataBase::DoubleValue)
                     {
                         bool bson_ok = bson_append_double(
-                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<double>());
+                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<double>(arr_value));
                         RUNTIME_ASSERT(bson_ok);
                     }
                     else if (arr_value_index == DataBase::BoolValue)
                     {
-                        bool bson_ok =
-                            bson_append_bool(&bson_arr, arr_key.c_str(), (int)arr_key.length(), arr_value.get<bool>());
+                        bool bson_ok = bson_append_bool(
+                            &bson_arr, arr_key.c_str(), (int)arr_key.length(), std::get<bool>(arr_value));
                         RUNTIME_ASSERT(bson_ok);
                     }
                     else if (arr_value_index == DataBase::StringValue)
                     {
                         bool bson_ok = bson_append_utf8(&bson_arr, arr_key.c_str(), (int)arr_key.length(),
-                            arr_value.get<string>().c_str(), (int)arr_value.get<string>().length());
+                            std::get<string>(arr_value).c_str(), (int)std::get<string>(arr_value).length());
                         RUNTIME_ASSERT(bson_ok);
                     }
                     else

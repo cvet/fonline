@@ -582,9 +582,9 @@ void MapManager::TraceBullet(TraceData& trace)
     }
 }
 
-int THREAD MapGridOffsX = 0;
-int THREAD MapGridOffsY = 0;
-static THREAD short* Grid = nullptr;
+int thread_local MapGridOffsX = 0;
+int thread_local MapGridOffsY = 0;
+static thread_local short* Grid = nullptr;
 #define GRID(x, y) \
     Grid[((FPATH_MAX_PATH + 1) + (y)-MapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + \
         ((FPATH_MAX_PATH + 1) + (x)-MapGridOffsX)]

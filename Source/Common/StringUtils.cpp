@@ -3,8 +3,8 @@
 #include "FileSystem.h"
 #include "Log.h"
 #include "Testing.h"
-#include "Threading.h"
 #include "UcsTables_Include.h"
+#include "WinApi_Include.h"
 
 uint _str::length()
 {
@@ -262,7 +262,8 @@ bool _str::isNumber()
         return false;
 
     char* p;
-    strtol(s.c_str(), &p, 10);
+    long v = strtol(s.c_str(), &p, 10);
+    UNUSED_VARIABLE(v);
     return *p == 0;
 }
 
@@ -483,7 +484,7 @@ std::wstring _str::toWideChar()
 #include "DataBase.h"
 #endif
 
-static Mutex HashNamesLocker;
+static std::mutex HashNamesLocker;
 static map<hash, string> HashNames;
 
 hash _str::toHash()
@@ -549,7 +550,7 @@ void _str::loadHashes()
     for (uint hash_id : db_hashes)
     {
         DataBase::Document hash_doc = DbStorage->Get("Hashes", hash_id);
-        const string& hash_value = hash_doc["Value"].get<string>();
+        const string& hash_value = std::get<string>(hash_doc["Value"]);
         HashNames[hash_id] = hash_value;
     }
 

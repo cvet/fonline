@@ -198,9 +198,7 @@ void Critter::ClearVisible()
     VisCr2.clear();
     VisCr3.clear();
 
-    VisItemLocker.Lock();
     VisItem.clear();
-    VisItemLocker.Unlock();
 }
 
 Critter* Critter::GetCritSelf(uint crid)
@@ -297,26 +295,17 @@ bool Critter::DelCrFromVisSet3(uint crid)
 
 bool Critter::AddIdVisItem(uint item_id)
 {
-    VisItemLocker.Lock();
-    bool result = VisItem.insert(item_id).second;
-    VisItemLocker.Unlock();
-    return result;
+    return VisItem.insert(item_id).second;
 }
 
 bool Critter::DelIdVisItem(uint item_id)
 {
-    VisItemLocker.Lock();
-    bool result = VisItem.erase(item_id) != 0;
-    VisItemLocker.Unlock();
-    return result;
+    return VisItem.erase(item_id) != 0;
 }
 
 bool Critter::CountIdVisItem(uint item_id)
 {
-    VisItemLocker.Lock();
-    bool result = VisItem.count(item_id) != 0;
-    VisItemLocker.Unlock();
-    return result;
+    return VisItem.count(item_id) != 0;
 }
 
 void Critter::SetItem(Item* item)

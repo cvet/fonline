@@ -3,7 +3,6 @@
 #include "Common.h"
 #include "NetProtocol_Include.h"
 #include "Testing.h"
-#include "Threading.h"
 
 class NetBuffer
 {
@@ -14,7 +13,7 @@ public:
 
 private:
     bool isError;
-    Mutex bufLocker;
+    std::mutex bufLocker;
     uchar* bufData;
     uint bufLen;
     uint bufEndPos;

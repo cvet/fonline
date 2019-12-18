@@ -115,7 +115,7 @@ public:
     };
     using TextListenVec = vector<TextListen>;
     TextListenVec TextListeners;
-    Mutex TextListenersLocker;
+    std::mutex TextListenersLocker;
 
     static void OnSendGlobalValue(Entity* entity, Property* prop);
     static void OnSendCritterValue(Entity* entity, Property* prop);
@@ -147,7 +147,7 @@ public:
     bool Active = false;
     bool ActiveInProcess = false;
     UIntMap RegIp;
-    Mutex RegIpLocker;
+    std::mutex RegIpLocker;
 
     void DisconnectClient(Client* cl);
     void RemoveClient(Client* cl);
@@ -204,7 +204,7 @@ public:
     NetServerBase* TcpServer = nullptr;
     NetServerBase* WebSocketsServer = nullptr;
     ClientVec ConnectedClients;
-    Mutex ConnectedClientsLocker;
+    std::mutex ConnectedClientsLocker;
 
     void OnNewConnection(NetConnection* connection);
 
@@ -233,7 +233,7 @@ public:
     };
     using ClientBannedVec = vector<ClientBanned>;
     ClientBannedVec Banned;
-    Mutex BannedLocker;
+    std::mutex BannedLocker;
 
     ClientBanned* GetBanByName(const char* name);
     ClientBanned* GetBanByIp(uint ip);

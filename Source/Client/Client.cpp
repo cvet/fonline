@@ -1,5 +1,7 @@
 ﻿#include "Client.h"
+#include "FileUtils.h"
 #include "CritterView.h"
+#include "Crypt.h"
 #include "Debugger.h"
 #include "FileSystem.h"
 #include "IniFile.h"
@@ -17,7 +19,7 @@
 #include "sha2.h"
 
 static bool ASDbgMemoryCanWork = false;
-static THREAD bool ASDbgMemoryInUse = false;
+static thread_local bool ASDbgMemoryInUse = false;
 static map<void*, string> ASDbgMemoryPtr;
 
 static void* ASDeepDebugMalloc(size_t size)
@@ -1514,7 +1516,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
                 WriteLog("Proxy answer timeout.\n"); \
                 return false; \
             } \
-            Thread::Sleep(1); \
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); \
         } \
     } while (0)
         // ==========================================

@@ -1,10 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "Crypt.h"
 #include "Entity.h"
-#include "FileUtils.h"
-#include "MsgFiles.h"
 
 class ItemView : public Entity
 {

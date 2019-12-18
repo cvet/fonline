@@ -6,6 +6,7 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+#include "WinApi_Include.h"
 #include "curl/curl.h"
 #include "png.h"
 #include "preprocessor.h"
@@ -30,10 +31,10 @@ static void ASDebugFree(void* ptr)
 }
 
 static bool ASDbgMemoryCanWork = false;
-static THREAD bool ASDbgMemoryInUse = false;
+static thread_local bool ASDbgMemoryInUse = false;
 static map<void*, string> ASDbgMemoryPtr;
 static string ASDbgMemoryBuf;
-static Mutex ASDbgMemoryLocker;
+static std::mutex ASDbgMemoryLocker;
 
 static void* ASDeepDebugMalloc(size_t size)
 {
@@ -3264,8 +3265,7 @@ bool FOServer::ScriptFunc::Global_AddTextListener(
     tl.FirstStr = first_str;
     tl.Parameter = parameter;
 
-    Mutex& m = Self->TextListenersLocker;
-    SCOPE_LOCK(m);
+    SCOPE_LOCK(Self->TextListenersLocker);
 
     Self->TextListeners.push_back(tl);
     return true;
@@ -3273,8 +3273,7 @@ bool FOServer::ScriptFunc::Global_AddTextListener(
 
 void FOServer::ScriptFunc::Global_EraseTextListener(int say_type, string first_str, uint parameter)
 {
-    Mutex& m = Self->TextListenersLocker;
-    SCOPE_LOCK(m);
+    SCOPE_LOCK(Self->TextListenersLocker);
 
     for (auto it = Self->TextListeners.begin(), end = Self->TextListeners.end(); it != end; ++it)
     {
@@ -3791,7 +3790,6 @@ static void YieldWebRequest(
     struct RequestData
     {
         asIScriptContext* Context;
-        Thread* WorkThread;
         string Url;
         CScriptArray* Headers;
         CScriptDict* Post1;
@@ -3802,7 +3800,6 @@ static void YieldWebRequest(
 
     RequestData* request_data = new RequestData();
     request_data->Context = ctx;
-    request_data->WorkThread = new Thread();
     request_data->Url = url;
     request_data->Headers = headers;
     request_data->Post1 = post1;
@@ -3891,14 +3888,13 @@ static void YieldWebRequest(
         *request_data->Success = success;
         *request_data->Result = result;
         Script::ResumeContext(request_data->Context);
-        delete request_data->WorkThread;
         if (request_data->Headers)
             request_data->Headers->Release();
         if (request_data->Post1)
             request_data->Post1->Release();
         delete request_data;
     };
-    request_data->WorkThread->Start(request_func, "WebRequest", request_data);
+    std::thread(request_func, request_data).detach();
 }
 
 void FOServer::ScriptFunc::Global_YieldWebRequest(string url, CScriptDict* post, bool& success, string& result)

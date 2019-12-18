@@ -3,7 +3,6 @@
 #include "Common.h"
 #include "GluStuff.h"
 #include "SDL.h"
-#include "SDL_syswm.h"
 #ifndef FO_OPENGL_ES
 #include "GL/glew.h"
 #include "SDL_opengl.h"
@@ -11,10 +10,6 @@
 #include "SDL_opengles2.h"
 #endif
 #include "SDL_vulkan.h"
-
-#ifdef FO_HAVE_DX
-#include <d3d9.h>
-#endif
 
 #ifndef FO_OPENGL_ES
 #ifdef FO_MAC

@@ -10,6 +10,7 @@
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+#include "WinApi_Include.h"
 #if defined(FO_WINDOWS) || defined(FO_LINUX) || defined(FO_MAC)
 #include "png.h"
 #endif

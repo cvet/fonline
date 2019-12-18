@@ -10,13 +10,13 @@
 #include "Timer.h"
 
 static FOServer* Server;
-static Thread ServerThread;
-static bool StartServer;
+static std::thread ServerThread;
+static std::atomic<bool> StartServer;
 
-static void ServerEntry(void*)
+static void ServerEntry()
 {
     while (!StartServer)
-        Thread::Sleep(10);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     Server = new FOServer();
     Server->Run();
@@ -31,7 +31,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    Thread::SetName("ServerGui");
     LogToFile("FOnlineServer.log");
     LogToBuffer(true);
     InitialSetup("FOnlineServer", argc, argv);
@@ -46,9 +45,9 @@ static int main_disabled(int argc, char** argv)
         StartServer = true;
 
     // Server loop in separate thread
-    ServerThread.Start(ServerEntry, "Server");
+    ServerThread = std::thread(ServerEntry);
     while (StartServer && !Server)
-        Thread::Sleep(0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     // Gui loop
     while (!StartServer || Server)
@@ -75,7 +74,7 @@ static int main_disabled(int argc, char** argv)
                 {
                     StartServer = true;
                     while (!Server)
-                        Thread::Sleep(0);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(0));
                 }
             }
             ImGui::End();
@@ -89,8 +88,8 @@ static int main_disabled(int argc, char** argv)
     }
 
     // Wait server finish
-    if (StartServer)
-        ServerThread.Wait();
+    if (ServerThread.joinable())
+        ServerThread.join();
 
     return 0;
 }

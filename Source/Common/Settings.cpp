@@ -1,6 +1,7 @@
 #include "Settings.h"
 #include "IniFile.h"
 #include "StringUtils.h"
+#include "WinApi_Include.h"
 #include "imgui.h"
 
 Settings GameOpt;

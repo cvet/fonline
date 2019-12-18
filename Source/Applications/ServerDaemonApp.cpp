@@ -14,7 +14,6 @@ int main(int argc, char** argv)
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    Thread::SetName("ServerYoungDaemon");
     LogToFile("FOnlineServerDaemon.log");
     InitialSetup("FOnlineServerDaemon", argc, argv);
 
@@ -47,8 +46,6 @@ static int main_disabled(int argc, char** argv)
 #else
     RUNTIME_ASSERT(!"Invalid OS");
 #endif
-
-    Thread::SetName("ServerDaemon");
 
     FOServer server;
     server.Run();

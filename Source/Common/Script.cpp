@@ -6,7 +6,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Threading.h"
 #include "Timer.h"
 #include "datetime/datetime.h"
 #include "mono/dis/meta.h"
@@ -440,7 +439,7 @@ static int SystemCall(const string& command, string& output)
     string log;
     while (true)
     {
-        Thread::Sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         DWORD bytes;
         while (PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) && bytes > 0)

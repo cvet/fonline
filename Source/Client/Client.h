@@ -16,6 +16,25 @@
 #include "Testing.h"
 #include "theora/theoradec.h"
 #include "zlib.h"
+#include "WinApi_Include.h"
+
+// Network
+#ifndef FO_WINDOWS
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#define SOCKET int
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR (-1)
+#define closesocket close
+#define SD_RECEIVE SHUT_RD
+#define SD_SEND SHUT_WR
+#define SD_BOTH SHUT_RDWR
+#endif
 
 // Fonts
 #ifndef FONT_DEFAULT

@@ -7,7 +7,6 @@
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Threading.h"
 #include "Timer.h"
 #include "Version_Include.h"
 
@@ -24,14 +23,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 
 #if defined(FO_WINDOWS)
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <stdio.h>
-#pragma warning(disable : 4091)
-#pragma warning(disable : 4996)
 #include "FileUtils.h"
 #include "Timer.h"
+#include "WinApi_Include.h"
+
+#pragma warning(disable : 4091)
+#pragma warning(disable : 4996)
 #include <DbgHelp.h>
 #include <Psapi.h>
 #include <tlhelp32.h>
@@ -229,8 +226,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         {
             DWORD tid = threads_ids[i];
             HANDLE t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid);
-            const char* tname = Thread::FindName(tid);
-            fprintf(f, "Thread '%s' (%u%s)\n", tname ? tname : "Unknown", tid, !i ? ", current" : "");
+            fprintf(f, "Thread %u\n", tid);
 
             CONTEXT context;
             memset(&context, 0, sizeof(context));
@@ -638,9 +634,6 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
 
         // AngelScript dump
         DumpAngelScript(f);
-
-        // Threads
-        fprintf(f, "Thread '%s' (%zu%s)\n", Thread::GetName(), Thread::GetId(), ", current");
 
         // Stacktrace
         st_printer.print(st);

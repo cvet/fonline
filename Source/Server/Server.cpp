@@ -95,13 +95,15 @@ void FOServer::Finish()
     LogClients.clear();
 
     // Clients
-    ConnectedClientsLocker.Lock();
-    for (auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it)
     {
-        Client* cl = *it;
-        cl->Disconnect();
+        SCOPE_LOCK(ConnectedClientsLocker);
+
+        for (auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it)
+        {
+            Client* cl = *it;
+            cl->Disconnect();
+        }
     }
-    ConnectedClientsLocker.Unlock();
 
     // Shutdown servers
     SAFEDEL(TcpServer);
@@ -132,9 +134,11 @@ string FOServer::GetIngamePlayersStatistics()
 {
     const char* cond_states_str[] = {"None", "Life", "Knockout", "Dead"};
 
-    ConnectedClientsLocker.Lock();
-    uint conn_count = (uint)ConnectedClients.size();
-    ConnectedClientsLocker.Unlock();
+    uint conn_count;
+    {
+        SCOPE_LOCK(ConnectedClientsLocker);
+        conn_count = (uint)ConnectedClients.size();
+    }
 
     ClientVec players;
     CrMngr.GetClients(players);
@@ -245,11 +249,14 @@ void FOServer::LogicTick()
         DbHistory->StartChanges();
 
     // Process clients
-    ConnectedClientsLocker.Lock();
-    ClientVec clients = ConnectedClients;
-    for (Client* cl : clients)
-        cl->AddRef();
-    ConnectedClientsLocker.Unlock();
+    ClientVec clients;
+    {
+        SCOPE_LOCK(ConnectedClientsLocker);
+
+        clients = ConnectedClients;
+        for (Client* cl : clients)
+            cl->AddRef();
+    }
 
     for (Client* cl : clients)
     {
@@ -258,12 +265,14 @@ void FOServer::LogicTick()
         {
             DisconnectClient(cl);
 
-            ConnectedClientsLocker.Lock();
-            auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
-            RUNTIME_ASSERT(it != ConnectedClients.end());
-            ConnectedClients.erase(it);
-            Statistics.CurOnline--;
-            ConnectedClientsLocker.Unlock();
+            {
+                SCOPE_LOCK(ConnectedClientsLocker);
+
+                auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
+                RUNTIME_ASSERT(it != ConnectedClients.end());
+                ConnectedClients.erase(it);
+                Statistics.CurOnline--;
+            }
 
             cl->Release();
             continue;
@@ -363,7 +372,7 @@ void FOServer::LogicTick()
 
     // Sleep
     if (ServerGameSleep >= 0)
-        Thread::Sleep(ServerGameSleep);
+        std::this_thread::sleep_for(std::chrono::milliseconds(ServerGameSleep));
 }
 
 void FOServer::DrawGui()
@@ -506,21 +515,19 @@ void FOServer::DrawGui()
 
 void FOServer::OnNewConnection(NetConnection* connection)
 {
-    ConnectedClientsLocker.Lock();
-    uint count = (uint)ConnectedClients.size();
-    ConnectedClientsLocker.Unlock();
-
     // Allocate client
     ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter(_str("Player").toHash());
     RUNTIME_ASSERT(cl_proto);
     Client* cl = new Client(connection, cl_proto);
 
     // Add to connected collection
-    ConnectedClientsLocker.Lock();
-    cl->GameState = STATE_CONNECTED;
-    ConnectedClients.push_back(cl);
-    Statistics.CurOnline++;
-    ConnectedClientsLocker.Unlock();
+    {
+        SCOPE_LOCK(ConnectedClientsLocker);
+
+        cl->GameState = STATE_CONNECTED;
+        ConnectedClients.push_back(cl);
+        Statistics.CurOnline++;
+    }
 }
 
 void FOServer::Process(Client* cl)
@@ -905,43 +912,43 @@ void FOServer::Process_Text(Client* cl)
     int listen_func_id[100]; // 100 calls per one message is enough
     string listen_str[100];
 
-    TextListenersLocker.Lock();
-
-    if (how_say == SAY_RADIO)
     {
-        for (uint i = 0; i < TextListeners.size(); i++)
+        SCOPE_LOCK(TextListenersLocker);
+
+        if (how_say == SAY_RADIO)
         {
-            TextListen& tl = TextListeners[i];
-            if (tl.SayType == SAY_RADIO &&
-                std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() &&
-                _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
+            for (uint i = 0; i < TextListeners.size(); i++)
             {
-                listen_func_id[listen_count] = tl.FuncId;
-                listen_str[listen_count] = str;
-                if (++listen_count >= 100)
-                    break;
+                TextListen& tl = TextListeners[i];
+                if (tl.SayType == SAY_RADIO &&
+                    std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() &&
+                    _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
+                {
+                    listen_func_id[listen_count] = tl.FuncId;
+                    listen_str[listen_count] = str;
+                    if (++listen_count >= 100)
+                        break;
+                }
+            }
+        }
+        else
+        {
+            Map* map = MapMngr.GetMap(cl->GetMapId());
+            hash pid = (map ? map->GetProtoId() : 0);
+            for (uint i = 0; i < TextListeners.size(); i++)
+            {
+                TextListen& tl = TextListeners[i];
+                if (tl.SayType == how_say && tl.Parameter == pid &&
+                    _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
+                {
+                    listen_func_id[listen_count] = tl.FuncId;
+                    listen_str[listen_count] = str;
+                    if (++listen_count >= 100)
+                        break;
+                }
             }
         }
     }
-    else
-    {
-        Map* map = MapMngr.GetMap(cl->GetMapId());
-        hash pid = (map ? map->GetProtoId() : 0);
-        for (uint i = 0; i < TextListeners.size(); i++)
-        {
-            TextListen& tl = TextListeners[i];
-            if (tl.SayType == how_say && tl.Parameter == pid &&
-                _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
-            {
-                listen_func_id[listen_count] = tl.FuncId;
-                listen_str[listen_count] = str;
-                if (++listen_count >= 100)
-                    break;
-            }
-        }
-    }
-
-    TextListenersLocker.Unlock();
 
     for (int i = 0; i < listen_count; i++)
     {
@@ -1052,12 +1059,16 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
             break;
         }
 
-        ConnectedClientsLocker.Lock();
-        string str =
-            _str("Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.",
+        string str;
+        {
+            SCOPE_LOCK(ConnectedClientsLocker);
+
+            str = _str(
+                "Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.",
                 ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), Timer::FastTick() / 1000 / 60,
                 (Timer::FastTick() - Statistics.ServerStartTick) / 1000 / 60);
-        ConnectedClientsLocker.Unlock();
+        }
+
         result += str;
 
         for (const auto& line : _str(result).split('\n'))
@@ -1834,14 +1845,16 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
 
     Timer::InitGameTime();
 
-    ConnectedClientsLocker.Lock();
-    for (auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it)
     {
-        Client* cl = *it;
-        if (cl->IsOnline())
-            cl->Send_GameInfo(MapMngr.GetMap(cl->GetMapId()));
+        SCOPE_LOCK(ConnectedClientsLocker);
+
+        for (auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it)
+        {
+            Client* cl = *it;
+            if (cl->IsOnline())
+                cl->Send_GameInfo(MapMngr.GetMap(cl->GetMapId()));
+        }
     }
-    ConnectedClientsLocker.Unlock();
 }
 
 bool FOServer::Init()
@@ -2367,7 +2380,8 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
     // Disconnect all connected clients to force data updating
     if (!first_generation)
     {
-        ConnectedClientsLocker.Lock();
+        SCOPE_LOCK(ConnectedClientsLocker);
+
         for (Client* cl : ConnectedClients)
             cl->Disconnect();
     }
@@ -2472,10 +2486,6 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
 
     // Complete files list
     WriteData(UpdateFilesList, (short)-1);
-
-    // Allow clients to connect
-    if (!first_generation)
-        ConnectedClientsLocker.Unlock();
 }
 
 void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value)

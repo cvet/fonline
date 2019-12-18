@@ -287,10 +287,10 @@ bool EntityManager::LoadEntities()
             DataBase::Document doc = DbStorage->Get(collection_name, id);
             auto proto_it = doc.find("_Proto");
             RUNTIME_ASSERT(proto_it != doc.end());
-            RUNTIME_ASSERT((proto_it->second.which() == DataBase::StringValue));
+            RUNTIME_ASSERT((proto_it->second.index() == DataBase::StringValue));
 
             hash proto_id =
-                (!proto_it->second.get<string>().empty() ? _str(proto_it->second.get<string>()).toHash() : 0);
+                (!std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : 0);
 
             if (type == EntityType::Location)
             {

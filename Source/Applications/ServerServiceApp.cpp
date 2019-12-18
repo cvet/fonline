@@ -3,9 +3,10 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
+#include "WinApi_Include.h"
 
 static FOServer* Server;
-static Thread ServerThread;
+static std::thread ServerThread;
 
 #ifdef FO_WINDOWS
 static SERVICE_STATUS_HANDLE FOServiceStatusHandle;
@@ -14,7 +15,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode);
 static void SetFOServiceStatus(uint state);
 #endif
 
-static void ServerEntry(void*)
+static void ServerEntry()
 {
     Server = new FOServer();
     Server->Run();
@@ -29,7 +30,6 @@ int main(int argc, char** argv)
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    Thread::SetName("ServerService");
     LogToFile("FOnlineServerService.log");
     InitialSetup("FOnlineServerService", argc, argv);
 
@@ -140,7 +140,6 @@ static int main_disabled(int argc, char** argv)
 #ifdef FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
-    Thread::SetName("Service");
     LogToFile("FOnlineServerService.log");
 
     FOServiceStatusHandle = RegisterServiceCtrlHandlerW(L"FOnlineServer", FOServiceCtrlHandler);
@@ -149,9 +148,9 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
     SetFOServiceStatus(SERVICE_START_PENDING);
 
-    ServerThread.Start(ServerEntry, "Main");
+    ServerThread = std::thread(ServerEntry);
     while (!Server || !Server->Started() || !Server->Stopped())
-        Thread::Sleep(10);
+        std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     if (Server->Started())
         SetFOServiceStatus(SERVICE_RUNNING);
@@ -166,7 +165,8 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
     case SERVICE_CONTROL_STOP:
         SetFOServiceStatus(SERVICE_STOP_PENDING);
         GameOpt.Quit = true;
-        ServerThread.Wait();
+        if (ServerThread.joinable())
+            ServerThread.join();
         SetFOServiceStatus(SERVICE_STOPPED);
         return;
     case SERVICE_CONTROL_INTERROGATE:

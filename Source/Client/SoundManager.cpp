@@ -2,6 +2,7 @@
 #include "FileUtils.h"
 #include "Log.h"
 #include "ResourceManager.h"
+#include "SDL_audio.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "acmstrm.h"
@@ -96,19 +97,22 @@ SoundManager::SoundManager() :
     soundsFunc = std::bind(&SoundManager::ProcessSounds, this, std::placeholders::_1);
     desired.userdata = &soundsFunc;
 
-    deviceID = SDL_OpenAudioDevice(nullptr, 0, &desired, &soundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
-    if (deviceID < 2)
+    SDL_AudioSpec sound_spec;
+    SDL_AudioDeviceID device_id = SDL_OpenAudioDevice(nullptr, 0, &desired, &sound_spec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+    if (device_id < 2)
     {
         WriteLog("SDL Open audio device fail, error '{}'.\n", SDL_GetError());
         return;
     }
 
-    outputBuf.resize(soundSpec.size);
+    outputBuf.resize(sound_spec.size);
+
+    soundSpec = std::make_unique<SDL_AudioSpec>(sound_spec);
+    deviceID = std::make_unique<SDL_AudioDeviceID>(device_id);
+    isActive = true;
 
     // Start playing
-    SDL_PauseAudioDevice(deviceID, 0);
-
-    isActive = true;
+    SDL_PauseAudioDevice(device_id, 0);
 }
 
 SoundManager::~SoundManager()
@@ -119,15 +123,15 @@ SoundManager::~SoundManager()
     StopSounds();
     StopMusic();
 
-    SDL_CloseAudioDevice(deviceID);
-    deviceID = 0;
+    SDL_CloseAudioDevice(*deviceID);
+    deviceID = nullptr;
 
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 void SoundManager::ProcessSounds(uchar* output)
 {
-    memset(output, soundSpec.silence, soundSpec.size);
+    memset(output, soundSpec->silence, soundSpec->size);
 
     for (auto it = soundsActive.begin(); it != soundsActive.end();)
     {
@@ -136,7 +140,7 @@ void SoundManager::ProcessSounds(uchar* output)
         {
             int volume =
                 CLAMP(sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
-            SDL_MixAudioFormat(output, &outputBuf[0], soundSpec.format, soundSpec.size, volume);
+            SDL_MixAudioFormat(output, &outputBuf[0], soundSpec->format, soundSpec->size, volume);
             ++it;
         }
         else
@@ -150,7 +154,7 @@ void SoundManager::ProcessSounds(uchar* output)
 bool SoundManager::ProcessSound(Sound* sound, uchar* output)
 {
     // Playing
-    uint whole = soundSpec.size;
+    uint whole = soundSpec->size;
     if (sound->ConvertedBufCur < sound->ConvertedBufSize)
     {
         if (whole > sound->ConvertedBufSize - sound->ConvertedBufCur)
@@ -173,7 +177,7 @@ bool SoundManager::ProcessSound(Sound* sound, uchar* output)
 
             // Cut off end
             if (offset < whole)
-                memset(output + offset, soundSpec.silence, whole - offset);
+                memset(output + offset, soundSpec->silence, whole - offset);
         }
         else
         {
@@ -213,12 +217,12 @@ bool SoundManager::ProcessSound(Sound* sound, uchar* output)
         }
 
         // Give silent
-        memset(output, soundSpec.silence, whole);
+        memset(output, soundSpec->silence, whole);
         return true;
     }
 
     // Give silent
-    memset(output, soundSpec.silence, whole);
+    memset(output, soundSpec->silence, whole);
     return false;
 }
 
@@ -242,9 +246,9 @@ Sound* SoundManager::Load(const string& fname, bool is_music)
         return nullptr;
     }
 
-    SDL_LockAudioDevice(deviceID);
+    SDL_LockAudioDevice(*deviceID);
     soundsActive.push_back(sound);
-    SDL_UnlockAudioDevice(deviceID);
+    SDL_UnlockAudioDevice(*deviceID);
     return sound;
 }
 
@@ -528,7 +532,7 @@ bool SoundManager::ConvertData(Sound* sound)
     {
         sound->CvtBuilded = true;
         if (SDL_BuildAudioCVT(&sound->Cvt, sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
-                soundSpec.format, soundSpec.channels, soundSpec.freq) == -1)
+                soundSpec->format, soundSpec->channels, soundSpec->freq) == -1)
         {
             WriteLog("SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError());
             return false;
@@ -598,7 +602,7 @@ bool SoundManager::PlayMusic(const string& fname, uint repeat_time)
 
 void SoundManager::StopSounds()
 {
-    SDL_LockAudioDevice(deviceID);
+    SDL_LockAudioDevice(*deviceID);
 
     for (auto it = soundsActive.begin(); it != soundsActive.end();)
     {
@@ -614,12 +618,12 @@ void SoundManager::StopSounds()
         }
     }
 
-    SDL_UnlockAudioDevice(deviceID);
+    SDL_UnlockAudioDevice(*deviceID);
 }
 
 void SoundManager::StopMusic()
 {
-    SDL_LockAudioDevice(deviceID);
+    SDL_LockAudioDevice(*deviceID);
 
     for (auto it = soundsActive.begin(); it != soundsActive.end();)
     {
@@ -635,5 +639,5 @@ void SoundManager::StopMusic()
         }
     }
 
-    SDL_UnlockAudioDevice(deviceID);
+    SDL_UnlockAudioDevice(*deviceID);
 }

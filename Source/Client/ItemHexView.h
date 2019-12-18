@@ -2,10 +2,11 @@
 
 #include "Common.h"
 #include "ItemView.h"
-#include "SpriteManager.h"
 
 class ResourceManager;
 struct AnyFrames;
+class Sprite;
+struct Effect;
 
 class ItemHexView : public ItemView
 {
@@ -57,8 +58,8 @@ private:
 
 public:
     void Finish();
-    bool IsFinishing() { return finishing; }
-    bool IsFinish() { return (finishing && Timer::GameTick() > finishingTime); }
+    bool IsFinishing();
+    bool IsFinish();
     void StopFinishing();
 
     // Process

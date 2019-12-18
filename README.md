@@ -115,7 +115,6 @@ All output binaries you can find in Build/Binaries directory.
 * [libogg](https://xiph.org/ogg/) - audio library
 * [openssl](https://www.openssl.org/) - library for network transport security
 * [unqlite](https://unqlite.org/) - nosql database engine
-* [variant](https://github.com/mapbox/variant) - c++17 std::variant implementation in c++11/14
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
 

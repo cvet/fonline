@@ -1821,32 +1821,32 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
         // Parse value
         if (prop->isEnumDataType)
         {
-            if (value.which() != DataBase::StringValue)
+            if (value.index() != DataBase::StringValue)
             {
                 WriteLog("Wrong enum value type, property '{}'.\n", prop->GetName());
                 is_error = true;
                 continue;
             }
 
-            int e = Script::GetEnumValue(prop->asObjType->GetName(), value.get<string>(), is_error);
+            int e = Script::GetEnumValue(prop->asObjType->GetName(), std::get<string>(value), is_error);
             prop->SetPropRawData(this, (uchar*)&e, prop->baseSize);
         }
         else if (prop->isHash || prop->isResource)
         {
-            if (value.which() != DataBase::StringValue)
+            if (value.index() != DataBase::StringValue)
             {
                 WriteLog("Wrong hash value type, property '{}'.\n", prop->GetName());
                 is_error = true;
                 continue;
             }
 
-            hash h = _str(value.get<string>()).toHash();
+            hash h = _str(std::get<string>(value)).toHash();
             prop->SetPropRawData(this, (uchar*)&h, prop->baseSize);
         }
         else if (prop->isIntDataType || prop->isFloatDataType || prop->isBoolDataType)
         {
-            if (value.which() == DataBase::StringValue || value.which() == DataBase::ArrayValue ||
-                value.which() == DataBase::DictValue)
+            if (value.index() == DataBase::StringValue || value.index() == DataBase::ArrayValue ||
+                value.index() == DataBase::DictValue)
             {
                 WriteLog("Wrong integer value type, property '{}'.\n", prop->GetName());
                 is_error = true;
@@ -1857,39 +1857,39 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
     do \
     { \
         if (prop->asObjTypeId == asTYPEID_INT8) \
-            *(char*)pod_data = (char)value.get<t>(); \
+            *(char*)pod_data = (char)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_INT16) \
-            *(short*)pod_data = (short)value.get<t>(); \
+            *(short*)pod_data = (short)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_INT32) \
-            *(int*)pod_data = (int)value.get<t>(); \
+            *(int*)pod_data = (int)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_INT64) \
-            *(int64*)pod_data = (int64)value.get<t>(); \
+            *(int64*)pod_data = (int64)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_UINT8) \
-            *(uchar*)pod_data = (uchar)value.get<t>(); \
+            *(uchar*)pod_data = (uchar)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_UINT16) \
-            *(short*)pod_data = (short)value.get<t>(); \
+            *(short*)pod_data = (short)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_UINT32) \
-            *(uint*)pod_data = (uint)value.get<t>(); \
+            *(uint*)pod_data = (uint)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_UINT64) \
-            *(uint64*)pod_data = (uint64)value.get<t>(); \
+            *(uint64*)pod_data = (uint64)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_FLOAT) \
-            *(float*)pod_data = (float)value.get<t>(); \
+            *(float*)pod_data = (float)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_DOUBLE) \
-            *(double*)pod_data = (double)value.get<t>(); \
+            *(double*)pod_data = (double)std::get<t>(value); \
         else if (prop->asObjTypeId == asTYPEID_BOOL) \
-            *(bool*)pod_data = value.get<t>() != 0; \
+            *(bool*)pod_data = std::get<t>(value) != 0; \
         else \
             UNREACHABLE_PLACE; \
     } while (false)
 
             uchar pod_data[8];
-            if (value.which() == DataBase::IntValue)
+            if (value.index() == DataBase::IntValue)
                 PARSE_VALUE(int);
-            else if (value.which() == DataBase::Int64Value)
+            else if (value.index() == DataBase::Int64Value)
                 PARSE_VALUE(int64);
-            else if (value.which() == DataBase::DoubleValue)
+            else if (value.index() == DataBase::DoubleValue)
                 PARSE_VALUE(double);
-            else if (value.which() == DataBase::BoolValue)
+            else if (value.index() == DataBase::BoolValue)
                 PARSE_VALUE(bool);
             else
                 UNREACHABLE_PLACE;
@@ -1900,25 +1900,25 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
         }
         else if (prop->dataType == Property::String)
         {
-            if (value.which() != DataBase::StringValue)
+            if (value.index() != DataBase::StringValue)
             {
                 WriteLog("Wrong string value type, property '{}'.\n", prop->GetName());
                 is_error = true;
                 continue;
             }
 
-            prop->SetPropRawData(this, (uchar*)value.get<string>().c_str(), (uint)value.get<string>().length());
+            prop->SetPropRawData(this, (uchar*)std::get<string>(value).c_str(), (uint)std::get<string>(value).length());
         }
         else if (prop->dataType == Property::Array)
         {
-            if (value.which() != DataBase::ArrayValue)
+            if (value.index() != DataBase::ArrayValue)
             {
                 WriteLog("Wrong array value type, property '{}'.\n", prop->GetName());
                 is_error = true;
                 continue;
             }
 
-            const DataBase::Array& arr = value.get<DataBase::Array>();
+            const DataBase::Array& arr = std::get<DataBase::Array>(value);
             if (arr.empty())
             {
                 prop->SetPropRawData(this, nullptr, 0);
@@ -1927,7 +1927,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
 
             if (prop->isHashSubType0)
             {
-                if (arr[0].which() != DataBase::StringValue)
+                if (arr[0].index() != DataBase::StringValue)
                 {
                     WriteLog("Wrong array hash element value type, property '{}'.\n", prop->GetName());
                     is_error = true;
@@ -1938,9 +1938,9 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 uchar* data = new uchar[data_size];
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].which() == DataBase::StringValue));
+                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
 
-                    hash h = _str(arr[i].get<string>()).toHash();
+                    hash h = _str(std::get<string>(arr[i])).toHash();
                     *(hash*)(data + i * sizeof(hash)) = h;
                 }
 
@@ -1950,7 +1950,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
             else if (!(prop->asObjType->GetSubTypeId() & asTYPEID_MASK_OBJECT) &&
                 prop->asObjType->GetSubTypeId() > asTYPEID_DOUBLE)
             {
-                if (arr[0].which() != DataBase::StringValue)
+                if (arr[0].index() != DataBase::StringValue)
                 {
                     WriteLog("Wrong array enum element value type, property '{}'.\n", prop->GetName());
                     is_error = true;
@@ -1962,9 +1962,9 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 uchar* data = new uchar[data_size];
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].which() == DataBase::StringValue));
+                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
 
-                    int e = Script::GetEnumValue(enum_name, arr[i].get<string>(), is_error);
+                    int e = Script::GetEnumValue(enum_name, std::get<string>(arr[i]), is_error);
                     *(int*)(data + i * sizeof(int)) = e;
                 }
 
@@ -1973,8 +1973,8 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
             }
             else if (!(prop->asObjType->GetSubTypeId() & asTYPEID_MASK_OBJECT))
             {
-                if (arr[0].which() == DataBase::StringValue || arr[0].which() == DataBase::ArrayValue ||
-                    arr[0].which() == DataBase::DictValue)
+                if (arr[0].index() == DataBase::StringValue || arr[0].index() == DataBase::ArrayValue ||
+                    arr[0].index() == DataBase::DictValue)
                 {
                     WriteLog("Wrong array element value type, property '{}'.\n", prop->GetName());
                     is_error = true;
@@ -1985,22 +1985,22 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 int element_size = prop->asObjType->GetEngine()->GetSizeOfPrimitiveType(element_type_id);
                 uint data_size = element_size * (int)arr.size();
                 uchar* data = new uchar[data_size];
-                int arr_element_index = arr[0].which();
+                size_t arr_element_index = arr[0].index();
 
 #define PARSE_VALUE(t) \
     do \
     { \
         for (size_t i = 0; i < arr.size(); i++) \
         { \
-            RUNTIME_ASSERT(arr[i].which() == arr_element_index); \
+            RUNTIME_ASSERT(arr[i].index() == arr_element_index); \
             if (arr_element_index == DataBase::IntValue) \
-                *(t*)(data + i * element_size) = (t)arr[i].get<int>(); \
+                *(t*)(data + i * element_size) = (t)std::get<int>(arr[i]); \
             else if (arr_element_index == DataBase::Int64Value) \
-                *(t*)(data + i * element_size) = (t)arr[i].get<int64>(); \
+                *(t*)(data + i * element_size) = (t)std::get<int64>(arr[i]); \
             else if (arr_element_index == DataBase::DoubleValue) \
-                *(t*)(data + i * element_size) = (t)arr[i].get<double>(); \
+                *(t*)(data + i * element_size) = (t)std::get<double>(arr[i]); \
             else if (arr_element_index == DataBase::BoolValue) \
-                *(t*)(data + i * element_size) = (t)arr[i].get<bool>(); \
+                *(t*)(data + i * element_size) = (t)std::get<bool>(arr[i]); \
             else \
                 UNREACHABLE_PLACE; \
         } \
@@ -2040,7 +2040,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
             {
                 RUNTIME_ASSERT(prop->isArrayOfString);
 
-                if (arr[0].which() != DataBase::StringValue)
+                if (arr[0].index() != DataBase::StringValue)
                 {
                     WriteLog("Wrong array element value type, property '{}'.\n", prop->GetName());
                     is_error = true;
@@ -2050,9 +2050,9 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 uint data_size = sizeof(uint);
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].which() == DataBase::StringValue));
+                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
 
-                    const string& str = arr[i].get<string>();
+                    const string& str = std::get<string>(arr[i]);
                     data_size += sizeof(uint) + (uint)str.length();
                 }
 
@@ -2061,7 +2061,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 size_t data_pos = sizeof(uint);
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    const string& str = arr[i].get<string>();
+                    const string& str = std::get<string>(arr[i]);
                     *(uint*)(data + data_pos) = (uint)str.length();
                     if (!str.empty())
                         memcpy(data + data_pos + sizeof(uint), str.c_str(), str.length());
@@ -2075,14 +2075,14 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
         }
         else if (prop->dataType == Property::Dict)
         {
-            if (value.which() != DataBase::DictValue)
+            if (value.index() != DataBase::DictValue)
             {
                 WriteLog("Wrong dict value type, property '{}'.\n", prop->GetName());
                 is_error = true;
                 continue;
             }
 
-            const DataBase::Dict& dict = value.get<DataBase::Dict>();
+            const DataBase::Dict& dict = std::get<DataBase::Dict>(value);
             if (dict.empty())
             {
                 prop->SetPropRawData(this, nullptr, 0);
@@ -2108,14 +2108,14 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
 
                 if (prop->isDictOfArray)
                 {
-                    if (kv.second.which() != DataBase::ArrayValue)
+                    if (kv.second.index() != DataBase::ArrayValue)
                     {
                         WriteLog("Wrong dict array value type, property '{}'.\n", prop->GetName());
                         wrong_input = true;
                         break;
                     }
 
-                    const DataBase::Array& arr = kv.second.get<DataBase::Array>();
+                    const DataBase::Array& arr = std::get<DataBase::Array>(kv.second);
                     int arr_element_type_id = prop->asObjType->GetSubType(1)->GetSubTypeId();
                     int arr_element_size = prop->asObjType->GetEngine()->GetSizeOfPrimitiveType(arr_element_type_id);
 
@@ -2125,7 +2125,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                     {
                         for (auto& e : arr)
                         {
-                            if (e.which() != DataBase::StringValue)
+                            if (e.index() != DataBase::StringValue)
                             {
                                 WriteLog("Wrong dict array element enum value type, property '{}'.\n", prop->GetName());
                                 wrong_input = true;
@@ -2139,7 +2139,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                     {
                         for (auto& e : arr)
                         {
-                            if (e.which() != DataBase::StringValue)
+                            if (e.index() != DataBase::StringValue)
                             {
                                 WriteLog("Wrong dict array element hash value type, property '{}'.\n", prop->GetName());
                                 wrong_input = true;
@@ -2153,7 +2153,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                     {
                         for (auto& e : arr)
                         {
-                            if (e.which() != DataBase::StringValue)
+                            if (e.index() != DataBase::StringValue)
                             {
                                 WriteLog(
                                     "Wrong dict array element string value type, property '{}'.\n", prop->GetName());
@@ -2161,16 +2161,16 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                                 break;
                             }
 
-                            data_size += sizeof(uint) + (uint)e.get<string>().length();
+                            data_size += sizeof(uint) + (uint)std::get<string>(e).length();
                         }
                     }
                     else
                     {
                         for (auto& e : arr)
                         {
-                            if ((e.which() != DataBase::IntValue && e.which() != DataBase::Int64Value &&
-                                    e.which() != DataBase::DoubleValue && e.which() != DataBase::BoolValue) ||
-                                e.which() != arr[0].which())
+                            if ((e.index() != DataBase::IntValue && e.index() != DataBase::Int64Value &&
+                                    e.index() != DataBase::DoubleValue && e.index() != DataBase::BoolValue) ||
+                                e.index() != arr[0].index())
                             {
                                 WriteLog("Wrong dict array element value type, property '{}'.\n", prop->GetName());
                                 wrong_input = true;
@@ -2183,18 +2183,18 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 }
                 else if (prop->isDictOfString)
                 {
-                    if (kv.second.which() != DataBase::StringValue)
+                    if (kv.second.index() != DataBase::StringValue)
                     {
                         WriteLog("Wrong dict string element value type, property '{}'.\n", prop->GetName());
                         wrong_input = true;
                         break;
                     }
 
-                    data_size += (uint)kv.second.get<string>().length();
+                    data_size += (uint)std::get<string>(kv.second).length();
                 }
                 else if (!(value_element_type_id & asTYPEID_MASK_OBJECT) && value_element_type_id > asTYPEID_DOUBLE)
                 {
-                    if (kv.second.which() != DataBase::StringValue)
+                    if (kv.second.index() != DataBase::StringValue)
                     {
                         WriteLog("Wrong dict enum element value type, property '{}'.\n", prop->GetName());
                         wrong_input = true;
@@ -2206,7 +2206,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 }
                 else if (prop->isHashSubType1)
                 {
-                    if (kv.second.which() != DataBase::StringValue)
+                    if (kv.second.index() != DataBase::StringValue)
                     {
                         WriteLog("Wrong dict hash element value type, property '{}'.\n", prop->GetName());
                         wrong_input = true;
@@ -2218,8 +2218,8 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 }
                 else
                 {
-                    if (kv.second.which() != DataBase::IntValue && kv.second.which() != DataBase::Int64Value &&
-                        kv.second.which() != DataBase::DoubleValue && kv.second.which() != DataBase::BoolValue)
+                    if (kv.second.index() != DataBase::IntValue && kv.second.index() != DataBase::Int64Value &&
+                        kv.second.index() != DataBase::DoubleValue && kv.second.index() != DataBase::BoolValue)
                     {
                         WriteLog("Wrong dict number element value type, property '{}'.\n", prop->GetName());
                         wrong_input = true;
@@ -2277,7 +2277,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
 
                 if (prop->isDictOfArray)
                 {
-                    const DataBase::Array& arr = kv.second.get<DataBase::Array>();
+                    const DataBase::Array& arr = std::get<DataBase::Array>(kv.second);
 
                     *(uint*)(data + data_pos) = (uint)arr.size();
                     data_pos += sizeof(uint);
@@ -2291,7 +2291,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                         for (auto& e : arr)
                         {
                             *(int*)(data + data_pos) =
-                                Script::GetEnumValue(arr_element_type_name, e.get<string>(), is_error);
+                                Script::GetEnumValue(arr_element_type_name, std::get<string>(e), is_error);
                             data_pos += sizeof(int);
                         }
                     }
@@ -2299,7 +2299,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                     {
                         for (auto& e : arr)
                         {
-                            *(hash*)(data + data_pos) = _str(e.get<string>()).toHash();
+                            *(hash*)(data + data_pos) = _str(std::get<string>(e)).toHash();
                             data_pos += sizeof(hash);
                         }
                     }
@@ -2307,7 +2307,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                     {
                         for (auto& e : arr)
                         {
-                            const string& str = e.get<string>();
+                            const string& str = std::get<string>(e);
                             *(uint*)(data + data_pos) = (uint)str.length();
                             data_pos += sizeof(uint);
                             if (!str.empty())
@@ -2325,14 +2325,14 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
     do \
     { \
         RUNTIME_ASSERT(sizeof(t) == arr_element_size); \
-        if (e.which() == DataBase::IntValue) \
-            *(t*)(data + data_pos) = (t)e.get<int>(); \
-        else if (e.which() == DataBase::Int64Value) \
-            *(t*)(data + data_pos) = (t)e.get<int64>(); \
-        else if (e.which() == DataBase::DoubleValue) \
-            *(t*)(data + data_pos) = (t)e.get<double>(); \
-        else if (e.which() == DataBase::BoolValue) \
-            *(t*)(data + data_pos) = (t)e.get<bool>(); \
+        if (e.index() == DataBase::IntValue) \
+            *(t*)(data + data_pos) = (t)std::get<int>(e); \
+        else if (e.index() == DataBase::Int64Value) \
+            *(t*)(data + data_pos) = (t)std::get<int64>(e); \
+        else if (e.index() == DataBase::DoubleValue) \
+            *(t*)(data + data_pos) = (t)std::get<double>(e); \
+        else if (e.index() == DataBase::BoolValue) \
+            *(t*)(data + data_pos) = (t)std::get<bool>(e); \
         else \
             UNREACHABLE_PLACE; \
     } while (false)
@@ -2370,7 +2370,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                 }
                 else if (prop->isDictOfString)
                 {
-                    const string& str = kv.second.get<string>();
+                    const string& str = std::get<string>(kv.second);
 
                     *(uint*)(data + data_pos) = (uint)str.length();
                     data_pos += sizeof(uint);
@@ -2389,20 +2389,20 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
     do \
     { \
         RUNTIME_ASSERT(sizeof(t) == value_element_size); \
-        if (kv.second.which() == DataBase::IntValue) \
-            *(t*)(data + data_pos) = (t)kv.second.get<int>(); \
-        else if (kv.second.which() == DataBase::Int64Value) \
-            *(t*)(data + data_pos) = (t)kv.second.get<int64>(); \
-        else if (kv.second.which() == DataBase::DoubleValue) \
-            *(t*)(data + data_pos) = (t)kv.second.get<double>(); \
-        else if (kv.second.which() == DataBase::BoolValue) \
-            *(t*)(data + data_pos) = (t)kv.second.get<bool>(); \
+        if (kv.second.index() == DataBase::IntValue) \
+            *(t*)(data + data_pos) = (t)std::get<int>(kv.second); \
+        else if (kv.second.index() == DataBase::Int64Value) \
+            *(t*)(data + data_pos) = (t)std::get<int64>(kv.second); \
+        else if (kv.second.index() == DataBase::DoubleValue) \
+            *(t*)(data + data_pos) = (t)std::get<double>(kv.second); \
+        else if (kv.second.index() == DataBase::BoolValue) \
+            *(t*)(data + data_pos) = (t)std::get<bool>(kv.second); \
         else \
             UNREACHABLE_PLACE; \
     } while (false)
 
                     if (prop->isHashSubType1)
-                        *(hash*)(data + data_pos) = _str(kv.second.get<string>()).toHash();
+                        *(hash*)(data + data_pos) = _str(std::get<string>(kv.second)).toHash();
                     else if (value_element_type_id == asTYPEID_INT8)
                         PARSE_VALUE(char);
                     else if (value_element_type_id == asTYPEID_INT16)
@@ -2427,7 +2427,7 @@ bool Properties::LoadFromDbDocument(const DataBase::Document& doc)
                         PARSE_VALUE(bool);
                     else
                         *(int*)(data + data_pos) =
-                            Script::GetEnumValue(value_element_type_name, kv.second.get<string>(), is_error);
+                            Script::GetEnumValue(value_element_type_name, std::get<string>(kv.second), is_error);
 
 #undef PARSE_VALUE
 

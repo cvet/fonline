@@ -50,14 +50,18 @@ public:
     CritterVec VisCrSelf;
     CritterMap VisCrMap;
     CritterMap VisCrSelfMap;
-    UIntSet VisCr1, VisCr2, VisCr3;
+    UIntSet VisCr1;
+    UIntSet VisCr2;
+    UIntSet VisCr3;
     UIntSet VisItem;
-    Mutex VisItemLocker;
     uint ViewMapId;
     hash ViewMapPid;
-    ushort ViewMapLook, ViewMapHx, ViewMapHy;
+    ushort ViewMapLook;
+    ushort ViewMapHx;
+    ushort ViewMapHy;
     uchar ViewMapDir;
-    uint ViewMapLocId, ViewMapLocEnt;
+    uint ViewMapLocId;
+    uint ViewMapLocEnt;
 
     struct
     {

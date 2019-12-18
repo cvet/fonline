@@ -206,8 +206,8 @@ bool FOServer::Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dial
 
     if (!GameOpt.NoAnswerShuffle && !compiled_dlg.IsNoShuffle())
     {
-        static THREAD std::random_device rd;
-        static THREAD std::mt19937 rnd(rd());
+        static thread_local std::random_device rd;
+        static thread_local std::mt19937 rnd(rd());
         std::shuffle(compiled_dlg.Answers.begin(), compiled_dlg.Answers.end(), rnd);
     }
     return true;

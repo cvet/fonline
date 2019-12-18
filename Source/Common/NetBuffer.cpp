@@ -56,12 +56,12 @@ uchar NetBuffer::EncryptKey(int move)
 
 void NetBuffer::Lock()
 {
-    bufLocker.Lock();
+    bufLocker.lock();
 }
 
 void NetBuffer::Unlock()
 {
-    bufLocker.Unlock();
+    bufLocker.unlock();
 }
 
 void NetBuffer::Refresh()

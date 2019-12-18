@@ -1,13 +1,16 @@
 #pragma once
 
-#include "3dStuff.h"
 #include "Common.h"
 #include "Entity.h"
-#include "ItemView.h"
 
 class ResourceManager;
 class SpriteManager;
 class Sprite;
+struct Effect;
+class Animation3d;
+struct AnyFrames;
+class ItemView;
+using ItemViewVec = vector<ItemView*>;
 
 class CritterView : public Entity
 {
@@ -128,8 +131,8 @@ private:
     uint reSetTick;
 
 public:
-    bool IsNeedReSet() { return needReSet && Timer::GameTick() >= reSetTick; }
-    void ReSetOk() { needReSet = false; }
+    bool IsNeedReSet();
+    void ReSetOk();
 
     // Time
 public:
@@ -225,8 +228,8 @@ private:
     uint finishingTime;
 
 public:
-    bool IsFinishing() { return finishingTime != 0; }
-    bool IsFinish() { return (finishingTime && Timer::GameTick() > finishingTime); }
+    bool IsFinishing();
+    bool IsFinish();
 
     // Fade
 private:

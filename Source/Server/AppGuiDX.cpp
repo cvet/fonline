@@ -6,6 +6,7 @@
 #ifdef FO_HAVE_DX
 
 #include "GraphicApi.h"
+#include <d3d9.h>
 #include <XInput.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>

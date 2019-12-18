@@ -43,7 +43,7 @@ static int main_disabled(int argc, char** argv)
 // Hard restart, need wait before event dissapeared
 #ifdef FO_WINDOWS
     if (wcsstr(GetCommandLineW(), L" --restart"))
-        Thread::Sleep(500);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 #endif
 
     // Start message
@@ -85,12 +85,12 @@ static int main_disabled(int argc, char** argv)
                 {
                     double sleep = need_elapsed - elapsed + balance;
                     balance = fmod(sleep, 1.0);
-                    Thread::Sleep((uint)floor(sleep));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
                 }
             }
             else
             {
-                Thread::Sleep(-GameOpt.FixedFPS);
+                std::this_thread::sleep_for(std::chrono::milliseconds(-GameOpt.FixedFPS));
             }
         }
     }

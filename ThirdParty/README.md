@@ -28,6 +28,5 @@
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
 * openssl - [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
-* variant - [variant-1.1.5](https://github.com/mapbox/variant)
 * websocketpp - [websocketpp_0.8.1](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib128](https://www.zlib.net/)

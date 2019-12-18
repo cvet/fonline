@@ -1,5 +1,6 @@
 #include "HexManager.h"
 #include "CritterView.h"
+#include "Crypt.h"
 #include "ItemHexView.h"
 #include "LineTracer.h"
 #include "Log.h"

@@ -1,6 +1,8 @@
 #include "ItemHexView.h"
+#include "GraphicStructures.h"
 #include "Log.h"
 #include "ResourceManager.h"
+#include "SpriteManager.h"
 #include "Sprites.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -110,6 +112,16 @@ void ItemHexView::Finish()
     finishingTime = fadingTick;
     if (isEffect)
         finishingTime = Timer::GameTick();
+}
+
+bool ItemHexView::IsFinishing()
+{
+    return finishing;
+}
+
+bool ItemHexView::IsFinish()
+{
+    return finishing && Timer::GameTick() > finishingTime;
 }
 
 void ItemHexView::StopFinishing()

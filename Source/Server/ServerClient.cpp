@@ -561,8 +561,8 @@ void FOServer::Process_LogIn(Client*& cl)
     // Check password
     uint id = MAKE_CLIENT_ID(cl->Name);
     DataBase::Document doc = DbStorage->Get("Players", id);
-    if (!doc.count("Password") || doc["Password"].which() != DataBase::StringValue ||
-        !Str::Compare(password, doc["Password"].get<string>().c_str()))
+    if (!doc.count("Password") || doc["Password"].index() != DataBase::StringValue ||
+        !Str::Compare(password, std::get<string>(doc["Password"]).c_str()))
     {
         cl->Send_TextMsg(cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
         cl->Disconnect();
@@ -610,32 +610,32 @@ void FOServer::Process_LogIn(Client*& cl)
     // Avatar in game
     if (cl_old)
     {
-        ConnectedClientsLocker.Lock();
+        {
+            SCOPE_LOCK(ConnectedClientsLocker);
 
-        // Disconnect current connection
-        if (!cl_old->Connection->IsDisconnected)
-            cl_old->Disconnect();
+            // Disconnect current connection
+            if (!cl_old->Connection->IsDisconnected)
+                cl_old->Disconnect();
 
-        // Swap data
-        std::swap(cl_old->Connection, cl->Connection);
-        cl_old->GameState = STATE_CONNECTED;
-        cl->GameState = STATE_NONE;
-        cl_old->LastActivityTime = 0;
-        UNSETFLAG(cl_old->Flags, FCRIT_DISCONNECT);
-        SETFLAG(cl->Flags, FCRIT_DISCONNECT);
-        cl->IsDestroyed = true;
-        cl_old->IsDestroyed = false;
-        Script::RemoveEventsEntity(cl);
+            // Swap data
+            std::swap(cl_old->Connection, cl->Connection);
+            cl_old->GameState = STATE_CONNECTED;
+            cl->GameState = STATE_NONE;
+            cl_old->LastActivityTime = 0;
+            UNSETFLAG(cl_old->Flags, FCRIT_DISCONNECT);
+            SETFLAG(cl->Flags, FCRIT_DISCONNECT);
+            cl->IsDestroyed = true;
+            cl_old->IsDestroyed = false;
+            Script::RemoveEventsEntity(cl);
 
-        // Change in list
-        cl_old->AddRef();
-        auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
-        RUNTIME_ASSERT(it != ConnectedClients.end());
-        *it = cl_old;
-        cl->Release();
-        cl = cl_old;
-
-        ConnectedClientsLocker.Unlock();
+            // Change in list
+            cl_old->AddRef();
+            auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
+            RUNTIME_ASSERT(it != ConnectedClients.end());
+            *it = cl_old;
+            cl->Release();
+            cl = cl_old;
+        }
 
         cl->SendA_Action(ACTION_CONNECT, 0, nullptr);
     }
@@ -813,9 +813,7 @@ void FOServer::Process_ParseToGame(Client* cl)
             cl->Send_AddCritter(*it);
 
         // Send current items on map
-        cl->VisItemLocker.Lock();
         UIntSet items = cl->VisItem;
-        cl->VisItemLocker.Unlock();
         for (auto it = items.begin(), end = items.end(); it != end; ++it)
         {
             Item* item = ItemMngr.GetItem(*it);

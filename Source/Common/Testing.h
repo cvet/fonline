@@ -12,7 +12,7 @@
 #else
 #define RUNTIME_ASSERT(expr) (!!(expr) || RaiseAssert(#expr, __FILE__, __LINE__))
 #define RUNTIME_ASSERT_STR(expr, str) (!!(expr) || RaiseAssert(str, __FILE__, __LINE__))
-#define TEST_CASE() static void UNIQUE_FUNCTION_NAME(test_case_)
+#define TEST_CASE() [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
 #define TEST_SECTION() if (!!(__LINE__))
 #endif
 #define UNREACHABLE_PLACE throw fo_exception("Unreachable place")

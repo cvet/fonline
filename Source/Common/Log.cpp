@@ -2,12 +2,12 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Threading.h"
+#include "WinApi_Include.h"
 #ifdef FO_ANDROID
 #include <android/log.h>
 #endif
 
-static Mutex LogLocker;
+static std::mutex LogLocker;
 static bool LogDisableTimestamp;
 static void* LogFileHandle;
 static map<string, LogFunc> LogFunctions;

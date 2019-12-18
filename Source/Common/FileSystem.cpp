@@ -1,5 +1,6 @@
 #include "FileSystem.h"
 #include "StringUtils.h"
+#include "WinApi_Include.h"
 
 #ifdef FO_WINDOWS
 #include <io.h>
