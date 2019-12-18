@@ -1784,7 +1784,7 @@ void HexManager::RealRebuildLight()
     for (auto it = lightSources.begin(), end = lightSources.end(); it != end; ++it)
     {
         LightSource& ls = *it;
-#pragma MESSAGE("Optimize lighting rebuilding to skip unvisible lights.")
+        // Todo: Optimize lighting rebuilding to skip unvisible lights
         // if( (int) ls.HexX < lightMinHx - (int) ls.Distance || (int) ls.HexX > lightMaxHx + (int) ls.Distance ||
         //    (int) ls.HexY < lightMinHy - (int) ls.Distance || (int) ls.HexY > lightMaxHy + (int) ls.Distance )
         //    continue;

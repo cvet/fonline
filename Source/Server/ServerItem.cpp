@@ -34,7 +34,7 @@ Item* FOServer::CreateItemOnHex(
 void FOServer::OnSendItemValue(Entity* entity, Property* prop)
 {
     Item* item = (Item*)entity;
-#pragma MESSAGE("Clean up server 0 and -1 item ids")
+    // Todo: Clean up server 0 and -1 item ids
     if (item->Id && item->Id != uint(-1))
     {
         bool is_public = (prop->GetAccess() & Property::PublicMask) != 0;
@@ -64,7 +64,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
         }
         else if (item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
         {
-#pragma MESSAGE("Add container properties changing notifications.")
+            // Todo: Add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
         }
     }
@@ -143,7 +143,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_val
         Map* map = Self->MapMngr.GetMap(item->GetMapId());
         if (map)
         {
-#pragma MESSAGE("Make BlockLines changable in runtime.")
+            // Todo: Make BlockLines changable in runtime
         }
     }
 }

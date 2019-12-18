@@ -2202,7 +2202,7 @@ bool FOServer::InitLangPacksItems(LangPackVec& lang_packs)
     return true;
 }
 
-#pragma MESSAGE("Clients logging may be not thread safe.")
+// Todo: Clients logging may be not thread safe
 void FOServer::LogToClients(const string& str)
 {
     string str_fixed = str;

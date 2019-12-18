@@ -1,9 +1,9 @@
 ﻿#include "Client.h"
-#include "FileUtils.h"
 #include "CritterView.h"
 #include "Crypt.h"
 #include "Debugger.h"
 #include "FileSystem.h"
+#include "FileUtils.h"
 #include "IniFile.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
@@ -3429,7 +3429,7 @@ void FOClient::Net_OnEffect()
     }
 }
 
-#pragma MESSAGE("Synchronize effects showing.")
+// Todo: Synchronize effects showing
 void FOClient::Net_OnFlyEffect()
 {
     hash eff_pid;
@@ -5052,8 +5052,8 @@ void FOClient::OnSetCritterModelName(Entity* entity, Property* prop, void* cur_v
 
 void FOClient::OnSendItemValue(Entity* entity, Property* prop)
 {
+    // Todo: Clean up client 0 and -1 item ids
     ItemView* item = (ItemView*)entity;
-#pragma MESSAGE("Clean up client 0 and -1 item ids")
     if (item->Id && item->Id != uint(-1))
     {
         if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER)

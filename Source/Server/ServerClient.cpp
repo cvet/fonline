@@ -76,8 +76,8 @@ void FOServer::ProcessCritter(Critter* cr)
             cl->RemoveFromGame();
         }
 
-// Cache look distance
-#pragma MESSAGE("Disable look distance caching")
+        // Cache look distance
+        // Todo: Disable look distance caching
         if (Timer::GameTick() >= cl->CacheValuesNextTick)
         {
             cl->LookCacheValue = cl->GetLookDistance();
@@ -1104,7 +1104,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
     {
         uint len =
             msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
-#pragma MESSAGE("Control max size explicitly, add option to property registration")
+        // Todo: Control max size explicitly, add option to property registration
         if (len > 0xFFFF) // For now 64Kb for all
             return;
         data.resize(len);
@@ -1192,7 +1192,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
     if (!prop->IsPOD() && data_size != 0)
         return;
 
-#pragma MESSAGE("Disable send changing field by client to this client")
+    // Todo: Disable send changing field by client to this client
     prop->SetData(entity, !data.empty() ? &data[0] : nullptr, (uint)data.size());
 }
 

@@ -650,7 +650,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
 }
 
 #else
-#pragma MESSAGE("Exception handling is disabled")
+// Todo: Handle exceptions
 
 void CatchExceptions(const string& app_name, int app_ver)
 {

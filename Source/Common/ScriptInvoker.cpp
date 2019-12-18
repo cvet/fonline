@@ -330,7 +330,7 @@ bool ScriptInvoker::LoadDeferredCalls()
 
 uint ScriptInvoker::Global_DeferredCall(uint delay, asIScriptFunction* func)
 {
-#pragma MESSAGE("Take Invoker from func.")
+    // Todo: Take Invoker from func
     return Script::GetInvoker()->AddDeferredCall(delay, false, func, nullptr, nullptr);
 }
 

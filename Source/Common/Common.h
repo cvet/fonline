@@ -239,7 +239,6 @@ public:
 #define STRINGIZE_INT2(x) #x
 #define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)
 #define MERGE_ARGS2(a, b) a##b
-#define MESSAGE(desc) message(__FILE__ "(" STRINGIZE_INT(__LINE__) "):" #desc)
 
 #define SAFEREL(x) \
     { \

@@ -469,7 +469,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
         // Name
         input >> name;
         id = _str(name).toHash();
-#pragma MESSAGE("Check item name.")
+        // Todo: Check item name
 
         // Operator
         input >> oper;

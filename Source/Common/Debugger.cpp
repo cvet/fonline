@@ -191,7 +191,7 @@ const char* Debugger::GetMemoryStatistics()
 {
     SCOPE_LOCK(MemLocker);
 
-#pragma MESSAGE("Exclude static var.")
+    // Todo: Exclude static var
     static string result;
     result = "Memory statistics:\n";
 
