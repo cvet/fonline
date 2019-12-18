@@ -259,13 +259,38 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
     D3D_HR( tex->LockRect( 0, &lrb, NULL, 0 ) );
     for( uint i = 0; i < bh; i++ )
         memcpy( (uchar*) lrb.pBits + lrb.Pitch * i, (uchar*) lr.pBits + lr.Pitch * i, bw * 4 );
-    for( uint y = 0; y < bh; y++ )
-        for( uint x = 0; x < bw; x++ )
-            if( SURF_POINT( lr, x, y ) )
-                for( int xx = -1; xx <= 1; xx++ )
-                    for( int yy = -1; yy <= 1; yy++ )
-                        if( !SURF_POINT( lrb, x + xx, y + yy ) )
-                            SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+  
+	for (uint y = 0; y < bh; y++)
+    {
+        for (uint x = 0; x < bw; x++)
+        {
+            if (SURF_POINT(lr, x, y))
+            {
+                for (int xx = -1; xx <= 1; xx++)
+                {
+                    if (x == 0 && xx == -1) continue;
+                    if (x + xx >= bw) break;
+                    for (int yy = -1; yy <= 1; yy++)
+                    {
+                        if (y == 0 && yy == -1) continue;
+                        if (y + yy >= bh) break;
+                        if (!SURF_POINT(lrb, x + xx, y + yy))
+                        {
+                            SURF_POINT(lrb, x + xx, y + yy) = 0xFF000000;
+                        }
+                    }
+                }
+            }
+        }
+    }
+	//for( uint y = 0; y < bh; y++ )
+     //   for( uint x = 0; x < bw; x++ )
+      //      if( SURF_POINT( lr, x, y ) )
+       //         for( int xx = -1; xx <= 1; xx++ )
+        //            for( int yy = -1; yy <= 1; yy++ )
+         //               if( !SURF_POINT( lrb, x + xx, y + yy ) )
+          //                  SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+
     D3D_HR( font.FontTex->Instance->UnlockRect( 0 ) );
     D3D_HR( font.FontTexBordered->Instance->LockRect( 0, &lr, &to_lock2, 0 ) );
     for( uint i = 0; i < bh; i++ )
@@ -485,13 +510,38 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
                 SURF_POINT( lr, x, y ) = 0;
     for( uint i = 0; i < bh; i++ )
         memcpy( (uchar*) lrb.pBits + lrb.Pitch * i, (uchar*) lr.pBits + lr.Pitch * i, bw * 4 );
-    for( uint y = 0; y < bh; y++ )
-        for( uint x = 0; x < bw; x++ )
-            if( SURF_POINT( lr, x, y ) )
-                for( int xx = -1; xx <= 1; xx++ )
-                    for( int yy = -1; yy <= 1; yy++ )
-                        if( !SURF_POINT( lrb, x + xx, y + yy ) )
-                            SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+
+	for (uint y = 0; y < bh; y++)
+    {
+        for (uint x = 0; x < bw; x++)
+        {
+            if (SURF_POINT(lr, x, y))
+            {
+                for (int xx = -1; xx <= 1; xx++)
+                {
+                    if (x == 0 && xx == -1) continue;
+                    if (x + xx >= bw) break;
+                    for (int yy = -1; yy <= 1; yy++)
+                    {
+                        if (y == 0 && yy == -1) continue;
+                        if (y + yy >= bh) break;
+                        if (!SURF_POINT(lrb, x + xx, y + yy))
+                        {
+                            SURF_POINT(lrb, x + xx, y + yy) = 0xFF000000;
+                        }
+                    }
+                }
+            }
+        }
+    }
+   // for( uint y = 0; y < bh; y++ )
+        //for( uint x = 0; x < bw; x++ )
+        //    if( SURF_POINT( lr, x, y ) )
+        //        for( int xx = -1; xx <= 1; xx++ )
+       //             for( int yy = -1; yy <= 1; yy++ )
+      //                  if( !SURF_POINT( lrb, x + xx, y + yy ) )
+     //                       SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
+
     D3D_HR( font.FontTex->Instance->UnlockRect( 0 ) );
     D3D_HR( font.FontTexBordered->Instance->LockRect( 0, &lr, &to_lock2, 0 ) );
     for( uint i = 0; i < bh; i++ )
