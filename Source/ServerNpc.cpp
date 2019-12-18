@@ -157,6 +157,11 @@ void FOServer::ProcessAI( Npc* npc )
         if( map->IsTurnBasedOn && map->IsCritterTurn( npc ) )
             map->EndCritterTurn();
         return;
+
+        // If plane is still null - return early, there's nothing to handle. Else we'll get EXCEPTION_ACCESS_VIOLATION.
+        plane = npc->GetCurPlane();
+        if( !plane )
+            return;
     }
 
     // Process move
