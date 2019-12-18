@@ -366,6 +366,13 @@ static ScriptString* StringDefaultFactory()
 
 static ScriptString* StringCopyFactory( const ScriptString& other )
 {
+    // Workaround for pointer to reference coercion bug in AS.
+	const ScriptString* ptr = &other;
+    if( ptr == NULL ) {
+        asIScriptContext* ctx = asGetActiveContext();
+        ctx->SetException( "Null pointer string copy" );
+        return NULL;
+    }
     // Allocate and initialize with the copy constructor
     return new ScriptString( other );
 }
