@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Resource">
@@ -22,6 +22,9 @@
     </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{d7d82959-84ad-4bf1-bb52-634f2505a610}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="API">
+      <UniqueIdentifier>{8425a09e-f994-4d2f-9468-5633ede94fa8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -313,6 +316,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\API\API_Server.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -645,6 +651,12 @@
     </ClInclude>
     <ClInclude Include="..\Source\AngelScript\scriptmath.h">
       <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\API\API_Common.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\API\API_Server.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Resource">
@@ -34,6 +34,9 @@
     </Filter>
     <Filter Include="GL">
       <UniqueIdentifier>{3c9c4398-c2ab-47cd-8251-c2a663963de3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="API">
+      <UniqueIdentifier>{70f666fe-5d7e-4b88-9d48-431f5603879c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -512,6 +515,12 @@
     <ClInclude Include="..\Source\AngelScript\scriptstring.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\API\API_Client.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\API\API_Common.h">
+      <Filter>API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -792,6 +801,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\API\API_Client.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
