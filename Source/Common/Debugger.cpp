@@ -634,7 +634,6 @@ string Debugger::GetTraceMemory()
 
     // Print
     string str;
-    str.reserve(1000000);
     str += "Unfreed memory:\n";
     str += _str("  Whole blocks {}\n", (int64)blocks_chunks.size());
     str += _str("  Whole size   {}\n", (int64)whole_size);

@@ -2,39 +2,16 @@
 
 #include "Common.h"
 
-class Sound;
-using SoundVec = vector<Sound*>;
-using Uint32 = uint32_t;
-using SDL_AudioDeviceID = Uint32;
-struct SDL_AudioSpec;
+class ISoundManager;
+using SoundManager = shared_ptr<ISoundManager>;
 
-class SoundManager
+class ISoundManager : public NonCopyable
 {
 public:
-    SoundManager();
-    ~SoundManager();
-    bool PlaySound(const StrMap& sound_names, const string& name);
-    bool PlayMusic(const string& fname, uint repeat_time);
-    void StopSounds();
-    void StopMusic();
-
-private:
-    using SoundsFunc = std::function<void(uchar*)>;
-
-    void ProcessSounds(uchar* output);
-    bool ProcessSound(Sound* sound, uchar* output);
-    Sound* Load(const string& fname, bool is_music);
-    bool LoadWAV(Sound* sound, const string& fname);
-    bool LoadACM(Sound* sound, const string& fname, bool is_music);
-    bool LoadOGG(Sound* sound, const string& fname);
-    bool StreamOGG(Sound* sound);
-    bool ConvertData(Sound* sound);
-
-    bool isActive;
-    unique_ptr<SDL_AudioDeviceID> deviceID;
-    unique_ptr<SDL_AudioSpec> soundSpec;
-    uint streamingPortion;
-    SoundVec soundsActive;
-    UCharVec outputBuf;
-    SoundsFunc soundsFunc;
+    static SoundManager Create();
+    virtual bool PlaySound(const StrMap& sound_names, const string& name) = 0;
+    virtual bool PlayMusic(const string& fname, uint repeat_time) = 0;
+    virtual void StopSounds() = 0;
+    virtual void StopMusic() = 0;
+    virtual ~ISoundManager() = default;
 };
