@@ -487,6 +487,7 @@ void CreateDump(const string& appendix, const string& message)
 #include "FileUtils.h"
 #include "backward.hpp"
 #include <execinfo.h>
+#include <signal.h>
 #include <sys/utsname.h>
 
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);

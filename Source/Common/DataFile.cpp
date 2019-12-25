@@ -300,7 +300,7 @@ FalloutDatFile::FalloutDatFile(const string& fname)
 
     datHandle = FileOpen(fname, false);
     if (!datHandle)
-        throw fo_exception("Cannot open file '{}'", fname);
+        throw fo_exception("Cannot open file", fname);
 
     writeTime = FileGetWriteTime(datHandle);
 
@@ -553,7 +553,7 @@ ZipFile::ZipFile(const string& fname)
     {
         void* file = FileOpen(fname, false);
         if (!file)
-            throw fo_exception("Can't open ZIP file '{}'", fname);
+            throw fo_exception("Can't open ZIP file", fname);
 
         writeTime = FileGetWriteTime(file);
 
@@ -659,10 +659,10 @@ ZipFile::ZipFile(const string& fname)
 
     zipHandle = unzOpen2(fname.c_str(), &ffunc);
     if (!zipHandle)
-        throw fo_exception("Can't read ZIP file '{}'", fname);
+        throw fo_exception("Can't read ZIP file", fname);
 
     if (!ReadTree())
-        throw fo_exception("Read file tree fail");
+        throw fo_exception("Read file tree fail", fname);
 }
 
 ZipFile::~ZipFile()
@@ -794,7 +794,7 @@ BundleFile::BundleFile(const string& fname)
     {
         void* f = FileOpen(name, false);
         if (!f)
-            throw fo_exception("Can't open file '{}' in bundle", name);
+            throw fo_exception("Can't open file in bundle", name);
 
         FileEntry fe;
         fe.FileName = name;

@@ -27,9 +27,6 @@
         ((c)&0xFF) + GameOpt.Light, (((c) >> 24) & 0xFF))
 #define COLOR_SCRIPT_SPRITE(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_IFACE_FIX))
 #define COLOR_SCRIPT_TEXT(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_TEXT))
-#define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
-#define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
-#define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
 #define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
 #define COLOR_IFACE_FIX COLOR_GAME_RGB(103, 95, 86)
 #define COLOR_IFACE \
@@ -184,24 +181,13 @@ public:
     Animation3d* LoadPure3dAnimation(const string& fname, bool auto_redraw);
     void RefreshPure3dAnimationSprite(Animation3d* anim3d);
     void FreePure3dAnimation(Animation3d* anim3d);
-    bool SaveAnimationInFastFormat(AnyFrames* anim, const string& fname);
-    bool TryLoadAnimationInFastFormat(const string& fname, File& fm, AnyFrames*& anim);
 
 private:
     SprInfoVec sprData;
     Animation3dVec autoRedrawAnim3d;
 
-    AnyFrames* LoadAnimationFrm(const string& fname, bool anim_pix);
-    AnyFrames* LoadAnimationRix(const string& fname);
-    AnyFrames* LoadAnimationFofrm(const string& fname);
+    AnyFrames* LoadAnimation2d(const string& fname);
     AnyFrames* LoadAnimation3d(const string& fname);
-    AnyFrames* LoadAnimationArt(const string& fname);
-    AnyFrames* LoadAnimationSpr(const string& fname);
-    AnyFrames* LoadAnimationZar(const string& fname);
-    AnyFrames* LoadAnimationTil(const string& fname);
-    AnyFrames* LoadAnimationMos(const string& fname);
-    AnyFrames* LoadAnimationBam(const string& fname);
-    AnyFrames* LoadAnimationOther(const string& fname, uchar* (*loader)(const uchar*, uint, uint&, uint&));
     bool Render3d(Animation3d* anim3d);
 
     // Draw

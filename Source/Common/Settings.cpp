@@ -2,7 +2,11 @@
 #include "IniFile.h"
 #include "StringUtils.h"
 #include "WinApi_Include.h"
+
 #include "imgui.h"
+#ifndef FO_WINDOWS
+#include <unistd.h>
+#endif
 
 Settings GameOpt;
 IniFile* MainConfig;

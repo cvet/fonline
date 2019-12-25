@@ -7,6 +7,10 @@
 #else
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#endif
+#ifdef FO_ANDROID
+#include "SDL.h"
 #endif
 
 #ifdef FO_WINDOWS
@@ -135,8 +139,6 @@ uint FileGetSize(void* file)
 }
 
 #elif defined(FO_ANDROID)
-
-#include "SDL.h"
 
 struct FileDesc
 {

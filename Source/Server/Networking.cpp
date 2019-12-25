@@ -495,7 +495,7 @@ NetServerBase* NetServerBase::StartWebSocketsServer(ushort port, string wss_cred
         {
             StrVec keys = _str(wss_credentials).split(' ');
             if (keys.size() != 2)
-                throw fo_exception("Invalid 'WssCredentials' option");
+                throw fo_exception("Invalid 'WssCredentials' option", wss_credentials);
 
             return new NetTlsWebSocketsServer(port, keys[0], keys[1], callback);
         }

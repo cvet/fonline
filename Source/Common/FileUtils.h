@@ -12,13 +12,15 @@ struct FindData
 };
 typedef vector<FindData> FindDataVec;
 
-class File
+class File : public NonCopyable
 {
 public:
     static void InitDataFiles(const string& path, bool set_write_dir = true);
     static bool LoadDataFile(const string& path, bool skip_inner = false);
     static void ClearDataFiles();
 
+    File();
+    ~File();
     File(const string& path, bool no_read = false);
     File(const uchar* stream, uint length);
 
@@ -89,9 +91,6 @@ public:
         FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr);
     static void GetDataFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
 
-    File();
-    ~File();
-
 private:
     static DataFileVec dataFiles;
     static string writeDir;
@@ -117,6 +116,8 @@ class FileCollection
 public:
     FileCollection(const string& ext, const string& fixed_dir = "");
     bool IsNextFile();
+    File& GetCurFile(
+        string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
     File& GetNextFile(
         string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
     File& FindFile(

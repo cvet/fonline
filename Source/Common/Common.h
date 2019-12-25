@@ -72,21 +72,17 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
+// OS specific API
 #if defined(FO_MAC) || defined(FO_IOS)
 #include <TargetConditionals.h>
 #endif
-
 #if defined(FO_WEB)
 #include <emscripten.h>
 #include <emscripten/html5.h>
-#endif
-
-#if !defined(FO_WINDOWS)
-#include <signal.h>
-#include <unistd.h>
 #endif
 
 // String formatting
@@ -130,6 +126,7 @@ using std::tuple;
 using std::type_index;
 using std::unique_ptr;
 using std::unordered_map;
+using std::unordered_set;
 using std::vector;
 
 using StrUCharMap = map<string, uchar>;
@@ -205,16 +202,18 @@ using UIntHashVecMap = map<uint, HashVec>;
 // Generic exception
 class fo_exception : public std::exception
 {
-    string exceptionMessage;
-
 public:
-    fo_exception(const char* message) : exceptionMessage(message) {}
     template<typename... Args>
-    fo_exception(const char* format, Args... args) : exceptionMessage(std::move(fmt::format(format, args...)))
+    fo_exception(const char* message, Args... args) :
+        exceptionMessage {message}, exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
     {
     }
     ~fo_exception() noexcept = default;
     const char* what() const noexcept override { return exceptionMessage.c_str(); }
+
+private:
+    string exceptionMessage;
+    vector<string> exceptionParams;
 };
 
 // Non copyable (but movable) base class
@@ -239,6 +238,9 @@ public:
 #define STRINGIZE_INT2(x) #x
 #define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)
 #define MERGE_ARGS2(a, b) a##b
+#define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
+#define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
+#define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
 
 #define SAFEREL(x) \
     { \
@@ -706,6 +708,61 @@ public:
 };
 
 // Data serialization helpers
+class DataReader
+{
+public:
+    DataReader(const uchar* buf) : dataBuf {buf}, readPos {} {}
+    DataReader(const UCharVec& buf) : dataBuf {!buf.empty() ? &buf[0] : nullptr}, readPos {} {}
+
+    template<class T>
+    inline T Read()
+    {
+        T data;
+        memcpy(&data, &dataBuf[readPos], sizeof(T));
+        readPos += sizeof(T);
+        return data;
+    }
+
+    template<class T>
+    inline T* ReadPtr(size_t size)
+    {
+        readPos += size;
+        return size ? &dataBuf[readPos - size] : nullptr;
+    }
+
+private:
+    const uchar* dataBuf;
+    size_t readPos;
+};
+
+class DataWriter
+{
+public:
+    DataWriter(UCharVec& buf) : dataBuf {buf} {}
+
+    template<class T>
+    inline void Write(T data)
+    {
+        size_t cur = dataBuf.size();
+        dataBuf.resize(cur + sizeof(data));
+        memcpy(&dataBuf[cur], &data, sizeof(data));
+    }
+
+    template<class T>
+    inline void WritePtr(T* data, size_t size)
+    {
+        if (!size)
+            return;
+
+        size_t cur = dataBuf.size();
+        dataBuf.resize(cur + size);
+        memcpy(&dataBuf[cur], data, size);
+    }
+
+private:
+    UCharVec& dataBuf;
+};
+
 template<class T>
 inline void WriteData(UCharVec& vec, T data)
 {

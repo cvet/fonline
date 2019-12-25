@@ -14,9 +14,10 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Testing.h"
+#include "WinApi_Include.h"
+
 #include "theora/theoradec.h"
 #include "zlib.h"
-#include "WinApi_Include.h"
 
 // Network
 #ifndef FO_WINDOWS
@@ -27,6 +28,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 #define SOCKET int
 #define INVALID_SOCKET (-1)
 #define SOCKET_ERROR (-1)

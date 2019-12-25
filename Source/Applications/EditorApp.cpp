@@ -6,7 +6,6 @@
 #include "Log.h"
 #include "MapView.h"
 #include "Mapper.h"
-#include "ResourceConverter.h"
 #include "SDL_main.h"
 #include "Server.h"
 #include "Settings.h"

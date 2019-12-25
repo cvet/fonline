@@ -5,13 +5,8 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-// SDL
 #include "SDL_audio.h"
-
-// ACM
 #include "acmstrm.h"
-
-// Vorbis
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
@@ -19,11 +14,11 @@ class SoundManagerImpl : public ISoundManager
 {
 public:
     SoundManagerImpl();
-    ~SoundManagerImpl() override;
-    bool PlaySound(const StrMap& sound_names, const string& name) override;
-    bool PlayMusic(const string& fname, uint repeat_time) override;
-    void StopSounds() override;
-    void StopMusic() override;
+    virtual ~SoundManagerImpl() override;
+    virtual bool PlaySound(const StrMap& sound_names, const string& name) override;
+    virtual bool PlayMusic(const string& fname, uint repeat_time) override;
+    virtual void StopSounds() override;
+    virtual void StopMusic() override;
 
 private:
     struct Sound

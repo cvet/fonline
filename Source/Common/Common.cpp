@@ -4,13 +4,14 @@
 #include "IniFile.h"
 #include "Log.h"
 #include "NetBuffer.h"
-#include "SDL.h"
 #include "Script.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+
+#include "SDL.h"
 
 // Some checks from AngelScript config
 #include "as_config.h"
@@ -22,11 +23,6 @@ void InitialSetup(const string& app_name, uint argc, char** argv)
 {
     // Exceptions catcher
     CatchExceptions(app_name, FO_VERSION);
-
-// Disable SIGPIPE signal
-#ifndef FO_WINDOWS
-    signal(SIGPIPE, SIG_IGN);
-#endif
 
     // Timer
     Timer::Init();

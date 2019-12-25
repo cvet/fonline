@@ -6,6 +6,10 @@
 #include "Testing.h"
 #include "WinApi_Include.h"
 
+#ifndef FO_WINDOWS
+#include <unistd.h>
+#endif
+
 #define OUT_BUF_START_SIZE (0x100)
 
 DataFileVec File::dataFiles;
@@ -822,6 +826,20 @@ FileCollection::FileCollection(const string& ext, const string& fixed_dir /* = "
 bool FileCollection::IsNextFile()
 {
     return curFileIndex < fileNames.size();
+}
+
+File& FileCollection::GetCurFile(string* name /* = nullptr */, string* path /* = nullptr */,
+    string* relative_path /* = nullptr */, bool no_read_data /* = false */)
+{
+    curFile.LoadFile(filePaths[curFileIndex], no_read_data);
+    RUNTIME_ASSERT_STR(curFile.IsLoaded(), filePaths[curFileIndex]);
+    if (name)
+        *name = fileNames[curFileIndex];
+    if (path)
+        *path = filePaths[curFileIndex];
+    if (relative_path)
+        *relative_path = fileRelativePaths[curFileIndex];
+    return curFile;
 }
 
 File& FileCollection::GetNextFile(string* name /* = nullptr */, string* path /* = nullptr */,

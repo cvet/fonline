@@ -14,4 +14,5 @@
 #undef PlaySound
 #undef MessageBox
 #undef GetObject
+#undef LoadImage
 #endif
