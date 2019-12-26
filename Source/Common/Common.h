@@ -58,6 +58,7 @@
 #include <ctime>
 #include <deque>
 #include <functional>
+#include <future>
 #include <list>
 #include <map>
 #include <memory>

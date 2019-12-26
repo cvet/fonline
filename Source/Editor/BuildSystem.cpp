@@ -157,7 +157,7 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                                 if (zipOpenNewFileInZip(zip, kv.first.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr,
                                         Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK)
                                 {
-                                    if (zipWriteInFileInZip(zip, &kv.second[0], kv.second.size()))
+                                    if (zipWriteInFileInZip(zip, &kv.second[0], static_cast<uint>(kv.second.size())))
                                         throw fo_exception("Can't write file in zip file", kv.first, zip_path);
 
                                     zipCloseFileInZip(zip);
