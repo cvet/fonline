@@ -1,4 +1,5 @@
 #include "BuildSystem.h"
+#include "EffectBaker.h"
 #include "FileUtils.h"
 #include "ImageBaker.h"
 #include "Log.h"
@@ -121,17 +122,18 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
 
                             map<string, UCharVec> baked_files;
 
-                            // Fill images
                             ImageBaker image_baker = IImageBaker::Create(resources);
-                            image_baker->AutoBakeImages();
-                            image_baker->FillBakedFiles(baked_files);
-                            image_baker = nullptr;
-
-                            // Fill models
                             ModelBaker model_baker = IModelBaker::Create(resources);
+                            EffectBaker effect_baker = IEffectBaker::Create(resources);
+                            image_baker->AutoBakeImages();
                             model_baker->AutoBakeModels();
+                            effect_baker->AutoBakeEffects();
+                            image_baker->FillBakedFiles(baked_files);
                             model_baker->FillBakedFiles(baked_files);
+                            effect_baker->FillBakedFiles(baked_files);
+                            image_baker = nullptr;
                             model_baker = nullptr;
+                            effect_baker = nullptr;
 
                             // Fill other files
                             resources.ResetCounter();
