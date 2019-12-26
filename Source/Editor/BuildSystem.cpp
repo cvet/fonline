@@ -121,16 +121,35 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
 
                             map<string, UCharVec> baked_files;
 
+                            // Fill images
                             ImageBaker image_baker = IImageBaker::Create(resources);
                             image_baker->AutoBakeImages();
                             image_baker->FillBakedFiles(baked_files);
                             image_baker = nullptr;
 
+                            // Fill models
                             ModelBaker model_baker = IModelBaker::Create(resources);
                             model_baker->AutoBakeModels();
                             model_baker->FillBakedFiles(baked_files);
                             model_baker = nullptr;
 
+                            // Fill other files
+                            resources.ResetCounter();
+                            while (resources.IsNextFile())
+                            {
+                                string relative_path;
+                                resources.GetNextFile(nullptr, nullptr, &relative_path, true);
+                                if (baked_files.count(relative_path))
+                                    continue;
+
+                                File& file = resources.GetCurFile();
+                                UCharVec data;
+                                DataWriter writer {data};
+                                writer.WritePtr(file.GetBuf(), file.GetFsize());
+                                baked_files.emplace(relative_path, std::move(data));
+                            }
+
+                            // Write to zip
                             for (const auto& kv : baked_files)
                             {
                                 zip_fileinfo zfi;
@@ -153,7 +172,7 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
 
                             File::DeleteFile(zip_path);
                             if (!File::RenameFile(zip_path + ".tmp", zip_path))
-                                WriteLog("Can't rename file '{}' to '{}'.\n", zip_path + ".tmp", zip_path);
+                                throw fo_exception("Can't rename file", zip_path + ".tmp", zip_path);
 
                             something_changed = true;
                         }
