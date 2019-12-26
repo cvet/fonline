@@ -1,6 +1,8 @@
 #include "BuildSystem.h"
 #include "FileUtils.h"
+#include "ImageBaker.h"
 #include "Log.h"
+#include "ModelBaker.h"
 #include "Settings.h"
 #include "StringUtils.h"
 
@@ -116,36 +118,37 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                         if (zip)
                         {
                             resources.ResetCounter();
-                            while (resources.IsNextFile())
-                            {
-                                string relative_path;
-                                File& file = resources.GetNextFile(nullptr, nullptr, &relative_path);
-                                File* converted_file = nullptr; // Convert(relative_path, file);
-                                if (!converted_file)
-                                {
-                                    WriteLog("File '{}' conversation error.\n", relative_path);
-                                    continue;
-                                }
 
+                            map<string, UCharVec> baked_files;
+
+                            ImageBaker image_baker = IImageBaker::Create(resources);
+                            image_baker->AutoBakeImages();
+                            image_baker->FillBakedFiles(baked_files);
+                            image_baker = nullptr;
+
+                            ModelBaker model_baker = IModelBaker::Create(resources);
+                            model_baker->AutoBakeModels();
+                            model_baker->FillBakedFiles(baked_files);
+                            model_baker = nullptr;
+
+                            for (const auto& kv : baked_files)
+                            {
                                 zip_fileinfo zfi;
                                 memzero(&zfi, sizeof(zfi));
-                                if (zipOpenNewFileInZip(zip, relative_path.c_str(), &zfi, nullptr, 0, nullptr, 0,
-                                        nullptr, Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK)
+                                if (zipOpenNewFileInZip(zip, kv.first.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr,
+                                        Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK)
                                 {
-                                    if (zipWriteInFileInZip(
-                                            zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen()))
-                                        WriteLog("Can't write file '{}' in zip file '{}'.\n", relative_path, zip_path);
+                                    if (zipWriteInFileInZip(zip, &kv.second[0], kv.second.size()))
+                                        throw fo_exception("Can't write file in zip file", kv.first, zip_path);
 
                                     zipCloseFileInZip(zip);
                                 }
                                 else
                                 {
-                                    WriteLog("Can't open file '{}' in zip file '{}'.\n", relative_path, zip_path);
+                                    throw fo_exception("Can't open file in zip file", kv.first, zip_path);
                                 }
-
-                                if (converted_file != &file)
-                                    delete converted_file;
                             }
+
                             zipClose(zip, nullptr);
 
                             File::DeleteFile(zip_path);

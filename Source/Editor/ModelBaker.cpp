@@ -10,44 +10,91 @@
 #include "assimp/postprocess.h"
 #include "fbxsdk/fbxsdk.h"
 
-/*static Bone* ConvertAssimpPass1(aiScene* ai_scene, aiNode* ai_node);
-static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node);
+class ModelBakerImpl : public IModelBaker
+{
+public:
+    ModelBakerImpl(FileCollection& all_files);
+    virtual ~ModelBakerImpl() override;
+    virtual void AutoBakeModels() override;
+    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
 
-// FBX stuff
+private:
+    UCharVec BakeFile(const string& fname, File& file);
+
+    FileCollection& allFiles;
+    map<string, UCharVec> bakedFiles;
+    unique_ptr<FbxManager, void (*)(FbxManager*)> fbxManager;
+};
+
+ModelBaker IModelBaker::Create(FileCollection& all_files)
+{
+    return std::make_shared<ModelBakerImpl>(all_files);
+}
+
+ModelBakerImpl::ModelBakerImpl(FileCollection& all_files) :
+    allFiles {all_files}, bakedFiles {}, fbxManager {nullptr, [](auto* fbx_mngr) { fbx_mngr->Destroy(); }}
+{
+}
+
+ModelBakerImpl::~ModelBakerImpl()
+{
+}
+
+void ModelBakerImpl::AutoBakeModels()
+{
+    allFiles.ResetCounter();
+    while (allFiles.IsNextFile())
+    {
+        string relative_path;
+        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
+
+        if (bakedFiles.count(relative_path))
+            continue;
+
+        string ext = _str(relative_path).getFileExtension();
+        if (!Is3dExtensionSupported(ext))
+            continue;
+
+        File& file = allFiles.GetCurFile();
+        UCharVec data = BakeFile(relative_path, file);
+        bakedFiles.emplace(relative_path, std::move(data));
+    }
+}
+
+void ModelBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
+{
+    for (const auto& kv : bakedFiles)
+        baked_files.emplace(kv.first, kv.second);
+}
+
 class FbxStreamImpl : public FbxStream
 {
-private:
-    File* fm;
-    EState curState;
-
 public:
     FbxStreamImpl() : FbxStream()
     {
-        fm = nullptr;
+        file = nullptr;
         curState = FbxStream::eClosed;
     }
 
-    virtual EState GetState() { return curState; }
-
-    virtual bool Open(void* stream)
+    virtual bool Open(void* stream) override
     {
-        fm = (File*)stream;
-        fm->SetCurPos(0);
+        file = (File*)stream;
+        file->SetCurPos(0);
         curState = FbxStream::eOpen;
         return true;
     }
 
-    virtual bool Close()
+    virtual bool Close() override
     {
-        fm->SetCurPos(0);
-        fm = nullptr;
+        file->SetCurPos(0);
+        file = nullptr;
         curState = FbxStream::eClosed;
         return true;
     }
 
-    virtual char* ReadString(char* buffer, int max_size, bool stop_at_first_white_space = false)
+    virtual char* ReadString(char* buffer, int max_size, bool stop_at_first_white_space = false) override
     {
-        const char* str = (char*)fm->GetCurBuf();
+        const char* str = (char*)file->GetCurBuf();
         int len = 0;
         while (*str && len < max_size - 1)
         {
@@ -57,118 +104,98 @@ public:
                 break;
         }
         if (len)
-            fm->CopyMem(buffer, len);
+            file->CopyMem(buffer, len);
         buffer[len] = 0;
         return buffer;
     }
 
-    virtual void Seek(const FbxInt64& offset, const FbxFile::ESeekPos& seek_pos)
+    virtual void Seek(const FbxInt64& offset, const FbxFile::ESeekPos& seek_pos) override
     {
         if (seek_pos == FbxFile::eBegin)
-            fm->SetCurPos((uint)offset);
+            file->SetCurPos((uint)offset);
         else if (seek_pos == FbxFile::eCurrent)
-            fm->GoForward((uint)offset);
+            file->GoForward((uint)offset);
         else if (seek_pos == FbxFile::eEnd)
-            fm->SetCurPos(fm->GetFsize() - (uint)offset);
+            file->SetCurPos(file->GetFsize() - (uint)offset);
     }
 
-    virtual bool Flush() { return true; }
-    virtual int Write(const void* data, int size) { return 0; }
-    virtual int Read(void* data, int size) const { return fm->CopyMem(data, size) ? size : 0; }
-    virtual int GetReaderID() const { return 0; }
-    virtual int GetWriterID() const { return -1; }
-    virtual long GetPosition() const { return fm->GetCurPos(); }
-    virtual void SetPosition(long position) { fm->SetCurPos((uint)position); }
-    virtual int GetError() const { return 0; }
-    virtual void ClearError() {}
+    virtual EState GetState() override { return curState; }
+    virtual bool Flush() override { return true; }
+    virtual int Write(const void* data, int size) override { return 0; }
+    virtual int Read(void* data, int size) const override { return file->CopyMem(data, size) ? size : 0; }
+    virtual int GetReaderID() const override { return 0; }
+    virtual int GetWriterID() const override { return -1; }
+    virtual long GetPosition() const override { return file->GetCurPos(); }
+    virtual void SetPosition(long position) override { file->SetCurPos((uint)position); }
+    virtual int GetError() const override { return 0; }
+    virtual void ClearError() override {}
+
+private:
+    File* file;
+    EState curState;
 };
 
 static Bone* ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes);
 static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node);
 static Matrix ConvertFbxMatrix(const FbxAMatrix& m);
+static Bone* ConvertAssimpPass1(aiScene* ai_scene, aiNode* ai_node);
+static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node);
 
-static void FixTexCoord(float& x, float& y)
-{
-    if (x < 0.0f)
-        x = 1.0f - fmodf(-x, 1.0f);
-    else if (x > 1.0f)
-        x = fmodf(x, 1.0f);
-    if (y < 0.0f)
-        y = 1.0f - fmodf(-y, 1.0f);
-    else if (y > 1.0f)
-        y = fmodf(y, 1.0f);
-}
-
-File* ResourceConverter::Convert3d(const string& name, File& file)
+UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
 {
     // Result bone
     Bone* root_bone = nullptr;
     AnimSetVec loaded_animations;
 
     // FBX loader
-    string ext = _str(name).getFileExtension();
+    string ext = _str(fname).getFileExtension();
     if (ext == "fbx")
     {
-        // Create manager
-        static FbxManager* fbx_manager = nullptr;
-        if (!fbx_manager)
+        if (!fbxManager)
         {
-            fbx_manager = FbxManager::Create();
-            if (!fbx_manager)
-            {
-                WriteLog("Unable to create FBX Manager.\n");
-                return nullptr;
-            }
+            fbxManager.reset(FbxManager::Create());
+            if (!fbxManager)
+                throw fo_exception("Unable to create FBX Manager");
 
             // Create an IOSettings object. This object holds all import/export settings.
-            FbxIOSettings* ios = FbxIOSettings::Create(fbx_manager, IOSROOT);
-            fbx_manager->SetIOSettings(ios);
+            FbxIOSettings* ios = FbxIOSettings::Create(fbxManager.get(), IOSROOT);
+            fbxManager->SetIOSettings(ios);
 
             // Load plugins from the executable directory (optional)
-            fbx_manager->LoadPluginsDirectory(FbxGetApplicationDirectory().Buffer());
+            fbxManager->LoadPluginsDirectory(FbxGetApplicationDirectory().Buffer());
         }
 
         // Create an FBX scene
-        FbxScene* fbx_scene = FbxScene::Create(fbx_manager, "My Scene");
+        FbxScene* fbx_scene = FbxScene::Create(fbxManager.get(), "Root Scene");
         if (!fbx_scene)
-        {
-            WriteLog("Unable to create FBX scene.\n");
-            return nullptr;
-        }
+            throw fo_exception("Unable to create FBX scene");
 
         // Create an importer
-        FbxImporter* fbx_importer = FbxImporter::Create(fbx_manager, "");
+        FbxImporter* fbx_importer = FbxImporter::Create(fbxManager.get(), "");
         if (!fbx_importer)
-        {
-            WriteLog("Unable to create FBX importer.\n");
-            return nullptr;
-        }
+            throw fo_exception("Unable to create FBX importer");
 
         // Initialize the importer
         FbxStreamImpl fbx_stream;
-        if (!fbx_importer->Initialize(&fbx_stream, &file, -1, fbx_manager->GetIOSettings()))
+        if (!fbx_importer->Initialize(&fbx_stream, &file, -1, fbxManager->GetIOSettings()))
         {
-            WriteLog(
-                "Call to FbxImporter::Initialize() failed, error '{}'.\n", fbx_importer->GetStatus().GetErrorString());
+            string error_desc = fbx_importer->GetStatus().GetErrorString();
             if (fbx_importer->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion)
             {
-                int file_major, file_minor, file_revision;
                 int sdk_major, sdk_minor, sdk_revision;
                 FbxManager::GetFileFormatVersion(sdk_major, sdk_minor, sdk_revision);
+                int file_major, file_minor, file_revision;
                 fbx_importer->GetFileVersion(file_major, file_minor, file_revision);
-                WriteLog("FBX file format version for this FBX SDK is {}.{}.{}.\n", sdk_major, sdk_minor, sdk_revision);
-                WriteLog("FBX file format version for file '{}' is {}.{}.{}.\n", name, file_major, file_minor,
-                    file_revision);
+                error_desc += _str(" (minimum version {}.{}.{}, file version {}.{}.{})", sdk_major, sdk_minor,
+                    sdk_revision, file_major, file_minor, file_revision);
             }
-            return nullptr;
+
+            throw fo_exception("Call to FbxImporter::Initialize() failed", fname, error_desc);
         }
 
         // Import the scene
         if (!fbx_importer->Import(fbx_scene))
-        {
-            WriteLog("Can't import scene, file '{}'.\n", name);
-            return nullptr;
-        }
+            throw fo_exception("Can't import scene", fname);
 
         // Load hierarchy
         vector<FbxNode*> fbx_all_nodes;
@@ -256,7 +283,7 @@ File* ResourceConverter::Convert3d(const string& name, File& file)
                     anim_set->AddBoneOutput(hierarchy, st, sv, rt, rv, tt, tv);
                 }
 
-                anim_set->SetData(name, take_info->mName.Buffer(), (float)frames_count, frame_rate);
+                anim_set->SetData(fname, take_info->mName.Buffer(), (float)frames_count, frame_rate);
                 loaded_animations.push_back(anim_set);
             }
         }
@@ -300,10 +327,7 @@ File* ResourceConverter::Convert3d(const string& name, File& file)
                 aiProcess_LimitBoneWeights | aiProcess_ImproveCacheLocality,
             "", import_props);
         if (!scene)
-        {
-            WriteLog("Can't load 3d file, name '{}', error '{}'.\n", name, aiGetErrorString());
-            return nullptr;
-        }
+            throw fo_exception("Assimp can't load 3d file", fname, aiGetErrorString());
 
         // Extract bones
         root_bone = ConvertAssimpPass1(scene, scene->mRootNode);
@@ -358,7 +382,7 @@ File* ResourceConverter::Convert3d(const string& name, File& file)
                 anim_set->AddBoneOutput(hierarchy, st, sv, rt, rv, tt, tv);
             }
 
-            anim_set->SetData(name, anim->mName.data, (float)anim->mDuration, (float)anim->mTicksPerSecond);
+            anim_set->SetData(fname, anim->mName.data, (float)anim->mDuration, (float)anim->mTicksPerSecond);
             loaded_animations.push_back(anim_set);
         }
 
@@ -366,17 +390,32 @@ File* ResourceConverter::Convert3d(const string& name, File& file)
     }
 
     // Make new file
-    File* converted_file = new File();
-    root_bone->Save(*converted_file);
-    converted_file->SetBEUInt((uint)loaded_animations.size());
+    File converted_file;
+    root_bone->Save(converted_file);
+    converted_file.SetBEUInt((uint)loaded_animations.size());
     for (size_t i = 0; i < loaded_animations.size(); i++)
-        loaded_animations[i]->Save(*converted_file);
+        loaded_animations[i]->Save(converted_file);
 
     delete root_bone;
     for (size_t i = 0; i < loaded_animations.size(); i++)
         delete loaded_animations[i];
 
-    return converted_file;
+    UCharVec data;
+    DataWriter writer {data};
+    writer.WritePtr(&data[0], data.size());
+    return std::move(data);
+}
+
+static void FixTexCoord(float& x, float& y)
+{
+    if (x < 0.0f)
+        x = 1.0f - fmodf(-x, 1.0f);
+    else if (x > 1.0f)
+        x = fmodf(x, 1.0f);
+    if (y < 0.0f)
+        y = 1.0f - fmodf(-y, 1.0f);
+    else if (y > 1.0f)
+        y = fmodf(y, 1.0f);
 }
 
 static Matrix AssimpGlobalTransform(aiNode* ai_node)
@@ -819,4 +858,3 @@ static Matrix ConvertFbxMatrix(const FbxAMatrix& m)
         (float)m.Get(2, 2), (float)m.Get(3, 2), (float)m.Get(0, 3), (float)m.Get(1, 3), (float)m.Get(2, 3),
         (float)m.Get(3, 3));
 }
-*/

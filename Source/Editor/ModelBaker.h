@@ -1,16 +1,16 @@
 #pragma once
 
 #include "Common.h"
-#include "FileUtils.h"
 
-/*class ModelBaker
+class IModelBaker;
+using ModelBaker = shared_ptr<IModelBaker>;
+class FileCollection;
+
+class IModelBaker : public NonCopyable
 {
 public:
-    static bool Generate(StrVec* resource_names);
-
-private:
-    static File* Convert(const string& name, File& file);
-    static File* ConvertImage(const string& name, File& file);
-    static File* Convert3d(const string& name, File& file);
+    static ModelBaker Create(FileCollection& all_files);
+    virtual void AutoBakeModels() = 0;
+    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) = 0;
+    virtual ~IModelBaker() = default;
 };
-*/

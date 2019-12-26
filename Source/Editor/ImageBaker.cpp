@@ -31,7 +31,7 @@ public:
     virtual ~ImageBakerImpl() override;
     virtual void AutoBakeImages() override;
     virtual void BakeImage(const string& fname_with_opt) override;
-    virtual map<string, UCharVec> GetBakedFiles() override;
+    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
 
 private:
     static const int MaxFrameSequence = 50;
@@ -129,9 +129,10 @@ void ImageBakerImpl::BakeImage(const string& fname_with_opt)
     BakeCollection(fname_with_opt, collection);
 }
 
-map<string, UCharVec> ImageBakerImpl::GetBakedFiles()
+void ImageBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
-    return bakedFiles;
+    for (const auto& kv : bakedFiles)
+        baked_files.emplace(kv.first, kv.second);
 }
 
 void ImageBakerImpl::ProcessImages(const string& target_ext, LoadFunc loader)
