@@ -113,6 +113,7 @@ static_assert(sizeof(void*) == sizeof(size_t));
 
 using std::array;
 using std::deque;
+using std::future;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -128,6 +129,7 @@ using std::type_index;
 using std::unique_ptr;
 using std::unordered_map;
 using std::unordered_set;
+using std::variant;
 using std::vector;
 
 using StrUCharMap = map<string, uchar>;
