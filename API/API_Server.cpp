@@ -22,6 +22,18 @@ Critter* Global_GetCritter(uint crid)
 	return FOServer::SScriptFunc::Global_GetCritter(crid);
 }
 
+ScriptString* Global_GetMsgStr(size_t lang, size_t textMsg, uint strNum)
+{
+	if( lang >= FOServer::LangPacks.size() || textMsg >= TEXTMSG_COUNT )
+		return NULL;
+
+	LanguagePack& lang_pack = FOServer::LangPacks[lang];
+	FOMsg& msg = lang_pack.Msg[textMsg];
+	const char* c_str = msg.GetStr(strNum);
+
+	return new ScriptString(c_str);
+}
+
 ScriptString* Item_GetLexems(Item* item)
 {
 	if( !item || item->IsNotValid )
@@ -30,4 +42,14 @@ ScriptString* Item_GetLexems(Item* item)
 		return NULL;
 
 	return new ScriptString(item->PLexems);
+}
+
+int ConstantsManager_GetValue(size_t collection, ScriptString* string)
+{
+	if( string == NULL || collection > CONSTANTS_HASH)
+		return -1;
+
+	const char* c_str = string->c_str();
+
+	return ConstantsManager::GetValue(collection, c_str);
 }
