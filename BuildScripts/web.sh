@@ -45,6 +45,7 @@ echo "Setup Emscripten"
 mkdir -p emsdk
 cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
+chmod +x ./emsdk
 ./emsdk update
 ./emsdk list
 ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
