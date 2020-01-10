@@ -66,18 +66,14 @@ Texture::Texture() : Name(nullptr), Id(0), Width(0), Height(0), Samples(0.0f)
 
 Texture::~Texture()
 {
-#ifndef FO_NO_GRAPHIC
     GL(glDeleteTextures(1, &Id));
-#endif
 }
 
 void Texture::UpdateRegion(const Rect& r, const uchar* data)
 {
-#ifndef FO_NO_GRAPHIC
     GL(glBindTexture(GL_TEXTURE_2D, Id));
     GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.L, r.T, r.W(), r.H(), GL_RGBA, GL_UNSIGNED_BYTE, data));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
-#endif
 }
 
 //
@@ -192,14 +188,12 @@ void MeshData::Load(File& file)
 void CombinedMesh::Clear()
 {
     EncapsulatedMeshCount = 0;
-#ifndef FO_NO_GRAPHIC
     if (VBO)
         GL(glDeleteBuffers(1, &VBO));
     if (IBO)
         GL(glDeleteBuffers(1, &IBO));
     if (VAO)
         GL(glDeleteVertexArrays(1, &VAO));
-#endif
     VAO = VBO = IBO = 0;
     CurBoneMatrix = 0;
     Vertices.clear();
@@ -297,7 +291,6 @@ void CombinedMesh::Encapsulate(MeshInstance& mesh_instance, int anim_layer)
 
 void CombinedMesh::Finalize()
 {
-#ifndef FO_NO_GRAPHIC
     GL(glGenBuffers(1, &VBO));
     GL(glBindBuffer(GL_ARRAY_BUFFER, VBO));
     GL(glBufferData(GL_ARRAY_BUFFER, Vertices.size() * sizeof(Vertex3D), &Vertices[0], GL_STATIC_DRAW));
@@ -321,7 +314,6 @@ void CombinedMesh::Finalize()
             GL(glEnableVertexAttribArray(i));
         GL(glBindVertexArray(0));
     }
-#endif
 }
 
 //

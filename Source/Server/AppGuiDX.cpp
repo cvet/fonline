@@ -1,6 +1,6 @@
 #include "AppGui.h"
 
-#ifndef FO_NO_GRAPHIC
+#ifndef FO_SERVER_NO_GUI
 #ifdef FO_HAVE_DX
 
 #include "Log.h"

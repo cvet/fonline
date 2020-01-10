@@ -437,7 +437,7 @@ bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int
 
 void ShowErrorMessage(const string& message, const string& traceback)
 {
-#ifndef FO_NO_GRAPHIC
+#ifndef FO_SERVER_NO_GUI
 #if defined(FO_WEB) || defined(FO_ANDROID) || defined(FO_IOS)
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr);
 

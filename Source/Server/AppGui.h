@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef FO_NO_GRAPHIC
+#ifndef FO_SERVER_NO_GUI
 
 #include "Common.h"
 
