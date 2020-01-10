@@ -25,16 +25,16 @@ extern int MemoryDebugLevel;
 
 namespace Debugger
 {
-void BeginCycle();
-void BeginBlock(int num_block);
-void ProcessBlock(int num_block, int identifier);
-void EndCycle(double lag_to_show);
-void ShowLags(int num_block, double lag_to_show);
+    void BeginCycle();
+    void BeginBlock(int num_block);
+    void ProcessBlock(int num_block, int identifier);
+    void EndCycle(double lag_to_show);
+    void ShowLags(int num_block, double lag_to_show);
 
-void Memory(int block, int value);
-void MemoryStr(const char* block, int value);
-const char* GetMemoryStatistics();
+    void Memory(int block, int value);
+    void MemoryStr(const char* block, int value);
+    const char* GetMemoryStatistics();
 
-void StartTraceMemory();
-string GetTraceMemory();
+    void StartTraceMemory();
+    string GetTraceMemory();
 }; // namespace Debugger

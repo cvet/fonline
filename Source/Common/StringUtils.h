@@ -7,26 +7,26 @@
 
 namespace Str
 {
-void Copy(char* to, size_t size, const char* from);
-template<int Size>
-inline void Copy(char (&to)[Size], const char* from)
-{
-    return Copy(to, Size, from);
-}
-void Append(char* to, size_t size, const char* from);
-template<int Size>
-inline void Append(char (&to)[Size], const char* from)
-{
-    return Append(to, Size, from);
-}
+    void Copy(char* to, size_t size, const char* from);
+    template<int Size>
+    inline void Copy(char (&to)[Size], const char* from)
+    {
+        return Copy(to, Size, from);
+    }
+    void Append(char* to, size_t size, const char* from);
+    template<int Size>
+    inline void Append(char (&to)[Size], const char* from)
+    {
+        return Append(to, Size, from);
+    }
 
-char* Duplicate(const string& str);
-char* Duplicate(const char* str);
+    char* Duplicate(const string& str);
+    char* Duplicate(const char* str);
 
-bool Compare(const char* str1, const char* str2);
+    bool Compare(const char* str1, const char* str2);
 
-void HexToStr(uchar hex, char* str); // 2 bytes string
-uchar StrToHex(const char* str);
+    void HexToStr(uchar hex, char* str); // 2 bytes string
+    uchar StrToHex(const char* str);
 } // namespace Str
 
 class _str
@@ -116,28 +116,28 @@ public:
 
 namespace utf8
 {
-bool IsValid(uint ucs);
-uint Decode(const char* str, uint* length);
-uint Encode(uint ucs, char (&buf)[4]);
-uint Lower(uint ucs);
-uint Upper(uint ucs);
+    bool IsValid(uint ucs);
+    uint Decode(const char* str, uint* length);
+    uint Encode(uint ucs, char (&buf)[4]);
+    uint Lower(uint ucs);
+    uint Upper(uint ucs);
 } // namespace utf8
 
 namespace fmt
 {
-template<>
-struct formatter<_str>
-{
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
+    template<>
+    struct formatter<_str>
     {
-        return ctx.begin();
-    }
+        template<typename ParseContext>
+        constexpr auto parse(ParseContext& ctx)
+        {
+            return ctx.begin();
+        }
 
-    template<typename FormatContext>
-    auto format(const _str& s, FormatContext& ctx)
-    {
-        return format_to(ctx.out(), "{}", s.str());
-    }
-};
+        template<typename FormatContext>
+        auto format(const _str& s, FormatContext& ctx)
+        {
+            return format_to(ctx.out(), "{}", s.str());
+        }
+    };
 } // namespace fmt

@@ -101,5 +101,5 @@ extern bool OGL_get_program_binary;
 
 namespace GraphicApi
 {
-bool Init();
+    bool Init();
 }

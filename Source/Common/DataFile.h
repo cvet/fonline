@@ -16,5 +16,5 @@ using DataFileVec = vector<DataFile>;
 
 namespace Fabric
 {
-DataFile OpenDataFile(const string& path);
+    DataFile OpenDataFile(const string& path);
 }

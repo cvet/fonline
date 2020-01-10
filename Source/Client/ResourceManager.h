@@ -8,30 +8,6 @@
 #define RES_ATLAS_SPLASH (3)
 #define RES_ATLAS_TEXTURES (4)
 
-#define SKILLDEX_PARAM(index) (index)
-#define SKILLDEX_PERKS (1000)
-#define SKILLDEX_KILLS (1001)
-#define SKILLDEX_KARMA (1002)
-#define SKILLDEX_TRAITS (1003)
-#define SKILLDEX_REPUTATION (1004)
-#define SKILLDEX_SKILLS (1005)
-#define SKILLDEX_NEXT_LEVEL (1006)
-#define SKILLDEX_DRUG_ADDICT (1007)
-#define SKILLDEX_ALCOHOL_ADDICT (1008)
-#define SKILLDEX_REPUTATION_RATIO(val) \
-    (2100 + \
-        ((val) >= GameOpt.ReputationLoved ? \
-                0 : \
-                ((val) >= GameOpt.ReputationLiked ? \
-                        1 : \
-                        ((val) >= GameOpt.ReputationAccepted ? \
-                                2 : \
-                                ((val) >= GameOpt.ReputationNeutral ? \
-                                        3 : \
-                                        ((val) >= GameOpt.ReputationAntipathy ? \
-                                                4 : \
-                                                ((val) >= GameOpt.ReputationHated ? 5 : 6)))))))
-
 class SpriteManager;
 struct SpriteInfo;
 struct AnyFrames;
