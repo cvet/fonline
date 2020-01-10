@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   windows-win32:
-    runs-on: windows-2019
+    runs-on: windows
     steps:
     - uses: actions/checkout@v1
       with:
@@ -19,7 +19,7 @@ jobs:
         name: sdk-version
         path: Build/FOnlineVersion.txt
   windows-win64:
-    runs-on: windows-2019
+    runs-on: windows
     steps:
     - uses: actions/checkout@v1
       with:
@@ -85,7 +85,7 @@ jobs:
         name: binaries-web-debug
         path: Build/Binaries
   mac:
-    runs-on: macOS-10.14
+    runs-on: macos
     steps:
     - uses: actions/checkout@v1
       with:
@@ -96,7 +96,7 @@ jobs:
         name: binaries-mac
         path: Build/Binaries
   ios:
-    runs-on: macOS-10.14
+    runs-on: macos
     steps:
     - uses: actions/checkout@v1
       with:
@@ -123,6 +123,16 @@ jobs:
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: BuildScripts/linux-code-coverage.sh
+  clang-format-lint:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - uses: DoozyX/clang-format-lint-action@v0.5
+      with:
+        source: ./Source
+        clangFormatVersion: 9
   make:
     needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage]
     runs-on: ubuntu-18.04
