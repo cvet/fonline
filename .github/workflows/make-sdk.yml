@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   windows-win32:
-    runs-on: windows
+    runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
@@ -19,7 +19,7 @@ jobs:
         name: sdk-version
         path: Build/FOnlineVersion.txt
   windows-win64:
-    runs-on: windows
+    runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
@@ -85,7 +85,7 @@ jobs:
         name: binaries-web-debug
         path: Build/Binaries
   mac:
-    runs-on: macos
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
@@ -96,7 +96,7 @@ jobs:
         name: binaries-mac
         path: Build/Binaries
   ios:
-    runs-on: macos
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
