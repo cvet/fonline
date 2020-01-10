@@ -99,214 +99,65 @@ static void DrawEditableEntry(const char* name, float& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
 
-static void Process(Settings& settings, StrMap* init, bool draw_editable)
+static void InitSettings(Settings& settings, StrMap& init_values)
 {
-#define PROCESS_ENTRY(entry) \
-    if (init && init->count(#entry)) \
-        SetEntry(settings.entry, (*init)[#entry]); \
-    else if (!init && !draw_editable) \
-        DrawEntry(#entry, settings.entry); \
-    else if (!init && draw_editable) \
-    DrawEditableEntry(#entry, settings.entry)
-    PROCESS_ENTRY(WorkDir);
-    PROCESS_ENTRY(CommandLine);
-    PROCESS_ENTRY(FullSecondStart);
-    PROCESS_ENTRY(FullSecond);
-    PROCESS_ENTRY(GameTimeTick);
-    PROCESS_ENTRY(YearStartFTHi);
-    PROCESS_ENTRY(YearStartFTLo);
-    PROCESS_ENTRY(DisableTcpNagle);
-    PROCESS_ENTRY(DisableZlibCompression);
-    PROCESS_ENTRY(FloodSize);
-    PROCESS_ENTRY(NoAnswerShuffle);
-    PROCESS_ENTRY(DialogDemandRecheck);
-    PROCESS_ENTRY(SneakDivider);
-    PROCESS_ENTRY(LookMinimum);
-    PROCESS_ENTRY(DeadHitPoints);
-    PROCESS_ENTRY(Breaktime);
-    PROCESS_ENTRY(TimeoutTransfer);
-    PROCESS_ENTRY(TimeoutBattle);
-    PROCESS_ENTRY(RunOnCombat);
-    PROCESS_ENTRY(RunOnTransfer);
-    PROCESS_ENTRY(GlobalMapWidth);
-    PROCESS_ENTRY(GlobalMapHeight);
-    PROCESS_ENTRY(GlobalMapZoneLength);
-    PROCESS_ENTRY(BagRefreshTime);
-    PROCESS_ENTRY(WhisperDist);
-    PROCESS_ENTRY(ShoutDist);
-    PROCESS_ENTRY(LookChecks);
-    // PROCESS_ENTRY(LookDir);
-    // PROCESS_ENTRY(LookSneakDir);
-    PROCESS_ENTRY(RegistrationTimeout);
-    PROCESS_ENTRY(AccountPlayTime);
-    PROCESS_ENTRY(ScriptRunSuspendTimeout);
-    PROCESS_ENTRY(ScriptRunMessageTimeout);
-    PROCESS_ENTRY(TalkDistance);
-    PROCESS_ENTRY(NpcMaxTalkers);
-    PROCESS_ENTRY(MinNameLength);
-    PROCESS_ENTRY(MaxNameLength);
-    PROCESS_ENTRY(DlgTalkMinTime);
-    PROCESS_ENTRY(DlgBarterMinTime);
-    PROCESS_ENTRY(MinimumOfflineTime);
-    PROCESS_ENTRY(ForceRebuildResources);
-    PROCESS_ENTRY(MapHexagonal);
-    PROCESS_ENTRY(MapHexWidth);
-    PROCESS_ENTRY(MapHexHeight);
-    PROCESS_ENTRY(MapHexLineHeight);
-    PROCESS_ENTRY(MapTileOffsX);
-    PROCESS_ENTRY(MapTileOffsY);
-    PROCESS_ENTRY(MapTileStep);
-    PROCESS_ENTRY(MapRoofOffsX);
-    PROCESS_ENTRY(MapRoofOffsY);
-    PROCESS_ENTRY(MapRoofSkipSize);
-    PROCESS_ENTRY(MapCameraAngle);
-    PROCESS_ENTRY(MapSmoothPath);
-    PROCESS_ENTRY(MapDataPrefix);
-    PROCESS_ENTRY(Quit);
-    PROCESS_ENTRY(WaitPing);
-    PROCESS_ENTRY(OpenGLRendering);
-    PROCESS_ENTRY(OpenGLDebug);
-    PROCESS_ENTRY(AssimpLogging);
-    PROCESS_ENTRY(MouseX);
-    PROCESS_ENTRY(MouseY);
-    PROCESS_ENTRY(LastMouseX);
-    PROCESS_ENTRY(LastMouseY);
-    PROCESS_ENTRY(ScrOx);
-    PROCESS_ENTRY(ScrOy);
-    PROCESS_ENTRY(ShowTile);
-    PROCESS_ENTRY(ShowRoof);
-    PROCESS_ENTRY(ShowItem);
-    PROCESS_ENTRY(ShowScen);
-    PROCESS_ENTRY(ShowWall);
-    PROCESS_ENTRY(ShowCrit);
-    PROCESS_ENTRY(ShowFast);
-    PROCESS_ENTRY(ShowPlayerNames);
-    PROCESS_ENTRY(ShowNpcNames);
-    PROCESS_ENTRY(ShowCritId);
-    PROCESS_ENTRY(ScrollKeybLeft);
-    PROCESS_ENTRY(ScrollKeybRight);
-    PROCESS_ENTRY(ScrollKeybUp);
-    PROCESS_ENTRY(ScrollKeybDown);
-    PROCESS_ENTRY(ScrollMouseLeft);
-    PROCESS_ENTRY(ScrollMouseRight);
-    PROCESS_ENTRY(ScrollMouseUp);
-    PROCESS_ENTRY(ScrollMouseDown);
-    PROCESS_ENTRY(ShowGroups);
-    PROCESS_ENTRY(HelpInfo);
-    PROCESS_ENTRY(DebugInfo);
-    PROCESS_ENTRY(DebugNet);
-    PROCESS_ENTRY(Enable3dRendering);
-    PROCESS_ENTRY(FullScreen);
-    PROCESS_ENTRY(VSync);
-    PROCESS_ENTRY(Light);
-    PROCESS_ENTRY(Host);
-    PROCESS_ENTRY(Port);
-    PROCESS_ENTRY(ProxyType);
-    PROCESS_ENTRY(ProxyHost);
-    PROCESS_ENTRY(ProxyPort);
-    PROCESS_ENTRY(ProxyUser);
-    PROCESS_ENTRY(ProxyPass);
-    PROCESS_ENTRY(ScrollDelay);
-    PROCESS_ENTRY(ScrollStep);
-    PROCESS_ENTRY(ScrollCheck);
-    PROCESS_ENTRY(FixedFPS);
-    PROCESS_ENTRY(FPS);
-    PROCESS_ENTRY(PingPeriod);
-    PROCESS_ENTRY(Ping);
-    PROCESS_ENTRY(MsgboxInvert);
-    PROCESS_ENTRY(MessNotify);
-    PROCESS_ENTRY(SoundNotify);
-    PROCESS_ENTRY(AlwaysOnTop);
-    PROCESS_ENTRY(TextDelay);
-    PROCESS_ENTRY(DamageHitDelay);
-    PROCESS_ENTRY(ScreenWidth);
-    PROCESS_ENTRY(ScreenHeight);
-    PROCESS_ENTRY(MultiSampling);
-    PROCESS_ENTRY(MouseScroll);
-    PROCESS_ENTRY(DoubleClickTime);
-    PROCESS_ENTRY(RoofAlpha);
-    PROCESS_ENTRY(HideCursor);
-    PROCESS_ENTRY(ShowMoveCursor);
-    PROCESS_ENTRY(DisableMouseEvents);
-    PROCESS_ENTRY(DisableKeyboardEvents);
-    PROCESS_ENTRY(HidePassword);
-    PROCESS_ENTRY(PlayerOffAppendix);
-    PROCESS_ENTRY(Animation3dSmoothTime);
-    PROCESS_ENTRY(Animation3dFPS);
-    PROCESS_ENTRY(RunModMul);
-    PROCESS_ENTRY(RunModDiv);
-    PROCESS_ENTRY(RunModAdd);
-    PROCESS_ENTRY(MapZooming);
-    PROCESS_ENTRY(SpritesZoom);
-    PROCESS_ENTRY(SpritesZoomMax);
-    PROCESS_ENTRY(SpritesZoomMin);
-    // PROCESS_ENTRY(EffectValues);
-    PROCESS_ENTRY(KeyboardRemap);
-    PROCESS_ENTRY(CritterFidgetTime);
-    PROCESS_ENTRY(Anim2CombatBegin);
-    PROCESS_ENTRY(Anim2CombatIdle);
-    PROCESS_ENTRY(Anim2CombatEnd);
-    PROCESS_ENTRY(RainTick);
-    PROCESS_ENTRY(RainSpeedX);
-    PROCESS_ENTRY(RainSpeedY);
-    PROCESS_ENTRY(ConsoleHistorySize);
-    PROCESS_ENTRY(SoundVolume);
-    PROCESS_ENTRY(MusicVolume);
-    PROCESS_ENTRY(ChosenLightColor);
-    PROCESS_ENTRY(ChosenLightDistance);
-    PROCESS_ENTRY(ChosenLightIntensity);
-    PROCESS_ENTRY(ChosenLightFlags);
-    PROCESS_ENTRY(ServerDir);
-    PROCESS_ENTRY(ShowCorners);
-    PROCESS_ENTRY(ShowSpriteCuts);
-    PROCESS_ENTRY(ShowDrawOrder);
-    PROCESS_ENTRY(SplitTilesCollection);
-#undef PROCESS_ENTRY
+#define SETTING(type, name, init, desc) \
+    if (init_values.count(#name)) \
+    SetEntry(settings.name, init_values[#name])
+#define SETTING_ARR(type, name)
+#include "Settings_Include.h"
 
-    // ProcessEntry
-    if (init)
-    {
 #ifdef FO_WEB
-        settings.WebBuild = true;
+    settings.WebBuild = true;
 #else
-        settings.WebBuild = false;
+    settings.WebBuild = false;
 #endif
 #ifdef FO_WINDOWS
-        settings.WindowsBuild = true;
+    settings.WindowsBuild = true;
 #else
-        settings.WindowsBuild = false;
+    settings.WindowsBuild = false;
 #endif
 #ifdef FO_LINUX
-        settings.LinuxBuild = true;
+    settings.LinuxBuild = true;
 #else
-        settings.LinuxBuild = false;
+    settings.LinuxBuild = false;
 #endif
 #ifdef FO_MAC
-        settings.MacOsBuild = true;
+    settings.MacOsBuild = true;
 #else
-        settings.MacOsBuild = false;
+    settings.MacOsBuild = false;
 #endif
 #ifdef FO_ANDROID
-        settings.AndroidBuild = true;
+    settings.AndroidBuild = true;
 #else
-        settings.AndroidBuild = false;
+    settings.AndroidBuild = false;
 #endif
 #ifdef FO_IOS
-        settings.IOsBuild = true;
+    settings.IOsBuild = true;
 #else
-        settings.IOsBuild = false;
+    settings.IOsBuild = false;
 #endif
-        settings.DesktopBuild = (settings.WindowsBuild || settings.LinuxBuild || settings.MacOsBuild);
-        settings.TabletBuild = (settings.AndroidBuild || settings.IOsBuild);
+    settings.DesktopBuild = (settings.WindowsBuild || settings.LinuxBuild || settings.MacOsBuild);
+    settings.TabletBuild = (settings.AndroidBuild || settings.IOsBuild);
 
 #ifdef FO_WINDOWS
-        if (GetSystemMetrics(SM_TABLETPC) != 0)
-        {
-            settings.DesktopBuild = false;
-            settings.TabletBuild = true;
-        }
-#endif
+    if (GetSystemMetrics(SM_TABLETPC) != 0)
+    {
+        settings.DesktopBuild = false;
+        settings.TabletBuild = true;
     }
+#endif
+}
+
+static void DrawSettings(Settings& settings, bool editable)
+{
+#define SETTING(type, name, init, desc) \
+    if (editable) \
+        DrawEditableEntry(#name, settings.name); \
+    else \
+        DrawEntry(#name, settings.name)
+#define SETTING_ARR(type, name)
+#include "Settings_Include.h"
 }
 
 void Settings::Init(int argc, char** argv)
@@ -346,7 +197,7 @@ void Settings::Init(int argc, char** argv)
         }
     }
 
-    Process(*this, &commands, false);
+    InitSettings(*this, commands);
 
     // Store start directory
     if (!WorkDir.empty())
@@ -595,5 +446,5 @@ void Settings::Init(int argc, char** argv)
 
 void Settings::Draw(bool editable)
 {
-    Process(*this, nullptr, editable);
+    DrawSettings(*this, editable);
 }

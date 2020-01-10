@@ -6,7 +6,6 @@
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
-#include "disassemble.h"
 
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
@@ -122,21 +121,12 @@ void EffectBakerImpl::BakeShaderStage(const string& fname_wo_ext, glslang::TInte
     spv::SpvBuildLogger logger;
     glslang::GlslangToSpv(*intermediate, spirv, &logger, &options);
 
-    // Binary SPIR-V
+    // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         UCharVec data(spirv.size() * sizeof(uint32_t));
         memcpy(&data[0], &spirv[0], data.size());
         SCOPE_LOCK(bakedFilesLocker);
         bakedFiles.emplace(fname_wo_ext + ".spv", std::move(data));
-    };
-
-    // Text SPIR-V
-    auto make_spirv_txt = [this, &fname_wo_ext, &spirv]() {
-        // spv::Disassemble(std::cout, spirv);
-        // UCharVec data(spirv.size() * sizeof(uint32_t));
-        // memcpy(&data[0], &spirv[0], data.size());
-        // SCOPE_LOCK(bakedFilesLocker);
-        // bakedFiles.emplace(fname_wo_ext + ".spv-text", std::move(data));
     };
 
     // SPIR-V to GLSL
@@ -195,7 +185,6 @@ void EffectBakerImpl::BakeShaderStage(const string& fname_wo_ext, glslang::TInte
     // Make all asynchronously
     auto futs = {
         std::async(make_spirv),
-        std::async(make_spirv_txt),
         std::async(make_glsl),
         std::async(make_glsl_es),
         std::async(make_hlsl),

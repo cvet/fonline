@@ -328,10 +328,6 @@
 #define STR_SKILL_TRAPS_SUCC (3444)
 #define STR_SKILL_SNEAK_VISIBLE (3445)
 
-// Skilldex
-#define STR_SKILLDEX_NAME (3340)
-#define STR_SKILLDEX_CANCEL (3341)
-
 // Character
 #define STR_CHA_LEVEL (4113)
 #define STR_CHA_EXPERIENCE (4114)

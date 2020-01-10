@@ -1,13 +1,15 @@
 #include "AppGui.h"
+
+#ifndef FO_NO_GRAPHIC
+#ifdef FO_HAVE_DX
+
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "WinApi_Include.h"
 
-#ifdef FO_HAVE_DX
-
-#include "GraphicApi.h"
-#include <d3d9.h>
 #include <XInput.h>
+#include <d3d9.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 #include <imm.h>
@@ -1231,4 +1233,5 @@ static void Renderer_SwapBuffers(ImGuiViewport* viewport, void*)
     RUNTIME_ASSERT(hr == D3D_OK);
 }
 
+#endif
 #endif

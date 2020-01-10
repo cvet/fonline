@@ -1,10 +1,40 @@
 #include "AppGui.h"
-#include "GraphicApi.h"
+
+#ifndef FO_NO_GRAPHIC
+
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "WinApi_Include.h"
+
+#include "SDL.h"
+#include "SDL_vulkan.h"
+
+#ifndef FO_OPENGL_ES
+#include "GL/glew.h"
+#include "SDL_opengl.h"
+#else
+#include "SDL_opengles2.h"
+#endif
+
+#define GL(expr) expr
+#define GL_HAS(extension) (OGL_##extension)
+
+#ifndef FO_OPENGL_ES
+#ifdef FO_MAC
+#undef glGenVertexArrays
+#undef glBindVertexArray
+#undef glDeleteVertexArrays
+#define glGenVertexArrays glGenVertexArraysAPPLE
+#define glBindVertexArray glBindVertexArrayAPPLE
+#define glDeleteVertexArrays glDeleteVertexArraysAPPLE
+#endif
+#else
+#define glGenVertexArrays glGenVertexArraysOES
+#define glBindVertexArray glBindVertexArrayOES
+#define glDeleteVertexArrays glDeleteVertexArraysOES
+#endif
 
 struct ImGuiViewportDataSDL2
 {
@@ -44,6 +74,9 @@ static Uint64 CurTime = 0;
 static bool MousePressed[3] = {false, false, false};
 static SDL_Cursor* MouseCursors[ImGuiMouseCursor_COUNT] = {0};
 static char* ClipboardTextData = nullptr;
+static bool OGL_version_2_0 = false;
+static bool OGL_vertex_buffer_object = false;
+static bool OGL_vertex_array_object = false;
 
 static const char* GetClipboardText(void*);
 static void SetClipboardText(void*, const char* text);
@@ -116,10 +149,28 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     GlContext = gl_context;
 
     // Init graphic
-    if (!GraphicApi::Init())
-        return false;
+#ifndef FO_OPENGL_ES
+    GLenum glew_result = glewInit();
+    RUNTIME_ASSERT(glew_result == GLEW_OK);
+    OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
+    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
+#ifdef FO_MAC
+    OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
+#else
+    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+#endif
+#else
+    OGL_version_2_0 = true;
+    OGL_vertex_buffer_object = true;
+#ifdef FO_ANDROID
+    OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
+#endif
+#ifdef FO_IOS
+    OGL_vertex_array_object = true;
+#endif
+#endif
 
-// RDP connection support only fixed pipeline
+    // RDP connection support only fixed pipeline
 #ifdef FO_WINDOWS
     int remote_session = GetSystemMetrics(SM_REMOTESESSION);
     FixedPipeline = (remote_session != 0);
@@ -916,3 +967,5 @@ static void Renderer_RenderWindow(ImGuiViewport* viewport, void*)
 
     RenderDrawData(viewport->DrawData);
 }
+
+#endif

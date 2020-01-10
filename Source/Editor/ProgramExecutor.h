@@ -2,13 +2,18 @@
 
 #include "Common.h"
 
-class IProgramExecutor;
-using ProgramExecutor = shared_ptr<IProgramExecutor>;
-
-class IProgramExecutor : public NonCopyable
+class ProgramExecutor : public NonCopyable
 {
 public:
-    static ProgramExecutor Execute(const string& path, const string& name, const StrVec& args);
-    virtual string GetResult() = 0;
-    virtual ~IProgramExecutor() = default;
+    ProgramExecutor(const string& path, const string& name, const StrVec& args);
+    ~ProgramExecutor();
+    string GetResult();
+
+private:
+    string ExecuteAsync();
+
+    string programPath;
+    string programName;
+    StrVec programArgs;
+    std::future<string> returnOutput;
 };

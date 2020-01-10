@@ -2,44 +2,23 @@
 #include "StringUtils.h"
 #include "WinApi_Include.h"
 
-class ProgramExecutorImpl : public IProgramExecutor
-{
-public:
-    ProgramExecutorImpl(const string& path, const string& name, const StrVec& args);
-    virtual ~ProgramExecutorImpl() override;
-    virtual string GetResult() override;
-
-private:
-    string ExecuteAsync();
-
-    string programPath;
-    string programName;
-    StrVec programArgs;
-    std::future<string> returnOutput;
-};
-
-ProgramExecutor IProgramExecutor::Execute(const string& path, const string& name, const StrVec& args)
-{
-    return std::make_unique<ProgramExecutorImpl>(path, name, args);
-}
-
-ProgramExecutorImpl::ProgramExecutorImpl(const string& path, const string& name, const StrVec& args) :
+ProgramExecutor::ProgramExecutor(const string& path, const string& name, const StrVec& args) :
     programPath {path}, programName {name}, programArgs {args}, returnOutput {}
 {
-    returnOutput = std::async(std::launch::async, &ProgramExecutorImpl::ExecuteAsync, this);
+    returnOutput = std::async(std::launch::async, &ProgramExecutor::ExecuteAsync, this);
 }
 
-ProgramExecutorImpl::~ProgramExecutorImpl()
+ProgramExecutor::~ProgramExecutor()
 {
     returnOutput.wait();
 }
 
-string ProgramExecutorImpl::GetResult()
+string ProgramExecutor::GetResult()
 {
     return returnOutput.get();
 }
 
-string ProgramExecutorImpl::ExecuteAsync()
+string ProgramExecutor::ExecuteAsync()
 {
     string command = _str("{}/{}", programPath, programName).formatPath();
     for (const string& arg : programArgs)
