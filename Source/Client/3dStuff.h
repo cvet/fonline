@@ -19,6 +19,7 @@ class Animation3dEntity;
 using Animation3dEntityVec = vector<Animation3dEntity*>;
 class Animation3dXFile;
 using Animation3dXFileVec = vector<Animation3dXFile*>;
+class EffectManager;
 class GraphicLoader;
 
 struct AnimParams
@@ -69,7 +70,7 @@ class Animation3dManager : public NonCopyable
     friend class Animation3dXFile;
 
 public:
-    Animation3dManager(GraphicLoader& graphic_loader);
+    Animation3dManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader);
     ~Animation3dManager();
 
     void SetScreenSize(int width, int height);
@@ -85,6 +86,7 @@ private:
     void VecUnproject(const Vector& v, Vector& out);
     void ProjectPosition(Vector& v);
 
+    EffectManager& effectMngr;
     GraphicLoader& graphicLoader;
     Animation3dVec loadedAnimations;
     Animation3dEntityVec allEntities;

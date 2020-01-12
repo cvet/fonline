@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+#include "EffectManager.h"
 #include "Entity.h"
 #include "GraphicLoader.h"
 #include "HexManager.h"
@@ -38,6 +39,7 @@ public:
     static FOMapper* Self;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
+    EffectManager EffectMngr;
     GraphicLoader GraphicLoader;
     SpriteManager SprMngr;
     HexManager HexMngr;

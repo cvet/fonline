@@ -1,6 +1,7 @@
 #include "HexManager.h"
 #include "CritterView.h"
 #include "Crypt.h"
+#include "EffectManager.h"
 #include "GraphicLoader.h"
 #include "ItemHexView.h"
 #include "LineTracer.h"
@@ -247,20 +248,20 @@ HexManager::HexManager(bool mapper_mode, ProtoManager& proto_mngr, SpriteManager
 {
     mapperMode = mapper_mode;
 
-    rtMap = sprMngr.CreateRenderTarget(false, false, true, 0, 0, false, resMngr.GetGraphicLoader().Effects.FlushMap);
+    rtMap = sprMngr.CreateRenderTarget(false, false, true, 0, 0, false, sprMngr.GetEffectManager().Effects.FlushMap);
     RUNTIME_ASSERT(rtMap);
 
     rtScreenOX = (uint)ceilf((float)SCROLL_OX / MIN_ZOOM);
     rtScreenOY = (uint)ceilf((float)SCROLL_OY / MIN_ZOOM);
 
     rtLight = sprMngr.CreateRenderTarget(
-        false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, resMngr.GetGraphicLoader().Effects.FlushLight);
+        false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, sprMngr.GetEffectManager().Effects.FlushLight);
     RUNTIME_ASSERT(rtLight);
 
     if (!mapperMode)
     {
         rtFog = sprMngr.CreateRenderTarget(
-            false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, resMngr.GetGraphicLoader().Effects.FlushFog);
+            false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, sprMngr.GetEffectManager().Effects.FlushFog);
         RUNTIME_ASSERT(rtFog);
     }
 
@@ -754,14 +755,14 @@ void HexManager::SetRainAnimation(const char* fall_anim_name, const char* drop_a
     if (drop_anim_name)
         picRainDropName = drop_anim_name;
 
-    if (picRainFall == SpriteManager::DummyAnimation)
+    if (picRainFall == sprMngr.DummyAnimation)
         picRainFall = nullptr;
     else
-        resMngr.GetGraphicLoader().DestroyAnyFrames(picRainFall);
-    if (picRainDrop == SpriteManager::DummyAnimation)
+        sprMngr.GetGraphicLoader().DestroyAnyFrames(picRainFall);
+    if (picRainDrop == sprMngr.DummyAnimation)
         picRainDrop = nullptr;
     else
-        resMngr.GetGraphicLoader().DestroyAnyFrames(picRainDrop);
+        sprMngr.GetGraphicLoader().DestroyAnyFrames(picRainDrop);
 
     picRainFall = sprMngr.LoadAnimation(picRainFallName, true);
     picRainDrop = sprMngr.LoadAnimation(picRainDropName, true);
@@ -937,7 +938,7 @@ void HexManager::RebuildMap(int rx, int ry)
 
                 Sprite& spr = mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
                     &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Rain, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -948,7 +949,7 @@ void HexManager::RebuildMap(int rx, int ry)
 
                 Sprite& spr = roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
                     &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Rain, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1180,7 +1181,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
                 Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
                     &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Rain, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1191,7 +1192,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
                 Sprite& spr = roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
                     &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Rain, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1301,11 +1302,11 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 ProtoMap::TileVec& tiles = GetTiles(nx, ny, false);
                 Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX,
                     tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &resMngr.GetGraphicLoader().Effects.Tile, nullptr);
+                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #else
                 Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX,
                     tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Tile, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #endif
                 f.AddSpriteToChain(&spr);
             }
@@ -1324,12 +1325,12 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 ProtoMap::TileVec& roofs = GetTiles(nx, ny, true);
                 Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX,
                     roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    roofs[i].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha, &resMngr.GetGraphicLoader().Effects.Roof,
+                    roofs[i].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof,
                     nullptr);
 #else
                 Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX,
                     roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha,
-                    &resMngr.GetGraphicLoader().Effects.Roof, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #endif
                 spr.SetEgg(EGG_ALWAYS);
                 f.AddSpriteToChain(&spr);
@@ -1407,9 +1408,9 @@ void HexManager::PrepareLightToDraw()
         PointF offset((float)rtScreenOX, (float)rtScreenOY);
         for (uint i = 0; i < lightPointsCount; i++)
             sprMngr.DrawPoints(lightPoints[i], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset,
-                resMngr.GetGraphicLoader().Effects.Light);
+                sprMngr.GetEffectManager().Effects.Light);
         sprMngr.DrawPoints(lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, &offset,
-            resMngr.GetGraphicLoader().Effects.Light);
+            sprMngr.GetEffectManager().Effects.Light);
         sprMngr.PopRenderTarget();
     }
 }
@@ -1896,11 +1897,11 @@ void HexManager::RebuildTiles()
                 ProtoMap::TileVec& tiles = GetTiles(hx, hy, false);
                 Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX,
                     tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &resMngr.GetGraphicLoader().Effects.Tile, nullptr);
+                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #else
                 Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX,
                     tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr,
-                    &resMngr.GetGraphicLoader().Effects.Tile, nullptr);
+                    &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #endif
                 f.AddSpriteToChain(&spr);
             }
@@ -1949,11 +1950,11 @@ void HexManager::RebuildRoof()
                     Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX,
                         roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
                         roofs[i].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha,
-                        &resMngr.GetGraphicLoader().Effects.Roof, nullptr);
+                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #else
                     Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX,
                         roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha,
-                        &resMngr.GetGraphicLoader().Effects.Roof, nullptr);
+                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #endif
                     spr.SetEgg(EGG_ALWAYS);
                     f.AddSpriteToChain(&spr);
@@ -2391,9 +2392,9 @@ void HexManager::PrepareFogToDraw()
     sprMngr.PushRenderTarget(rtFog);
     sprMngr.ClearCurrentRenderTarget(0);
     sprMngr.DrawPoints(
-        fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, resMngr.GetGraphicLoader().Effects.Fog);
+        fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
     sprMngr.DrawPoints(
-        fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, resMngr.GetGraphicLoader().Effects.Fog);
+        fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
     sprMngr.PopRenderTarget();
 }
 

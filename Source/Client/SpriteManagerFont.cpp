@@ -1,4 +1,5 @@
 #include "Crypt.h"
+#include "EffectManager.h"
 #include "GraphicLoader.h"
 #include "Log.h"
 #include "SpriteManager.h"
@@ -152,7 +153,7 @@ void SpriteManager::SetFontEffect(int index, Effect* effect)
 {
     FontData* font = GetFont(index);
     if (font)
-        font->DrawEffect = (effect ? effect : graphicLoader.Effects.Font);
+        font->DrawEffect = (effect ? effect : effectMngr.Effects.Font);
 }
 
 void SpriteManager::BuildFonts()
@@ -314,7 +315,7 @@ bool SpriteManager::LoadFontFO(int index, const string& font_name, bool not_bord
         return false;
     }
 
-    FontData font(graphicLoader.Effects.Font);
+    FontData font(effectMngr.Effects.Font);
     string image_name;
 
     uint font_cache_len;
@@ -516,7 +517,7 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
         return false;
     }
 
-    FontData font(graphicLoader.Effects.Font);
+    FontData font(effectMngr.Effects.Font);
     File fm;
     File fm_tex;
 

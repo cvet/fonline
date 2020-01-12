@@ -45,12 +45,14 @@ public:
 
     AnyFrames* GetRandomSplash();
     StrMap& GetSoundNames() { return soundNames; }
-    GraphicLoader& GetGraphicLoader() { return sprMngr.GetGraphicLoader(); }
+    SpriteManager& GetSpriteManager() { return sprMngr; }
 
     AnyFrames* ItemHexDefaultAnim;
     AnyFrames* CritterDefaultAnim;
 
 private:
+    AnyFrames* LoadFalloutAnim(hash model_name, uint anim1, uint anim2);
+    AnyFrames* LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2);
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
@@ -62,7 +64,4 @@ private:
     map<hash, Animation3d*> critter3d;
     StrVec splashNames;
     StrMap soundNames;
-
-    AnyFrames* LoadFalloutAnim(hash model_name, uint anim1, uint anim2);
-    AnyFrames* LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2);
 };

@@ -1,5 +1,6 @@
 #include "3dStuff.h"
 #include "3dAnimation.h"
+#include "EffectManager.h"
 #include "GraphicLoader.h"
 #include "Log.h"
 #include "Script.h"
@@ -8,26 +9,16 @@
 #include "Testing.h"
 #include "Timer.h"
 
-Animation3dManager::Animation3dManager(GraphicLoader& graphic_loader) : graphicLoader(graphic_loader)
+Animation3dManager::Animation3dManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader) :
+    effectMngr {effect_mngr}, graphicLoader {graphic_loader}
 {
     if (!GameOpt.Enable3dRendering)
         return;
 
-// Calculate max effect bones
-#ifndef FO_OPENGL_ES
-    GLint max_uniform_components = 0;
-    GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
-    if (max_uniform_components < 1024)
-        WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}.\n", max_uniform_components);
-    graphicLoader.MaxBones = MIN(MAX(max_uniform_components, 1024) / 16, 256) - 4;
-#else
-    graphicLoader.MaxBones = MAX_BONES_PER_MODEL;
-#endif
-    RUNTIME_ASSERT(graphicLoader.MaxBones >= MAX_BONES_PER_MODEL);
-    WorldMatrices.resize(graphicLoader.MaxBones);
+    WorldMatrices.resize(effectMngr.MaxBones);
 
     // Check effects
-    bool load_3d_effects_ok = graphicLoader.Load3dEffects();
+    bool load_3d_effects_ok = effectMngr.Load3dEffects();
     RUNTIME_ASSERT(load_3d_effects_ok);
 
     // Smoothing
@@ -917,7 +908,7 @@ void Animation3d::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
 
     // Create new combined mesh
     if (combinedMeshesSize >= combinedMeshes.size())
-        combinedMeshes.push_back(new CombinedMesh(anim3dMngr.graphicLoader.MaxBones));
+        combinedMeshes.push_back(new CombinedMesh(anim3dMngr.effectMngr.MaxBones));
     combinedMeshes[combinedMeshesSize]->Encapsulate(mesh_instance, anim_layer);
     combinedMeshesSize++;
 }
@@ -1360,8 +1351,7 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
             GL(glEnableVertexAttribArray(i));
     }
 
-    Effect* effect =
-        (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : anim3dMngr.graphicLoader.Effects.Skinned3d);
+    Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : anim3dMngr.effectMngr.Effects.Skinned3d);
     MeshTexture** textures = combined_mesh->Textures;
 
     bool matrices_combined = false;
@@ -1406,12 +1396,12 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
             GL(glUniform3fv(effect_pass.GroundPosition, 1, (float*)&groundPos));
 
         if (effect_pass.IsNeedProcess)
-            anim3dMngr.graphicLoader.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
+            anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
 
         GL(glDrawElements(GL_TRIANGLES, (uint)combined_mesh->Indices.size(), GL_UNSIGNED_SHORT, (void*)0));
 
         if (effect_pass.IsNeedProcess)
-            anim3dMngr.graphicLoader.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
+            anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
     }
 
     GL(glUseProgram(0));
@@ -2426,7 +2416,7 @@ MeshTexture* Animation3dXFile::GetTexture(const string& tex_name)
 
 Effect* Animation3dXFile::GetEffect(EffectInstance* effect_inst)
 {
-    Effect* effect = anim3dMngr.graphicLoader.LoadEffect(
+    Effect* effect = anim3dMngr.effectMngr.LoadEffect(
         effect_inst->Name, false, "", fileName, effect_inst->Defaults, effect_inst->DefaultsCount);
     if (!effect)
         WriteLog("Can't load effect '{}'.\n", effect_inst->Name);

@@ -4,7 +4,6 @@
 #include "FileUtils.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
-#include "SDL_video.h"
 
 // Font flags
 #define FT_NOBREAK (0x0001)
@@ -86,6 +85,7 @@
 #define PRIMITIVE_TRIANGLESTRIP (5)
 #define PRIMITIVE_TRIANGLEFAN (6)
 
+class EffectManager;
 class GraphicLoader;
 class Animation3dManager;
 class Animation3d;
@@ -96,12 +96,17 @@ class Sprite;
 class SpriteManager
 {
 private:
-    bool sdlInited = false;
-    SDL_Window* mainWindow = nullptr;
-    GraphicLoader& graphicLoader;
-    Animation3dManager* anim3dMngr = nullptr;
-
 public:
+    SpriteManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader);
+    ~SpriteManager();
+
+    void BeginScene(uint clear_color);
+    void EndScene();
+    void OnResolutionChanged();
+    void SetAlwaysOnTop(bool enable);
+    EffectManager& GetEffectManager() { return effectMngr; }
+    GraphicLoader& GetGraphicLoader() { return graphicLoader; }
+
     void GetWindowSize(int& w, int& h);
     void SetWindowSize(int w, int h);
     void GetWindowPosition(int& x, int& y);
@@ -114,29 +119,19 @@ public:
     bool DisableFullscreen();
     void BlinkWindow();
 
+    AnyFrames* DummyAnimation {};
+
 private:
-    Matrix projectionMatrixCM;
-    bool sceneBeginned;
-    RenderTarget* rtMain;
-    RenderTarget *rtContours, *rtContoursMid;
-    RenderTargetVec rt3D;
-    RenderTargetVec rtStack;
-    RenderTargetVec rtAll;
-    GLint baseFBO;
-
-public:
-    static AnyFrames* DummyAnimation;
-
-    SpriteManager(GraphicLoader& graphic_loader);
-    ~SpriteManager();
-
-    void BeginScene(uint clear_color);
-    void EndScene();
-    void OnResolutionChanged();
-    void SetAlwaysOnTop(bool enable);
-    GraphicLoader& GetGraphicLoader() { return graphicLoader; }
+    SDL_Window* mainWindow {};
+    EffectManager& effectMngr;
+    GraphicLoader& graphicLoader;
+    Animation3dManager* anim3dMngr {};
+    Matrix projectionMatrixCM {};
+    bool sceneBeginned {};
+    GLint baseFBO {};
 
     // Render targets
+public:
     RenderTarget* CreateRenderTarget(bool depth, bool multisampling, bool screen_size, uint width, uint height,
         bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr);
     void CleanRenderTarget(RenderTarget* rt);
@@ -151,6 +146,14 @@ public:
     void RefreshViewport();
     RenderTarget* Get3dRenderTarget(uint width, uint height);
 
+private:
+    RenderTarget* rtMain {};
+    RenderTarget* rtContours {};
+    RenderTarget* rtContoursMid {};
+    RenderTargetVec rt3D {};
+    RenderTargetVec rtStack {};
+    RenderTargetVec rtAll {};
+
     // Texture atlases
 public:
     void PushAtlasType(int atlas_type, bool one_image = false);
@@ -163,17 +166,18 @@ public:
     void SaveTexture(Texture* tex, const string& fname, bool flip); // tex == NULL is back buffer
 
 private:
-    int atlasWidth, atlasHeight;
-    IntVec atlasTypeStack;
-    BoolVec atlasOneImageStack;
-    TextureAtlasVec allAtlases;
-    bool accumulatorActive;
-    SprInfoVec accumulatorSprInfo;
-
     TextureAtlas* CreateAtlas(int w, int h);
     TextureAtlas* FindAtlasPlace(SpriteInfo* si, int& x, int& y);
     uint RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data);
     void FillAtlas(SpriteInfo* si);
+
+    int atlasWidth {};
+    int atlasHeight {};
+    IntVec atlasTypeStack {};
+    BoolVec atlasOneImageStack {};
+    TextureAtlasVec allAtlases {};
+    bool accumulatorActive {};
+    SprInfoVec accumulatorSprInfo {};
 
     // Load sprites
 public:
@@ -184,12 +188,12 @@ public:
     void FreePure3dAnimation(Animation3d* anim3d);
 
 private:
-    SprInfoVec sprData;
-    Animation3dVec autoRedrawAnim3d;
-
     AnyFrames* LoadAnimation2d(const string& fname);
     AnyFrames* LoadAnimation3d(const string& fname);
     bool Render3d(Animation3d* anim3d);
+
+    SprInfoVec sprData {};
+    Animation3dVec autoRedrawAnim3d {};
 
     // Draw
 public:
@@ -210,6 +214,8 @@ public:
     bool Flush();
 
     bool DrawSprite(uint id, int x, int y, uint color = 0);
+    bool DrawSprite(AnyFrames* frames, int x, int y, uint color = 0);
+    bool DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0);
     bool DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0);
     bool DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     bool DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0);
@@ -219,40 +225,16 @@ public:
         PointVec& points, int prim, float* zoom = nullptr, PointF* offset = nullptr, Effect* effect = nullptr);
     bool Draw3d(int x, int y, Animation3d* anim3d, uint color);
 
-    inline bool DrawSprite(AnyFrames* frames, int x, int y, uint color = 0)
-    {
-        if (frames && frames != DummyAnimation)
-            return DrawSprite(frames->GetCurSprId(), x, y, color);
-        return false;
-    }
-    inline bool DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0)
-    {
-        if (frames && frames != DummyAnimation)
-            return DrawSpriteSize(frames->GetCurSprId(), x, y, w, h, zoom_up, center, color);
-        return false;
-    }
-
 private:
     struct VertexArray
     {
-        GLuint VAO;
-        GLuint VBO;
-        GLuint IBO;
-        uint VCount;
-        uint ICount;
-        VertexArray* Next;
+        GLuint VAO {};
+        GLuint VBO {};
+        GLuint IBO {};
+        uint VCount {};
+        uint ICount {};
+        VertexArray* Next {};
     };
-    VertexArray* quadsVertexArray;
-    VertexArray* pointsVertexArray;
-    UShortVec quadsIndices;
-    UShortVec pointsIndices;
-    Vertex2DVec vBuffer;
-    DipDataVec dipQueue;
-    uint baseColor;
-    int drawQuadCount;
-    int curDrawQuad;
-    IntVec scissorStack;
-    Rect scissorRect;
 
     void InitVertexArray(VertexArray* va, bool quads, uint count);
     void BindVertexArray(VertexArray* va);
@@ -262,35 +244,48 @@ private:
     void EnableScissor();
     void DisableScissor();
 
+    VertexArray* quadsVertexArray {};
+    VertexArray* pointsVertexArray {};
+    UShortVec quadsIndices {};
+    UShortVec pointsIndices {};
+    Vertex2DVec vBuffer {};
+    DipDataVec dipQueue {};
+    uint baseColor {};
+    int drawQuadCount {};
+    int curDrawQuad {};
+    IntVec scissorStack {};
+    Rect scissorRect {};
+
     // Contours
 public:
     bool DrawContours();
 
 private:
-    bool contoursAdded;
-
     bool CollectContour(int x, int y, SpriteInfo* si, Sprite* spr);
 
-    // Transparent egg
-private:
-    bool eggValid;
-    ushort eggHx, eggHy;
-    int eggX, eggY;
-    SpriteInfo* sprEgg;
-    uint* eggData;
-    int eggSprWidth, eggSprHeight;
-    float eggAtlasWidth, eggAtlasHeight;
+    bool contoursAdded {};
 
+    // Transparent egg
 public:
     void InitializeEgg(const string& egg_name);
     bool CompareHexEgg(ushort hx, ushort hy, int egg_type);
     void SetEgg(ushort hx, ushort hy, Sprite* spr);
     void EggNotValid() { eggValid = false; }
 
-    // Fonts
 private:
-    void BuildFont(int index);
+    bool eggValid {};
+    ushort eggHx {};
+    ushort eggHy {};
+    int eggX {};
+    int eggY {};
+    SpriteInfo* sprEgg {};
+    uint* eggData {};
+    int eggSprWidth {};
+    int eggSprHeight {};
+    float eggAtlasWidth {};
+    float eggAtlasHeight {};
 
+    // Fonts
 public:
     void ClearFonts();
     void SetDefaultFont(int index, uint color);
@@ -305,4 +300,7 @@ public:
     void GetTextInfo(int width, int height, const string& str, int num_font, int flags, int& tw, int& th, int& lines);
     int SplitLines(const Rect& r, const string& cstr, int num_font, StrVec& str_vec);
     bool HaveLetter(int num_font, uint letter);
+
+private:
+    void BuildFont(int index);
 };

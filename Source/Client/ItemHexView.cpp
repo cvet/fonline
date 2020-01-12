@@ -1,4 +1,5 @@
 #include "ItemHexView.h"
+#include "EffectManager.h"
 #include "GraphicLoader.h"
 #include "GraphicStructures.h"
 #include "Log.h"
@@ -61,7 +62,7 @@ ItemHexView::ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr) :
     effCurY = 0;
 
     // Draw effect
-    DrawEffect = resMngr.GetGraphicLoader().Effects.Generic;
+    DrawEffect = resMngr.GetSpriteManager().GetEffectManager().Effects.Generic;
 }
 
 ItemHexView::ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr) :

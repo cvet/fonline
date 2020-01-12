@@ -2,6 +2,7 @@
 
 #include "3dStuff.h"
 #include "Common.h"
+#include "EffectManager.h"
 #include "Entity.h"
 #include "GraphicLoader.h"
 #include "HexManager.h"
@@ -92,6 +93,7 @@ public:
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     GraphicLoader GraphicLoader;
+    EffectManager EffectMngr;
     SpriteManager SprMngr;
     HexManager HexMngr;
     ResourceManager ResMngr;

@@ -28,10 +28,11 @@ LocationView* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
 
 FOMapper::FOMapper() :
     ProtoMngr(),
-    SprMngr(GraphicLoader),
+    EffectMngr(),
+    GraphicLoader(SprMngr),
+    SprMngr(EffectMngr, GraphicLoader),
     ResMngr(SprMngr),
     HexMngr(true, ProtoMngr, SprMngr, ResMngr),
-    GraphicLoader(SprMngr),
     Keyb(SprMngr)
 {
     Self = this;
@@ -72,7 +73,7 @@ FOMapper::FOMapper() :
     File::InitDataFiles(CLIENT_DATA);
 
     // Default effects
-    bool default_effects_ok = GraphicLoader.LoadDefaultEffects();
+    bool default_effects_ok = EffectMngr.LoadDefaultEffects();
     RUNTIME_ASSERT(default_effects_ok);
 
     // Fonts

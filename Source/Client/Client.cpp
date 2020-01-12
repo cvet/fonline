@@ -134,10 +134,11 @@ FOClient::FOClient() :
     Keyb(SprMngr),
     ProtoMngr(),
     GraphicLoader(SprMngr),
-    SprMngr(GraphicLoader),
+    EffectMngr(),
+    SprMngr(EffectMngr, GraphicLoader),
     ResMngr(SprMngr),
     HexMngr(false, ProtoMngr, SprMngr, ResMngr),
-    Anim3dMngr(GraphicLoader)
+    Anim3dMngr(EffectMngr, GraphicLoader)
 {
     RUNTIME_ASSERT(!Self);
     Self = this;
@@ -250,7 +251,7 @@ bool FOClient::Reset()
     }
 
     // Basic effects
-    if (!GraphicLoader.LoadDefaultEffects())
+    if (!EffectMngr.LoadDefaultEffects())
         return false;
 
     // Resource manager
@@ -6875,7 +6876,7 @@ bool FOClient::SScriptFunc::Global_SetEffect(
     if (!effect_name.empty())
     {
         bool use_in_2d = !(effect_type & EFFECT_3D_SKINNED);
-        effect = Self->GraphicLoader.LoadEffect(effect_name, use_in_2d, effect_defines);
+        effect = Self->EffectMngr.LoadEffect(effect_name, use_in_2d, effect_defines);
         if (!effect)
             SCRIPT_ERROR_R0("Effect not found or have some errors, see log file.");
     }
@@ -6884,61 +6885,60 @@ bool FOClient::SScriptFunc::Global_SetEffect(
     {
         ItemHexView* item = Self->GetItem((uint)effect_subtype);
         if (item)
-            item->DrawEffect = (effect ? effect : Self->GraphicLoader.Effects.Generic);
+            item->DrawEffect = (effect ? effect : Self->EffectMngr.Effects.Generic);
     }
     if (effect_type & EFFECT_2D_CRITTER && effect_subtype != 0)
     {
         CritterView* cr = Self->GetCritter((uint)effect_subtype);
         if (cr)
-            cr->DrawEffect = (effect ? effect : Self->GraphicLoader.Effects.Critter);
+            cr->DrawEffect = (effect ? effect : Self->EffectMngr.Effects.Critter);
     }
 
     if (effect_type & EFFECT_2D_GENERIC && effect_subtype == 0)
-        Self->GraphicLoader.Effects.Generic = (effect ? effect : Self->GraphicLoader.Effects.GenericDefault);
+        Self->EffectMngr.Effects.Generic = (effect ? effect : Self->EffectMngr.Effects.GenericDefault);
     if (effect_type & EFFECT_2D_CRITTER && effect_subtype == 0)
-        Self->GraphicLoader.Effects.Critter = (effect ? effect : Self->GraphicLoader.Effects.CritterDefault);
+        Self->EffectMngr.Effects.Critter = (effect ? effect : Self->EffectMngr.Effects.CritterDefault);
     if (effect_type & EFFECT_2D_TILE)
-        Self->GraphicLoader.Effects.Tile = (effect ? effect : Self->GraphicLoader.Effects.TileDefault);
+        Self->EffectMngr.Effects.Tile = (effect ? effect : Self->EffectMngr.Effects.TileDefault);
     if (effect_type & EFFECT_2D_ROOF)
-        Self->GraphicLoader.Effects.Roof = (effect ? effect : Self->GraphicLoader.Effects.RoofDefault);
+        Self->EffectMngr.Effects.Roof = (effect ? effect : Self->EffectMngr.Effects.RoofDefault);
     if (effect_type & EFFECT_2D_RAIN)
-        Self->GraphicLoader.Effects.Rain = (effect ? effect : Self->GraphicLoader.Effects.RainDefault);
+        Self->EffectMngr.Effects.Rain = (effect ? effect : Self->EffectMngr.Effects.RainDefault);
 
     if (effect_type & EFFECT_3D_SKINNED)
-        Self->GraphicLoader.Effects.Skinned3d = (effect ? effect : Self->GraphicLoader.Effects.Skinned3dDefault);
+        Self->EffectMngr.Effects.Skinned3d = (effect ? effect : Self->EffectMngr.Effects.Skinned3dDefault);
 
     if (effect_type & EFFECT_INTERFACE_BASE)
-        Self->GraphicLoader.Effects.Iface = (effect ? effect : Self->GraphicLoader.Effects.IfaceDefault);
+        Self->EffectMngr.Effects.Iface = (effect ? effect : Self->EffectMngr.Effects.IfaceDefault);
     if (effect_type & EFFECT_INTERFACE_CONTOUR)
-        Self->GraphicLoader.Effects.Contour = (effect ? effect : Self->GraphicLoader.Effects.ContourDefault);
+        Self->EffectMngr.Effects.Contour = (effect ? effect : Self->EffectMngr.Effects.ContourDefault);
 
     if (effect_type & EFFECT_FONT && effect_subtype == -1)
-        Self->GraphicLoader.Effects.Font = (effect ? effect : Self->GraphicLoader.Effects.ContourDefault);
+        Self->EffectMngr.Effects.Font = (effect ? effect : Self->EffectMngr.Effects.ContourDefault);
     if (effect_type & EFFECT_FONT && effect_subtype >= 0)
         Self->SprMngr.SetFontEffect(effect_subtype, effect);
 
     if (effect_type & EFFECT_PRIMITIVE_GENERIC)
-        Self->GraphicLoader.Effects.Primitive = (effect ? effect : Self->GraphicLoader.Effects.PrimitiveDefault);
+        Self->EffectMngr.Effects.Primitive = (effect ? effect : Self->EffectMngr.Effects.PrimitiveDefault);
     if (effect_type & EFFECT_PRIMITIVE_LIGHT)
-        Self->GraphicLoader.Effects.Light = (effect ? effect : Self->GraphicLoader.Effects.LightDefault);
+        Self->EffectMngr.Effects.Light = (effect ? effect : Self->EffectMngr.Effects.LightDefault);
     if (effect_type & EFFECT_PRIMITIVE_FOG)
-        Self->GraphicLoader.Effects.Fog = (effect ? effect : Self->GraphicLoader.Effects.FogDefault);
+        Self->EffectMngr.Effects.Fog = (effect ? effect : Self->EffectMngr.Effects.FogDefault);
 
     if (effect_type & EFFECT_FLUSH_RENDER_TARGET)
-        Self->GraphicLoader.Effects.FlushRenderTarget =
-            (effect ? effect : Self->GraphicLoader.Effects.FlushRenderTargetDefault);
+        Self->EffectMngr.Effects.FlushRenderTarget =
+            (effect ? effect : Self->EffectMngr.Effects.FlushRenderTargetDefault);
     if (effect_type & EFFECT_FLUSH_RENDER_TARGET_MS)
-        Self->GraphicLoader.Effects.FlushRenderTargetMS =
-            (effect ? effect : Self->GraphicLoader.Effects.FlushRenderTargetMSDefault);
+        Self->EffectMngr.Effects.FlushRenderTargetMS =
+            (effect ? effect : Self->EffectMngr.Effects.FlushRenderTargetMSDefault);
     if (effect_type & EFFECT_FLUSH_PRIMITIVE)
-        Self->GraphicLoader.Effects.FlushPrimitive =
-            (effect ? effect : Self->GraphicLoader.Effects.FlushPrimitiveDefault);
+        Self->EffectMngr.Effects.FlushPrimitive = (effect ? effect : Self->EffectMngr.Effects.FlushPrimitiveDefault);
     if (effect_type & EFFECT_FLUSH_MAP)
-        Self->GraphicLoader.Effects.FlushMap = (effect ? effect : Self->GraphicLoader.Effects.FlushMapDefault);
+        Self->EffectMngr.Effects.FlushMap = (effect ? effect : Self->EffectMngr.Effects.FlushMapDefault);
     if (effect_type & EFFECT_FLUSH_LIGHT)
-        Self->GraphicLoader.Effects.FlushLight = (effect ? effect : Self->GraphicLoader.Effects.FlushLightDefault);
+        Self->EffectMngr.Effects.FlushLight = (effect ? effect : Self->EffectMngr.Effects.FlushLightDefault);
     if (effect_type & EFFECT_FLUSH_FOG)
-        Self->GraphicLoader.Effects.FlushFog = (effect ? effect : Self->GraphicLoader.Effects.FlushFogDefault);
+        Self->EffectMngr.Effects.FlushFog = (effect ? effect : Self->EffectMngr.Effects.FlushFogDefault);
 
     if (effect_type & EFFECT_OFFSCREEN)
     {

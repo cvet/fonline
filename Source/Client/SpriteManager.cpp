@@ -1,6 +1,7 @@
 #include "SpriteManager.h"
 #include "3dStuff.h"
 #include "Crypt.h"
+#include "EffectManager.h"
 #include "GraphicLoader.h"
 #include "IniFile.h"
 #include "Log.h"
@@ -19,8 +20,6 @@
 #define SDL_GL_SwapWindow(a) (void)0
 #endif
 
-AnyFrames* SpriteManager::DummyAnimation = nullptr;
-
 #define MAX_ATLAS_SIZE (4096)
 #define SPRITES_BUFFER_SIZE (10000)
 #define ATLAS_SPRITES_PADDING (1)
@@ -30,42 +29,13 @@ AnyFrames* SpriteManager::DummyAnimation = nullptr;
 SDL_Window* SprMngr_MainWindow;
 #endif
 
-SpriteManager::SpriteManager(GraphicLoader& graphic_loader) : graphicLoader(graphic_loader)
+SpriteManager::SpriteManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader) :
+    effectMngr {effect_mngr}, graphicLoader {graphic_loader}
 {
-    drawQuadCount = 0;
-    curDrawQuad = 0;
-    sceneBeginned = false;
-
-    sprEgg = nullptr;
-    eggData = nullptr;
-    eggValid = false;
-    eggHx = eggHy = eggX = eggY = 0;
-    eggAtlasWidth = 0;
-    eggAtlasHeight = 0;
-    eggSprWidth = 0;
-    eggSprHeight = 0;
-
-    contoursAdded = false;
-
     baseColor = COLOR_RGBA(255, 128, 128, 128);
     allAtlases.reserve(100);
     dipQueue.reserve(1000);
-
-    rtMain = nullptr;
-    rtContours = rtContoursMid = nullptr;
-
-    quadsVertexArray = nullptr;
-    pointsVertexArray = nullptr;
-
-    atlasWidth = atlasHeight = 0;
-    accumulatorActive = false;
-
     drawQuadCount = 1024;
-    curDrawQuad = 0;
-
-    // SDL
-    sdlInited = !!SDL_InitSubSystem(SDL_INIT_VIDEO);
-    RUNTIME_ASSERT_STR(sdlInited, _str("SDL initialization failed, error '{}'.\n", SDL_GetError()));
 
     // Detect tablets
     bool is_tablet = false;
@@ -237,7 +207,7 @@ SpriteManager::SpriteManager(GraphicLoader& graphic_loader) : graphicLoader(grap
     RUNTIME_ASSERT(!extension_errors);
 
     // Default effects
-    bool effects_ok = graphicLoader.LoadMinimalEffects();
+    bool effects_ok = effectMngr.LoadMinimalEffects();
     RUNTIME_ASSERT(effects_ok);
 
     // Render states
@@ -308,14 +278,11 @@ SpriteManager::SpriteManager(GraphicLoader& graphic_loader) : graphicLoader(grap
 
     // 3d initialization
     if (GameOpt.Enable3dRendering)
-        anim3dMngr = new Animation3dManager(graphicLoader);
+        anim3dMngr = new Animation3dManager(effectMngr, graphicLoader);
 }
 
 SpriteManager::~SpriteManager()
 {
-    if (sdlInited)
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
-
     DeleteRenderTarget(rtMain);
     DeleteRenderTarget(rtContours);
     DeleteRenderTarget(rtContoursMid);
@@ -496,10 +463,10 @@ RenderTarget* SpriteManager::CreateRenderTarget(bool depth, bool multisampling, 
             samples = MIN(GameOpt.MultiSampling > 0 ? GameOpt.MultiSampling : 8, max_samples);
 
             // Flush effect
-            graphicLoader.Effects.FlushRenderTargetMSDefault =
-                graphicLoader.LoadEffect("Flush_RenderTargetMS.glsl", true, "", "Effects/");
-            if (graphicLoader.Effects.FlushRenderTargetMSDefault)
-                graphicLoader.Effects.FlushRenderTargetMS = graphicLoader.Effects.FlushRenderTargetMSDefault;
+            effectMngr.Effects.FlushRenderTargetMSDefault =
+                effectMngr.LoadEffect("Flush_RenderTargetMS.glsl", true, "", "Effects/");
+            if (effectMngr.Effects.FlushRenderTargetMSDefault)
+                effectMngr.Effects.FlushRenderTargetMS = effectMngr.Effects.FlushRenderTargetMSDefault;
             else
                 samples = 0;
         }
@@ -631,9 +598,9 @@ RenderTarget* SpriteManager::CreateRenderTarget(bool depth, bool multisampling, 
     if (!effect)
     {
         if (!multisampling)
-            rt->DrawEffect = graphicLoader.Effects.FlushRenderTarget;
+            rt->DrawEffect = effectMngr.Effects.FlushRenderTarget;
         else
-            rt->DrawEffect = graphicLoader.Effects.FlushRenderTargetMS;
+            rt->DrawEffect = effectMngr.Effects.FlushRenderTargetMS;
     }
     else
     {
@@ -1802,13 +1769,13 @@ bool SpriteManager::Flush()
                     dip.SpriteBorder.B));
 
             if (effect_pass.IsNeedProcess)
-                graphicLoader.EffectProcessVariables(effect_pass, true);
+                effectMngr.EffectProcessVariables(effect_pass, true);
 
             GLsizei count = 6 * dip.SpritesCount;
             GL(glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*)(size_t)(pos * 2)));
 
             if (effect_pass.IsNeedProcess)
-                graphicLoader.EffectProcessVariables(effect_pass, false);
+                effectMngr.EffectProcessVariables(effect_pass, false);
         }
 
         pos += 6 * dip.SpritesCount;
@@ -1832,7 +1799,7 @@ bool SpriteManager::DrawSprite(uint id, int x, int y, uint color /* = 0 */)
     if (!si)
         return false;
 
-    Effect* effect = (si->DrawEffect ? si->DrawEffect : graphicLoader.Effects.Iface);
+    Effect* effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Iface);
     if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
         dipQueue.back().SourceEffect->Id != effect->Id)
         dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
@@ -1874,9 +1841,23 @@ bool SpriteManager::DrawSprite(uint id, int x, int y, uint color /* = 0 */)
     return true;
 }
 
+bool SpriteManager::DrawSprite(AnyFrames* frames, int x, int y, uint color)
+{
+    if (frames && frames != DummyAnimation)
+        return DrawSprite(frames->GetCurSprId(), x, y, color);
+    return false;
+}
+
 bool SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color /* = 0 */)
 {
     return DrawSpriteSizeExt(id, x, y, w, h, zoom_up, center, false, color);
+}
+
+bool SpriteManager::DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
+{
+    if (frames && frames != DummyAnimation)
+        return DrawSpriteSize(frames->GetCurSprId(), x, y, w, h, zoom_up, center, color);
+    return false;
 }
 
 bool SpriteManager::DrawSpriteSizeExt(
@@ -1923,7 +1904,7 @@ bool SpriteManager::DrawSpriteSizeExt(
         hf = (float)h;
     }
 
-    Effect* effect = (si->DrawEffect ? si->DrawEffect : graphicLoader.Effects.Iface);
+    Effect* effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Iface);
     if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
         dipQueue.back().SourceEffect->Id != effect->Id)
         dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
@@ -2003,7 +1984,7 @@ bool SpriteManager::DrawSpritePattern(
         color = COLOR_IFACE;
     color = COLOR_SWAP_RB(color);
 
-    Effect* effect = (si->DrawEffect ? si->DrawEffect : graphicLoader.Effects.Iface);
+    Effect* effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Iface);
 
     float last_right_offs = (si->SprRect.R - si->SprRect.L) / width;
     float last_bottom_offs = (si->SprRect.B - si->SprRect.T) / height;
@@ -2357,7 +2338,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         // Choose effect
         Effect* effect = (spr->DrawEffect ? *spr->DrawEffect : nullptr);
         if (!effect)
-            effect = (si->DrawEffect ? si->DrawEffect : graphicLoader.Effects.Generic);
+            effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Generic);
 
         // Choose atlas
         if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
@@ -2579,7 +2560,7 @@ bool SpriteManager::DrawPoints(
     Flush();
 
     if (!effect)
-        effect = graphicLoader.Effects.Primitive;
+        effect = effectMngr.Effects.Primitive;
 
     // Check primitives
     uint count = (uint)points.size();
@@ -2663,12 +2644,12 @@ bool SpriteManager::DrawPoints(
             GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[0]));
 
         if (effect_pass.IsNeedProcess)
-            graphicLoader.EffectProcessVariables(effect_pass, true);
+            effectMngr.EffectProcessVariables(effect_pass, true);
 
         GL(glDrawElements(prim_type, count, GL_UNSIGNED_SHORT, (void*)0));
 
         if (effect_pass.IsNeedProcess)
-            graphicLoader.EffectProcessVariables(effect_pass, false);
+            effectMngr.EffectProcessVariables(effect_pass, false);
     }
 
     GL(glUseProgram(0));
@@ -2705,7 +2686,7 @@ bool SpriteManager::DrawContours()
 
 bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
 {
-    if (!rtContours || !rtContoursMid || !graphicLoader.Effects.Contour)
+    if (!rtContours || !rtContoursMid || !effectMngr.Effects.Contour)
         return true;
 
     Rect borders = Rect(x - 1, y - 1, x + si->Width + 1, y + si->Height + 1);
@@ -2753,7 +2734,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
         vBuffer[pos++].TV = sr.B;
 
         curDrawQuad = 1;
-        dipQueue.push_back({texture, graphicLoader.Effects.FlushRenderTarget, 1});
+        dipQueue.push_back({texture, effectMngr.Effects.FlushRenderTarget, 1});
         Flush();
 
         PopRenderTarget();
@@ -2804,7 +2785,7 @@ bool SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
     vBuffer[pos++].Diffuse = contour_color;
 
     curDrawQuad = 1;
-    dipQueue.push_back({texture, graphicLoader.Effects.Contour, 1});
+    dipQueue.push_back({texture, effectMngr.Effects.Contour, 1});
     dipQueue.back().SpriteBorder = sprite_border;
     Flush();
 
