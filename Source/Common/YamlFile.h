@@ -14,11 +14,11 @@ public:
     static const int ArrayValue = 5;
     static const int DictValue = 6;
 
-    using Array = mapbox::util::variant< vector< int >, vector< int64 >, vector< double >, vector< bool >, vector< string > >;
-    using Dict = map< string, mapbox::util::variant< int, int64, double, bool, string, Array > >;
-    using Value = mapbox::util::variant< int, int64, double, bool, string, Array, Dict >;
-    using Document = map< string, Value >;
-    using Collection = map< string, Document >;
+    using Array = mapbox::util::variant<vector<int>, vector<int64>, vector<double>, vector<bool>, vector<string>>;
+    using Dict = map<string, mapbox::util::variant<int, int64, double, bool, string, Array>>;
+    using Value = mapbox::util::variant<int, int64, double, bool, string, Array, Dict>;
+    using Document = map<string, Value>;
+    using Collection = map<string, Document>;
 };
 /*
    class YamlFile

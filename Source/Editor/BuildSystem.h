@@ -11,15 +11,13 @@ enum class BuildTarget
     Android,
 };
 
-class IBuildSystem
+class IBuildSystem;
+using BuildSystem = std::shared_ptr<IBuildSystem>;
+
+class IBuildSystem : public NonCopyable
 {
 public:
+    static BuildSystem Create();
     virtual bool BuildAll() = 0;
-    virtual ~IBuildSystem() {}
+    virtual ~IBuildSystem() = default;
 };
-using BuildSystem = std::shared_ptr< IBuildSystem >;
-
-namespace Fabric
-{
-    BuildSystem CreateDefaultBuildSystem();
-}

@@ -11,7 +11,7 @@ fi
 
 echo "Setup environment"
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
-export EMSCRIPTEN_VERSION="sdk-1.38.31-64bit"
+export EMSCRIPTEN_VERSION="1.39.4"
 
 if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
 	echo "Install packages"
@@ -47,9 +47,11 @@ cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
 chmod +x ./emsdk
 ./emsdk update
-./emsdk install $EMSCRIPTEN_VERSION
-./emsdk activate $EMSCRIPTEN_VERSION
+./emsdk list
+./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
+./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
 source ./emsdk_env.sh
+rm -rf releases/.git
 cd ../
 emcc -v
 

@@ -81,14 +81,13 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * *Resources* - resources for build applications but not related to code
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
-* *SourceTools* - some tools for formatting code or count it
 * *ThirdParty* - external dependencies of engine, included to repository
 
 ## Clone / Build / Setup
 
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.6.3.  
-Unformation about build scripts you can find at BuildScripts/README.md.  
+Information about build scripts you can find at BuildScripts/README.md.  
 All output binaries you can find in Build/Binaries directory.
 
 ## Third-party packages
@@ -122,7 +121,6 @@ All output binaries you can find in Build/Binaries directory.
 * [libogg](https://xiph.org/ogg/) - audio library
 * [openssl](https://www.openssl.org/) - library for network transport security
 * [unqlite](https://unqlite.org/) - nosql database engine
-* [variant](https://github.com/mapbox/variant) - c++17 std::variant implementation in c++11/14
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
 

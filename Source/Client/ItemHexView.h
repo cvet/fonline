@@ -1,51 +1,55 @@
-#ifndef __ITEM_HEX__
-#define __ITEM_HEX__
+#pragma once
 
 #include "Common.h"
 #include "ItemView.h"
-#include "SpriteManager.h"
 
+class ResourceManager;
 struct AnyFrames;
+class Sprite;
+struct Effect;
 
-class ItemHexView: public ItemView
+class ItemHexView : public ItemView
 {
 private:
-    ItemHexView( uint id, ProtoItem* proto );
+    ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr);
     void AfterConstruction();
 
-public:
-    ItemHexView( uint id, ProtoItem* proto, Properties& props );
-    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data );
-    ItemHexView( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y );
+    ResourceManager& resMngr;
 
 public:
-    uint       SprId;
-    short      ScrX, ScrY;
-    int*       HexScrX, * HexScrY;
-    uchar      Alpha;
+    ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr);
+    ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr);
+    ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y,
+        ResourceManager& res_mngr);
+
+public:
+    uint SprId;
+    short ScrX, ScrY;
+    int *HexScrX, *HexScrY;
+    uchar Alpha;
     AnyFrames* Anim;
-    bool       SprDrawValid;
-    Sprite*    SprDraw, * SprTemp;
-    Effect*    DrawEffect;
+    bool SprDrawValid;
+    Sprite *SprDraw, *SprTemp;
+    Effect* DrawEffect;
 
 private:
-    int   curSpr, begSpr, endSpr;
-    uint  animBegSpr, animEndSpr;
-    uint  animTick;
+    int curSpr, begSpr, endSpr;
+    uint animBegSpr, animEndSpr;
+    uint animTick;
     uchar maxAlpha;
-    bool  isAnimated;
-    uint  animNextTick;
+    bool isAnimated;
+    uint animNextTick;
 
 public:
-    bool IsAnimated()         { return isAnimated; }
-    bool IsDrawContour()      { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    bool IsTransparent()      { return maxAlpha < 0xFF; }
+    bool IsAnimated() { return isAnimated; }
+    bool IsDrawContour() { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    bool IsTransparent() { return maxAlpha < 0xFF; }
     bool IsFullyTransparent() { return maxAlpha == 0; }
     void RefreshAnim();
     void RestoreAlpha() { Alpha = maxAlpha; }
-    void RefreshAlpha() { maxAlpha = ( IsColorize() ? GetAlpha() : 0xFF ); }
-    void SetSprite( Sprite* spr );
-    int  GetEggType();
+    void RefreshAlpha() { maxAlpha = (IsColorize() ? GetAlpha() : 0xFF); }
+    void SetSprite(Sprite* spr);
+    int GetEggType();
 
     // Finish
 private:
@@ -54,8 +58,8 @@ private:
 
 public:
     void Finish();
-    bool IsFinishing() { return finishing; }
-    bool IsFinish()    { return ( finishing && Timer::GameTick() > finishingTime ); }
+    bool IsFinishing();
+    bool IsFinish();
     void StopFinishing();
 
     // Process
@@ -64,19 +68,19 @@ public:
 
     // Effect
 private:
-    bool  isEffect;
+    bool isEffect;
     float effSx, effSy;
-    int   effStartX, effStartY;
+    int effStartX, effStartY;
     float effCurX, effCurY;
-    uint  effDist;
-    uint  effLastTick;
-    int   effDir;
+    uint effDist;
+    uint effLastTick;
+    int effDir;
 
 public:
     float EffOffsX, EffOffsY;
 
-    bool       IsDynamicEffect() { return isEffect && ( effSx || effSy ); }
-    void       SetEffect( float sx, float sy, uint dist, int dir );
+    bool IsDynamicEffect() { return isEffect && (effSx || effSy); }
+    void SetEffect(float sx, float sy, uint dist, int dir);
     UShortPair GetEffectStep();
 
     // Fade
@@ -85,7 +89,7 @@ private:
     uint fadingTick;
     bool fadeUp;
 
-    void SetFade( bool fade_up );
+    void SetFade(bool fade_up);
 
 public:
     void SkipFade();
@@ -96,10 +100,10 @@ public:
     void StopAnimate();
     void SetAnimFromEnd();
     void SetAnimFromStart();
-    void SetAnim( uint beg, uint end );
+    void SetAnim(uint beg, uint end);
     void SetSprStart();
     void SetSprEnd();
-    void SetSpr( uint num_spr );
+    void SetSpr(uint num_spr);
     void SetAnimOffs();
     void SetStayAnim();
     void SetShowAnim();
@@ -108,5 +112,3 @@ public:
 public: // Move some specific types to end
     UShortPairVec EffSteps;
 };
-
-#endif // __ITEM_HEX__

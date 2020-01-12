@@ -3,54 +3,54 @@
 #include "Common.h"
 #include "MsgStr_Include.h"
 
-#define TEXTMSG_TEXT         ( 0 )
-#define TEXTMSG_DLG          ( 1 )
-#define TEXTMSG_ITEM         ( 2 )
-#define TEXTMSG_GAME         ( 3 )
-#define TEXTMSG_GM           ( 4 )
-#define TEXTMSG_COMBAT       ( 5 )
-#define TEXTMSG_QUEST        ( 6 )
-#define TEXTMSG_HOLO         ( 7 )
-#define TEXTMSG_INTERNAL     ( 8 )
-#define TEXTMSG_LOCATIONS    ( 9 )
-#define TEXTMSG_COUNT        ( 10 )
-extern string TextMsgFileName[ TEXTMSG_COUNT ];
+#define TEXTMSG_TEXT (0)
+#define TEXTMSG_DLG (1)
+#define TEXTMSG_ITEM (2)
+#define TEXTMSG_GAME (3)
+#define TEXTMSG_GM (4)
+#define TEXTMSG_COMBAT (5)
+#define TEXTMSG_QUEST (6)
+#define TEXTMSG_HOLO (7)
+#define TEXTMSG_INTERNAL (8)
+#define TEXTMSG_LOCATIONS (9)
+#define TEXTMSG_COUNT (10)
+extern string TextMsgFileName[TEXTMSG_COUNT];
 
-#define DEFAULT_LANGUAGE     "russ"
-#define MSG_ERROR_MESSAGE    "error"
+#define DEFAULT_LANGUAGE "russ"
+#define MSG_ERROR_MESSAGE "error"
 
-typedef multimap< uint, string > FOMsgMap;
+typedef multimap<uint, string> FOMsgMap;
 
 class FOMsg
 {
 public:
     FOMsg();
-    FOMsg( const FOMsg& other );
+    FOMsg(const FOMsg& other);
     ~FOMsg();
-    FOMsg& operator=( const FOMsg& other );
-    FOMsg& operator+=( const FOMsg& other );
+    FOMsg& operator=(const FOMsg& other);
+    FOMsg& operator+=(const FOMsg& other);
 
-    void AddStr( uint num, const string& str );
-    void AddBinary( uint num, const uchar* binary, uint len );
+    void AddStr(uint num, const string& str);
+    void AddBinary(uint num, const uchar* binary, uint len);
 
-    string GetStr( uint num );
-    string GetStr( uint num, uint skip );
-    uint   GetStrNumUpper( uint num );
-    uint   GetStrNumLower( uint num );
-    int    GetInt( uint num );
-    uint   GetBinary( uint num, UCharVec& data );
-    uint   Count( uint num );
-    void   EraseStr( uint num );
-    uint   GetSize();
-    bool   IsIntersects( const FOMsg& other );
+    string GetStr(uint num);
+    string GetStr(uint num, uint skip);
+    uint GetStrNumUpper(uint num);
+    uint GetStrNumLower(uint num);
+    int GetInt(uint num);
+    uint GetBinary(uint num, UCharVec& data);
+    uint Count(uint num);
+    void EraseStr(uint num);
+    uint GetSize();
+    bool IsIntersects(const FOMsg& other);
 
     // Serialization
-    void GetBinaryData( UCharVec& data );
-    bool LoadFromBinaryData( const UCharVec& data );
-    bool LoadFromFile( const string& fname );
-    bool LoadFromString( const string& str );
-    void LoadFromMap( const StrMap& kv );
-    bool SaveToFile( const string& fname, bool to_data );
+    void GetBinaryData(UCharVec& data);
+    bool LoadFromBinaryData(const UCharVec& data);
+    bool LoadFromFile(const string& fname);
+    bool LoadFromString(const string& str);
+    void LoadFromMap(const StrMap& kv);
+    bool SaveToFile(const string& fname, bool to_data);
     void Clear();
 
 private:
@@ -58,9 +58,9 @@ private:
     FOMsgMap strData;
 
 public:
-    static int GetMsgType( const string& type_name );
+    static int GetMsgType(const string& type_name);
 };
-typedef vector< FOMsg* > FOMsgVec;
+typedef vector<FOMsg*> FOMsgVec;
 
 class LanguagePack
 {
@@ -68,17 +68,17 @@ public:
     union
     {
         uint Name;
-        char NameStr[ 5 ];
+        char NameStr[5];
     };
 
-    bool  IsAllMsgLoaded;
-    FOMsg Msg[ TEXTMSG_COUNT ];
+    bool IsAllMsgLoaded;
+    FOMsg Msg[TEXTMSG_COUNT];
 
-    bool   LoadFromFiles( const string& lang_name );
-    bool   LoadFromCache( const string& lang_name );
-    string GetMsgCacheName( int msg_num );
+    bool LoadFromFiles(const string& lang_name);
+    bool LoadFromCache(const string& lang_name);
+    string GetMsgCacheName(int msg_num);
 
     LanguagePack();
-    bool operator==( const uint& other ) { return Name == other; }
+    bool operator==(const uint& other) { return Name == other; }
 };
-typedef vector< LanguagePack > LangPackVec;
+typedef vector<LanguagePack> LangPackVec;
