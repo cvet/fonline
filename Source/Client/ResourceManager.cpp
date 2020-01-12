@@ -59,47 +59,41 @@ void ResourceManager::Refresh()
     }
 }
 
-void ResourceManager::FreeResources(int type)
+void ResourceManager::FreeResources(AtlasType atlas_type)
 {
-    sprMngr.DestroyAtlases(type);
+    RUNTIME_ASSERT(atlas_type == AtlasType::Static || atlas_type == AtlasType::Dynamic);
+
+    sprMngr.DestroyAtlases(atlas_type);
 
     for (auto it = loadedAnims.begin(); it != loadedAnims.end();)
     {
-        int res_type = it->second.ResType;
-        if (res_type == type)
+        if (it->second.ResType == atlas_type)
         {
             sprMngr.DestroyAnyFrames(it->second.Anim);
             it = loadedAnims.erase(it);
         }
         else
+
         {
             ++it;
         }
     }
 
-    if (type == RES_ATLAS_STATIC)
-    {
+    if (atlas_type == AtlasType::Static)
         sprMngr.ClearFonts();
-    }
 
-    if (type == RES_ATLAS_DYNAMIC)
+    if (atlas_type == AtlasType::Dynamic)
     {
-        // 2D critters
         for (auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it)
             sprMngr.DestroyAnyFrames(it->second);
         critterFrames.clear();
-
-// 3D textures
-#ifndef RES_ATLAS_TEXTURES
-        GraphicLoader::DestroyTextures();
-#endif
     }
 }
 
 void ResourceManager::ReinitializeDynamicAtlas()
 {
-    FreeResources(RES_ATLAS_DYNAMIC);
-    sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+    FreeResources(AtlasType::Dynamic);
+    sprMngr.PushAtlasType(AtlasType::Dynamic);
     sprMngr.InitializeEgg("TransparentEgg.png");
     sprMngr.DestroyAnyFrames(CritterDefaultAnim);
     sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
@@ -108,7 +102,7 @@ void ResourceManager::ReinitializeDynamicAtlas()
     sprMngr.PopAtlasType();
 }
 
-AnyFrames* ResourceManager::GetAnim(hash name_hash, int res_type)
+AnyFrames* ResourceManager::GetAnim(hash name_hash, AtlasType atlas_type)
 {
     // Find already loaded
     auto it = loadedAnims.find(name_hash);
@@ -120,13 +114,13 @@ AnyFrames* ResourceManager::GetAnim(hash name_hash, int res_type)
     if (fname.empty())
         return nullptr;
 
-    sprMngr.PushAtlasType(res_type);
+    sprMngr.PushAtlasType(atlas_type);
     AnyFrames* anim = sprMngr.LoadAnimation(fname, false, true);
     sprMngr.PopAtlasType();
 
     anim->NameHash = name_hash;
 
-    loadedAnims.insert(std::make_pair(name_hash, LoadedAnim {res_type, anim}));
+    loadedAnims.insert(std::make_pair(name_hash, LoadedAnim {atlas_type, anim}));
     return anim;
 }
 
@@ -178,7 +172,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim
                 {
                     if (!str.empty())
                     {
-                        sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+                        sprMngr.PushAtlasType(AtlasType::Dynamic);
                         anim = sprMngr.LoadAnimation(str);
                         sprMngr.PopAtlasType();
 
@@ -430,7 +424,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr(hash model_name, uint anim1, uint
 
     // Load file
     static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+    sprMngr.PushAtlasType(AtlasType::Dynamic);
 
     // Try load fofrm
     string name = _str().parseHash(model_name);
@@ -597,7 +591,7 @@ Animation3d* ResourceManager::GetCrit3dAnim(
         return critter3d[model_name];
     }
 
-    sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+    sprMngr.PushAtlasType(AtlasType::Dynamic);
     Animation3d* anim3d = sprMngr.LoadPure3dAnimation(_str().parseHash(model_name), true);
     sprMngr.PopAtlasType();
     if (!anim3d)
@@ -634,7 +628,7 @@ AnyFrames* ResourceManager::GetRandomSplash()
         return 0;
     int rnd = Random(0, (int)splashNames.size() - 1);
     static AnyFrames* splash = nullptr;
-    sprMngr.PushAtlasType(RES_ATLAS_SPLASH, true);
+    sprMngr.PushAtlasType(AtlasType::Splash, true);
     splash = sprMngr.ReloadAnimation(splash, splashNames[rnd]);
     sprMngr.PopAtlasType();
     return splash;

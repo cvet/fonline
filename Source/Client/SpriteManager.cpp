@@ -277,7 +277,7 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
     if (GameOpt.Enable3dRendering)
     {
         anim3dMngr = new Animation3dManager(effectMngr, [this](MeshTexture* mesh_tex) {
-            PushAtlasType(RES_ATLAS_TEXTURES);
+            PushAtlasType(AtlasType::MeshTextures);
             AnyFrames* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name);
             PopAtlasType();
             if (anim)
@@ -1048,16 +1048,14 @@ void SpriteManager::DisableScissor()
         GL(glDisable(GL_SCISSOR_TEST));
 }
 
-void SpriteManager::PushAtlasType(int atlas_type, bool one_image /* = false */)
+void SpriteManager::PushAtlasType(AtlasType atlas_type, bool one_image)
 {
-    atlasTypeStack.push_back(atlas_type);
-    atlasOneImageStack.push_back(one_image);
+    atlasStack.push_back({atlas_type, one_image});
 }
 
 void SpriteManager::PopAtlasType()
 {
-    atlasTypeStack.pop_back();
-    atlasOneImageStack.pop_back();
+    atlasStack.pop_back();
 }
 
 void SpriteManager::AccumulateAtlasData()
@@ -1071,14 +1069,9 @@ void SpriteManager::FlushAccumulatedAtlasData()
     if (accumulatorSprInfo.empty())
         return;
 
-    struct Sorter
-    {
-        static bool SortBySize(SpriteInfo* si1, SpriteInfo* si2)
-        {
-            return si1->Width * si1->Height > si2->Width * si2->Height;
-        }
-    };
-    std::sort(accumulatorSprInfo.begin(), accumulatorSprInfo.end(), Sorter::SortBySize);
+    // Sort by size
+    std::sort(accumulatorSprInfo.begin(), accumulatorSprInfo.end(),
+        [](SpriteInfo* si1, SpriteInfo* si2) { return si1->Width * si1->Height > si2->Width * si2->Height; });
 
     for (auto it = accumulatorSprInfo.begin(), end = accumulatorSprInfo.end(); it != end; ++it)
         FillAtlas(*it);
@@ -1093,9 +1086,9 @@ bool SpriteManager::IsAccumulateAtlasActive()
 TextureAtlas* SpriteManager::CreateAtlas(int w, int h)
 {
     TextureAtlas* atlas = new TextureAtlas();
-    atlas->Type = atlasTypeStack.back();
+    atlas->Type = std::get<0>(atlasStack.back());
 
-    if (!atlasOneImageStack.back())
+    if (!std::get<1>(atlasStack.back()))
     {
         w = atlasWidth;
         h = atlasHeight;
@@ -1116,7 +1109,7 @@ TextureAtlas* SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y)
 {
     // Find place in already created atlas
     TextureAtlas* atlas = nullptr;
-    int atlas_type = atlasTypeStack.back();
+    AtlasType atlas_type = std::get<0>(atlasStack.back());
     uint w = si->Width + ATLAS_SPRITES_PADDING * 2;
     uint h = si->Height + ATLAS_SPRITES_PADDING * 2;
     for (auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it)
@@ -1191,7 +1184,7 @@ TextureAtlas* SpriteManager::FindAtlasPlace(SpriteInfo* si, int& x, int& y)
     return atlas;
 }
 
-void SpriteManager::DestroyAtlases(int atlas_type)
+void SpriteManager::DestroyAtlases(AtlasType atlas_type)
 {
     for (auto it = allAtlases.begin(); it != allAtlases.end();)
     {
@@ -1357,8 +1350,8 @@ uint SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data
 
     // Get width, height
     si->Data = data;
-    si->DataAtlasType = atlasTypeStack.back();
-    si->DataAtlasOneImage = atlasOneImageStack.back();
+    si->DataAtlasType = std::get<0>(atlasStack.back());
+    si->DataAtlasOneImage = std::get<1>(atlasStack.back());
     si->Width = w;
     si->Height = h;
 
@@ -1669,7 +1662,7 @@ Animation3d* SpriteManager::LoadPure3dAnimation(const string& fname, bool auto_r
 
     // Create render sprite
     anim3d->SprId = 0;
-    anim3d->SprAtlasType = atlasTypeStack.back();
+    anim3d->SprAtlasType = std::get<0>(atlasStack.back());
     if (auto_redraw)
     {
         RefreshPure3dAnimationSprite(anim3d);

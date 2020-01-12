@@ -92,11 +92,6 @@ using Animation3dVec = vector<Animation3d*>;
 class Sprites;
 class Sprite;
 
-#define RES_ATLAS_STATIC (1)
-#define RES_ATLAS_DYNAMIC (2)
-#define RES_ATLAS_SPLASH (3)
-#define RES_ATLAS_TEXTURES (4)
-
 class SpriteManager
 {
 private:
@@ -157,12 +152,12 @@ private:
 
     // Texture atlases
 public:
-    void PushAtlasType(int atlas_type, bool one_image = false);
+    void PushAtlasType(AtlasType atlas_type, bool one_image = false);
     void PopAtlasType();
     void AccumulateAtlasData();
     void FlushAccumulatedAtlasData();
     bool IsAccumulateAtlasActive();
-    void DestroyAtlases(int atlas_type);
+    void DestroyAtlases(AtlasType atlas_type);
     void DumpAtlases();
     void SaveTexture(Texture* tex, const string& fname, bool flip); // tex == NULL is back buffer
 
@@ -174,8 +169,7 @@ private:
 
     int atlasWidth {};
     int atlasHeight {};
-    IntVec atlasTypeStack {};
-    BoolVec atlasOneImageStack {};
+    vector<tuple<AtlasType, bool>> atlasStack {};
     TextureAtlasVec allAtlases {};
     bool accumulatorActive {};
     SprInfoVec accumulatorSprInfo {};

@@ -34,6 +34,14 @@ using BoneVec = vector<Bone*>;
 
 extern bool Is3dExtensionSupported(const string& ext);
 
+enum class AtlasType
+{
+    Static,
+    Dynamic,
+    Splash,
+    MeshTextures,
+};
+
 struct Vertex2D
 {
     float X, Y;
@@ -238,7 +246,7 @@ struct TextureAtlas : public NonCopyable
     TextureAtlas() = default;
     ~TextureAtlas();
 
-    int Type {};
+    AtlasType Type {};
     RenderTarget* RT {};
     Texture* TextureOwner {};
     uint Width {};
@@ -268,7 +276,7 @@ struct SpriteInfo : public NonCopyable
     bool UsedForAnim3d {};
     Animation3d* Anim3d {};
     uchar* Data {};
-    int DataAtlasType {};
+    AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
 };
 using SprInfoVec = vector<SpriteInfo*>;

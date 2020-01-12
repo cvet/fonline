@@ -274,9 +274,9 @@ bool FOClient::Reset()
         return false;
 
     // Recreate static atlas
-    ResMngr.FreeResources(RES_ATLAS_STATIC);
+    ResMngr.FreeResources(AtlasType::Static);
     SprMngr.AccumulateAtlasData();
-    SprMngr.PushAtlasType(RES_ATLAS_STATIC);
+    SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
     if (!Script::RunModuleInitFunctions())
@@ -496,7 +496,7 @@ void FOClient::UpdateFilesLoop()
         // Load font
         if (!UpdateFilesFontLoaded)
         {
-            SprMngr.PushAtlasType(RES_ATLAS_STATIC);
+            SprMngr.PushAtlasType(AtlasType::Static);
             UpdateFilesFontLoaded = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false);
             if (!UpdateFilesFontLoaded)
                 UpdateFilesFontLoaded = SprMngr.LoadFontBMF(FONT_DEFAULT, "Default");
@@ -4903,7 +4903,7 @@ void FOClient::StopVideo()
     }
 }
 
-uint FOClient::AnimLoad(uint name_hash, int res_type)
+uint FOClient::AnimLoad(uint name_hash, AtlasType res_type)
 {
     AnyFrames* anim = ResMngr.GetAnim(name_hash, res_type);
     if (!anim)
@@ -4923,7 +4923,7 @@ uint FOClient::AnimLoad(uint name_hash, int res_type)
     return index;
 }
 
-uint FOClient::AnimLoad(const char* fname, int res_type)
+uint FOClient::AnimLoad(const char* fname, AtlasType res_type)
 {
     AnyFrames* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (!anim)
@@ -6829,7 +6829,7 @@ void FOClient::SScriptFunc::Global_WaitPing()
 
 bool FOClient::SScriptFunc::Global_LoadFont(int font_index, string font_fname)
 {
-    Self->SprMngr.PushAtlasType(RES_ATLAS_STATIC);
+    Self->SprMngr.PushAtlasType(AtlasType::Static);
     bool result;
     if (font_fname.length() > 0 && font_fname[0] == '*')
         result = Self->SprMngr.LoadFontFO(font_index, font_fname.c_str() + 1, false, false);
@@ -7140,12 +7140,12 @@ bool FOClient::SScriptFunc::Global_LoadDataFile(string dat_name)
 
 uint FOClient::SScriptFunc::Global_LoadSprite(string spr_name)
 {
-    return Self->AnimLoad(spr_name.c_str(), RES_ATLAS_STATIC);
+    return Self->AnimLoad(spr_name.c_str(), AtlasType::Static);
 }
 
 uint FOClient::SScriptFunc::Global_LoadSpriteHash(uint name_hash)
 {
-    return Self->AnimLoad(name_hash, RES_ATLAS_STATIC);
+    return Self->AnimLoad(name_hash, AtlasType::Static);
 }
 
 int FOClient::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int frame_index)
@@ -7455,7 +7455,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d(
     {
         if (anim3d)
             Self->SprMngr.FreePure3dAnimation(anim3d);
-        Self->SprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+        Self->SprMngr.PushAtlasType(AtlasType::Dynamic);
         anim3d = Self->SprMngr.LoadPure3dAnimation(_str().parseHash(model_name), false);
         Self->SprMngr.PopAtlasType();
         DrawCritter3dCrType[instance] = model_name;

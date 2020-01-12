@@ -336,9 +336,9 @@ public:
         ushort Flags;
         uint CurSpr;
         uint LastTick;
-        int ResType;
+        AtlasType ResType;
 
-        IfaceAnim(AnyFrames* frm, int res_type) :
+        IfaceAnim(AnyFrames* frm, AtlasType res_type) :
             Frames(frm), Flags(0), CurSpr(0), LastTick(Timer::GameTick()), ResType(res_type)
         {
         }
@@ -353,8 +353,8 @@ public:
 
     IfaceAnimVec Animations;
 
-    uint AnimLoad(uint name_hash, int res_type);
-    uint AnimLoad(const char* fname, int res_type);
+    uint AnimLoad(uint name_hash, AtlasType res_type);
+    uint AnimLoad(const char* fname, AtlasType res_type);
     uint AnimGetCurSpr(uint anim_id);
     uint AnimGetCurSprCnt(uint anim_id);
     uint AnimGetSprCount(uint anim_id);

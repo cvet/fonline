@@ -76,7 +76,7 @@ FOMapper::FOMapper() :
     RUNTIME_ASSERT(default_effects_ok);
 
     // Fonts
-    SprMngr.PushAtlasType(RES_ATLAS_STATIC);
+    SprMngr.PushAtlasType(AtlasType::Static);
     bool load_fonts_ok = true;
     if (!SprMngr.LoadFontFO(FONT_FO, "OldDefault", false) || !SprMngr.LoadFontFO(FONT_NUM, "Numbers", true) ||
         !SprMngr.LoadFontFO(FONT_BIG_NUM, "BigNumbers", true) ||
@@ -428,7 +428,7 @@ void FOMapper::ChangeGameTime()
         HexMngr.RefreshMap();
 }
 
-uint FOMapper::AnimLoad(uint name_hash, int res_type)
+uint FOMapper::AnimLoad(uint name_hash, AtlasType res_type)
 {
     AnyFrames* anim = ResMngr.GetAnim(name_hash, res_type);
     if (!anim)
@@ -448,7 +448,7 @@ uint FOMapper::AnimLoad(uint name_hash, int res_type)
     return index;
 }
 
-uint FOMapper::AnimLoad(const char* fname, int res_type)
+uint FOMapper::AnimLoad(const char* fname, AtlasType res_type)
 {
     AnyFrames* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (!anim)
@@ -565,7 +565,7 @@ void FOMapper::AnimProcess()
     }
 }
 
-void FOMapper::AnimFree(int res_type)
+void FOMapper::AnimFree(AtlasType res_type)
 {
     ResMngr.FreeResources(res_type);
     for (auto it = Animations.begin(), end = Animations.end(); it != end; ++it)
@@ -5541,12 +5541,12 @@ void FOMapper::SScriptFunc::Global_ChangeZoom(float target_zoom)
 
 uint FOMapper::SScriptFunc::Global_LoadSprite(string spr_name)
 {
-    return Self->AnimLoad(spr_name.c_str(), RES_ATLAS_STATIC);
+    return Self->AnimLoad(spr_name.c_str(), AtlasType::Static);
 }
 
 uint FOMapper::SScriptFunc::Global_LoadSpriteHash(uint name_hash)
 {
-    return Self->AnimLoad(name_hash, RES_ATLAS_STATIC);
+    return Self->AnimLoad(name_hash, AtlasType::Static);
 }
 
 int FOMapper::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int spr_index)

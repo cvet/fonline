@@ -794,7 +794,7 @@ void CritterView::RefreshAnim()
         return;
 
     // Try load
-    sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
+    sprMngr.PushAtlasType(AtlasType::Dynamic);
     Animation3d* anim3d = sprMngr.LoadPure3dAnimation(model_name, true);
     if (anim3d)
     {

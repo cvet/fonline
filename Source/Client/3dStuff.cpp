@@ -28,8 +28,6 @@ Animation3dManager::Animation3dManager(EffectManager& effect_mngr, MeshTextureCr
     // 2D rendering time
     if (GameOpt.Animation3dFPS)
         animDelay = 1000 / GameOpt.Animation3dFPS;
-    else
-        animDelay = 0;
 }
 
 Animation3dManager::~Animation3dManager()
@@ -318,37 +316,13 @@ void Animation3dManager::ProjectPosition(Vector& v)
 
 Animation3d::Animation3d(Animation3dManager& anim3d_mngr) : anim3dMngr(anim3d_mngr)
 {
-    curAnim1 = 0;
-    curAnim2 = 0;
-    animEntity = nullptr;
-    animController = nullptr;
-    combinedMeshesSize = 0;
-    disableCulling = false;
-    currentTrack = 0;
-    lastDrawTick = 0;
-    endTick = 0;
     speedAdjustBase = 1.0f;
     speedAdjustCur = 1.0f;
     speedAdjustLink = 1.0f;
-    shadowDisabled = false;
     dirAngle = (GameOpt.MapHexagonal ? 150.0f : 135.0f);
-    parentAnimation = nullptr;
-    parentBone = nullptr;
     childChecker = true;
     useGameTimer = true;
-    animPosProc = 0.0f;
-    animPosTime = 0.0f;
-    animPosPeriod = 0.0f;
-    allowMeshGeneration = false;
-    SprId = 0;
-    SprAtlasType = 0;
-    memzero(currentLayers, sizeof(currentLayers));
-    memzero(&animLink, sizeof(animLink));
     Matrix::RotationX(GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot);
-    matScale = Matrix();
-    matScaleBase = Matrix();
-    matRotBase = Matrix();
-    matTransBase = Matrix();
 }
 
 Animation3d::~Animation3d()
@@ -1555,19 +1529,10 @@ bool Animation3d::GetBonePos(hash name_hash, int& x, int& y)
     return true;
 }
 
-Animation3dEntity::Animation3dEntity(Animation3dManager& anim3d_mngr) :
-    anim3dMngr(anim3d_mngr),
-    xFile(nullptr),
-    animController(nullptr),
-    renderAnim(0),
-    renderAnimProcFrom(0),
-    renderAnimProcTo(100),
-    renderAnimDir(0),
-    shadowDisabled(false),
-    drawWidth(DEFAULT_DRAW_SIZE),
-    drawHeight(DEFAULT_DRAW_SIZE)
+Animation3dEntity::Animation3dEntity(Animation3dManager& anim3d_mngr) : anim3dMngr {anim3d_mngr}
 {
-    memzero(&animDataDefault, sizeof(animDataDefault));
+    drawWidth = DEFAULT_DRAW_SIZE;
+    drawHeight = DEFAULT_DRAW_SIZE;
 }
 
 Animation3dEntity::~Animation3dEntity()
@@ -2474,7 +2439,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
     return a3d;
 }
 
-Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : anim3dMngr(anim3d_mngr), rootBone(nullptr)
+Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : anim3dMngr {anim3d_mngr}
 {
 }
 
