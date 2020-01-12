@@ -114,7 +114,6 @@ jobs:
         fetch-depth: 1
     - run: BuildScripts/linux-unit-tests.sh
   code-coverage:
-    needs: [unit-tests]
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -123,7 +122,7 @@ jobs:
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: BuildScripts/linux-code-coverage.sh
-  clang-format-lint:
+  check-formatting:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -134,7 +133,7 @@ jobs:
         source: ./Source
         clangFormatVersion: 9
   make:
-    needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage]
+    needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage, check-formatting]
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
