@@ -61,7 +61,7 @@ void ResourceManager::Refresh()
 
 void ResourceManager::FreeResources(AtlasType atlas_type)
 {
-    RUNTIME_ASSERT(atlas_type == AtlasType::Static || atlas_type == AtlasType::Dynamic);
+    RUNTIME_ASSERT((atlas_type == AtlasType::Static || atlas_type == AtlasType::Dynamic));
 
     sprMngr.DestroyAtlases(atlas_type);
 
