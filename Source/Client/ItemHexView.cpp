@@ -1,6 +1,5 @@
 #include "ItemHexView.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "GraphicStructures.h"
 #include "Log.h"
 #include "ResourceManager.h"

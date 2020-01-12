@@ -29,8 +29,7 @@ LocationView* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
 FOMapper::FOMapper() :
     ProtoMngr(),
     EffectMngr(),
-    GraphicLoader(SprMngr),
-    SprMngr(EffectMngr, GraphicLoader),
+    SprMngr(EffectMngr),
     ResMngr(SprMngr),
     HexMngr(true, ProtoMngr, SprMngr, ResMngr),
     Keyb(SprMngr)

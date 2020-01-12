@@ -13,6 +13,7 @@
 
 class AnimController;
 class AnimSet;
+using AnimSetVec = vector<AnimSet*>;
 class Animation3d;
 using Animation3dVec = vector<Animation3d*>;
 class Animation3dEntity;
@@ -20,7 +21,6 @@ using Animation3dEntityVec = vector<Animation3dEntity*>;
 class Animation3dXFile;
 using Animation3dXFileVec = vector<Animation3dXFile*>;
 class EffectManager;
-class GraphicLoader;
 
 struct AnimParams
 {
@@ -70,9 +70,16 @@ class Animation3dManager : public NonCopyable
     friend class Animation3dXFile;
 
 public:
-    Animation3dManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader);
+    using MeshTextureCreator = std::function<void(MeshTexture*)>;
+
+    Animation3dManager(EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
     ~Animation3dManager();
 
+    Bone* LoadModel(const string& fname);
+    void DestroyModel(Bone* root_bone);
+    AnimSet* LoadAnimation(const string& anim_fname, const string& anim_name);
+    MeshTexture* LoadTexture(const string& texture_name, const string& model_path);
+    void DestroyTextures();
     void SetScreenSize(int width, int height);
     Animation3d* GetAnimation(const string& name, bool is_child);
     void PreloadEntity(const string& name);
@@ -87,25 +94,28 @@ private:
     void ProjectPosition(Vector& v);
 
     EffectManager& effectMngr;
-    GraphicLoader& graphicLoader;
-    Animation3dVec loadedAnimations;
-    Animation3dEntityVec allEntities;
-    Animation3dXFileVec xFiles;
-
-    int ModeWidth = 0;
-    int ModeHeight = 0;
-    float ModeWidthF = 0.0f;
-    float ModeHeightF = 0.0f;
-    Matrix MatrixProjRM; // Row or Column major order
-    Matrix MatrixEmptyRM;
-    Matrix MatrixProjCM;
-    Matrix MatrixEmptyCM;
-    float MoveTransitionTime = 0.25f;
-    float GlobalSpeedAdjust = 1.0f;
-    bool SoftwareSkinning = false;
-    uint AnimDelay = 0;
-    Color LightColor;
-    MatrixVec WorldMatrices;
+    MeshTextureCreator meshTexCreator;
+    StrVec processedFiles {};
+    BoneVec loadedModels {};
+    StrVec loadedModelNames {};
+    AnimSetVec loadedAnimSets {};
+    MeshTextureVec loadedMeshTextures {};
+    Animation3dVec loadedAnimations {};
+    Animation3dEntityVec allEntities {};
+    Animation3dXFileVec xFiles {};
+    int modeWidth {};
+    int modeHeight {};
+    float modeWidthF {};
+    float modeHeightF {};
+    Matrix matrixProjRM {}; // Row or column major order
+    Matrix matrixEmptyRM {};
+    Matrix matrixProjCM {};
+    Matrix matrixEmptyCM {};
+    float moveTransitionTime {0.25f};
+    float globalSpeedAdjust {1.0f};
+    uint animDelay {};
+    Color lightColor {};
+    MatrixVec worldMatrices {};
 };
 
 class Animation3d : public NonCopyable

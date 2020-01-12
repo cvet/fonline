@@ -182,7 +182,7 @@ struct Texture : public NonCopyable
     ~Texture();
     void UpdateRegion(const Rect& r, const uchar* data);
 
-    const char* Name {};
+    string Name {};
     GLuint Id {};
     uint Width {};
     uint Height {};
@@ -194,6 +194,7 @@ using TextureVec = vector<Texture*>;
 struct MeshTexture : public NonCopyable
 {
     string Name {};
+    string ModelPath {};
     GLuint Id {};
     float SizeData[4] {};
     float AtlasOffsetData[4] {};

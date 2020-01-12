@@ -1,7 +1,6 @@
 #include "3dStuff.h"
 #include "3dAnimation.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "Log.h"
 #include "Script.h"
 #include "Settings.h"
@@ -9,60 +8,173 @@
 #include "Testing.h"
 #include "Timer.h"
 
-Animation3dManager::Animation3dManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader) :
-    effectMngr {effect_mngr}, graphicLoader {graphic_loader}
+Animation3dManager::Animation3dManager(EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator) :
+    effectMngr {effect_mngr}, meshTexCreator {mesh_tex_creator}
 {
     if (!GameOpt.Enable3dRendering)
         return;
 
-    WorldMatrices.resize(effectMngr.MaxBones);
+    worldMatrices.resize(effectMngr.MaxBones);
 
     // Check effects
     bool load_3d_effects_ok = effectMngr.Load3dEffects();
     RUNTIME_ASSERT(load_3d_effects_ok);
 
     // Smoothing
-    MoveTransitionTime = GameOpt.Animation3dSmoothTime / 1000.0f;
-    if (MoveTransitionTime < 0.001f)
-        MoveTransitionTime = 0.001f;
+    moveTransitionTime = GameOpt.Animation3dSmoothTime / 1000.0f;
+    if (moveTransitionTime < 0.001f)
+        moveTransitionTime = 0.001f;
 
     // 2D rendering time
     if (GameOpt.Animation3dFPS)
-        AnimDelay = 1000 / GameOpt.Animation3dFPS;
+        animDelay = 1000 / GameOpt.Animation3dFPS;
     else
-        AnimDelay = 0;
+        animDelay = 0;
 }
 
 Animation3dManager::~Animation3dManager()
 {
-    for (auto it = allEntities.begin(), end = allEntities.end(); it != end; ++it)
+    for (auto* e : allEntities)
+        delete e;
+    for (auto* xf : xFiles)
+        delete xf;
+    for (auto* model : loadedModels)
+        delete model;
+    for (auto* anim : loadedAnimSets)
+        delete anim;
+    for (auto* tex : loadedMeshTextures)
+        delete tex;
+}
+
+Bone* Animation3dManager::LoadModel(const string& fname)
+{
+    // Find already loaded
+    for (size_t i = 0, j = loadedModelNames.size(); i < j; i++)
+        if (_str(loadedModelNames[i]).compareIgnoreCase(fname))
+            return loadedModels[i];
+
+    // Add to already processed
+    for (size_t i = 0, j = processedFiles.size(); i < j; i++)
+        if (_str(processedFiles[i]).compareIgnoreCase(fname))
+            return nullptr;
+    processedFiles.push_back(fname);
+
+    // Load file data
+    File file;
+    if (!file.LoadFile(fname))
+    {
+        WriteLog("3d file '{}' not found.\n", fname);
+        return nullptr;
+    }
+
+    // Load bones
+    Bone* root_bone = new Bone();
+    root_bone->Load(file);
+    root_bone->FixAfterLoad(root_bone);
+
+    // Load animations
+    uint anim_sets_count = file.GetBEUInt();
+    for (uint i = 0; i < anim_sets_count; i++)
+    {
+        AnimSet* anim_set = new AnimSet();
+        anim_set->Load(file);
+        loadedAnimSets.push_back(anim_set);
+    }
+
+    // Add to collection
+    loadedModels.push_back(root_bone);
+    loadedModelNames.push_back(fname);
+    return root_bone;
+}
+
+void Animation3dManager::DestroyModel(Bone* root_bone)
+{
+    for (size_t i = 0, j = loadedModels.size(); i < j; i++)
+    {
+        if (loadedModels[i] == root_bone)
+        {
+            processedFiles.erase(std::find(processedFiles.begin(), processedFiles.end(), loadedModelNames[i]));
+            loadedModels.erase(loadedModels.begin() + i);
+            loadedModelNames.erase(loadedModelNames.begin() + i);
+            break;
+        }
+    }
+    delete root_bone;
+}
+
+AnimSet* Animation3dManager::LoadAnimation(const string& anim_fname, const string& anim_name)
+{
+    // Find in already loaded
+    bool take_first = anim_name == "Base";
+    for (size_t i = 0; i < loadedAnimSets.size(); i++)
+    {
+        AnimSet* anim = loadedAnimSets[i];
+        if (_str(anim->GetFileName()).compareIgnoreCase(anim_fname) &&
+            (take_first || _str(anim->GetName()).compareIgnoreCase(anim_name)))
+            return anim;
+    }
+
+    // Check maybe file already processed and nothing founded
+    for (size_t i = 0; i < processedFiles.size(); i++)
+        if (_str(processedFiles[i]).compareIgnoreCase(anim_fname))
+            return nullptr;
+
+    // File not processed, load and recheck animations
+    if (LoadModel(anim_fname))
+        return LoadAnimation(anim_fname, anim_name);
+
+    return nullptr;
+}
+
+MeshTexture* Animation3dManager::LoadTexture(const string& texture_name, const string& model_path)
+{
+    // Skip empty
+    if (texture_name.empty())
+        return nullptr;
+
+    // Try find already loaded texture
+    for (auto* mesh_tex : loadedMeshTextures)
+        if (_str(mesh_tex->Name).compareIgnoreCase(texture_name))
+            return mesh_tex->Id ? mesh_tex : nullptr;
+
+    // Create new
+    MeshTexture* mesh_tex = new MeshTexture();
+    mesh_tex->Name = texture_name;
+    mesh_tex->ModelPath = model_path;
+    meshTexCreator(mesh_tex);
+    loadedMeshTextures.push_back(mesh_tex);
+    return mesh_tex->Id ? mesh_tex : nullptr;
+}
+
+void Animation3dManager::DestroyTextures()
+{
+    for (auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it)
         delete *it;
-    for (auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it)
-        delete *it;
+    loadedMeshTextures.clear();
 }
 
 void Animation3dManager::SetScreenSize(int width, int height)
 {
-    if (width == ModeWidth && height == ModeHeight)
+    if (width == modeWidth && height == modeHeight)
         return;
 
     // Build orthogonal projection
-    ModeWidth = width;
-    ModeHeight = height;
-    ModeWidthF = (float)ModeWidth;
-    ModeHeightF = (float)ModeHeight;
+    modeWidth = width;
+    modeHeight = height;
+    modeWidthF = (float)modeWidth;
+    modeHeightF = (float)modeHeight;
 
     // Projection
-    float k = (float)ModeHeight / 768.0f;
-    gluStuffOrtho(MatrixProjRM[0], 0.0f, 18.65f * k * ModeWidthF / ModeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
-    MatrixProjCM = MatrixProjRM;
-    MatrixProjCM.Transpose();
-    MatrixEmptyRM = Matrix();
-    MatrixEmptyCM = MatrixEmptyRM;
-    MatrixEmptyCM.Transpose();
+    float k = (float)modeHeight / 768.0f;
+    gluStuffOrtho(matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    matrixProjCM = matrixProjRM;
+    matrixProjCM.Transpose();
+    matrixEmptyRM = Matrix();
+    matrixEmptyCM = matrixEmptyRM;
+    matrixEmptyCM.Transpose();
 
     // View port
-    GL(glViewport(0, 0, ModeWidth, ModeHeight));
+    GL(glViewport(0, 0, modeWidth, modeHeight));
 }
 
 Animation3d* Animation3dManager::GetAnimation(const string& name, bool is_child)
@@ -140,7 +252,7 @@ Animation3dXFile* Animation3dManager::GetXFile(const string& xname)
             return x;
 
     // Load
-    Bone* root_bone = graphicLoader.LoadModel(xname);
+    Bone* root_bone = LoadModel(xname);
     if (!root_bone)
     {
         WriteLog("Unable to load 3d file '{}'.\n", xname);
@@ -179,9 +291,9 @@ Point Animation3dManager::Convert3dTo2d(Vector pos)
 
 void Animation3dManager::VecProject(const Vector& v, Vector& out)
 {
-    int viewport[4] = {0, 0, ModeWidth, ModeHeight};
+    int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffProject(v.x, v.y, v.z, MatrixEmptyCM[0], MatrixProjCM[0], viewport, &x, &y, &z);
+    gluStuffProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -189,9 +301,9 @@ void Animation3dManager::VecProject(const Vector& v, Vector& out)
 
 void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
 {
-    int viewport[4] = {0, 0, ModeWidth, ModeHeight};
+    int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffUnProject(v.x, (float)ModeHeight - v.y, v.z, MatrixEmptyCM[0], MatrixProjCM[0], viewport, &x, &y, &z);
+    gluStuffUnProject(v.x, (float)modeHeight - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -199,9 +311,9 @@ void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
 
 void Animation3dManager::ProjectPosition(Vector& v)
 {
-    v *= MatrixProjRM;
-    v.x = ((v.x - 1.0f) * 0.5f + 1.0f) * ModeWidthF;
-    v.y = ((1.0f - v.y) * 0.5f) * ModeHeightF;
+    v *= matrixProjRM;
+    v.x = ((v.x - 1.0f) * 0.5f + 1.0f) * modeWidthF;
+    v.y = ((1.0f - v.y) * 0.5f) * modeHeightF;
 }
 
 Animation3d::Animation3d(Animation3dManager& anim3d_mngr) : anim3dMngr(anim3d_mngr)
@@ -546,7 +658,7 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
         // Smooth time
         float smooth_time =
             (FLAG(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f :
-                                                                                  anim3dMngr.MoveTransitionTime);
+                                                                                  anim3dMngr.moveTransitionTime);
         float start_time = period * period_proc / 100.0f;
         if (FLAG(flags, ANIMATION_STAY))
             period = start_time + 0.0002f;
@@ -666,7 +778,7 @@ void Animation3d::GetDrawSize(uint& draw_width, uint& draw_height)
 
 float Animation3d::GetSpeed()
 {
-    return speedAdjustCur * speedAdjustBase * speedAdjustLink * anim3dMngr.GlobalSpeedAdjust;
+    return speedAdjustCur * speedAdjustBase * speedAdjustLink * anim3dMngr.globalSpeedAdjust;
 }
 
 uint Animation3d::GetTick()
@@ -1198,7 +1310,7 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
 
 bool Animation3d::NeedDraw()
 {
-    return combinedMeshesSize && (!lastDrawTick || GetTick() - lastDrawTick >= anim3dMngr.AnimDelay);
+    return combinedMeshesSize && (!lastDrawTick || GetTick() - lastDrawTick >= anim3dMngr.animDelay);
 }
 
 void Animation3d::Draw(int x, int y)
@@ -1214,7 +1326,7 @@ void Animation3d::Draw(int x, int y)
 
     // Move animation
     ProcessAnimation(
-        elapsed, x ? x : anim3dMngr.ModeWidth / 2, y ? y : anim3dMngr.ModeHeight - anim3dMngr.ModeHeight / 4, 1.0f);
+        elapsed, x ? x : anim3dMngr.modeWidth / 2, y ? y : anim3dMngr.modeHeight - anim3dMngr.modeHeight / 4, 1.0f);
 
     // Draw mesh
     DrawCombinedMeshes();
@@ -1367,7 +1479,7 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
         if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
             GL(glUniform1f(effect_pass.ZoomFactor, GameOpt.SpritesZoom));
         if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, anim3dMngr.MatrixProjCM[0]));
+            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, anim3dMngr.matrixProjCM[0]));
         if (IS_EFFECT_VALUE(effect_pass.ColorMap) && textures[0])
         {
             GL(glBindTexture(GL_TEXTURE_2D, textures[0]->Id));
@@ -1376,7 +1488,7 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
                 GL(glUniform4fv(effect_pass.ColorMapSize, 1, textures[0]->SizeData));
         }
         if (IS_EFFECT_VALUE(effect_pass.LightColor))
-            GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&anim3dMngr.LightColor));
+            GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&anim3dMngr.lightColor));
         if (IS_EFFECT_VALUE(effect_pass.WorldMatrices))
         {
             if (!matrices_combined)
@@ -1384,13 +1496,13 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
                 matrices_combined = true;
                 for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++)
                 {
-                    anim3dMngr.WorldMatrices[i] =
+                    anim3dMngr.worldMatrices[i] =
                         combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-                    anim3dMngr.WorldMatrices[i].Transpose(); // Convert to column major order
+                    anim3dMngr.worldMatrices[i].Transpose(); // Convert to column major order
                 }
             }
             GL(glUniformMatrix4fv(effect_pass.WorldMatrices, (GLsizei)combined_mesh->CurBoneMatrix, GL_FALSE,
-                (float*)&anim3dMngr.WorldMatrices[0]));
+                (float*)&anim3dMngr.worldMatrices[0]));
         }
         if (IS_EFFECT_VALUE(effect_pass.GroundPosition))
             GL(glUniform3fv(effect_pass.GroundPosition, 1, (float*)&groundPos));
@@ -1438,8 +1550,8 @@ bool Animation3d::GetBonePos(hash name_hash, int& x, int& y)
     bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
 
     Point p = anim3dMngr.Convert3dTo2d(pos);
-    x = p.X - anim3dMngr.ModeWidth / 2;
-    y = -(p.Y - anim3dMngr.ModeHeight / 4);
+    x = p.X - anim3dMngr.modeWidth / 2;
+    y = -(p.Y - anim3dMngr.modeHeight / 4);
     return true;
 }
 
@@ -2224,7 +2336,7 @@ bool Animation3dEntity::Load(const string& name)
                 else
                     anim_path = _str(name).combinePath(anim.fname);
 
-                AnimSet* set = anim3dMngr.graphicLoader.LoadAnimation(anim_path, anim.name);
+                AnimSet* set = anim3dMngr.LoadAnimation(anim_path, anim.name);
                 if (set)
                 {
                     animController->RegisterAnimationSet(set);
@@ -2368,7 +2480,7 @@ Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : anim3dMngr
 
 Animation3dXFile::~Animation3dXFile()
 {
-    anim3dMngr.graphicLoader.DestroyModel(rootBone);
+    anim3dMngr.DestroyModel(rootBone);
     rootBone = nullptr;
 }
 
@@ -2408,7 +2520,7 @@ void Animation3dXFile::SetupAnimationOutput(AnimController* anim_controller)
 
 MeshTexture* Animation3dXFile::GetTexture(const string& tex_name)
 {
-    MeshTexture* texture = anim3dMngr.graphicLoader.LoadTexture(tex_name, fileName);
+    MeshTexture* texture = anim3dMngr.LoadTexture(tex_name, fileName);
     if (!texture)
         WriteLog("Can't load texture '{}'.\n", tex_name);
     return texture;

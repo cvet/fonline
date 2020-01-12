@@ -2,7 +2,6 @@
 #include "3dStuff.h"
 #include "Crypt.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "IniFile.h"
 #include "Log.h"
 #include "Settings.h"
@@ -29,8 +28,7 @@
 SDL_Window* SprMngr_MainWindow;
 #endif
 
-SpriteManager::SpriteManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader) :
-    effectMngr {effect_mngr}, graphicLoader {graphic_loader}
+SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mngr}
 {
     baseColor = COLOR_RGBA(255, 128, 128, 128);
     allAtlases.reserve(100);
@@ -271,14 +269,30 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr, GraphicLoader& graphic_
         memzero(DummyAnimation, sizeof(AnyFrames));
         DummyAnimation->CntFrm = 1;
         DummyAnimation->Ticks = 100;
-        graphicLoader.DummyAnim = DummyAnimation;
     }
 
     Sprites::GrowPool();
 
     // 3d initialization
     if (GameOpt.Enable3dRendering)
-        anim3dMngr = new Animation3dManager(effectMngr, graphicLoader);
+    {
+        anim3dMngr = new Animation3dManager(effectMngr, [this](MeshTexture* mesh_tex) {
+            PushAtlasType(RES_ATLAS_TEXTURES);
+            AnyFrames* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name);
+            PopAtlasType();
+            if (anim)
+            {
+                SpriteInfo* si = GetSpriteInfo(anim->Ind[0]);
+                mesh_tex->Id = si->Atlas->TextureOwner->Id;
+                memcpy(mesh_tex->SizeData, si->Atlas->TextureOwner->SizeData, sizeof(mesh_tex->SizeData));
+                mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
+                mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
+                mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
+                mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
+                DestroyAnyFrames(anim);
+            }
+        });
+    }
 }
 
 SpriteManager::~SpriteManager()
@@ -299,6 +313,12 @@ SpriteManager::~SpriteManager()
     dipQueue.clear();
 
     SAFEDEL(anim3dMngr);
+}
+
+void SpriteManager::Preload3dModel(const string& model_name)
+{
+    RUNTIME_ASSERT(anim3dMngr);
+    anim3dMngr->PreloadEntity(model_name);
 }
 
 void SpriteManager::GetWindowSize(int& w, int& h)
@@ -1453,9 +1473,9 @@ AnyFrames* SpriteManager::LoadAnimation2d(const string& fname)
     ushort dirs = file.GetBEUShort();
     RUNTIME_ASSERT((dirs == 1 || dirs == DIRS_COUNT));
 
-    AnyFrames* anim = graphicLoader.CreateAnyFrames(frames_count, ticks);
+    AnyFrames* anim = CreateAnyFrames(frames_count, ticks);
     if (dirs > 1)
-        graphicLoader.CreateAnyFramesDirAnims(anim);
+        CreateAnyFramesDirAnims(anim);
 
     for (ushort dir = 0; dir < dirs; dir++)
     {
@@ -1503,7 +1523,7 @@ AnyFrames* SpriteManager::ReloadAnimation(AnyFrames* anim, const string& fname)
             if (si)
                 DestroyAtlases(si->Atlas->Type);
         }
-        graphicLoader.DestroyAnyFrames(anim);
+        DestroyAnyFrames(anim);
     }
 
     // Load fresh
@@ -1541,7 +1561,7 @@ AnyFrames* SpriteManager::LoadAnimation3d(const string& fname)
         anim3d->SetAnimation(0, proc_from * 10, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY);
         Render3d(anim3d);
 
-        AnyFrames* anim = graphicLoader.CreateAnyFrames(1, 100);
+        AnyFrames* anim = CreateAnyFrames(1, 100);
         anim->Ind[0] = anim3d->SprId;
 
         SAFEDEL(anim3d);
@@ -1559,7 +1579,7 @@ AnyFrames* SpriteManager::LoadAnimation3d(const string& fname)
     if (frames_count <= 1)
         goto label_LoadOneSpr;
 
-    AnyFrames* anim = graphicLoader.CreateAnyFrames(frames_count, (uint)(period_len * 1000.0f));
+    AnyFrames* anim = CreateAnyFrames(frames_count, (uint)(period_len * 1000.0f));
 
     float cur_proc = (float)proc_from;
     int prev_cur_proci = -1;
@@ -1713,6 +1733,33 @@ void SpriteManager::FreePure3dAnimation(Animation3d* anim3d)
 
         SAFEDEL(anim3d);
     }
+}
+
+AnyFrames* SpriteManager::CreateAnyFrames(uint frames, uint ticks)
+{
+    AnyFrames* anim = (AnyFrames*)anyFramesPool.Get();
+    memzero(anim, sizeof(AnyFrames));
+    anim->CntFrm = MIN(frames, MAX_FRAMES);
+    anim->Ticks = (ticks ? ticks : frames * 100);
+    anim->HaveDirs = false;
+    return anim;
+}
+
+void SpriteManager::CreateAnyFramesDirAnims(AnyFrames* anim)
+{
+    anim->HaveDirs = true;
+    for (int dir = 0; dir < DIRS_COUNT - 1; dir++)
+        anim->Dirs[dir] = CreateAnyFrames(anim->CntFrm, anim->Ticks);
+}
+
+void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
+{
+    if (!anim || anim == DummyAnimation)
+        return;
+
+    for (int dir = 1; dir < anim->DirCount(); dir++)
+        anyFramesPool.Put(anim->GetDir(dir));
+    anyFramesPool.Put(anim);
 }
 
 bool SpriteManager::Flush()
@@ -2098,7 +2145,7 @@ void SpriteManager::InitializeEgg(const string& egg_name)
     if (egg_frames)
     {
         sprEgg = GetSpriteInfo(egg_frames->Ind[0]);
-        graphicLoader.DestroyAnyFrames(egg_frames);
+        DestroyAnyFrames(egg_frames);
         eggSprWidth = sprEgg->Width;
         eggSprHeight = sprEgg->Height;
         eggAtlasWidth = (float)atlasWidth;

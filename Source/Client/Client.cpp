@@ -133,12 +133,10 @@ FOClient* FOClient::Self = nullptr;
 FOClient::FOClient() :
     Keyb(SprMngr),
     ProtoMngr(),
-    GraphicLoader(SprMngr),
     EffectMngr(),
-    SprMngr(EffectMngr, GraphicLoader),
+    SprMngr(EffectMngr),
     ResMngr(SprMngr),
-    HexMngr(false, ProtoMngr, SprMngr, ResMngr),
-    Anim3dMngr(EffectMngr, GraphicLoader)
+    HexMngr(false, ProtoMngr, SprMngr, ResMngr)
 {
     RUNTIME_ASSERT(!Self);
     Self = this;
@@ -334,7 +332,7 @@ bool FOClient::Reset()
     {
         WriteLog("Preload 3d files...\n");
         for (size_t i = 0, j = Preload3dFiles.size(); i < j; i++)
-            Anim3dMngr.PreloadEntity(Preload3dFiles[i]);
+            SprMngr.Preload3dModel(Preload3dFiles[i]);
         WriteLog("Preload 3d files complete.\n");
     }
 

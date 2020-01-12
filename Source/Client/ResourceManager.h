@@ -4,11 +4,6 @@
 #include "GraphicStructures.h"
 #include "SpriteManager.h"
 
-#define RES_ATLAS_STATIC (1)
-#define RES_ATLAS_DYNAMIC (2)
-#define RES_ATLAS_SPLASH (3)
-#define RES_ATLAS_TEXTURES (4)
-
 struct SpriteInfo;
 struct AnyFrames;
 class IDataFile;
@@ -18,8 +13,8 @@ class Animation3d;
 
 struct LoadedAnim
 {
-    int ResType;
-    AnyFrames* Anim;
+    int ResType {};
+    AnyFrames* Anim {};
 };
 typedef map<hash, LoadedAnim> LoadedAnimMap;
 
@@ -47,8 +42,8 @@ public:
     StrMap& GetSoundNames() { return soundNames; }
     SpriteManager& GetSpriteManager() { return sprMngr; }
 
-    AnyFrames* ItemHexDefaultAnim;
-    AnyFrames* CritterDefaultAnim;
+    AnyFrames* ItemHexDefaultAnim {};
+    AnyFrames* CritterDefaultAnim {};
 
 private:
     AnyFrames* LoadFalloutAnim(hash model_name, uint anim1, uint anim2);
@@ -57,11 +52,11 @@ private:
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
     SpriteManager& sprMngr;
-    DataFileVec processedDats;
-    UIntStrMap namesHash;
-    LoadedAnimMap loadedAnims;
-    AnimMap critterFrames;
-    map<hash, Animation3d*> critter3d;
-    StrVec splashNames;
-    StrMap soundNames;
+    DataFileVec processedDats {};
+    UIntStrMap namesHash {};
+    LoadedAnimMap loadedAnims {};
+    AnimMap critterFrames {};
+    map<hash, Animation3d*> critter3d {};
+    StrVec splashNames {};
+    StrMap soundNames {};
 };

@@ -4,7 +4,6 @@
 #include "Common.h"
 #include "EffectManager.h"
 #include "Entity.h"
-#include "GraphicLoader.h"
 #include "HexManager.h"
 #include "Keyboard.h"
 #include "MsgFiles.h"
@@ -92,13 +91,11 @@ public:
     bool DoRestart;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
-    GraphicLoader GraphicLoader;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     HexManager HexMngr;
     ResourceManager ResMngr;
     SoundManager SndMngr;
-    Animation3dManager Anim3dMngr;
     hash CurMapPid;
     hash CurMapLocPid;
     uint CurMapIndexInLoc;

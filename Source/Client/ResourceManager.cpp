@@ -3,7 +3,6 @@
 #include "Crypt.h"
 #include "DataFile.h"
 #include "FileUtils.h"
-#include "GraphicLoader.h"
 #include "Log.h"
 #include "Script.h"
 #include "Settings.h"
@@ -69,7 +68,7 @@ void ResourceManager::FreeResources(int type)
         int res_type = it->second.ResType;
         if (res_type == type)
         {
-            sprMngr.GetGraphicLoader().DestroyAnyFrames(it->second.Anim);
+            sprMngr.DestroyAnyFrames(it->second.Anim);
             it = loadedAnims.erase(it);
         }
         else
@@ -87,7 +86,7 @@ void ResourceManager::FreeResources(int type)
     {
         // 2D critters
         for (auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it)
-            sprMngr.GetGraphicLoader().DestroyAnyFrames(it->second);
+            sprMngr.DestroyAnyFrames(it->second);
         critterFrames.clear();
 
 // 3D textures
@@ -102,8 +101,8 @@ void ResourceManager::ReinitializeDynamicAtlas()
     FreeResources(RES_ATLAS_DYNAMIC);
     sprMngr.PushAtlasType(RES_ATLAS_DYNAMIC);
     sprMngr.InitializeEgg("TransparentEgg.png");
-    sprMngr.GetGraphicLoader().DestroyAnyFrames(CritterDefaultAnim);
-    sprMngr.GetGraphicLoader().DestroyAnyFrames(ItemHexDefaultAnim);
+    sprMngr.DestroyAnyFrames(CritterDefaultAnim);
+    sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
     CritterDefaultAnim = sprMngr.LoadAnimation("CritterStub.png", true);
     ItemHexDefaultAnim = sprMngr.LoadAnimation("ItemStub.png", true);
     sprMngr.PopAtlasType();
@@ -305,11 +304,11 @@ AnyFrames* ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint an
                 return nullptr;
 
             AnyFrames* anim_merge_base =
-                sprMngr.GetGraphicLoader().CreateAnyFrames(anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks);
+                sprMngr.CreateAnyFrames(anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks);
             for (int d = 0; d < anim->DirCount(); d++)
             {
                 if (d == 1)
-                    sprMngr.GetGraphicLoader().CreateAnyFramesDirAnims(anim_merge_base);
+                    sprMngr.CreateAnyFramesDirAnims(anim_merge_base);
                 AnyFrames* anim_merge = anim_merge_base->GetDir(d);
                 AnyFrames* anim_ = anim->GetDir(d);
                 AnyFrames* animex_ = animex->GetDir(d);
@@ -334,12 +333,12 @@ AnyFrames* ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint an
         // Clone
         if (anim)
         {
-            AnyFrames* anim_clone_base = sprMngr.GetGraphicLoader().CreateAnyFrames(
+            AnyFrames* anim_clone_base = sprMngr.CreateAnyFrames(
                 !FLAG(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->Ticks);
             for (int d = 0; d < anim->DirCount(); d++)
             {
                 if (d == 1)
-                    sprMngr.GetGraphicLoader().CreateAnyFramesDirAnims(anim_clone_base);
+                    sprMngr.CreateAnyFramesDirAnims(anim_clone_base);
                 AnyFrames* anim_clone = anim_clone_base->GetDir(d);
                 AnyFrames* anim_ = anim->GetDir(d);
                 if (!FLAG(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME))

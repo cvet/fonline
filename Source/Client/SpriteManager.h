@@ -86,26 +86,30 @@
 #define PRIMITIVE_TRIANGLEFAN (6)
 
 class EffectManager;
-class GraphicLoader;
 class Animation3dManager;
 class Animation3d;
 using Animation3dVec = vector<Animation3d*>;
 class Sprites;
 class Sprite;
 
+#define RES_ATLAS_STATIC (1)
+#define RES_ATLAS_DYNAMIC (2)
+#define RES_ATLAS_SPLASH (3)
+#define RES_ATLAS_TEXTURES (4)
+
 class SpriteManager
 {
 private:
 public:
-    SpriteManager(EffectManager& effect_mngr, GraphicLoader& graphic_loader);
+    SpriteManager(EffectManager& effect_mngr);
     ~SpriteManager();
 
+    void Preload3dModel(const string& model_name);
     void BeginScene(uint clear_color);
     void EndScene();
     void OnResolutionChanged();
     void SetAlwaysOnTop(bool enable);
     EffectManager& GetEffectManager() { return effectMngr; }
-    GraphicLoader& GetGraphicLoader() { return graphicLoader; }
 
     void GetWindowSize(int& w, int& h);
     void SetWindowSize(int w, int h);
@@ -119,12 +123,9 @@ public:
     bool DisableFullscreen();
     void BlinkWindow();
 
-    AnyFrames* DummyAnimation {};
-
 private:
     SDL_Window* mainWindow {};
     EffectManager& effectMngr;
-    GraphicLoader& graphicLoader;
     Animation3dManager* anim3dMngr {};
     Matrix projectionMatrixCM {};
     bool sceneBeginned {};
@@ -186,6 +187,11 @@ public:
     Animation3d* LoadPure3dAnimation(const string& fname, bool auto_redraw);
     void RefreshPure3dAnimationSprite(Animation3d* anim3d);
     void FreePure3dAnimation(Animation3d* anim3d);
+    AnyFrames* CreateAnyFrames(uint frames, uint ticks);
+    void CreateAnyFramesDirAnims(AnyFrames* anim);
+    void DestroyAnyFrames(AnyFrames* anim);
+
+    AnyFrames* DummyAnimation {};
 
 private:
     AnyFrames* LoadAnimation2d(const string& fname);
@@ -194,6 +200,7 @@ private:
 
     SprInfoVec sprData {};
     Animation3dVec autoRedrawAnim3d {};
+    MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> anyFramesPool {};
 
     // Draw
 public:

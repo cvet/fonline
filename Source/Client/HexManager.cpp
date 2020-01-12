@@ -2,7 +2,6 @@
 #include "CritterView.h"
 #include "Crypt.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "ItemHexView.h"
 #include "LineTracer.h"
 #include "Log.h"
@@ -758,11 +757,11 @@ void HexManager::SetRainAnimation(const char* fall_anim_name, const char* drop_a
     if (picRainFall == sprMngr.DummyAnimation)
         picRainFall = nullptr;
     else
-        sprMngr.GetGraphicLoader().DestroyAnyFrames(picRainFall);
+        sprMngr.DestroyAnyFrames(picRainFall);
     if (picRainDrop == sprMngr.DummyAnimation)
         picRainDrop = nullptr;
     else
-        sprMngr.GetGraphicLoader().DestroyAnyFrames(picRainDrop);
+        sprMngr.DestroyAnyFrames(picRainDrop);
 
     picRainFall = sprMngr.LoadAnimation(picRainFallName, true);
     picRainDrop = sprMngr.LoadAnimation(picRainDropName, true);

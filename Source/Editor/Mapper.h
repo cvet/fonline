@@ -3,7 +3,6 @@
 #include "Common.h"
 #include "EffectManager.h"
 #include "Entity.h"
-#include "GraphicLoader.h"
 #include "HexManager.h"
 #include "IniFile.h"
 #include "Keyboard.h"
@@ -40,7 +39,6 @@ public:
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
-    GraphicLoader GraphicLoader;
     SpriteManager SprMngr;
     HexManager HexMngr;
     ResourceManager ResMngr;

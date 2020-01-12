@@ -1,7 +1,6 @@
 #include "CritterView.h"
 #include "3dStuff.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "ItemView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"

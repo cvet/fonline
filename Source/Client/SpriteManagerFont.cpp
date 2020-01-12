@@ -1,6 +1,5 @@
 #include "Crypt.h"
 #include "EffectManager.h"
-#include "GraphicLoader.h"
 #include "Log.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
