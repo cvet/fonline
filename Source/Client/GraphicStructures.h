@@ -5,6 +5,7 @@
 #include "GraphicApi.h"
 #include "Settings.h"
 #include "Timer.h"
+
 #include "assimp/scene.h"
 #include "assimp/types.h"
 
@@ -12,24 +13,26 @@
 #define EFFECT_TEXTURES (10)
 #define BONES_PER_VERTEX (4)
 #define MAX_BONES_PER_MODEL (60)
+#define ANY_FRAMES_POOL_SIZE (2000)
+#define MAX_FRAMES (50)
+#define IS_EFFECT_VALUE(pos) ((pos) != -1)
+#define SET_EFFECT_VALUE(eff, pos, value) GL(glUniform1f(pos, value))
+#define MAX_STORED_PIXEL_PICKS (100)
 
-typedef aiMatrix4x4 Matrix;
-typedef aiVector3D Vector;
-typedef aiQuaternion Quaternion;
-typedef aiColor4D Color;
-typedef vector<Vector> VectorVec;
-typedef vector<Quaternion> QuaternionVec;
-typedef vector<Matrix> MatrixVec;
-typedef vector<Matrix*> MatrixPtrVec;
+using Matrix = aiMatrix4x4;
+using Vector = aiVector3D;
+using Quaternion = aiQuaternion;
+using Color = aiColor4D;
+using VectorVec = vector<Vector>;
+using QuaternionVec = vector<Quaternion>;
+using MatrixVec = vector<Matrix>;
+using MatrixPtrVec = vector<Matrix*>;
 
+class Animation3d;
 struct Bone;
-typedef vector<Bone*> BoneVec;
+using BoneVec = vector<Bone*>;
 
 extern bool Is3dExtensionSupported(const string& ext);
-
-//
-// Vertex2D
-//
 
 struct Vertex2D
 {
@@ -38,11 +41,9 @@ struct Vertex2D
     float TU, TV;
     float TUEgg, TVEgg;
 };
-typedef vector<Vertex2D> Vertex2DVec;
-
-//
-// Vertex3D
-//
+static_assert(std::is_standard_layout_v<Vertex2D>);
+static_assert(sizeof(Vertex2D) == 28);
+using Vertex2DVec = vector<Vertex2D>;
 
 struct Vertex3D
 {
@@ -55,83 +56,49 @@ struct Vertex3D
     float BlendWeights[BONES_PER_VERTEX];
     float BlendIndices[BONES_PER_VERTEX];
 };
-static_assert(sizeof(Vertex3D) == 96, "Wrong Vertex3D size.");
-typedef vector<Vertex3D> Vertex3DVec;
-typedef vector<Vertex3DVec> Vertex3DVecVec;
+static_assert(std::is_standard_layout_v<Vertex3D>);
+static_assert(sizeof(Vertex3D) == 96);
+using Vertex3DVec = vector<Vertex3D>;
+using Vertex3DVecVec = vector<Vertex3DVec>;
 
-//
-// AnyFrames
-//
-
-#define ANY_FRAMES_POOL_SIZE (2000)
-#define MAX_FRAMES (50)
-
-struct AnyFrames
+struct AnyFrames : public NonCopyable
 {
-    // Data
-    uint Ind[MAX_FRAMES]; // Sprite Ids
-    short NextX[MAX_FRAMES]; // Offsets
-    short NextY[MAX_FRAMES]; // Offsets
-    uint CntFrm; // Frames count
-    uint Ticks; // Time of playing animation
-    uint Anim1;
-    uint Anim2;
-    hash NameHash;
-
     uint GetSprId(uint num_frm) { return Ind[num_frm % CntFrm]; }
     short GetNextX(uint num_frm) { return NextX[num_frm % CntFrm]; }
     short GetNextY(uint num_frm) { return NextY[num_frm % CntFrm]; }
     uint GetCnt() { return CntFrm; }
     uint GetCurSprId() { return CntFrm > 1 ? Ind[((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100] : Ind[0]; }
     uint GetCurSprIndex() { return CntFrm > 1 ? ((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100 : 0; }
-
-    // Dir animations
-    bool HaveDirs;
-    AnyFrames* Dirs[7]; // 7 additional for square hexes, 5 for hexagonal
-
     int DirCount() { return HaveDirs ? DIRS_COUNT : 1; }
     AnyFrames* GetDir(int dir) { return dir == 0 || !HaveDirs ? this : Dirs[dir - 1]; }
-    void CreateDirAnims();
 
-    // Creation in pool
-    static AnyFrames* Create(uint frames, uint ticks);
-    static void Destroy(AnyFrames* anim);
-    static void SetDummy(AnyFrames* anim);
-
-    // Disable constructors to avoid unnecessary calls
-private:
-    AnyFrames() {}
-    ~AnyFrames() {}
+    uint Ind[MAX_FRAMES] {}; // Sprite Ids
+    short NextX[MAX_FRAMES] {};
+    short NextY[MAX_FRAMES] {};
+    uint CntFrm {};
+    uint Ticks {}; // Time of playing animation
+    uint Anim1 {};
+    uint Anim2 {};
+    hash NameHash {};
+    bool HaveDirs {};
+    AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };
-typedef map<uint, AnyFrames*> AnimMap;
-typedef vector<AnyFrames*> AnimVec;
-
-//
-// Point
-//
+static_assert(std::is_standard_layout_v<AnyFrames>);
+using AnimMap = map<uint, AnyFrames*>;
+using AnimVec = vector<AnyFrames*>;
 
 struct PrepPoint
 {
-    short PointX;
-    short PointY;
-    short* PointOffsX;
-    short* PointOffsY;
-    uint PointColor;
-
-    PrepPoint() : PointX(0), PointY(0), PointOffsX(nullptr), PointOffsY(nullptr), PointColor(0) {}
-    PrepPoint(short x, short y, uint color, short* ox = nullptr, short* oy = nullptr) :
-        PointX(x), PointY(y), PointOffsX(ox), PointOffsY(oy), PointColor(color)
-    {
-    }
+    int PointX {};
+    int PointY {};
+    uint PointColor {};
+    short* PointOffsX {};
+    short* PointOffsY {};
 };
-typedef vector<PrepPoint> PointVec;
-typedef vector<PointVec> PointVecVec;
+using PointVec = vector<PrepPoint>;
+using PointVecVec = vector<PointVec>;
 
-//
-// EffectDefault
-//
-
-struct EffectDefault
+struct EffectDefault : public NonCopyable
 {
     enum EType
     {
@@ -139,396 +106,301 @@ struct EffectDefault
         Float,
         Int
     };
-    char* Name;
-    EType Type;
-    uchar* Data;
-    uint Size;
+
+    char* Name {};
+    EType Type {};
+    uchar* Data {};
+    uint Size {};
 };
 
-//
-// EffectInstance
-//
-
-struct EffectInstance
+struct EffectInstance : public NonCopyable
 {
-    char* EffectFilename;
-    EffectDefault* Defaults;
-    uint DefaultsCount;
+    string Name {};
+    EffectDefault* Defaults {};
+    uint DefaultsCount {};
 };
-
-//
-// Effect
-//
-
-#define IS_EFFECT_VALUE(pos) ((pos) != -1)
-#define SET_EFFECT_VALUE(eff, pos, value) GL(glUniform1f(pos, value))
 
 struct EffectPass
 {
-    GLuint Program;
-    bool IsShadow;
+    GLuint Program {};
+    bool IsShadow {};
 
-    GLint ZoomFactor;
-    GLint ColorMap;
-    GLint ColorMapSize;
-    GLint ColorMapSamples;
-    GLint EggMap;
-    GLint EggMapSize;
-    GLint SpriteBorder;
-    GLint ProjectionMatrix;
-    GLint GroundPosition;
-    GLint LightColor;
-    GLint WorldMatrices;
+    GLint ZoomFactor {};
+    GLint ColorMap {};
+    GLint ColorMapSize {};
+    GLint ColorMapSamples {};
+    GLint EggMap {};
+    GLint EggMapSize {};
+    GLint SpriteBorder {};
+    GLint ProjectionMatrix {};
+    GLint GroundPosition {};
+    GLint LightColor {};
+    GLint WorldMatrices {};
 
-    bool IsNeedProcess;
-    bool IsTime;
-    GLint Time;
-    float TimeCurrent;
-    double TimeLastTick;
-    GLint TimeGame;
-    float TimeGameCurrent;
-    double TimeGameLastTick;
-    bool IsRandom;
-    GLint Random1;
-    GLint Random2;
-    GLint Random3;
-    GLint Random4;
-    bool IsTextures;
-    GLint Textures[EFFECT_TEXTURES];
-    GLint TexturesSize[EFFECT_TEXTURES];
-    GLint TexturesAtlasOffset[EFFECT_TEXTURES];
-    bool IsScriptValues;
-    GLint ScriptValues[EFFECT_SCRIPT_VALUES];
-    bool IsAnimPos;
-    GLint AnimPosProc;
-    GLint AnimPosTime;
-    bool IsChangeStates;
-    int BlendFuncParam1;
-    int BlendFuncParam2;
-    int BlendEquation;
+    bool IsNeedProcess {};
+    bool IsTime {};
+    GLint Time {};
+    float TimeCurrent {};
+    double TimeLastTick {};
+    GLint TimeGame {};
+    float TimeGameCurrent {};
+    double TimeGameLastTick {};
+    bool IsRandom {};
+    GLint Random1 {};
+    GLint Random2 {};
+    GLint Random3 {};
+    GLint Random4 {};
+    bool IsTextures {};
+    GLint Textures[EFFECT_TEXTURES] {};
+    GLint TexturesSize[EFFECT_TEXTURES] {};
+    GLint TexturesAtlasOffset[EFFECT_TEXTURES] {};
+    bool IsScriptValues {};
+    GLint ScriptValues[EFFECT_SCRIPT_VALUES] {};
+    bool IsAnimPos {};
+    GLint AnimPosProc {};
+    GLint AnimPosTime {};
+    bool IsChangeStates {};
+    int BlendFuncParam1 {};
+    int BlendFuncParam2 {};
+    int BlendEquation {};
 };
-typedef vector<EffectPass> EffectPassVec;
+using EffectPassVec = vector<EffectPass>;
 
-struct Effect
+struct Effect : public NonCopyable
 {
-    uint Id;
-    string Name;
-    string Defines;
-    EffectDefault* Defaults;
-    EffectPassVec Passes;
-
-    // Default effects
-    static Effect *Contour, *ContourDefault;
-    static Effect *Generic, *GenericDefault;
-    static Effect *Critter, *CritterDefault;
-    static Effect *Tile, *TileDefault;
-    static Effect *Roof, *RoofDefault;
-    static Effect *Rain, *RainDefault;
-    static Effect *Iface, *IfaceDefault;
-    static Effect *Primitive, *PrimitiveDefault;
-    static Effect *Light, *LightDefault;
-    static Effect *Fog, *FogDefault;
-    static Effect *FlushRenderTarget, *FlushRenderTargetDefault;
-    static Effect *FlushRenderTargetMS, *FlushRenderTargetMSDefault;
-    static Effect *FlushPrimitive, *FlushPrimitiveDefault;
-    static Effect *FlushMap, *FlushMapDefault;
-    static Effect *FlushLight, *FlushLightDefault;
-    static Effect *FlushFog, *FlushFogDefault;
-    static Effect *Font, *FontDefault;
-    static Effect *Skinned3d, *Skinned3dDefault;
-
-    // Constants
-    static uint MaxBones;
+    uint Id {};
+    string Name {};
+    string Defines {};
+    EffectDefault* Defaults {};
+    EffectPassVec Passes {};
 };
-typedef vector<Effect*> EffectVec;
+using EffectVec = vector<Effect*>;
 
-//
-// Texture
-//
-
-struct Texture
+struct Texture : public NonCopyable
 {
-    const char* Name;
-    GLuint Id;
-    uint Width;
-    uint Height;
-    float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
-    float Samples;
-
-    Texture();
+    Texture() = default;
     ~Texture();
     void UpdateRegion(const Rect& r, const uchar* data);
-    uchar* ReadData();
+
+    const char* Name {};
+    GLuint Id {};
+    uint Width {};
+    uint Height {};
+    float SizeData[4] {}; // Width, Height, TexelWidth, TexelHeight
+    float Samples {};
 };
-typedef vector<Texture*> TextureVec;
+using TextureVec = vector<Texture*>;
 
-//
-// MeshTexture
-//
-
-struct MeshTexture
+struct MeshTexture : public NonCopyable
 {
-    string Name;
-    GLuint Id;
-    float SizeData[4];
-    float AtlasOffsetData[4];
+    string Name {};
+    GLuint Id {};
+    float SizeData[4] {};
+    float AtlasOffsetData[4] {};
 };
-typedef vector<MeshTexture*> MeshTextureVec;
+using MeshTextureVec = vector<MeshTexture*>;
 
-//
-// Render target
-//
-
-#define MAX_STORED_PIXEL_PICKS (100)
-
-struct RenderTarget
+struct RenderTarget : public NonCopyable
 {
-    GLuint FBO;
-    Texture* TargetTexture;
-    GLuint DepthBuffer;
-    Effect* DrawEffect;
-    bool Multisampling;
-    bool ScreenSize;
-    uint Width;
-    uint Height;
-    bool TexLinear;
-    UIntPairVec* LastPixelPicks;
+    GLuint FBO {};
+    Texture* TargetTexture {};
+    GLuint DepthBuffer {};
+    Effect* DrawEffect {};
+    bool Multisampling {};
+    bool ScreenSize {};
+    uint Width {};
+    uint Height {};
+    bool TexLinear {};
+    UIntPairVec* LastPixelPicks {};
 };
-typedef vector<RenderTarget*> RenderTargetVec;
+using RenderTargetVec = vector<RenderTarget*>;
 
-//
-// TextureAtlas
-//
-
-struct TextureAtlas
+struct TextureAtlas : public NonCopyable
 {
-    struct SpaceNode
+    class SpaceNode : public NonCopyable
     {
-    private:
-        bool busy;
-        int posX, posY;
-        int width, height;
-        SpaceNode *child1, *child2;
-
     public:
         SpaceNode(int x, int y, int w, int h);
         ~SpaceNode();
         bool FindPosition(int w, int h, int& x, int& y);
+
+    private:
+        bool busy {};
+        int posX {};
+        int posY {};
+        int width {};
+        int height {};
+        SpaceNode* child1 {};
+        SpaceNode* child2 {};
     };
 
-    int Type;
-    RenderTarget* RT;
-    Texture* TextureOwner;
-    uint Width, Height;
-    SpaceNode* RootNode; // Packer 1
-    uint CurX, CurY, LineMaxH, LineCurH, LineW; // Packer 2
-
-    TextureAtlas();
+    TextureAtlas() = default;
     ~TextureAtlas();
+
+    int Type {};
+    RenderTarget* RT {};
+    Texture* TextureOwner {};
+    uint Width {};
+    uint Height {};
+
+    // Packer 1
+    SpaceNode* RootNode {};
+
+    // Packer 2
+    uint CurX {};
+    uint CurY {};
+    uint LineMaxH {};
+    uint LineCurH {};
+    uint LineW {};
 };
-typedef vector<TextureAtlas*> TextureAtlasVec;
+using TextureAtlasVec = vector<TextureAtlas*>;
 
-//
-// SpriteInfo
-//
-
-class Animation3d;
-struct SpriteInfo
+struct SpriteInfo : public NonCopyable
 {
-    TextureAtlas* Atlas;
-    RectF SprRect;
-    short Width;
-    short Height;
-    short OffsX;
-    short OffsY;
-    Effect* DrawEffect;
-    bool UsedForAnim3d;
-    Animation3d* Anim3d;
-    uchar* Data;
-    int DataAtlasType;
-    bool DataAtlasOneImage;
-    SpriteInfo() { memzero(this, sizeof(SpriteInfo)); }
+    TextureAtlas* Atlas {};
+    RectF SprRect {};
+    short Width {};
+    short Height {};
+    short OffsX {};
+    short OffsY {};
+    Effect* DrawEffect {};
+    bool UsedForAnim3d {};
+    Animation3d* Anim3d {};
+    uchar* Data {};
+    int DataAtlasType {};
+    bool DataAtlasOneImage {};
 };
-typedef vector<SpriteInfo*> SprInfoVec;
-
-//
-// DipData
-//
+using SprInfoVec = vector<SpriteInfo*>;
 
 struct DipData
 {
-    Texture* SourceTexture;
-    Effect* SourceEffect;
-    uint SpritesCount;
-    RectF SpriteBorder;
-    DipData(Texture* tex, Effect* effect) : SourceTexture(tex), SourceEffect(effect), SpritesCount(1) {}
+    Texture* SourceTexture {};
+    Effect* SourceEffect {};
+    uint SpritesCount {};
+    RectF SpriteBorder {};
 };
-typedef vector<DipData> DipDataVec;
+using DipDataVec = vector<DipData>;
 
-//
-// MeshData
-//
-
-struct MeshData
+struct MeshData : public NonCopyable
 {
-    Bone* Owner;
-    Vertex3DVec Vertices;
-    UShortVec Indices;
-    string DiffuseTexture;
-    UIntVec SkinBoneNameHashes;
-    MatrixVec SkinBoneOffsets;
-
-    // Runtime data
-    BoneVec SkinBones;
-    EffectInstance DrawEffect;
-
     void Save(File& file);
     void Load(File& file);
+
+    Bone* Owner {};
+    Vertex3DVec Vertices {};
+    UShortVec Indices {};
+    string DiffuseTexture {};
+    UIntVec SkinBoneNameHashes {};
+    MatrixVec SkinBoneOffsets {};
+    BoneVec SkinBones {};
+    EffectInstance DrawEffect {};
 };
-typedef vector<MeshData*> MeshDataVec;
+using MeshDataVec = vector<MeshData*>;
 
-//
-// MeshInstance
-//
-
-struct MeshInstance
+struct MeshInstance : public NonCopyable
 {
-    MeshData* Mesh;
-    bool Disabled;
-    MeshTexture* CurTexures[EFFECT_TEXTURES];
-    MeshTexture* DefaultTexures[EFFECT_TEXTURES];
-    MeshTexture* LastTexures[EFFECT_TEXTURES];
-    Effect* CurEffect;
-    Effect* DefaultEffect;
-    Effect* LastEffect;
+    MeshData* Mesh {};
+    bool Disabled {};
+    MeshTexture* CurTexures[EFFECT_TEXTURES] {};
+    MeshTexture* DefaultTexures[EFFECT_TEXTURES] {};
+    MeshTexture* LastTexures[EFFECT_TEXTURES] {};
+    Effect* CurEffect {};
+    Effect* DefaultEffect {};
+    Effect* LastEffect {};
 };
-typedef vector<MeshInstance> MeshInstanceVec;
+using MeshInstanceVec = vector<MeshInstance*>;
 
-//
-// CombinedMesh
-//
-
-struct CombinedMesh
+struct CombinedMesh : public NonCopyable
 {
-    int EncapsulatedMeshCount;
-    Vertex3DVec Vertices;
-    UShortVec Indices;
-    MeshDataVec Meshes;
-    UIntVec MeshVertices;
-    UIntVec MeshIndices;
-    IntVec MeshAnimLayers;
-    size_t CurBoneMatrix;
-    BoneVec SkinBones;
-    MatrixVec SkinBoneOffsets;
-    MeshTexture* Textures[EFFECT_TEXTURES];
-    Effect* DrawEffect;
-    GLuint VAO, VBO, IBO;
-
+    CombinedMesh(uint max_bones);
+    ~CombinedMesh();
     void Clear();
-    bool CanEncapsulate(MeshInstance& mesh_instance);
-    void Encapsulate(MeshInstance& mesh_instance, int anim_layer);
+    bool CanEncapsulate(MeshInstance* mesh_instance);
+    void Encapsulate(MeshInstance* mesh_instance, int anim_layer);
     void Finalize();
 
-    CombinedMesh() : EncapsulatedMeshCount(0), CurBoneMatrix(0), VAO(0), VBO(0), IBO(0), DrawEffect(nullptr)
-    {
-        memzero(Textures, sizeof(Textures));
-        SkinBones.resize(Effect::MaxBones);
-        SkinBoneOffsets.resize(Effect::MaxBones);
-    }
-    ~CombinedMesh() { Clear(); }
+    int EncapsulatedMeshCount {};
+    Vertex3DVec Vertices {};
+    UShortVec Indices {};
+    MeshDataVec Meshes {};
+    UIntVec MeshVertices {};
+    UIntVec MeshIndices {};
+    IntVec MeshAnimLayers {};
+    size_t CurBoneMatrix {};
+    BoneVec SkinBones {};
+    MatrixVec SkinBoneOffsets {};
+    MeshTexture* Textures[EFFECT_TEXTURES] {};
+    Effect* DrawEffect {};
+    GLuint VAO {};
+    GLuint VBO {};
+    GLuint IBO {};
 };
-typedef vector<CombinedMesh*> CombinedMeshVec;
+using CombinedMeshVec = vector<CombinedMesh*>;
 
-//
-// Bone
-//
-
-struct Bone
+struct Bone : public NonCopyable
 {
+    Bone() = default;
     ~Bone();
-
-    uint NameHash;
-    Matrix TransformationMatrix;
-    Matrix GlobalTransformationMatrix;
-    MeshData* Mesh;
-    BoneVec Children;
-
-    // Runtime data
-    Matrix CombinedTransformationMatrix;
-
     Bone* Find(uint name_hash);
     void Save(File& file);
     void Load(File& file);
     void FixAfterLoad(Bone* root_bone);
     static uint GetHash(const string& name);
-};
 
-//
-// Cut
-//
+    uint NameHash {};
+    Matrix TransformationMatrix {};
+    Matrix GlobalTransformationMatrix {};
+    MeshData* Mesh {};
+    BoneVec Children {};
+    Matrix CombinedTransformationMatrix {};
+};
 
 struct CutShape
 {
-    Matrix GlobalTransformationMatrix;
-    float SphereRadius;
+    CutShape() = default;
+    CutShape(MeshData* mesh);
 
-    static CutShape Make(MeshData* mesh);
+    Matrix GlobalTransformationMatrix {};
+    float SphereRadius {};
 };
-typedef vector<CutShape> CutShapeVec;
+using CutShapeVec = vector<CutShape>;
 
-struct CutData
+struct CutData : public NonCopyable
 {
-    CutShapeVec Shapes;
-    IntVec Layers;
-    uint UnskinBone;
-    CutShape UnskinShape;
-    bool RevertUnskinShape;
+    CutShapeVec Shapes {};
+    IntVec Layers {};
+    uint UnskinBone {};
+    CutShape UnskinShape {};
+    bool RevertUnskinShape {};
 };
-typedef vector<CutData*> CutDataVec;
+using CutDataVec = vector<CutData*>;
 
-//
-// MapSprite
-//
-
-struct MapSprite
+struct MapSprite : public NonCopyable
 {
-    static MapSprite* Factory()
-    {
-        MapSprite* ms = new MapSprite();
-        memzero(ms, sizeof(MapSprite));
-        ms->RefCount = 1;
-        return ms;
-    }
+    void AddRef() const;
+    void Release() const;
+    static MapSprite* Factory();
 
-    void AddRef() { ++RefCount; }
-
-    void Release()
-    {
-        if (--RefCount == 0)
-            delete this;
-    }
-
-    int RefCount;
-
-    bool Valid;
-    uint SprId;
-    ushort HexX;
-    ushort HexY;
-    hash ProtoId;
-    int FrameIndex;
-    int OffsX;
-    int OffsY;
-    bool IsFlat;
-    bool NoLight;
-    int DrawOrder;
-    int DrawOrderHyOffset;
-    int Corner;
-    bool DisableEgg;
-    uint Color;
-    uint ContourColor;
-    bool IsTweakOffs;
-    short TweakOffsX;
-    short TweakOffsY;
-    bool IsTweakAlpha;
-    uchar TweakAlpha;
+    mutable int RefCount {1};
+    bool Valid {};
+    uint SprId {};
+    ushort HexX {};
+    ushort HexY {};
+    hash ProtoId {};
+    int FrameIndex {};
+    int OffsX {};
+    int OffsY {};
+    bool IsFlat {};
+    bool NoLight {};
+    int DrawOrder {};
+    int DrawOrderHyOffset {};
+    int Corner {};
+    bool DisableEgg {};
+    uint Color {};
+    uint ContourColor {};
+    bool IsTweakOffs {};
+    short TweakOffsX {};
+    short TweakOffsY {};
+    bool IsTweakAlpha {};
+    uchar TweakAlpha {};
 };

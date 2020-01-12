@@ -1,5 +1,6 @@
 #include "CritterView.h"
 #include "3dStuff.h"
+#include "GraphicLoader.h"
 #include "ItemView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
@@ -86,7 +87,7 @@ CritterView::CritterView(uint id, ProtoCritter* proto, SpriteManager& spr_mngr, 
     Avatar = "";
     tickFidget = Timer::GameTick() + Random(GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2);
     memzero(&stayAnim, sizeof(stayAnim));
-    DrawEffect = Effect::Critter;
+    DrawEffect = resMngr.GetGraphicLoader().Effects.Critter;
     memzero(anim3dLayers, sizeof(anim3dLayers));
     textOnHeadColor = COLOR_CRITTER_NAME;
 

@@ -1,4 +1,5 @@
 #include "Crypt.h"
+#include "GraphicLoader.h"
 #include "Log.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
@@ -44,7 +45,7 @@ struct FontData
     AnyFrames* ImageBordered;
     bool MakeGray;
 
-    FontData()
+    FontData(Effect* effect)
     {
         Builded = false;
         FontTex = nullptr;
@@ -52,7 +53,7 @@ struct FontData
         SpaceWidth = 0;
         LineHeight = 0;
         YAdvance = 0;
-        DrawEffect = Effect::Font;
+        DrawEffect = effect;
         ImageNormal = nullptr;
         ImageBordered = nullptr;
         MakeGray = false;
@@ -151,7 +152,7 @@ void SpriteManager::SetFontEffect(int index, Effect* effect)
 {
     FontData* font = GetFont(index);
     if (font)
-        font->DrawEffect = (effect ? effect : Effect::Font);
+        font->DrawEffect = (effect ? effect : graphicLoader.Effects.Font);
 }
 
 void SpriteManager::BuildFonts()
@@ -313,7 +314,7 @@ bool SpriteManager::LoadFontFO(int index, const string& font_name, bool not_bord
         return false;
     }
 
-    FontData font;
+    FontData font(graphicLoader.Effects.Font);
     string image_name;
 
     uint font_cache_len;
@@ -515,7 +516,7 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
         return false;
     }
 
-    FontData font;
+    FontData font(graphicLoader.Effects.Font);
     File fm;
     File fm_tex;
 
@@ -1204,7 +1205,7 @@ bool SpriteManager::DrawStr(const Rect& r, const string& str, uint flags, uint c
 
             if (++curDrawQuad == drawQuadCount)
             {
-                dipQueue.push_back(DipData(texture, font->DrawEffect));
+                dipQueue.push_back({texture, font->DrawEffect, 1});
                 dipQueue.back().SpritesCount = curDrawQuad;
                 Flush();
             }
@@ -1216,7 +1217,7 @@ bool SpriteManager::DrawStr(const Rect& r, const string& str, uint flags, uint c
 
     if (curDrawQuad)
     {
-        dipQueue.push_back(DipData(texture, font->DrawEffect));
+        dipQueue.push_back({texture, font->DrawEffect, 1});
         dipQueue.back().SpritesCount = curDrawQuad;
         Flush();
     }

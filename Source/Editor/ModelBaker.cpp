@@ -521,9 +521,6 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
             mesh->DiffuseTexture = path.data;
         }
 
-        // Effect
-        mesh->DrawEffect.EffectFilename = nullptr;
-
         // Skinning
         if (ai_mesh->mNumBones > 0)
         {
@@ -730,9 +727,6 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 }
             }
         }
-
-        // Effect
-        mesh->DrawEffect.EffectFilename = nullptr;
 
         // Skinning
         FbxSkin* fbx_skin = (FbxSkin*)fbx_mesh->GetDeformer(0, FbxDeformer::eSkin);

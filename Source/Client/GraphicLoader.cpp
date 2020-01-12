@@ -26,6 +26,33 @@ GraphicLoader::~GraphicLoader()
         delete effect;
 }
 
+AnyFrames* GraphicLoader::CreateAnyFrames(uint frames, uint ticks)
+{
+    AnyFrames* anim = (AnyFrames*)anyFramesPool.Get();
+    memzero(anim, sizeof(AnyFrames));
+    anim->CntFrm = MIN(frames, MAX_FRAMES);
+    anim->Ticks = (ticks ? ticks : frames * 100);
+    anim->HaveDirs = false;
+    return anim;
+}
+
+void GraphicLoader::CreateAnyFramesDirAnims(AnyFrames* anim)
+{
+    anim->HaveDirs = true;
+    for (int dir = 0; dir < DIRS_COUNT - 1; dir++)
+        anim->Dirs[dir] = CreateAnyFrames(anim->CntFrm, anim->Ticks);
+}
+
+void GraphicLoader::DestroyAnyFrames(AnyFrames* anim)
+{
+    if (!anim || anim == DummyAnim)
+        return;
+
+    for (int dir = 1; dir < anim->DirCount(); dir++)
+        anyFramesPool.Put(anim->GetDir(dir));
+    anyFramesPool.Put(anim);
+}
+
 Bone* GraphicLoader::LoadModel(const string& fname)
 {
     // Find already loaded
@@ -139,7 +166,7 @@ MeshTexture* GraphicLoader::LoadTexture(const string& texture_name, const string
     mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
     mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
     mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
-    AnyFrames::Destroy(anim);
+    DestroyAnyFrames(anim);
     return mesh_tex;
 }
 
@@ -210,13 +237,13 @@ Effect* GraphicLoader::LoadEffect(const string& effect_name, bool use_in_2d, con
             passes = ConvertParamValue(commands[i][1], fail);
 
     // New effect
-    Effect effect;
-    effect.Name = loaded_fname;
-    effect.Defines = defines;
+    auto effect = std::make_unique<Effect>();
+    effect->Name = loaded_fname;
+    effect->Defines = defines;
 
     // Load passes
     for (uint pass = 0; pass < passes; pass++)
-        if (!LoadEffectPass(&effect, fname, file, pass, use_in_2d, defines, defaults, defaults_count))
+        if (!LoadEffectPass(effect.get(), fname, file, pass, use_in_2d, defines, defaults, defaults_count))
             return nullptr;
 
     // Process commands
@@ -275,7 +302,7 @@ Effect* GraphicLoader::LoadEffect(const string& effect_name, bool use_in_2d, con
             uint pass = ConvertParamValue(tokens[1], fail);
             if (pass < passes)
             {
-                EffectPass& effect_pass = effect.Passes[pass];
+                EffectPass& effect_pass = effect->Passes[pass];
                 if (tokens[2] == "BlendFunc" && tokens.size() >= 5)
                 {
                     effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
@@ -313,9 +340,8 @@ Effect* GraphicLoader::LoadEffect(const string& effect_name, bool use_in_2d, con
     }
 
     // Assign identifier and return
-    static uint effect_id = 0;
-    effect.Id = ++effect_id;
-    loadedEffects.push_back(new Effect(effect));
+    effect->Id = ++effectId;
+    loadedEffects.push_back(effect.release());
     return loadedEffects.back();
 }
 
@@ -415,7 +441,7 @@ bool GraphicLoader::LoadEffectPass(Effect* effect, const string& fname, File& fi
 #endif
 
         // Internal definitions
-        string internal_defines = _str("#define PASS{}\n#define MAX_BONES {}\n", pass, Effect::MaxBones);
+        string internal_defines = _str("#define PASS{}\n#define MAX_BONES {}\n", pass, MaxBones);
 
         // Create shaders
         GLuint vs, fs;
@@ -510,10 +536,8 @@ bool GraphicLoader::LoadEffectPass(Effect* effect, const string& fname, File& fi
             GL(glBindAttribLocation(program, 7, "InBlendIndices"));
         }
 
-#ifndef FO_OPENGL_ES
         if (GL_HAS(get_program_binary))
             GL(glProgramParameteri(program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE));
-#endif
 
         GL(glLinkProgram(program));
         GLint linked;
@@ -742,38 +766,15 @@ void GraphicLoader::EffectProcessVariables(EffectPass& effect_pass, bool start, 
     }
 }
 
-uint Effect::MaxBones;
-Effect *Effect::Contour, *Effect::ContourDefault;
-Effect *Effect::Generic, *Effect::GenericDefault;
-Effect *Effect::Critter, *Effect::CritterDefault;
-Effect *Effect::Tile, *Effect::TileDefault;
-Effect *Effect::Roof, *Effect::RoofDefault;
-Effect *Effect::Rain, *Effect::RainDefault;
-Effect *Effect::Iface, *Effect::IfaceDefault;
-Effect *Effect::Primitive, *Effect::PrimitiveDefault;
-Effect *Effect::Light, *Effect::LightDefault;
-Effect *Effect::Fog, *Effect::FogDefault;
-Effect *Effect::FlushRenderTarget, *Effect::FlushRenderTargetDefault;
-Effect *Effect::FlushRenderTargetMS, *Effect::FlushRenderTargetMSDefault;
-Effect *Effect::FlushPrimitive, *Effect::FlushPrimitiveDefault;
-Effect *Effect::FlushMap, *Effect::FlushMapDefault;
-Effect *Effect::FlushLight, *Effect::FlushLightDefault;
-Effect *Effect::FlushFog, *Effect::FlushFogDefault;
-Effect *Effect::Font, *Effect::FontDefault;
-Effect *Effect::Skinned3d, *Effect::Skinned3dDefault;
-
 #define LOAD_EFFECT(effect_handle, effect_name, use_in_2d, defines) \
-    effect_handle##Default = LoadEffect(effect_name, use_in_2d, defines, "Effects/"); \
-    if (effect_handle##Default) \
-        effect_handle = new Effect(*effect_handle##Default); \
-    else \
-        effect_errors++
+    if (!(effect_handle = effect_handle##Default = LoadEffect(effect_name, use_in_2d, defines, "Effects/"))) \
+    effect_errors++
 
 bool GraphicLoader::LoadMinimalEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT(Effect::Font, "Font_Default", true, "");
-    LOAD_EFFECT(Effect::FlushRenderTarget, "Flush_RenderTarget", true, "");
+    LOAD_EFFECT(Effects.Font, "Font_Default", true, "");
+    LOAD_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget", true, "");
     if (effect_errors > 0)
     {
         WriteLog("Minimal effects not loaded.\n");
@@ -786,35 +787,35 @@ bool GraphicLoader::LoadDefaultEffects()
 {
     // Default effects
     uint effect_errors = 0;
-    LOAD_EFFECT(Effect::Generic, "2D_Default", true, "");
-    LOAD_EFFECT(Effect::Critter, "2D_Default", true, "");
-    LOAD_EFFECT(Effect::Roof, "2D_Default", true, "");
-    LOAD_EFFECT(Effect::Rain, "2D_WithoutEgg", true, "");
-    LOAD_EFFECT(Effect::Iface, "Interface_Default", true, "");
-    LOAD_EFFECT(Effect::Primitive, "Primitive_Default", true, "");
-    LOAD_EFFECT(Effect::Light, "Primitive_Light", true, "");
-    LOAD_EFFECT(Effect::Fog, "Primitive_Fog", true, "");
-    LOAD_EFFECT(Effect::Font, "Font_Default", true, "");
-    LOAD_EFFECT(Effect::Tile, "2D_WithoutEgg", true, "");
-    LOAD_EFFECT(Effect::FlushRenderTarget, "Flush_RenderTarget", true, "");
-    LOAD_EFFECT(Effect::FlushPrimitive, "Flush_Primitive", true, "");
-    LOAD_EFFECT(Effect::FlushMap, "Flush_Map", true, "");
-    LOAD_EFFECT(Effect::FlushLight, "Flush_Light", true, "");
-    LOAD_EFFECT(Effect::FlushFog, "Flush_Fog", true, "");
+    LOAD_EFFECT(Effects.Generic, "2D_Default", true, "");
+    LOAD_EFFECT(Effects.Critter, "2D_Default", true, "");
+    LOAD_EFFECT(Effects.Roof, "2D_Default", true, "");
+    LOAD_EFFECT(Effects.Rain, "2D_WithoutEgg", true, "");
+    LOAD_EFFECT(Effects.Iface, "Interface_Default", true, "");
+    LOAD_EFFECT(Effects.Primitive, "Primitive_Default", true, "");
+    LOAD_EFFECT(Effects.Light, "Primitive_Light", true, "");
+    LOAD_EFFECT(Effects.Fog, "Primitive_Fog", true, "");
+    LOAD_EFFECT(Effects.Font, "Font_Default", true, "");
+    LOAD_EFFECT(Effects.Tile, "2D_WithoutEgg", true, "");
+    LOAD_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget", true, "");
+    LOAD_EFFECT(Effects.FlushPrimitive, "Flush_Primitive", true, "");
+    LOAD_EFFECT(Effects.FlushMap, "Flush_Map", true, "");
+    LOAD_EFFECT(Effects.FlushLight, "Flush_Light", true, "");
+    LOAD_EFFECT(Effects.FlushFog, "Flush_Fog", true, "");
     if (effect_errors > 0)
     {
         WriteLog("Default effects not loaded.\n");
         return false;
     }
 
-    LOAD_EFFECT(Effect::Contour, "Contour_Default", true, "");
+    LOAD_EFFECT(Effects.Contour, "Contour_Default", true, "");
     return true;
 }
 
 bool GraphicLoader::Load3dEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT(Effect::Skinned3d, "3D_Skinned", false, "");
+    LOAD_EFFECT(Effects.Skinned3d, "3D_Skinned", false, "");
     if (effect_errors > 0)
     {
         WriteLog("3D effects not loaded.\n");

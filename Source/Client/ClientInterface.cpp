@@ -339,9 +339,8 @@ void FOClient::LmapPrepareMap()
             if (f.Crit)
             {
                 cur_color = (f.Crit == Chosen ? 0xFF0000FF : 0xFFFF0000);
-                LmapPrepPix.push_back(PrepPoint(LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y, cur_color));
-                LmapPrepPix.push_back(
-                    PrepPoint(LmapWMap[0] + pix_x, LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color));
+                LmapPrepPix.push_back({LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y, cur_color});
+                LmapPrepPix.push_back({LmapWMap[0] + pix_x, LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color});
             }
             else if (f.Flags.IsWall || f.Flags.IsScen)
             {
@@ -358,9 +357,9 @@ void FOClient::LmapPrepareMap()
 
             if (is_far)
                 cur_color = COLOR_CHANGE_ALPHA(cur_color, 0x22);
-            LmapPrepPix.push_back(PrepPoint(LmapWMap[0] + pix_x, LmapWMap[1] + pix_y, cur_color));
+            LmapPrepPix.push_back({LmapWMap[0] + pix_x, LmapWMap[1] + pix_y, cur_color});
             LmapPrepPix.push_back(
-                PrepPoint(LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color));
+                {LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color});
         }
         pix_x -= LmapZoom;
         pix_y = 0;

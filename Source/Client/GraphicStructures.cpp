@@ -5,63 +5,11 @@
 
 bool Is3dExtensionSupported(const string& ext)
 {
-    static const string supported_formats[] = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf",
-        "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d",
-        "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo",
-        "ac"};
-
-    for (const string& entry : supported_formats)
-        if (entry == ext)
-            return true;
-    return false;
-}
-
-//
-// AnyFrames
-//
-
-static MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> AnyFramesPool;
-static AnyFrames* DummyAnim;
-
-AnyFrames* AnyFrames::Create(uint frames, uint ticks)
-{
-    AnyFrames* anim = (AnyFrames*)AnyFramesPool.Get();
-    memzero(anim, sizeof(AnyFrames));
-    anim->CntFrm = MIN(frames, MAX_FRAMES);
-    anim->Ticks = (ticks ? ticks : frames * 100);
-    anim->HaveDirs = false;
-    return anim;
-}
-
-void AnyFrames::Destroy(AnyFrames* anim)
-{
-    if (!anim || anim == DummyAnim)
-        return;
-
-    for (int dir = 1; dir < anim->DirCount(); dir++)
-        AnyFramesPool.Put(anim->GetDir(dir));
-    AnyFramesPool.Put(anim);
-}
-
-void AnyFrames::SetDummy(AnyFrames* anim)
-{
-    DummyAnim = anim;
-}
-
-void AnyFrames::CreateDirAnims()
-{
-    HaveDirs = true;
-    for (int dir = 0; dir < DIRS_COUNT - 1; dir++)
-        Dirs[dir] = Create(CntFrm, Ticks);
-}
-
-//
-// Texture
-//
-
-Texture::Texture() : Name(nullptr), Id(0), Width(0), Height(0), Samples(0.0f)
-{
-    // Dummy comment
+    static const unordered_set<string> supported_formats = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase",
+        "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh",
+        "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl",
+        "hmp", "ndo", "ac"};
+    return supported_formats.count(ext);
 }
 
 Texture::~Texture()
@@ -76,18 +24,12 @@ void Texture::UpdateRegion(const Rect& r, const uchar* data)
     GL(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
-//
-// TextureAtlas
-//
-
 TextureAtlas::SpaceNode::SpaceNode(int x, int y, int w, int h)
 {
-    busy = false;
     posX = x;
     posY = y;
     width = w;
     height = h;
-    child1 = child2 = nullptr;
 }
 
 TextureAtlas::SpaceNode::~SpaceNode()
@@ -126,19 +68,10 @@ bool TextureAtlas::SpaceNode::FindPosition(int w, int h, int& x, int& y)
     return result;
 }
 
-TextureAtlas::TextureAtlas()
-{
-    memzero(this, sizeof(TextureAtlas));
-}
-
 TextureAtlas::~TextureAtlas()
 {
     SAFEDEL(RootNode);
 }
-
-//
-// MeshData
-//
 
 void MeshData::Save(File& file)
 {
@@ -181,19 +114,32 @@ void MeshData::Load(File& file)
     memzero(&DrawEffect, sizeof(DrawEffect));
 }
 
-//
-// CombinedMesh
-//
-
-void CombinedMesh::Clear()
+CombinedMesh::CombinedMesh(uint max_bones)
 {
-    EncapsulatedMeshCount = 0;
+    SkinBones.resize(max_bones);
+    SkinBoneOffsets.resize(max_bones);
+}
+
+CombinedMesh::~CombinedMesh()
+{
     if (VBO)
         GL(glDeleteBuffers(1, &VBO));
     if (IBO)
         GL(glDeleteBuffers(1, &IBO));
     if (VAO)
         GL(glDeleteVertexArrays(1, &VAO));
+}
+
+void CombinedMesh::Clear()
+{
+    if (VBO)
+        GL(glDeleteBuffers(1, &VBO));
+    if (IBO)
+        GL(glDeleteBuffers(1, &IBO));
+    if (VAO)
+        GL(glDeleteVertexArrays(1, &VAO));
+
+    EncapsulatedMeshCount = 0;
     VAO = VBO = IBO = 0;
     CurBoneMatrix = 0;
     Vertices.clear();
@@ -204,23 +150,23 @@ void CombinedMesh::Clear()
     MeshAnimLayers.clear();
 }
 
-bool CombinedMesh::CanEncapsulate(MeshInstance& mesh_instance)
+bool CombinedMesh::CanEncapsulate(MeshInstance* mesh_instance)
 {
     if (EncapsulatedMeshCount == 0)
         return true;
-    if (DrawEffect != mesh_instance.CurEffect)
+    if (DrawEffect != mesh_instance->CurEffect)
         return false;
     for (int i = 0; i < EFFECT_TEXTURES; i++)
-        if (Textures[i] && mesh_instance.CurTexures[i] && Textures[i]->Id != mesh_instance.CurTexures[i]->Id)
+        if (Textures[i] && mesh_instance->CurTexures[i] && Textures[i]->Id != mesh_instance->CurTexures[i]->Id)
             return false;
-    if (CurBoneMatrix + mesh_instance.Mesh->SkinBones.size() > SkinBones.size())
+    if (CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() > SkinBones.size())
         return false;
     return true;
 }
 
-void CombinedMesh::Encapsulate(MeshInstance& mesh_instance, int anim_layer)
+void CombinedMesh::Encapsulate(MeshInstance* mesh_instance, int anim_layer)
 {
-    MeshData* mesh = mesh_instance.Mesh;
+    MeshData* mesh = mesh_instance->Mesh;
     size_t vertices_old_size = Vertices.size();
     size_t indices_old_size = Indices.size();
 
@@ -229,7 +175,7 @@ void CombinedMesh::Encapsulate(MeshInstance& mesh_instance, int anim_layer)
     {
         Vertices = mesh->Vertices;
         Indices = mesh->Indices;
-        DrawEffect = mesh_instance.CurEffect;
+        DrawEffect = mesh_instance->CurEffect;
         memzero(&SkinBones[0], SkinBones.size() * sizeof(SkinBones[0]));
         memzero(Textures, sizeof(Textures));
         CurBoneMatrix = 0;
@@ -269,13 +215,13 @@ void CombinedMesh::Encapsulate(MeshInstance& mesh_instance, int anim_layer)
 
     // Add textures
     for (int i = 0; i < EFFECT_TEXTURES; i++)
-        if (!Textures[i] && mesh_instance.CurTexures[i])
-            Textures[i] = mesh_instance.CurTexures[i];
+        if (!Textures[i] && mesh_instance->CurTexures[i])
+            Textures[i] = mesh_instance->CurTexures[i];
 
     // Fix texture coords
-    if (mesh_instance.CurTexures[0])
+    if (mesh_instance->CurTexures[0])
     {
-        MeshTexture* mesh_tex = mesh_instance.CurTexures[0];
+        MeshTexture* mesh_tex = mesh_instance->CurTexures[0];
         for (size_t i = vertices_old_size, j = Vertices.size(); i < j; i++)
         {
             Vertices[i].TexCoord[0] =
@@ -316,13 +262,10 @@ void CombinedMesh::Finalize()
     }
 }
 
-//
-// Bone
-//
-
 Bone::~Bone()
 {
     SAFEDEL(Mesh);
+
     for (auto& child : Children)
         delete child;
 }
@@ -331,6 +274,7 @@ Bone* Bone::Find(uint name_hash)
 {
     if (NameHash == name_hash)
         return this;
+
     for (uint i = 0; i < Children.size(); i++)
     {
         Bone* bone = Children[i]->Find(name_hash);
@@ -403,14 +347,9 @@ uint Bone::GetHash(const string& name)
     return _str(name).toHash();
 }
 
-//
-// Cut
-//
-
-CutShape CutShape::Make(MeshData* mesh)
+CutShape::CutShape(MeshData* mesh)
 {
-    CutShape result;
-    result.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
+    GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
 
     // Calculate sphere radius
     float vmin, vmax;
@@ -422,7 +361,22 @@ CutShape CutShape::Make(MeshData* mesh)
         if (!i || v.Position.x > vmax)
             vmax = v.Position.x;
     }
-    result.SphereRadius = (vmax - vmin) / 2.0f;
 
-    return result;
+    SphereRadius = (vmax - vmin) / 2.0f;
+}
+
+void MapSprite::AddRef() const
+{
+    ++RefCount;
+}
+
+void MapSprite::Release() const
+{
+    if (--RefCount == 0)
+        delete this;
+}
+
+MapSprite* MapSprite::Factory()
+{
+    return new MapSprite();
 }

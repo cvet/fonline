@@ -9,7 +9,6 @@
 #else
 #include "SDL_opengles2.h"
 #endif
-#include "SDL_vulkan.h"
 
 #ifndef FO_OPENGL_ES
 #ifdef FO_MAC
@@ -36,7 +35,7 @@
 #define glDeleteFramebuffersEXT glDeleteFramebuffers
 #define glProgramBinary(a, b, c, d)
 #define glGetProgramBinary(a, b, c, d, e)
-#define glProgramParameteri glProgramParameteriEXT
+#define glProgramParameteri(a, b, c)
 #define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0
 #define GL_PROGRAM_BINARY_LENGTH 0
 #define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE

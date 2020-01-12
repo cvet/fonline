@@ -134,6 +134,7 @@ public:
     void EndScene();
     void OnResolutionChanged();
     void SetAlwaysOnTop(bool enable);
+    GraphicLoader& GetGraphicLoader() { return graphicLoader; }
 
     // Render targets
     RenderTarget* CreateRenderTarget(bool depth, bool multisampling, bool screen_size, uint width, uint height,

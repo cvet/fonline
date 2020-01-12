@@ -178,7 +178,7 @@ private:
 
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(Animation3d* base, Animation3d* cur);
-    void CombineMesh(MeshInstance& mesh_instance, int anim_layer);
+    void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(Animation3d* base, Animation3d* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);

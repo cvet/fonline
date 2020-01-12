@@ -799,8 +799,7 @@ void FOClient::LookBordersPrepare()
                 HexMngr.GetHexCurrentPosition(hx_, hy_, x, y);
                 short* ox = (dist_look == dist ? &Chosen->SprOx : nullptr);
                 short* oy = (dist_look == dist ? &Chosen->SprOy : nullptr);
-                LookBorders.push_back(
-                    PrepPoint(x + HEX_OX, y + HEX_OY, COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy));
+                LookBorders.push_back({x + HEX_OX, y + HEX_OY, COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
             }
 
             if (DrawShootBorders)
@@ -819,8 +818,8 @@ void FOClient::LookBordersPrepare()
                 uint result_shoot_dist = DistGame(base_hx, base_hy, hx__, hy__);
                 short* ox = (result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : nullptr);
                 short* oy = (result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : nullptr);
-                ShootBorders.push_back(PrepPoint(x_ + HEX_OX, y_ + HEX_OY,
-                    COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy));
+                ShootBorders.push_back({x_ + HEX_OX, y_ + HEX_OY,
+                    COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
             }
         }
     }
@@ -831,13 +830,13 @@ void FOClient::LookBordersPrepare()
     {
         LookBorders.push_back(*LookBorders.begin());
         LookBorders.insert(LookBorders.begin(),
-            PrepPoint(base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(0, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy));
+            {base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(0, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy});
     }
     if (!ShootBorders.empty())
     {
         ShootBorders.push_back(*ShootBorders.begin());
         ShootBorders.insert(ShootBorders.begin(),
-            PrepPoint(base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(255, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy));
+            {base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(255, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy});
     }
 
     HexMngr.SetFog(LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy);
@@ -6885,58 +6884,61 @@ bool FOClient::SScriptFunc::Global_SetEffect(
     {
         ItemHexView* item = Self->GetItem((uint)effect_subtype);
         if (item)
-            item->DrawEffect = (effect ? effect : Effect::Generic);
+            item->DrawEffect = (effect ? effect : Self->GraphicLoader.Effects.Generic);
     }
     if (effect_type & EFFECT_2D_CRITTER && effect_subtype != 0)
     {
         CritterView* cr = Self->GetCritter((uint)effect_subtype);
         if (cr)
-            cr->DrawEffect = (effect ? effect : Effect::Critter);
+            cr->DrawEffect = (effect ? effect : Self->GraphicLoader.Effects.Critter);
     }
 
     if (effect_type & EFFECT_2D_GENERIC && effect_subtype == 0)
-        *Effect::Generic = (effect ? *effect : *Effect::GenericDefault);
+        Self->GraphicLoader.Effects.Generic = (effect ? effect : Self->GraphicLoader.Effects.GenericDefault);
     if (effect_type & EFFECT_2D_CRITTER && effect_subtype == 0)
-        *Effect::Critter = (effect ? *effect : *Effect::CritterDefault);
+        Self->GraphicLoader.Effects.Critter = (effect ? effect : Self->GraphicLoader.Effects.CritterDefault);
     if (effect_type & EFFECT_2D_TILE)
-        *Effect::Tile = (effect ? *effect : *Effect::TileDefault);
+        Self->GraphicLoader.Effects.Tile = (effect ? effect : Self->GraphicLoader.Effects.TileDefault);
     if (effect_type & EFFECT_2D_ROOF)
-        *Effect::Roof = (effect ? *effect : *Effect::RoofDefault);
+        Self->GraphicLoader.Effects.Roof = (effect ? effect : Self->GraphicLoader.Effects.RoofDefault);
     if (effect_type & EFFECT_2D_RAIN)
-        *Effect::Rain = (effect ? *effect : *Effect::RainDefault);
+        Self->GraphicLoader.Effects.Rain = (effect ? effect : Self->GraphicLoader.Effects.RainDefault);
 
     if (effect_type & EFFECT_3D_SKINNED)
-        *Effect::Skinned3d = (effect ? *effect : *Effect::Skinned3dDefault);
+        Self->GraphicLoader.Effects.Skinned3d = (effect ? effect : Self->GraphicLoader.Effects.Skinned3dDefault);
 
     if (effect_type & EFFECT_INTERFACE_BASE)
-        *Effect::Iface = (effect ? *effect : *Effect::IfaceDefault);
+        Self->GraphicLoader.Effects.Iface = (effect ? effect : Self->GraphicLoader.Effects.IfaceDefault);
     if (effect_type & EFFECT_INTERFACE_CONTOUR)
-        *Effect::Contour = (effect ? *effect : *Effect::ContourDefault);
+        Self->GraphicLoader.Effects.Contour = (effect ? effect : Self->GraphicLoader.Effects.ContourDefault);
 
     if (effect_type & EFFECT_FONT && effect_subtype == -1)
-        *Effect::Font = (effect ? *effect : *Effect::ContourDefault);
+        Self->GraphicLoader.Effects.Font = (effect ? effect : Self->GraphicLoader.Effects.ContourDefault);
     if (effect_type & EFFECT_FONT && effect_subtype >= 0)
         Self->SprMngr.SetFontEffect(effect_subtype, effect);
 
     if (effect_type & EFFECT_PRIMITIVE_GENERIC)
-        *Effect::Primitive = (effect ? *effect : *Effect::PrimitiveDefault);
+        Self->GraphicLoader.Effects.Primitive = (effect ? effect : Self->GraphicLoader.Effects.PrimitiveDefault);
     if (effect_type & EFFECT_PRIMITIVE_LIGHT)
-        *Effect::Light = (effect ? *effect : *Effect::LightDefault);
+        Self->GraphicLoader.Effects.Light = (effect ? effect : Self->GraphicLoader.Effects.LightDefault);
     if (effect_type & EFFECT_PRIMITIVE_FOG)
-        *Effect::Fog = (effect ? *effect : *Effect::FogDefault);
+        Self->GraphicLoader.Effects.Fog = (effect ? effect : Self->GraphicLoader.Effects.FogDefault);
 
     if (effect_type & EFFECT_FLUSH_RENDER_TARGET)
-        *Effect::FlushRenderTarget = (effect ? *effect : *Effect::FlushRenderTargetDefault);
+        Self->GraphicLoader.Effects.FlushRenderTarget =
+            (effect ? effect : Self->GraphicLoader.Effects.FlushRenderTargetDefault);
     if (effect_type & EFFECT_FLUSH_RENDER_TARGET_MS)
-        *Effect::FlushRenderTargetMS = (effect ? *effect : *Effect::FlushRenderTargetMSDefault);
+        Self->GraphicLoader.Effects.FlushRenderTargetMS =
+            (effect ? effect : Self->GraphicLoader.Effects.FlushRenderTargetMSDefault);
     if (effect_type & EFFECT_FLUSH_PRIMITIVE)
-        *Effect::FlushPrimitive = (effect ? *effect : *Effect::FlushPrimitiveDefault);
+        Self->GraphicLoader.Effects.FlushPrimitive =
+            (effect ? effect : Self->GraphicLoader.Effects.FlushPrimitiveDefault);
     if (effect_type & EFFECT_FLUSH_MAP)
-        *Effect::FlushMap = (effect ? *effect : *Effect::FlushMapDefault);
+        Self->GraphicLoader.Effects.FlushMap = (effect ? effect : Self->GraphicLoader.Effects.FlushMapDefault);
     if (effect_type & EFFECT_FLUSH_LIGHT)
-        *Effect::FlushLight = (effect ? *effect : *Effect::FlushLightDefault);
+        Self->GraphicLoader.Effects.FlushLight = (effect ? effect : Self->GraphicLoader.Effects.FlushLightDefault);
     if (effect_type & EFFECT_FLUSH_FOG)
-        *Effect::FlushFog = (effect ? *effect : *Effect::FlushFogDefault);
+        Self->GraphicLoader.Effects.FlushFog = (effect ? effect : Self->GraphicLoader.Effects.FlushFogDefault);
 
     if (effect_type & EFFECT_OFFSCREEN)
     {

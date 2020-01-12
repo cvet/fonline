@@ -2,13 +2,13 @@
 
 #include "Common.h"
 #include "GraphicStructures.h"
+#include "SpriteManager.h"
 
 #define RES_ATLAS_STATIC (1)
 #define RES_ATLAS_DYNAMIC (2)
 #define RES_ATLAS_SPLASH (3)
 #define RES_ATLAS_TEXTURES (4)
 
-class SpriteManager;
 struct SpriteInfo;
 struct AnyFrames;
 class IDataFile;
@@ -44,8 +44,8 @@ public:
     uint GetCritSprId(hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr);
 
     AnyFrames* GetRandomSplash();
-
     StrMap& GetSoundNames() { return soundNames; }
+    GraphicLoader& GetGraphicLoader() { return sprMngr.GetGraphicLoader(); }
 
     AnyFrames* ItemHexDefaultAnim;
     AnyFrames* CritterDefaultAnim;
