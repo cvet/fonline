@@ -15,4 +15,6 @@
 #undef MessageBox
 #undef GetObject
 #undef LoadImage
+#undef FindFirstFile
+#undef FindNextFile
 #endif

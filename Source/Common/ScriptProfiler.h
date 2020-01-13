@@ -4,6 +4,10 @@
 
 class asIScriptEngine;
 class asIScriptContext;
+namespace DiskFileSystem
+{
+    struct DiskFile;
+}
 
 struct Call
 {
@@ -44,7 +48,7 @@ private:
     CallStack callStack;
 
     // Save stacks
-    void* saveFileHandle;
+    shared_ptr<DiskFileSystem::DiskFile> saveFileHandle;
 
     // Dynamic display
     bool isDynamicDisplay;
@@ -55,7 +59,6 @@ private:
     bool Init(asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display);
     void AddModule(const string& module_name, const string& script_code);
     void EndModules();
-    bool IsNeedProcess();
     void Process(asIScriptContext* ctx);
     void ProcessStack(CallStack& stack);
     void Finish();

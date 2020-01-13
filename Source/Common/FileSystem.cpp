@@ -54,27 +54,25 @@ void File::InitDataFiles(const string& path, bool set_write_dir /* = true */)
     if (fixed_path.empty() || fixed_path.front() != '$')
     {
         // Redirect path
-        void* redirection_link = FileOpen(fixed_path + "Redirection.link", false);
+        auto redirection_link = DiskFileSystem::OpenFile(fixed_path + "Redirection.link", false);
         if (redirection_link)
         {
-            uint len = FileGetSize(redirection_link);
-            char* link = (char*)alloca(len + 1);
-            FileRead(redirection_link, link, len);
-            FileClose(redirection_link);
-            link[len] = 0;
+            uint len = DiskFileSystem::GetFileSize(redirection_link);
+            string link(len, ' ');
+            DiskFileSystem::ReadFile(redirection_link, &link[0], len);
+            redirection_link = nullptr;
             InitDataFiles(_str(fixed_path + link).formatPath(), set_write_dir);
             return;
         }
 
         // Additional path
-        void* extension_link = FileOpen(fixed_path + "Extension.link", false);
+        auto extension_link = DiskFileSystem::OpenFile(fixed_path + "Extension.link", false);
         if (extension_link)
         {
-            uint len = FileGetSize(extension_link);
-            char* link = (char*)alloca(len + 1);
-            FileRead(extension_link, link, len);
-            FileClose(extension_link);
-            link[len] = 0;
+            uint len = DiskFileSystem::GetFileSize(extension_link);
+            string link(len, ' ');
+            DiskFileSystem::ReadFile(extension_link, &link[0], len);
+            extension_link = nullptr;
             InitDataFiles(_str(fixed_path + link).formatPath(), false);
         }
     }
@@ -215,18 +213,16 @@ bool File::LoadFile(const string& path, bool no_read /* = false */)
     }
     else
     {
-        void* file = FileOpen(_str(path).formatPath(), false);
+        auto file = DiskFileSystem::OpenFile(_str(path).formatPath(), false);
         if (file)
         {
-            uint file_size = FileGetSize(file);
-            uint64 write_time = FileGetWriteTime(file);
+            uint file_size = DiskFileSystem::GetFileSize(file);
+            uint64 write_time = DiskFileSystem::GetFileWriteTime(file);
 
             if (!no_read)
             {
                 uchar* buf = new uchar[file_size + 1];
-                bool result = FileRead(file, buf, file_size);
-                FileClose(file);
-                if (!result)
+                if (!DiskFileSystem::ReadFile(file, buf, file_size))
                 {
                     delete[] buf;
                     return false;
@@ -234,10 +230,6 @@ bool File::LoadFile(const string& path, bool no_read /* = false */)
 
                 fileBuf = buf;
                 fileBuf[file_size] = 0;
-            }
-            else
-            {
-                FileClose(file);
             }
 
             curPos = 0;
@@ -541,24 +533,18 @@ bool File::SaveFile(const string& fname)
     RUNTIME_ASSERT((dataOutBuf || !endOutBuf));
 
     string fpath = GetWritePath(fname);
-    void* file = FileOpen(fpath, true);
+    auto file = DiskFileSystem::OpenFile(fpath, true);
     if (!file)
         return false;
 
-    if (!FileWrite(file, dataOutBuf, endOutBuf))
-    {
-        FileClose(file);
-        return false;
-    }
-
-    FileClose(file);
-    return true;
+    return DiskFileSystem::WriteFile(file, dataOutBuf, endOutBuf);
 }
 
 void File::SetData(const void* data, uint len)
 {
     if (!len)
         return;
+
     if (posOutBuf + len > lenOutBuf)
     {
         if (ResizeOutBuf())
@@ -671,30 +657,30 @@ string File::GetWritePath(const string& fname)
 
 bool File::IsFileExists(const string& fname)
 {
-    return FileExist(fname);
+    return DiskFileSystem::IsFileExists(fname);
 }
 
 bool File::CopyFile(const string& from, const string& to)
 {
     string dir = _str(to).extractDir();
     if (!dir.empty())
-        MakeDirectoryTree(dir);
+        DiskFileSystem::MakeDirectoryTree(dir);
 
-    return FileCopy(from, to);
+    return DiskFileSystem::CopyFile(from, to);
 }
 
 bool File::RenameFile(const string& from, const string& to)
 {
     string dir = _str(to).extractDir();
     if (!dir.empty())
-        MakeDirectoryTree(dir);
+        DiskFileSystem::MakeDirectoryTree(dir);
 
-    return FileRename(from, to);
+    return DiskFileSystem::RenameFile(from, to);
 }
 
 bool File::DeleteFile(const string& fname)
 {
-    return FileDelete(fname);
+    return DiskFileSystem::DeleteFile(fname);
 }
 
 void File::DeleteDir(const string& dir)
@@ -716,7 +702,7 @@ void File::DeleteDir(const string& dir)
 
 void File::CreateDirectoryTree(const string& path)
 {
-    MakeDirectoryTree(path);
+    DiskFileSystem::MakeDirectoryTree(path);
 }
 
 string File::GetExePath()
@@ -736,8 +722,9 @@ void File::RecursiveDirLook(const string& base_dir, const string& cur_dir, bool 
     StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs)
 {
     FindData fd;
-    void* h = FileFindFirst(base_dir + cur_dir, "", &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory);
-    while (h)
+    auto find = DiskFileSystem::FindFirstFile(
+        base_dir + cur_dir, "", &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory);
+    while (find)
     {
         if (fd.IsDirectory)
         {
@@ -764,11 +751,9 @@ void File::RecursiveDirLook(const string& base_dir, const string& cur_dir, bool 
             }
         }
 
-        if (!FileFindNext(h, &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory))
+        if (!DiskFileSystem::FindNextFile(find, &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory))
             break;
     }
-    if (h)
-        FileFindClose(h);
 }
 
 void File::GetFolderFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& files_path,

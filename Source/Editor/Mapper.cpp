@@ -4226,7 +4226,7 @@ bool FOMapper::SaveLogFile()
     string log_path = _str("./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt", dt.Day, dt.Month, dt.Year, dt.Hour,
         dt.Minute, dt.Second);
 
-    void* f = FileOpen(log_path, true);
+    auto f = DiskFileSystem::OpenFile(log_path, true);
     if (!f)
         return false;
 
@@ -4238,8 +4238,7 @@ bool FOMapper::SaveLogFile()
         fmt_log += MessBox[i].Time + string(cur_mess);
     }
 
-    FileWrite(f, fmt_log.c_str(), (uint)fmt_log.length());
-    FileClose(f);
+    DiskFileSystem::WriteFile(f, fmt_log.c_str(), (uint)fmt_log.length());
     return true;
 }
 
@@ -4856,8 +4855,8 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames(string dir)
     string dir_ = (dir.empty() ? GameOpt.WorkDir : dir);
 
     string file_find_fname;
-    void* h = FileFindFirst(dir_, "", &file_find_fname, nullptr, nullptr, nullptr);
-    if (!h)
+    auto find = DiskFileSystem::FindFirstFile(dir_, "", &file_find_fname, nullptr, nullptr, nullptr);
+    if (!find)
     {
         File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
         return nullptr;
@@ -4872,10 +4871,9 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames(string dir)
             names->InsertLast(&fname);
         }
 
-        if (!FileFindNext(h, &file_find_fname, nullptr, nullptr, nullptr))
+        if (!DiskFileSystem::FindNextFile(find, &file_find_fname, nullptr, nullptr, nullptr))
             break;
     }
-    FileFindClose(h);
 
     File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
     return names;

@@ -9,7 +9,7 @@
 
 static std::mutex LogLocker;
 static bool LogDisableTimestamp;
-static void* LogFileHandle;
+static shared_ptr<DiskFileSystem::DiskFile> LogFileHandle;
 static map<string, LogFunc> LogFunctions;
 static bool LogFunctionsInProcess;
 static string* LogBufferStr;
@@ -25,12 +25,10 @@ void LogToFile(const string& fname)
 {
     SCOPE_LOCK(LogLocker);
 
-    if (LogFileHandle)
-        FileClose(LogFileHandle);
     LogFileHandle = nullptr;
 
     if (!fname.empty())
-        LogFileHandle = FileOpen(fname, true, true);
+        LogFileHandle = DiskFileSystem::OpenFile(fname, true, true);
 }
 
 void LogToFunc(const string& key, LogFunc func, bool enable)
@@ -90,7 +88,7 @@ void WriteLogMessage(const string& message)
 
     // Write logs
     if (LogFileHandle)
-        FileWrite(LogFileHandle, result.c_str(), (uint)result.length());
+        DiskFileSystem::WriteFile(LogFileHandle, result.c_str(), (uint)result.length());
 
     if (LogBufferStr)
         *LogBufferStr += result;

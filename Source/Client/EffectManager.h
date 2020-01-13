@@ -67,5 +67,5 @@ private:
         const string& defines, EffectDefault* defaults, uint defaults_count);
 
     vector<unique_ptr<Effect>> loadedEffects {};
-    uint effectId {};
+    uint effectIdCounter {};
 };

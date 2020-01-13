@@ -14,6 +14,16 @@
 #endif
 
 #ifdef FO_WINDOWS
+struct DiskFileSystem::DiskFile
+{
+    HANDLE FileHandle {};
+};
+
+struct DiskFileSystem::DiskFind
+{
+    HANDLE FindHandle {};
+};
+
 static uint64 FileTimeToUInt64(FILETIME ft)
 {
     union
@@ -35,118 +45,124 @@ static string WCtoMB(const wchar_t* wc)
     return _str().parseWideChar(wc).normalizePathSlashes();
 }
 
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFile(const string& fname, bool write, bool write_through)
 {
     HANDLE file;
     if (write)
     {
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
             CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
         if (file == INVALID_HANDLE_VALUE)
         {
             MakeDirectoryTree(fname);
-            file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+            file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
                 CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
         }
     }
     else
     {
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
             OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
     }
     if (file == INVALID_HANDLE_VALUE)
         return nullptr;
-    return file;
+
+    return shared_ptr<DiskFile>(new DiskFile {file}, [](DiskFile* file) {
+        ::CloseHandle(file->FileHandle);
+        delete file;
+    });
 }
 
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForAppend(const string& fname, bool write_through)
 {
-    HANDLE file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+    HANDLE file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
         OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
     if (file == INVALID_HANDLE_VALUE)
     {
         MakeDirectoryTree(fname);
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
             CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
     }
     if (file == INVALID_HANDLE_VALUE)
         return nullptr;
-    if (!FileSetPointer(file, 0, SEEK_END))
+    if (::SetFilePointer(file, 0, nullptr, SeekEnd) == INVALID_SET_FILE_POINTER)
     {
-        FileClose(file);
+        ::CloseHandle(file);
         return nullptr;
     }
-    return file;
+
+    return shared_ptr<DiskFile>(new DiskFile {file}, [](DiskFile* file) {
+        ::CloseHandle(file->FileHandle);
+        delete file;
+    });
 }
 
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForReadWrite(const string& fname, bool write_through)
 {
-    HANDLE file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+    HANDLE file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
     if (file == INVALID_HANDLE_VALUE)
     {
         MakeDirectoryTree(fname);
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        file = ::CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
     }
     if (file == INVALID_HANDLE_VALUE)
         return nullptr;
-    return file;
+
+    return shared_ptr<DiskFile>(new DiskFile {file}, [](DiskFile* file) {
+        ::CloseHandle(file->FileHandle);
+        delete file;
+    });
 }
 
-void FileClose(void* file)
-{
-    if (file)
-        CloseHandle((HANDLE)file);
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
+bool DiskFileSystem::ReadFile(shared_ptr<DiskFile> file, void* buf, uint len, uint* rb)
 {
     DWORD dw = 0;
-    BOOL result = ReadFile((HANDLE)file, buf, len, &dw, nullptr);
+    BOOL result = ::ReadFile(file->FileHandle, buf, len, &dw, nullptr);
     if (rb)
         *rb = dw;
     return result && dw == len;
 }
 
-bool FileWrite(void* file, const void* buf, uint len)
+bool DiskFileSystem::WriteFile(shared_ptr<DiskFile> file, const void* buf, uint len)
 {
     DWORD dw = 0;
-    return WriteFile((HANDLE)file, buf, len, &dw, nullptr) && dw == len;
+    return ::WriteFile(file->FileHandle, buf, len, &dw, nullptr) && dw == len;
 }
 
-bool FileSetPointer(void* file, int offset, int origin)
+bool DiskFileSystem::SetFilePointer(shared_ptr<DiskFile> file, int offset, DiskFileSeek origin)
 {
-    return SetFilePointer((HANDLE)file, offset, nullptr, origin) != INVALID_SET_FILE_POINTER;
+    return ::SetFilePointer(file->FileHandle, offset, nullptr, origin) != INVALID_SET_FILE_POINTER;
 }
 
-uint FileGetPointer(void* file)
+uint DiskFileSystem::GetFilePointer(shared_ptr<DiskFile> file)
 {
-    return (uint)SetFilePointer((HANDLE)file, 0, nullptr, FILE_CURRENT);
+    return (uint)::SetFilePointer(file->FileHandle, 0, nullptr, FILE_CURRENT);
 }
 
-uint64 FileGetWriteTime(void* file)
+uint64 DiskFileSystem::GetFileWriteTime(shared_ptr<DiskFile> file)
 {
     FILETIME tc, ta, tw;
-    GetFileTime((HANDLE)file, &tc, &ta, &tw);
+    ::GetFileTime(file->FileHandle, &tc, &ta, &tw);
     return FileTimeToUInt64(tw);
 }
 
-uint FileGetSize(void* file)
+uint DiskFileSystem::GetFileSize(shared_ptr<DiskFile> file)
 {
     DWORD high;
-    return GetFileSize((HANDLE)file, &high);
+    return ::GetFileSize(file->FileHandle, &high);
 }
 
 #elif defined(FO_ANDROID)
 
-struct FileDesc
+struct DiskFileSystem::DiskFile
 {
     SDL_RWops* Ops;
     bool WriteThrough;
 };
 
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFile(const string& fname, bool write, bool write_through)
 {
     SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
     if (!ops && write)
@@ -157,13 +173,13 @@ void* FileOpen(const string& fname, bool write, bool write_through /* = false */
     if (!ops)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {ops, write_through}, [](DiskFile* file) {
+        SDL_RWclose(file->Ops);
+        delete file;
+    });
 }
 
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForAppend(const string& fname, bool write_through)
 {
     SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), "ab");
     if (!ops)
@@ -174,13 +190,13 @@ void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
     if (!ops)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {ops, write_through}, [](DiskFile* file) {
+        SDL_RWclose(file->Ops);
+        delete file;
+    });
 }
 
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForReadWrite(const string& fname, bool write_through)
 {
     SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), "r+b");
     if (!ops)
@@ -191,34 +207,25 @@ void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */
     if (!ops)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {ops, write_through}, [](DiskFile* file) {
+        SDL_RWclose(file->Ops);
+        delete file;
+    });
 }
 
-void FileClose(void* file)
+bool DiskFileSystem::ReadFile(shared_ptr<DiskFile> file, void* buf, uint len, uint* rb)
 {
-    if (file)
-    {
-        SDL_RWclose(((FileDesc*)file)->Ops);
-        delete (FileDesc*)file;
-    }
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
-{
-    uint rb_ = (uint)SDL_RWread(((FileDesc*)file)->Ops, buf, sizeof(char), len);
+    uint rb_ = (uint)SDL_RWread(file->Ops, buf, sizeof(char), len);
     if (rb)
         *rb = rb_;
     return rb_ == len;
 }
 
-bool FileWrite(void* file, const void* buf, uint len)
+bool DiskFileSystem::WriteFile(shared_ptr<DiskFile> file, const void* buf, uint len)
 {
-    SDL_RWops* ops = ((FileDesc*)file)->Ops;
+    SDL_RWops* ops = file->Ops;
     bool result = ((uint)SDL_RWwrite(ops, buf, sizeof(char), len) == len);
-    if (result && ((FileDesc*)file)->WriteThrough)
+    if (result && file->WriteThrough)
     {
         if (ops->type == SDL_RWOPS_WINFILE)
         {
@@ -236,19 +243,19 @@ bool FileWrite(void* file, const void* buf, uint len)
     return result;
 }
 
-bool FileSetPointer(void* file, int offset, int origin)
+bool DiskFileSystem::SetFilePointer(shared_ptr<DiskFile> file, int offset, DiskFileSeek origin)
 {
-    return SDL_RWseek((((FileDesc*)file)->Ops), offset, origin) != -1;
+    return SDL_RWseek(file->Ops, offset, origin) != -1;
 }
 
-uint FileGetPointer(void* file)
+uint DiskFileSystem::GetFilePointer(shared_ptr<DiskFile> file)
 {
-    return (uint)SDL_RWtell(((FileDesc*)file)->Ops);
+    return (uint)SDL_RWtell(file->Ops);
 }
 
-uint64 FileGetWriteTime(void* file)
+uint64 DiskFileSystem::GetFileWriteTime(shared_ptr<DiskFile> file)
 {
-    SDL_RWops* ops = ((FileDesc*)file)->Ops;
+    SDL_RWops* ops = file->Ops;
     if (ops->type == SDL_RWOPS_WINFILE)
     {
 #ifdef __WIN32__
@@ -269,22 +276,34 @@ uint64 FileGetWriteTime(void* file)
     return (uint64)1;
 }
 
-uint FileGetSize(void* file)
+uint DiskFileSystem::GetFileSize(shared_ptr<DiskFile> file)
 {
-    Sint64 size = SDL_RWsize(((FileDesc*)file)->Ops);
+    Sint64 size = SDL_RWsize(file->Ops);
     return (uint)(size <= 0 ? 0 : size);
 }
 
 #else
 
-struct FileDesc
+struct DiskFileSystem::DiskFile
 {
     FILE* File;
     bool Write;
     bool WriteThrough;
 };
 
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
+static void CloseFile(DiskFileSystem::DiskFile* file)
+{
+    fclose(file->File);
+
+#ifdef FO_WEB
+    if (file->Write)
+        EM_ASM(FS.syncfs(function(err) {}));
+#endif
+
+    delete file;
+}
+
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFile(const string& fname, bool write, bool write_through)
 {
     FILE* f = fopen(fname.c_str(), write ? "wb" : "rb");
     if (!f && write)
@@ -295,14 +314,10 @@ void* FileOpen(const string& fname, bool write, bool write_through /* = false */
     if (!f)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = write;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {f, write, write_through}, CloseFile);
 }
 
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForAppend(const string& fname, bool write_through)
 {
     FILE* f = fopen(fname.c_str(), "ab");
     if (!f)
@@ -313,14 +328,10 @@ void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
     if (!f)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = true;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {f, true, write_through}, CloseFile);
 }
 
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
+shared_ptr<DiskFileSystem::DiskFile> DiskFileSystem::OpenFileForReadWrite(const string& fname, bool write_through)
 {
     FILE* f = fopen(fname.c_str(), "r+b");
     if (!f)
@@ -331,65 +342,46 @@ void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */
     if (!f)
         return nullptr;
 
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = true;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
+    return shared_ptr<DiskFile>(new DiskFile {f, true, write_through}, CloseFile);
 }
 
-void FileClose(void* file)
+bool DiskFileSystem::ReadFile(shared_ptr<DiskFile> file, void* buf, uint len, uint* rb)
 {
-    if (file)
-    {
-        fclose(((FileDesc*)file)->File);
-
-#ifdef FO_WEB
-        if (((FileDesc*)file)->Write)
-            EM_ASM(FS.syncfs(function(err) {}));
-#endif
-
-        delete (FileDesc*)file;
-    }
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
-{
-    uint rb_ = (uint)fread(buf, sizeof(char), len, ((FileDesc*)file)->File);
+    uint rb_ = (uint)fread(buf, sizeof(char), len, file->File);
     if (rb)
         *rb = rb_;
     return rb_ == len;
 }
 
-bool FileWrite(void* file, const void* buf, uint len)
+bool DiskFileSystem::WriteFile(shared_ptr<DiskFile> file, const void* buf, uint len)
 {
-    bool result = ((uint)fwrite(buf, sizeof(char), len, ((FileDesc*)file)->File) == len);
-    if (result && ((FileDesc*)file)->WriteThrough)
-        fflush(((FileDesc*)file)->File);
+    bool result = ((uint)fwrite(buf, sizeof(char), len, file->File) == len);
+    if (result && file->WriteThrough)
+        fflush(file->File);
     return result;
 }
 
-bool FileSetPointer(void* file, int offset, int origin)
+bool DiskFileSystem::SetFilePointer(shared_ptr<DiskFile> file, int offset, DiskFileSeek origin)
 {
-    return fseek(((FileDesc*)file)->File, offset, origin) == 0;
+    return fseek(file->File, offset, origin) == 0;
 }
 
-uint FileGetPointer(void* file)
+uint DiskFileSystem::GetFilePointer(shared_ptr<DiskFile> file)
 {
-    return (uint)ftell(((FileDesc*)file)->File);
+    return (uint)ftell(file->File);
 }
 
-uint64 FileGetWriteTime(void* file)
+uint64 DiskFileSystem::GetFileWriteTime(shared_ptr<DiskFile> file)
 {
-    int fd = fileno(((FileDesc*)file)->File);
+    int fd = fileno(file->File);
     struct stat st;
     fstat(fd, &st);
     return (uint64)st.st_mtime;
 }
 
-uint FileGetSize(void* file)
+uint DiskFileSystem::GetFileSize(shared_ptr<DiskFile> file)
 {
-    int fd = fileno(((FileDesc*)file)->File);
+    int fd = fileno(file->File);
     struct stat st;
     fstat(fd, &st);
     return (uint)st.st_size;
@@ -397,27 +389,27 @@ uint FileGetSize(void* file)
 #endif
 
 #ifdef FO_WINDOWS
-bool FileDelete(const string& fname)
+bool DiskFileSystem::DeleteFile(const string& fname)
 {
-    return DeleteFileW(MBtoWC(fname).c_str()) != FALSE;
+    return ::DeleteFileW(MBtoWC(fname).c_str()) != FALSE;
 }
 
-bool FileExist(const string& fname)
+bool DiskFileSystem::IsFileExists(const string& fname)
 {
     return !_waccess(MBtoWC(fname).c_str(), 0);
 }
 
-bool FileCopy(const string& fname, const string& copy_fname)
+bool DiskFileSystem::CopyFile(const string& fname, const string& copy_fname)
 {
-    return CopyFileW(MBtoWC(fname).c_str(), MBtoWC(copy_fname).c_str(), FALSE) != FALSE;
+    return ::CopyFileW(MBtoWC(fname).c_str(), MBtoWC(copy_fname).c_str(), FALSE) != FALSE;
 }
 
-bool FileRename(const string& fname, const string& new_fname)
+bool DiskFileSystem::RenameFile(const string& fname, const string& new_fname)
 {
-    return MoveFileW(MBtoWC(fname).c_str(), MBtoWC(new_fname).c_str()) != FALSE;
+    return ::MoveFileW(MBtoWC(fname).c_str(), MBtoWC(new_fname).c_str()) != FALSE;
 }
 
-void* FileFindFirst(
+shared_ptr<DiskFileSystem::DiskFind> DiskFileSystem::FindFirstFile(
     const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
 {
     string query = path + "*";
@@ -425,9 +417,14 @@ void* FileFindFirst(
         query = "." + extension;
 
     WIN32_FIND_DATAW wfd;
-    HANDLE h = FindFirstFileW(MBtoWC(query).c_str(), &wfd);
+    HANDLE h = ::FindFirstFileW(MBtoWC(query).c_str(), &wfd);
     if (h == INVALID_HANDLE_VALUE)
         return nullptr;
+
+    auto find = shared_ptr<DiskFind>(new DiskFind {h}, [](DiskFind* find) {
+        ::CloseHandle(find->FindHandle);
+        delete find;
+    });
 
     if (fname)
         *fname = WCtoMB(wfd.cFileName);
@@ -439,16 +436,16 @@ void* FileFindFirst(
         *wtime = FileTimeToUInt64(wfd.ftLastWriteTime);
     if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
         (!wcscmp(wfd.cFileName, L".") || !wcscmp(wfd.cFileName, L"..")))
-        if (!FileFindNext(h, fname, fsize, wtime, is_dir))
+        if (!FindNextFile(find, fname, fsize, wtime, is_dir))
             return nullptr;
 
-    return h;
+    return find;
 }
 
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
+bool DiskFileSystem::FindNextFile(shared_ptr<DiskFind> find, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
 {
     WIN32_FIND_DATAW wfd;
-    if (!FindNextFileW((HANDLE)descriptor, &wfd))
+    if (!::FindNextFileW(find->FindHandle, &wfd))
         return false;
 
     if (fname)
@@ -461,30 +458,24 @@ bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, b
         *wtime = FileTimeToUInt64(wfd.ftLastWriteTime);
     if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
         (!wcscmp(wfd.cFileName, L".") || !wcscmp(wfd.cFileName, L"..")))
-        return FileFindNext((HANDLE)descriptor, fname, fsize, wtime, is_dir);
+        return FindNextFile(find, fname, fsize, wtime, is_dir);
 
     return true;
 }
 
-void FileFindClose(void* descriptor)
-{
-    if (descriptor)
-        FindClose((HANDLE)descriptor);
-}
-
 #else
 
-bool FileDelete(const string& fname)
+bool DiskFileSystem::DeleteFile(const string& fname)
 {
     return remove(fname.c_str());
 }
 
-bool FileExist(const string& fname)
+bool DiskFileSystem::IsFileExists(const string& fname)
 {
     return !access(fname.c_str(), 0);
 }
 
-bool FileCopy(const string& fname, const string& copy_fname)
+bool DiskFileSystem::CopyFile(const string& fname, const string& copy_fname)
 {
     bool ok = false;
     FILE* from = fopen(fname.c_str(), "rb");
@@ -507,26 +498,26 @@ bool FileCopy(const string& fname, const string& copy_fname)
             }
             fclose(to);
             if (!ok)
-                FileDelete(copy_fname);
+                DeleteFile(copy_fname);
         }
         fclose(from);
     }
     return ok;
 }
 
-bool FileRename(const string& fname, const string& new_fname)
+bool DiskFileSystem::RenameFile(const string& fname, const string& new_fname)
 {
     return !rename(fname.c_str(), new_fname.c_str());
 }
 
-struct FileFind
+struct DiskFileSystem::DiskFind
 {
-    DIR* d = nullptr;
-    string path;
-    string ext;
+    DIR* Dir {};
+    string Path {};
+    string Ext {};
 };
 
-void* FileFindFirst(
+shared_ptr<DiskFileSystem::DiskFind> DiskFileSystem::FindFirstFile(
     const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
 {
     // Open dir
@@ -535,36 +526,32 @@ void* FileFindFirst(
         return nullptr;
 
     // Create own descriptor
-    FileFind* ff = new FileFind();
-    ff->d = h;
-    ff->path = path;
-    if (!ff->path.empty() && ff->path.back() != '/')
-        ff->path += "/";
+    auto find = shared_ptr<DiskFind>(new DiskFind {h, path}, [](DiskFind* find) {
+        closedir(find->Dir);
+        delete find;
+    });
+
+    if (!find->Path.empty() && find->Path.back() != '/')
+        find->Path += "/";
     if (!extension.empty())
-        ff->ext = extension;
+        find->Ext = extension;
 
     // Find first entire
-    if (!FileFindNext(ff, fname, fsize, wtime, is_dir))
-    {
-        FileFindClose(ff);
+    if (!FindNextFile(find, fname, fsize, wtime, is_dir))
         return nullptr;
-    }
-    return ff;
+    return find;
 }
 
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
+bool DiskFileSystem::FindNextFile(shared_ptr<DiskFind> find, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
 {
-    // Cast descriptor
-    FileFind* ff = (FileFind*)descriptor;
-
     // Read entire
-    struct dirent* ent = readdir(ff->d);
+    struct dirent* ent = readdir(find->Dir);
     if (!ent)
         return false;
 
     // Skip '.' and '..'
     if (Str::Compare(ent->d_name, ".") || Str::Compare(ent->d_name, ".."))
-        return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+        return FindNextFile(find, fname, fsize, wtime, is_dir);
 
     // Read entire information
     bool valid = false;
@@ -572,7 +559,7 @@ bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, b
     uint file_size;
     uint64 write_time;
     struct stat st;
-    if (!stat((ff->path + ent->d_name).c_str(), &st))
+    if (!stat((find->Path + ent->d_name).c_str(), &st))
     {
         dir = S_ISDIR(st.st_mode);
         if (dir || S_ISREG(st.st_mode))
@@ -585,22 +572,22 @@ bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, b
 
     // Skip not dirs and regular files
     if (!valid)
-        return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+        return FindNextFile(find, fname, fsize, wtime, is_dir);
 
     // Find by extensions
-    if (!ff->ext.empty())
+    if (!find->Ext.empty())
     {
         // Skip dirs
         if (dir)
-            return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+            return FindNextFile(find, fname, fsize, wtime, is_dir);
 
         // Compare extension
         const char* ext = nullptr;
         for (const char* name = ent->d_name; *name; name++)
             if (*name == '.')
                 ext = name + 1;
-        if (!ext || !*ext || strcasecmp(ext, ff->ext.c_str()))
-            return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+        if (!ext || !*ext || strcasecmp(ext, find->Ext.c_str()))
+            return FindNextFile(find, fname, fsize, wtime, is_dir);
     }
 
     // Fill find data
@@ -614,31 +601,21 @@ bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, b
         *wtime = write_time;
     return true;
 }
-
-void FileFindClose(void* descriptor)
-{
-    if (descriptor)
-    {
-        FileFind* ff = (FileFind*)descriptor;
-        closedir(ff->d);
-        delete ff;
-    }
-}
 #endif
 
-void NormalizePathSlashesInplace(string& path)
+void DiskFileSystem::NormalizePathSlashesInplace(string& path)
 {
     std::replace(path.begin(), path.end(), '\\', '/');
 }
 
-void ResolvePathInplace(string& path)
+void DiskFileSystem::ResolvePathInplace(string& path)
 {
 #ifdef FO_WINDOWS
-    DWORD len = GetFullPathNameW(MBtoWC(path).c_str(), 0, nullptr, nullptr);
-    wchar_t* buf = (wchar_t*)alloca(len * sizeof(wchar_t) + sizeof(wchar_t));
-    if (GetFullPathNameW(MBtoWC(path).c_str(), len + 1, buf, nullptr))
+    DWORD len = ::GetFullPathNameW(MBtoWC(path).c_str(), 0, nullptr, nullptr);
+    vector<wchar_t> buf(len);
+    if (::GetFullPathNameW(MBtoWC(path).c_str(), len, &buf[0], nullptr))
     {
-        path = WCtoMB(buf);
+        path = WCtoMB(&buf[0]);
         NormalizePathSlashesInplace(path);
     }
 
@@ -652,16 +629,16 @@ void ResolvePathInplace(string& path)
 #endif
 }
 
-void MakeDirectory(const string& path)
+void DiskFileSystem::MakeDirectory(const string& path)
 {
 #ifdef FO_WINDOWS
-    CreateDirectoryW(MBtoWC(path).c_str(), nullptr);
+    ::CreateDirectoryW(MBtoWC(path).c_str(), nullptr);
 #else
     mkdir(path.c_str(), 0777);
 #endif
 }
 
-void MakeDirectoryTree(const string& path)
+void DiskFileSystem::MakeDirectoryTree(const string& path)
 {
     string work = path;
     NormalizePathSlashesInplace(work);

@@ -187,9 +187,9 @@ Effect* EffectManager::LoadEffect(const string& effect_name, bool use_in_2d, con
     }
 
     // Assign identifier and return
-    effect->Id = ++effectId;
+    effect->Id = ++effectIdCounter;
     loadedEffects.push_back(std::move(effect));
-    return effect.get();
+    return loadedEffects.back().get();
 }
 
 bool EffectManager::LoadEffectPass(Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d,

@@ -37,7 +37,7 @@ bool ScriptProfiler::Init(asIScriptEngine* engine, uint sample_time, bool save_t
         string dump_file = File::GetWritePath(_str(
             "Profiler/Profiler_{}.{}.{}_{}-{}-{}.foprof", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
 
-        saveFileHandle = FileOpen(dump_file, true);
+        saveFileHandle = DiskFileSystem::OpenFile(dump_file, true);
         if (!saveFileHandle)
         {
             WriteLog("Couldn't open profiler dump file '{}'.\n", dump_file);
@@ -45,9 +45,9 @@ bool ScriptProfiler::Init(asIScriptEngine* engine, uint sample_time, bool save_t
         }
 
         uint dummy = 0x10ADB10B; // "Load blob"
-        FileWrite(saveFileHandle, &dummy, 4);
+        DiskFileSystem::WriteFile(saveFileHandle, &dummy, 4);
         dummy = 0; // Version
-        FileWrite(saveFileHandle, &dummy, 4);
+        DiskFileSystem::WriteFile(saveFileHandle, &dummy, 4);
     }
 
     scriptEngine = engine;
@@ -63,8 +63,8 @@ void ScriptProfiler::AddModule(const string& module_name, const string& script_c
 
     if (saveFileHandle)
     {
-        FileWrite(saveFileHandle, module_name.c_str(), (uint)module_name.length() + 1);
-        FileWrite(saveFileHandle, script_code.c_str(), (uint)script_code.length() + 1);
+        DiskFileSystem::WriteFile(saveFileHandle, module_name.c_str(), (uint)module_name.length() + 1);
+        DiskFileSystem::WriteFile(saveFileHandle, script_code.c_str(), (uint)script_code.length() + 1);
     }
 }
 
@@ -75,7 +75,7 @@ void ScriptProfiler::EndModules()
     if (saveFileHandle)
     {
         int dummy = 0;
-        FileWrite(saveFileHandle, &dummy, 1);
+        DiskFileSystem::WriteFile(saveFileHandle, &dummy, 1);
 
         // TODO: Proper way
         for (int i = 1; i < 1000000; i++)
@@ -84,16 +84,16 @@ void ScriptProfiler::EndModules()
             if (!func)
                 continue;
 
-            FileWrite(saveFileHandle, &i, 4);
+            DiskFileSystem::WriteFile(saveFileHandle, &i, 4);
 
             string buf = (func->GetModuleName() ? func->GetModuleName() : "");
-            FileWrite(saveFileHandle, buf.c_str(), (uint)buf.length() + 1);
+            DiskFileSystem::WriteFile(saveFileHandle, buf.c_str(), (uint)buf.length() + 1);
             buf = func->GetDeclaration();
-            FileWrite(saveFileHandle, buf.c_str(), (uint)buf.length() + 1);
+            DiskFileSystem::WriteFile(saveFileHandle, buf.c_str(), (uint)buf.length() + 1);
         }
 
         dummy = -1;
-        FileWrite(saveFileHandle, &dummy, 4);
+        DiskFileSystem::WriteFile(saveFileHandle, &dummy, 4);
     }
 
     curStage = ProfilerWorking;
@@ -131,11 +131,11 @@ void ScriptProfiler::Process(asIScriptContext* ctx)
     {
         for (auto it = callStack.begin(), end = callStack.end(); it != end; ++it)
         {
-            FileWrite(saveFileHandle, &it->Id, 4);
-            FileWrite(saveFileHandle, &it->Line, 4);
+            DiskFileSystem::WriteFile(saveFileHandle, &it->Id, 4);
+            DiskFileSystem::WriteFile(saveFileHandle, &it->Line, 4);
         }
         static int dummy = -1;
-        FileWrite(saveFileHandle, &dummy, 4);
+        DiskFileSystem::WriteFile(saveFileHandle, &dummy, 4);
     }
 }
 
@@ -167,12 +167,7 @@ void ScriptProfiler::Finish()
 {
     RUNTIME_ASSERT(curStage == ProfilerWorking);
 
-    if (saveFileHandle)
-    {
-        FileClose(saveFileHandle);
-        saveFileHandle = nullptr;
-    }
-
+    saveFileHandle = nullptr;
     curStage = ProfilerUninitialized;
 }
 

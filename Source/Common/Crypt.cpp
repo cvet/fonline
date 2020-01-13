@@ -3,8 +3,15 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#ifdef FO_WEB
+#include "DiskFileSystem.h"
+#endif
+
 #include "sha2.h"
 #include "zlib.h"
+#ifndef FO_WEB
+#include "unqlite.h"
+#endif
 
 CryptManager Crypt;
 
@@ -209,8 +216,6 @@ bool CryptManager::Uncompress(UCharVec& data, uint mul_approx)
 }
 
 #ifndef FO_WEB
-#include "unqlite.h"
-
 static unqlite* CacheDb;
 
 bool CryptManager::InitCache()
@@ -351,7 +356,6 @@ bool CryptManager::GetCache(const string& data_name, UCharVec& data)
 }
 
 #else
-#include "DiskFileSystem.h"
 
 static string MakeCachePath(const string& data_name)
 {
@@ -366,37 +370,33 @@ bool CryptManager::InitCache()
 bool CryptManager::IsCache(const string& data_name)
 {
     string path = MakeCachePath(data_name);
-    void* f = FileOpen(path, false);
-    bool exists = (f != nullptr);
-    FileClose(f);
-    return exists;
+    auto f = DiskFileSystem::OpenFile(path, false);
+    return f != nullptr;
 }
 
 void CryptManager::EraseCache(const string& data_name)
 {
     string path = MakeCachePath(data_name);
-    FileDelete(path);
+    DiskFileSystem::DeleteFile(path);
 }
 
 void CryptManager::SetCache(const string& data_name, const uchar* data, uint data_len)
 {
     string path = MakeCachePath(data_name);
-    void* f = FileOpen(path, true);
+    auto f = DiskFileSystem::OpenFile(path, true);
     if (!f)
     {
         WriteLog("Can't open write cache at '{}'.\n", path);
         return;
     }
 
-    if (!FileWrite(f, data, data_len))
+    if (!DiskFileSystem::WriteFile(f, data, data_len))
     {
         WriteLog("Can't write cache to '{}'.\n", path);
-        FileClose(f);
-        FileDelete(path);
+        f = nullptr;
+        DiskFileSystem::DeleteFile(path);
         return;
     }
-
-    FileClose(f);
 }
 
 void CryptManager::SetCache(const string& data_name, const string& str)
@@ -412,23 +412,21 @@ void CryptManager::SetCache(const string& data_name, UCharVec& data)
 uchar* CryptManager::GetCache(const string& data_name, uint& data_len)
 {
     string path = MakeCachePath(data_name);
-    void* f = FileOpen(path, false);
+    auto f = DiskFileSystem::OpenFile(path, false);
     if (!f)
         return nullptr;
 
-    data_len = FileGetSize(f);
+    data_len = DiskFileSystem::GetFileSize(f);
     uchar* data = new uchar[data_len];
 
-    if (!FileRead(f, data, data_len))
+    if (!DiskFileSystem::ReadFile(f, data, data_len))
     {
         WriteLog("Can't read cache from '{}'.\n", path);
         SAFEDELA(data);
         data_len = 0;
-        FileClose(f);
         return nullptr;
     }
 
-    FileClose(f);
     return data;
 }
 

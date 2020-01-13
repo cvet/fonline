@@ -440,13 +440,13 @@ _str& _str::forwardPath(const string& relative_dir)
 
 _str& _str::resolvePath()
 {
-    ResolvePathInplace(s);
+    DiskFileSystem::ResolvePathInplace(s);
     return *this;
 }
 
 _str& _str::normalizePathSlashes()
 {
-    NormalizePathSlashesInplace(s);
+    DiskFileSystem::NormalizePathSlashesInplace(s);
     return *this;
 }
 

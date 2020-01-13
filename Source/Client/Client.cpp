@@ -591,14 +591,11 @@ void FOClient::UpdateFilesLoop()
                 UpdateFile& update_file = UpdateFilesList->front();
 
                 if (UpdateFileTemp)
-                {
-                    FileClose(UpdateFileTemp);
                     UpdateFileTemp = nullptr;
-                }
 
                 if (update_file.Name[0] == '$')
                 {
-                    UpdateFileTemp = FileOpen(File::GetWritePath("Update.bin"), true);
+                    UpdateFileTemp = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), true);
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -613,7 +610,7 @@ void FOClient::UpdateFilesLoop()
 #endif
 
                     File::DeleteFile(File::GetWritePath(update_file.Name));
-                    UpdateFileTemp = FileOpen(File::GetWritePath("Update.bin"), true);
+                    UpdateFileTemp = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), true);
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -681,10 +678,7 @@ void FOClient::UpdateFilesAbort(uint num_str, const string& num_str_str)
     NetDisconnect();
 
     if (UpdateFileTemp)
-    {
-        FileClose(UpdateFileTemp);
         UpdateFileTemp = nullptr;
-    }
 
     SprMngr.BeginScene(COLOR_RGB(255, 0, 0));
     SprMngr.DrawStr(Rect(0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight), UpdateFilesText,
@@ -4263,7 +4257,7 @@ void FOClient::Net_OnUpdateFileData()
     UpdateFile& update_file = UpdateFilesList->front();
 
     // Write data to temp file
-    if (!FileWrite(UpdateFileTemp, data, MIN(update_file.RemaningSize, sizeof(data))))
+    if (!DiskFileSystem::WriteFile(UpdateFileTemp, data, MIN(update_file.RemaningSize, sizeof(data))))
     {
         UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't write update file!");
         return;
@@ -4279,28 +4273,26 @@ void FOClient::Net_OnUpdateFileData()
     else
     {
         // Finalize received data
-        FileClose(UpdateFileTemp);
         UpdateFileTemp = nullptr;
 
         // Cache
         if (update_file.Name[0] == '$')
         {
-            void* temp_file = FileOpen(File::GetWritePath("Update.bin"), false);
+            auto temp_file = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), false);
             if (!temp_file)
             {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
                 return;
             }
 
-            uint len = FileGetSize(temp_file);
+            uint len = DiskFileSystem::GetFileSize(temp_file);
             UCharVec buf(len);
-            if (!FileRead(temp_file, &buf[0], len))
+            if (!DiskFileSystem::ReadFile(temp_file, &buf[0], len))
             {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't read update file!");
-                FileClose(temp_file);
                 return;
             }
-            FileClose(temp_file);
+            temp_file = nullptr;
 
             Crypt.SetCache(update_file.Name, &buf[0], len);
             Crypt.SetCache(update_file.Name + ".hash", (uchar*)&update_file.Hash, sizeof(update_file.Hash));
@@ -7734,13 +7726,12 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot(string file_path)
 
 bool FOClient::SScriptFunc::Global_SaveText(string file_path, string text)
 {
-    void* f = FileOpen(_str(file_path).formatPath(), true);
+    auto f = DiskFileSystem::OpenFile(_str(file_path).formatPath(), true);
     if (!f)
         return false;
 
     if (text.length() > 0)
-        FileWrite(f, text.c_str(), (uint)text.length());
-    FileClose(f);
+        DiskFileSystem::WriteFile(f, text.c_str(), (uint)text.length());
     return true;
 }
 

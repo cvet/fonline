@@ -480,16 +480,15 @@ protected:
     virtual Document GetRecord(const string& collection_name, uint id) override
     {
         string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f = FileOpen(path.c_str(), false);
+        auto f = DiskFileSystem::OpenFile(path.c_str(), false);
         if (!f)
             return Document();
 
-        uint length = FileGetSize(f);
+        uint length = DiskFileSystem::GetFileSize(f);
         char* json = new char[length];
-        bool read_ok = FileRead(f, json, length);
+        bool read_ok = DiskFileSystem::ReadFile(f, json, length);
         RUNTIME_ASSERT(read_ok);
-
-        FileClose(f);
+        f = nullptr;
 
         bson_t bson;
         bson_error_t error;
@@ -510,8 +509,9 @@ protected:
         RUNTIME_ASSERT(!doc.empty());
 
         string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f_check = FileOpen(path.c_str(), false);
+        auto f_check = DiskFileSystem::OpenFile(path, false);
         RUNTIME_ASSERT(!f_check);
+        f_check = nullptr;
 
         bson_t bson;
         bson_init(&bson);
@@ -526,13 +526,11 @@ protected:
         string pretty_json_dump = pretty_json.dump(4);
         bson_free(json);
 
-        void* f = FileOpen(path.c_str(), true);
+        auto f = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f);
 
-        bool write_ok = FileWrite(f, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = DiskFileSystem::WriteFile(f, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
-
-        FileClose(f);
     }
 
     virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
@@ -540,15 +538,14 @@ protected:
         RUNTIME_ASSERT(!doc.empty());
 
         string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f_read = FileOpen(path.c_str(), false);
+        auto f_read = DiskFileSystem::OpenFile(path, false);
         RUNTIME_ASSERT(f_read);
 
-        uint length = FileGetSize(f_read);
+        uint length = DiskFileSystem::GetFileSize(f_read);
         char* json = new char[length];
-        bool read_ok = FileRead(f_read, json, length);
+        bool read_ok = DiskFileSystem::ReadFile(f_read, json, length);
         RUNTIME_ASSERT(read_ok);
-
-        FileClose(f_read);
+        f_read = nullptr;
 
         bson_t bson;
         bson_error_t error;
@@ -568,19 +565,17 @@ protected:
         string pretty_json_dump = pretty_json.dump(4);
         bson_free(new_json);
 
-        void* f_write = FileOpen(path.c_str(), true);
+        auto f_write = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f_write);
 
-        bool write_ok = FileWrite(f_write, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = DiskFileSystem::WriteFile(f_write, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
-
-        FileClose(f_write);
     }
 
     virtual void DeleteRecord(const string& collection_name, uint id) override
     {
         string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        bool file_deleted = FileDelete(path);
+        bool file_deleted = DiskFileSystem::DeleteFile(path);
         RUNTIME_ASSERT(file_deleted);
     }
 

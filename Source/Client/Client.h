@@ -154,7 +154,7 @@ public:
     UpdateFileVec* UpdateFilesList;
     uint UpdateFilesWholeSize;
     bool UpdateFileDownloading;
-    void* UpdateFileTemp;
+    shared_ptr<DiskFileSystem::DiskFile> UpdateFileTemp;
 
     void UpdateFilesStart();
     void UpdateFilesLoop();

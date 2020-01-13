@@ -2,33 +2,39 @@
 
 #include "Common.h"
 
-#ifndef SEEK_SET
-#define SEEK_SET (0) // Seek from beginning of file
-#define SEEK_CUR (1) // Seek from current position
-#define SEEK_END (2) // Set file pointer to EOF plus "offset"
-#endif
+namespace DiskFileSystem
+{
+    enum DiskFileSeek
+    {
+        SeekSet = 0,
+        SeekCur = 1,
+        SeekEnd = 2,
+    };
 
-void* FileOpen(const string& fname, bool write, bool write_through = false);
-void* FileOpenForAppend(const string& fname, bool write_through = false);
-void* FileOpenForReadWrite(const string& fname, bool write_through = false);
-void FileClose(void* file);
-bool FileRead(void* file, void* buf, uint len, uint* rb = nullptr);
-bool FileWrite(void* file, const void* buf, uint len);
-bool FileSetPointer(void* file, int offset, int origin);
-uint FileGetPointer(void* file);
-uint64 FileGetWriteTime(void* file);
-uint FileGetSize(void* file);
-bool FileDelete(const string& fname);
-bool FileExist(const string& fname);
-bool FileCopy(const string& fname, const string& copy_fname);
-bool FileRename(const string& fname, const string& new_fname);
+    struct DiskFile;
+    struct DiskFind;
 
-void* FileFindFirst(
-    const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
-void FileFindClose(void* descriptor);
+    shared_ptr<DiskFile> OpenFile(const string& fname, bool write, bool write_through = false);
+    shared_ptr<DiskFile> OpenFileForAppend(const string& fname, bool write_through = false);
+    shared_ptr<DiskFile> OpenFileForReadWrite(const string& fname, bool write_through = false);
+    bool ReadFile(shared_ptr<DiskFile> file, void* buf, uint len, uint* rb = nullptr);
+    bool WriteFile(shared_ptr<DiskFile> file, const void* buf, uint len);
+    bool SetFilePointer(shared_ptr<DiskFile> file, int offset, DiskFileSeek origin);
+    uint GetFilePointer(shared_ptr<DiskFile> file);
+    uint64 GetFileWriteTime(shared_ptr<DiskFile> file);
+    uint GetFileSize(shared_ptr<DiskFile> file);
 
-void NormalizePathSlashesInplace(string& path);
-void ResolvePathInplace(string& path);
-void MakeDirectory(const string& path);
-void MakeDirectoryTree(const string& path);
+    bool DeleteFile(const string& fname);
+    bool IsFileExists(const string& fname);
+    bool CopyFile(const string& fname, const string& copy_fname);
+    bool RenameFile(const string& fname, const string& new_fname);
+
+    shared_ptr<DiskFind> FindFirstFile(
+        const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
+    bool FindNextFile(shared_ptr<DiskFind> find, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
+
+    void NormalizePathSlashesInplace(string& path);
+    void ResolvePathInplace(string& path);
+    void MakeDirectory(const string& path);
+    void MakeDirectoryTree(const string& path);
+}

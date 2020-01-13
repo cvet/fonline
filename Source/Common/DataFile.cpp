@@ -84,7 +84,7 @@ private:
     FileNameVec filesTreeNames;
     string fileName;
     uchar* memTree;
-    void* datHandle;
+    shared_ptr<DiskFileSystem::DiskFile> datHandle;
     uint64 writeTime;
     UCharVec readBuf;
 
@@ -251,12 +251,11 @@ bool FolderFile::IsFilePresent(const string& path, const string& path_lower, uin
     return true;
 
 #else
-    void* f = FileOpen(basePath + path, false);
+    auto f = DiskFileSystem::OpenFile(basePath + path, false);
     if (!f)
         return false;
-    size = FileGetSize(f);
-    write_time = FileGetWriteTime(f);
-    FileClose(f);
+    size = DiskFileSystem::GetFileSize(f);
+    write_time = DiskFileSystem::GetFileWriteTime(f);
     return true;
 #endif
 }
@@ -269,38 +268,34 @@ uchar* FolderFile::OpenFile(const string& path, const string& path_lower, uint& 
         return nullptr;
 
     FileEntry& fe = it->second;
-    void* f = FileOpen(fe.FileName, false);
+    auto f = DiskFileSystem::OpenFile(fe.FileName, false);
     if (!f)
         return nullptr;
 
     size = fe.FileSize;
     uchar* buf = new uchar[size + 1];
-    if (!FileRead(f, buf, size))
+    if (!DiskFileSystem::ReadFile(f, buf, size))
     {
-        FileClose(f);
         delete[] buf;
         return nullptr;
     }
-    FileClose(f);
     buf[size] = 0;
     write_time = fe.WriteTime;
     return buf;
 
 #else
-    void* f = FileOpen(basePath + path, false);
+    auto f = DiskFileSystem::OpenFile(basePath + path, false);
     if (!f)
         return nullptr;
 
-    size = FileGetSize(f);
+    size = DiskFileSystem::GetFileSize(f);
     uchar* buf = new uchar[size + 1];
-    if (!FileRead(f, buf, size))
+    if (!DiskFileSystem::ReadFile(f, buf, size))
     {
-        FileClose(f);
         delete[] buf;
         return nullptr;
     }
-    write_time = FileGetWriteTime(f);
-    FileClose(f);
+    write_time = DiskFileSystem::GetFileWriteTime(f);
     buf[size] = 0;
     return buf;
 #endif
@@ -329,11 +324,11 @@ FalloutDatFile::FalloutDatFile(const string& fname)
     fileName = fname;
     readBuf.resize(0x40000);
 
-    datHandle = FileOpen(fname, false);
+    datHandle = DiskFileSystem::OpenFile(fname, false);
     if (!datHandle)
         throw fo_exception("Cannot open file", fname);
 
-    writeTime = FileGetWriteTime(datHandle);
+    writeTime = DiskFileSystem::GetFileWriteTime(datHandle);
 
     if (!ReadTree())
         throw fo_exception("Read file tree fail");
@@ -341,20 +336,15 @@ FalloutDatFile::FalloutDatFile(const string& fname)
 
 FalloutDatFile::~FalloutDatFile()
 {
-    if (datHandle)
-    {
-        FileClose(datHandle);
-        datHandle = nullptr;
-    }
     SAFEDELA(memTree);
 }
 
 bool FalloutDatFile::ReadTree()
 {
     uint version;
-    if (!FileSetPointer(datHandle, -12, SEEK_END))
+    if (!DiskFileSystem::SetFilePointer(datHandle, -12, DiskFileSystem::SeekEnd))
         return false;
-    if (!FileRead(datHandle, &version, 4))
+    if (!DiskFileSystem::ReadFile(datHandle, &version, 4))
         return false;
 
     // DAT 2.1 Arcanum
@@ -364,20 +354,20 @@ bool FalloutDatFile::ReadTree()
         uint files_total, tree_size;
 
         // Read info
-        if (!FileSetPointer(datHandle, -4, SEEK_END))
+        if (!DiskFileSystem::SetFilePointer(datHandle, -4, DiskFileSystem::SeekEnd))
             return false;
-        if (!FileRead(datHandle, &tree_size, 4))
+        if (!DiskFileSystem::ReadFile(datHandle, &tree_size, 4))
             return false;
 
         // Read tree
-        if (!FileSetPointer(datHandle, -(int)tree_size, SEEK_END))
+        if (!DiskFileSystem::SetFilePointer(datHandle, -(int)tree_size, DiskFileSystem::SeekEnd))
             return false;
-        if (!FileRead(datHandle, &files_total, 4))
+        if (!DiskFileSystem::ReadFile(datHandle, &files_total, 4))
             return false;
         tree_size -= 28 + 4; // Subtract information block and files total
         memTree = new uchar[tree_size];
         memzero(memTree, tree_size);
-        if (!FileRead(datHandle, memTree, tree_size))
+        if (!DiskFileSystem::ReadFile(datHandle, memTree, tree_size))
             return false;
 
         // Indexing tree
@@ -414,35 +404,35 @@ bool FalloutDatFile::ReadTree()
     uint dir_count, dat_size, files_total, tree_size;
 
     // Read info
-    if (!FileSetPointer(datHandle, -8, SEEK_END))
+    if (!DiskFileSystem::SetFilePointer(datHandle, -8, DiskFileSystem::SeekEnd))
         return false;
-    if (!FileRead(datHandle, &tree_size, 4))
+    if (!DiskFileSystem::ReadFile(datHandle, &tree_size, 4))
         return false;
-    if (!FileRead(datHandle, &dat_size, 4))
+    if (!DiskFileSystem::ReadFile(datHandle, &dat_size, 4))
         return false;
 
     // Check for DAT1.0 Fallout1 dat file
-    if (!FileSetPointer(datHandle, 0, SEEK_SET))
+    if (!DiskFileSystem::SetFilePointer(datHandle, 0, DiskFileSystem::SeekSet))
         return false;
-    if (!FileRead(datHandle, &dir_count, 4))
+    if (!DiskFileSystem::ReadFile(datHandle, &dir_count, 4))
         return false;
     dir_count >>= 24;
     if (dir_count == 0x01 || dir_count == 0x33)
         return false;
 
     // Check for truncated
-    if (FileGetSize(datHandle) != dat_size)
+    if (DiskFileSystem::GetFileSize(datHandle) != dat_size)
         return false;
 
     // Read tree
-    if (!FileSetPointer(datHandle, -((int)tree_size + 8), SEEK_END))
+    if (!DiskFileSystem::SetFilePointer(datHandle, -((int)tree_size + 8), DiskFileSystem::SeekEnd))
         return false;
-    if (!FileRead(datHandle, &files_total, 4))
+    if (!DiskFileSystem::ReadFile(datHandle, &files_total, 4))
         return false;
     tree_size -= 4;
     memTree = new uchar[tree_size];
     memzero(memTree, tree_size);
-    if (!FileRead(datHandle, memTree, tree_size))
+    if (!DiskFileSystem::ReadFile(datHandle, memTree, tree_size))
         return false;
 
     // Indexing tree
@@ -503,7 +493,7 @@ uchar* FalloutDatFile::OpenFile(const string& path, const string& path_lower, ui
     uint offset;
     memcpy(&offset, ptr + 9, sizeof(offset));
 
-    if (!FileSetPointer(datHandle, offset, SEEK_SET))
+    if (!DiskFileSystem::SetFilePointer(datHandle, offset, DiskFileSystem::SeekSet))
         return nullptr;
 
     size = real_size;
@@ -512,7 +502,7 @@ uchar* FalloutDatFile::OpenFile(const string& path, const string& path_lower, ui
     if (!type)
     {
         // Plane data
-        if (!FileRead(datHandle, buf, size))
+        if (!DiskFileSystem::ReadFile(datHandle, buf, size))
         {
             delete[] buf;
             return nullptr;
@@ -543,7 +533,7 @@ uchar* FalloutDatFile::OpenFile(const string& path, const string& path_lower, ui
             {
                 stream.next_in = &readBuf[0];
                 uint rb;
-                if (!FileRead(datHandle, &readBuf[0], MIN(left, (uint)readBuf.size()), &rb))
+                if (!DiskFileSystem::ReadFile(datHandle, &readBuf[0], MIN(left, (uint)readBuf.size()), &rb))
                 {
                     delete[] buf;
                     return nullptr;
@@ -578,31 +568,36 @@ ZipFile::ZipFile(const string& fname)
     zlib_filefunc_def ffunc;
     if (fname[0] != '$')
     {
-        void* file = FileOpen(fname, false);
+        auto file = DiskFileSystem::OpenFile(fname, false);
         if (!file)
             throw fo_exception("Can't open ZIP file", fname);
 
-        writeTime = FileGetWriteTime(file);
+        writeTime = DiskFileSystem::GetFileWriteTime(file);
 
         ffunc.zopen_file = [](voidpf opaque, const char* filename, int mode) -> voidpf { return opaque; };
         ffunc.zread_file = [](voidpf opaque, voidpf stream, void* buf, uLong size) -> uLong {
             uint rb = 0;
-            FileRead(stream, buf, size, &rb);
+            DiskFileSystem::ReadFile(*(shared_ptr<DiskFileSystem::DiskFile>*)stream, buf, size, &rb);
             return rb;
         };
         ffunc.zwrite_file = [](voidpf opaque, voidpf stream, const void* buf, uLong size) -> uLong { return 0; };
-        ffunc.ztell_file = [](voidpf opaque, voidpf stream) -> long { return (long)FileGetPointer(stream); };
+        ffunc.ztell_file = [](voidpf opaque, voidpf stream) -> long {
+            return (long)DiskFileSystem::GetFilePointer(*(shared_ptr<DiskFileSystem::DiskFile>*)stream);
+        };
         ffunc.zseek_file = [](voidpf opaque, voidpf stream, uLong offset, int origin) -> long {
             switch (origin)
             {
             case ZLIB_FILEFUNC_SEEK_SET:
-                FileSetPointer(stream, (uint)offset, SEEK_SET);
+                DiskFileSystem::SetFilePointer(
+                    *(shared_ptr<DiskFileSystem::DiskFile>*)stream, (uint)offset, DiskFileSystem::SeekSet);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                FileSetPointer(stream, (uint)offset, SEEK_CUR);
+                DiskFileSystem::SetFilePointer(
+                    *(shared_ptr<DiskFileSystem::DiskFile>*)stream, (uint)offset, DiskFileSystem::SeekCur);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                FileSetPointer(stream, (uint)offset, SEEK_END);
+                DiskFileSystem::SetFilePointer(
+                    *(shared_ptr<DiskFileSystem::DiskFile>*)stream, (uint)offset, DiskFileSystem::SeekEnd);
                 break;
             default:
                 return -1;
@@ -610,7 +605,7 @@ ZipFile::ZipFile(const string& fname)
             return 0;
         };
         ffunc.zclose_file = [](voidpf opaque, voidpf stream) -> int {
-            FileClose(stream);
+            delete (shared_ptr<DiskFileSystem::DiskFile>*)stream;
             return 0;
         };
         ffunc.zerror_file = [](voidpf opaque, voidpf stream) -> int {
@@ -618,7 +613,7 @@ ZipFile::ZipFile(const string& fname)
                 return 1;
             return 0;
         };
-        ffunc.opaque = file;
+        ffunc.opaque = new shared_ptr<DiskFileSystem::DiskFile>(file);
     }
     else
     {
@@ -672,7 +667,7 @@ ZipFile::ZipFile(const string& fname)
             return 0;
         };
         ffunc.zclose_file = [](voidpf opaque, voidpf stream) -> int {
-            MemStream* mem_stream = new MemStream();
+            MemStream* mem_stream = (MemStream*)stream;
             delete mem_stream;
             return 0;
         };
@@ -793,42 +788,39 @@ BundleFile::BundleFile(const string& fname)
     filesTreeNames.clear();
 
     // Read tree
-    void* f_tree = FileOpen("FilesTree.txt", false);
+    auto f_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
     if (!f_tree)
         throw fo_exception("Can't open 'FilesTree.txt'");
 
-    uint len = FileGetSize(f_tree) + 1;
+    uint len = DiskFileSystem::GetFileSize(f_tree) + 1;
     char* buf = new char[len];
     buf[len - 1] = 0;
 
-    if (!FileRead(f_tree, buf, len))
+    if (!DiskFileSystem::ReadFile(f_tree, buf, len))
     {
         delete[] buf;
-        FileClose(f_tree);
         throw fo_exception("Can't read 'FilesTree.txt'");
     }
 
     StrVec names = _str(buf).normalizeLineEndings().split('\n');
     delete[] buf;
-    FileClose(f_tree);
+    f_tree = nullptr;
 
     // Parse
     for (const string& name : names)
     {
-        void* f = FileOpen(name, false);
+        auto f = DiskFileSystem::OpenFile(name, false);
         if (!f)
             throw fo_exception("Can't open file in bundle", name);
 
         FileEntry fe;
         fe.FileName = name;
-        fe.FileSize = FileGetSize(f);
-        fe.WriteTime = FileGetWriteTime(f);
+        fe.FileSize = DiskFileSystem::GetFileSize(f);
+        fe.WriteTime = DiskFileSystem::GetFileWriteTime(f);
 
         string name_lower = _str(name).lower();
         filesTree.insert(std::make_pair(name_lower, fe));
         filesTreeNames.push_back(std::make_pair(name_lower, name));
-
-        FileClose(f);
     }
 }
 
@@ -851,19 +843,17 @@ uchar* BundleFile::OpenFile(const string& path, const string& path_lower, uint& 
         return nullptr;
 
     FileEntry& fe = it->second;
-    void* f = FileOpen(fe.FileName, false);
+    auto f = DiskFileSystem::OpenFile(fe.FileName, false);
     if (!f)
         return nullptr;
 
     size = fe.FileSize;
     uchar* buf = new uchar[size + 1];
-    if (!FileRead(f, buf, size))
+    if (!DiskFileSystem::ReadFile(f, buf, size))
     {
-        FileClose(f);
         delete[] buf;
         return nullptr;
     }
-    FileClose(f);
     buf[size] = 0;
     write_time = fe.WriteTime;
     return buf;
