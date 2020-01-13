@@ -10,7 +10,6 @@
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
-
 #ifndef FO_OPENGL_ES
 #include "GL/glew.h"
 #include "SDL_opengl.h"
@@ -19,7 +18,6 @@
 #endif
 
 #define GL(expr) expr
-#define GL_HAS(extension) (OGL_##extension)
 
 #ifndef FO_OPENGL_ES
 #ifdef FO_MAC
@@ -74,9 +72,7 @@ static Uint64 CurTime = 0;
 static bool MousePressed[3] = {false, false, false};
 static SDL_Cursor* MouseCursors[ImGuiMouseCursor_COUNT] = {0};
 static char* ClipboardTextData = nullptr;
-static bool OGL_version_2_0 = false;
-static bool OGL_vertex_buffer_object = false;
-static bool OGL_vertex_array_object = false;
+static bool IsVertexArraySupported = false;
 
 static const char* GetClipboardText(void*);
 static void SetClipboardText(void*, const char* text);
@@ -152,21 +148,24 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
 #ifndef FO_OPENGL_ES
     GLenum glew_result = glewInit();
     RUNTIME_ASSERT(glew_result == GLEW_OK);
-    OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
-    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
+#ifndef FO_WINDOWS
+    if (!GLEW_VERSION_2_0 || !GLEW_ARB_vertex_buffer_object)
+    {
+        WriteLog("Minimum OpenGL 2.0 required.\n");
+        return false;
+    }
+#endif
 #ifdef FO_MAC
-    OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
+    IsVertexArraySupported = (GLEW_APPLE_vertex_array_object != 0);
 #else
-    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+    IsVertexArraySupported = (GLEW_ARB_vertex_array_object != 0);
 #endif
 #else
-    OGL_version_2_0 = true;
-    OGL_vertex_buffer_object = true;
 #ifdef FO_ANDROID
-    OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
+    IsVertexArraySupported = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
 #endif
 #ifdef FO_IOS
-    OGL_vertex_array_object = true;
+    IsVertexArraySupported = true;
 #endif
 #endif
 
@@ -174,13 +173,6 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
 #ifdef FO_WINDOWS
     int remote_session = GetSystemMetrics(SM_REMOTESESSION);
     FixedPipeline = (remote_session != 0);
-
-#else
-    if (!GL_HAS(version_2_0) || !GL_HAS(vertex_buffer_object))
-    {
-        WriteLog("Minimum OpenGL 2.0 required.\n");
-        return false;
-    }
 #endif
 
     // Setup OpenGL
@@ -208,7 +200,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
                                       "{\n"
                                       "    Frag_UV = UV;\n"
                                       "    Frag_Color = Color;\n"
-                                      "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+                                      "    gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
                                       "}\n";
         const GLchar* fragment_shader = "#version 110\n"
 #ifdef FO_OPENGL_ES
@@ -600,7 +592,7 @@ void AppGui::EndFrame()
     GL(glBindTexture(GL_TEXTURE_2D, 0));
     if (!FixedPipeline)
     {
-        if (GL_HAS(vertex_array_object))
+        if (IsVertexArraySupported)
             GL(glBindVertexArray(0));
         GL(glUseProgram(0));
     }
@@ -635,7 +627,7 @@ static void RenderDrawData(ImDrawData* draw_data)
     GLuint vao = 0;
     if (!FixedPipeline)
     {
-        if (GL_HAS(vertex_array_object))
+        if (IsVertexArraySupported)
             GL(glGenVertexArrays(1, &vao));
     }
     SetupRenderState(draw_data, fb_width, fb_height, vao);
@@ -723,7 +715,7 @@ static void RenderDrawData(ImDrawData* draw_data)
 
     if (!FixedPipeline)
     {
-        if (GL_HAS(vertex_array_object))
+        if (IsVertexArraySupported)
             GL(glDeleteVertexArrays(1, &vao));
     }
 }
@@ -753,7 +745,7 @@ static void SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height,
 #ifdef GL_SAMPLER_BINDING
         GL(glBindSampler(0, 0));
 #endif
-        if (GL_HAS(vertex_array_object))
+        if (IsVertexArraySupported)
             GL(glBindVertexArray(vao));
         GL(glBindBuffer(GL_ARRAY_BUFFER, VboHandle));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ElementsHandle));

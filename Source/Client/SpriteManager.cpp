@@ -209,7 +209,7 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
     RUNTIME_ASSERT(effects_ok);
 
     // Render states
-    GL(gluStuffOrtho(
+    GL(GraphicApi::MatrixOrtho(
         projectionMatrixCM[0], 0.0f, (float)GameOpt.ScreenWidth, (float)GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f));
     projectionMatrixCM.Transpose(); // Convert to column major order
     GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
@@ -865,12 +865,12 @@ void SpriteManager::RefreshViewport()
 
     if (screen_size)
     {
-        GL(gluStuffOrtho(
+        GL(GraphicApi::MatrixOrtho(
             projectionMatrixCM[0], 0.0f, (float)GameOpt.ScreenWidth, (float)GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f));
     }
     else
     {
-        GL(gluStuffOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f));
+        GL(GraphicApi::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f));
     }
     projectionMatrixCM.Transpose(); // Convert to column major order
 }

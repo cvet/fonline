@@ -164,7 +164,8 @@ void Animation3dManager::SetScreenSize(int width, int height)
 
     // Projection
     float k = (float)modeHeight / 768.0f;
-    gluStuffOrtho(matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    GraphicApi::MatrixOrtho(
+        matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
     matrixProjCM = matrixProjRM;
     matrixProjCM.Transpose();
     matrixEmptyRM = Matrix();
@@ -291,7 +292,7 @@ void Animation3dManager::VecProject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    GraphicApi::MatrixProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -301,7 +302,7 @@ void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffUnProject(v.x, (float)modeHeight - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    GraphicApi::MatrixUnproject(v.x, modeHeightF - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;

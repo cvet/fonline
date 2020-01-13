@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common.h"
-#include "GluStuff.h"
 #include "SDL.h"
 #ifndef FO_OPENGL_ES
 #include "GL/glew.h"
@@ -101,4 +100,9 @@ extern bool OGL_get_program_binary;
 namespace GraphicApi
 {
     bool Init();
+    void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float near, float far);
+    bool MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16],
+        const int viewport[4], float* winx, float* winy, float* winz);
+    bool MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16],
+        const int viewport[4], float* objx, float* objy, float* objz);
 }
