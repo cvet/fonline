@@ -9,33 +9,15 @@
 
 #include "minizip/zip.h"
 
-class BuildSystemImpl : public IBuildSystem
-{
-public:
-    BuildSystemImpl();
-    ~BuildSystemImpl() override;
-    bool BuildAll() override;
-
-private:
-    bool GenerateResources(StrVec* resource_names);
-    bool BuildTarget(string target);
-    bool BuildWindows();
-};
-
-BuildSystem IBuildSystem::Create()
-{
-    return std::make_shared<BuildSystemImpl>();
-}
-
-BuildSystemImpl::BuildSystemImpl()
+BuildSystem::BuildSystem()
 {
 }
 
-BuildSystemImpl ::~BuildSystemImpl()
+BuildSystem ::~BuildSystem()
 {
 }
 
-bool BuildSystemImpl::BuildAll()
+bool BuildSystem::BuildAll()
 {
     try
     {
@@ -47,7 +29,7 @@ bool BuildSystemImpl::BuildAll()
     }
 }
 
-bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
+bool BuildSystem::GenerateResources(StrVec* resource_names)
 {
     // Generate resources
     bool something_changed = false;
@@ -257,7 +239,7 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
     return something_changed;
 }
 
-bool BuildSystemImpl::BuildTarget(string target)
+bool BuildSystem::BuildTarget(string target)
 {
     /*gameOutputPath = targetOutputPath + '/' + gameName
 
@@ -441,7 +423,7 @@ bool BuildSystemImpl::BuildTarget(string target)
     return false;
 }
 
-bool BuildSystemImpl::BuildWindows()
+bool BuildSystem::BuildWindows()
 {
     // Raw files
 

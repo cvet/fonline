@@ -11,13 +11,15 @@ enum class BuildTarget
     Android,
 };
 
-class IBuildSystem;
-using BuildSystem = std::shared_ptr<IBuildSystem>;
-
-class IBuildSystem : public NonCopyable
+class BuildSystem : public NonCopyable
 {
 public:
-    static BuildSystem Create();
-    virtual bool BuildAll() = 0;
-    virtual ~IBuildSystem() = default;
+    BuildSystem();
+    ~BuildSystem();
+    bool BuildAll();
+
+private:
+    bool GenerateResources(StrVec* resource_names);
+    bool BuildTarget(string target);
+    bool BuildWindows();
 };
