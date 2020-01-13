@@ -2,19 +2,19 @@
 
 #include "Common.h"
 
-class IDataFile
+class DataFile : public NonCopyable
 {
 public:
-    virtual const string& GetPackName() = 0;
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) = 0;
-    virtual ~IDataFile() = default;
-};
-using DataFile = std::shared_ptr<IDataFile>;
-using DataFileVec = vector<DataFile>;
+    class Impl;
 
-namespace Fabric
-{
-    DataFile OpenDataFile(const string& path);
-}
+    DataFile(const string& path);
+    ~DataFile();
+    static DataFile* TryLoad(const string& path);
+    const string& GetPackName();
+    bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time);
+    uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time);
+    void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
+
+private:
+    unique_ptr<Impl> pImpl;
+};

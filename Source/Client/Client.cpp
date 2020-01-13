@@ -212,7 +212,6 @@ FOClient::FOClient() :
     GameOpt.MouseY = GameOpt.LastMouseY = CLAMP(my, 0, sh - 1);
 
     // Sound manager
-    SndMngr = ISoundManager::Create();
     GameOpt.SoundVolume = MainConfig->GetInt("", "SoundVolume", 100);
     GameOpt.MusicVolume = MainConfig->GetInt("", "MusicVolume", 100);
 
@@ -3498,7 +3497,7 @@ void FOClient::Net_OnPlaySound()
 
     CHECK_IN_BUFF_ERROR;
 
-    SndMngr->PlaySound(ResMngr.GetSoundNames(), sound_name);
+    SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
 }
 
 void FOClient::Net_OnPing()
@@ -3844,7 +3843,7 @@ void FOClient::Net_OnLoadMap()
     CurMapIndexInLoc = map_index_in_loc;
     GameMapTexts.clear();
     HexMngr.UnloadMap();
-    SndMngr->StopSounds();
+    SndMngr.StopSounds();
     ShowMainScreen(SCREEN_WAIT);
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
@@ -4650,7 +4649,7 @@ void FOClient::PlayVideo()
     {
         MusicVolumeRestore = GameOpt.MusicVolume;
         GameOpt.MusicVolume = 100;
-        SndMngr->PlayMusic(video.SoundName, 0);
+        SndMngr.PlayMusic(video.SoundName, 0);
     }
 }
 
@@ -4895,7 +4894,7 @@ void FOClient::StopVideo()
     }
 
     // Music
-    SndMngr->StopMusic();
+    SndMngr.StopMusic();
     if (MusicVolumeRestore != -1)
     {
         GameOpt.MusicVolume = MusicVolumeRestore;
@@ -6503,23 +6502,23 @@ void FOClient::SScriptFunc::Global_QuakeScreen(uint noise, uint ms)
 
 bool FOClient::SScriptFunc::Global_PlaySound(string sound_name)
 {
-    return Self->SndMngr->PlaySound(Self->ResMngr.GetSoundNames(), sound_name);
+    return Self->SndMngr.PlaySound(Self->ResMngr.GetSoundNames(), sound_name);
 }
 
 bool FOClient::SScriptFunc::Global_PlayMusic(string music_name, uint repeat_time)
 {
     if (music_name.empty())
     {
-        Self->SndMngr->StopMusic();
+        Self->SndMngr.StopMusic();
         return true;
     }
 
-    return Self->SndMngr->PlayMusic(music_name, repeat_time);
+    return Self->SndMngr.PlayMusic(music_name, repeat_time);
 }
 
 void FOClient::SScriptFunc::Global_PlayVideo(string video_name, bool can_stop)
 {
-    Self->SndMngr->StopMusic();
+    Self->SndMngr.StopMusic();
     Self->AddVideo(video_name.c_str(), can_stop, true);
 }
 

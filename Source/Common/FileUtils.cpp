@@ -12,7 +12,7 @@
 
 #define OUT_BUF_START_SIZE (0x100)
 
-DataFileVec File::dataFiles;
+vector<unique_ptr<DataFile>> File::dataFiles;
 string File::writeDir;
 
 File::File()
@@ -90,14 +90,14 @@ void File::InitDataFiles(const string& path, bool set_write_dir /* = true */)
 
 bool File::LoadDataFile(const string& path, bool skip_inner /* = false */)
 {
-    DataFile data_file;
+    DataFile* data_file = nullptr;
 
     // Find already loaded
-    for (DataFile df : dataFiles)
+    for (auto& df : dataFiles)
     {
         if (df->GetPackName() == path)
         {
-            data_file = df;
+            data_file = df.get();
             break;
         }
     }
@@ -105,7 +105,7 @@ bool File::LoadDataFile(const string& path, bool skip_inner /* = false */)
     // Add new
     if (!data_file)
     {
-        data_file = Fabric::OpenDataFile(path);
+        data_file = DataFile::TryLoad(path);
         if (!data_file)
         {
             WriteLog("Load data file '{}' failed.\n", path);
@@ -134,11 +134,12 @@ bool File::LoadDataFile(const string& path, bool skip_inner /* = false */)
     }
 
     // Put to begin of list
-    auto it = std::find(dataFiles.begin(), dataFiles.end(), data_file);
+    auto it =
+        std::find_if(dataFiles.begin(), dataFiles.end(), [&data_file](auto& dat) { return dat.get() == data_file; });
     if (it != dataFiles.end())
         dataFiles.erase(it);
 
-    dataFiles.insert(dataFiles.begin(), data_file);
+    dataFiles.insert(dataFiles.begin(), unique_ptr<DataFile>(data_file));
     return true;
 }
 
@@ -181,7 +182,7 @@ bool File::LoadFile(const string& path, bool no_read /* = false */)
         string data_path_lower = _str(data_path).lower();
 
         // Find file in every data file
-        for (DataFile dat : dataFiles)
+        for (auto& dat : dataFiles)
         {
             if (!no_read)
             {
@@ -778,8 +779,8 @@ void File::GetFolderFileNames(const string& path, bool include_subdirs, const st
 
 void File::GetDataFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
 {
-    for (DataFile df : dataFiles)
-        df->GetFileNames(_str(path).formatPath(), include_subdirs, ext, result);
+    for (auto& dat : dataFiles)
+        dat->GetFileNames(_str(path).formatPath(), include_subdirs, ext, result);
 }
 
 FileCollection::FileCollection(const string& ext, const string& fixed_dir /* = "" */)

@@ -20,14 +20,14 @@ ResourceManager::~ResourceManager()
 void ResourceManager::Refresh()
 {
     // Dat files, packed data
-    DataFileVec& data_files = File::GetDataFiles();
-    for (DataFile data_file : data_files)
+    auto& data_files = File::GetDataFiles();
+    for (auto& dat : data_files)
     {
-        if (std::find(processedDats.begin(), processedDats.end(), data_file) == processedDats.end())
+        if (std::find(processedDats.begin(), processedDats.end(), dat.get()) == processedDats.end())
         {
             // Hash all files
             StrVec file_names;
-            data_file->GetFileNames("", true, "", file_names);
+            dat->GetFileNames("", true, "", file_names);
             for (auto it = file_names.begin(), end = file_names.end(); it != end; ++it)
             {
                 string name = *it;
@@ -39,22 +39,22 @@ void ResourceManager::Refresh()
 
             // Splashes
             StrVec splashes;
-            data_file->GetFileNames("Splash/", true, "rix", splashes);
-            data_file->GetFileNames("Splash/", true, "png", splashes);
-            data_file->GetFileNames("Splash/", true, "jpg", splashes);
+            dat->GetFileNames("Splash/", true, "rix", splashes);
+            dat->GetFileNames("Splash/", true, "png", splashes);
+            dat->GetFileNames("Splash/", true, "jpg", splashes);
             for (auto it = splashes.begin(), end = splashes.end(); it != end; ++it)
                 if (std::find(splashNames.begin(), splashNames.end(), *it) == splashNames.end())
                     splashNames.push_back(*it);
 
             // Sound names
             StrVec sounds;
-            data_file->GetFileNames("", true, "wav", sounds);
-            data_file->GetFileNames("", true, "acm", sounds);
-            data_file->GetFileNames("", true, "ogg", sounds);
+            dat->GetFileNames("", true, "wav", sounds);
+            dat->GetFileNames("", true, "acm", sounds);
+            dat->GetFileNames("", true, "ogg", sounds);
             for (auto it = sounds.begin(), end = sounds.end(); it != end; ++it)
                 soundNames.insert(std::make_pair(_str(*it).eraseFileExtension().upper(), *it));
 
-            processedDats.push_back(data_file);
+            processedDats.push_back(dat.get());
         }
     }
 }

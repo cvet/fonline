@@ -221,7 +221,7 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                             string ext = _str(fname).getFileExtension();
                             if (ext == "zip" || ext == "bos" || ext == "dat")
                             {
-                                DataFile inner = Fabric::OpenDataFile(path);
+                                DataFile* inner = DataFile::TryLoad(path);
                                 if (inner)
                                 {
                                     StrVec inner_files;

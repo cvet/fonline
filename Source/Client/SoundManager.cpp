@@ -10,70 +10,30 @@
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-class SoundManagerImpl : public ISoundManager
+struct SoundManager::DeviceData
 {
-public:
-    SoundManagerImpl();
-    virtual ~SoundManagerImpl() override;
-    virtual bool PlaySound(const StrMap& sound_names, const string& name) override;
-    virtual bool PlayMusic(const string& fname, uint repeat_time) override;
-    virtual void StopSounds() override;
-    virtual void StopMusic() override;
-
-private:
-    struct Sound
-    {
-        vector<uchar> BaseBuf {};
-        size_t BaseBufLen {};
-        unique_ptr<SDL_AudioCVT> Cvt {};
-        vector<uchar> ConvertedBuf {};
-        size_t ConvertedBufLen {};
-        size_t ConvertedBufCur {};
-        int OriginalFormat {};
-        int OriginalChannels {};
-        int OriginalRate {};
-        bool IsMusic {};
-        uint NextPlay {};
-        uint RepeatTime {};
-        unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>> OggStream {};
-    };
-
-    using SoundsFunc = std::function<void(uchar*)>;
-    using SoundVec = vector<shared_ptr<Sound>>;
-
-    void ProcessSounds(uchar* output);
-    bool ProcessSound(shared_ptr<Sound> sound, uchar* output);
-    shared_ptr<Sound> Load(const string& fname, bool is_music);
-    bool LoadWAV(shared_ptr<Sound> sound, const string& fname);
-    bool LoadACM(shared_ptr<Sound> sound, const string& fname, bool is_music);
-    bool LoadOGG(shared_ptr<Sound> sound, const string& fname);
-    bool StreamOGG(shared_ptr<Sound> sound);
-    bool ConvertData(shared_ptr<Sound> sound);
-
-    bool isActive;
-    bool isAudioInited;
-    SDL_AudioDeviceID deviceId;
-    SDL_AudioSpec soundSpec;
-    uint streamingPortion;
-    SoundVec soundsActive;
-    UCharVec outputBuf;
-    SoundsFunc soundsFunc;
+    SDL_AudioDeviceID DeviceId {};
+    SDL_AudioSpec SoundSpec {};
 };
 
-SoundManager ISoundManager::Create()
+struct SoundManager::Sound
 {
-    return std::make_shared<SoundManagerImpl>();
-}
+    vector<uchar> BaseBuf {};
+    size_t BaseBufLen {};
+    unique_ptr<SDL_AudioCVT> Cvt {};
+    vector<uchar> ConvertedBuf {};
+    size_t ConvertedBufLen {};
+    size_t ConvertedBufCur {};
+    int OriginalFormat {};
+    int OriginalChannels {};
+    int OriginalRate {};
+    bool IsMusic {};
+    uint NextPlay {};
+    uint RepeatTime {};
+    unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>> OggStream {};
+};
 
-SoundManagerImpl::SoundManagerImpl() :
-    isActive {},
-    isAudioInited {},
-    deviceId {},
-    soundSpec {},
-    streamingPortion {},
-    soundsActive {},
-    outputBuf {},
-    soundsFunc {}
+SoundManager::SoundManager()
 {
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -105,24 +65,26 @@ SoundManagerImpl::SoundManagerImpl() :
         auto& func = *reinterpret_cast<SoundsFunc*>(userdata);
         func(stream);
     };
-    soundsFunc = std::bind(&SoundManagerImpl::ProcessSounds, this, std::placeholders::_1);
+    soundsFunc = std::bind(&SoundManager::ProcessSounds, this, std::placeholders::_1);
     desired.userdata = &soundsFunc;
 
-    deviceId = SDL_OpenAudioDevice(nullptr, 0, &desired, &soundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
-    if (deviceId < 2)
+    deviceData = std::make_unique<DeviceData>();
+    deviceData->DeviceId =
+        SDL_OpenAudioDevice(nullptr, 0, &desired, &deviceData->SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+    if (deviceData->DeviceId < 2)
     {
         WriteLog("SDL Open audio device fail, error '{}'.\n", SDL_GetError());
         return;
     }
 
-    outputBuf.resize(soundSpec.size);
+    outputBuf.resize(deviceData->SoundSpec.size);
     isActive = true;
 
     // Start playing
-    SDL_PauseAudioDevice(deviceId, 0);
+    SDL_PauseAudioDevice(deviceData->DeviceId, 0);
 }
 
-SoundManagerImpl::~SoundManagerImpl()
+SoundManager::~SoundManager()
 {
     if (isActive)
     {
@@ -130,16 +92,16 @@ SoundManagerImpl::~SoundManagerImpl()
         StopMusic();
     }
 
-    if (deviceId >= 2)
-        SDL_CloseAudioDevice(deviceId);
+    if (deviceData && deviceData->DeviceId >= 2)
+        SDL_CloseAudioDevice(deviceData->DeviceId);
 
     if (isAudioInited)
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
-void SoundManagerImpl::ProcessSounds(uchar* output)
+void SoundManager::ProcessSounds(uchar* output)
 {
-    memset(output, soundSpec.silence, soundSpec.size);
+    memset(output, deviceData->SoundSpec.silence, deviceData->SoundSpec.size);
 
     for (auto it = soundsActive.begin(); it != soundsActive.end();)
     {
@@ -149,7 +111,7 @@ void SoundManagerImpl::ProcessSounds(uchar* output)
         {
             int volume = (sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume);
             volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
-            SDL_MixAudioFormat(output, &outputBuf[0], soundSpec.format, soundSpec.size, volume);
+            SDL_MixAudioFormat(output, &outputBuf[0], deviceData->SoundSpec.format, deviceData->SoundSpec.size, volume);
             ++it;
         }
         else
@@ -159,10 +121,10 @@ void SoundManagerImpl::ProcessSounds(uchar* output)
     }
 }
 
-bool SoundManagerImpl::ProcessSound(shared_ptr<Sound> sound, uchar* output)
+bool SoundManager::ProcessSound(shared_ptr<Sound> sound, uchar* output)
 {
     // Playing
-    size_t whole = soundSpec.size;
+    size_t whole = deviceData->SoundSpec.size;
     if (sound->ConvertedBufCur < sound->ConvertedBufLen)
     {
         if (whole > sound->ConvertedBufLen - sound->ConvertedBufCur)
@@ -186,7 +148,7 @@ bool SoundManagerImpl::ProcessSound(shared_ptr<Sound> sound, uchar* output)
 
             // Cut off end
             if (offset < whole)
-                memset(output + offset, soundSpec.silence, whole - offset);
+                memset(output + offset, deviceData->SoundSpec.silence, whole - offset);
         }
         else
         {
@@ -226,16 +188,16 @@ bool SoundManagerImpl::ProcessSound(shared_ptr<Sound> sound, uchar* output)
         }
 
         // Give silent
-        memset(output, soundSpec.silence, whole);
+        memset(output, deviceData->SoundSpec.silence, whole);
         return true;
     }
 
     // Give silent
-    memset(output, soundSpec.silence, whole);
+    memset(output, deviceData->SoundSpec.silence, whole);
     return false;
 }
 
-shared_ptr<SoundManagerImpl::Sound> SoundManagerImpl::Load(const string& fname, bool is_music)
+shared_ptr<SoundManager::Sound> SoundManager::Load(const string& fname, bool is_music)
 {
     string fixed_fname = fname;
     string ext = _str(fname).getFileExtension();
@@ -255,13 +217,13 @@ shared_ptr<SoundManagerImpl::Sound> SoundManagerImpl::Load(const string& fname, 
     if (ext == "ogg" && !LoadOGG(sound, fixed_fname))
         return nullptr;
 
-    SDL_LockAudioDevice(deviceId);
+    SDL_LockAudioDevice(deviceData->DeviceId);
     soundsActive.push_back(sound);
-    SDL_UnlockAudioDevice(deviceId);
+    SDL_UnlockAudioDevice(deviceData->DeviceId);
     return sound;
 }
 
-bool SoundManagerImpl::LoadWAV(shared_ptr<Sound> sound, const string& fname)
+bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
 {
     File fm;
     if (!fm.LoadFile(fname))
@@ -362,7 +324,7 @@ bool SoundManagerImpl::LoadWAV(shared_ptr<Sound> sound, const string& fname)
     return ConvertData(sound);
 }
 
-bool SoundManagerImpl::LoadACM(shared_ptr<Sound> sound, const string& fname, bool is_music)
+bool SoundManager::LoadACM(shared_ptr<Sound> sound, const string& fname, bool is_music)
 {
     File fm;
     if (!fm.LoadFile(fname))
@@ -391,7 +353,7 @@ bool SoundManagerImpl::LoadACM(shared_ptr<Sound> sound, const string& fname, boo
     return ConvertData(sound);
 }
 
-bool SoundManagerImpl::LoadOGG(shared_ptr<Sound> sound, const string& fname)
+bool SoundManager::LoadOGG(shared_ptr<Sound> sound, const string& fname)
 {
     File* fm = new File();
     if (!fm->LoadFile(fname))
@@ -505,7 +467,7 @@ bool SoundManagerImpl::LoadOGG(shared_ptr<Sound> sound, const string& fname)
     return ConvertData(sound);
 }
 
-bool SoundManagerImpl::StreamOGG(shared_ptr<Sound> sound)
+bool SoundManager::StreamOGG(shared_ptr<Sound> sound)
 {
     long result = 0;
     uint decoded = 0;
@@ -527,14 +489,14 @@ bool SoundManagerImpl::StreamOGG(shared_ptr<Sound> sound)
     return ConvertData(sound);
 }
 
-bool SoundManagerImpl::ConvertData(shared_ptr<Sound> sound)
+bool SoundManager::ConvertData(shared_ptr<Sound> sound)
 {
     if (!sound->Cvt)
     {
         sound->Cvt = std::make_unique<SDL_AudioCVT>();
 
         if (SDL_BuildAudioCVT(sound->Cvt.get(), sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
-                soundSpec.format, soundSpec.channels, soundSpec.freq) == -1)
+                deviceData->SoundSpec.format, deviceData->SoundSpec.channels, deviceData->SoundSpec.freq) == -1)
         {
             WriteLog("SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError());
             return false;
@@ -557,7 +519,7 @@ bool SoundManagerImpl::ConvertData(shared_ptr<Sound> sound)
     return true;
 }
 
-bool SoundManagerImpl::PlaySound(const StrMap& sound_names, const string& name)
+bool SoundManager::PlaySound(const StrMap& sound_names, const string& name)
 {
     if (!isActive || !GameOpt.SoundVolume)
         return true;
@@ -580,7 +542,7 @@ bool SoundManagerImpl::PlaySound(const StrMap& sound_names, const string& name)
     return false;
 }
 
-bool SoundManagerImpl::PlayMusic(const string& fname, uint repeat_time)
+bool SoundManager::PlayMusic(const string& fname, uint repeat_time)
 {
     if (!isActive)
         return true;
@@ -596,18 +558,18 @@ bool SoundManagerImpl::PlayMusic(const string& fname, uint repeat_time)
     return true;
 }
 
-void SoundManagerImpl::StopSounds()
+void SoundManager::StopSounds()
 {
-    SDL_LockAudioDevice(deviceId);
+    SDL_LockAudioDevice(deviceData->DeviceId);
     soundsActive.erase(std::remove_if(soundsActive.begin(), soundsActive.end(), [](auto s) { return !s->IsMusic; }),
         soundsActive.end());
-    SDL_UnlockAudioDevice(deviceId);
+    SDL_UnlockAudioDevice(deviceData->DeviceId);
 }
 
-void SoundManagerImpl::StopMusic()
+void SoundManager::StopMusic()
 {
-    SDL_LockAudioDevice(deviceId);
+    SDL_LockAudioDevice(deviceData->DeviceId);
     soundsActive.erase(std::remove_if(soundsActive.begin(), soundsActive.end(), [](auto s) { return s->IsMusic; }),
         soundsActive.end());
-    SDL_UnlockAudioDevice(deviceId);
+    SDL_UnlockAudioDevice(deviceData->DeviceId);
 }

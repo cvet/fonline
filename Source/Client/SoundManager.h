@@ -2,16 +2,36 @@
 
 #include "Common.h"
 
-class ISoundManager;
-using SoundManager = shared_ptr<ISoundManager>;
-
-class ISoundManager : public NonCopyable
+class SoundManager : public NonCopyable
 {
 public:
-    static SoundManager Create();
-    virtual bool PlaySound(const StrMap& sound_names, const string& name) = 0;
-    virtual bool PlayMusic(const string& fname, uint repeat_time) = 0;
-    virtual void StopSounds() = 0;
-    virtual void StopMusic() = 0;
-    virtual ~ISoundManager() = default;
+    SoundManager();
+    ~SoundManager();
+    bool PlaySound(const StrMap& sound_names, const string& name);
+    bool PlayMusic(const string& fname, uint repeat_time);
+    void StopSounds();
+    void StopMusic();
+
+private:
+    struct DeviceData;
+    struct Sound;
+    using SoundsFunc = std::function<void(uchar*)>;
+    using SoundVec = vector<shared_ptr<Sound>>;
+
+    void ProcessSounds(uchar* output);
+    bool ProcessSound(shared_ptr<Sound> sound, uchar* output);
+    shared_ptr<Sound> Load(const string& fname, bool is_music);
+    bool LoadWAV(shared_ptr<Sound> sound, const string& fname);
+    bool LoadACM(shared_ptr<Sound> sound, const string& fname, bool is_music);
+    bool LoadOGG(shared_ptr<Sound> sound, const string& fname);
+    bool StreamOGG(shared_ptr<Sound> sound);
+    bool ConvertData(shared_ptr<Sound> sound);
+
+    bool isActive {};
+    bool isAudioInited {};
+    unique_ptr<DeviceData> deviceData {};
+    uint streamingPortion {};
+    SoundVec soundsActive {};
+    UCharVec outputBuf {};
+    SoundsFunc soundsFunc {};
 };

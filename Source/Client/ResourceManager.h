@@ -4,11 +4,6 @@
 #include "GraphicStructures.h"
 #include "SpriteManager.h"
 
-struct SpriteInfo;
-struct AnyFrames;
-class IDataFile;
-using DataFile = std::shared_ptr<IDataFile>;
-using DataFileVec = vector<DataFile>;
 class Animation3d;
 
 struct LoadedAnim
@@ -52,7 +47,7 @@ private:
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
     SpriteManager& sprMngr;
-    DataFileVec processedDats {};
+    vector<DataFile*> processedDats {};
     UIntStrMap namesHash {};
     LoadedAnimMap loadedAnims {};
     AnimMap critterFrames {};

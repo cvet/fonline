@@ -5,15 +5,22 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
+
 #include "minizip/unzip.h"
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 #define DISABLE_FOLDER_CACHING
 #endif
 
-/************************************************************************/
-/* Folder/Dat/Zip loaders                                               */
-/************************************************************************/
+class DataFile::Impl : public NonCopyable
+{
+public:
+    virtual ~Impl() = default;
+    virtual const string& GetPackName() = 0;
+    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
+    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
+    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) = 0;
+};
 
 using FileNameVec = vector<pair<string, string>>;
 
@@ -40,7 +47,7 @@ static void GetFileNamesGeneric(
     }
 }
 
-class FolderFile : public IDataFile
+class FolderFile : public DataFile::Impl
 {
 private:
     struct FileEntry
@@ -68,7 +75,7 @@ public:
     void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
 };
 
-class FalloutDatFile : public IDataFile
+class FalloutDatFile : public DataFile::Impl
 {
 private:
     typedef map<string, uchar*> IndexMap;
@@ -96,7 +103,7 @@ public:
     }
 };
 
-class ZipFile : public IDataFile
+class ZipFile : public DataFile::Impl
 {
 private:
     struct ZipFileInfo
@@ -127,7 +134,7 @@ public:
     }
 };
 
-class BundleFile : public IDataFile
+class BundleFile : public DataFile::Impl
 {
 private:
     struct FileEntry
@@ -152,26 +159,54 @@ public:
 };
 string BundleFile::packName = "$Bundle";
 
-/************************************************************************/
-/* Manage                                                               */
-/************************************************************************/
-
-DataFile Fabric::OpenDataFile(const string& path)
+DataFile::DataFile(const string& path)
 {
     string ext = _str(path).getFileExtension();
     if (path == "$Bundle")
-        return std::make_shared<BundleFile>(path);
+        pImpl = std::make_unique<BundleFile>(path);
     else if (ext == "dat")
-        return std::make_shared<FalloutDatFile>(path);
+        pImpl = std::make_unique<FalloutDatFile>(path);
     else if (ext == "zip" || ext == "bos" || path[0] == '$')
-        return std::make_shared<ZipFile>(path);
+        pImpl = std::make_unique<ZipFile>(path);
     else
-        return std::make_shared<FolderFile>(path);
+        pImpl = std::make_unique<FolderFile>(path);
 }
 
-/************************************************************************/
-/* Folder file                                                          */
-/************************************************************************/
+DataFile::~DataFile()
+{
+}
+
+DataFile* DataFile::TryLoad(const string& path)
+{
+    try
+    {
+        return new DataFile(path);
+    }
+    catch (fo_exception&)
+    {
+        return nullptr;
+    }
+}
+
+const string& DataFile::GetPackName()
+{
+    return pImpl->GetPackName();
+}
+
+bool DataFile::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+{
+    return pImpl->IsFilePresent(path, path_lower, size, write_time);
+}
+
+uchar* DataFile::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+{
+    return pImpl->OpenFile(path, path_lower, size, write_time);
+}
+
+void DataFile::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
+{
+    return pImpl->GetFileNames(path, include_subdirs, ext, result);
+}
 
 FolderFile::FolderFile(const string& fname)
 {
@@ -286,10 +321,6 @@ void FolderFile::GetFileNames(const string& path, bool include_subdirs, const st
     if (!result_.empty())
         result.insert(result.begin(), result_.begin(), result_.end());
 }
-
-/************************************************************************/
-/* Dat file                                                             */
-/************************************************************************/
 
 FalloutDatFile::FalloutDatFile(const string& fname)
 {
@@ -539,10 +570,6 @@ uchar* FalloutDatFile::OpenFile(const string& path, const string& path_lower, ui
     return buf;
 }
 
-/************************************************************************/
-/* Zip file                                                             */
-/************************************************************************/
-
 ZipFile::ZipFile(const string& fname)
 {
     fileName = fname;
@@ -760,10 +787,6 @@ uchar* ZipFile::OpenFile(const string& path, const string& path_lower, uint& siz
     return buf;
 }
 
-/************************************************************************/
-/* Bundle file                                                          */
-/************************************************************************/
-
 BundleFile::BundleFile(const string& fname)
 {
     filesTree.clear();
@@ -853,7 +876,3 @@ void BundleFile::GetFileNames(const string& path, bool include_subdirs, const st
     if (!result_.empty())
         result.insert(result.begin(), result_.begin(), result_.end());
 }
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/

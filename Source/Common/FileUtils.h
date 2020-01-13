@@ -86,13 +86,13 @@ public:
     bool IsEOF() { return curPos >= fileSize; }
     uint64 GetWriteTime() { return writeTime; }
 
-    static DataFileVec& GetDataFiles() { return dataFiles; }
+    static vector<unique_ptr<DataFile>>& GetDataFiles() { return dataFiles; }
     static void GetFolderFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& files_path,
         FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr);
     static void GetDataFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
 
 private:
-    static DataFileVec dataFiles;
+    static vector<unique_ptr<DataFile>> dataFiles;
     static string writeDir;
 
     bool fileLoaded;
