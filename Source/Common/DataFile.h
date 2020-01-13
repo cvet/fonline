@@ -16,5 +16,5 @@ public:
     void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
 
 private:
-    unique_ptr<Impl> pImpl;
+    unique_ptr<Impl> pImpl {};
 };

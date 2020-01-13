@@ -2,15 +2,25 @@
 
 #include "Common.h"
 
-class IModelBaker;
-using ModelBaker = shared_ptr<IModelBaker>;
+class File;
 class FileCollection;
+namespace fbxsdk
+{
+    class FbxManager;
+}
 
-class IModelBaker : public NonCopyable
+class ModelBaker : public NonCopyable
 {
 public:
-    static ModelBaker Create(FileCollection& all_files);
-    virtual void AutoBakeModels() = 0;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) = 0;
-    virtual ~IModelBaker() = default;
+    ModelBaker(FileCollection& all_files);
+    ~ModelBaker();
+    void AutoBakeModels();
+    void FillBakedFiles(map<string, UCharVec>& baked_files);
+
+private:
+    UCharVec BakeFile(const string& fname, File& file);
+
+    FileCollection& allFiles;
+    map<string, UCharVec> bakedFiles {};
+    fbxsdk::FbxManager* fbxManager {};
 };

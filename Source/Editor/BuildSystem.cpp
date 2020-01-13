@@ -121,19 +121,17 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                             resources.ResetCounter();
 
                             map<string, UCharVec> baked_files;
-
-                            ImageBaker image_baker = IImageBaker::Create(resources);
-                            ModelBaker model_baker = IModelBaker::Create(resources);
-                            EffectBaker effect_baker = IEffectBaker::Create(resources);
-                            image_baker->AutoBakeImages();
-                            model_baker->AutoBakeModels();
-                            effect_baker->AutoBakeEffects();
-                            image_baker->FillBakedFiles(baked_files);
-                            model_baker->FillBakedFiles(baked_files);
-                            effect_baker->FillBakedFiles(baked_files);
-                            image_baker = nullptr;
-                            model_baker = nullptr;
-                            effect_baker = nullptr;
+                            {
+                                ImageBaker image_baker(resources);
+                                ModelBaker model_baker(resources);
+                                EffectBaker effect_baker(resources);
+                                image_baker.AutoBakeImages();
+                                model_baker.AutoBakeModels();
+                                effect_baker.AutoBakeEffects();
+                                image_baker.FillBakedFiles(baked_files);
+                                model_baker.FillBakedFiles(baked_files);
+                                effect_baker.FillBakedFiles(baked_files);
+                            }
 
                             // Fill other files
                             resources.ResetCounter();

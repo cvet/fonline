@@ -12,115 +12,40 @@
 #include "minizip/zip.h"
 #include "png.h"
 
-struct Init
-{
-    Init()
-    {
-        for (uint i = 0; i < sizeof(FoPalette); i += 4)
-            std::swap(FoPalette[i], FoPalette[i + 2]);
-    }
-} Init_;
-
 static uchar* LoadPNG(const uchar* data, uint data_size, uint& result_width, uint& result_height);
 static uchar* LoadTGA(const uchar* data, uint data_size, uint& result_width, uint& result_height);
 
-class ImageBakerImpl : public IImageBaker
+ImageBaker::ImageBaker(FileCollection& all_files) : allFiles {all_files}
 {
-public:
-    ImageBakerImpl(FileCollection& all_files);
-    virtual ~ImageBakerImpl() override;
-    virtual void AutoBakeImages() override;
-    virtual void BakeImage(const string& fname_with_opt) override;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
-
-private:
-    static const int MaxFrameSequence = 50;
-    static const int MaxDirsMinusOne = 7;
-
-    struct FrameShot : public NonCopyable
-    {
-        ushort Width {};
-        ushort Height {};
-        short NextX {};
-        short NextY {};
-        UCharVec Data {};
-        bool Shared {};
-        ushort SharedIndex {};
-    };
-
-    struct FrameSequence : public NonCopyable
-    {
-        short OffsX {};
-        short OffsY {};
-        FrameShot Frames[MaxFrameSequence] {};
-    };
-
-    struct FrameCollection : public NonCopyable
-    {
-        ushort SequenceSize {};
-        ushort AnimTicks {};
-        FrameSequence Main {};
-        bool HaveDirs {};
-        FrameSequence Dirs[MaxDirsMinusOne] {};
-        string EffectName {};
-        string NewExtension;
-    };
-
-    using LoadFunc = std::function<FrameCollection(const string&, const string&, File&)>;
-
-    void ProcessImages(const string& target_ext, LoadFunc loader);
-    void BakeCollection(const string& fname, const FrameCollection& collection);
-    File& FindFile(const string& fname, const string& ext);
-
-    FrameCollection LoadAny(const string& fname_with_opt);
-    FrameCollection LoadFofrm(const string& fname, const string& opt, File& file);
-    FrameCollection LoadFrm(const string& fname, const string& opt, File& file);
-    FrameCollection LoadFrX(const string& fname, const string& opt, File& file);
-    FrameCollection LoadRix(const string& fname, const string& opt, File& file);
-    FrameCollection LoadArt(const string& fname, const string& opt, File& file);
-    FrameCollection LoadSpr(const string& fname, const string& opt, File& file);
-    FrameCollection LoadZar(const string& fname, const string& opt, File& file);
-    FrameCollection LoadTil(const string& fname, const string& opt, File& file);
-    FrameCollection LoadMos(const string& fname, const string& opt, File& file);
-    FrameCollection LoadBam(const string& fname, const string& opt, File& file);
-    FrameCollection LoadPng(const string& fname, const string& opt, File& file);
-    FrameCollection LoadTga(const string& fname, const string& opt, File& file);
-
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles;
-    unordered_map<string, File> cachedFiles;
-};
-
-ImageBaker IImageBaker::Create(FileCollection& all_files)
-{
-    return std::make_shared<ImageBakerImpl>(all_files);
+    // Swap palette R&B
+    static std::once_flag once;
+    std::call_once(once, []() {
+        for (uint i = 0; i < sizeof(FoPalette); i += 4)
+            std::swap(FoPalette[i], FoPalette[i + 2]);
+    });
 }
 
-ImageBakerImpl::ImageBakerImpl(FileCollection& all_files) : allFiles {all_files}, bakedFiles {}
+ImageBaker::~ImageBaker()
 {
 }
 
-ImageBakerImpl::~ImageBakerImpl()
-{
-}
-
-void ImageBakerImpl::AutoBakeImages()
+void ImageBaker::AutoBakeImages()
 {
     using namespace std::placeholders;
-    ProcessImages("fofrm", std::bind(&ImageBakerImpl::LoadFofrm, this, _1, _2, _3));
-    ProcessImages("frm", std::bind(&ImageBakerImpl::LoadFrm, this, _1, _2, _3));
-    ProcessImages("fr0", std::bind(&ImageBakerImpl::LoadFrX, this, _1, _2, _3));
-    ProcessImages("rix", std::bind(&ImageBakerImpl::LoadRix, this, _1, _2, _3));
-    ProcessImages("art", std::bind(&ImageBakerImpl::LoadArt, this, _1, _2, _3));
-    ProcessImages("zar", std::bind(&ImageBakerImpl::LoadZar, this, _1, _2, _3));
-    ProcessImages("til", std::bind(&ImageBakerImpl::LoadTil, this, _1, _2, _3));
-    ProcessImages("mos", std::bind(&ImageBakerImpl::LoadMos, this, _1, _2, _3));
-    ProcessImages("bam", std::bind(&ImageBakerImpl::LoadBam, this, _1, _2, _3));
-    ProcessImages("png", std::bind(&ImageBakerImpl::LoadPng, this, _1, _2, _3));
-    ProcessImages("tga", std::bind(&ImageBakerImpl::LoadTga, this, _1, _2, _3));
+    ProcessImages("fofrm", std::bind(&ImageBaker::LoadFofrm, this, _1, _2, _3));
+    ProcessImages("frm", std::bind(&ImageBaker::LoadFrm, this, _1, _2, _3));
+    ProcessImages("fr0", std::bind(&ImageBaker::LoadFrX, this, _1, _2, _3));
+    ProcessImages("rix", std::bind(&ImageBaker::LoadRix, this, _1, _2, _3));
+    ProcessImages("art", std::bind(&ImageBaker::LoadArt, this, _1, _2, _3));
+    ProcessImages("zar", std::bind(&ImageBaker::LoadZar, this, _1, _2, _3));
+    ProcessImages("til", std::bind(&ImageBaker::LoadTil, this, _1, _2, _3));
+    ProcessImages("mos", std::bind(&ImageBaker::LoadMos, this, _1, _2, _3));
+    ProcessImages("bam", std::bind(&ImageBaker::LoadBam, this, _1, _2, _3));
+    ProcessImages("png", std::bind(&ImageBaker::LoadPng, this, _1, _2, _3));
+    ProcessImages("tga", std::bind(&ImageBaker::LoadTga, this, _1, _2, _3));
 }
 
-void ImageBakerImpl::BakeImage(const string& fname_with_opt)
+void ImageBaker::BakeImage(const string& fname_with_opt)
 {
     if (bakedFiles.count(fname_with_opt))
         return;
@@ -129,13 +54,13 @@ void ImageBakerImpl::BakeImage(const string& fname_with_opt)
     BakeCollection(fname_with_opt, collection);
 }
 
-void ImageBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
+void ImageBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
     for (const auto& kv : bakedFiles)
         baked_files.emplace(kv.first, kv.second);
 }
 
-void ImageBakerImpl::ProcessImages(const string& target_ext, LoadFunc loader)
+void ImageBaker::ProcessImages(const string& target_ext, LoadFunc loader)
 {
     allFiles.ResetCounter();
     while (allFiles.IsNextFile())
@@ -156,7 +81,7 @@ void ImageBakerImpl::ProcessImages(const string& target_ext, LoadFunc loader)
     }
 }
 
-void ImageBakerImpl::BakeCollection(const string& fname, const FrameCollection& collection)
+void ImageBaker::BakeCollection(const string& fname, const FrameCollection& collection)
 {
     RUNTIME_ASSERT(!bakedFiles.count(fname));
 
@@ -204,7 +129,7 @@ void ImageBakerImpl::BakeCollection(const string& fname, const FrameCollection& 
         bakedFiles.emplace(fname, std::move(data));
 }
 
-File& ImageBakerImpl::FindFile(const string& fname, const string& ext)
+File& ImageBaker::FindFile(const string& fname, const string& ext)
 {
     auto it = cachedFiles.find(fname);
     if (it != cachedFiles.end())
@@ -219,7 +144,7 @@ File& ImageBakerImpl::FindFile(const string& fname, const string& ext)
     return file;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadAny(const string& fname_with_opt)
+ImageBaker::FrameCollection ImageBaker::LoadAny(const string& fname_with_opt)
 {
     string ext = _str(fname_with_opt).getFileExtension();
     string fname = _str("{}/{}.{}", _str(fname_with_opt).extractDir(),
@@ -260,7 +185,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadAny(const string& fname_with
     throw fo_exception("Invalid image file extension", fname);
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFofrm(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const string& opt, File& file)
 {
     FrameCollection collection;
 
@@ -369,7 +294,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFofrm(const string& fname, c
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFrm(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadFrm(const string& fname, const string& opt, File& file)
 {
     bool anim_pix = (opt.find('a') != string::npos);
 
@@ -590,7 +515,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFrm(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFrX(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadFrX(const string& fname, const string& opt, File& file)
 {
     bool anim_pix = (opt.find('a') != string::npos);
 
@@ -821,7 +746,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadFrX(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadRix(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadRix(const string& fname, const string& opt, File& file)
 {
     file.SetCurPos(0x4);
     ushort w;
@@ -854,7 +779,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadRix(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadArt(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const string& opt, File& file)
 {
     int palette_index = 0; // 0..3
     bool transparent = false;
@@ -1130,7 +1055,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadArt(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadSpr(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const string& opt, File& file)
 {
     FrameCollection collection;
 
@@ -1551,7 +1476,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadSpr(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadZar(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadZar(const string& fname, const string& opt, File& file)
 {
     // Read header
     char head[6];
@@ -1642,7 +1567,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadZar(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadTil(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadTil(const string& fname, const string& opt, File& file)
 {
     // Read header
     char head[7];
@@ -1760,7 +1685,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadTil(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadMos(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadMos(const string& fname, const string& opt, File& file)
 {
     // Read signature
     char head[8];
@@ -1857,7 +1782,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadMos(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadBam(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadBam(const string& fname, const string& opt, File& file)
 {
     // Format: fileName$5-6.spr
     istringstream idelim(opt);
@@ -1990,7 +1915,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadBam(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadPng(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadPng(const string& fname, const string& opt, File& file)
 {
     uint w, h;
     uchar* png_data = LoadPNG(file.GetBuf(), file.GetFsize(), w, h);
@@ -2009,7 +1934,7 @@ ImageBakerImpl::FrameCollection ImageBakerImpl::LoadPng(const string& fname, con
     return collection;
 }
 
-ImageBakerImpl::FrameCollection ImageBakerImpl::LoadTga(const string& fname, const string& opt, File& file)
+ImageBaker::FrameCollection ImageBaker::LoadTga(const string& fname, const string& opt, File& file)
 {
     uint w, h;
     uchar* tga_data = LoadTGA(file.GetBuf(), file.GetFsize(), w, h);

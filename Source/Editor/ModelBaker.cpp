@@ -10,37 +10,17 @@
 #include "assimp/postprocess.h"
 #include "fbxsdk/fbxsdk.h"
 
-class ModelBakerImpl : public IModelBaker
-{
-public:
-    ModelBakerImpl(FileCollection& all_files);
-    virtual ~ModelBakerImpl() override;
-    virtual void AutoBakeModels() override;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
-
-private:
-    UCharVec BakeFile(const string& fname, File& file);
-
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles;
-    unique_ptr<FbxManager, void (*)(FbxManager*)> fbxManager;
-};
-
-ModelBaker IModelBaker::Create(FileCollection& all_files)
-{
-    return std::make_shared<ModelBakerImpl>(all_files);
-}
-
-ModelBakerImpl::ModelBakerImpl(FileCollection& all_files) :
-    allFiles {all_files}, bakedFiles {}, fbxManager {nullptr, [](auto* fbx_mngr) { fbx_mngr->Destroy(); }}
+ModelBaker::ModelBaker(FileCollection& all_files) : allFiles {all_files}
 {
 }
 
-ModelBakerImpl::~ModelBakerImpl()
+ModelBaker::~ModelBaker()
 {
+    if (fbxManager)
+        fbxManager->Destroy();
 }
 
-void ModelBakerImpl::AutoBakeModels()
+void ModelBaker::AutoBakeModels()
 {
     allFiles.ResetCounter();
     while (allFiles.IsNextFile())
@@ -61,7 +41,7 @@ void ModelBakerImpl::AutoBakeModels()
     }
 }
 
-void ModelBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
+void ModelBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
     for (const auto& kv : bakedFiles)
         baked_files.emplace(kv.first, kv.second);
@@ -141,7 +121,7 @@ static Matrix ConvertFbxMatrix(const FbxAMatrix& m);
 static Bone* ConvertAssimpPass1(aiScene* ai_scene, aiNode* ai_node);
 static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node);
 
-UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
+UCharVec ModelBaker::BakeFile(const string& fname, File& file)
 {
     // Result bone
     Bone* root_bone = nullptr;
@@ -153,12 +133,12 @@ UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
     {
         if (!fbxManager)
         {
-            fbxManager.reset(FbxManager::Create());
+            fbxManager = FbxManager::Create();
             if (!fbxManager)
                 throw fo_exception("Unable to create FBX Manager");
 
             // Create an IOSettings object. This object holds all import/export settings.
-            FbxIOSettings* ios = FbxIOSettings::Create(fbxManager.get(), IOSROOT);
+            FbxIOSettings* ios = FbxIOSettings::Create(fbxManager, IOSROOT);
             fbxManager->SetIOSettings(ios);
 
             // Load plugins from the executable directory (optional)
@@ -166,12 +146,12 @@ UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
         }
 
         // Create an FBX scene
-        FbxScene* fbx_scene = FbxScene::Create(fbxManager.get(), "Root Scene");
+        FbxScene* fbx_scene = FbxScene::Create(fbxManager, "Root Scene");
         if (!fbx_scene)
             throw fo_exception("Unable to create FBX scene");
 
         // Create an importer
-        FbxImporter* fbx_importer = FbxImporter::Create(fbxManager.get(), "");
+        FbxImporter* fbx_importer = FbxImporter::Create(fbxManager, "");
         if (!fbx_importer)
             throw fo_exception("Unable to create FBX importer");
 

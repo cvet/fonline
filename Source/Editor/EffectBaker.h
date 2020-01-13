@@ -2,15 +2,26 @@
 
 #include "Common.h"
 
-class IEffectBaker;
-using EffectBaker = shared_ptr<IEffectBaker>;
+class File;
 class FileCollection;
+namespace glslang
+{
+    class TIntermediate;
+}
 
-class IEffectBaker : public NonCopyable
+class EffectBaker : public NonCopyable
 {
 public:
-    static EffectBaker Create(FileCollection& all_files);
-    virtual void AutoBakeEffects() = 0;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) = 0;
-    virtual ~IEffectBaker() = default;
+    EffectBaker(FileCollection& all_files);
+    ~EffectBaker();
+    void AutoBakeEffects();
+    void FillBakedFiles(map<string, UCharVec>& baked_files);
+
+private:
+    void BakeShaderProgram(const string& fname, const string& content);
+    void BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate);
+
+    FileCollection& allFiles;
+    map<string, UCharVec> bakedFiles;
+    std::mutex bakedFilesLocker;
 };
