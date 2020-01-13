@@ -1,5 +1,5 @@
 #include "Crypt.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -351,7 +351,7 @@ bool CryptManager::GetCache(const string& data_name, UCharVec& data)
 }
 
 #else
-#include "FileSystem.h"
+#include "DiskFileSystem.h"
 
 static string MakeCachePath(const string& data_name)
 {

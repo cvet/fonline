@@ -299,7 +299,7 @@ const char* Debugger::GetMemoryStatistics()
 }
 
 #ifdef FO_WINDOWS
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "WinApi_Include.h"
 
 #pragma warning(disable : 4748)

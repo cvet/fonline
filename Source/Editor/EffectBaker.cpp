@@ -1,5 +1,5 @@
 #include "EffectBaker.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"

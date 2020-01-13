@@ -1,6 +1,6 @@
 #include "Dialogs.h"
 #include "Critter.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "IniFile.h"
 #include "Item.h"
 #include "Location.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 
 class ImageBaker : public NonCopyable
 {

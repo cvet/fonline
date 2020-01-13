@@ -3,7 +3,7 @@
 #include "CritterView.h"
 #include "Crypt.h"
 #include "Debugger.h"
-#include "FileSystem.h"
+#include "DiskFileSystem.h"
 #include "IniFile.h"
 #include "ItemHexView.h"
 #include "ItemView.h"

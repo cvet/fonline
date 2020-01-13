@@ -1,25 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "mapbox/variant.hpp"
 
-class Data
-{
-public:
-    static const int IntValue = 0;
-    static const int Int64Value = 1;
-    static const int DoubleValue = 2;
-    static const int BoolValue = 3;
-    static const int StringValue = 4;
-    static const int ArrayValue = 5;
-    static const int DictValue = 6;
-
-    using Array = mapbox::util::variant<vector<int>, vector<int64>, vector<double>, vector<bool>, vector<string>>;
-    using Dict = map<string, mapbox::util::variant<int, int64, double, bool, string, Array>>;
-    using Value = mapbox::util::variant<int, int64, double, bool, string, Array, Dict>;
-    using Document = map<string, Value>;
-    using Collection = map<string, Document>;
-};
 /*
    class YamlFile
    {

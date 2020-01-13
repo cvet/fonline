@@ -23,7 +23,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 
 #if defined(FO_WINDOWS)
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "Timer.h"
 #include "WinApi_Include.h"
 
@@ -484,7 +484,7 @@ void CreateDump(const string& appendix, const string& message)
 #ifdef FO_LINUX
 #define BACKWARD_HAS_BFD 1
 #endif
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "backward.hpp"
 #include <execinfo.h>
 #include <signal.h>

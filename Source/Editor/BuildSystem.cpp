@@ -1,6 +1,6 @@
 #include "BuildSystem.h"
 #include "EffectBaker.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "ImageBaker.h"
 #include "Log.h"
 #include "ModelBaker.h"

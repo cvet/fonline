@@ -1,34 +1,134 @@
 #pragma once
 
 #include "Common.h"
+#include "DataFile.h"
 
-#ifndef SEEK_SET
-#define SEEK_SET (0) // Seek from beginning of file
-#define SEEK_CUR (1) // Seek from current position
-#define SEEK_END (2) // Set file pointer to EOF plus "offset"
-#endif
+struct FindData
+{
+    string FileName;
+    uint FileSize;
+    uint64 WriteTime;
+    bool IsDirectory;
+};
+typedef vector<FindData> FindDataVec;
 
-void* FileOpen(const string& fname, bool write, bool write_through = false);
-void* FileOpenForAppend(const string& fname, bool write_through = false);
-void* FileOpenForReadWrite(const string& fname, bool write_through = false);
-void FileClose(void* file);
-bool FileRead(void* file, void* buf, uint len, uint* rb = nullptr);
-bool FileWrite(void* file, const void* buf, uint len);
-bool FileSetPointer(void* file, int offset, int origin);
-uint FileGetPointer(void* file);
-uint64 FileGetWriteTime(void* file);
-uint FileGetSize(void* file);
-bool FileDelete(const string& fname);
-bool FileExist(const string& fname);
-bool FileCopy(const string& fname, const string& copy_fname);
-bool FileRename(const string& fname, const string& new_fname);
+class File : public NonCopyable
+{
+public:
+    static void InitDataFiles(const string& path, bool set_write_dir = true);
+    static bool LoadDataFile(const string& path, bool skip_inner = false);
+    static void ClearDataFiles();
 
-void* FileFindFirst(
-    const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
-void FileFindClose(void* descriptor);
+    File();
+    ~File();
+    File(const string& path, bool no_read = false);
+    File(const uchar* stream, uint length);
 
-void NormalizePathSlashesInplace(string& path);
-void ResolvePathInplace(string& path);
-void MakeDirectory(const string& path);
-void MakeDirectoryTree(const string& path);
+    bool LoadFile(const string& path, bool no_read = false);
+    bool LoadStream(const uchar* stream, uint length);
+    void UnloadFile();
+    uchar* ReleaseBuffer();
+
+    void SetCurPos(uint pos);
+    void GoForward(uint offs);
+    void GoBack(uint offs);
+    bool FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs);
+
+    string GetNonEmptyLine();
+    bool CopyMem(void* ptr, uint size);
+    string GetStrNT(); // Null terminated
+    uchar GetUChar();
+    ushort GetBEUShort();
+    short GetBEShort() { return (short)GetBEUShort(); }
+    ushort GetLEUShort();
+    short GetLEShort() { return (short)GetLEUShort(); }
+    uint GetBEUInt();
+    uint GetLEUInt();
+    uint GetLE3UChar();
+    float GetBEFloat();
+    float GetLEFloat();
+
+    void SwitchToRead();
+    void SwitchToWrite();
+    bool ResizeOutBuf();
+    void SetPosOutBuf(uint pos);
+    uchar* GetOutBuf() { return dataOutBuf; }
+    uint GetOutBufLen() { return endOutBuf; }
+    bool SaveFile(const string& fname);
+
+    void SetData(const void* data, uint len);
+    void SetStr(const string& str);
+    void SetStrNT(const string& str);
+    void SetUChar(uchar data);
+    void SetBEUShort(ushort data);
+    void SetBEShort(short data) { SetBEUShort((ushort)data); }
+    void SetLEUShort(ushort data);
+    void SetBEUInt(uint data);
+    void SetLEUInt(uint data);
+
+    static void ResetCurrentDir();
+    static void SetCurrentDir(const string& dir, const string& write_dir);
+    static string GetWritePath(const string& fname);
+    static bool IsFileExists(const string& fname);
+    static bool CopyFile(const string& from, const string& to);
+    static bool RenameFile(const string& from, const string& to);
+    static bool DeleteFile(const string& fname);
+    static void DeleteDir(const string& dir);
+    static void CreateDirectoryTree(const string& path);
+    static string GetExePath();
+
+    bool IsLoaded() { return fileLoaded; }
+    uchar* GetBuf() { return fileBuf; }
+    const char* GetCStr() { return (const char*)fileBuf; }
+    uchar* GetCurBuf() { return fileBuf + curPos; }
+    uint GetCurPos() { return curPos; }
+    uint GetFsize() { return fileSize; }
+    bool IsEOF() { return curPos >= fileSize; }
+    uint64 GetWriteTime() { return writeTime; }
+
+    static vector<unique_ptr<DataFile>>& GetDataFiles() { return dataFiles; }
+    static void GetFolderFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& files_path,
+        FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr);
+    static void GetDataFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
+
+private:
+    static vector<unique_ptr<DataFile>> dataFiles;
+    static string writeDir;
+
+    bool fileLoaded;
+    uint fileSize;
+    uchar* fileBuf;
+    uint curPos;
+
+    uchar* dataOutBuf;
+    uint posOutBuf;
+    uint endOutBuf;
+    uint lenOutBuf;
+
+    uint64 writeTime;
+
+    static void RecursiveDirLook(const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext,
+        StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs);
+};
+
+class FileCollection
+{
+public:
+    FileCollection(const string& ext, const string& fixed_dir = "");
+    bool IsNextFile();
+    File& GetCurFile(
+        string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
+    File& GetNextFile(
+        string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
+    File& FindFile(
+        const string& name, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
+    uint GetFilesCount();
+    void ResetCounter();
+
+private:
+    StrVec fileNames;
+    StrVec filePaths;
+    StrVec fileRelativePaths;
+    uint curFileIndex;
+    File curFile;
+};
