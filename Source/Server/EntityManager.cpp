@@ -581,7 +581,6 @@ void EntityManager::InitAfterLoad()
         else if (entity->Type == EntityType::Npc)
         {
             Npc* npc = (Npc*)entity;
-            npc->RefreshName();
             Script::RaiseInternalEvent(ServerFunctions.CritterInit, npc, false);
             if (!npc->IsDestroyed && npc->GetScriptId())
                 npc->SetScript(nullptr, false);

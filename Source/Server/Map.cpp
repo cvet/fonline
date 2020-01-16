@@ -1,7 +1,6 @@
 #include "Map.h"
 #include "Critter.h"
 #include "CritterManager.h"
-#include "Debugger.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -37,9 +36,6 @@ Map::Map(uint id, ProtoMap* proto, Location* location) : Entity(id, EntityType::
 {
     RUNTIME_ASSERT(proto);
 
-    MEMORY_PROCESS(MEMORY_MAP, sizeof(Map));
-    MEMORY_PROCESS(MEMORY_MAP_FIELD, GetWidth() * GetHeight());
-
     mapLocation = location;
 
     hexFlags = nullptr;
@@ -52,8 +48,6 @@ Map::Map(uint id, ProtoMap* proto, Location* location) : Entity(id, EntityType::
 
 Map::~Map()
 {
-    MEMORY_PROCESS(MEMORY_MAP, -(int)sizeof(Map));
-    MEMORY_PROCESS(MEMORY_MAP_FIELD, -hexFlagsSize);
     SAFEDELA(hexFlags);
     hexFlagsSize = 0;
 }

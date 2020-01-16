@@ -680,14 +680,6 @@ public:
     {
         int errors = 0;
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        for (auto it = filesToCheck[0].begin(); it != filesToCheck[0].end(); ++it)
-        {
-            if (!DlgMngr.GetDialog(it->second))
-            {
-                WriteLog("Dialog file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
         for (auto it = filesToCheck[1].begin(); it != filesToCheck[1].end(); ++it)
         {
             if (!protoMngr->GetProtoItem(it->second))

@@ -142,7 +142,6 @@ Npc* CritterManager::CreateNpc(
     npc->SetHomeDir(dir);
     npc->SetHexX(hx);
     npc->SetHexY(hy);
-    npc->RefreshName();
 
     bool can = mapMngr.CanAddCrToMap(npc, map, hx, hy, 0);
     RUNTIME_ASSERT(can);
@@ -449,7 +448,7 @@ void CritterManager::CloseTalk(Client* cl)
         }
     }
 
-    cl->Talk.Clear();
+    cl->Talk = Talking {};
     cl->Send_Talk();
 }
 

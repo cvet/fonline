@@ -50,6 +50,7 @@ public:
     MapManager MapMngr;
     CritterManager CrMngr;
     ItemManager ItemMngr;
+    DialogManager DlgMngr;
 
     static void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
 

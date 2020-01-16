@@ -1,7 +1,6 @@
 ﻿#include "Client.h"
 #include "CritterView.h"
 #include "Crypt.h"
-#include "Debugger.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "IniFile.h"
@@ -17,49 +16,6 @@
 #include "Version_Include.h"
 #include "sha1.h"
 #include "sha2.h"
-
-static bool ASDbgMemoryCanWork = false;
-static thread_local bool ASDbgMemoryInUse = false;
-static map<void*, string> ASDbgMemoryPtr;
-
-static void* ASDeepDebugMalloc(size_t size)
-{
-    size += sizeof(size_t);
-    size_t* ptr = (size_t*)malloc(size);
-    *ptr = size;
-
-    if (ASDbgMemoryCanWork && !ASDbgMemoryInUse)
-    {
-        ASDbgMemoryInUse = true;
-        string func = Script::GetActiveFuncName();
-        string buf = _str("AS : {}", !func.empty() ? func : "<nullptr>");
-        MEMORY_PROCESS_STR(buf.c_str(), (int)size);
-        ASDbgMemoryPtr.insert(std::make_pair(ptr, buf));
-        ASDbgMemoryInUse = false;
-    }
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, (int)size);
-
-    return ++ptr;
-}
-
-static void ASDeepDebugFree(void* ptr)
-{
-    size_t* ptr_ = (size_t*)ptr;
-    size_t size = *(--ptr_);
-
-    if (ASDbgMemoryCanWork)
-    {
-        auto it = ASDbgMemoryPtr.find(ptr_);
-        if (it != ASDbgMemoryPtr.end())
-        {
-            MEMORY_PROCESS_STR(it->second.c_str(), -(int)size);
-            ASDbgMemoryPtr.erase(it);
-        }
-    }
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, -(int)size);
-
-    free(ptr_);
-}
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR \
@@ -5215,9 +5171,6 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
-    if (MemoryDebugLevel > 1)
-        asSetGlobalMemoryFunctions(ASDeepDebugMalloc, ASDeepDebugFree);
-
     // Finish previous
     Script::Finish();
 
@@ -5355,9 +5308,6 @@ bool FOClient::ReloadScripts()
 
     if (errors)
         return false;
-
-    if (MemoryDebugLevel > 1)
-        ASDbgMemoryCanWork = true;
 
     GlobalVars::SetPropertyRegistrator(registrators[0]);
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback(OnSendGlobalValue);

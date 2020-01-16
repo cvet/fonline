@@ -9,9 +9,7 @@
 #include "Script.h"
 #include "StringUtils.h"
 
-DialogManager DlgMngr;
-
-int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash)
+static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash)
 {
     Property* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
     Property* prop_critter = Critter::PropertiesRegistrator->Find(str);
@@ -76,12 +74,19 @@ int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash
     return prop->GetRegIndex();
 }
 
+DialogManager::~DialogManager()
+{
+    for (auto& dlg : dialogPacks)
+        delete dlg.second;
+}
+
 bool DialogManager::LoadDialogs()
 {
     WriteLog("Load dialogs...\n");
 
-    while (!dialogPacks.empty())
-        EraseDialog(dialogPacks.begin()->second->PackId);
+    for (auto& dlg : dialogPacks)
+        delete dlg.second;
+    dialogPacks.clear();
 
     FileCollection files("fodlg");
     uint files_loaded = 0;
@@ -161,14 +166,6 @@ void DialogManager::EraseDialog(hash pack_id)
 
     delete it->second;
     dialogPacks.erase(it);
-}
-
-void DialogManager::Finish()
-{
-    WriteLog("Dialog manager finish...\n");
-    while (!dialogPacks.empty())
-        EraseDialog(dialogPacks.begin()->second->PackId);
-    WriteLog("Dialog manager finish complete.\n");
 }
 
 DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& data)
@@ -255,11 +252,7 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
     string read_str;
     bool ret_val;
 
-#ifdef FONLINE_NPCEDITOR
-    string script;
-#else
     int script;
-#endif
     uint flags;
 
     while (true)
@@ -277,19 +270,12 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
         input >> read_str;
         if (input.fail())
             LOAD_FAIL("Bad not answer action.");
-#ifdef FONLINE_NPCEDITOR
-        script = read_str;
-        if (script == "NOT_ANSWER_CLOSE_DIALOG")
-            script = "None";
-        ret_val = false;
-#else
         script = GetNotAnswerAction(read_str, ret_val);
         if (script < 0)
         {
             WriteLog("Unable to parse '{}'.\n", read_str);
             LOAD_FAIL("Invalid not answer action.");
         }
-#endif
         input >> flags;
         if (input.fail())
             LOAD_FAIL("Bad flags.");
@@ -395,11 +381,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
     bool no_recheck = false;
     bool ret_value = false;
 
-#ifdef FONLINE_NPCEDITOR
-    string script_val[5];
-#else
     int script_val[5] = {0, 0, 0, 0, 0};
-#endif
 
     input >> type_str;
     if (input.fail())
@@ -492,19 +474,11 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
         input >> values_count;
 
 // Values
-#ifdef FONLINE_NPCEDITOR
-#define READ_SCRIPT_VALUE_(val) \
-    { \
-        input >> value_str; \
-        val = value_str; \
-    }
-#else
 #define READ_SCRIPT_VALUE_(val) \
     { \
         input >> value_str; \
         val = ConvertParamValue(value_str, fail); \
     }
-#endif
         char value_str[MAX_FOTEXT];
         if (values_count > 0)
             READ_SCRIPT_VALUE_(script_val[0]);
@@ -605,15 +579,6 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
     result.ValuesCount = values_count;
     result.NoRecheck = no_recheck;
     result.RetValue = ret_value;
-#ifdef FONLINE_NPCEDITOR
-    result.ValueStr = svalue;
-    result.ParamName = name;
-    result.ValuesNames[0] = script_val[0];
-    result.ValuesNames[1] = script_val[1];
-    result.ValuesNames[2] = script_val[2];
-    result.ValuesNames[3] = script_val[3];
-    result.ValuesNames[4] = script_val[4];
-#else
     result.Value = ivalue;
     result.ValueExt[0] = script_val[0];
     result.ValueExt[1] = script_val[1];
@@ -622,7 +587,6 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
     result.ValueExt[4] = script_val[4];
     if (fail)
         return nullptr;
-#endif
     return &result;
 }
 

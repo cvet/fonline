@@ -7,75 +7,12 @@
 #include "Timer.h"
 #include "Version_Include.h"
 #include "WinApi_Include.h"
+
 #include "curl/curl.h"
 #include "png.h"
 #include "preprocessor.h"
 #include "sha1.h"
 #include "sha2.h"
-
-static void* ASDebugMalloc(size_t size)
-{
-    size += sizeof(size_t);
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, (int)size);
-    size_t* ptr = (size_t*)malloc(size);
-    *ptr = size;
-    return ++ptr;
-}
-
-static void ASDebugFree(void* ptr)
-{
-    size_t* ptr_ = (size_t*)ptr;
-    size_t size = *(--ptr_);
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, -(int)size);
-    free(ptr_);
-}
-
-static bool ASDbgMemoryCanWork = false;
-static thread_local bool ASDbgMemoryInUse = false;
-static map<void*, string> ASDbgMemoryPtr;
-static string ASDbgMemoryBuf;
-static std::mutex ASDbgMemoryLocker;
-
-static void* ASDeepDebugMalloc(size_t size)
-{
-    size += sizeof(size_t);
-    size_t* ptr = (size_t*)malloc(size);
-    *ptr = size;
-
-    if (ASDbgMemoryCanWork && !ASDbgMemoryInUse)
-    {
-        SCOPE_LOCK(ASDbgMemoryLocker);
-        ASDbgMemoryInUse = true;
-        string func = Script::GetActiveFuncName();
-        ASDbgMemoryBuf = _str("AS : {}", !func.empty() ? func : "<nullptr>");
-        MEMORY_PROCESS_STR(ASDbgMemoryBuf.c_str(), (int)size);
-        ASDbgMemoryPtr.insert(std::make_pair(ptr, ASDbgMemoryBuf));
-        ASDbgMemoryInUse = false;
-    }
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, (int)size);
-
-    return ++ptr;
-}
-
-static void ASDeepDebugFree(void* ptr)
-{
-    size_t* ptr_ = (size_t*)ptr;
-    size_t size = *(--ptr_);
-
-    if (ASDbgMemoryCanWork)
-    {
-        SCOPE_LOCK(ASDbgMemoryLocker);
-        auto it = ASDbgMemoryPtr.find(ptr_);
-        if (it != ASDbgMemoryPtr.end())
-        {
-            MEMORY_PROCESS_STR(it->second.c_str(), -(int)size);
-            ASDbgMemoryPtr.erase(it);
-        }
-    }
-    MEMORY_PROCESS(MEMORY_ANGEL_SCRIPT, -(int)size);
-
-    free(ptr_);
-}
 
 namespace ServerBind
 {
@@ -107,14 +44,7 @@ bool FOServer::InitScriptSystem()
         return false;
     }
 
-    // Memory debugging
     asThreadCleanup();
-    if (MemoryDebugLevel > 1)
-        asSetGlobalMemoryFunctions(ASDeepDebugMalloc, ASDeepDebugFree);
-    else if (MemoryDebugLevel > 0)
-        asSetGlobalMemoryFunctions(ASDebugMalloc, ASDebugFree);
-    else
-        asSetGlobalMemoryFunctions(malloc, free);
 
     // Profiler settings
     uint sample_time = MainConfig->GetInt("", "ProfilerSampleInterval", 0);
@@ -209,8 +139,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT(ItemCheckMove);
     BIND_INTERNAL_EVENT(StaticItemWalk);
 #undef BIND_INTERNAL_EVENT
-
-    ASDbgMemoryCanWork = true;
 
     GlobalVars::SetPropertyRegistrator(registrators[0]);
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback(OnSendGlobalValue);
@@ -307,13 +235,6 @@ bool FOServer::ReloadClientScripts()
 {
     WriteLog("Reload client scripts...\n");
 
-    // Disable debug allocators
-    if (MemoryDebugLevel > 0)
-    {
-        asThreadCleanup();
-        asSetGlobalMemoryFunctions(malloc, free);
-    }
-
     // Swap engine
     asIScriptEngine* old_engine = Script::GetEngine();
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_CLIENT, &ProtoMngr, nullptr);
@@ -336,16 +257,8 @@ bool FOServer::ReloadClientScripts()
             WriteLog("asCreateScriptEngine fail.\n");
         else
             WriteLog("Bind fail, errors {}.\n", bind_errors);
+
         Script::FinishEngine(engine);
-
-        asThreadCleanup();
-        if (MemoryDebugLevel > 1)
-            asSetGlobalMemoryFunctions(ASDeepDebugMalloc, ASDeepDebugFree);
-        else if (MemoryDebugLevel > 0)
-            asSetGlobalMemoryFunctions(ASDebugMalloc, ASDebugFree);
-        else
-            asSetGlobalMemoryFunctions(malloc, free);
-
         return false;
     }
 
@@ -392,13 +305,6 @@ bool FOServer::ReloadClientScripts()
     Script::Define("__SERVER");
 
     asThreadCleanup();
-    if (MemoryDebugLevel > 1)
-        asSetGlobalMemoryFunctions(ASDeepDebugMalloc, ASDeepDebugFree);
-    else if (MemoryDebugLevel > 0)
-        asSetGlobalMemoryFunctions(ASDebugMalloc, ASDebugFree);
-    else
-        asSetGlobalMemoryFunctions(malloc, free);
-
     Script::SetEngine(old_engine);
 
     // Add config text and pragmas
@@ -3231,7 +3137,7 @@ bool FOServer::ScriptFunc::Global_RunDialogHex(
         SCRIPT_ERROR_R0("Player arg is destroyed.");
     if (!player->IsPlayer())
         SCRIPT_ERROR_R0("Player arg is not player.");
-    if (!DlgMngr.GetDialog(dlg_pack))
+    if (!Self->DlgMngr.GetDialog(dlg_pack))
         SCRIPT_ERROR_R0("Dialog not found.");
     Client* cl = (Client*)player;
     if (cl->Talk.Locked)
@@ -3602,7 +3508,6 @@ bool FOServer::ScriptFunc::Global_LoadImage(uint index, string image_name, uint 
         ServerImages.resize(index + 1);
     if (ServerImages[index])
     {
-        MEMORY_PROCESS(MEMORY_IMAGE, -(int)ServerImages[index]->Data.capacity());
         delete ServerImages[index];
         ServerImages[index] = nullptr;
     }
@@ -3734,7 +3639,6 @@ bool FOServer::ScriptFunc::Global_LoadImage(uint index, string image_name, uint 
     delete[] data;
 
     ServerImages[index] = simg;
-    MEMORY_PROCESS(MEMORY_IMAGE, (int)ServerImages[index]->Data.capacity());
     return true;
 }
 

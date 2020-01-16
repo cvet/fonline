@@ -26,7 +26,6 @@ FOServer::FOServer() :
     memzero(&Statistics, sizeof(Statistics));
     memzero(&ServerFunctions, sizeof(ServerFunctions));
     RequestReloadClientScripts = false;
-    MEMORY_PROCESS(MEMORY_STATIC, sizeof(FOServer));
 }
 
 FOServer::~FOServer()
@@ -43,10 +42,6 @@ int FOServer::Run()
     WriteLog("FOnline Server ({:#x}).\n", FO_VERSION);
     if (!GameOpt.CommandLine.empty())
         WriteLog("Command line '{}'.\n", GameOpt.CommandLine);
-
-    MemoryDebugLevel = MainConfig->GetInt("", "MemoryDebugLevel", 0);
-    if (MemoryDebugLevel > 2)
-        Debugger::StartTraceMemory();
 
     ushort port = MainConfig->GetInt("", "AdminPanelPort", 0);
     if (port)
@@ -109,7 +104,6 @@ void FOServer::Finish()
     SAFEDEL(WebSocketsServer);
 
     // Managers
-    DlgMngr.Finish();
     FinishScriptSystem();
     LangPacks.clear();
     File::ClearDataFiles();
@@ -376,17 +370,6 @@ void FOServer::LogicTick()
 
 void FOServer::DrawGui()
 {
-    // Memory
-    ImGui::SetNextWindowPos(Gui.MemoryPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Memory", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats = Debugger::GetMemoryStatistics();
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
     // Players
     ImGui::SetNextWindowPos(Gui.PlayersPos, ImGuiCond_Once);
     ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
@@ -989,9 +972,6 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         string result;
         switch (info)
         {
-        case 0:
-            result = Debugger::GetMemoryStatistics();
-            break;
         case 1:
             result = GetIngamePlayersStatistics();
             break;

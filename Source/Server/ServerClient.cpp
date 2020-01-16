@@ -436,7 +436,6 @@ void FOServer::Process_CreateClient(Client* cl)
     // Register
     cl->SetId(id);
     DbStorage->Insert("Players", id, {{"_Proto", string("Player")}});
-    cl->RefreshName();
     cl->SetPassword(password);
     cl->SetWorldX(GM_MAXX / 2);
     cl->SetWorldY(GM_MAXY / 2);
@@ -599,9 +598,6 @@ void FOServer::Process_LogIn(Client*& cl)
         cl->Disconnect();
         return;
     }
-
-    // Copy data
-    cl->RefreshName();
 
     // Find in players in game
     Client* cl_old = CrMngr.GetPlayer(id);

@@ -72,10 +72,7 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     RUNTIME_ASSERT(item);
 
     if (!cont->childItems)
-    {
-        MEMORY_PROCESS(MEMORY_ITEM, sizeof(ItemMap));
         cont->childItems = new ItemVec();
-    }
 
     RUNTIME_ASSERT(std::find(cont->childItems->begin(), cont->childItems->end(), item) == cont->childItems->end());
 
@@ -90,10 +87,7 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     RUNTIME_ASSERT(item);
 
     if (!cont->childItems)
-    {
-        MEMORY_PROCESS(MEMORY_ITEM, sizeof(ItemMap));
         cont->childItems = new ItemVec();
-    }
 
     if (item->GetStackable())
     {

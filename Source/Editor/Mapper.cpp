@@ -2,7 +2,6 @@
 #include "3dStuff.h"
 #include "CritterView.h"
 #include "Crypt.h"
-#include "Debugger.h"
 #include "DiskFileSystem.h"
 #include "IniFile.h"
 #include "ItemHexView.h"

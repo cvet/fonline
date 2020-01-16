@@ -34,21 +34,11 @@ CLASS_PROPERTY_IMPL(ProtoMap, IsNoLogOut);
 
 ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, ProtoMap::PropertiesRegistrator)
 {
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, sizeof(ProtoMap));
-#endif
-
-#if defined(FONLINE_EDITOR)
-#endif
 }
 
 ProtoMap::~ProtoMap()
 {
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, -(int)sizeof(ProtoMap));
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, -(int)SceneryData.capacity());
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, -(int)Tiles.capacity() * sizeof(Tile));
-
     SAFEDELA(HexFlags);
 
     for (auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it)
@@ -360,11 +350,6 @@ bool ProtoMap::OnAfterLoad()
     ItemVec(StaticItemsVec).swap(StaticItemsVec);
     ItemVec(TriggerItemsVec).swap(TriggerItemsVec);
     ProtoMap::TileVec(Tiles).swap(Tiles);
-
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, (int)SceneryData.capacity());
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, (int)GetWidth() * GetHeight());
-    MEMORY_PROCESS(MEMORY_PROTO_MAP, (int)Tiles.capacity() * sizeof(ProtoMap::Tile));
-
     return true;
 }
 

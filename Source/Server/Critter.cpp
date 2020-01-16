@@ -925,19 +925,6 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
     }
 }
 
-void Critter::RefreshName()
-{
-    if (!IsPlayer())
-    {
-        hash dlg_pack_id = GetDialogId();
-        DialogPack* dlg_pack = (dlg_pack_id ? DlgMngr.GetDialog(dlg_pack_id) : nullptr);
-        if (dlg_pack)
-            Name = _str("{} {} (Npc)", dlg_pack->PackName, GetId());
-        else
-            Name = _str("{} (Npc)", GetId());
-    }
-}
-
 bool Critter::IsTransferTimeouts(bool send)
 {
     if (IS_TIMEOUT(GetTimeoutTransfer()))
@@ -1042,13 +1029,9 @@ Client::Client(NetConnection* conn, ProtoCritter* proto) : Critter(0, EntityType
     RadioMessageSended = 0;
     UpdateFileIndex = -1;
     UpdateFilePortion = 0;
-
     CritterIsNpc = false;
-    MEMORY_PROCESS(MEMORY_CLIENT, sizeof(Client) + 40 + sizeof(Item) * 2);
-
     SETFLAG(Flags, FCRIT_PLAYER);
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
-    Talk.Clear();
     talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
     LastActivityTime = Timer::FastTick();
     LastSay[0] = 0;
@@ -2242,13 +2225,11 @@ bool Client::IsTalking()
 Npc::Npc(uint id, ProtoCritter* proto) : Critter(id, EntityType::Npc, proto)
 {
     CritterIsNpc = true;
-    MEMORY_PROCESS(MEMORY_NPC, sizeof(Npc) + 40 + sizeof(Item) * 2);
     SETFLAG(Flags, FCRIT_NPC);
 }
 
 Npc::~Npc()
 {
-    MEMORY_PROCESS(MEMORY_NPC, -(int)(sizeof(Npc) + 40 + sizeof(Item) * 2));
 }
 
 uint Npc::GetTalkedPlayers()
