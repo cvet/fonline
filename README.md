@@ -115,7 +115,6 @@ All output binaries you can find in Build/Binaries directory.
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
-* [mbedTLS](https://tls.mbed.org/) - library for network transport security
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
