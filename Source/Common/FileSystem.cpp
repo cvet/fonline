@@ -9,7 +9,7 @@ FileHeader::FileHeader(const string& name, const string& path, uint size, uint64
 {
 }
 
-FileHeader::operator bool()
+FileHeader::operator bool() const
 {
     return isLoaded;
 }

@@ -97,7 +97,7 @@ DiskFile::DiskFile(DiskFile&&)
 {
 }
 
-DiskFile::operator bool()
+DiskFile::operator bool() const
 {
     return !!pImpl;
 }
@@ -206,7 +206,7 @@ DiskFile::DiskFile(DiskFile&&)
 {
 }
 
-DiskFile::operator bool()
+DiskFile::operator bool() const
 {
     return !!pImpl;
 }
@@ -351,7 +351,7 @@ DiskFile::DiskFile(DiskFile&&)
 {
 }
 
-DiskFile::operator bool()
+DiskFile::operator bool() const
 {
     return !!pImpl;
 }
@@ -502,7 +502,7 @@ DiskFind& DiskFind::operator++(int)
     return *this;
 }
 
-DiskFind::operator bool()
+DiskFind::operator bool() const
 {
     return findDataValid;
 }
@@ -667,7 +667,7 @@ DiskFind& DiskFind::operator++(int)
     return *this;
 }
 
-DiskFind::operator bool()
+DiskFind::operator bool() const
 {
     return findDataValid;
 }

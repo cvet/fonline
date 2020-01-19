@@ -15,7 +15,7 @@ class FileHeader : public NonCopyable
     friend class File;
 
 public:
-    operator bool();
+    operator bool() const;
     const string& GetName();
     const string& GetPath();
     uint GetFsize();

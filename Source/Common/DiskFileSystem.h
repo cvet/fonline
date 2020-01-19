@@ -16,7 +16,7 @@ class DiskFile : public NonCopyable
 public:
     ~DiskFile();
     DiskFile(DiskFile&&);
-    operator bool();
+    operator bool() const;
     bool Read(void* buf, uint len);
     bool Write(const void* buf, uint len);
     bool Write(const string& str);
@@ -41,7 +41,7 @@ public:
     ~DiskFind();
     DiskFind(DiskFind&&);
     DiskFind& operator++(int);
-    operator bool();
+    operator bool() const;
     bool IsDir();
     string GetPath();
     uint GetFileSize();
