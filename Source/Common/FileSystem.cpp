@@ -516,7 +516,7 @@ FileCollection FileManager::FilterFiles(const string& ext, const string& dir, bo
 File FileManager::ReadFile(const string& path)
 {
     RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
 
     string path_lower = _str(path).lower();
     string name = _str(path).extractFileName().eraseFileExtension();
@@ -535,7 +535,7 @@ File FileManager::ReadFile(const string& path)
 FileHeader FileManager::ReadFileHeader(const string& path)
 {
     RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
+    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
 
     string path_lower = _str(path).lower();
     string name = _str(path).extractFileName().eraseFileExtension();
