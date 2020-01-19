@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Common.h"
+
+#include "CacheStorage.h"
 #include "EffectManager.h"
 #include "Entity.h"
 #include "HexManager.h"
-#include "IniFile.h"
 #include "Keyboard.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
@@ -36,13 +37,16 @@ class FOMapper
 {
 public:
     static FOMapper* Self;
+    FileManager FileMngr;
+    FileManager ServerFileMngr;
+    CacheStorage Cache;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     HexManager HexMngr;
     ResourceManager ResMngr;
-    IniFile IfaceIni;
+    ConfigFile IfaceIni;
     static string ServerWritePath;
     static string ClientWritePath;
     PropertyVec ShowProps;
@@ -455,7 +459,7 @@ public:
         static void Global_MoveScreenOffset(int ox, int oy, uint speed, bool can_stop);
         static void Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps);
         static string Global_GetIfaceIniStr(string key);
-        static bool Global_LoadDataFile(string dat_name);
+        static void Global_AddDataSource(string dat_name);
         static bool Global_LoadFont(int font, string font_fname);
         static void Global_SetDefaultFont(int font, uint color);
         static void Global_MouseClick(int x, int y, int button);

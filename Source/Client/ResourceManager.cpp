@@ -1,62 +1,46 @@
 #include "ResourceManager.h"
 #include "3dStuff.h"
-#include "Crypt.h"
-#include "DataFile.h"
-#include "FileUtils.h"
+#include "DataSource.h"
+#include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Script.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 
-ResourceManager::ResourceManager(SpriteManager& spr_mngr) : sprMngr(spr_mngr)
+ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr) :
+    fileMngr {file_mngr}, sprMngr {spr_mngr}
 {
-}
-
-ResourceManager::~ResourceManager()
-{
-}
-
-void ResourceManager::Refresh()
-{
-    // Dat files, packed data
-    DataFileVec& data_files = File::GetDataFiles();
-    for (DataFile data_file : data_files)
-    {
-        if (std::find(processedDats.begin(), processedDats.end(), data_file) == processedDats.end())
+    eventUnsubscriber += fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
+        // Hash all files
+        StrVec file_names;
+        ds->GetFileNames("", true, "", file_names);
+        for (auto& name : file_names)
         {
-            // Hash all files
-            StrVec file_names;
-            data_file->GetFileNames("", true, "", file_names);
-            for (auto it = file_names.begin(), end = file_names.end(); it != end; ++it)
-            {
-                string name = *it;
-                _str(name).toHash();
-                _str(name).lower().toHash();
-                _str(name).extractFileName().toHash();
-                _str(name).extractFileName().lower().toHash();
-            }
-
-            // Splashes
-            StrVec splashes;
-            data_file->GetFileNames("Splash/", true, "rix", splashes);
-            data_file->GetFileNames("Splash/", true, "png", splashes);
-            data_file->GetFileNames("Splash/", true, "jpg", splashes);
-            for (auto it = splashes.begin(), end = splashes.end(); it != end; ++it)
-                if (std::find(splashNames.begin(), splashNames.end(), *it) == splashNames.end())
-                    splashNames.push_back(*it);
-
-            // Sound names
-            StrVec sounds;
-            data_file->GetFileNames("", true, "wav", sounds);
-            data_file->GetFileNames("", true, "acm", sounds);
-            data_file->GetFileNames("", true, "ogg", sounds);
-            for (auto it = sounds.begin(), end = sounds.end(); it != end; ++it)
-                soundNames.insert(std::make_pair(_str(*it).eraseFileExtension().upper(), *it));
-
-            processedDats.push_back(data_file);
+            _str(name).toHash();
+            _str(name).lower().toHash();
+            _str(name).extractFileName().toHash();
+            _str(name).extractFileName().lower().toHash();
         }
-    }
+
+        // Splashes
+        StrVec splashes;
+        ds->GetFileNames("Splash/", true, "rix", splashes);
+        ds->GetFileNames("Splash/", true, "png", splashes);
+        ds->GetFileNames("Splash/", true, "jpg", splashes);
+        for (auto& splash : splashes)
+            if (std::find(splashNames.begin(), splashNames.end(), splash) == splashNames.end())
+                splashNames.push_back(splash);
+
+        // Sound names
+        StrVec sounds;
+        ds->GetFileNames("", true, "wav", sounds);
+        ds->GetFileNames("", true, "acm", sounds);
+        ds->GetFileNames("", true, "ogg", sounds);
+        for (auto& sound : sounds)
+            soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
+    };
 }
 
 void ResourceManager::FreeResources(AtlasType atlas_type)
@@ -124,10 +108,10 @@ AnyFrames* ResourceManager::GetAnim(hash name_hash, AtlasType atlas_type)
     return anim;
 }
 
-uint AnimMapId(hash model_name, uint anim1, uint anim2, bool is_fallout)
+static uint AnimMapId(hash model_name, uint anim1, uint anim2, bool is_fallout)
 {
     uint dw[4] = {model_name, anim1, anim2, is_fallout ? uint(-1) : 1};
-    return Crypt.MurmurHash2((uchar*)&dw[0], sizeof(dw));
+    return Hashing::MurmurHash2((uchar*)&dw[0], sizeof(dw));
 }
 
 AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim2, int dir)

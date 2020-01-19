@@ -1,14 +1,10 @@
 #pragma once
 
 #include "Common.h"
+
 #include "GraphicStructures.h"
 #include "SpriteManager.h"
 
-struct SpriteInfo;
-struct AnyFrames;
-class IDataFile;
-using DataFile = std::shared_ptr<IDataFile>;
-using DataFileVec = vector<DataFile>;
 class Animation3d;
 
 struct LoadedAnim
@@ -21,23 +17,17 @@ typedef map<hash, LoadedAnim> LoadedAnimMap;
 class ResourceManager : public NonCopyable
 {
 public:
-    ResourceManager(SpriteManager& spr_mngr);
-    ~ResourceManager();
-
-    void Refresh();
+    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr);
     void FreeResources(AtlasType atlas_type);
     void ReinitializeDynamicAtlas();
-
     AnyFrames* GetAnim(hash name_hash, AtlasType atlas_type);
     AnyFrames* GetIfaceAnim(hash name_hash) { return GetAnim(name_hash, AtlasType::Static); }
     AnyFrames* GetInvAnim(hash name_hash) { return GetAnim(name_hash, AtlasType::Static); }
     AnyFrames* GetSkDxAnim(hash name_hash) { return GetAnim(name_hash, AtlasType::Static); }
     AnyFrames* GetItemAnim(hash name_hash) { return GetAnim(name_hash, AtlasType::Dynamic); }
-
     AnyFrames* GetCrit2dAnim(hash model_name, uint anim1, uint anim2, int dir);
     Animation3d* GetCrit3dAnim(hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr);
     uint GetCritSprId(hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr);
-
     AnyFrames* GetRandomSplash();
     StrMap& GetSoundNames() { return soundNames; }
     SpriteManager& GetSpriteManager() { return sprMngr; }
@@ -51,8 +41,9 @@ private:
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
+    FileManager& fileMngr;
     SpriteManager& sprMngr;
-    DataFileVec processedDats {};
+    EventUnsubscriber eventUnsubscriber {};
     UIntStrMap namesHash {};
     LoadedAnimMap loadedAnims {};
     AnimMap critterFrames {};

@@ -1,14 +1,12 @@
 #include "Server.h"
 #include "AdminPanel.h"
-#include "Crypt.h"
-#include "FileSystem.h"
-#include "FileUtils.h"
-#include "IniFile.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+
 #include "minizip/zip.h"
 #include "scripthelper/scripthelper.h"
 
@@ -27,31 +25,16 @@ FOServer::FOServer() :
     memzero(&Statistics, sizeof(Statistics));
     memzero(&ServerFunctions, sizeof(ServerFunctions));
     RequestReloadClientScripts = false;
-    MEMORY_PROCESS(MEMORY_STATIC, sizeof(FOServer));
-}
-
-FOServer::~FOServer()
-{
-    //
 }
 
 int FOServer::Run()
 {
-    ServerGameSleep = MainConfig->GetInt("", "GameSleep", 10);
-    AllowServerNativeCalls = (MainConfig->GetInt("", "AllowServerNativeCalls", 1) != 0);
-    AllowClientNativeCalls = (MainConfig->GetInt("", "AllowClientNativeCalls", 0) != 0);
-
     WriteLog("FOnline Server ({:#x}).\n", FO_VERSION);
     if (!GameOpt.CommandLine.empty())
         WriteLog("Command line '{}'.\n", GameOpt.CommandLine);
 
-    MemoryDebugLevel = MainConfig->GetInt("", "MemoryDebugLevel", 0);
-    if (MemoryDebugLevel > 2)
-        Debugger::StartTraceMemory();
-
-    ushort port = MainConfig->GetInt("", "AdminPanelPort", 0);
-    if (port)
-        InitAdminManager(this, (ushort)port);
+    if (GameOpt.AdminPanelPort)
+        InitAdminManager(this, GameOpt.AdminPanelPort);
 
     if (!Init())
     {
@@ -110,10 +93,7 @@ void FOServer::Finish()
     SAFEDEL(WebSocketsServer);
 
     // Managers
-    DlgMngr.Finish();
     FinishScriptSystem();
-    LangPacks.clear();
-    File::ClearDataFiles();
 
     // Statistics
     WriteLog("Server stopped.\n");
@@ -162,11 +142,12 @@ string FOServer::GetIngamePlayersStatistics()
 // Accesses
 void FOServer::GetAccesses(StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names)
 {
-    client = _str(MainConfig->GetStr("", "Access_client")).split(' ');
-    tester = _str(MainConfig->GetStr("", "Access_tester")).split(' ');
-    moder = _str(MainConfig->GetStr("", "Access_moder")).split(' ');
-    admin = _str(MainConfig->GetStr("", "Access_admin")).split(' ');
-    admin_names = _str(MainConfig->GetStr("", "AccessNames_admin")).split(' ');
+    // Todo: settings
+    // client = _str(MainConfig->GetStr("", "Access_client")).split(' ');
+    // tester = _str(MainConfig->GetStr("", "Access_tester")).split(' ');
+    // moder = _str(MainConfig->GetStr("", "Access_moder")).split(' ');
+    // admin = _str(MainConfig->GetStr("", "Access_admin")).split(' ');
+    // admin_names = _str(MainConfig->GetStr("", "AccessNames_admin")).split(' ');
 }
 
 void FOServer::DisconnectClient(Client* cl)
@@ -371,23 +352,12 @@ void FOServer::LogicTick()
     }
 
     // Sleep
-    if (ServerGameSleep >= 0)
-        std::this_thread::sleep_for(std::chrono::milliseconds(ServerGameSleep));
+    if (GameOpt.GameSleep >= 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(GameOpt.GameSleep));
 }
 
 void FOServer::DrawGui()
 {
-    // Memory
-    ImGui::SetNextWindowPos(Gui.MemoryPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Memory", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats = Debugger::GetMemoryStatistics();
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
     // Players
     ImGui::SetNextWindowPos(Gui.PlayersPos, ImGuiCond_Once);
     ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
@@ -481,13 +451,11 @@ void FOServer::DrawGui()
         {
             DateTimeStamp dt;
             Timer::GetCurrentDateTime(dt);
-            string log_name_dir = File::GetWritePath("Logs/");
-            string log_name = _str("{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", log_name_dir, "Log",
-                dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-            File::CreateDirectoryTree(log_name);
-            File log_file;
+            string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year,
+                dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+            OutputFile log_file = FileMngr.WriteFile(log_name);
             log_file.SetStr(Gui.WholeLog);
-            log_file.SaveFile(log_name);
+            log_file.Save();
         }
     }
     ImGui::End();
@@ -990,9 +958,6 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         string result;
         switch (info)
         {
-        case 0:
-            result = Debugger::GetMemoryStatistics();
-            break;
         case 1:
             result = GetIngamePlayersStatistics();
             break;
@@ -1346,7 +1311,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
     case CMD_RELOAD_PROTOS: {
         CHECK_ALLOW_COMMAND;
 
-        if (ProtoMngr.LoadProtosFromFiles())
+        if (ProtoMngr.LoadProtosFromFiles(FileMngr))
             logcb("Reload protos success.");
         else
             logcb("Reload protos fail.");
@@ -1387,7 +1352,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
     case CMD_RELOADDIALOGS: {
         CHECK_ALLOW_COMMAND;
 
-        bool error = DlgMngr.LoadDialogs();
+        bool error = DlgMngr.LoadDialogs(FileMngr);
         InitLangPacksDialogs(LangPacks);
         GenerateUpdateFiles();
         logcb(_str("Dialogs reload done{}.", error ? ", with errors." : ""));
@@ -1399,11 +1364,11 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
 
         CHECK_ALLOW_COMMAND;
 
-        FileCollection dialogs("fodlg");
-        File& fm = dialogs.FindFile(dlg_name);
-        if (fm.IsLoaded())
+        FileCollection dialogs = FileMngr.FilterFiles("fodlg");
+        File dialog = dialogs.FindFile(dlg_name);
+        if (dialog)
         {
-            DialogPack* pack = DlgMngr.ParseDialog(dlg_name, (char*)fm.GetBuf());
+            DialogPack* pack = DlgMngr.ParseDialog(dlg_name, dialog.GetCStr());
             if (pack)
             {
                 DlgMngr.EraseDialog(pack->PackId);
@@ -1707,9 +1672,9 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         if (!mod)
         {
             string base_code;
-            File dev_file;
-            if (dev_file.LoadFile("Scripts/__dev.fos"))
-                base_code = (char*)dev_file.GetBuf();
+            File dev_file = FileMngr.ReadFile("Scripts/__dev.fos");
+            if (dev_file)
+                base_code = dev_file.GetCStr();
             else
                 base_code = "void Dummy(){}";
 
@@ -1822,48 +1787,40 @@ bool FOServer::InitReal()
     WriteLog("***   Starting initialization   ***\n");
 
     // Root data file
-    File::InitDataFiles("./");
+    FileMngr.AddDataSource("./");
 
     // Modules data files
     for (auto& module_path : ProjectFiles)
-        File::LoadDataFile(module_path);
+        FileMngr.AddDataSource(module_path);
 
     // Delete intermediate files if engine have been updated
-    File fm;
-    if (!fm.LoadFile(File::GetWritePath("Version.txt")) || _str("0x{}", fm.GetCStr()).toInt() != FO_VERSION ||
-        GameOpt.ForceRebuildResources)
+    File version_file = FileMngr.ReadFile("Version.txt");
+    if (!version_file || _str("0x{}", version_file.GetCStr()).toInt() != FO_VERSION || GameOpt.ForceRebuildResources)
     {
-        fm.SetStr(_str("{:#x}", FO_VERSION));
-        fm.SaveFile("Version.txt");
-        File::DeleteDir("Update/");
-        File::DeleteDir("Binaries/");
+        OutputFile out_version_file = FileMngr.WriteFile("Version.txt");
+        out_version_file.SetStr(_str("{:#x}", FO_VERSION));
+        out_version_file.Save();
+        FileMngr.DeleteDir("Update/");
+        FileMngr.DeleteDir("Binaries/");
     }
 
     // Generic
     ConnectedClients.clear();
     RegIp.clear();
 
-    // Profiler
-    uint sample_time = MainConfig->GetInt("", "ProfilerSampleInterval", 0);
-    uint profiler_mode = MainConfig->GetInt("", "ProfilerMode", 0);
-    if (!profiler_mode)
-        sample_time = 0;
-
     // Reserve memory
     ConnectedClients.reserve(10000);
 
     // Data base
-    string storage_db_type = MainConfig->GetStr("", "DbStorage", "Memory");
-    WriteLog("Initialize storage data base at '{}'.\n", storage_db_type);
-    DbStorage = GetDataBase(storage_db_type);
+    WriteLog("Initialize storage data base at '{}'.\n", GameOpt.DbStorage);
+    DbStorage = GetDataBase(GameOpt.DbStorage);
     if (!DbStorage)
         return false;
 
-    string history_db_type = MainConfig->GetStr("", "DbHistory", "Memory");
-    if (history_db_type != "None")
+    if (GameOpt.DbHistory != "None")
     {
-        WriteLog("Initialize history data base at '{}'.\n", history_db_type);
-        DbHistory = GetDataBase(history_db_type);
+        WriteLog("Initialize history data base at '{}'.\n", GameOpt.DbHistory);
+        DbHistory = GetDataBase(GameOpt.DbHistory);
         if (!DbHistory)
             return false;
     }
@@ -1884,9 +1841,9 @@ bool FOServer::InitReal()
     LoadBans();
 
     // Managers
-    if (!DlgMngr.LoadDialogs())
+    if (!DlgMngr.LoadDialogs(FileMngr))
         return false; // Dialog manager
-    if (!ProtoMngr.LoadProtosFromFiles())
+    if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
         return false;
 
     // Language packs
@@ -1984,16 +1941,14 @@ bool FOServer::InitReal()
     Statistics.ServerStartTick = Timer::FastTick();
 
     // Net
-    ushort port = MainConfig->GetInt("", "Port", 4000);
-    string wss_credentials = MainConfig->GetStr("", "WssCredentials", "");
-
+    ushort port = GameOpt.Port;
     WriteLog("Starting server on ports {} and {}.\n", port, port + 1);
 
     if (!(TcpServer = NetServerBase::StartTcpServer(
               port, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
         return false;
     if (!(WebSocketsServer = NetServerBase::StartWebSocketsServer(
-              port + 1, wss_credentials, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
+              port + 1, GameOpt.WssCredentials, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
         return false;
 
     // Script timeouts
@@ -2010,8 +1965,9 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
     uint cur_lang = 0;
     while (true)
     {
-        string cur_str_lang = _str("Language_{}", cur_lang);
-        string lang_name = MainConfig->GetStr("", cur_str_lang);
+        // Todo: settings
+        string cur_str_lang; // = _str("Language_{}", cur_lang);
+        string lang_name; // = MainConfig->GetStr("", cur_str_lang);
         if (lang_name.empty())
             break;
 
@@ -2029,11 +1985,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
         }
 
         LanguagePack lang;
-        if (!lang.LoadFromFiles(lang_name))
-        {
-            WriteLog("Unable to init Language pack {}.\n", cur_lang);
-            return false;
-        }
+        lang.LoadFromFiles(FileMngr, lang_name);
 
         lang_packs.push_back(lang);
         cur_lang++;
@@ -2230,60 +2182,52 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 {
     SCOPE_LOCK(BannedLocker);
 
-    File fm;
-    const char* fname = (expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE);
-    if (!fm.LoadFile(fname))
-    {
-        WriteLog("Can't open file '{}'.\n", fname);
-        return;
-    }
-    fm.SwitchToWrite();
+    const string ban_file_name = (expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE);
+    OutputFile out_ban_file = FileMngr.WriteFile(ban_file_name, true);
 
-    fm.SetStr("[Ban]\n");
+    out_ban_file.SetStr("[Ban]\n");
     if (ban.ClientName[0])
-        fm.SetStr(_str("User = {}\n", ban.ClientName));
+        out_ban_file.SetStr(_str("User = {}\n", ban.ClientName));
     if (ban.ClientIp)
-        fm.SetStr(_str("UserIp = {}\n", ban.ClientIp));
-    fm.SetStr(_str("BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day,
+        out_ban_file.SetStr(_str("UserIp = {}\n", ban.ClientIp));
+    out_ban_file.SetStr(_str("BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day,
         ban.BeginTime.Hour, ban.BeginTime.Minute));
-    fm.SetStr(_str("EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour,
-        ban.EndTime.Minute));
+    out_ban_file.SetStr(_str("EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day,
+        ban.EndTime.Hour, ban.EndTime.Minute));
     if (ban.BannedBy[0])
-        fm.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
+        out_ban_file.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
     if (ban.BanInfo[0])
-        fm.SetStr(_str("Comment = {}\n", ban.BanInfo));
-    fm.SetStr("\n");
+        out_ban_file.SetStr(_str("Comment = {}\n", ban.BanInfo));
+    out_ban_file.SetStr("\n");
 
-    if (!fm.SaveFile(fname))
-        WriteLog("Unable to save file '{}'.\n", fname);
+    out_ban_file.Save();
 }
 
 void FOServer::SaveBans()
 {
     SCOPE_LOCK(BannedLocker);
 
-    File fm;
+    OutputFile out_ban_file = FileMngr.WriteFile(BANS_FNAME_ACTIVE);
     for (auto it = Banned.begin(), end = Banned.end(); it != end; ++it)
     {
         ClientBanned& ban = *it;
-        fm.SetStr("[Ban]\n");
+        out_ban_file.SetStr("[Ban]\n");
         if (ban.ClientName[0])
-            fm.SetStr(_str("User = {}\n", ban.ClientName));
+            out_ban_file.SetStr(_str("User = {}\n", ban.ClientName));
         if (ban.ClientIp)
-            fm.SetStr(_str("UserIp = {}\n", ban.ClientIp));
-        fm.SetStr(_str("BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day,
-            ban.BeginTime.Hour, ban.BeginTime.Minute));
-        fm.SetStr(_str("EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day,
+            out_ban_file.SetStr(_str("UserIp = {}\n", ban.ClientIp));
+        out_ban_file.SetStr(_str("BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month,
+            ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute));
+        out_ban_file.SetStr(_str("EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day,
             ban.EndTime.Hour, ban.EndTime.Minute));
         if (ban.BannedBy[0])
-            fm.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
+            out_ban_file.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
         if (ban.BanInfo[0])
-            fm.SetStr(_str("Comment = {}\n", ban.BanInfo));
-        fm.SetStr("\n");
+            out_ban_file.SetStr(_str("Comment = {}\n", ban.BanInfo));
+        out_ban_file.SetStr("\n");
     }
 
-    if (!fm.SaveFile(BANS_FNAME_ACTIVE))
-        WriteLog("Unable to save file '{}'.\n", BANS_FNAME_ACTIVE);
+    out_ban_file.Save();
 }
 
 void FOServer::LoadBans()
@@ -2291,34 +2235,34 @@ void FOServer::LoadBans()
     SCOPE_LOCK(BannedLocker);
 
     Banned.clear();
-    Banned.reserve(1000);
-    IniFile bans_txt;
-    if (!bans_txt.AppendFile(BANS_FNAME_ACTIVE))
+
+    ConfigFile bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE);
+    if (!bans)
         return;
 
-    while (bans_txt.IsApp("Ban"))
+    while (bans.IsApp("Ban"))
     {
         ClientBanned ban;
         memzero(&ban, sizeof(ban));
         DateTimeStamp time;
         memzero(&time, sizeof(time));
         string s;
-        if (!(s = bans_txt.GetStr("Ban", "User")).empty())
+        if (!(s = bans.GetStr("Ban", "User")).empty())
             Str::Copy(ban.ClientName, s.c_str());
-        ban.ClientIp = bans_txt.GetInt("Ban", "UserIp", 0);
-        if (!(s = bans_txt.GetStr("Ban", "BeginTime")).empty() &&
+        ban.ClientIp = bans.GetInt("Ban", "UserIp", 0);
+        if (!(s = bans.GetStr("Ban", "BeginTime")).empty() &&
             sscanf(s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute))
             ban.BeginTime = time;
-        if (!(s = bans_txt.GetStr("Ban", "EndTime")).empty() &&
+        if (!(s = bans.GetStr("Ban", "EndTime")).empty() &&
             sscanf(s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute))
             ban.EndTime = time;
-        if (!(s = bans_txt.GetStr("Ban", "BannedBy")).empty())
+        if (!(s = bans.GetStr("Ban", "BannedBy")).empty())
             Str::Copy(ban.BannedBy, s.c_str());
-        if (!(s = bans_txt.GetStr("Ban", "Comment")).empty())
+        if (!(s = bans.GetStr("Ban", "Comment")).empty())
             Str::Copy(ban.BanInfo, s.c_str());
         Banned.push_back(ban);
 
-        bans_txt.GotoNextApp("Ban");
+        bans.GotoNextApp("Ban");
     }
     ProcessBans();
 }
@@ -2365,7 +2309,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
             WriteData(UpdateFilesList, (short)msg_cache_name.length());
             WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), (uint)msg_cache_name.length());
             WriteData(UpdateFilesList, update_file.Size);
-            WriteData(UpdateFilesList, Crypt.MurmurHash2(update_file.Data, update_file.Size));
+            WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
         }
     }
 
@@ -2383,29 +2327,24 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
     WriteData(UpdateFilesList, (short)protos_cache_name.length());
     WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), (uint)protos_cache_name.length());
     WriteData(UpdateFilesList, update_file.Size);
-    WriteData(UpdateFilesList, Crypt.MurmurHash2(update_file.Data, update_file.Size));
+    WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
     // Fill files
-    StrVec file_paths;
-    File::GetFolderFileNames("Update/", true, "", file_paths);
-    for (const string& file_path : file_paths)
+    FileCollection files = FileMngr.FilterFiles("", "Update/");
+    while (files.MoveNext())
     {
-        File file;
-        if (!file.LoadFile("Update/" + file_path))
-        {
-            WriteLog("Can't load file 'Update/{}'.\n", file_path);
-            continue;
-        }
+        File file = files.GetCurFile();
 
         memzero(&update_file, sizeof(update_file));
         update_file.Size = file.GetFsize();
         update_file.Data = file.ReleaseBuffer();
         UpdateFiles.push_back(update_file);
 
+        string file_path = file.GetName().substr("Update/"_len);
         WriteData(UpdateFilesList, (short)file_path.length());
         WriteDataArr(UpdateFilesList, file_path.c_str(), (uint)file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
-        WriteData(UpdateFilesList, Crypt.MurmurHash2(update_file.Data, update_file.Size));
+        WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     WriteLog("Generate update files complete.\n");
@@ -2415,26 +2354,21 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
         Script::RaiseInternalEvent(ServerFunctions.ResourcesGenerated);
 
     // Append binaries
-    StrVec binary_paths;
-    File::GetFolderFileNames("Binaries/", true, "", binary_paths);
-    for (const string& file_path : binary_paths)
+    FileCollection binaries = FileMngr.FilterFiles("", "Binaries/");
+    while (binaries.MoveNext())
     {
-        File file;
-        if (!file.LoadFile("Binaries/" + file_path))
-        {
-            WriteLog("Can't load file 'Binaries/{}'.\n", file_path);
-            continue;
-        }
+        File file = binaries.GetCurFile();
 
         memzero(&update_file, sizeof(update_file));
         update_file.Size = file.GetFsize();
         update_file.Data = file.ReleaseBuffer();
         UpdateFiles.push_back(update_file);
 
+        string file_path = file.GetName().substr("Binaries/"_len);
         WriteData(UpdateFilesList, (short)file_path.length());
         WriteDataArr(UpdateFilesList, file_path.c_str(), (uint)file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
-        WriteData(UpdateFilesList, Crypt.MurmurHash2(update_file.Data, update_file.Size));
+        WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     // Complete files list

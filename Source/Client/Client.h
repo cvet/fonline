@@ -1,7 +1,9 @@
 #pragma once
 
-#include "3dStuff.h"
 #include "Common.h"
+
+#include "3dStuff.h"
+#include "CacheStorage.h"
 #include "EffectManager.h"
 #include "Entity.h"
 #include "HexManager.h"
@@ -18,8 +20,6 @@
 
 #include "theora/theoradec.h"
 #include "zlib.h"
-
-// Network
 #ifndef FO_WINDOWS
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -37,6 +37,8 @@
 #define SD_SEND SHUT_WR
 #define SD_BOTH SHUT_RDWR
 #endif
+
+DECLARE_EXCEPTION(ClientRestartException);
 
 // Fonts
 #ifndef FONT_DEFAULT
@@ -76,9 +78,8 @@ public:
     static FOClient* Self;
     FOClient();
     ~FOClient();
-    bool Reset();
+    bool Init();
     void ProcessAutoLogin();
-    void Restart();
     void UpdateBinary();
     void TryExit();
     bool IsCurInWindow();
@@ -88,7 +89,7 @@ public:
     void DrawIface();
 
     int InitCalls;
-    bool DoRestart;
+    FileManager FileMngr;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
@@ -96,6 +97,8 @@ public:
     HexManager HexMngr;
     ResourceManager ResMngr;
     SoundManager SndMngr;
+    CacheStorage Cache;
+
     hash CurMapPid;
     hash CurMapLocPid;
     uint CurMapIndexInLoc;
@@ -154,7 +157,7 @@ public:
     UpdateFileVec* UpdateFilesList;
     uint UpdateFilesWholeSize;
     bool UpdateFileDownloading;
-    void* UpdateFileTemp;
+    unique_ptr<OutputFile> UpdateFileTemp;
 
     void UpdateFilesStart();
     void UpdateFilesLoop();
@@ -162,8 +165,7 @@ public:
     void UpdateFilesAbort(uint num_str, const string& num_str_str);
 
     // Network
-    uchar* ComBuf;
-    uint ComLen;
+    UCharVec ComBuf;
     NetBuffer Bin;
     NetBuffer Bout;
     z_stream ZStream;
@@ -504,7 +506,7 @@ public:
         static void Global_SetPropertyGetCallback(asIScriptGeneric* gen);
         static void Global_AddPropertySetCallback(asIScriptGeneric* gen);
         static void Global_AllowSlot(uchar index, bool enable_send);
-        static bool Global_LoadDataFile(string dat_name);
+        static void Global_AddDataSource(string dat_name);
 
         static uint Global_LoadSprite(string spr_name);
         static uint Global_LoadSpriteHash(uint name_hash);
@@ -618,7 +620,7 @@ public:
     /* Global map                                                           */
     /************************************************************************/
     // Mask
-    TwoBitMask* GmapFog;
+    TwoBitMask GmapFog;
     PointVec GmapFogPix;
 
     // Locations

@@ -4,6 +4,15 @@
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+#include "Critter.h"
+#include "Dialogs.h"
+#include "EntityManager.h"
+#endif
+#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
+#include "Client.h"
+#endif
+
 #include "angelscript.h"
 
 // #pragma ignore "other_pragma"
@@ -118,10 +127,6 @@ public:
 };
 
 // #pragma entity EntityName Movable = true
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "EntityManager.h"
-#endif
-
 class EntityCreator
 {
 public:
@@ -590,10 +595,6 @@ public:
 };
 
 // #pragma content Group fileName
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "Dialogs.h"
-#endif
-
 class ContentPragma
 {
 private:
@@ -680,14 +681,6 @@ public:
     {
         int errors = 0;
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        for (auto it = filesToCheck[0].begin(); it != filesToCheck[0].end(); ++it)
-        {
-            if (!DlgMngr.GetDialog(it->second))
-            {
-                WriteLog("Dialog file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
         for (auto it = filesToCheck[1].begin(); it != filesToCheck[1].end(); ++it)
         {
             if (!protoMngr->GetProtoItem(it->second))
@@ -1270,12 +1263,6 @@ public:
 };
 
 // #pragma rpc
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "Critter.h"
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
-#include "Client.h"
-#endif
 class RpcPragma
 {
     typedef vector<pair<string, string>> FuncDescVec;

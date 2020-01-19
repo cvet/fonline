@@ -1,6 +1,6 @@
 #include "BuildSystem.h"
 #include "EffectBaker.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "ImageBaker.h"
 #include "Log.h"
 #include "ModelBaker.h"
@@ -9,33 +9,15 @@
 
 #include "minizip/zip.h"
 
-class BuildSystemImpl : public IBuildSystem
-{
-public:
-    BuildSystemImpl();
-    ~BuildSystemImpl() override;
-    bool BuildAll() override;
-
-private:
-    bool GenerateResources(StrVec* resource_names);
-    bool BuildTarget(string target);
-    bool BuildWindows();
-};
-
-BuildSystem IBuildSystem::Create()
-{
-    return std::make_shared<BuildSystemImpl>();
-}
-
-BuildSystemImpl::BuildSystemImpl()
+BuildSystem::BuildSystem()
 {
 }
 
-BuildSystemImpl ::~BuildSystemImpl()
+BuildSystem ::~BuildSystem()
 {
 }
 
-bool BuildSystemImpl::BuildAll()
+bool BuildSystem::BuildAll()
 {
     try
     {
@@ -47,13 +29,13 @@ bool BuildSystemImpl::BuildAll()
     }
 }
 
-bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
+bool BuildSystem::GenerateResources(StrVec* resource_names)
 {
     // Generate resources
     bool something_changed = false;
     StrSet update_file_names;
 
-    for (const string& project_path : ProjectFiles)
+    /*for (const string& project_path : ProjectFiles)
     {
         StrVec dummy_vec;
         StrVec check_dirs;
@@ -121,19 +103,17 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                             resources.ResetCounter();
 
                             map<string, UCharVec> baked_files;
-
-                            ImageBaker image_baker = IImageBaker::Create(resources);
-                            ModelBaker model_baker = IModelBaker::Create(resources);
-                            EffectBaker effect_baker = IEffectBaker::Create(resources);
-                            image_baker->AutoBakeImages();
-                            model_baker->AutoBakeModels();
-                            effect_baker->AutoBakeEffects();
-                            image_baker->FillBakedFiles(baked_files);
-                            model_baker->FillBakedFiles(baked_files);
-                            effect_baker->FillBakedFiles(baked_files);
-                            image_baker = nullptr;
-                            model_baker = nullptr;
-                            effect_baker = nullptr;
+                            {
+                                ImageBaker image_baker(resources);
+                                ModelBaker model_baker(resources);
+                                EffectBaker effect_baker(resources);
+                                image_baker.AutoBakeImages();
+                                model_baker.AutoBakeModels();
+                                effect_baker.AutoBakeEffects();
+                                image_baker.FillBakedFiles(baked_files);
+                                model_baker.FillBakedFiles(baked_files);
+                                effect_baker.FillBakedFiles(baked_files);
+                            }
 
                             // Fill other files
                             resources.ResetCounter();
@@ -221,7 +201,7 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
                             string ext = _str(fname).getFileExtension();
                             if (ext == "zip" || ext == "bos" || ext == "dat")
                             {
-                                DataFile inner = Fabric::OpenDataFile(path);
+                                DataFile* inner = DataFile::TryLoad(path);
                                 if (inner)
                                 {
                                     StrVec inner_files;
@@ -254,12 +234,12 @@ bool BuildSystemImpl::GenerateResources(StrVec* resource_names)
             File::DeleteFile(path);
             something_changed = true;
         }
-    }
+    }*/
 
     return something_changed;
 }
 
-bool BuildSystemImpl::BuildTarget(string target)
+bool BuildSystem::BuildTarget(string target)
 {
     /*gameOutputPath = targetOutputPath + '/' + gameName
 
@@ -443,7 +423,7 @@ bool BuildSystemImpl::BuildTarget(string target)
     return false;
 }
 
-bool BuildSystemImpl::BuildWindows()
+bool BuildSystem::BuildWindows()
 {
     // Raw files
 

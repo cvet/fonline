@@ -38,4 +38,4 @@ namespace Timer
     DateTimeStamp GetGameTime(uint full_second);
     uint GameTimeMonthDay(ushort year, ushort month);
     bool ProcessGameTime();
-}; // namespace Timer
+};

@@ -371,7 +371,7 @@ void FOClient::LmapPrepareMap()
 void FOClient::GmapNullParams()
 {
     GmapLoc.clear();
-    GmapFog->Fill(0);
+    GmapFog.Fill(0);
     DeleteCritters();
 }
 

@@ -530,7 +530,7 @@ struct BindClass
     static void Global_ChangeZoom() {}
 #endif
 
-    static void Global_LoadDataFile() {}
+    static void Global_AddDataSource() {}
     static void Global_AllowSlot() {}
     static void Global_GetProtoItem() {}
     static void Global_GetDistantion() {}

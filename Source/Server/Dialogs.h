@@ -1,8 +1,13 @@
 #pragma once
 
 #include "Common.h"
-#include "Debugger.h"
+
+#include "FileSystem.h"
 #include "MsgFiles.h"
+
+#define TALK_NONE (0)
+#define TALK_WITH_NPC (1)
+#define TALK_WITH_HEX (2)
 
 // Dialog flags
 #define DIALOG_FLAG_NO_SHUFFLE (1)
@@ -33,153 +38,75 @@
 class DemandResult
 {
 public:
-    char Type; // Type of demand or result
-    char Who; // Direction
-    max_t ParamId; // Parameter Id
-    bool NoRecheck; // Disable demand rechecking
-    bool RetValue; // Reserved
-    char Op; // Operation
-    char ValuesCount; // Script values count
-
-#ifdef FONLINE_NPCEDITOR
-    string ValueStr; // Main value string
-    string ParamName; // Parameter Name
-    string ValuesNames[5]; // Values names
-#else
-    int Value; // Main value
-    int ValueExt[5]; // Extra value
-#endif
-
-#ifdef FONLINE_NPCEDITOR
-    DemandResult() :
-        Type(DR_NONE), Who(DR_WHO_NONE), ParamId(0), NoRecheck(false), RetValue(false), Op(0), ValuesCount(0)
-    {
-    }
-#else
-    DemandResult() :
-        Type(DR_NONE), Who(DR_WHO_NONE), ParamId(0), NoRecheck(false), RetValue(false), Op(0), Value(0), ValuesCount(0)
-    {
-        MEMORY_PROCESS(MEMORY_DIALOG, sizeof(DemandResult));
-    }
-    ~DemandResult() { MEMORY_PROCESS(MEMORY_DIALOG, -(int)sizeof(DemandResult)); }
-#endif
+    char Type {DR_NONE};
+    char Who {DR_WHO_NONE};
+    max_t ParamId {};
+    bool NoRecheck {};
+    bool RetValue {};
+    char Op {};
+    char ValuesCount {};
+    int Value {};
+    int ValueExt[5] {};
 };
-typedef vector<DemandResult> DemandResultVec;
+using DemandResultVec = vector<DemandResult>;
 
 class DialogAnswer
 {
 public:
-    uint Link;
-    uint TextId;
-    DemandResultVec Demands;
-    DemandResultVec Results;
-
-#ifdef FONLINE_NPCEDITOR
-    DialogAnswer() : Link(0), TextId(0) {}
-#else
-    DialogAnswer() : Link(0), TextId(0) { MEMORY_PROCESS(MEMORY_DIALOG, sizeof(DialogAnswer)); }
-    DialogAnswer(const DialogAnswer& r)
-    {
-        *this = r;
-        MEMORY_PROCESS(MEMORY_DIALOG, sizeof(DialogAnswer));
-    }
-    ~DialogAnswer() { MEMORY_PROCESS(MEMORY_DIALOG, -(int)sizeof(DialogAnswer)); }
-#endif
+    uint Link {};
+    uint TextId {};
+    DemandResultVec Demands {};
+    DemandResultVec Results {};
 };
-typedef vector<DialogAnswer> AnswersVec;
+using AnswersVec = vector<DialogAnswer>;
 
 class Dialog
 {
 public:
-    uint Id;
-    uint TextId;
-    AnswersVec Answers;
-    uint Flags;
-    bool RetVal;
-
-#ifdef FONLINE_NPCEDITOR
-    string DlgScript;
-#else
-    uint DlgScript;
-#endif
-
+    bool operator==(uint id) { return id == Id; }
     bool IsNoShuffle() { return Flags & DIALOG_FLAG_NO_SHUFFLE; }
 
-    Dialog() : Id(0), TextId(0), Flags(0), RetVal(false)
-#ifdef FONLINE_NPCEDITOR
-    {
-        DlgScript = "None";
-    }
-#else
-    {
-        DlgScript = 0;
-        MEMORY_PROCESS(MEMORY_DIALOG, sizeof(Dialog));
-    }
-    Dialog(const Dialog& r)
-    {
-        *this = r;
-        MEMORY_PROCESS(MEMORY_DIALOG, sizeof(Dialog));
-    }
-    ~Dialog() { MEMORY_PROCESS(MEMORY_DIALOG, -(int)sizeof(Dialog)); }
-#endif
-    bool operator==(const uint& r) { return Id == r; }
+    uint Id {};
+    uint TextId {};
+    AnswersVec Answers {};
+    uint Flags {};
+    bool RetVal {};
+    uint DlgScript {};
 };
-typedef vector<Dialog> DialogsVec;
+using DialogsVec = vector<Dialog>;
 
-struct DialogPack
+struct DialogPack : public NonCopyable
 {
-    hash PackId;
-    string PackName;
-    DialogsVec Dialogs;
-    UIntVec TextsLang;
-    FOMsgVec Texts;
-    string Comment;
+    hash PackId {};
+    string PackName {};
+    DialogsVec Dialogs {};
+    UIntVec TextsLang {};
+    FOMsgVec Texts {};
+    string Comment {};
 };
-typedef map<hash, DialogPack*> DialogPackMap;
 
-struct Talking
+struct Talking : public NonCopyable
 {
-    int TalkType;
-#define TALK_NONE (0)
-#define TALK_WITH_NPC (1)
-#define TALK_WITH_HEX (2)
-    uint TalkNpc;
-    uint TalkHexMap;
-    ushort TalkHexX, TalkHexY;
-
-    hash DialogPackId;
-    Dialog CurDialog;
-    uint LastDialogId;
-    uint StartTick;
-    uint TalkTime;
-    bool Barter;
-    bool IgnoreDistance;
-    string Lexems;
-    bool Locked;
-
-    void Clear()
-    {
-        TalkType = TALK_NONE;
-        TalkNpc = 0;
-        TalkHexMap = 0;
-        TalkHexX = 0;
-        TalkHexY = 0;
-        DialogPackId = 0;
-        LastDialogId = 0;
-        StartTick = 0;
-        TalkTime = 0;
-        Barter = false;
-        IgnoreDistance = false;
-        Lexems = "";
-        Locked = false;
-    }
+    int TalkType {TALK_NONE};
+    uint TalkNpc {};
+    uint TalkHexMap {};
+    ushort TalkHexX {};
+    ushort TalkHexY {};
+    hash DialogPackId {};
+    Dialog CurDialog {};
+    uint LastDialogId {};
+    uint StartTick {};
+    uint TalkTime {};
+    bool Barter {};
+    bool IgnoreDistance {};
+    string Lexems {};
+    bool Locked {};
 };
 
-class DialogManager
+class DialogManager : public NonCopyable
 {
 public:
-    bool LoadDialogs();
-    void Finish();
+    bool LoadDialogs(FileManager& file_mngr);
     DialogPack* ParseDialog(const string& pack_name, const string& data);
     bool AddDialog(DialogPack* pack);
     DialogPack* GetDialog(hash pack_id);
@@ -187,15 +114,11 @@ public:
     void EraseDialog(hash pack_id);
 
 private:
-    DialogPackMap dialogPacks;
-    string lastErrors;
-
     DemandResult* LoadDemandResult(istringstream& input, bool is_demand);
-    bool CheckLockTime(int time);
     uint GetNotAnswerAction(const string& str, bool& ret_val);
     char GetDRType(const string& str);
     char GetWho(char who);
     bool CheckOper(char oper);
-};
 
-extern DialogManager DlgMngr;
+    map<hash, unique_ptr<DialogPack>> dialogPacks {};
+};

@@ -1,6 +1,5 @@
 #include "Properties.h"
 #include "Entity.h"
-#include "IniFile.h"
 #include "Log.h"
 #include "Script.h"
 #include "StringUtils.h"

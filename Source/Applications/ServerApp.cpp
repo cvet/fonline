@@ -1,6 +1,6 @@
-#include "AppGui.h"
 #include "Common.h"
-#include "IniFile.h"
+
+#include "AppGui.h"
 #include "NetBuffer.h"
 #include "SDL_main.h"
 #include "Server.h"
@@ -36,12 +36,12 @@ static int main_disabled(int argc, char** argv)
     InitialSetup("FOnlineServer", argc, argv);
 
     // Gui
-    bool use_dx = (MainConfig->GetInt("", "UseDirectX") != 0);
+    bool use_dx = !GameOpt.OpenGLRendering;
     if (!AppGui::Init("FOnline Server", use_dx, false, false))
         return -1;
 
     // Autostart
-    if (!MainConfig->IsKey("", "NoStart"))
+    if (!GameOpt.NoStart)
         StartServer = true;
 
     // Server loop in separate thread

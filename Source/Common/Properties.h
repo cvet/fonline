@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Common.h"
-#include "Testing.h"
-#include "angelscript.h"
-#include "scriptarray/scriptarray.h"
 
+#include "Testing.h"
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 #include "DataBase.h"
 #endif
+
+#include "angelscript.h"
+#include "scriptarray/scriptarray.h"
 
 #define PROPERTIES_HEADER() \
     static PropertyRegistrator* PropertiesRegistrator; \

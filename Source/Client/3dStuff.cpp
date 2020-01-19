@@ -8,8 +8,9 @@
 #include "Testing.h"
 #include "Timer.h"
 
-Animation3dManager::Animation3dManager(EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator) :
-    effectMngr {effect_mngr}, meshTexCreator {mesh_tex_creator}
+Animation3dManager::Animation3dManager(
+    FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator) :
+    fileMngr {file_mngr}, effectMngr {effect_mngr}, meshTexCreator {mesh_tex_creator}
 {
     if (!GameOpt.Enable3dRendering)
         return;
@@ -58,8 +59,8 @@ Bone* Animation3dManager::LoadModel(const string& fname)
     processedFiles.push_back(fname);
 
     // Load file data
-    File file;
-    if (!file.LoadFile(fname))
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
     {
         WriteLog("3d file '{}' not found.\n", fname);
         return nullptr;
@@ -67,7 +68,8 @@ Bone* Animation3dManager::LoadModel(const string& fname)
 
     // Load bones
     Bone* root_bone = new Bone();
-    root_bone->Load(file);
+    DataReader reader {file.GetBuf()};
+    root_bone->Load(reader);
     root_bone->FixAfterLoad(root_bone);
 
     // Load animations
@@ -75,7 +77,7 @@ Bone* Animation3dManager::LoadModel(const string& fname)
     for (uint i = 0; i < anim_sets_count; i++)
     {
         AnimSet* anim_set = new AnimSet();
-        anim_set->Load(file);
+        anim_set->Load(reader);
         loadedAnimSets.push_back(anim_set);
     }
 
@@ -164,7 +166,8 @@ void Animation3dManager::SetScreenSize(int width, int height)
 
     // Projection
     float k = (float)modeHeight / 768.0f;
-    gluStuffOrtho(matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    GraphicApi::MatrixOrtho(
+        matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
     matrixProjCM = matrixProjRM;
     matrixProjCM.Transpose();
     matrixEmptyRM = Matrix();
@@ -291,7 +294,7 @@ void Animation3dManager::VecProject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    GraphicApi::MatrixProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -301,7 +304,7 @@ void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    gluStuffUnProject(v.x, (float)modeHeight - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    GraphicApi::MatrixUnproject(v.x, modeHeightF - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -1576,8 +1579,8 @@ bool Animation3dEntity::Load(const string& name)
     if (ext == "fo3d")
     {
         // Load main fo3d file
-        File fo3d;
-        if (!fo3d.LoadFile(name))
+        File fo3d = anim3dMngr.fileMngr.ReadFile(name);
+        if (!fo3d)
             return false;
 
         // Parse
@@ -1663,8 +1666,8 @@ bool Animation3dEntity::Load(const string& name)
 
                 // Include file path
                 string fname = _str(name).combinePath(templates[0]);
-                File fo3d_ex;
-                if (!fo3d_ex.LoadFile(fname))
+                File fo3d_ex = anim3dMngr.fileMngr.ReadFile(fname);
+                if (!fo3d_ex)
                 {
                     WriteLog("Include file '{}' not found.\n", fname);
                     continue;
@@ -2284,11 +2287,7 @@ bool Animation3dEntity::Load(const string& name)
 
         // Create animation controller
         if (!anims.empty())
-        {
-            animController = AnimController::Create(2);
-            if (!animController)
-                WriteLog("Unable to create animation controller, file '{}'.\n", name);
-        }
+            animController = new AnimController(2);
 
         // Parse animations
         if (animController)

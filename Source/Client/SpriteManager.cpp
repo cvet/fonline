@@ -1,8 +1,6 @@
 #include "SpriteManager.h"
 #include "3dStuff.h"
-#include "Crypt.h"
 #include "EffectManager.h"
-#include "IniFile.h"
 #include "Log.h"
 #include "Settings.h"
 #include "Sprites.h"
@@ -28,7 +26,8 @@
 SDL_Window* SprMngr_MainWindow;
 #endif
 
-SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mngr}
+SpriteManager::SpriteManager(FileManager& file_mngr, EffectManager& effect_mngr) :
+    fileMngr {file_mngr}, effectMngr {effect_mngr}
 {
     baseColor = COLOR_RGBA(255, 128, 128, 128);
     allAtlases.reserve(100);
@@ -100,8 +99,8 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
     window_create_flags |= SDL_WINDOW_OPENGL;
 #endif
 
-    mainWindow = SDL_CreateWindow(MainConfig->GetStr("", "WindowName", "FOnline").c_str(), SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags);
+    mainWindow = SDL_CreateWindow(GameOpt.WindowName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags);
     RUNTIME_ASSERT_STR(mainWindow, _str("SDL Window not created, error '{}'.\n", SDL_GetError()));
 
 #ifdef FO_IOS
@@ -200,7 +199,6 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
         CHECK_EXTENSION(framebuffer_multisample, false);
     }
     CHECK_EXTENSION(texture_multisample, false);
-    CHECK_EXTENSION(get_program_binary, false);
 #undef CHECK_EXTENSION
     RUNTIME_ASSERT(!extension_errors);
 
@@ -209,7 +207,7 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
     RUNTIME_ASSERT(effects_ok);
 
     // Render states
-    GL(gluStuffOrtho(
+    GL(GraphicApi::MatrixOrtho(
         projectionMatrixCM[0], 0.0f, (float)GameOpt.ScreenWidth, (float)GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f));
     projectionMatrixCM.Transpose(); // Convert to column major order
     GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
@@ -276,7 +274,7 @@ SpriteManager::SpriteManager(EffectManager& effect_mngr) : effectMngr {effect_mn
     // 3d initialization
     if (GameOpt.Enable3dRendering)
     {
-        anim3dMngr = new Animation3dManager(effectMngr, [this](MeshTexture* mesh_tex) {
+        anim3dMngr = new Animation3dManager(fileMngr, effectMngr, [this](MeshTexture* mesh_tex) {
             PushAtlasType(AtlasType::MeshTextures);
             AnyFrames* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name);
             PopAtlasType();
@@ -449,7 +447,7 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
 }
 
 RenderTarget* SpriteManager::CreateRenderTarget(bool depth, bool multisampling, bool screen_size, uint width,
-    uint height, bool tex_linear, Effect* effect /* = NULL */, RenderTarget* rt_refresh /* = NULL */)
+    uint height, bool tex_linear, Effect* effect, RenderTarget* rt_refresh)
 {
     // Flush current sprites
     Flush();
@@ -711,8 +709,7 @@ void SpriteManager::PopRenderTarget()
     }
 }
 
-void SpriteManager::DrawRenderTarget(
-    RenderTarget* rt, bool alpha_blend, const Rect* region_from /* = nullptr */, const Rect* region_to /* = nullptr */)
+void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const Rect* region_from, const Rect* region_to)
 {
     Flush();
 
@@ -865,12 +862,12 @@ void SpriteManager::RefreshViewport()
 
     if (screen_size)
     {
-        GL(gluStuffOrtho(
+        GL(GraphicApi::MatrixOrtho(
             projectionMatrixCM[0], 0.0f, (float)GameOpt.ScreenWidth, (float)GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f));
     }
     else
     {
-        GL(gluStuffOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f));
+        GL(GraphicApi::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f));
     }
     projectionMatrixCM.Transpose(); // Convert to column major order
 }
@@ -1237,7 +1234,7 @@ void SpriteManager::DumpAtlases()
     }
 }
 
-static void SavePNG(const string& fname, uchar* data, uint width, uint height)
+static void SavePNG(FileManager& file_mngr, const string& fname, uchar* data, uint width, uint height)
 {
 #if defined(FO_WINDOWS) || defined(FO_LINUX) || defined(FO_MAC)
     // Initialize stuff
@@ -1292,9 +1289,9 @@ static void SavePNG(const string& fname, uchar* data, uint width, uint height)
     delete[] row_pointers;
 
     // Write to disk
-    File fm;
-    fm.SetData(&result_png[0], (uint)result_png.size());
-    fm.SaveFile(fname);
+    OutputFile file = file_mngr.WriteFile(fname);
+    file.SetData(&result_png[0], (uint)result_png.size());
+    file.Save();
 
 #else
     UNUSED_VARIABLE(fname);
@@ -1336,7 +1333,7 @@ void SpriteManager::SaveTexture(Texture* tex, const string& fname, bool flip)
     }
 
     // Save
-    SavePNG(fname, data, w, h);
+    SavePNG(fileMngr, fname, data, w, h);
 
     // Clean up
     SAFEDELA(data);
@@ -1456,8 +1453,8 @@ AnyFrames* SpriteManager::LoadAnimation(const string& fname, bool use_dummy, boo
 
 AnyFrames* SpriteManager::LoadAnimation2d(const string& fname)
 {
-    File file;
-    if (!file.LoadFile(fname))
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
         return nullptr;
 
     RUNTIME_ASSERT(file.GetUChar() == 42);
@@ -1764,14 +1761,11 @@ bool SpriteManager::Flush()
     EnableScissor();
 
     uint pos = 0;
-    for (auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it)
+    for (auto& dip : dipQueue)
     {
-        DipData& dip = *it;
-        Effect* effect = dip.SourceEffect;
-
-        for (size_t pass = 0; pass < effect->Passes.size(); pass++)
+        for (size_t pass = 0; pass < dip.SourceEffect->Passes.size(); pass++)
         {
-            EffectPass& effect_pass = effect->Passes[pass];
+            EffectPass& effect_pass = dip.SourceEffect->Passes[pass];
 
             GL(glUseProgram(effect_pass.Program));
 
@@ -1830,7 +1824,7 @@ bool SpriteManager::Flush()
     return true;
 }
 
-bool SpriteManager::DrawSprite(uint id, int x, int y, uint color /* = 0 */)
+bool SpriteManager::DrawSprite(uint id, int x, int y, uint color)
 {
     if (!id)
         return false;
@@ -1841,7 +1835,7 @@ bool SpriteManager::DrawSprite(uint id, int x, int y, uint color /* = 0 */)
 
     Effect* effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Iface);
     if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
-        dipQueue.back().SourceEffect->Id != effect->Id)
+        dipQueue.back().SourceEffect != effect)
         dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
     else
         dipQueue.back().SpritesCount++;
@@ -1888,7 +1882,7 @@ bool SpriteManager::DrawSprite(AnyFrames* frames, int x, int y, uint color)
     return false;
 }
 
-bool SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color /* = 0 */)
+bool SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
 {
     return DrawSpriteSizeExt(id, x, y, w, h, zoom_up, center, false, color);
 }
@@ -1946,7 +1940,7 @@ bool SpriteManager::DrawSpriteSizeExt(
 
     Effect* effect = (si->DrawEffect ? si->DrawEffect : effectMngr.Effects.Iface);
     if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
-        dipQueue.back().SourceEffect->Id != effect->Id)
+        dipQueue.back().SourceEffect != effect)
         dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
     else
         dipQueue.back().SpritesCount++;
@@ -1986,8 +1980,7 @@ bool SpriteManager::DrawSpriteSizeExt(
     return true;
 }
 
-bool SpriteManager::DrawSpritePattern(
-    uint id, int x, int y, int w, int h, int spr_width /* = 0 */, int spr_height /* = 0 */, uint color /* = 0 */)
+bool SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color)
 {
     if (!id)
         return false;
@@ -2037,7 +2030,7 @@ bool SpriteManager::DrawSpritePattern(
             bool last_x = xx + width >= end_x;
 
             if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
-                dipQueue.back().SourceEffect->Id != effect->Id)
+                dipQueue.back().SourceEffect != effect)
                 dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
             else
                 dipQueue.back().SpritesCount++;
@@ -2101,7 +2094,7 @@ void SpriteManager::PrepareSquare(PointVec& points, Point lt, Point rt, Point lb
     points.push_back({rb.X, rb.Y, color});
 }
 
-uint SpriteManager::PackColor(int r, int g, int b, int a /* = 255 */)
+uint SpriteManager::PackColor(int r, int g, int b, int a)
 {
     r = CLAMP(r, 0, 255);
     g = CLAMP(g, 0, 255);
@@ -2206,7 +2199,7 @@ void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
 }
 
 bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from,
-    int draw_oder_to, bool prerender /* = false */, int prerender_ox /* = 0 */, int prerender_oy /* = 0 */)
+    int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
 {
     if (!dtree.Size())
         return true;
@@ -2382,7 +2375,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Choose atlas
         if (dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner ||
-            dipQueue.back().SourceEffect->Id != effect->Id)
+            dipQueue.back().SourceEffect != effect)
             dipQueue.push_back({si->Atlas->TextureOwner, effect, 1});
         else
             dipQueue.back().SpritesCount++;
@@ -2591,16 +2584,16 @@ bool SpriteManager::IsEggTransp(int pix_x, int pix_y)
     return (egg_color >> 24) < 127;
 }
 
-bool SpriteManager::DrawPoints(
-    PointVec& points, int prim, float* zoom /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */)
+bool SpriteManager::DrawPoints(PointVec& points, int prim, float* zoom, PointF* offset, Effect* effect)
 {
     if (points.empty())
         return true;
 
     Flush();
 
-    if (!effect)
-        effect = effectMngr.Effects.Primitive;
+    Effect* draw_effect = effect;
+    if (!draw_effect)
+        draw_effect = effectMngr.Effects.Primitive;
 
     // Check primitives
     uint count = (uint)points.size();
@@ -2674,9 +2667,9 @@ bool SpriteManager::DrawPoints(
     EnableVertexArray(pointsVertexArray, count);
     EnableScissor();
 
-    for (size_t pass = 0; pass < effect->Passes.size(); pass++)
+    for (size_t pass = 0; pass < draw_effect->Passes.size(); pass++)
     {
-        EffectPass& effect_pass = effect->Passes[pass];
+        EffectPass& effect_pass = draw_effect->Passes[pass];
 
         GL(glUseProgram(effect_pass.Program));
 

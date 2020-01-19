@@ -1,10 +1,7 @@
 #include "Mapper.h"
 #include "3dStuff.h"
 #include "CritterView.h"
-#include "Crypt.h"
-#include "Debugger.h"
-#include "FileSystem.h"
-#include "IniFile.h"
+#include "DiskFileSystem.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "LocationView.h"
@@ -16,21 +13,26 @@
 #include "Timer.h"
 #include "Version_Include.h"
 #include "WinApi_Include.h"
+
 #include "sha1.h"
 #include "sha2.h"
 
-bool FOMapper::SpritesCanDraw = false;
-FOMapper* FOMapper::Self = nullptr;
+bool FOMapper::SpritesCanDraw;
+FOMapper* FOMapper::Self;
 string FOMapper::ServerWritePath;
 string FOMapper::ClientWritePath;
-MapView* FOMapper::SScriptFunc::ClientCurMap = nullptr;
-LocationView* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
+MapView* FOMapper::SScriptFunc::ClientCurMap;
+LocationView* FOMapper::SScriptFunc::ClientCurLocation;
 
 FOMapper::FOMapper() :
+    IfaceIni(""),
+    FileMngr(),
+    ServerFileMngr(),
+    Cache("Data/Cache.bin"),
     ProtoMngr(),
-    EffectMngr(),
-    SprMngr(EffectMngr),
-    ResMngr(SprMngr),
+    EffectMngr(FileMngr),
+    SprMngr(FileMngr, EffectMngr),
+    ResMngr(FileMngr, SprMngr),
     HexMngr(true, ProtoMngr, SprMngr, ResMngr),
     Keyb(SprMngr)
 {
@@ -57,19 +59,12 @@ FOMapper::FOMapper() :
     // Setup write paths
     ServerWritePath = GameOpt.ServerDir;
     ClientWritePath = GameOpt.WorkDir;
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
-
-    // Cache
-    bool cache_ok = Crypt.InitCache();
-    RUNTIME_ASSERT_STR(cache_ok, "Can't create cache file");
 
     // Resources
-    File::SetCurrentDir(ServerWritePath, "./");
-    File::ClearDataFiles();
-    File::InitDataFiles("$Basic");
-    File::InitDataFiles("./");
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
-    File::InitDataFiles(CLIENT_DATA);
+    FileMngr.AddDataSource("$Basic");
+    FileMngr.AddDataSource(ClientWritePath + "Data/");
+    ServerFileMngr.AddDataSource("$Basic");
+    ServerFileMngr.AddDataSource(ServerWritePath);
 
     // Default effects
     bool default_effects_ok = EffectMngr.LoadDefaultEffects();
@@ -89,9 +84,6 @@ FOMapper::FOMapper() :
     SprMngr.BuildFonts();
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
-    // Resource manager
-    ResMngr.Refresh();
-
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
     SprMngr.EndScene();
 
@@ -103,13 +95,10 @@ FOMapper::FOMapper() :
     RUNTIME_ASSERT(init_scripts_ok);
 
     // Language Packs
-    File::SetCurrentDir(ServerWritePath, "./");
-    string lang_name = MainConfig->GetStr("", "Language_0", DEFAULT_LANGUAGE);
-    bool lang_ok = CurLang.LoadFromFiles(lang_name.c_str());
-    RUNTIME_ASSERT(lang_ok);
+    CurLang.LoadFromFiles(FileMngr, GameOpt.Language);
 
     // Prototypes
-    bool protos_ok = ProtoMngr.LoadProtosFromFiles();
+    bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
     RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
@@ -159,28 +148,21 @@ FOMapper::FOMapper() :
     TabsName[INT_MODE_MESS] = "Msg";
     TabsName[INT_MODE_LIST] = "Maps";
 
-    // Restore to client path
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
-
     // Hex manager
     HexMngr.ReloadSprites();
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if (MainConfig->IsKey("", "Map"))
+    if (!GameOpt.Map.empty())
     {
-        File::SetCurrentDir(ServerWritePath, "./");
-
-        string map_name = MainConfig->GetStr("", "Map");
+        string map_name = GameOpt.Map;
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        bool initialized = pmap->EditorLoad(ProtoMngr, SprMngr, ResMngr);
-
-        File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
+        bool initialized = pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr);
 
         if (initialized && HexMngr.SetProtoMap(*pmap))
         {
-            int hexX = MainConfig->GetInt("", "HexX", -1);
-            int hexY = MainConfig->GetInt("", "HexY", -1);
+            int hexX = GameOpt.HexX;
+            int hexY = GameOpt.HexY;
             if (hexX < 0 || hexX >= pmap->GetWidth())
                 hexX = pmap->GetWorkHexX();
             if (hexY < 0 || hexY >= pmap->GetHeight())
@@ -198,13 +180,12 @@ FOMapper::FOMapper() :
     RunStartScript();
 
     // Refresh resources after start script executed
-    ResMngr.Refresh();
     for (int tab = 0; tab < TAB_COUNT; tab++)
         RefreshTiles(tab);
     RefreshCurProtos();
 
     // Load console history
-    string history_str = Crypt.GetCache("mapper_console.txt");
+    string history_str = Cache.GetCache("mapper_console.txt");
     size_t pos = 0, prev = 0, count = 0;
     while ((pos = history_str.find("\n", prev)) != std::string::npos)
     {
@@ -221,7 +202,6 @@ FOMapper::FOMapper() :
 
 FOMapper::~FOMapper()
 {
-    File::ClearDataFiles();
     FinishScriptSystem();
 }
 
@@ -229,12 +209,12 @@ int FOMapper::InitIface()
 {
     WriteLog("Init interface.\n");
 
-    IniFile& ini = IfaceIni;
-    const char* int_file = "mapper_default.ini";
+    ConfigFile& ini = IfaceIni;
 
-    if (!ini.AppendFile(int_file))
+    ini = FileMngr.ReadConfigFile("mapper_default.ini");
+    if (!ini)
     {
-        WriteLog("File '{}' not found.\n", int_file);
+        WriteLog("File 'mapper_default.ini' not found.\n");
         return __LINE__;
     }
 
@@ -840,19 +820,10 @@ void FOMapper::ParseKeyboard()
                 if (ActiveMap)
                 {
                     HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
-                    File::SetCurrentDir(ServerWritePath, "./");
-                    if (((ProtoMap*)ActiveMap->Proto)->EditorSave(""))
-                    {
-                        AddMess("Map saved.");
-                        RunMapSaveScript(ActiveMap);
-                    }
-                    else
-                    {
-                        AddMess("Saving error.");
-                    }
-                    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
+                    ((ProtoMap*)ActiveMap->Proto)->EditorSave(FileMngr, "");
+                    AddMess("Map saved.");
+                    RunMapSaveScript(ActiveMap);
                 }
-                File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
                 break;
             case DIK_D:
                 GameOpt.ScrollCheck = !GameOpt.ScrollCheck;
@@ -1418,26 +1389,22 @@ void FOMapper::RefreshTiles(int tab)
         bool include_subdirs = ttab.TileSubDirs[t];
 
         StrVec tiles;
-        File::GetDataFileNames(path.c_str(), include_subdirs, "", tiles);
+        FileCollection tile_files = FileMngr.FilterFiles("", path, include_subdirs);
+        while (tile_files.MoveNext())
+            tiles.push_back(tile_files.GetCurFileHeader().GetPath());
 
-        struct StrComparator_
-        {
-            static bool StrComparator(const string& left, const string& right)
+        std::sort(tiles.begin(), tiles.end(), [](const string& left, const string& right) {
+            for (auto lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end(); ++lit, ++rit)
             {
-                for (auto lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end();
-                     ++lit, ++rit)
-                {
-                    int lc = tolower(*lit);
-                    int rc = tolower(*rit);
-                    if (lc < rc)
-                        return true;
-                    else if (lc > rc)
-                        return false;
-                }
-                return left.size() < right.size();
+                int lc = tolower(*lit);
+                int rc = tolower(*rit);
+                if (lc < rc)
+                    return true;
+                else if (lc > rc)
+                    return false;
             }
-        };
-        std::sort(tiles.begin(), tiles.end(), StrComparator_::StrComparator);
+            return left.size() < right.size();
+        });
 
         for (auto it = tiles.begin(), end = tiles.end(); it != end; ++it)
         {
@@ -3853,7 +3820,7 @@ void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
                 string history_str = "";
                 for (size_t i = 0, j = ConsoleHistory.size(); i < j; i++)
                     history_str += ConsoleHistory[i] + "\n";
-                Crypt.SetCache("mapper_console.txt", history_str);
+                Cache.SetCache("mapper_console.txt", history_str);
 
                 // Process command
                 bool process_command = true;
@@ -3944,14 +3911,11 @@ void FOMapper::ParseCommand(const string& command)
         }
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        File::SetCurrentDir(ServerWritePath, "./");
-        if (!pmap->EditorLoad(ProtoMngr, SprMngr, ResMngr))
+        if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
         {
             AddMess("File not found or truncated.");
-            File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
             return;
         }
-        File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
 
         SelectClear();
 
@@ -3991,17 +3955,10 @@ void FOMapper::ParseCommand(const string& command)
 
         HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
 
-        File::SetCurrentDir(ServerWritePath, "./");
-        if (((ProtoMap*)ActiveMap->Proto)->EditorSave(map_name))
-        {
-            AddMess("Save map success.");
-            RunMapSaveScript(ActiveMap);
-        }
-        else
-        {
-            AddMess("Save map fail, see log.");
-        }
-        File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
+        ((ProtoMap*)ActiveMap->Proto)->EditorSave(ServerFileMngr, map_name);
+
+        AddMess("Save map success.");
+        RunMapSaveScript(ActiveMap);
     }
     // Run script
     else if (command[0] == '#')
@@ -4087,10 +4044,28 @@ void FOMapper::ParseCommand(const string& command)
         if (command_ext == "new")
         {
             ProtoMap* pmap = new ProtoMap(_str("new").toHash());
-            pmap->GenNew();
+
+            pmap->SetWidth(MAXHEX_DEF);
+            pmap->SetHeight(MAXHEX_DEF);
+
+            // Morning	 5.00 -  9.59	 300 - 599
+            // Day		10.00 - 18.59	 600 - 1139
+            // Evening	19.00 - 22.59	1140 - 1379
+            // Nigh		23.00 -  4.59	1380
+            IntVec vec = {300, 600, 1140, 1380};
+            UCharVec vec2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
+            CScriptArray* arr = Script::CreateArray("int[]");
+            Script::AppendVectorToArray(vec, arr);
+            pmap->SetDayTime(arr);
+            arr->Release();
+            CScriptArray* arr2 = Script::CreateArray("uint8[]");
+            Script::AppendVectorToArray(vec2, arr2);
+            pmap->SetDayColor(arr2);
+            arr2->Release();
 
             if (ActiveMap)
                 HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
+
             if (!HexMngr.SetProtoMap(*pmap))
             {
                 AddMess("Create map fail, see log.");
@@ -4223,10 +4198,11 @@ bool FOMapper::SaveLogFile()
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
-    string log_path = _str("./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt", dt.Day, dt.Month, dt.Year, dt.Hour,
+    string log_path = _str("mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt", dt.Day, dt.Month, dt.Year, dt.Hour,
         dt.Minute, dt.Second);
 
-    void* f = FileOpen(log_path, true);
+    DiskFileSystem::ResetCurDir();
+    DiskFile f = DiskFileSystem::OpenFile(log_path, true);
     if (!f)
         return false;
 
@@ -4238,8 +4214,7 @@ bool FOMapper::SaveLogFile()
         fmt_log += MessBox[i].Time + string(cur_mess);
     }
 
-    FileWrite(f, fmt_log.c_str(), (uint)fmt_log.length());
-    FileClose(f);
+    f.Write(fmt_log.c_str(), (uint)fmt_log.length());
     return true;
 }
 
@@ -4268,7 +4243,7 @@ bool FOMapper::InitScriptSystem()
 
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_MAPPER, &ProtoMngr, nullptr);
-    if (!Script::Init(pragma_callback, "MAPPER", 0, false, false))
+    if (!Script::Init(FileMngr, pragma_callback, "MAPPER"))
     {
         WriteLog("Script system initialization fail.\n");
         return false;
@@ -4290,13 +4265,11 @@ bool FOMapper::InitScriptSystem()
     Script::Undef("");
     Script::Define("__MAPPER");
     Script::Define(_str("__VERSION {}", FO_VERSION));
-    File::SetCurrentDir(ServerWritePath, "./");
     if (!Script::ReloadScripts("Mapper"))
     {
         WriteLog("Invalid mapper scripts.\n");
         return false;
     }
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
 
 #define BIND_INTERNAL_EVENT(name) MapperFunctions.name = Script::FindInternalEvent("Event" #name)
 #define BIND_INTERNAL_EVENT_CLIENT(name) ClientFunctions.name = Script::FindInternalEvent("Event" #name)
@@ -4775,13 +4748,8 @@ void FOMapper::SScriptFunc::Global_SetPropertyGetCallback(asIScriptGeneric* gen)
 MapView* FOMapper::SScriptFunc::Global_LoadMap(string file_name)
 {
     ProtoMap* pmap = new ProtoMap(_str(file_name).toHash());
-    File::SetCurrentDir(ServerWritePath, "./");
-    if (!pmap->EditorLoad(Self->ProtoMngr, Self->SprMngr, Self->ResMngr))
-    {
-        File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
+    if (!pmap->EditorLoad(Self->ServerFileMngr, Self->ProtoMngr, Self->SprMngr, Self->ResMngr))
         return nullptr;
-    }
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
 
     MapView* map = new MapView(0, pmap);
     Self->LoadedMaps.push_back(map);
@@ -4814,12 +4782,9 @@ bool FOMapper::SScriptFunc::Global_SaveMap(MapView* map, string custom_name)
     if (!map)
         SCRIPT_ERROR_R0("Proto map arg nullptr.");
 
-    File::SetCurrentDir(ServerWritePath, "./");
-    bool result = ((ProtoMap*)map->Proto)->EditorSave(custom_name);
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
-    if (result)
-        Self->RunMapSaveScript(map);
-    return result;
+    ((ProtoMap*)map->Proto)->EditorSave(Self->ServerFileMngr, custom_name);
+    Self->RunMapSaveScript(map);
+    return true;
 }
 
 bool FOMapper::SScriptFunc::Global_ShowMap(MapView* map)
@@ -4852,32 +4817,14 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps(int& index)
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames(string dir)
 {
-    File::SetCurrentDir(ServerWritePath, "./");
-    string dir_ = (dir.empty() ? GameOpt.WorkDir : dir);
-
-    string file_find_fname;
-    void* h = FileFindFirst(dir_, "", &file_find_fname, nullptr, nullptr, nullptr);
-    if (!h)
-    {
-        File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
-        return nullptr;
-    }
-
     CScriptArray* names = Script::CreateArray("string[]");
-    while (true)
+    FileCollection map_files = Self->ServerFileMngr.FilterFiles("fomap", dir);
+    while (map_files.MoveNext())
     {
-        if (ProtoMap::IsMapFile(dir_ + file_find_fname))
-        {
-            string fname = _str(file_find_fname).eraseFileExtension();
-            names->InsertLast(&fname);
-        }
-
-        if (!FileFindNext(h, &file_find_fname, nullptr, nullptr, nullptr))
-            break;
+        FileHeader file_header = map_files.GetCurFileHeader();
+        string fname = file_header.GetName();
+        names->InsertLast(&fname);
     }
-    FileFindClose(h);
-
-    File::SetCurrentDir(ClientWritePath, CLIENT_DATA);
     return names;
 }
 
@@ -5393,18 +5340,12 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject(int x, int y, bool ignore
     return mobj;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadDataFile(string dat_name)
+void FOMapper::SScriptFunc::Global_AddDataSource(string dat_name)
 {
-    if (File::LoadDataFile(dat_name.c_str()))
-    {
-        // Reload resource manager
-        Self->ResMngr.Refresh();
-        for (int tab = 0; tab < TAB_COUNT; tab++)
-            Self->RefreshTiles(tab);
+    Self->FileMngr.AddDataSource(dat_name);
 
-        return true;
-    }
-    return false;
+    for (int tab = 0; tab < TAB_COUNT; tab++)
+        Self->RefreshTiles(tab);
 }
 
 bool FOMapper::SScriptFunc::Global_LoadFont(int font_index, string font_fname)

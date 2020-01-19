@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Entity.h"
+
 #include "angelscript.h"
 #include "preprocessor.h"
 

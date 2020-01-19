@@ -132,27 +132,6 @@ static string Global_EncodeUTF8(uint ucs)
     return string(buf, len);
 }
 
-static CScriptArray* Global_GetFolderFileNames(string path, string ext, bool include_subdirs)
-{
-    StrVec files;
-    File::GetFolderFileNames(path, include_subdirs, ext, files);
-
-    CScriptArray* result = Script::CreateArray("string[]");
-    for (string f : files)
-        result->InsertLast(&f);
-    return result;
-}
-
-static bool Global_DeleteFile(string filename)
-{
-    return File::DeleteFile(filename);
-}
-
-static void Global_CreateDirectoryTree(string path)
-{
-    File::CreateDirectoryTree(_str(path).formatPath());
-}
-
 static void Global_Yield(uint time)
 {
     Script::SuspendCurrentContext(time);

@@ -10,44 +10,23 @@
 #include "assimp/postprocess.h"
 #include "fbxsdk/fbxsdk.h"
 
-class ModelBakerImpl : public IModelBaker
-{
-public:
-    ModelBakerImpl(FileCollection& all_files);
-    virtual ~ModelBakerImpl() override;
-    virtual void AutoBakeModels() override;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
-
-private:
-    UCharVec BakeFile(const string& fname, File& file);
-
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles;
-    unique_ptr<FbxManager, void (*)(FbxManager*)> fbxManager;
-};
-
-ModelBaker IModelBaker::Create(FileCollection& all_files)
-{
-    return std::make_shared<ModelBakerImpl>(all_files);
-}
-
-ModelBakerImpl::ModelBakerImpl(FileCollection& all_files) :
-    allFiles {all_files}, bakedFiles {}, fbxManager {nullptr, [](auto* fbx_mngr) { fbx_mngr->Destroy(); }}
+ModelBaker::ModelBaker(FileCollection& all_files) : allFiles {all_files}
 {
 }
 
-ModelBakerImpl::~ModelBakerImpl()
+ModelBaker::~ModelBaker()
 {
+    if (fbxManager)
+        fbxManager->Destroy();
 }
 
-void ModelBakerImpl::AutoBakeModels()
+void ModelBaker::AutoBakeModels()
 {
     allFiles.ResetCounter();
-    while (allFiles.IsNextFile())
+    while (allFiles.MoveNext())
     {
-        string relative_path;
-        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
-
+        FileHeader file_header = allFiles.GetCurFileHeader();
+        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
         if (bakedFiles.count(relative_path))
             continue;
 
@@ -55,13 +34,13 @@ void ModelBakerImpl::AutoBakeModels()
         if (!Is3dExtensionSupported(ext))
             continue;
 
-        File& file = allFiles.GetCurFile();
+        File file = allFiles.GetCurFile();
         UCharVec data = BakeFile(relative_path, file);
         bakedFiles.emplace(relative_path, std::move(data));
     }
 }
 
-void ModelBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
+void ModelBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
     for (const auto& kv : bakedFiles)
         baked_files.emplace(kv.first, kv.second);
@@ -119,10 +98,15 @@ public:
             file->SetCurPos(file->GetFsize() - (uint)offset);
     }
 
+    virtual int Read(void* data, int size) const override
+    {
+        file->CopyMem(data, size);
+        return size;
+    }
+
     virtual EState GetState() override { return curState; }
     virtual bool Flush() override { return true; }
     virtual int Write(const void* data, int size) override { return 0; }
-    virtual int Read(void* data, int size) const override { return file->CopyMem(data, size) ? size : 0; }
     virtual int GetReaderID() const override { return 0; }
     virtual int GetWriterID() const override { return -1; }
     virtual long GetPosition() const override { return file->GetCurPos(); }
@@ -141,7 +125,7 @@ static Matrix ConvertFbxMatrix(const FbxAMatrix& m);
 static Bone* ConvertAssimpPass1(aiScene* ai_scene, aiNode* ai_node);
 static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node);
 
-UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
+UCharVec ModelBaker::BakeFile(const string& fname, File& file)
 {
     // Result bone
     Bone* root_bone = nullptr;
@@ -153,12 +137,12 @@ UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
     {
         if (!fbxManager)
         {
-            fbxManager.reset(FbxManager::Create());
+            fbxManager = FbxManager::Create();
             if (!fbxManager)
                 throw fo_exception("Unable to create FBX Manager");
 
             // Create an IOSettings object. This object holds all import/export settings.
-            FbxIOSettings* ios = FbxIOSettings::Create(fbxManager.get(), IOSROOT);
+            FbxIOSettings* ios = FbxIOSettings::Create(fbxManager, IOSROOT);
             fbxManager->SetIOSettings(ios);
 
             // Load plugins from the executable directory (optional)
@@ -166,12 +150,12 @@ UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
         }
 
         // Create an FBX scene
-        FbxScene* fbx_scene = FbxScene::Create(fbxManager.get(), "Root Scene");
+        FbxScene* fbx_scene = FbxScene::Create(fbxManager, "Root Scene");
         if (!fbx_scene)
             throw fo_exception("Unable to create FBX scene");
 
         // Create an importer
-        FbxImporter* fbx_importer = FbxImporter::Create(fbxManager.get(), "");
+        FbxImporter* fbx_importer = FbxImporter::Create(fbxManager, "");
         if (!fbx_importer)
             throw fo_exception("Unable to create FBX importer");
 
@@ -389,20 +373,17 @@ UCharVec ModelBakerImpl::BakeFile(const string& fname, File& file)
         aiReleaseImport(scene);
     }
 
-    // Make new file
-    File converted_file;
-    root_bone->Save(converted_file);
-    converted_file.SetBEUInt((uint)loaded_animations.size());
+    UCharVec data;
+    DataWriter writer {data};
+    root_bone->Save(writer);
+    writer.Write((uint)loaded_animations.size());
     for (size_t i = 0; i < loaded_animations.size(); i++)
-        loaded_animations[i]->Save(converted_file);
+        loaded_animations[i]->Save(writer);
 
     delete root_bone;
     for (size_t i = 0; i < loaded_animations.size(); i++)
         delete loaded_animations[i];
 
-    UCharVec data;
-    DataWriter writer {data};
-    writer.WritePtr(&data[0], data.size());
     return std::move(data);
 }
 

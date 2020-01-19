@@ -1,5 +1,4 @@
 #include "ItemView.h"
-#include "Debugger.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "SpriteManager.h"
@@ -81,13 +80,11 @@ CLASS_PROPERTY_IMPL(ItemView, FlyEffectSpeed);
 ItemView::ItemView(uint id, ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
-    MEMORY_PROCESS(MEMORY_ITEM, sizeof(ItemView) + PropertiesRegistrator->GetWholeDataSize());
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
 ItemView::~ItemView()
 {
-    MEMORY_PROCESS(MEMORY_ITEM, -(int)(sizeof(ItemView) + PropertiesRegistrator->GetWholeDataSize()));
 }
 
 ItemView* ItemView::Clone()

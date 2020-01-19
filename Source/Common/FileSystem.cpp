@@ -1,671 +1,587 @@
 #include "FileSystem.h"
+#include "Log.h"
+#include "Settings.h"
 #include "StringUtils.h"
-#include "WinApi_Include.h"
+#include "Testing.h"
 
-#ifdef FO_WINDOWS
-#include <io.h>
-#else
-#include <dirent.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-#ifdef FO_ANDROID
-#include "SDL.h"
-#endif
-
-#ifdef FO_WINDOWS
-static uint64 FileTimeToUInt64(FILETIME ft)
+FileHeader::FileHeader(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds) :
+    isLoaded {true}, fileName {name}, filePath {path}, fileSize {size}, writeTime {write_time}, dataSource {ds}
 {
-    union
+}
+
+FileHeader::operator bool() const
+{
+    return isLoaded;
+}
+
+const string& FileHeader::GetName()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(!fileName.empty());
+
+    return fileName;
+}
+
+const string& FileHeader::GetPath()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(!filePath.empty());
+
+    return filePath;
+}
+
+uint FileHeader::GetFsize()
+{
+    RUNTIME_ASSERT(isLoaded);
+
+    return fileSize;
+}
+
+uint64 FileHeader::GetWriteTime()
+{
+    RUNTIME_ASSERT(isLoaded);
+
+    return writeTime;
+}
+
+File::File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf) :
+    FileHeader(name, path, size, write_time, ds), fileBuf {buf}
+{
+    RUNTIME_ASSERT(fileBuf[fileSize] == 0);
+}
+
+File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), fileBuf {buf}
+{
+}
+
+const char* File::GetCStr()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    return (const char*)fileBuf.get();
+}
+
+uchar* File::GetBuf()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    return fileBuf.get();
+}
+
+uchar* File::GetCurBuf()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    return fileBuf.get() + curPos;
+}
+
+uint File::GetCurPos()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    return curPos;
+}
+
+uchar* File::ReleaseBuffer()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    return fileBuf.release();
+}
+
+void File::SetCurPos(uint pos)
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(pos <= fileSize);
+
+    curPos = pos;
+}
+
+void File::GoForward(uint offs)
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(curPos + offs <= fileSize);
+
+    curPos += offs;
+}
+
+void File::GoBack(uint offs)
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(offs <= curPos);
+
+    curPos -= offs;
+}
+
+bool File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs)
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    for (uint i = begin_offs; i < fileSize - fragment_len; i++)
     {
-        FILETIME ft;
-        ULARGE_INTEGER ul;
-    } t;
-    t.ft = ft;
-    return PACKUINT64(t.ul.HighPart, t.ul.LowPart);
-}
-
-static std::wstring MBtoWC(const string& mb)
-{
-    return _str(mb).replace('/', '\\').toWideChar();
-}
-
-static string WCtoMB(const wchar_t* wc)
-{
-    return _str().parseWideChar(wc).normalizePathSlashes();
-}
-
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
-{
-    HANDLE file;
-    if (write)
-    {
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-            CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-        if (file == INVALID_HANDLE_VALUE)
+        if (fileBuf[i] == fragment[0])
         {
-            MakeDirectoryTree(fname);
-            file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-        }
-    }
-    else
-    {
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-            OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-    }
-    if (file == INVALID_HANDLE_VALUE)
-        return nullptr;
-    return file;
-}
-
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
-{
-    HANDLE file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-        OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-    if (file == INVALID_HANDLE_VALUE)
-    {
-        MakeDirectoryTree(fname);
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-            CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-    }
-    if (file == INVALID_HANDLE_VALUE)
-        return nullptr;
-    if (!FileSetPointer(file, 0, SEEK_END))
-    {
-        FileClose(file);
-        return nullptr;
-    }
-    return file;
-}
-
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
-{
-    HANDLE file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-    if (file == INVALID_HANDLE_VALUE)
-    {
-        MakeDirectoryTree(fname);
-        file = CreateFileW(MBtoWC(fname).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr);
-    }
-    if (file == INVALID_HANDLE_VALUE)
-        return nullptr;
-    return file;
-}
-
-void FileClose(void* file)
-{
-    if (file)
-        CloseHandle((HANDLE)file);
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
-{
-    DWORD dw = 0;
-    BOOL result = ReadFile((HANDLE)file, buf, len, &dw, nullptr);
-    if (rb)
-        *rb = dw;
-    return result && dw == len;
-}
-
-bool FileWrite(void* file, const void* buf, uint len)
-{
-    DWORD dw = 0;
-    return WriteFile((HANDLE)file, buf, len, &dw, nullptr) && dw == len;
-}
-
-bool FileSetPointer(void* file, int offset, int origin)
-{
-    return SetFilePointer((HANDLE)file, offset, nullptr, origin) != INVALID_SET_FILE_POINTER;
-}
-
-uint FileGetPointer(void* file)
-{
-    return (uint)SetFilePointer((HANDLE)file, 0, nullptr, FILE_CURRENT);
-}
-
-uint64 FileGetWriteTime(void* file)
-{
-    FILETIME tc, ta, tw;
-    GetFileTime((HANDLE)file, &tc, &ta, &tw);
-    return FileTimeToUInt64(tw);
-}
-
-uint FileGetSize(void* file)
-{
-    DWORD high;
-    return GetFileSize((HANDLE)file, &high);
-}
-
-#elif defined(FO_ANDROID)
-
-struct FileDesc
-{
-    SDL_RWops* Ops;
-    bool WriteThrough;
-};
-
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
-{
-    SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
-    if (!ops && write)
-    {
-        MakeDirectoryTree(fname);
-        ops = SDL_RWFromFile(fname.c_str(), "wb");
-    }
-    if (!ops)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
-{
-    SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), "ab");
-    if (!ops)
-    {
-        MakeDirectoryTree(fname);
-        ops = SDL_RWFromFile(fname.c_str(), "ab");
-    }
-    if (!ops)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
-{
-    SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), "r+b");
-    if (!ops)
-    {
-        MakeDirectoryTree(fname);
-        ops = SDL_RWFromFile(fname.c_str(), "r+b");
-    }
-    if (!ops)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->Ops = ops;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void FileClose(void* file)
-{
-    if (file)
-    {
-        SDL_RWclose(((FileDesc*)file)->Ops);
-        delete (FileDesc*)file;
-    }
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
-{
-    uint rb_ = (uint)SDL_RWread(((FileDesc*)file)->Ops, buf, sizeof(char), len);
-    if (rb)
-        *rb = rb_;
-    return rb_ == len;
-}
-
-bool FileWrite(void* file, const void* buf, uint len)
-{
-    SDL_RWops* ops = ((FileDesc*)file)->Ops;
-    bool result = ((uint)SDL_RWwrite(ops, buf, sizeof(char), len) == len);
-    if (result && ((FileDesc*)file)->WriteThrough)
-    {
-        if (ops->type == SDL_RWOPS_WINFILE)
-        {
-#ifdef __WIN32__
-            FlushFileBuffers((HANDLE)ops->hidden.windowsio.h);
-#endif
-        }
-        else if (ops->type == SDL_RWOPS_STDFILE)
-        {
-#ifdef HAVE_STDIO_H
-            fflush(ops->hidden.stdio.fp);
-#endif
-        }
-    }
-    return result;
-}
-
-bool FileSetPointer(void* file, int offset, int origin)
-{
-    return SDL_RWseek((((FileDesc*)file)->Ops), offset, origin) != -1;
-}
-
-uint FileGetPointer(void* file)
-{
-    return (uint)SDL_RWtell(((FileDesc*)file)->Ops);
-}
-
-uint64 FileGetWriteTime(void* file)
-{
-    SDL_RWops* ops = ((FileDesc*)file)->Ops;
-    if (ops->type == SDL_RWOPS_WINFILE)
-    {
-#ifdef __WIN32__
-        FILETIME tc, ta, tw;
-        GetFileTime((HANDLE)ops->hidden.windowsio.h, &tc, &ta, &tw);
-        return FileTimeToUInt64(tw);
-#endif
-    }
-    else if (ops->type == SDL_RWOPS_STDFILE)
-    {
-#ifdef HAVE_STDIO_H
-        int fd = fileno(ops->hidden.stdio.fp);
-        struct stat st;
-        fstat(fd, &st);
-        return (uint64)st.st_mtime;
-#endif
-    }
-    return (uint64)1;
-}
-
-uint FileGetSize(void* file)
-{
-    Sint64 size = SDL_RWsize(((FileDesc*)file)->Ops);
-    return (uint)(size <= 0 ? 0 : size);
-}
-
-#else
-
-struct FileDesc
-{
-    FILE* File;
-    bool Write;
-    bool WriteThrough;
-};
-
-void* FileOpen(const string& fname, bool write, bool write_through /* = false */)
-{
-    FILE* f = fopen(fname.c_str(), write ? "wb" : "rb");
-    if (!f && write)
-    {
-        MakeDirectoryTree(fname);
-        f = fopen(fname.c_str(), "wb");
-    }
-    if (!f)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = write;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void* FileOpenForAppend(const string& fname, bool write_through /* = false */)
-{
-    FILE* f = fopen(fname.c_str(), "ab");
-    if (!f)
-    {
-        MakeDirectoryTree(fname);
-        f = fopen(fname.c_str(), "ab");
-    }
-    if (!f)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = true;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void* FileOpenForReadWrite(const string& fname, bool write_through /* = false */)
-{
-    FILE* f = fopen(fname.c_str(), "r+b");
-    if (!f)
-    {
-        MakeDirectoryTree(fname);
-        f = fopen(fname.c_str(), "r+b");
-    }
-    if (!f)
-        return nullptr;
-
-    FileDesc* fd = new FileDesc();
-    fd->File = f;
-    fd->Write = true;
-    fd->WriteThrough = write_through;
-    return (void*)fd;
-}
-
-void FileClose(void* file)
-{
-    if (file)
-    {
-        fclose(((FileDesc*)file)->File);
-
-#ifdef FO_WEB
-        if (((FileDesc*)file)->Write)
-            EM_ASM(FS.syncfs(function(err) {}));
-#endif
-
-        delete (FileDesc*)file;
-    }
-}
-
-bool FileRead(void* file, void* buf, uint len, uint* rb /* = NULL */)
-{
-    uint rb_ = (uint)fread(buf, sizeof(char), len, ((FileDesc*)file)->File);
-    if (rb)
-        *rb = rb_;
-    return rb_ == len;
-}
-
-bool FileWrite(void* file, const void* buf, uint len)
-{
-    bool result = ((uint)fwrite(buf, sizeof(char), len, ((FileDesc*)file)->File) == len);
-    if (result && ((FileDesc*)file)->WriteThrough)
-        fflush(((FileDesc*)file)->File);
-    return result;
-}
-
-bool FileSetPointer(void* file, int offset, int origin)
-{
-    return fseek(((FileDesc*)file)->File, offset, origin) == 0;
-}
-
-uint FileGetPointer(void* file)
-{
-    return (uint)ftell(((FileDesc*)file)->File);
-}
-
-uint64 FileGetWriteTime(void* file)
-{
-    int fd = fileno(((FileDesc*)file)->File);
-    struct stat st;
-    fstat(fd, &st);
-    return (uint64)st.st_mtime;
-}
-
-uint FileGetSize(void* file)
-{
-    int fd = fileno(((FileDesc*)file)->File);
-    struct stat st;
-    fstat(fd, &st);
-    return (uint)st.st_size;
-}
-#endif
-
-#ifdef FO_WINDOWS
-bool FileDelete(const string& fname)
-{
-    return DeleteFileW(MBtoWC(fname).c_str()) != FALSE;
-}
-
-bool FileExist(const string& fname)
-{
-    return !_waccess(MBtoWC(fname).c_str(), 0);
-}
-
-bool FileCopy(const string& fname, const string& copy_fname)
-{
-    return CopyFileW(MBtoWC(fname).c_str(), MBtoWC(copy_fname).c_str(), FALSE) != FALSE;
-}
-
-bool FileRename(const string& fname, const string& new_fname)
-{
-    return MoveFileW(MBtoWC(fname).c_str(), MBtoWC(new_fname).c_str()) != FALSE;
-}
-
-void* FileFindFirst(
-    const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
-{
-    string query = path + "*";
-    if (!extension.empty())
-        query = "." + extension;
-
-    WIN32_FIND_DATAW wfd;
-    HANDLE h = FindFirstFileW(MBtoWC(query).c_str(), &wfd);
-    if (h == INVALID_HANDLE_VALUE)
-        return nullptr;
-
-    if (fname)
-        *fname = WCtoMB(wfd.cFileName);
-    if (is_dir)
-        *is_dir = (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    if (fsize)
-        *fsize = wfd.nFileSizeLow;
-    if (wtime)
-        *wtime = FileTimeToUInt64(wfd.ftLastWriteTime);
-    if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-        (!wcscmp(wfd.cFileName, L".") || !wcscmp(wfd.cFileName, L"..")))
-        if (!FileFindNext(h, fname, fsize, wtime, is_dir))
-            return nullptr;
-
-    return h;
-}
-
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
-{
-    WIN32_FIND_DATAW wfd;
-    if (!FindNextFileW((HANDLE)descriptor, &wfd))
-        return false;
-
-    if (fname)
-        *fname = WCtoMB(wfd.cFileName);
-    if (is_dir)
-        *is_dir = (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    if (fsize)
-        *fsize = wfd.nFileSizeLow;
-    if (wtime)
-        *wtime = FileTimeToUInt64(wfd.ftLastWriteTime);
-    if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-        (!wcscmp(wfd.cFileName, L".") || !wcscmp(wfd.cFileName, L"..")))
-        return FileFindNext((HANDLE)descriptor, fname, fsize, wtime, is_dir);
-
-    return true;
-}
-
-void FileFindClose(void* descriptor)
-{
-    if (descriptor)
-        FindClose((HANDLE)descriptor);
-}
-
-#else
-
-bool FileDelete(const string& fname)
-{
-    return remove(fname.c_str());
-}
-
-bool FileExist(const string& fname)
-{
-    return !access(fname.c_str(), 0);
-}
-
-bool FileCopy(const string& fname, const string& copy_fname)
-{
-    bool ok = false;
-    FILE* from = fopen(fname.c_str(), "rb");
-    if (from)
-    {
-        FILE* to = fopen(copy_fname.c_str(), "wb");
-        if (to)
-        {
-            ok = true;
-            char buf[BUFSIZ];
-            while (!feof(from))
+            bool not_match = false;
+            for (uint j = 1; j < fragment_len; j++)
             {
-                size_t rb = fread(buf, 1, BUFSIZ, from);
-                size_t rw = fwrite(buf, 1, rb, to);
-                if (!rb || rb != rw)
+                if (fileBuf[i + j] != fragment[j])
                 {
-                    ok = false;
+                    not_match = true;
                     break;
                 }
             }
-            fclose(to);
-            if (!ok)
-                FileDelete(copy_fname);
+
+            if (!not_match)
+            {
+                curPos = i;
+                return true;
+            }
         }
-        fclose(from);
     }
-    return ok;
+    return false;
 }
 
-bool FileRename(const string& fname, const string& new_fname)
+string File::GetNonEmptyLine()
 {
-    return !rename(fname.c_str(), new_fname.c_str());
-}
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
 
-struct FileFind
-{
-    DIR* d = nullptr;
-    string path;
-    string ext;
-};
-
-void* FileFindFirst(
-    const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
-{
-    // Open dir
-    DIR* h = opendir(path.c_str());
-    if (!h)
-        return nullptr;
-
-    // Create own descriptor
-    FileFind* ff = new FileFind();
-    ff->d = h;
-    ff->path = path;
-    if (!ff->path.empty() && ff->path.back() != '/')
-        ff->path += "/";
-    if (!extension.empty())
-        ff->ext = extension;
-
-    // Find first entire
-    if (!FileFindNext(ff, fname, fsize, wtime, is_dir))
+    while (curPos < fileSize)
     {
-        FileFindClose(ff);
-        return nullptr;
-    }
-    return ff;
-}
-
-bool FileFindNext(void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir)
-{
-    // Cast descriptor
-    FileFind* ff = (FileFind*)descriptor;
-
-    // Read entire
-    struct dirent* ent = readdir(ff->d);
-    if (!ent)
-        return false;
-
-    // Skip '.' and '..'
-    if (Str::Compare(ent->d_name, ".") || Str::Compare(ent->d_name, ".."))
-        return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
-
-    // Read entire information
-    bool valid = false;
-    bool dir = false;
-    uint file_size;
-    uint64 write_time;
-    struct stat st;
-    if (!stat((ff->path + ent->d_name).c_str(), &st))
-    {
-        dir = S_ISDIR(st.st_mode);
-        if (dir || S_ISREG(st.st_mode))
+        uint start = curPos;
+        uint len = 0;
+        while (curPos < fileSize)
         {
-            valid = true;
-            file_size = (uint)st.st_size;
-            write_time = (uint64)st.st_mtime;
+            if (fileBuf[curPos] == '\r' || fileBuf[curPos] == '\n' || fileBuf[curPos] == '#' || fileBuf[curPos] == ';')
+            {
+                for (; curPos < fileSize; curPos++)
+                    if (fileBuf[curPos] == '\n')
+                        break;
+                curPos++;
+                break;
+            }
+
+            curPos++;
+            len++;
+        }
+
+        if (len)
+        {
+            string line = _str(string((const char*)&fileBuf[start], len)).trim();
+            if (!line.empty())
+                return line;
         }
     }
 
-    // Skip not dirs and regular files
-    if (!valid)
-        return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+    return "";
+}
 
-    // Find by extensions
-    if (!ff->ext.empty())
+void File::CopyMem(void* ptr, uint size)
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(size);
+
+    if (curPos + size > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    memcpy(ptr, fileBuf.get() + curPos, size);
+    curPos += size;
+}
+
+string File::GetStrNT()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + 1 > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    uint len = 0;
+    while (*(fileBuf.get() + curPos + len))
+        len++;
+
+    string str((const char*)&fileBuf[curPos], len);
+    curPos += len + 1;
+    return str;
+}
+
+uchar File::GetUChar()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(uchar) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    uchar res = 0;
+    res = fileBuf[curPos++];
+    return res;
+}
+
+ushort File::GetBEUShort()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(ushort) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    ushort res = 0;
+    uchar* cres = (uchar*)&res;
+    cres[1] = fileBuf[curPos++];
+    cres[0] = fileBuf[curPos++];
+    return res;
+}
+
+ushort File::GetLEUShort()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(ushort) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    ushort res = 0;
+    uchar* cres = (uchar*)&res;
+    cres[0] = fileBuf[curPos++];
+    cres[1] = fileBuf[curPos++];
+    return res;
+}
+
+uint File::GetBEUInt()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(uint) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    uint res = 0;
+    uchar* cres = (uchar*)&res;
+    for (int i = 3; i >= 0; i--)
+        cres[i] = fileBuf[curPos++];
+    return res;
+}
+
+uint File::GetLEUInt()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(uint) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    uint res = 0;
+    uchar* cres = (uchar*)&res;
+    for (int i = 0; i <= 3; i++)
+        cres[i] = fileBuf[curPos++];
+    return res;
+}
+
+uint File::GetLE3UChar()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(uchar) * 3 > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    uint res = 0;
+    uchar* cres = (uchar*)&res;
+    for (int i = 0; i <= 2; i++)
+        cres[i] = fileBuf[curPos++];
+    return res;
+}
+
+float File::GetBEFloat()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(float) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    float res;
+    uchar* cres = (uchar*)&res;
+    for (int i = 3; i >= 0; i--)
+        cres[i] = fileBuf[curPos++];
+    return res;
+}
+
+float File::GetLEFloat()
+{
+    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(fileBuf);
+
+    if (curPos + sizeof(float) > fileSize)
+        throw FileSystemExeption("Read file error", fileName);
+
+    float res;
+    uchar* cres = (uchar*)&res;
+    for (int i = 0; i <= 3; i++)
+        cres[i] = fileBuf[curPos++];
+    return res;
+}
+
+OutputFile::OutputFile(DiskFile file) : diskFile {std::move(file)}
+{
+    RUNTIME_ASSERT(diskFile);
+}
+
+void OutputFile::Save()
+{
+    if (!dataBuf.empty())
     {
-        // Skip dirs
-        if (dir)
-            return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+        bool save_ok = diskFile.Write(&dataBuf[0], (uint)dataBuf.size());
+        RUNTIME_ASSERT(save_ok);
+        dataBuf.clear();
+    }
+}
 
-        // Compare extension
-        const char* ext = nullptr;
-        for (const char* name = ent->d_name; *name; name++)
-            if (*name == '.')
-                ext = name + 1;
-        if (!ext || !*ext || strcasecmp(ext, ff->ext.c_str()))
-            return FileFindNext(descriptor, fname, fsize, wtime, is_dir);
+uchar* OutputFile::GetOutBuf()
+{
+    RUNTIME_ASSERT(!dataBuf.empty());
+
+    return &dataBuf[0];
+}
+
+uint OutputFile::GetOutBufLen()
+{
+    RUNTIME_ASSERT(!dataBuf.empty());
+
+    return (uint)dataBuf.size();
+}
+
+void OutputFile::SetData(const void* data, uint len)
+{
+    if (!len)
+        return;
+
+    dataWriter.WritePtr(data, len);
+}
+
+void OutputFile::SetStr(const string& str)
+{
+    SetData(str.c_str(), (uint)str.length());
+}
+
+void OutputFile::SetStrNT(const string& str)
+{
+    SetData(str.c_str(), (uint)str.length() + 1);
+}
+
+void OutputFile::SetUChar(uchar data)
+{
+    dataWriter.Write(data);
+}
+
+void OutputFile::SetBEUShort(ushort data)
+{
+    uchar* pdata = (uchar*)&data;
+    dataWriter.Write(pdata[1]);
+    dataWriter.Write(pdata[0]);
+}
+
+void OutputFile::SetLEUShort(ushort data)
+{
+    uchar* pdata = (uchar*)&data;
+    dataWriter.Write(pdata[0]);
+    dataWriter.Write(pdata[1]);
+}
+
+void OutputFile::SetBEUInt(uint data)
+{
+    uchar* pdata = (uchar*)&data;
+    dataWriter.Write(pdata[3]);
+    dataWriter.Write(pdata[2]);
+    dataWriter.Write(pdata[1]);
+    dataWriter.Write(pdata[0]);
+}
+
+void OutputFile::SetLEUInt(uint data)
+{
+    uchar* pdata = (uchar*)&data;
+    dataWriter.Write(pdata[0]);
+    dataWriter.Write(pdata[1]);
+    dataWriter.Write(pdata[2]);
+    dataWriter.Write(pdata[3]);
+}
+
+FileCollection::FileCollection(const string& path, vector<FileHeader> files) :
+    filterPath {path}, allFiles {std::move(files)}
+{
+}
+
+const string& FileCollection::GetPath()
+{
+    return filterPath;
+}
+
+bool FileCollection::MoveNext()
+{
+    RUNTIME_ASSERT(curFileIndex < (int)allFiles.size());
+
+    return ++curFileIndex < (int)allFiles.size();
+}
+
+File FileCollection::GetCurFile()
+{
+    RUNTIME_ASSERT(curFileIndex >= 0);
+    RUNTIME_ASSERT(curFileIndex < allFiles.size());
+
+    FileHeader& fh = allFiles[curFileIndex];
+    uchar* buf = fh.dataSource->OpenFile(fh.filePath, _str(fh.filePath).lower(), fh.fileSize, fh.writeTime);
+    RUNTIME_ASSERT(buf);
+    return File(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource, buf);
+}
+
+FileHeader FileCollection::GetCurFileHeader()
+{
+    RUNTIME_ASSERT(curFileIndex >= 0);
+    RUNTIME_ASSERT(curFileIndex < allFiles.size());
+
+    FileHeader& fh = allFiles[curFileIndex];
+    return FileHeader(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource);
+}
+
+File FileCollection::FindFile(const string& name)
+{
+    for (FileHeader& fh : allFiles)
+    {
+        if (fh.fileName == name)
+        {
+            uchar* buf = fh.dataSource->OpenFile(fh.filePath, _str(fh.filePath).lower(), fh.fileSize, fh.writeTime);
+            RUNTIME_ASSERT(buf);
+            return File(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource, buf);
+        }
+    }
+    return File {};
+}
+
+FileHeader FileCollection::FindFileHeader(const string& name)
+{
+    for (FileHeader& fh : allFiles)
+        if (fh.fileName == name)
+            return FileHeader(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource);
+    return FileHeader {};
+}
+
+uint FileCollection::GetFilesCount()
+{
+    return (uint)allFiles.size();
+}
+
+void FileCollection::ResetCounter()
+{
+    curFileIndex = -1;
+}
+
+void FileManager::AddDataSource(const string& path)
+{
+    dataSources.push_back(DataSource(path));
+}
+
+FileCollection FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs)
+{
+    vector<FileHeader> files {};
+    for (DataSource& ds : dataSources)
+    {
+        StrVec file_names {};
+        ds.GetFileNames(dir, include_subdirs, ext, file_names);
+
+        for (string& fname : file_names)
+        {
+            uint size;
+            uint64 write_time;
+            bool ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
+            RUNTIME_ASSERT(ok);
+            string name = _str(fname).extractFileName().eraseFileExtension();
+            files.push_back(FileHeader(name, fname, size, write_time, &ds));
+        }
     }
 
-    // Fill find data
-    if (fname)
-        *fname = ent->d_name;
-    if (is_dir)
-        *is_dir = dir;
-    if (fsize)
-        *fsize = file_size;
-    if (wtime)
-        *wtime = write_time;
-    return true;
+    return FileCollection(dir, std::move(files));
 }
 
-void FileFindClose(void* descriptor)
+File FileManager::ReadFile(const string& path)
 {
-    if (descriptor)
+    RUNTIME_ASSERT(!path.empty());
+    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
+
+    string path_lower = _str(path).lower();
+    string name = _str(path).extractFileName().eraseFileExtension();
+
+    for (auto& ds : dataSources)
     {
-        FileFind* ff = (FileFind*)descriptor;
-        closedir(ff->d);
-        delete ff;
+        uint file_size;
+        uint64 write_time;
+        uchar* buf = ds.OpenFile(path, path_lower, file_size, write_time);
+        if (buf)
+            return File(name, path, file_size, write_time, &ds, buf);
     }
-}
-#endif
-
-void NormalizePathSlashesInplace(string& path)
-{
-    std::replace(path.begin(), path.end(), '\\', '/');
+    return File(name, path, 0, 0, nullptr, nullptr);
 }
 
-void ResolvePathInplace(string& path)
+FileHeader FileManager::ReadFileHeader(const string& path)
 {
-#ifdef FO_WINDOWS
-    DWORD len = GetFullPathNameW(MBtoWC(path).c_str(), 0, nullptr, nullptr);
-    wchar_t* buf = (wchar_t*)alloca(len * sizeof(wchar_t) + sizeof(wchar_t));
-    if (GetFullPathNameW(MBtoWC(path).c_str(), len + 1, buf, nullptr))
+    RUNTIME_ASSERT(!path.empty());
+    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
+
+    string path_lower = _str(path).lower();
+    string name = _str(path).extractFileName().eraseFileExtension();
+
+    for (auto& ds : dataSources)
     {
-        path = WCtoMB(buf);
-        NormalizePathSlashesInplace(path);
+        uint file_size;
+        uint64 write_time;
+        if (ds.IsFilePresent(path, path_lower, file_size, write_time))
+            return FileHeader(name, path, file_size, write_time, &ds);
     }
-
-#else
-    char* buf = realpath(path.c_str(), nullptr);
-    if (buf)
-    {
-        path = buf;
-        free(buf);
-    }
-#endif
+    return FileHeader(name, path, 0, 0, nullptr);
 }
 
-void MakeDirectory(const string& path)
+ConfigFile FileManager::ReadConfigFile(const string& path)
 {
-#ifdef FO_WINDOWS
-    CreateDirectoryW(MBtoWC(path).c_str(), nullptr);
-#else
-    mkdir(path.c_str(), 0777);
-#endif
+    File file = ReadFile(path);
+    if (file)
+        return ConfigFile(file.GetCStr());
+    return ConfigFile("");
 }
 
-void MakeDirectoryTree(const string& path)
+OutputFile FileManager::WriteFile(const string& path, bool apply)
 {
-    string work = path;
-    NormalizePathSlashesInplace(work);
-    for (size_t i = 0; i < work.length(); i++)
-        if (work[i] == '/')
-            MakeDirectory(work.substr(0, i));
+    DiskFileSystem::SetCurrentDir(rootPath);
+    // Todo: handle apply
+    DiskFile file = DiskFileSystem::OpenFile(path, true);
+    if (!file)
+        throw FileSystemExeption("Can't open file for writing", path, apply);
+    return OutputFile(std::move(file));
+}
+
+void FileManager::DeleteFile(const string& path)
+{
+    DiskFileSystem::SetCurrentDir(rootPath);
+    DiskFileSystem::DeleteFile(path);
+}
+
+void FileManager::DeleteDir(const string& path)
+{
+    DiskFileSystem::SetCurrentDir(rootPath);
+    DiskFileSystem::DeleteDir(path);
+}
+
+void FileManager::RenameFile(const string& from_path, const string& to_path)
+{
+    DiskFileSystem::SetCurrentDir(rootPath);
+    DiskFileSystem::RenameFile(from_path, to_path);
 }

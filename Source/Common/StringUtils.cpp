@@ -1,10 +1,12 @@
 #include "StringUtils.h"
-#include "Crypt.h"
-#include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Testing.h"
 #include "UcsTables_Include.h"
 #include "WinApi_Include.h"
+#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+#include "DataBase.h"
+#endif
 
 uint _str::length()
 {
@@ -438,15 +440,9 @@ _str& _str::forwardPath(const string& relative_dir)
     return *this;
 }
 
-_str& _str::resolvePath()
-{
-    ResolvePathInplace(s);
-    return *this;
-}
-
 _str& _str::normalizePathSlashes()
 {
-    NormalizePathSlashesInplace(s);
+    std::replace(s.begin(), s.end(), '\\', '/');
     return *this;
 }
 
@@ -480,10 +476,6 @@ std::wstring _str::toWideChar()
 }
 #endif
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "DataBase.h"
-#endif
-
 static std::mutex HashNamesLocker;
 static map<hash, string> HashNames;
 
@@ -498,7 +490,7 @@ hash _str::toHash()
         return 0;
 
     // Calculate hash
-    hash h = Crypt.MurmurHash2((const uchar*)s.c_str(), (uint)s.length());
+    hash h = Hashing::MurmurHash2((const uchar*)s.c_str(), (uint)s.length());
     if (!h)
         return 0;
 

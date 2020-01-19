@@ -1,5 +1,8 @@
 # FOnline Engine
 
+> Engine currently in unusable state due to heavy refactoring.  
+> Estimated finishing date is middle of this year.
+
 [![GitHub](https://github.com/cvet/fonline/workflows/make-sdk/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
 [![Codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
@@ -13,11 +16,7 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 * Open Source under [MIT license](https://github.com/cvet/fonline/blob/master/LICENSE)
 * OpenGL/ES/WebGL and DirectX *(wip)* rendering
 * C++17, AngelScript, C#/Mono and Fallout Star-Trek as scripting languages *(wip)*
-* Editor and Server target platforms
-  * Windows
-  * Linux
-  * macOS *(wip)*
-* Client target platforms
+* Target platforms
   * Windows
   * Linux
   * macOS
@@ -115,7 +114,6 @@ All output binaries you can find in Build/Binaries directory.
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
 * [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
-* [mbedTLS](https://tls.mbed.org/) - library for network transport security
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library

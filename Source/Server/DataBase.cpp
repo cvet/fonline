@@ -1,10 +1,11 @@
 #include "DataBase.h"
+#include "DiskFileSystem.h"
 #include "FileSystem.h"
-#include "FileUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "WinApi_Include.h"
+
 #include "json.hpp"
 #include "unqlite.h"
 
@@ -452,7 +453,7 @@ class DbJson : public DataBase
 public:
     static DbJson* Create(const string& storage_dir)
     {
-        File::CreateDirectoryTree(storage_dir + "/");
+        DiskFileSystem::MakeDirTree(storage_dir + "/");
 
         DbJson* db_json = new DbJson();
         db_json->storageDir = storage_dir;
@@ -462,33 +463,33 @@ public:
     virtual UIntVec GetAllIds(const string& collection_name) override
     {
         UIntVec ids;
-        StrVec paths;
-        File::GetFolderFileNames(storageDir + "/" + collection_name + "/", false, "json", paths);
-        ids.reserve(paths.size());
-        for (const string& path : paths)
-        {
-            string id_str = _str(path).extractFileName().eraseFileExtension();
-            uint id = _str(id_str).toUInt();
-            RUNTIME_ASSERT(id);
-            ids.push_back(id);
-        }
+        DiskFileSystem::IterateDir(storageDir + "/" + collection_name + "/", "json", false,
+            [&ids](const string& path, uint size, uint64 write_time) {
+                string id_str = _str(path).extractFileName().eraseFileExtension();
+                uint id = _str(id_str).toUInt();
+                RUNTIME_ASSERT(id);
+                ids.push_back(id);
+            });
         return ids;
     }
 
 protected:
     virtual Document GetRecord(const string& collection_name, uint id) override
     {
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f = FileOpen(path.c_str(), false);
-        if (!f)
-            return Document();
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
 
-        uint length = FileGetSize(f);
-        char* json = new char[length];
-        bool read_ok = FileRead(f, json, length);
-        RUNTIME_ASSERT(read_ok);
+        uint length;
+        char* json;
+        {
+            DiskFile f = DiskFileSystem::OpenFile(path.c_str(), false);
+            if (!f)
+                return Document();
 
-        FileClose(f);
+            length = f.GetSize();
+            json = new char[length];
+            bool read_ok = f.Read(json, length);
+            RUNTIME_ASSERT(read_ok);
+        }
 
         bson_t bson;
         bson_error_t error;
@@ -508,9 +509,12 @@ protected:
     {
         RUNTIME_ASSERT(!doc.empty());
 
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f_check = FileOpen(path.c_str(), false);
-        RUNTIME_ASSERT(!f_check);
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
+
+        {
+            DiskFile f_check = DiskFileSystem::OpenFile(path, false);
+            RUNTIME_ASSERT(!f_check);
+        }
 
         bson_t bson;
         bson_init(&bson);
@@ -525,29 +529,30 @@ protected:
         string pretty_json_dump = pretty_json.dump(4);
         bson_free(json);
 
-        void* f = FileOpen(path.c_str(), true);
+        auto f = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f);
 
-        bool write_ok = FileWrite(f, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = f.Write(pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
-
-        FileClose(f);
     }
 
     virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        void* f_read = FileOpen(path.c_str(), false);
-        RUNTIME_ASSERT(f_read);
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
 
-        uint length = FileGetSize(f_read);
-        char* json = new char[length];
-        bool read_ok = FileRead(f_read, json, length);
-        RUNTIME_ASSERT(read_ok);
+        uint length;
+        char* json;
+        {
+            auto f_read = DiskFileSystem::OpenFile(path, false);
+            RUNTIME_ASSERT(f_read);
 
-        FileClose(f_read);
+            length = f_read.GetSize();
+            json = new char[length];
+            bool read_ok = f_read.Read(json, length);
+            RUNTIME_ASSERT(read_ok);
+        }
 
         bson_t bson;
         bson_error_t error;
@@ -567,19 +572,17 @@ protected:
         string pretty_json_dump = pretty_json.dump(4);
         bson_free(new_json);
 
-        void* f_write = FileOpen(path.c_str(), true);
+        auto f_write = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f_write);
 
-        bool write_ok = FileWrite(f_write, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = f_write.Write(pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
-
-        FileClose(f_write);
     }
 
     virtual void DeleteRecord(const string& collection_name, uint id) override
     {
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        bool file_deleted = FileDelete(path);
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
+        bool file_deleted = DiskFileSystem::DeleteFile(path);
         RUNTIME_ASSERT(file_deleted);
     }
 
@@ -597,7 +600,7 @@ class DbUnQLite : public DataBase
 public:
     static DbUnQLite* Create(const string& storage_dir)
     {
-        File::CreateDirectoryTree(storage_dir + "/");
+        DiskFileSystem::MakeDirTree(storage_dir + "/");
 
         unqlite* ping_db;
         string ping_db_path = storage_dir + "/Ping.unqlite";
@@ -617,7 +620,7 @@ public:
         }
 
         unqlite_close(ping_db);
-        File::DeleteFile(ping_db_path);
+        DiskFileSystem::DeleteFile(ping_db_path);
 
         DbUnQLite* db_unqlite = new DbUnQLite();
         db_unqlite->storageDir = storage_dir;

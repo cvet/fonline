@@ -1,9 +1,7 @@
 #include "NetBuffer.h"
-#include "Debugger.h"
 
 NetBuffer::NetBuffer()
 {
-    MEMORY_PROCESS(MEMORY_NET_BUFFER, DefaultBufSize + sizeof(NetBuffer));
     isError = false;
     bufLen = DefaultBufSize;
     bufEndPos = 0;
@@ -17,7 +15,6 @@ NetBuffer::NetBuffer()
 
 NetBuffer::~NetBuffer()
 {
-    MEMORY_PROCESS(MEMORY_NET_BUFFER, -(int)(bufLen + sizeof(NetBuffer)));
     SAFEDELA(bufData);
 }
 
@@ -78,8 +75,6 @@ void NetBuffer::Reset()
     bufReadPos = 0;
     if (bufLen > DefaultBufSize)
     {
-        MEMORY_PROCESS(MEMORY_NET_BUFFER, -(int)bufLen);
-        MEMORY_PROCESS(MEMORY_NET_BUFFER, DefaultBufSize);
         bufLen = DefaultBufSize;
         SAFEDELA(bufData);
         bufData = new uchar[bufLen];
@@ -91,10 +86,8 @@ void NetBuffer::GrowBuf(uint len)
 {
     if (bufEndPos + len < bufLen)
         return;
-    MEMORY_PROCESS(MEMORY_NET_BUFFER, -(int)bufLen);
     while (bufEndPos + len >= bufLen)
         bufLen <<= 1;
-    MEMORY_PROCESS(MEMORY_NET_BUFFER, bufLen);
     uchar* new_buf = new uchar[bufLen];
     memzero(new_buf, bufLen);
     memcpy(new_buf, bufData, bufEndPos);

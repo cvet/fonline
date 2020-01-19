@@ -1,6 +1,6 @@
-#include "Client.h"
 #include "Common.h"
-#include "Debugger.h"
+
+#include "Client.h"
 #include "Keyboard.h"
 #include "Log.h"
 #include "SDL_main.h"
@@ -102,10 +102,6 @@ static int main_disabled(int argc, char** argv)
         Script::RunMandatorySuspended();
         Script::RaiseInternalEvent(ClientFunctions.Finish);
     }
-
-    // Memory stats
-    if (MemoryDebugLevel > 1)
-        WriteLog("{}", Debugger::GetMemoryStatistics());
 
     // Just kill process
     // System automatically clean up all resources

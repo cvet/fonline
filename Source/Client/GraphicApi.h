@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "GluStuff.h"
+
 #include "SDL.h"
 #ifndef FO_OPENGL_ES
 #include "GL/glew.h"
@@ -33,11 +33,6 @@
 #define glCheckFramebufferStatusEXT glCheckFramebufferStatus
 #define glDeleteRenderbuffersEXT glDeleteRenderbuffers
 #define glDeleteFramebuffersEXT glDeleteFramebuffers
-#define glProgramBinary(a, b, c, d)
-#define glGetProgramBinary(a, b, c, d, e)
-#define glProgramParameteri(a, b, c)
-#define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0
-#define GL_PROGRAM_BINARY_LENGTH 0
 #define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
 #define GL_FRAMEBUFFER_EXT GL_FRAMEBUFFER
 #ifndef GL_COLOR_ATTACHMENT0_EXT
@@ -92,13 +87,16 @@ extern bool OGL_vertex_buffer_object;
 extern bool OGL_framebuffer_object;
 extern bool OGL_framebuffer_object_ext;
 extern bool OGL_framebuffer_multisample;
-extern bool OGL_packed_depth_stencil;
 extern bool OGL_texture_multisample;
 extern bool OGL_vertex_array_object;
-extern bool OGL_get_program_binary;
 #define GL_HAS(extension) (OGL_##extension)
 
 namespace GraphicApi
 {
     bool Init();
+    void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float near, float far);
+    bool MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16],
+        const int viewport[4], float* winx, float* winy, float* winz);
+    bool MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16],
+        const int viewport[4], float* objx, float* objy, float* objz);
 }

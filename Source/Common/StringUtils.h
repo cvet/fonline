@@ -97,7 +97,6 @@ public:
     _str& eraseFileExtension(); // Erase extension with dot
     _str& combinePath(const string& path);
     _str& forwardPath(const string& relative_dir);
-    _str& resolvePath();
     _str& normalizePathSlashes();
     _str& normalizeLineEndings();
 

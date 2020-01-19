@@ -18,9 +18,6 @@ MapManager::MapManager(
     ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr) :
     protoMngr(proto_mngr), entityMngr(entity_mngr), crMngr(cr_mngr), itemMngr(item_mngr)
 {
-    MEMORY_PROCESS(MEMORY_STATIC, sizeof(MapManager));
-    MEMORY_PROCESS(MEMORY_STATIC, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)); // Grid, see below
-
     for (int i = 1; i < FPATH_DATA_SIZE; i++)
         pathesPool[i].reserve(100);
 }

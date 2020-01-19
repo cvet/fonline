@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Common.h"
-#include "GraphicStructures.h"
 
-class File;
+#include "FileSystem.h"
+#include "GraphicStructures.h"
 
 struct EffectCollection : public NonCopyable
 {
@@ -48,9 +48,7 @@ struct EffectCollection : public NonCopyable
 class EffectManager : public NonCopyable
 {
 public:
-    EffectManager();
-    ~EffectManager();
-
+    EffectManager(FileManager& file_mngr);
     Effect* LoadEffect(const string& effect_name, bool use_in_2d, const string& defines = "",
         const string& model_path = "", EffectDefault* defaults = nullptr, uint defaults_count = 0);
     void EffectProcessVariables(EffectPass& effect_pass, bool start, float anim_proc = 0.0f, float anim_time = 0.0f,
@@ -66,6 +64,6 @@ private:
     bool LoadEffectPass(Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d,
         const string& defines, EffectDefault* defaults, uint defaults_count);
 
+    FileManager& fileMngr;
     vector<unique_ptr<Effect>> loadedEffects {};
-    uint effectId {};
 };

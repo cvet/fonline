@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Entity.h"
 
 using ItemVecMap = map<uint, ItemVec>;

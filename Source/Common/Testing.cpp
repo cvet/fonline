@@ -3,12 +3,31 @@
 #define CATCH_CONFIG_RUNNER
 #endif
 
+#include "FileSystem.h"
 #include "Log.h"
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+#include "WinApi_Include.h"
+
+#if defined(FO_WINDOWS)
+#pragma warning(disable : 4091)
+#pragma warning(disable : 4996)
+#include <DbgHelp.h>
+#include <Psapi.h>
+#include <tlhelp32.h>
+#endif
+#if !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
+#ifdef FO_LINUX
+#define BACKWARD_HAS_BFD 1
+#endif
+#include "backward.hpp"
+#include <execinfo.h>
+#include <signal.h>
+#include <sys/utsname.h>
+#endif
 
 static string AppName;
 static string AppVer;
@@ -23,16 +42,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 
 #if defined(FO_WINDOWS)
-#include "FileUtils.h"
-#include "Timer.h"
-#include "WinApi_Include.h"
-
-#pragma warning(disable : 4091)
-#pragma warning(disable : 4996)
-#include <DbgHelp.h>
-#include <Psapi.h>
-#include <tlhelp32.h>
-
 #if UINTPTR_MAX == 0xFFFFFFFF
 #define WIN32BIT
 #pragma warning(disable : 4748)
@@ -40,7 +49,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
 static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except);
 
-static void DumpAngelScript(FILE* f);
+static void DumpAngelScript(DiskFile& file);
 
 // Old version of the structure, used before Vista
 typedef struct _IMAGEHLP_MODULE64_V2
@@ -74,16 +83,16 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
     string message;
     string traceback;
 
-    File::ResetCurrentDir();
+    DiskFileSystem::ResetCurDir();
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
     string dump_str = except ? "CrashDump" : ManualDumpAppendix;
     string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, AppName, AppVer, dt.Year,
         dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
-    File::CreateDirectoryTree(dump_path);
-    FILE* f = fopen(dump_path.c_str(), "wt");
-    if (f)
+    DiskFileSystem::MakeDirTree(dump_path);
+    DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
+    if (file)
     {
         if (!except)
             message = ManualDumpMessage;
@@ -91,34 +100,34 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
             message = "Exception";
 
         // Generic info
-        fprintf(f, "Message\n");
-        fprintf(f, "%s\n", message.c_str());
-        fprintf(f, "\n");
-        fprintf(f, "Application\n");
-        fprintf(f, "\tName        %s\n", AppName.c_str());
-        fprintf(f, "\tVersion     %s\n", AppVer.c_str());
+        file.Write(_str("Message\n"));
+        file.Write(_str("{}\n", message));
+        file.Write(_str("\n"));
+        file.Write(_str("Application\n"));
+        file.Write(_str("\tName        {}\n", AppName));
+        file.Write(_str("\tVersion     {}\n", AppVer));
         OSVERSIONINFOW ver;
         memset(&ver, 0, sizeof(OSVERSIONINFOW));
         ver.dwOSVersionInfoSize = sizeof(ver);
         if (GetVersionExW((OSVERSIONINFOW*)&ver))
         {
-            fprintf(f, "\tOS          %d.%d.%d (%s)\n", ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber,
-                _str().parseWideChar(ver.szCSDVersion).c_str());
+            file.Write(_str("\tOS          {}.{}.{} ({})\n", ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber,
+                _str().parseWideChar(ver.szCSDVersion)));
         }
-        fprintf(f, "\tTimestamp   %04d.%02d.%02d %02d:%02d:%02d\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute,
-            dt.Second);
-        fprintf(f, "\n");
+        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour,
+            dt.Minute, dt.Second));
+        file.Write(_str("\n"));
 
         // Exception information
         if (except)
         {
-            fprintf(f, "Exception\n");
-            fprintf(f, "\tCode      ");
+            file.Write(_str("Exception\n"));
+            file.Write(_str("\tCode      "));
             switch (except->ExceptionRecord->ExceptionCode)
             {
 #define CASE_EXCEPTION(e) \
     case e: \
-        fprintf(f, #e); \
+        file.Write(#e); \
         message = #e; \
         break
                 CASE_EXCEPTION(EXCEPTION_ACCESS_VIOLATION);
@@ -145,44 +154,44 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                 CASE_EXCEPTION(EXCEPTION_INVALID_HANDLE);
 #undef CASE_EXCEPTION
             case 0xE06D7363:
-                fprintf(f, "Unhandled C++ Exception");
+                file.Write(_str("Unhandled C++ Exception"));
                 message = "Unhandled C++ Exception";
                 break;
             default:
-                fprintf(f, "0x%0X", except->ExceptionRecord->ExceptionCode);
+                file.Write(_str("{}", except->ExceptionRecord->ExceptionCode));
                 message = _str("Unknown Exception (code {})", except->ExceptionRecord->ExceptionCode);
                 break;
             }
-            fprintf(f, "\n");
-            fprintf(f, "\tAddress   0x%p\n", except->ExceptionRecord->ExceptionAddress);
-            fprintf(f, "\tFlags     0x%0X\n", except->ExceptionRecord->ExceptionFlags);
+            file.Write(_str("\n"));
+            file.Write(_str("\tAddress   {}\n", except->ExceptionRecord->ExceptionAddress));
+            file.Write(_str("\tFlags     {}\n", except->ExceptionRecord->ExceptionFlags));
             if (except->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION ||
                 except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR)
             {
                 int readWrite = (int)except->ExceptionRecord->ExceptionInformation[0];
                 if (readWrite == 0)
-                    fprintf(f, "\tInfo      Attempted to read to an 0x%p",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]);
+                    file.Write(_str("\tInfo      Attempted to read to an {}",
+                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
                 else if (readWrite == 1)
-                    fprintf(f, "\tInfo      Attempted to write to an 0x%p",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]);
+                    file.Write(_str("\tInfo      Attempted to write to an {}",
+                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
                 else if (readWrite == 8)
-                    fprintf(f, "\tInfo      Data execution prevention to an 0x%p",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]);
+                    file.Write(_str("\tInfo      Data execution prevention to an {}",
+                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
                 if (except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR)
-                    fprintf(f, ", NTSTATUS %p", (void*)except->ExceptionRecord->ExceptionInformation[2]);
-                fprintf(f, "\n");
+                    file.Write(_str(", NTSTATUS {}", (void*)except->ExceptionRecord->ExceptionInformation[2]));
+                file.Write(_str("\n"));
             }
             else
             {
                 for (DWORD i = 0; i < except->ExceptionRecord->NumberParameters; i++)
-                    fprintf(f, "\tInfo %u    0x%p\n", i, (void*)except->ExceptionRecord->ExceptionInformation[i]);
+                    file.Write(_str("\tInfo {}    {}\n", i, (void*)except->ExceptionRecord->ExceptionInformation[i]));
             }
-            fprintf(f, "\n");
+            file.Write(_str("\n"));
         }
 
         // AngelScript dump
-        DumpAngelScript(f);
+        DumpAngelScript(file);
 
         // Collect current threads
         HANDLE process = GetCurrentProcess();
@@ -211,11 +220,11 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         }
         else
         {
-            fprintf(f, "CreateToolhelp32Snapshot fail\n");
+            file.Write("CreateToolhelp32Snapshot fail\n");
         }
 
         // Set exe dir for PDB symbols
-        SetCurrentDirectoryW(_str(File::GetExePath()).extractDir().toWideChar().c_str());
+        SetCurrentDirectoryW(_str(DiskFileSystem::GetExePath()).extractDir().toWideChar().c_str());
 
         // Init symbols
         SymInitialize(process, nullptr, TRUE);
@@ -226,7 +235,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         {
             DWORD tid = threads_ids[i];
             HANDLE t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid);
-            fprintf(f, "Thread %u\n", tid);
+            file.Write(_str("Thread {}\n", tid));
 
             CONTEXT context;
             memset(&context, 0, sizeof(context));
@@ -321,7 +330,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                     };
 
                     static void OnCallstackEntry(
-                        bool is_current_thread, string& traceback, FILE* f, int frame_num, CallstackEntry& entry)
+                        bool is_current_thread, string& traceback, DiskFile& file, int frame_num, CallstackEntry& entry)
                     {
                         if (frame_num >= 0 && entry.offset != 0)
                         {
@@ -334,18 +343,18 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                             if (entry.moduleName[0] == 0)
                                 strcpy_s(entry.moduleName, "???");
 
-                            fprintf(f, "\t%s, %s + %lld", entry.moduleName, entry.name, entry.offsetFromSmybol);
+                            file.Write(_str("\t{}, {} + {}", entry.moduleName, entry.name, entry.offsetFromSmybol));
                             if (is_current_thread)
                                 traceback += _str("    {}, {}", entry.moduleName, entry.name);
                             if (entry.lineFileName[0] != 0)
                             {
-                                fprintf(f, ", %s (line %d)\n", entry.lineFileName, entry.lineNumber);
+                                file.Write(_str(", {} (line {})\n", entry.lineFileName, entry.lineNumber));
                                 if (is_current_thread)
                                     traceback += _str(", {} at line {}\n", entry.lineFileName, entry.lineNumber);
                             }
                             else
                             {
-                                fprintf(f, "\n");
+                                file.Write(_str("\n"));
                                 if (is_current_thread)
                                     traceback += _str("+ {}\n", entry.offsetFromSmybol);
                             }
@@ -363,7 +372,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 
                 if (stack.AddrPC.Offset == stack.AddrReturn.Offset)
                 {
-                    fprintf(f, "\tEndless callstack!\n");
+                    file.Write(_str("\tEndless callstack!\n"));
                     break;
                 }
 
@@ -432,37 +441,35 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                     }
                 }
 
-                CSE::OnCallstackEntry(i == 0, traceback, f, frame_num, callstack);
+                CSE::OnCallstackEntry(i == 0, traceback, file, frame_num, callstack);
                 if (stack.AddrReturn.Offset == 0)
                     break;
 
                 frame_num++;
             }
 
-            fprintf(f, "\n");
+            file.Write(_str("\n"));
             CloseHandle(t);
         }
 
         // Print modules
         HMODULE modules[1024];
         DWORD needed;
-        fprintf(f, "Loaded modules\n");
+        file.Write(_str("Loaded modules\n"));
         if (EnumProcessModules(process, modules, sizeof(modules), &needed))
         {
             for (int i = 0; i < (int)(needed / sizeof(HMODULE)); i++)
             {
                 wchar_t module_name[MAX_PATH] = {0};
                 if (GetModuleFileNameExW(process, modules[i], module_name, sizeof(module_name)))
-                    fprintf(f, "\t%s (%p)\n", _str().parseWideChar(module_name).c_str(), modules[i]);
+                    file.Write(_str("\t{} ({})\n", _str().parseWideChar(module_name).c_str(), (void*)modules[i]));
                 else
-                    fprintf(f, "\tGetModuleFileNameExW fail\n");
+                    file.Write(_str("\tGetModuleFileNameExW fail\n"));
             }
         }
 
         SymCleanup(process);
         CloseHandle(process);
-
-        fclose(f);
     }
 
     if (except)
@@ -480,22 +487,12 @@ void CreateDump(const string& appendix, const string& message)
 }
 
 #elif !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
-
-#ifdef FO_LINUX
-#define BACKWARD_HAS_BFD 1
-#endif
-#include "FileUtils.h"
-#include "backward.hpp"
-#include <execinfo.h>
-#include <signal.h>
-#include <sys/utsname.h>
-
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
 static bool SigactionsSetted = false;
 static struct sigaction OldSIGSEGV;
 static struct sigaction OldSIGFPE;
 
-static void DumpAngelScript(FILE* f);
+static void DumpAngelScript(DiskFile& file);
 
 void CatchExceptions(const string& app_name, int app_ver)
 {
@@ -598,49 +595,46 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     traceback = ss.str();
 
     // Dump file
-    File::ResetCurrentDir();
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
-    string dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
+    string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
     string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, AppName, AppVer, dt.Year,
         dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
-    File::CreateDirectoryTree(dump_path);
-    FILE* f = fopen(dump_path.c_str(), "wt");
-    if (f)
+    DiskFileSystem::ResetCurDir();
+    DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
+    if (file)
     {
         // Generic info
-        fprintf(f, "Message\n");
-        fprintf(f, "\t%s\n", message.c_str());
-        fprintf(f, "\n");
-        fprintf(f, "Application\n");
-        fprintf(f, "\tName        %s\n", AppName.c_str());
-        fprintf(f, "\tVersion     %s\n", AppVer.c_str());
+        file.Write(_str("Message\n"));
+        file.Write(_str("\t{}\n", message));
+        file.Write(_str("\n"));
+        file.Write(_str("Application\n"));
+        file.Write(_str("\tName        {}\n", AppName));
+        file.Write(_str("\tVersion     {}\n", AppVer));
         struct utsname ver;
         uname(&ver);
-        fprintf(f, "\tOS          %s / %s / %s\n", ver.sysname, ver.release, ver.version);
-        fprintf(f, "\tTimestamp   %02d.%02d.%04d %02d:%02d:%02d\n", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute,
-            dt.Second);
-        fprintf(f, "\n");
+        file.Write(_str("\tOS          {} / {} / {}\n", ver.sysname, ver.release, ver.version));
+        file.Write(_str("\tTimestamp   {:02}.{:02}.{:04} {:02}:{:02}:{:02}\n", dt.Day, dt.Month, dt.Year, dt.Hour,
+            dt.Minute, dt.Second));
+        file.Write(_str("\n"));
 
         // Exception information
         if (siginfo)
         {
-            fprintf(f, "Exception\n");
-            fprintf(f, "\tSigno   %s (%d)\n", strsignal(siginfo->si_signo), siginfo->si_signo);
-            fprintf(f, "\tCode    %s (%d)\n", sig_desc ? sig_desc : "No description", siginfo->si_code);
-            fprintf(f, "\tErrno   %s (%d)\n", strerror(siginfo->si_errno), siginfo->si_errno);
-            fprintf(f, "\n");
+            file.Write(_str("Exception\n"));
+            file.Write(_str("\tSigno   {} ({})\n", strsignal(siginfo->si_signo), siginfo->si_signo));
+            file.Write(_str("\tCode    {} ({})\n", sig_desc ? sig_desc : "No description", siginfo->si_code));
+            file.Write(_str("\tErrno   {} ({})\n", strerror(siginfo->si_errno), siginfo->si_errno));
+            file.Write(_str("\n"));
         }
 
         // AngelScript dump
-        DumpAngelScript(f);
+        DumpAngelScript(file);
 
         // Stacktrace
         st_printer.print(st);
-        st_printer.print(st, f);
-
-        fclose(f);
+        // st_printer.print(st, f); // Todo: restore stack trace dumping in file
     }
 
     if (siginfo)
@@ -665,11 +659,11 @@ void CreateDump(const string& appendix, const string& message)
 
 #endif
 
-static void DumpAngelScript(FILE* f)
+static void DumpAngelScript(DiskFile& file)
 {
     string tb = Script::GetTraceback();
     if (!tb.empty())
-        fprintf(f, "AngelScript\n%s", tb.c_str());
+        file.Write(_str("AngelScript\n{}", tb));
 }
 
 bool RaiseAssert(const string& message, const string& file, int line)

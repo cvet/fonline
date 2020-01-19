@@ -1,57 +1,34 @@
 #include "EffectBaker.h"
-#include "FileUtils.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
-
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 
-class EffectBakerImpl : public IEffectBaker
-{
-public:
-    EffectBakerImpl(FileCollection& all_files);
-    virtual ~EffectBakerImpl() override;
-    virtual void AutoBakeEffects() override;
-    virtual void FillBakedFiles(map<string, UCharVec>& baked_files) override;
-
-private:
-    void BakeShaderProgram(const string& fname, const string& content);
-    void BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate);
-
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles;
-    std::mutex bakedFilesLocker;
-};
-
-EffectBaker IEffectBaker::Create(FileCollection& all_files)
-{
-    return std::make_shared<EffectBakerImpl>(all_files);
-}
-
-EffectBakerImpl::EffectBakerImpl(FileCollection& all_files) : allFiles {all_files}, bakedFiles {}
+EffectBaker::EffectBaker(FileCollection& all_files) : allFiles {all_files}
 {
     glslang::InitializeProcess();
 }
 
-EffectBakerImpl::~EffectBakerImpl()
+EffectBaker::~EffectBaker()
 {
     glslang::FinalizeProcess();
 }
 
-void EffectBakerImpl::AutoBakeEffects()
+void EffectBaker::AutoBakeEffects()
 {
     vector<future<void>> futs;
 
     allFiles.ResetCounter();
-    while (allFiles.IsNextFile())
+    while (allFiles.MoveNext())
     {
-        string relative_path;
-        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
+        FileHeader file_header = allFiles.GetCurFileHeader();
+        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
 
         {
             SCOPE_LOCK(bakedFilesLocker);
@@ -63,16 +40,16 @@ void EffectBakerImpl::AutoBakeEffects()
         if (ext != "glsl")
             continue;
 
-        File& file = allFiles.GetCurFile();
+        File file = allFiles.GetCurFile();
         string content(file.GetCStr(), file.GetFsize());
-        futs.emplace_back(std::async(&EffectBakerImpl::BakeShaderProgram, this, relative_path, content));
+        futs.emplace_back(std::async(&EffectBaker::BakeShaderProgram, this, relative_path, content));
     }
 
     for (auto& fut : futs)
         fut.wait();
 }
 
-void EffectBakerImpl::BakeShaderProgram(const string& fname, const string& content)
+void EffectBaker::BakeShaderProgram(const string& fname, const string& content)
 {
     string fname_wo_ext = _str(fname).eraseFileExtension();
 
@@ -106,7 +83,7 @@ void EffectBakerImpl::BakeShaderProgram(const string& fname, const string& conte
     }
 }
 
-void EffectBakerImpl::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate)
+void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate)
 {
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
@@ -195,7 +172,7 @@ void EffectBakerImpl::BakeShaderStage(const string& fname_wo_ext, glslang::TInte
         fut.wait();
 }
 
-void EffectBakerImpl::FillBakedFiles(map<string, UCharVec>& baked_files)
+void EffectBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
     SCOPE_LOCK(bakedFilesLocker);
 

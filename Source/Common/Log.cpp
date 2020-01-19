@@ -1,15 +1,16 @@
 #include "Log.h"
-#include "FileSystem.h"
+#include "DiskFileSystem.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "WinApi_Include.h"
+
 #ifdef FO_ANDROID
 #include <android/log.h>
 #endif
 
 static std::mutex LogLocker;
 static bool LogDisableTimestamp;
-static void* LogFileHandle;
+static unique_ptr<DiskFile> LogFileHandle;
 static map<string, LogFunc> LogFunctions;
 static bool LogFunctionsInProcess;
 static string* LogBufferStr;
@@ -25,12 +26,10 @@ void LogToFile(const string& fname)
 {
     SCOPE_LOCK(LogLocker);
 
-    if (LogFileHandle)
-        FileClose(LogFileHandle);
     LogFileHandle = nullptr;
 
     if (!fname.empty())
-        LogFileHandle = FileOpen(fname, true, true);
+        LogFileHandle = unique_ptr<DiskFile>(new DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 
 void LogToFunc(const string& key, LogFunc func, bool enable)
@@ -90,7 +89,7 @@ void WriteLogMessage(const string& message)
 
     // Write logs
     if (LogFileHandle)
-        FileWrite(LogFileHandle, result.c_str(), (uint)result.length());
+        LogFileHandle->Write(result.c_str(), (uint)result.length());
 
     if (LogBufferStr)
         *LogBufferStr += result;

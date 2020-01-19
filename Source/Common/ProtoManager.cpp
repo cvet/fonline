@@ -1,7 +1,6 @@
 #include "ProtoManager.h"
-#include "Crypt.h"
-#include "FileUtils.h"
-#include "IniFile.h"
+#include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -86,36 +85,28 @@ static void InsertMapValues(const StrMap& from_kv, StrMap& to_kv, bool overwrite
 
 #pragma warning(disable : 4503)
 template<class T>
-static int ParseProtos(const string& ext, const string& app_name, map<hash, T*>& protos)
+static int ParseProtos(FileManager& file_mngr, const string& ext, const string& app_name, map<hash, T*>& protos)
 {
     int errors = 0;
 
     // Collect data
-    FileCollection files(ext);
+    FileCollection files = file_mngr.FilterFiles(ext);
     map<hash, StrMap> files_protos;
     map<hash, map<string, StrMap>> files_texts;
-    while (files.IsNextFile())
+    while (files.MoveNext())
     {
-        string proto_name;
-        File& file = files.GetNextFile(&proto_name);
-        if (!file.IsLoaded())
-        {
-            WriteLog("Unable to open file '{}'.\n", proto_name);
-            errors++;
-            continue;
-        }
-
-        IniFile fopro;
-        fopro.AppendStr(file.GetCStr());
+        File file = files.GetCurFile();
+        ConfigFile fopro(file.GetCStr());
 
         PStrMapVec protos_data;
         fopro.GetApps(app_name, protos_data);
         if (std::is_same<T, ProtoMap>::value && protos_data.empty())
             fopro.GetApps("Header", protos_data);
+
         for (auto& pkv : protos_data)
         {
             auto& kv = *pkv;
-            const string& name = (kv.count("$Name") ? kv["$Name"] : proto_name);
+            const string& name = (kv.count("$Name") ? kv["$Name"] : file.GetName());
             hash pid = _str(name).toHash();
             if (files_protos.count(pid))
             {
@@ -144,7 +135,7 @@ static int ParseProtos(const string& ext, const string& app_name, map<hash, T*>&
 
         if (protos_data.empty())
         {
-            WriteLog("File '{}' does not contain any proto.\n", proto_name);
+            WriteLog("File '{}' does not contain any proto.\n", file.GetName());
             errors++;
         }
     }
@@ -311,7 +302,7 @@ void ProtoManager::ClearProtos()
     locProtos.clear();
 }
 
-bool ProtoManager::LoadProtosFromFiles()
+bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
 {
     WriteLog("Load prototypes...\n");
 
@@ -319,10 +310,10 @@ bool ProtoManager::LoadProtosFromFiles()
 
     // Load protos
     int errors = 0;
-    errors += ParseProtos("foitem", "ProtoItem", itemProtos);
-    errors += ParseProtos("focr", "ProtoCritter", crProtos);
-    errors += ParseProtos("fomap", "ProtoMap", mapProtos);
-    errors += ParseProtos("foloc", "ProtoLocation", locProtos);
+    errors += ParseProtos(file_mngr, "foitem", "ProtoItem", itemProtos);
+    errors += ParseProtos(file_mngr, "focr", "ProtoCritter", crProtos);
+    errors += ParseProtos(file_mngr, "fomap", "ProtoMap", mapProtos);
+    errors += ParseProtos(file_mngr, "foloc", "ProtoLocation", locProtos);
     if (errors)
         return false;
 
@@ -375,7 +366,7 @@ bool ProtoManager::LoadProtosFromFiles()
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     for (auto& kv : mapProtos)
     {
-        if (!kv.second->ServerLoad(*this))
+        if (!kv.second->ServerLoad(file_mngr, *this))
         {
             WriteLog("Load proto map '{}' fail.\n", kv.second->GetName());
             errors++;
@@ -397,7 +388,7 @@ void ProtoManager::GetBinaryData(UCharVec& data)
     WriteProtosToBinary(data, crProtos);
     WriteProtosToBinary(data, mapProtos);
     WriteProtosToBinary(data, locProtos);
-    Crypt.Compress(data);
+    Compressor::Compress(data);
 }
 
 void ProtoManager::LoadProtosFromBinaryData(UCharVec& data)
@@ -406,7 +397,7 @@ void ProtoManager::LoadProtosFromBinaryData(UCharVec& data)
 
     if (data.empty())
         return;
-    if (!Crypt.Uncompress(data, 15))
+    if (!Compressor::Uncompress(data, 15))
         return;
 
     uint pos = 0;

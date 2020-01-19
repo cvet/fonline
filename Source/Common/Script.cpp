@@ -1,12 +1,12 @@
 #include "Script.h"
 #include "AngelScriptExt/reflection.h"
-#include "FileUtils.h"
-#include "IniFile.h"
+#include "FileSystem.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+
 #include "datetime/datetime.h"
 #include "mono/dis/meta.h"
 #include "mono/metadata/assembly.h"
@@ -22,6 +22,7 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
+static FileManager* FileMngr;
 static map<string, MonoImage*> EngineAssemblyImages;
 static void SetMonoInternalCalls();
 static MonoAssembly* LoadNetAssembly(const string& name);
@@ -106,24 +107,15 @@ ClientScriptFunctions ClientFunctions;
 MapperScriptFunctions MapperFunctions;
 #endif
 
-bool Script::Init(ScriptPragmaCallback* pragma_callback, const string& target, uint profiler_sample_time,
-    bool profiler_save_to_file, bool profiler_dynamic_display)
+bool Script::Init(FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target)
 {
-    // Create default engine
+    FileMngr = &file_mngr;
+
     Engine = CreateEngine(pragma_callback, target);
     if (!Engine)
     {
         WriteLog("Can't create AS engine.\n");
         return false;
-    }
-
-    // Enable profiler
-    if (profiler_sample_time > 0)
-    {
-        EngineData* edata = (EngineData*)Engine->GetUserData();
-        edata->Profiler = new ScriptProfiler();
-        if (!edata->Profiler->Init(Engine, profiler_sample_time, profiler_save_to_file, profiler_dynamic_display))
-            return false;
     }
 
     if (!BindedFunctions.empty())
@@ -347,9 +339,6 @@ void Script::Finish()
         return;
 
     EngineData* edata = (EngineData*)Engine->GetUserData();
-    if (edata->Profiler)
-        edata->Profiler->Finish();
-    SAFEDEL(edata->Profiler);
     SAFEDEL(edata->Invoker);
 
 #ifdef SCRIPT_WATCHER
@@ -486,9 +475,8 @@ static MonoAssembly* LoadNetAssembly(const string& name)
     assemblies_path = "Resources/Mono/" + assemblies_path;
 #endif
 
-    File file;
-    file.LoadFile(assemblies_path);
-    RUNTIME_ASSERT(file.IsLoaded());
+    File file = FileMngr->ReadFile(assemblies_path);
+    RUNTIME_ASSERT(file);
 
     MonoImageOpenStatus status = MONO_IMAGE_OK;
     MonoImage* image = mono_image_open_from_data((char*)file.GetBuf(), file.GetFsize(), TRUE, &status);
@@ -514,19 +502,19 @@ static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*
 
 static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images)
 {
-    string mono_path = MainConfig->GetStr("", "MonoPath");
-    string xbuild_path = _str(mono_path + "/bin/xbuild.bat").resolvePath();
+    string mono_path = GameOpt.MonoPath;
+    string xbuild_path = _str(mono_path + "/bin/xbuild.bat");
+    DiskFileSystem::ResolvePath(xbuild_path);
 
-    FileCollection proj_files("csproj");
-    while (proj_files.IsNextFile())
+    FileCollection proj_files = FileMngr->FilterFiles("csproj");
+    while (proj_files.MoveNext())
     {
-        string name, path;
-        File& file = proj_files.GetNextFile(&name, &path);
-        RUNTIME_ASSERT(file.IsLoaded());
+        File file = proj_files.GetCurFile();
+        RUNTIME_ASSERT(file);
 
         // Compile
         string command =
-            _str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path);
+            _str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, file.GetPath());
         string output;
         int call_result = SystemCall(command, output);
         if (call_result)
@@ -548,18 +536,17 @@ static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>&
         RUNTIME_ASSERT(epos != string::npos);
         pos += _str("<OutputPath>").length();
 
-        string assembly_name = name + ".dll";
+        string assembly_name = file.GetName() + ".dll";
         string assembly_path =
-            _str("{}/{}/{}", _str(path).extractDir(), file_content.substr(pos, epos - pos), assembly_name)
-                .resolvePath();
+            _str("{}/{}/{}", _str(file.GetPath()).extractDir(), file_content.substr(pos, epos - pos), assembly_name);
+        DiskFileSystem::ResolvePath(assembly_path);
 
-        File assembly_file;
-        assembly_file.LoadFile(assembly_path);
-        RUNTIME_ASSERT(assembly_file.IsLoaded());
+        File assembly_file = FileMngr->ReadFile(assembly_path);
+        RUNTIME_ASSERT(assembly_file);
 
         MonoImageOpenStatus status = MONO_IMAGE_OK;
         MonoImage* image =
-            mono_image_open_from_data((char*)assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status);
+            mono_image_open_from_data((char*)assembly_file.GetCStr(), assembly_file.GetFsize(), TRUE, &status);
         RUNTIME_ASSERT((status == MONO_IMAGE_OK && image));
 
         assembly_images[assembly_name] = image;
@@ -577,17 +564,16 @@ bool Script::ReloadScripts(const string& target)
     EngineData* edata = (EngineData*)Engine->GetUserData();
 
     // Combine scripts
-    FileCollection fos_files("fos");
+    FileCollection fos_files = FileMngr->FilterFiles("fos");
     int file_index = 0;
     int errors = 0;
     ScriptEntryVec scripts;
-    while (fos_files.IsNextFile())
+    while (fos_files.MoveNext())
     {
-        string name, path;
-        File& file = fos_files.GetNextFile(&name, &path);
-        if (!file.IsLoaded())
+        File file = fos_files.GetCurFile();
+        if (!file)
         {
-            WriteLog("Unable to open file '{}'.\n", path);
+            WriteLog("Unable to open file '{}'.\n", file.GetName());
             errors++;
             continue;
         }
@@ -596,7 +582,7 @@ bool Script::ReloadScripts(const string& target)
         string line = file.GetNonEmptyLine();
         if (line.empty())
         {
-            WriteLog("Error in script '{}', file empty.\n", path);
+            WriteLog("Error in script '{}', file empty.\n", file.GetName());
             errors++;
             continue;
         }
@@ -604,7 +590,7 @@ bool Script::ReloadScripts(const string& target)
         // Check signature
         if (line.find("FOS") == string::npos)
         {
-            WriteLog("Error in script '{}', invalid header '{}'.\n", path, line);
+            WriteLog("Error in script '{}', invalid header '{}'.\n", file.GetName(), line);
             errors++;
             continue;
         }
@@ -621,9 +607,9 @@ bool Script::ReloadScripts(const string& target)
 
         // Append
         ScriptEntry entry;
-        entry.Name = name;
-        entry.Path = path;
-        entry.Content = _str("namespace {}{{{}\n}}\n", name, (const char*)file.GetBuf());
+        entry.Name = file.GetName();
+        entry.Path = file.GetPath();
+        entry.Content = _str("namespace {}{{{}\n}}\n", file.GetName(), (const char*)file.GetBuf());
         entry.SortValue = sort_value;
         entry.SortValueExt = ++file_index;
         scripts.push_back(entry);
@@ -652,13 +638,6 @@ bool Script::ReloadScripts(const string& target)
 
     // Cache enums
     CacheEnumValues();
-
-    // Add to profiler
-    if (edata->Profiler)
-    {
-        edata->Profiler->AddModule("Root", result_code);
-        edata->Profiler->EndModules();
-    }
 
     // Done
     WriteLog("Reload scripts complete.\n");
@@ -774,7 +753,6 @@ asIScriptEngine* Script::CreateEngine(ScriptPragmaCallback* pragma_callback, con
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
     edata->Invoker = new ScriptInvoker();
-    edata->Profiler = nullptr;
     engine->SetUserData(edata);
     return engine;
 }
@@ -802,13 +780,6 @@ void Script::CreateContext()
     ContextData* ctx_data = new ContextData();
     memzero(ctx_data, sizeof(ContextData));
     ctx->SetUserData(ctx_data);
-
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    if (edata->Profiler)
-    {
-        r = ctx->SetLineCallback(asFUNCTION(ProfilerContextCallback), edata->Profiler, asCALL_CDECL);
-        RUNTIME_ASSERT(r >= 0);
-    }
 
     FreeContexts.push_back(ctx);
 }
@@ -977,20 +948,6 @@ bool Script::LoadDeferredCalls()
     return edata->Invoker->LoadDeferredCalls();
 }
 #endif
-
-void Script::ProfilerContextCallback(asIScriptContext* ctx, void* obj)
-{
-    ScriptProfiler* profiler = (ScriptProfiler*)obj;
-    profiler->Process(ctx);
-}
-
-string Script::GetProfilerStatistics()
-{
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    if (edata->Profiler)
-        return edata->Profiler->GetStatistics();
-    return "Profiler not enabled.";
-}
 
 StrVec Script::GetCustomEntityTypes()
 {
@@ -1207,7 +1164,10 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
 
             bool loaded = Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
             if (loaded)
-                file_path = _str(includeScripts.front().Path).resolvePath();
+            {
+                file_path = includeScripts.front().Path;
+                DiskFileSystem::ResolvePath(file_path);
+            }
             return loaded;
         }
 
@@ -1220,7 +1180,7 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
         root += _str("#include \"{}\"\n", script.Name);
 
     // Set preprocessor defines from command line
-    const StrMap& config = MainConfig->GetApp("");
+    StrMap config; // Todo: settings const StrMap& config = MainConfig->GetApp("");
     for (auto& kv : config)
     {
         if (kv.first.length() > 2 && kv.first[0] == '-' && kv.first[1] == '-')

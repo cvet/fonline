@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Entity.h"
 
 class MapManager;

@@ -1,5 +1,5 @@
 #include "Settings.h"
-#include "IniFile.h"
+#include "FileSystem.h"
 #include "StringUtils.h"
 #include "WinApi_Include.h"
 
@@ -9,7 +9,6 @@
 #endif
 
 Settings GameOpt;
-IniFile* MainConfig;
 StrVec ProjectFiles;
 
 static void SetEntry(string& entry, const string& value)
@@ -273,16 +272,21 @@ void Settings::Init(int argc, char** argv)
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"};
-    MainConfig = new IniFile();
-    MainConfig->AppendStr(InternalConfig);
+
+    ConfigFile config = ConfigFile(InternalConfig);
 
     // File configs
-    string config_dir;
-    MainConfig->AppendFile(CONFIG_NAME);
-    for (string& config : configs)
+    configs.insert(configs.begin(), CONFIG_NAME);
+    for (string& config_path : configs)
     {
-        config_dir = _str(config).extractDir();
-        MainConfig->AppendFile(config);
+        DiskFile config_file = DiskFileSystem::OpenFile(config_path, false);
+        if (config_file)
+        {
+            char* buf = new char[config_file.GetSize()];
+            if (config_file.Read(buf, config_file.GetSize()))
+                config.AppendData(buf);
+            delete[] buf;
+        }
     }
 
     // Command line config
@@ -301,17 +305,18 @@ void Settings::Init(int argc, char** argv)
             i++;
         }
 
-        MainConfig->SetStr("", arg.substr(1), arg_value);
+        config.SetStr("", arg.substr(1), arg_value);
     }
 
 // Cache project files
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    string project_files = MainConfig->GetStr("", "ProjectFiles");
+    string project_files = config.GetStr("", "ProjectFiles");
     for (string project_path : _str(project_files).split(';'))
     {
-        project_path = _str(config_dir).combinePath(project_path).normalizePathSlashes().resolvePath();
-        if (!project_path.empty() && project_path.back() != '/' && project_path.back() != '\\')
-            project_path += "/";
+        // Todo: settings
+        // project_path = _str(config_dir).combinePath(project_path).normalizePathSlashes().resolvePath();
+        // if (!project_path.empty() && project_path.back() != '/' && project_path.back() != '\\')
+        //    project_path += "/";
         ProjectFiles.push_back(_str(project_path).normalizePathSlashes());
     }
 #endif
@@ -320,28 +325,28 @@ void Settings::Init(int argc, char** argv)
 #define GETOPTIONS_CMD_LINE_INT(opt, str_id) \
     do \
     { \
-        string str = MainConfig->GetStr("", str_id); \
+        string str = config.GetStr("", str_id); \
         if (!str.empty()) \
-            opt = MainConfig->GetInt("", str_id); \
+            opt = config.GetInt("", str_id); \
     } while (0)
 #define GETOPTIONS_CMD_LINE_BOOL(opt, str_id) \
     do \
     { \
-        string str = MainConfig->GetStr("", str_id); \
+        string str = config.GetStr("", str_id); \
         if (!str.empty()) \
-            opt = MainConfig->GetInt("", str_id) != 0; \
+            opt = config.GetInt("", str_id) != 0; \
     } while (0)
 #define GETOPTIONS_CMD_LINE_BOOL_ON(opt, str_id) \
     do \
     { \
-        string str = MainConfig->GetStr("", str_id); \
+        string str = config.GetStr("", str_id); \
         if (!str.empty()) \
             opt = true; \
     } while (0)
 #define GETOPTIONS_CMD_LINE_STR(opt, str_id) \
     do \
     { \
-        string str = MainConfig->GetStr("", str_id); \
+        string str = config.GetStr("", str_id); \
         if (!str.empty()) \
             opt = str; \
     } while (0)
@@ -354,63 +359,60 @@ void Settings::Init(int argc, char** argv)
     } while (0)
 
     string buf;
-#define READ_CFG_STR_DEF(cfg, key, def_val) buf = MainConfig->GetStr("", key, def_val)
-
-    // Cached configuration
-    MainConfig->AppendFile(CONFIG_NAME);
+#define READ_CFG_STR_DEF(cfg, key, def_val) buf = config.GetStr("", key, def_val)
 
     // Language
     READ_CFG_STR_DEF(*MainConfig, "Language", "russ");
     GETOPTIONS_CMD_LINE_STR(buf, "Language");
 
     // Int / Bool
-    OpenGLDebug = MainConfig->GetInt("", "OpenGLDebug", 0) != 0;
+    OpenGLDebug = config.GetInt("", "OpenGLDebug", 0) != 0;
     GETOPTIONS_CMD_LINE_BOOL(OpenGLDebug, "OpenGLDebug");
-    AssimpLogging = MainConfig->GetInt("", "AssimpLogging", 0) != 0;
+    AssimpLogging = config.GetInt("", "AssimpLogging", 0) != 0;
     GETOPTIONS_CMD_LINE_BOOL(AssimpLogging, "AssimpLogging");
-    FullScreen = MainConfig->GetInt("", "FullScreen", 0) != 0;
+    FullScreen = config.GetInt("", "FullScreen", 0) != 0;
     GETOPTIONS_CMD_LINE_BOOL(FullScreen, "FullScreen");
-    VSync = MainConfig->GetInt("", "VSync", 0) != 0;
+    VSync = config.GetInt("", "VSync", 0) != 0;
     GETOPTIONS_CMD_LINE_BOOL(VSync, "VSync");
-    Light = MainConfig->GetInt("", "Light", 20);
+    Light = config.GetInt("", "Light", 20);
     GETOPTIONS_CMD_LINE_INT(Light, "Light");
     GETOPTIONS_CHECK(Light, 0, 100, 20);
-    ScrollDelay = MainConfig->GetInt("", "ScrollDelay", 10);
+    ScrollDelay = config.GetInt("", "ScrollDelay", 10);
     GETOPTIONS_CMD_LINE_INT(ScrollDelay, "ScrollDelay");
     GETOPTIONS_CHECK(ScrollDelay, 0, 100, 10);
-    ScrollStep = MainConfig->GetInt("", "ScrollStep", 12);
+    ScrollStep = config.GetInt("", "ScrollStep", 12);
     GETOPTIONS_CMD_LINE_INT(ScrollStep, "ScrollStep");
     GETOPTIONS_CHECK(ScrollStep, 4, 32, 12);
-    TextDelay = MainConfig->GetInt("", "TextDelay", 3000);
+    TextDelay = config.GetInt("", "TextDelay", 3000);
     GETOPTIONS_CMD_LINE_INT(TextDelay, "TextDelay");
     GETOPTIONS_CHECK(TextDelay, 1000, 30000, 3000);
-    DamageHitDelay = MainConfig->GetInt("", "DamageHitDelay", 0);
+    DamageHitDelay = config.GetInt("", "DamageHitDelay", 0);
     GETOPTIONS_CMD_LINE_INT(DamageHitDelay, "OptDamageHitDelay");
     GETOPTIONS_CHECK(DamageHitDelay, 0, 30000, 0);
-    ScreenWidth = MainConfig->GetInt("", "ScreenWidth", 0);
+    ScreenWidth = config.GetInt("", "ScreenWidth", 0);
     GETOPTIONS_CMD_LINE_INT(ScreenWidth, "ScreenWidth");
     GETOPTIONS_CHECK(ScreenWidth, 100, 30000, 800);
-    ScreenHeight = MainConfig->GetInt("", "ScreenHeight", 0);
+    ScreenHeight = config.GetInt("", "ScreenHeight", 0);
     GETOPTIONS_CMD_LINE_INT(ScreenHeight, "ScreenHeight");
     GETOPTIONS_CHECK(ScreenHeight, 100, 30000, 600);
-    AlwaysOnTop = MainConfig->GetInt("", "AlwaysOnTop", false) != 0;
+    AlwaysOnTop = config.GetInt("", "AlwaysOnTop", false) != 0;
     GETOPTIONS_CMD_LINE_BOOL(AlwaysOnTop, "AlwaysOnTop");
-    FixedFPS = MainConfig->GetInt("", "FixedFPS", 100);
+    FixedFPS = config.GetInt("", "FixedFPS", 100);
     GETOPTIONS_CMD_LINE_INT(FixedFPS, "FixedFPS");
     GETOPTIONS_CHECK(FixedFPS, -10000, 10000, 100);
-    MsgboxInvert = MainConfig->GetInt("", "InvertMessBox", false) != 0;
+    MsgboxInvert = config.GetInt("", "InvertMessBox", false) != 0;
     GETOPTIONS_CMD_LINE_BOOL(MsgboxInvert, "InvertMessBox");
-    MessNotify = MainConfig->GetInt("", "WinNotify", true) != 0;
+    MessNotify = config.GetInt("", "WinNotify", true) != 0;
     GETOPTIONS_CMD_LINE_BOOL(MessNotify, "WinNotify");
-    SoundNotify = MainConfig->GetInt("", "SoundNotify", false) != 0;
+    SoundNotify = config.GetInt("", "SoundNotify", false) != 0;
     GETOPTIONS_CMD_LINE_BOOL(SoundNotify, "SoundNotify");
-    Port = MainConfig->GetInt("", "RemotePort", 4010);
+    Port = config.GetInt("", "RemotePort", 4010);
     GETOPTIONS_CMD_LINE_INT(Port, "RemotePort");
     GETOPTIONS_CHECK(Port, 0, 0xFFFF, 4000);
-    ProxyType = MainConfig->GetInt("", "ProxyType", 0);
+    ProxyType = config.GetInt("", "ProxyType", 0);
     GETOPTIONS_CMD_LINE_INT(ProxyType, "ProxyType");
     GETOPTIONS_CHECK(ProxyType, 0, 3, 0);
-    ProxyPort = MainConfig->GetInt("", "ProxyPort", 8080);
+    ProxyPort = config.GetInt("", "ProxyPort", 8080);
     GETOPTIONS_CMD_LINE_INT(ProxyPort, "ProxyPort");
     GETOPTIONS_CHECK(ProxyPort, 0, 0xFFFF, 1080);
 
@@ -418,7 +420,7 @@ void Settings::Init(int argc, char** argv)
 #ifdef FO_WINDOWS
     dct = (uint)GetDoubleClickTime();
 #endif
-    DoubleClickTime = MainConfig->GetInt("", "DoubleClickTime", dct);
+    DoubleClickTime = config.GetInt("", "DoubleClickTime", dct);
     GETOPTIONS_CMD_LINE_INT(DoubleClickTime, "DoubleClickTime");
     GETOPTIONS_CHECK(DoubleClickTime, 0, 1000, dct);
 

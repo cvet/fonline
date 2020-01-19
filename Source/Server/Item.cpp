@@ -1,6 +1,5 @@
 #include "Item.h"
 #include "CritterManager.h"
-#include "Debugger.h"
 #include "ItemManager.h"
 #include "Log.h"
 #include "MapManager.h"
@@ -84,13 +83,11 @@ CLASS_PROPERTY_IMPL(Item, FlyEffectSpeed);
 Item::Item(uint id, ProtoItem* proto) : Entity(id, EntityType::Item, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
-    MEMORY_PROCESS(MEMORY_ITEM, sizeof(Item) + PropertiesRegistrator->GetWholeDataSize());
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
 Item::~Item()
 {
-    MEMORY_PROCESS(MEMORY_ITEM, -(int)(sizeof(Item) + PropertiesRegistrator->GetWholeDataSize()));
 }
 
 void Item::SetProto(ProtoItem* proto)

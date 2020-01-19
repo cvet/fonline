@@ -1,7 +1,6 @@
 #include "Common.h"
-#include "Crypt.h"
-#include "FileUtils.h"
-#include "IniFile.h"
+#include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "NetBuffer.h"
 #include "Script.h"
@@ -30,33 +29,14 @@ void InitialSetup(const string& app_name, uint argc, char** argv)
     // Settings
     GameOpt.Init(argc, argv);
 
-    // Data files
-    File::ClearDataFiles();
-    File::InitDataFiles("$Basic");
-#ifndef FONLINE_EDITOR
-#if defined(FO_IOS)
-    File::InitDataFiles("../../Documents/");
-#elif defined(FO_ANDROID)
-    File::InitDataFiles("$Bundle");
-    File::InitDataFiles(SDL_AndroidGetInternalStoragePath());
-    File::InitDataFiles(SDL_AndroidGetExternalStoragePath());
-#elif defined(FO_WEB)
-    File::InitDataFiles("./Data/");
-    File::InitDataFiles("./PersistentData/");
-#else
-    File::InitDataFiles(CLIENT_DATA);
-#endif
-#endif
-
 // Other
 #ifdef FONLINE_EDITOR
     Script::SetRunTimeout(0, 0);
 #endif
 
     // Fix Mono path
-    string mono_path = MainConfig->GetStr("", "MonoPath");
-    mono_path = _str(GameOpt.WorkDir).combinePath(mono_path).normalizeLineEndings().resolvePath();
-    MainConfig->SetStr("", "MonoPath", mono_path);
+    GameOpt.MonoPath = _str(GameOpt.WorkDir).combinePath(GameOpt.MonoPath).normalizeLineEndings();
+    DiskFileSystem::ResolvePath(GameOpt.MonoPath);
 }
 
 // Default randomizer
@@ -709,11 +689,6 @@ uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light)
 }
 #endif
 
-static void AddPropertyCallback(void (*function)(void*, void*, void*, void*))
-{
-    PropertyRegistrator::GlobalSetCallbacks.push_back((NativeCallback)function);
-}
-
 TwoBitMask::TwoBitMask()
 {
     memset(this, 0, sizeof(TwoBitMask));
@@ -1197,7 +1172,7 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
             break;
         }
         pass = _str(pass).replace('*', ' ');
-        string pass_hash = Crypt.ClientPassHash(name, pass);
+        string pass_hash = Hashing::ClientPassHash(name, pass);
         msg_len += PASS_HASH_SIZE;
 
         buf << msg;
@@ -1231,9 +1206,9 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
             break;
         }
 
-        string pass_hash = Crypt.ClientPassHash(name, pass);
+        string pass_hash = Hashing::ClientPassHash(name, pass);
         new_pass = _str(new_pass).replace('*', ' ');
-        string new_pass_hash = Crypt.ClientPassHash(name, new_pass);
+        string new_pass_hash = Hashing::ClientPassHash(name, new_pass);
         msg_len += PASS_HASH_SIZE * 2;
 
         buf << msg;

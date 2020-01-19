@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Dialogs.h"
 #include "Entity.h"
 #include "Networking.h"
@@ -251,7 +252,6 @@ public:
 
     bool IsPlayer() { return !CritterIsNpc; }
     bool IsNpc() { return CritterIsNpc; }
-    void RefreshName();
     void SendMessage(int num, int val, int to, MapManager& map_mngr);
     uint GetAttackDist(Item* weap, int use);
     bool IsLife();
