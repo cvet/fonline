@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
 #include "Dialogs.h"
 #include "EntityManager.h"
+#include "FileSystem.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -17,6 +19,7 @@
 #include "Script.h"
 #include "StringUtils.h"
 #include "Timer.h"
+
 #include "imgui.h"
 
 // Check buffer for error
@@ -38,13 +41,10 @@ class FOServer
 {
 public:
     FOServer();
-    ~FOServer();
 
     static FOServer* Self;
-    int ServerGameSleep = 10;
-    bool AllowServerNativeCalls = false;
-    bool AllowClientNativeCalls = false;
 
+    FileManager FileMngr;
     ProtoManager ProtoMngr;
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -479,7 +479,7 @@ public:
         static void Global_SetPropertyGetCallback(asIScriptGeneric* gen);
         static void Global_AddPropertySetCallback(asIScriptGeneric* gen);
         static void Global_AllowSlot(uchar index, bool enable_send);
-        static bool Global_LoadDataFile(string dat_name);
+        static void Global_AddDataSource(string dat_name);
         static bool Global_LoadImage(uint index, string image_name, uint image_depth);
         static uint Global_GetImageColor(uint index, uint x, uint y);
         static void Global_YieldWebRequest(string url, CScriptDict* post, bool& success, string& result);

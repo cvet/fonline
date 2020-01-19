@@ -10,7 +10,7 @@
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-struct SoundManager::DeviceData
+struct SoundManager::Impl
 {
     SDL_AudioDeviceID DeviceId {};
     SDL_AudioSpec SoundSpec {};
@@ -33,7 +33,7 @@ struct SoundManager::Sound
     unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>> OggStream {};
 };
 
-SoundManager::SoundManager()
+SoundManager::SoundManager(FileManager& file_mngr) : fileMngr {file_mngr}
 {
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -68,20 +68,19 @@ SoundManager::SoundManager()
     soundsFunc = std::bind(&SoundManager::ProcessSounds, this, std::placeholders::_1);
     desired.userdata = &soundsFunc;
 
-    deviceData = std::make_unique<DeviceData>();
-    deviceData->DeviceId =
-        SDL_OpenAudioDevice(nullptr, 0, &desired, &deviceData->SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
-    if (deviceData->DeviceId < 2)
+    pImpl = std::make_unique<Impl>();
+    pImpl->DeviceId = SDL_OpenAudioDevice(nullptr, 0, &desired, &pImpl->SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+    if (pImpl->DeviceId < 2)
     {
         WriteLog("SDL Open audio device fail, error '{}'.\n", SDL_GetError());
         return;
     }
 
-    outputBuf.resize(deviceData->SoundSpec.size);
+    outputBuf.resize(pImpl->SoundSpec.size);
     isActive = true;
 
     // Start playing
-    SDL_PauseAudioDevice(deviceData->DeviceId, 0);
+    SDL_PauseAudioDevice(pImpl->DeviceId, 0);
 }
 
 SoundManager::~SoundManager()
@@ -92,8 +91,8 @@ SoundManager::~SoundManager()
         StopMusic();
     }
 
-    if (deviceData && deviceData->DeviceId >= 2)
-        SDL_CloseAudioDevice(deviceData->DeviceId);
+    if (pImpl && pImpl->DeviceId >= 2)
+        SDL_CloseAudioDevice(pImpl->DeviceId);
 
     if (isAudioInited)
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
@@ -101,17 +100,16 @@ SoundManager::~SoundManager()
 
 void SoundManager::ProcessSounds(uchar* output)
 {
-    memset(output, deviceData->SoundSpec.silence, deviceData->SoundSpec.size);
+    memset(output, pImpl->SoundSpec.silence, pImpl->SoundSpec.size);
 
     for (auto it = soundsActive.begin(); it != soundsActive.end();)
     {
-        shared_ptr<Sound> sound = *it;
-
+        Sound* sound = *it;
         if (ProcessSound(sound, &outputBuf[0]))
         {
             int volume = (sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume);
             volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
-            SDL_MixAudioFormat(output, &outputBuf[0], deviceData->SoundSpec.format, deviceData->SoundSpec.size, volume);
+            SDL_MixAudioFormat(output, &outputBuf[0], pImpl->SoundSpec.format, pImpl->SoundSpec.size, volume);
             ++it;
         }
         else
@@ -121,10 +119,10 @@ void SoundManager::ProcessSounds(uchar* output)
     }
 }
 
-bool SoundManager::ProcessSound(shared_ptr<Sound> sound, uchar* output)
+bool SoundManager::ProcessSound(Sound* sound, uchar* output)
 {
     // Playing
-    size_t whole = deviceData->SoundSpec.size;
+    size_t whole = pImpl->SoundSpec.size;
     if (sound->ConvertedBufCur < sound->ConvertedBufLen)
     {
         if (whole > sound->ConvertedBufLen - sound->ConvertedBufCur)
@@ -148,7 +146,7 @@ bool SoundManager::ProcessSound(shared_ptr<Sound> sound, uchar* output)
 
             // Cut off end
             if (offset < whole)
-                memset(output + offset, deviceData->SoundSpec.silence, whole - offset);
+                memset(output + offset, pImpl->SoundSpec.silence, whole - offset);
         }
         else
         {
@@ -188,16 +186,16 @@ bool SoundManager::ProcessSound(shared_ptr<Sound> sound, uchar* output)
         }
 
         // Give silent
-        memset(output, deviceData->SoundSpec.silence, whole);
+        memset(output, pImpl->SoundSpec.silence, whole);
         return true;
     }
 
     // Give silent
-    memset(output, deviceData->SoundSpec.silence, whole);
+    memset(output, pImpl->SoundSpec.silence, whole);
     return false;
 }
 
-shared_ptr<SoundManager::Sound> SoundManager::Load(const string& fname, bool is_music)
+SoundManager::Sound* SoundManager::Load(const string& fname, bool is_music)
 {
     string fixed_fname = fname;
     string ext = _str(fname).getFileExtension();
@@ -209,7 +207,7 @@ shared_ptr<SoundManager::Sound> SoundManager::Load(const string& fname, bool is_
         fixed_fname += "." + ext;
     }
 
-    auto sound = std::make_shared<Sound>();
+    Sound* sound = new Sound();
     if (ext == "wav" && !LoadWAV(sound, fixed_fname))
         return nullptr;
     if (ext == "acm" && !LoadACM(sound, fixed_fname, is_music))
@@ -217,42 +215,42 @@ shared_ptr<SoundManager::Sound> SoundManager::Load(const string& fname, bool is_
     if (ext == "ogg" && !LoadOGG(sound, fixed_fname))
         return nullptr;
 
-    SDL_LockAudioDevice(deviceData->DeviceId);
+    SDL_LockAudioDevice(pImpl->DeviceId);
     soundsActive.push_back(sound);
-    SDL_UnlockAudioDevice(deviceData->DeviceId);
+    SDL_UnlockAudioDevice(pImpl->DeviceId);
     return sound;
 }
 
-bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
+bool SoundManager::LoadWAV(Sound* sound, const string& fname)
 {
-    File fm;
-    if (!fm.LoadFile(fname))
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
         return false;
 
-    uint dw_buf = fm.GetLEUInt();
+    uint dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F'))
     {
         WriteLog("'RIFF' not found.\n");
         return false;
     }
 
-    fm.GoForward(4);
+    file.GoForward(4);
 
-    dw_buf = fm.GetLEUInt();
+    dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E'))
     {
         WriteLog("'WAVE' not found.\n");
         return false;
     }
 
-    dw_buf = fm.GetLEUInt();
+    dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('f', 'm', 't', ' '))
     {
         WriteLog("'fmt ' not found.\n");
         return false;
     }
 
-    dw_buf = fm.GetLEUInt();
+    dw_buf = file.GetLEUInt();
     if (!dw_buf)
     {
         WriteLog("Unknown format.\n");
@@ -270,7 +268,7 @@ bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
         ushort cbSize; // Bytes of extra data appended to this struct
     } waveformatex;
 
-    fm.CopyMem(&waveformatex, 16);
+    file.CopyMem(&waveformatex, 16);
 
     if (waveformatex.wFormatTag != 1)
     {
@@ -278,14 +276,14 @@ bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
         return false;
     }
 
-    fm.GoForward(dw_buf - 16);
+    file.GoForward(dw_buf - 16);
 
-    dw_buf = fm.GetLEUInt();
+    dw_buf = file.GetLEUInt();
     if (dw_buf == MAKEUINT('f', 'a', 'c', 't'))
     {
-        dw_buf = fm.GetLEUInt();
-        fm.GoForward(dw_buf);
-        dw_buf = fm.GetLEUInt();
+        dw_buf = file.GetLEUInt();
+        file.GoForward(dw_buf);
+        dw_buf = file.GetLEUInt();
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a'))
@@ -294,7 +292,7 @@ bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
         return false;
     }
 
-    dw_buf = fm.GetLEUInt();
+    dw_buf = file.GetLEUInt();
     sound->BaseBuf.resize(dw_buf);
     sound->BaseBufLen = dw_buf;
 
@@ -315,25 +313,21 @@ bool SoundManager::LoadWAV(shared_ptr<Sound> sound, const string& fname)
     }
 
     // Convert
-    if (!fm.CopyMem(&sound->BaseBuf[0], static_cast<uint>(sound->BaseBufLen)))
-    {
-        WriteLog("File truncated.\n");
-        return false;
-    }
+    file.CopyMem(&sound->BaseBuf[0], static_cast<uint>(sound->BaseBufLen));
 
     return ConvertData(sound);
 }
 
-bool SoundManager::LoadACM(shared_ptr<Sound> sound, const string& fname, bool is_music)
+bool SoundManager::LoadACM(Sound* sound, const string& fname, bool is_music)
 {
-    File fm;
-    if (!fm.LoadFile(fname))
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
         return false;
 
     int channels = 0;
     int freq = 0;
     int samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(fm.GetBuf(), fm.GetFsize(), channels, freq, samples);
+    auto acm = std::make_unique<CACMUnpacker>(file.GetBuf(), file.GetFsize(), channels, freq, samples);
     int buf_size = samples * 2;
 
     sound->OriginalFormat = AUDIO_S16;
@@ -353,32 +347,30 @@ bool SoundManager::LoadACM(shared_ptr<Sound> sound, const string& fname, bool is
     return ConvertData(sound);
 }
 
-bool SoundManager::LoadOGG(shared_ptr<Sound> sound, const string& fname)
+bool SoundManager::LoadOGG(Sound* sound, const string& fname)
 {
-    File* fm = new File();
-    if (!fm->LoadFile(fname))
-    {
-        delete fm;
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
         return false;
-    }
 
     ov_callbacks callbacks;
     callbacks.read_func = [](void* ptr, size_t size, size_t nmemb, void* datasource) -> size_t {
-        File* fm = (File*)datasource;
-        return fm->CopyMem(ptr, (uint)size) ? size : 0;
+        File* file = (File*)datasource;
+        file->CopyMem(ptr, (uint)size);
+        return size;
     };
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
-        File* fm = (File*)datasource;
+        File* file = (File*)datasource;
         switch (whence)
         {
         case SEEK_SET:
-            fm->SetCurPos((uint)offset);
+            file->SetCurPos((uint)offset);
             break;
         case SEEK_CUR:
-            fm->GoForward((uint)offset);
+            file->GoForward((uint)offset);
             break;
         case SEEK_END:
-            fm->SetCurPos(fm->GetFsize() - (uint)offset);
+            file->SetCurPos(file->GetFsize() - (uint)offset);
             break;
         default:
             return -1;
@@ -386,13 +378,13 @@ bool SoundManager::LoadOGG(shared_ptr<Sound> sound, const string& fname)
         return 0;
     };
     callbacks.close_func = [](void* datasource) -> int {
-        File* fm = (File*)datasource;
-        delete fm;
+        File* file = (File*)datasource;
+        delete file;
         return 0;
     };
     callbacks.tell_func = [](void* datasource) -> long {
-        File* fm = (File*)datasource;
-        return fm->GetCurPos();
+        File* file = (File*)datasource;
+        return file->GetCurPos();
     };
 
     sound->OggStream =
@@ -401,7 +393,7 @@ bool SoundManager::LoadOGG(shared_ptr<Sound> sound, const string& fname)
             delete vf;
         });
 
-    int error = ov_open_callbacks(fm, sound->OggStream.get(), nullptr, 0, callbacks);
+    int error = ov_open_callbacks(new File {std::move(file)}, sound->OggStream.get(), nullptr, 0, callbacks);
     if (error)
     {
         WriteLog("Open OGG file '{}' fail, error:\n", fname);
@@ -467,7 +459,7 @@ bool SoundManager::LoadOGG(shared_ptr<Sound> sound, const string& fname)
     return ConvertData(sound);
 }
 
-bool SoundManager::StreamOGG(shared_ptr<Sound> sound)
+bool SoundManager::StreamOGG(Sound* sound)
 {
     long result = 0;
     uint decoded = 0;
@@ -489,14 +481,14 @@ bool SoundManager::StreamOGG(shared_ptr<Sound> sound)
     return ConvertData(sound);
 }
 
-bool SoundManager::ConvertData(shared_ptr<Sound> sound)
+bool SoundManager::ConvertData(Sound* sound)
 {
     if (!sound->Cvt)
     {
         sound->Cvt = std::make_unique<SDL_AudioCVT>();
 
         if (SDL_BuildAudioCVT(sound->Cvt.get(), sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
-                deviceData->SoundSpec.format, deviceData->SoundSpec.channels, deviceData->SoundSpec.freq) == -1)
+                pImpl->SoundSpec.format, pImpl->SoundSpec.channels, pImpl->SoundSpec.freq) == -1)
         {
             WriteLog("SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError());
             return false;
@@ -549,7 +541,7 @@ bool SoundManager::PlayMusic(const string& fname, uint repeat_time)
 
     StopMusic();
 
-    shared_ptr<Sound> sound = Load(fname, true);
+    Sound* sound = Load(fname, true);
     if (!sound)
         return false;
 
@@ -560,16 +552,16 @@ bool SoundManager::PlayMusic(const string& fname, uint repeat_time)
 
 void SoundManager::StopSounds()
 {
-    SDL_LockAudioDevice(deviceData->DeviceId);
+    SDL_LockAudioDevice(pImpl->DeviceId);
     soundsActive.erase(std::remove_if(soundsActive.begin(), soundsActive.end(), [](auto s) { return !s->IsMusic; }),
         soundsActive.end());
-    SDL_UnlockAudioDevice(deviceData->DeviceId);
+    SDL_UnlockAudioDevice(pImpl->DeviceId);
 }
 
 void SoundManager::StopMusic()
 {
-    SDL_LockAudioDevice(deviceData->DeviceId);
+    SDL_LockAudioDevice(pImpl->DeviceId);
     soundsActive.erase(std::remove_if(soundsActive.begin(), soundsActive.end(), [](auto s) { return s->IsMusic; }),
         soundsActive.end());
-    SDL_UnlockAudioDevice(deviceData->DeviceId);
+    SDL_UnlockAudioDevice(pImpl->DeviceId);
 }

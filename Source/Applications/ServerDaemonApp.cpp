@@ -1,4 +1,5 @@
 #include "Common.h"
+
 #include "Server.h"
 #include "Testing.h"
 
@@ -6,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #ifndef FO_TESTING

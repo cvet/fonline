@@ -1,8 +1,7 @@
 #include "ImageBaker.h"
-#include "Crypt.h"
 #include "F2Palette_Include.h"
 #include "FileSystem.h"
-#include "IniFile.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -23,10 +22,6 @@ ImageBaker::ImageBaker(FileCollection& all_files) : allFiles {all_files}
         for (uint i = 0; i < sizeof(FoPalette); i += 4)
             std::swap(FoPalette[i], FoPalette[i + 2]);
     });
-}
-
-ImageBaker::~ImageBaker()
-{
 }
 
 void ImageBaker::AutoBakeImages()
@@ -63,11 +58,10 @@ void ImageBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 void ImageBaker::ProcessImages(const string& target_ext, LoadFunc loader)
 {
     allFiles.ResetCounter();
-    while (allFiles.IsNextFile())
+    while (allFiles.MoveNext())
     {
-        string relative_path;
-        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
-
+        FileHeader file_header = allFiles.GetCurFileHeader();
+        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
         if (bakedFiles.count(relative_path))
             continue;
 
@@ -75,7 +69,7 @@ void ImageBaker::ProcessImages(const string& target_ext, LoadFunc loader)
         if (target_ext != ext)
             continue;
 
-        File& file = allFiles.GetCurFile();
+        File file = allFiles.GetCurFile();
         FrameCollection collection = loader(relative_path, "", file);
         BakeCollection(relative_path, collection);
     }
@@ -129,21 +123,6 @@ void ImageBaker::BakeCollection(const string& fname, const FrameCollection& coll
         bakedFiles.emplace(fname, std::move(data));
 }
 
-File& ImageBaker::FindFile(const string& fname, const string& ext)
-{
-    auto it = cachedFiles.find(fname);
-    if (it != cachedFiles.end())
-        return it->second;
-
-    File& file = allFiles.FindFile(fname);
-
-    // bool need_cache = (file.IsLoaded() && ext == "spr");
-    // if (need_cache)
-    //    return cachedFiles.emplace(fname, std::move(file)).first->second;
-
-    return file;
-}
-
 ImageBaker::FrameCollection ImageBaker::LoadAny(const string& fname_with_opt)
 {
     string ext = _str(fname_with_opt).getFileExtension();
@@ -151,9 +130,24 @@ ImageBaker::FrameCollection ImageBaker::LoadAny(const string& fname_with_opt)
         _str(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$'), ext);
     string opt = _str(fname_with_opt).extractFileName().eraseFileExtension().substringAfter('$');
 
-    File& file = FindFile(fname, ext);
-    if (!file.IsLoaded())
-        throw fo_exception("Image file not found", fname);
+    File temp_storage {};
+    auto find_file = [this, &fname, &ext, &temp_storage]() -> File& {
+        auto it = cachedFiles.find(fname);
+        if (it != cachedFiles.end())
+            return it->second;
+
+        temp_storage = allFiles.FindFile(fname);
+
+        bool need_cache = (temp_storage && ext == "spr");
+        if (need_cache)
+            return cachedFiles.emplace(fname, std::move(temp_storage)).first->second;
+
+        return temp_storage;
+    };
+
+    File& file = find_file();
+    if (!file)
+        throw ImageBakerException("Image file not found", fname);
 
     file.SetCurPos(0);
 
@@ -182,7 +176,7 @@ ImageBaker::FrameCollection ImageBaker::LoadAny(const string& fname_with_opt)
     else if (ext == "tga")
         return LoadTga(fname, opt, file);
 
-    throw fo_exception("Invalid image file extension", fname);
+    throw ImageBakerException("Invalid image file extension", fname);
 }
 
 ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const string& opt, File& file)
@@ -190,8 +184,7 @@ ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const str
     FrameCollection collection;
 
     // Load ini parser
-    IniFile fofrm;
-    fofrm.AppendStr(file.GetCStr());
+    ConfigFile fofrm(file.GetCStr());
 
     ushort frm_fps = fofrm.GetInt("", "fps", 0);
     if (!frm_fps)
@@ -221,7 +214,7 @@ ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const str
                 break;
 
             if (dir > 1)
-                throw fo_exception("FOFRM file invalid apps", fname);
+                throw ImageBakerException("FOFRM file invalid apps", fname);
         }
         else
         {
@@ -259,7 +252,7 @@ ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const str
             if (no_info && dir == 1)
                 break;
 
-            throw fo_exception("FOFRM file invalid data", fname);
+            throw ImageBakerException("FOFRM file invalid data", fname);
         }
 
         // Allocate animation storage
@@ -333,7 +326,7 @@ ImageBaker::FrameCollection ImageBaker::LoadFrm(const string& fname, const strin
         if (offset == 0x3E && dir_frm)
         {
             if (dir > 1)
-                throw fo_exception("FRM file truncated", fname);
+                throw ImageBakerException("FRM file truncated", fname);
             break;
         }
 
@@ -343,8 +336,8 @@ ImageBaker::FrameCollection ImageBaker::LoadFrm(const string& fname, const strin
         // Make palette
         uint* palette = (uint*)FoPalette;
         uint palette_entry[256];
-        File fm_palette;
-        if (fm_palette.LoadFile(_str(fname).eraseFileExtension() + ".pal"))
+        File fm_palette = allFiles.FindFile(_str(fname).eraseFileExtension() + ".pal");
+        if (fm_palette)
         {
             for (uint i = 0; i < 256; i++)
             {
@@ -549,10 +542,11 @@ ImageBaker::FrameCollection ImageBaker::LoadFrX(const string& fname, const strin
         if (dir_frm)
         {
             string next_fname = _str("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
-            if (!file.LoadFile(next_fname))
+            file = allFiles.FindFile(next_fname);
+            if (!file)
             {
                 if (dir > 1)
-                    throw fo_exception("FRX file not found", next_fname);
+                    throw ImageBakerException("FRX file not found", next_fname);
                 break;
             }
         }
@@ -571,8 +565,8 @@ ImageBaker::FrameCollection ImageBaker::LoadFrX(const string& fname, const strin
         // Make palette
         uint* palette = (uint*)FoPalette;
         uint palette_entry[256];
-        File fm_palette;
-        if (fm_palette.LoadFile(_str(fname).eraseFileExtension() + ".pal"))
+        File fm_palette = allFiles.FindFile(_str(fname).eraseFileExtension() + ".pal");
+        if (fm_palette)
         {
             for (uint i = 0; i < 256; i++)
             {
@@ -872,8 +866,7 @@ ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const strin
     using ArtPalette = unsigned int[256];
     ArtPalette palette[4];
 
-    if (!file.CopyMem(&header, sizeof(header)))
-        throw fo_exception("Can't read ART header", fname);
+    file.CopyMem(&header, sizeof(header));
     if (header.flags & 0x00000001)
         header.rotationCount = 1;
 
@@ -883,8 +876,7 @@ ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const strin
     {
         if (header.paletteList[i])
         {
-            if (!file.CopyMem(&palette[i], sizeof(ArtPalette)))
-                throw fo_exception("Can't read ART palette", fname);
+            file.CopyMem(&palette[i], sizeof(ArtPalette));
             palette_count++;
         }
     }
@@ -937,7 +929,7 @@ ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const strin
                 dir_art = 7;
                 break;
             default:
-                throw fo_exception("Invalid ART direction", fname);
+                throw ImageBakerException("Invalid ART direction", fname);
             }
         }
         else
@@ -953,8 +945,7 @@ ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const strin
             file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count +
                 sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
 
-            if (!file.CopyMem(&frame_info, sizeof(frame_info)))
-                throw fo_exception("ART file truncated", fname);
+            file.CopyMem(&frame_info, sizeof(frame_info));
 
             uint w = frame_info.frameWidth;
             uint h = frame_info.frameHeight;
@@ -1140,8 +1131,9 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
 
         // Read header
         char head[11];
-        if (!file.CopyMem(head, 11) || head[8] || strcmp(head, "<sprite>"))
-            throw fo_exception("Invalid SPR header", fname);
+        file.CopyMem(head, 11);
+        if (head[8] || strcmp(head, "<sprite>"))
+            throw ImageBakerException("Invalid SPR header", fname);
 
         float dimension_left = (float)file.GetUChar() * 6.7f;
         float dimension_up = (float)file.GetUChar() * 7.6f;
@@ -1204,14 +1196,14 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
             }
         }
         if (!seq_founded)
-            throw fo_exception("Sequence for SPR not found", fname);
+            throw ImageBakerException("Sequence for SPR not found", fname);
 
         // Find animation
         file.SetCurPos(0);
         for (uint i = 0; i <= anim_index; i++)
         {
             if (!file.FindFragment((uchar*)"<spranim>", 9, file.GetCurPos()))
-                throw fo_exception("Spranim for SPR not found", fname);
+                throw ImageBakerException("Spranim for SPR not found", fname);
             file.GoForward(12);
         }
 
@@ -1258,13 +1250,12 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
         {
             // Unpack with zlib
             uint unpacked_len = file.GetLEUInt();
-            data = Crypt.Uncompress(file.GetCurBuf(), data_len, unpacked_len / data_len + 1);
+            data = Compressor::Uncompress(file.GetCurBuf(), data_len, unpacked_len / data_len + 1);
             if (!data)
-                throw fo_exception("Can't unpack SPR data", fname);
+                throw ImageBakerException("Can't unpack SPR data", fname);
             data_len = unpacked_len;
         }
-        File fm_images;
-        fm_images.LoadStream(data, data_len);
+        File fm_images(data, data_len);
         if (packed)
             delete[] data;
 
@@ -1281,7 +1272,7 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
         // Index data offsets
         UIntVec image_indices;
         image_indices.resize(frame_cnt * dir_cnt * 4);
-        for (uint cur = 0; !fm_images.IsEOF();)
+        for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetFsize();)
         {
             uchar tag = fm_images.GetUChar();
             if (tag == 1)
@@ -1390,7 +1381,7 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
                 uchar def_color = 0;
 
                 if (zar[5] || strcmp(zar, "<zar>") || (subtype != 0x34 && subtype != 0x35) || palette_present == 1)
-                    throw fo_exception("Invalid SPR file innded ZAR header", fname);
+                    throw ImageBakerException("Invalid SPR file innded ZAR header", fname);
 
                 uint* ptr = (uint*)&data[0] + (posy * whole_w) + posx;
                 uint x = posx, y = posy;
@@ -1480,8 +1471,9 @@ ImageBaker::FrameCollection ImageBaker::LoadZar(const string& fname, const strin
 {
     // Read header
     char head[6];
-    if (!file.CopyMem(head, 6) || head[5] || strcmp(head, "<zar>"))
-        throw fo_exception("Invalid ZAR header", fname);
+    file.CopyMem(head, 6);
+    if (head[5] || strcmp(head, "<zar>"))
+        throw ImageBakerException("Invalid ZAR header", fname);
 
     uchar type = file.GetUChar();
     file.GoForward(1); // \0
@@ -1496,7 +1488,7 @@ ImageBaker::FrameCollection ImageBaker::LoadZar(const string& fname, const strin
     {
         uint palette_count = file.GetLEUInt();
         if (palette_count > 256)
-            throw fo_exception("Invalid ZAR palette count", fname);
+            throw ImageBakerException("Invalid ZAR palette count", fname);
 
         file.CopyMem(palette, sizeof(uint) * palette_count);
         if (type == 0x34)
@@ -1571,8 +1563,9 @@ ImageBaker::FrameCollection ImageBaker::LoadTil(const string& fname, const strin
 {
     // Read header
     char head[7];
-    if (!file.CopyMem(head, 7) || head[6] || strcmp(head, "<tile>"))
-        throw fo_exception("Invalid TIL file header", fname);
+    file.CopyMem(head, 7);
+    if (head[6] || strcmp(head, "<tile>"))
+        throw ImageBakerException("Invalid TIL file header", fname);
 
     while (file.GetUChar())
         continue;
@@ -1585,7 +1578,7 @@ ImageBaker::FrameCollection ImageBaker::LoadTil(const string& fname, const strin
     UNUSED_VARIABLE(h);
 
     if (!file.FindFragment((uchar*)"<tiledata>", 10, file.GetCurPos()))
-        throw fo_exception("Tiledata in TIL file not found", fname);
+        throw ImageBakerException("Tiledata in TIL file not found", fname);
 
     file.GoForward(10 + 3); // Signature
     uint frames_count = file.GetLEUInt();
@@ -1598,8 +1591,9 @@ ImageBaker::FrameCollection ImageBaker::LoadTil(const string& fname, const strin
     {
         // Read header
         char head[6];
-        if (!file.CopyMem(head, 6) || head[5] || strcmp(head, "<zar>"))
-            throw fo_exception("ZAR header in TIL file not found", fname);
+        file.CopyMem(head, 6);
+        if (head[5] || strcmp(head, "<zar>"))
+            throw ImageBakerException("ZAR header in TIL file not found", fname);
 
         uchar type = file.GetUChar();
         file.GoForward(1); // \0
@@ -1614,7 +1608,7 @@ ImageBaker::FrameCollection ImageBaker::LoadTil(const string& fname, const strin
         {
             uint palette_count = file.GetLEUInt();
             if (palette_count > 256)
-                throw fo_exception("TIL file invalid palettes", fname);
+                throw ImageBakerException("TIL file invalid palettes", fname);
 
             file.CopyMem(palette, sizeof(uint) * palette_count);
             if (type == 0x34)
@@ -1689,8 +1683,9 @@ ImageBaker::FrameCollection ImageBaker::LoadMos(const string& fname, const strin
 {
     // Read signature
     char head[8];
-    if (!file.CopyMem(head, 8) || !_str(head).startsWith("MOS"))
-        throw fo_exception("Invalid MOS file header", fname);
+    file.CopyMem(head, 8);
+    if (!_str(head).startsWith("MOS"))
+        throw ImageBakerException("Invalid MOS file header", fname);
 
     // Packed
     if (head[3] == 'C')
@@ -1699,16 +1694,14 @@ ImageBaker::FrameCollection ImageBaker::LoadMos(const string& fname, const strin
         uint data_len = file.GetFsize() - 12;
         uchar* buf = file.GetCurBuf();
         *(ushort*)buf = 0x9C78;
-        uchar* data = Crypt.Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
+        uchar* data = Compressor::Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
         if (!data)
-            throw fo_exception("Can't unpack MOS file", fname);
+            throw ImageBakerException("Can't unpack MOS file", fname);
 
-        file.UnloadFile();
-        file.LoadStream(data, data_len);
-        delete[] data;
-
-        if (!file.CopyMem(head, 8) || !_str(head).startsWith("MOS"))
-            throw fo_exception("Invalid MOS file unpacked header", fname);
+        file = File(data, data_len);
+        file.CopyMem(head, 8);
+        if (!_str(head).startsWith("MOS"))
+            throw ImageBakerException("Invalid MOS file unpacked header", fname);
     }
 
     // Read header
@@ -1799,8 +1792,9 @@ ImageBaker::FrameCollection ImageBaker::LoadBam(const string& fname, const strin
 
     // Read signature
     char head[8];
-    if (!file.CopyMem(head, 8) || !_str(head).startsWith("BAM"))
-        throw fo_exception("Invalid BAM file header", fname);
+    file.CopyMem(head, 8);
+    if (!_str(head).startsWith("BAM"))
+        throw ImageBakerException("Invalid BAM file header", fname);
 
     // Packed
     if (head[3] == 'C')
@@ -1809,16 +1803,14 @@ ImageBaker::FrameCollection ImageBaker::LoadBam(const string& fname, const strin
         uint data_len = file.GetFsize() - 12;
         uchar* buf = file.GetCurBuf();
         *(ushort*)buf = 0x9C78;
-        uchar* data = Crypt.Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
+        uchar* data = Compressor::Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
         if (!data)
-            throw fo_exception("Cab't unpack BAM file", fname);
+            throw ImageBakerException("Cab't unpack BAM file", fname);
 
-        file.UnloadFile();
-        file.LoadStream(data, data_len);
-        delete[] data;
-
-        if (!file.CopyMem(head, 8) || !_str(head).startsWith("BAM"))
-            throw fo_exception("Invalid BAM file unpacked header", fname);
+        file = File(data, data_len);
+        file.CopyMem(head, 8);
+        if (!_str(head).startsWith("BAM"))
+            throw ImageBakerException("Invalid BAM file unpacked header", fname);
     }
 
     // Read header
@@ -1920,7 +1912,7 @@ ImageBaker::FrameCollection ImageBaker::LoadPng(const string& fname, const strin
     uint w, h;
     uchar* png_data = LoadPNG(file.GetBuf(), file.GetFsize(), w, h);
     if (!png_data)
-        throw fo_exception("Can't read PNG", fname);
+        throw ImageBakerException("Can't read PNG", fname);
 
     UCharVec data(w * h * 4);
     memcpy(&data[0], png_data, w * h * 4);
@@ -1939,7 +1931,7 @@ ImageBaker::FrameCollection ImageBaker::LoadTga(const string& fname, const strin
     uint w, h;
     uchar* tga_data = LoadTGA(file.GetBuf(), file.GetFsize(), w, h);
     if (!tga_data)
-        throw fo_exception("Can't read TGA", fname);
+        throw ImageBakerException("Can't read TGA", fname);
 
     UCharVec data(w * h * 4);
     memcpy(&data[0], tga_data, w * h * 4);

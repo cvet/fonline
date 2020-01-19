@@ -1,13 +1,15 @@
 #pragma once
 
 #include "Common.h"
+
 #include "FileSystem.h"
+
+DECLARE_EXCEPTION(ImageBakerException);
 
 class ImageBaker : public NonCopyable
 {
 public:
     ImageBaker(FileCollection& all_files);
-    ~ImageBaker();
     void AutoBakeImages();
     void BakeImage(const string& fname_with_opt);
     void FillBakedFiles(map<string, UCharVec>& baked_files);
@@ -49,7 +51,6 @@ private:
 
     void ProcessImages(const string& target_ext, LoadFunc loader);
     void BakeCollection(const string& fname, const FrameCollection& collection);
-    File& FindFile(const string& fname, const string& ext);
 
     FrameCollection LoadAny(const string& fname_with_opt);
     FrameCollection LoadFofrm(const string& fname, const string& opt, File& file);

@@ -1,13 +1,15 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Entity.h"
+#include "FileSystem.h"
 
 class ProtoManager
 {
 public:
     void ClearProtos();
-    bool LoadProtosFromFiles();
+    bool LoadProtosFromFiles(FileManager& file_mngr);
     void GetBinaryData(UCharVec& data);
     void LoadProtosFromBinaryData(UCharVec& data);
     bool ValidateProtoResources(StrVec& resource_names);

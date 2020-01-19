@@ -17,4 +17,7 @@
 #undef LoadImage
 #undef FindFirstFile
 #undef FindNextFile
+#undef GetClassName
+#undef min
+#undef max
 #endif

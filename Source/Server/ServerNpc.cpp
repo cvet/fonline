@@ -4,8 +4,6 @@
 #include "Testing.h"
 #include "Timer.h"
 
-void FOServer::ProcessMove(Critter* cr)
-{
 #define MOVING_SUCCESS (1)
 #define MOVING_TARGET_NOT_FOUND (2)
 #define MOVING_CANT_MOVE (3)
@@ -18,6 +16,8 @@ void FOServer::ProcessMove(Critter* cr)
 #define MOVING_DEADLOCK (10)
 #define MOVING_TRACE_FAIL (11)
 
+void FOServer::ProcessMove(Critter* cr)
+{
     if (cr->Moving.State)
         return;
     if (cr->IsBusy() || cr->IsWait())

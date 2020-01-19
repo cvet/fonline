@@ -1,4 +1,5 @@
 #include "Common.h"
+
 #include "FileSystem.h"
 #include "Server.h"
 #include "Settings.h"
@@ -82,7 +83,7 @@ static int main_disabled(int argc, char** argv)
         bool error = false;
 
         // Compile service path
-        string path = _str("\"{}\" {} --server-service", File::GetExePath(), GameOpt.CommandLine);
+        string path = _str("\"{}\" {} --server-service", DiskFileSystem::GetExePath(), GameOpt.CommandLine);
 
         // Change executable path, if changed
         if (service)

@@ -73,43 +73,43 @@ TextureAtlas::~TextureAtlas()
     SAFEDEL(RootNode);
 }
 
-void MeshData::Save(File& file)
+void MeshData::Save(DataWriter& writer)
 {
     uint len = (uint)Vertices.size();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&Vertices[0], len * sizeof(Vertices[0]));
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&Vertices[0], len * sizeof(Vertices[0]));
     len = (uint)Indices.size();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&Indices[0], len * sizeof(Indices[0]));
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&Indices[0], len * sizeof(Indices[0]));
     len = (uint)DiffuseTexture.length();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&DiffuseTexture[0], len);
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&DiffuseTexture[0], len);
     len = (uint)SkinBoneNameHashes.size();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&SkinBoneNameHashes[0], len * sizeof(SkinBoneNameHashes[0]));
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&SkinBoneNameHashes[0], len * sizeof(SkinBoneNameHashes[0]));
     len = (uint)SkinBoneOffsets.size();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
 }
 
-void MeshData::Load(File& file)
+void MeshData::Load(DataReader& reader)
 {
     uint len = 0;
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
-    file.CopyMem(&Vertices[0], len * sizeof(Vertices[0]));
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&Vertices[0], len * sizeof(Vertices[0]));
+    reader.ReadPtr(&len, sizeof(len));
     Indices.resize(len);
-    file.CopyMem(&Indices[0], len * sizeof(Indices[0]));
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&Indices[0], len * sizeof(Indices[0]));
+    reader.ReadPtr(&len, sizeof(len));
     DiffuseTexture.resize(len);
-    file.CopyMem(&DiffuseTexture[0], len);
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&DiffuseTexture[0], len);
+    reader.ReadPtr(&len, sizeof(len));
     SkinBoneNameHashes.resize(len);
-    file.CopyMem(&SkinBoneNameHashes[0], len * sizeof(SkinBoneNameHashes[0]));
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&SkinBoneNameHashes[0], len * sizeof(SkinBoneNameHashes[0]));
+    reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
-    file.CopyMem(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+    reader.ReadPtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
     SkinBones.resize(SkinBoneOffsets.size());
     memzero(&DrawEffect, sizeof(DrawEffect));
 }
@@ -284,29 +284,29 @@ Bone* Bone::Find(uint name_hash)
     return nullptr;
 }
 
-void Bone::Save(File& file)
+void Bone::Save(DataWriter& writer)
 {
-    file.SetData(&NameHash, sizeof(NameHash));
-    file.SetData(&TransformationMatrix, sizeof(TransformationMatrix));
-    file.SetData(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
-    file.SetUChar(Mesh != nullptr ? 1 : 0);
+    writer.WritePtr(&NameHash, sizeof(NameHash));
+    writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
+    writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+    writer.Write<uchar>(Mesh != nullptr ? 1 : 0);
     if (Mesh)
-        Mesh->Save(file);
+        Mesh->Save(writer);
     uint len = (uint)Children.size();
-    file.SetData(&len, sizeof(len));
+    writer.WritePtr(&len, sizeof(len));
     for (uint i = 0, j = len; i < j; i++)
-        Children[i]->Save(file);
+        Children[i]->Save(writer);
 }
 
-void Bone::Load(File& file)
+void Bone::Load(DataReader& reader)
 {
-    file.CopyMem(&NameHash, sizeof(NameHash));
-    file.CopyMem(&TransformationMatrix, sizeof(TransformationMatrix));
-    file.CopyMem(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
-    if (file.GetUChar())
+    reader.ReadPtr(&NameHash, sizeof(NameHash));
+    reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
+    reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+    if (reader.Read<uchar>())
     {
         Mesh = new MeshData();
-        Mesh->Load(file);
+        Mesh->Load(reader);
         Mesh->Owner = this;
     }
     else
@@ -314,12 +314,12 @@ void Bone::Load(File& file)
         Mesh = nullptr;
     }
     uint len = 0;
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&len, sizeof(len));
     Children.resize(len);
     for (uint i = 0, j = len; i < j; i++)
     {
         Children[i] = new Bone();
-        Children[i]->Load(file);
+        Children[i]->Load(reader);
     }
     CombinedTransformationMatrix = Matrix();
 }

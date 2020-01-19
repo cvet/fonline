@@ -35,7 +35,7 @@ bool BuildSystem::GenerateResources(StrVec* resource_names)
     bool something_changed = false;
     StrSet update_file_names;
 
-    for (const string& project_path : ProjectFiles)
+    /*for (const string& project_path : ProjectFiles)
     {
         StrVec dummy_vec;
         StrVec check_dirs;
@@ -234,7 +234,7 @@ bool BuildSystem::GenerateResources(StrVec* resource_names)
             File::DeleteFile(path);
             something_changed = true;
         }
-    }
+    }*/
 
     return something_changed;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "FileSystem.h"
 #include "GraphicApi.h"
 #include "Settings.h"
@@ -174,9 +175,8 @@ struct EffectPass
 };
 using EffectPassVec = vector<EffectPass>;
 
-struct Effect : public NonCopyable
+struct Effect : public Pointable
 {
-    uint Id {};
     string Name {};
     string Defines {};
     EffectDefault* Defaults {};
@@ -292,8 +292,8 @@ using DipDataVec = vector<DipData>;
 
 struct MeshData : public NonCopyable
 {
-    void Save(File& file);
-    void Load(File& file);
+    void Save(DataWriter& writer);
+    void Load(DataReader& reader);
 
     Bone* Owner {};
     Vertex3DVec Vertices {};
@@ -351,8 +351,8 @@ struct Bone : public NonCopyable
     Bone() = default;
     ~Bone();
     Bone* Find(uint name_hash);
-    void Save(File& file);
-    void Load(File& file);
+    void Save(DataWriter& writer);
+    void Load(DataReader& reader);
     void FixAfterLoad(Bone* root_bone);
     static uint GetHash(const string& name);
 

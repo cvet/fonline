@@ -15,7 +15,7 @@
 
 CritterManager::CritterManager(
     ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr) :
-    protoMngr(proto_mngr), entityMngr(entity_mngr), mapMngr(map_mngr), itemMngr(item_mngr)
+    protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, itemMngr {item_mngr}
 {
 }
 

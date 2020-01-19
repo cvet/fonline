@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Common.h"
+
+#include "FileSystem.h"
 #include "MsgFiles.h"
 
 #define TALK_NONE (0)
@@ -36,15 +38,15 @@
 class DemandResult
 {
 public:
-    char Type {DR_NONE}; // Type of demand or result
-    char Who {DR_WHO_NONE}; // Direction
-    max_t ParamId {}; // Parameter Id
-    bool NoRecheck {}; // Disable demand rechecking
-    bool RetValue {}; // Reserved
-    char Op {}; // Operation
-    char ValuesCount {}; // Script values count
-    int Value {}; // Main value
-    int ValueExt[5] {}; // Extra value
+    char Type {DR_NONE};
+    char Who {DR_WHO_NONE};
+    max_t ParamId {};
+    bool NoRecheck {};
+    bool RetValue {};
+    char Op {};
+    char ValuesCount {};
+    int Value {};
+    int ValueExt[5] {};
 };
 using DemandResultVec = vector<DemandResult>;
 
@@ -73,7 +75,7 @@ public:
 };
 using DialogsVec = vector<Dialog>;
 
-struct DialogPack
+struct DialogPack : public NonCopyable
 {
     hash PackId {};
     string PackName {};
@@ -82,9 +84,8 @@ struct DialogPack
     FOMsgVec Texts {};
     string Comment {};
 };
-using DialogPackMap = map<hash, DialogPack*>;
 
-struct Talking
+struct Talking : public NonCopyable
 {
     int TalkType {TALK_NONE};
     uint TalkNpc {};
@@ -105,8 +106,7 @@ struct Talking
 class DialogManager : public NonCopyable
 {
 public:
-    ~DialogManager();
-    bool LoadDialogs();
+    bool LoadDialogs(FileManager& file_mngr);
     DialogPack* ParseDialog(const string& pack_name, const string& data);
     bool AddDialog(DialogPack* pack);
     DialogPack* GetDialog(hash pack_id);
@@ -120,6 +120,5 @@ private:
     char GetWho(char who);
     bool CheckOper(char oper);
 
-    DialogPackMap dialogPacks {};
-    string lastErrors {};
+    map<hash, unique_ptr<DialogPack>> dialogPacks {};
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "Dialogs.h"
 #include "Entity.h"
 #include "Networking.h"

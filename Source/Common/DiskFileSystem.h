@@ -2,39 +2,77 @@
 
 #include "Common.h"
 
-namespace DiskFileSystem
+enum class DiskFileSeek
 {
-    enum DiskFileSeek
-    {
-        SeekSet = 0,
-        SeekCur = 1,
-        SeekEnd = 2,
-    };
+    Set = 0,
+    Cur = 1,
+    End = 2,
+};
 
-    struct DiskFile;
-    struct DiskFind;
+class DiskFile : public NonCopyable
+{
+    friend class DiskFileSystem;
 
-    shared_ptr<DiskFile> OpenFile(const string& fname, bool write, bool write_through = false);
-    shared_ptr<DiskFile> OpenFileForAppend(const string& fname, bool write_through = false);
-    shared_ptr<DiskFile> OpenFileForReadWrite(const string& fname, bool write_through = false);
-    bool ReadFile(shared_ptr<DiskFile> file, void* buf, uint len, uint* rb = nullptr);
-    bool WriteFile(shared_ptr<DiskFile> file, const void* buf, uint len);
-    bool SetFilePointer(shared_ptr<DiskFile> file, int offset, DiskFileSeek origin);
-    uint GetFilePointer(shared_ptr<DiskFile> file);
-    uint64 GetFileWriteTime(shared_ptr<DiskFile> file);
-    uint GetFileSize(shared_ptr<DiskFile> file);
+public:
+    ~DiskFile();
+    DiskFile(DiskFile&&);
+    operator bool();
+    bool Read(void* buf, uint len);
+    bool Write(const void* buf, uint len);
+    bool Write(const string& str);
+    bool SetPos(int offset, DiskFileSeek origin);
+    uint GetPos();
+    uint64 GetWriteTime();
+    uint GetSize();
 
-    bool DeleteFile(const string& fname);
-    bool IsFileExists(const string& fname);
-    bool CopyFile(const string& fname, const string& copy_fname);
-    bool RenameFile(const string& fname, const string& new_fname);
+private:
+    DiskFile(const string& fname, bool write, bool write_through);
 
-    shared_ptr<DiskFind> FindFirstFile(
-        const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
-    bool FindNextFile(shared_ptr<DiskFind> find, string* fname, uint* fsize, uint64* wtime, bool* is_dir);
+    struct Impl;
+    unique_ptr<Impl> pImpl {};
+    bool openedForWriting {};
+};
 
-    void NormalizePathSlashesInplace(string& path);
-    void ResolvePathInplace(string& path);
-    void MakeDirectory(const string& path);
-    void MakeDirectoryTree(const string& path);
-}
+class DiskFind : public NonCopyable
+{
+    friend class DiskFileSystem;
+
+public:
+    ~DiskFind();
+    DiskFind(DiskFind&&);
+    DiskFind& operator++(int);
+    operator bool();
+    bool IsDir();
+    string GetPath();
+    uint GetFileSize();
+    uint64 GetWriteTime();
+
+private:
+    DiskFind(const string& path, const string& ext);
+
+    struct Impl;
+    unique_ptr<Impl> pImpl {};
+    bool findDataValid {};
+};
+
+class DiskFileSystem : public StaticClass
+{
+public:
+    static DiskFile OpenFile(const string& fname, bool write, bool write_through = false);
+    static DiskFind FindFiles(const string& path, const string& ext);
+
+    static bool DeleteFile(const string& fname);
+    static bool IsFileExists(const string& fname);
+    static bool CopyFile(const string& fname, const string& copy_fname);
+    static bool RenameFile(const string& fname, const string& new_fname);
+
+    static void ResolvePath(string& path);
+    static void MakeDirTree(const string& path);
+    static bool DeleteDir(const string& dir);
+    static bool SetCurrentDir(const string& dir);
+    static void ResetCurDir();
+    static string GetExePath();
+
+    using FileVisitor = std::function<void(const string&, uint, uint64)>;
+    static void IterateDir(const string& path, const string& ext, bool include_subdirs, FileVisitor visitor);
+};

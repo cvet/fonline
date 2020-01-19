@@ -8,7 +8,6 @@
 #include "Timer.h"
 #include "WinApi_Include.h"
 
-// Network
 #ifndef FO_WINDOWS
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -17,6 +16,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 #define SOCKET int
 #define INVALID_SOCKET (-1)
 #define SOCKET_ERROR (-1)
@@ -30,13 +30,12 @@
 
 struct Session
 {
-    int RefCount;
-    SOCKET Sock;
-    sockaddr_in From;
-    DateTimeStamp StartWork;
-    bool Authorized;
+    int RefCount {};
+    SOCKET Sock {};
+    sockaddr_in From {};
+    DateTimeStamp StartWork {};
+    bool Authorized {};
 };
-typedef vector<Session*> SessionVec;
 
 static void AdminManager(FOServer* server, ushort port);
 static void AdminWork(FOServer* server, Session* session);
@@ -86,7 +85,7 @@ static void AdminManager(FOServer* server, ushort port)
     }
 
     // Accept clients
-    SessionVec sessions;
+    vector<Session*> sessions {};
     while (true)
     {
         // Wait connection

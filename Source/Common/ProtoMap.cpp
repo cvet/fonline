@@ -1,8 +1,5 @@
-#include "Crypt.h"
-#include "DiskFileSystem.h"
 #include "Entity.h"
-#include "FileSystem.h"
-#include "IniFile.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "ProtoManager.h"
 #include "Script.h"
@@ -21,7 +18,7 @@
 #endif
 
 PROPERTIES_IMPL(ProtoMap);
-CLASS_PROPERTY_IMPL(ProtoMap, FileDir);
+CLASS_PROPERTY_IMPL(ProtoMap, FilePath);
 CLASS_PROPERTY_IMPL(ProtoMap, Width);
 CLASS_PROPERTY_IMPL(ProtoMap, Height);
 CLASS_PROPERTY_IMPL(ProtoMap, WorkHexX);
@@ -61,20 +58,20 @@ ProtoMap::~ProtoMap()
 #endif
 }
 
-bool ProtoMap::BaseLoad(ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFunc item_load, TileLoadFunc tile_load)
+bool ProtoMap::BaseLoad(FileManager& file_mngr, ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFunc item_load,
+    TileLoadFunc tile_load)
 {
     // Find file
-    FileCollection maps("fomap");
-    string path;
-    File& map_file = maps.FindFile(GetName(), &path);
-    if (!map_file.IsLoaded())
+    FileCollection maps = file_mngr.FilterFiles("fomap");
+    File map_file = maps.FindFile(GetName());
+    if (!map_file)
     {
         WriteLog("Map '{}' not found.\n", GetName());
         return false;
     }
 
     // Store path
-    SetFileDir(_str(path).extractDir());
+    SetFilePath(map_file.GetPath());
 
     // Load from file
     const char* buf = map_file.GetCStr();
@@ -86,8 +83,7 @@ bool ProtoMap::BaseLoad(ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFu
     }
 
     // Header
-    IniFile map_data;
-    map_data.AppendStr(buf);
+    ConfigFile map_data(buf);
     if (!map_data.IsApp("ProtoMap"))
     {
         WriteLog("Invalid map format.\n");
@@ -196,10 +192,10 @@ bool ProtoMap::BaseLoad(ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFu
 }
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool ProtoMap::ServerLoad(ProtoManager& proto_mngr)
+bool ProtoMap::ServerLoad(FileManager& file_mngr, ProtoManager& proto_mngr)
 {
     if (!BaseLoad(
-            proto_mngr,
+            file_mngr, proto_mngr,
             [this](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
                 Npc* npc = new Npc(id, proto);
                 if (!npc->Props.LoadFromText(kv))
@@ -336,10 +332,10 @@ bool ProtoMap::OnAfterLoad()
     // Generate hashes
     HashTiles = maxhx * maxhy;
     if (Tiles.size())
-        HashTiles = Crypt.MurmurHash2((uchar*)&Tiles[0], (uint)Tiles.size() * sizeof(ProtoMap::Tile));
+        HashTiles = Hashing::MurmurHash2((uchar*)&Tiles[0], (uint)Tiles.size() * sizeof(ProtoMap::Tile));
     HashScen = maxhx * maxhy;
     if (SceneryData.size())
-        HashScen = Crypt.MurmurHash2((uchar*)&SceneryData[0], (uint)SceneryData.size());
+        HashScen = Hashing::MurmurHash2((uchar*)&SceneryData[0], (uint)SceneryData.size());
 
     // Shrink the vector capacities to fit their contents and reduce memory use
     UCharVec(SceneryData).swap(SceneryData);
@@ -453,49 +449,11 @@ void ProtoMap::GetStaticItemsByPid(hash pid, ItemVec& items)
 #endif
 
 #if defined(FONLINE_EDITOR)
-bool ProtoMap::IsMapFile(const string& fname)
-{
-    string ext = _str(fname).getFileExtension();
-    if (ext.empty())
-        return false;
-
-    if (ext == "fomap")
-    {
-        IniFile txt;
-        if (!txt.AppendFile(fname))
-            return false;
-
-        return txt.IsApp("ProtoMap") || (txt.IsApp("Header") && txt.IsApp("Tiles") && txt.IsApp("Objects"));
-    }
-
-    return false;
-}
-
-void ProtoMap::GenNew()
-{
-    SetWidth(MAXHEX_DEF);
-    SetHeight(MAXHEX_DEF);
-
-    // Morning	 5.00 -  9.59	 300 - 599
-    // Day		10.00 - 18.59	 600 - 1139
-    // Evening	19.00 - 22.59	1140 - 1379
-    // Nigh		23.00 -  4.59	1380
-    IntVec vec = {300, 600, 1140, 1380};
-    UCharVec vec2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-    CScriptArray* arr = Script::CreateArray("int[]");
-    Script::AppendVectorToArray(vec, arr);
-    SetDayTime(arr);
-    arr->Release();
-    CScriptArray* arr2 = Script::CreateArray("uint8[]");
-    Script::AppendVectorToArray(vec2, arr2);
-    SetDayColor(arr2);
-    arr2->Release();
-}
-
-bool ProtoMap::EditorLoad(ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr)
+bool ProtoMap::EditorLoad(
+    FileManager& file_mngr, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr)
 {
     if (!BaseLoad(
-            proto_mngr,
+            file_mngr, proto_mngr,
             [this, &spr_mngr, &res_mngr](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
                 CritterView* npc = new CritterView(id, proto, spr_mngr, res_mngr);
                 if (!npc->Props.LoadFromText(kv))
@@ -533,9 +491,9 @@ bool ProtoMap::EditorLoad(ProtoManager& proto_mngr, SpriteManager& spr_mngr, Res
     return true;
 }
 
-bool ProtoMap::EditorSave(const string& custom_name)
+void ProtoMap::EditorSave(FileManager& file_mngr, const string& custom_name)
 {
-    IniFile file;
+    ConfigFile file("");
     Props.SaveToText(file.SetApp("ProtoMap"), nullptr);
 
     for (auto& entity : AllEntities)
@@ -576,13 +534,9 @@ bool ProtoMap::EditorSave(const string& custom_name)
             kv["IsRoof"] = _str("{}", tile.IsRoof);
     }
 
-    string save_fname = GetFileDir() + (!custom_name.empty() ? custom_name : GetName()) + ".fomap";
-    if (!file.SaveFile(save_fname))
-    {
-        WriteLog("Unable write file '{}' in modules.\n", save_fname);
-        return false;
-    }
-
-    return true;
+    string save_fname = GetFilePath() + (!custom_name.empty() ? custom_name : GetName()) + ".fomap";
+    OutputFile output_file = file_mngr.WriteFile(save_fname);
+    output_file.SetStr(file.SerializeData());
+    output_file.Save();
 }
 #endif

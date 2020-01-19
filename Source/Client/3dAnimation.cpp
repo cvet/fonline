@@ -48,91 +48,96 @@ HashVecVec& AnimSet::GetBonesHierarchy()
     return bonesHierarchy;
 }
 
-void AnimSet::Save(File& file)
+void AnimSet::Save(DataWriter& writer)
 {
     uint len = (uint)animFileName.length();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&animFileName[0], len);
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&animFileName[0], len);
     len = (uint)animName.length();
-    file.SetData(&len, sizeof(len));
-    file.SetData(&animName[0], len);
-    file.SetData(&durationTicks, sizeof(durationTicks));
-    file.SetData(&ticksPerSecond, sizeof(ticksPerSecond));
+    writer.WritePtr(&len, sizeof(len));
+    writer.WritePtr(&animName[0], len);
+    writer.WritePtr(&durationTicks, sizeof(durationTicks));
+    writer.WritePtr(&ticksPerSecond, sizeof(ticksPerSecond));
     len = (uint)bonesHierarchy.size();
-    file.SetData(&len, sizeof(len));
+    writer.WritePtr(&len, sizeof(len));
     for (uint i = 0, j = (uint)bonesHierarchy.size(); i < j; i++)
     {
         len = (uint)bonesHierarchy[i].size();
-        file.SetData(&len, sizeof(len));
-        file.SetData(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
     }
     len = (uint)boneOutputs.size();
-    file.SetData(&len, sizeof(len));
+    writer.WritePtr(&len, sizeof(len));
     for (auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it)
     {
         BoneOutput& o = *it;
-        file.SetData(&o.nameHash, sizeof(o.nameHash));
+        writer.WritePtr(&o.nameHash, sizeof(o.nameHash));
         len = (uint)o.scaleTime.size();
-        file.SetData(&len, sizeof(len));
-        file.SetData(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
-        file.SetData(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
+        writer.WritePtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
         len = (uint)o.rotationTime.size();
-        file.SetData(&len, sizeof(len));
-        file.SetData(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
-        file.SetData(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
+        writer.WritePtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
         len = (uint)o.translationTime.size();
-        file.SetData(&len, sizeof(len));
-        file.SetData(&o.translationTime[0], len * sizeof(o.translationTime[0]));
-        file.SetData(&o.translationValue[0], len * sizeof(o.translationValue[0]));
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
+        writer.WritePtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
     }
 }
 
-void AnimSet::Load(File& file)
+void AnimSet::Load(DataReader& reader)
 {
     uint len = 0;
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&len, sizeof(len));
     animFileName.resize(len);
-    file.CopyMem(&animFileName[0], len);
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&animFileName[0], len);
+    reader.ReadPtr(&len, sizeof(len));
     animName.resize(len);
-    file.CopyMem(&animName[0], len);
-    file.CopyMem(&durationTicks, sizeof(durationTicks));
-    file.CopyMem(&ticksPerSecond, sizeof(ticksPerSecond));
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&animName[0], len);
+    reader.ReadPtr(&durationTicks, sizeof(durationTicks));
+    reader.ReadPtr(&ticksPerSecond, sizeof(ticksPerSecond));
+    reader.ReadPtr(&len, sizeof(len));
     bonesHierarchy.resize(len);
     for (uint i = 0, j = len; i < j; i++)
     {
-        file.CopyMem(&len, sizeof(len));
+        reader.ReadPtr(&len, sizeof(len));
         bonesHierarchy[i].resize(len);
-        file.CopyMem(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
+        reader.ReadPtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
     }
-    file.CopyMem(&len, sizeof(len));
+    reader.ReadPtr(&len, sizeof(len));
     boneOutputs.resize(len);
     for (uint i = 0, j = len; i < j; i++)
     {
         BoneOutput& o = boneOutputs[i];
-        file.CopyMem(&o.nameHash, sizeof(o.nameHash));
-        file.CopyMem(&len, sizeof(len));
+        reader.ReadPtr(&o.nameHash, sizeof(o.nameHash));
+        reader.ReadPtr(&len, sizeof(len));
         o.scaleTime.resize(len);
         o.scaleValue.resize(len);
-        file.CopyMem(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
-        file.CopyMem(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
-        file.CopyMem(&len, sizeof(len));
+        reader.ReadPtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
+        reader.ReadPtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
+        reader.ReadPtr(&len, sizeof(len));
         o.rotationTime.resize(len);
         o.rotationValue.resize(len);
-        file.CopyMem(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
-        file.CopyMem(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
-        file.CopyMem(&len, sizeof(len));
+        reader.ReadPtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
+        reader.ReadPtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
+        reader.ReadPtr(&len, sizeof(len));
         o.translationTime.resize(len);
         o.translationValue.resize(len);
-        file.CopyMem(&o.translationTime[0], len * sizeof(o.translationTime[0]));
-        file.CopyMem(&o.translationValue[0], len * sizeof(o.translationValue[0]));
+        reader.ReadPtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
+        reader.ReadPtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
     }
 }
 
-AnimController::AnimController() : sets(nullptr), outputs(nullptr), curTime(0.0f), interpolationDisabled(false)
+AnimController::AnimController(uint track_count)
 {
-    //
+    if (track_count)
+    {
+        sets = new AnimSetVec();
+        outputs = new OutputVec();
+        tracks.resize(track_count);
+    }
 }
 
 AnimController::~AnimController()
@@ -144,23 +149,9 @@ AnimController::~AnimController()
     }
 }
 
-AnimController* AnimController::Create(uint track_count)
-{
-    // Prototype
-    AnimController* controller = new AnimController();
-    controller->cloned = false;
-    controller->sets = new AnimSetVec();
-    controller->outputs = new OutputVec();
-    controller->tracks.resize(track_count);
-    memzero(&controller->tracks[0], sizeof(Track) * track_count);
-    controller->curTime = 0.0f;
-    return controller;
-}
-
 AnimController* AnimController::Clone()
 {
-    // Instance
-    AnimController* clone = new AnimController();
+    AnimController* clone = new AnimController(0);
     clone->cloned = true;
     clone->sets = sets;
     clone->outputs = outputs;
@@ -217,7 +208,6 @@ uint AnimController::GetNumAnimationSets()
 
 void AnimController::SetTrackAnimationSet(uint track, AnimSet* anim)
 {
-    // Set and link animation
     tracks[track].anim = anim;
     uint count = anim->GetBoneOutputCount();
     tracks[track].animOutput.resize(count);
@@ -274,17 +264,17 @@ float AnimController::GetTime()
 
 void AnimController::AddEventEnable(uint track, bool enable, float start_time)
 {
-    tracks[track].events.push_back(Track::Event(Track::Event::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f));
+    tracks[track].events.push_back({Track::Event::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
 void AnimController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
 {
-    tracks[track].events.push_back(Track::Event(Track::Event::Speed, speed, start_time, smooth_time));
+    tracks[track].events.push_back({Track::Event::Speed, speed, start_time, smooth_time});
 }
 
 void AnimController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
 {
-    tracks[track].events.push_back(Track::Event(Track::Event::Weight, weight, start_time, smooth_time));
+    tracks[track].events.push_back({Track::Event::Weight, weight, start_time, smooth_time});
 }
 
 void AnimController::SetTrackEnable(uint track, bool enable)

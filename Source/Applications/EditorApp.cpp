@@ -1,8 +1,8 @@
+#include "Common.h"
+
 #include "AppGui.h"
 #include "BuildSystem.h"
 #include "Client.h"
-#include "Common.h"
-#include "IniFile.h"
 #include "Log.h"
 #include "MapView.h"
 #include "Mapper.h"
@@ -28,23 +28,24 @@ struct ProjectFilesWindow : GuiWindow
 {
     string SelectedTree;
     int SelectedItem = -1;
-    FileCollection* Scripts;
-    FileCollection* Locations;
-    FileCollection* Maps;
-    FileCollection* Critters;
-    FileCollection* Items;
-    FileCollection* Dialogs;
-    FileCollection* Texts;
+    FileCollection Scripts;
+    FileCollection Locations;
+    FileCollection Maps;
+    FileCollection Critters;
+    FileCollection Items;
+    FileCollection Dialogs;
+    FileCollection Texts;
 
-    ProjectFilesWindow() : GuiWindow("Project Files")
+    ProjectFilesWindow(FileManager& file_mngr) :
+        GuiWindow("Project Files"),
+        Scripts(file_mngr.FilterFiles("fos")),
+        Locations(file_mngr.FilterFiles("foloc")),
+        Maps(file_mngr.FilterFiles("fomap")),
+        Critters(file_mngr.FilterFiles("focr")),
+        Items(file_mngr.FilterFiles("foitem")),
+        Dialogs(file_mngr.FilterFiles("fodlg")),
+        Texts(file_mngr.FilterFiles("msg"))
     {
-        Scripts = new FileCollection("fos");
-        Locations = new FileCollection("foloc");
-        Maps = new FileCollection("fomap");
-        Critters = new FileCollection("focr");
-        Items = new FileCollection("foitem");
-        Dialogs = new FileCollection("fodlg");
-        Texts = new FileCollection("msg");
     }
 
     virtual bool Draw() override
@@ -59,30 +60,31 @@ struct ProjectFilesWindow : GuiWindow
         return true;
     }
 
-    void DrawFiles(const string& tree_name, FileCollection* files)
+    void DrawFiles(const string& tree_name, FileCollection& files)
     {
         if (ImGui::TreeNode(tree_name.c_str()))
         {
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3.0f);
 
-            files->ResetCounter();
-            uint files_count = files->GetFilesCount();
-            for (uint i = 0; i < files_count; i++)
+            files.ResetCounter();
+            uint index = 0;
+            while (files.MoveNext())
             {
-                string name, path, relative_path;
-                files->GetNextFile(&name, &path, &relative_path);
+                FileHeader file_header = files.GetCurFileHeader();
 
                 ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                if (SelectedItem == i && SelectedTree == tree_name)
+                if (SelectedItem == index && SelectedTree == tree_name)
                     node_flags |= ImGuiTreeNodeFlags_Selected;
 
-                ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, "%s", name.c_str());
+                ImGui::TreeNodeEx((void*)(intptr_t)index, node_flags, "%s", file_header.GetName().c_str());
 
                 if (ImGui::IsItemClicked())
                 {
                     SelectedTree = tree_name;
-                    SelectedItem = i;
+                    SelectedItem = index;
                 }
+
+                index++;
             }
 
             ImGui::PopStyleVar();
@@ -173,17 +175,15 @@ struct MapperWindow : GuiWindow
         Mapper = new FOMapper();
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        File::SetCurrentDir(Mapper->ServerWritePath, "./");
-        if (!pmap->EditorLoad(Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
+        if (!pmap->EditorLoad(Mapper->ServerFileMngr, Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
         {
             Mapper->AddMess("File not found or truncated.");
-            File::SetCurrentDir(Mapper->ClientWritePath, CLIENT_DATA);
             return;
         }
-        File::SetCurrentDir(Mapper->ClientWritePath, CLIENT_DATA);
 
         if (Mapper->ActiveMap)
             Mapper->HexMngr.GetProtoMap(*(ProtoMap*)Mapper->ActiveMap->Proto);
+
         if (!Mapper->HexMngr.SetProtoMap(*pmap))
         {
             Mapper->AddMess("Load map fail.");
@@ -258,12 +258,13 @@ static int main_disabled(int argc, char** argv)
     WriteLog("FOnline Editor ({:#x}).\n", FO_VERSION);
 
     // Initialize Gui
-    bool use_dx = (MainConfig->GetInt("", "UseDirectX") != 0);
+    bool use_dx = !GameOpt.OpenGLRendering;
     if (!AppGui::Init("FOnline Editor", use_dx, true, true))
         return -1;
 
     // Basic windows
-    Windows.push_back(new ProjectFilesWindow());
+    FileManager file_mngr {};
+    Windows.push_back(new ProjectFilesWindow(file_mngr));
     Windows.push_back(new StructureWindow());
     Windows.push_back(new InspectorWindow());
     Windows.push_back(new LogWindow());

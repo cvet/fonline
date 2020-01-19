@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "KeyCodes_Include.h"
 
 // Keyboard input flags

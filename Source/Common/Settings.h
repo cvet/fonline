@@ -14,6 +14,4 @@ public:
 };
 
 extern Settings GameOpt;
-class IniFile;
-extern IniFile* MainConfig;
 extern StrVec ProjectFiles;

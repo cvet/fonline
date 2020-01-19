@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Common.h"
+
+#include "CacheStorage.h"
 #include "Entity.h"
 #include "Sprites.h"
 
@@ -189,9 +191,9 @@ private:
 
 public:
     bool IsMapLoaded() { return curPidMap != 0; }
-    bool LoadMap(hash map_pid);
+    bool LoadMap(CacheStorage& cache, hash map_pid);
     void UnloadMap();
-    void GetMapHash(hash map_pid, hash& hash_tiles, hash& hash_scen);
+    void GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen);
     void GenerateItem(uint id, hash proto_id, Properties& props);
     int GetDayTime();
     int GetMapTime();

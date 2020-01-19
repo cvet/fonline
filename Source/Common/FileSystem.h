@@ -1,41 +1,57 @@
 #pragma once
 
 #include "Common.h"
-#include "DataFile.h"
 
-struct FindData
-{
-    string FileName;
-    uint FileSize;
-    uint64 WriteTime;
-    bool IsDirectory;
-};
-typedef vector<FindData> FindDataVec;
+#include "ConfigFile.h"
+#include "DataSource.h"
+#include "DiskFileSystem.h"
 
-class File : public NonCopyable
+DECLARE_EXCEPTION(FileSystemExeption);
+
+class FileHeader : public NonCopyable
 {
+    friend class FileManager;
+    friend class FileCollection;
+    friend class File;
+
 public:
-    static void InitDataFiles(const string& path, bool set_write_dir = true);
-    static bool LoadDataFile(const string& path, bool skip_inner = false);
-    static void ClearDataFiles();
+    operator bool();
+    const string& GetName();
+    const string& GetPath();
+    uint GetFsize();
+    uint64 GetWriteTime();
 
-    File();
-    ~File();
-    File(const string& path, bool no_read = false);
-    File(const uchar* stream, uint length);
+protected:
+    FileHeader() = default;
+    FileHeader(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds);
 
-    bool LoadFile(const string& path, bool no_read = false);
-    bool LoadStream(const uchar* stream, uint length);
-    void UnloadFile();
+    bool isLoaded {};
+    string fileName {};
+    string filePath {};
+    uint fileSize {};
+    uint64 writeTime {};
+    DataSource* dataSource {};
+};
+
+class File : public FileHeader
+{
+    friend class FileManager;
+    friend class FileCollection;
+
+public:
+    File() = default;
+    File(uchar* buf, uint size);
+    const char* GetCStr();
+    uchar* GetBuf();
+    uchar* GetCurBuf();
+    uint GetCurPos();
     uchar* ReleaseBuffer();
-
     void SetCurPos(uint pos);
     void GoForward(uint offs);
     void GoBack(uint offs);
     bool FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs);
-
     string GetNonEmptyLine();
-    bool CopyMem(void* ptr, uint size);
+    void CopyMem(void* ptr, uint size);
     string GetStrNT(); // Null terminated
     uchar GetUChar();
     ushort GetBEUShort();
@@ -48,14 +64,21 @@ public:
     float GetBEFloat();
     float GetLEFloat();
 
-    void SwitchToRead();
-    void SwitchToWrite();
-    bool ResizeOutBuf();
-    void SetPosOutBuf(uint pos);
-    uchar* GetOutBuf() { return dataOutBuf; }
-    uint GetOutBufLen() { return endOutBuf; }
-    bool SaveFile(const string& fname);
+private:
+    File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
 
+    unique_ptr<uchar[]> fileBuf {};
+    uint curPos {};
+};
+
+class OutputFile : public NonCopyable
+{
+    friend class FileManager;
+
+public:
+    void Save();
+    uchar* GetOutBuf();
+    uint GetOutBufLen();
     void SetData(const void* data, uint len);
     void SetStr(const string& str);
     void SetStrNT(const string& str);
@@ -66,69 +89,54 @@ public:
     void SetBEUInt(uint data);
     void SetLEUInt(uint data);
 
-    static void ResetCurrentDir();
-    static void SetCurrentDir(const string& dir, const string& write_dir);
-    static string GetWritePath(const string& fname);
-    static bool IsFileExists(const string& fname);
-    static bool CopyFile(const string& from, const string& to);
-    static bool RenameFile(const string& from, const string& to);
-    static bool DeleteFile(const string& fname);
-    static void DeleteDir(const string& dir);
-    static void CreateDirectoryTree(const string& path);
-    static string GetExePath();
-
-    bool IsLoaded() { return fileLoaded; }
-    uchar* GetBuf() { return fileBuf; }
-    const char* GetCStr() { return (const char*)fileBuf; }
-    uchar* GetCurBuf() { return fileBuf + curPos; }
-    uint GetCurPos() { return curPos; }
-    uint GetFsize() { return fileSize; }
-    bool IsEOF() { return curPos >= fileSize; }
-    uint64 GetWriteTime() { return writeTime; }
-
-    static vector<unique_ptr<DataFile>>& GetDataFiles() { return dataFiles; }
-    static void GetFolderFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& files_path,
-        FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr);
-    static void GetDataFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
-
 private:
-    static vector<unique_ptr<DataFile>> dataFiles;
-    static string writeDir;
+    OutputFile(DiskFile file);
 
-    bool fileLoaded;
-    uint fileSize;
-    uchar* fileBuf;
-    uint curPos;
-
-    uchar* dataOutBuf;
-    uint posOutBuf;
-    uint endOutBuf;
-    uint lenOutBuf;
-
-    uint64 writeTime;
-
-    static void RecursiveDirLook(const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext,
-        StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs);
+    DiskFile diskFile;
+    vector<uchar> dataBuf {};
+    DataWriter dataWriter {dataBuf};
 };
 
-class FileCollection
+class FileCollection : public NonCopyable
 {
+    friend class FileManager;
+
 public:
-    FileCollection(const string& ext, const string& fixed_dir = "");
-    bool IsNextFile();
-    File& GetCurFile(
-        string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
-    File& GetNextFile(
-        string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
-    File& FindFile(
-        const string& name, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false);
+    const string& GetPath();
+    bool MoveNext();
+    File GetCurFile();
+    FileHeader GetCurFileHeader();
+    File FindFile(const string& name);
+    FileHeader FindFileHeader(const string& name);
     uint GetFilesCount();
     void ResetCounter();
 
 private:
-    StrVec fileNames;
-    StrVec filePaths;
-    StrVec fileRelativePaths;
-    uint curFileIndex;
-    File curFile;
+    FileCollection(const string& path, vector<FileHeader> files);
+
+    string filterPath {};
+    vector<FileHeader> allFiles {};
+    int curFileIndex {-1};
+};
+
+class FileManager : public NonCopyable
+{
+public:
+    FileManager() = default;
+    void AddDataSource(const string& path);
+    FileCollection FilterFiles(const string& ext, const string& dir = "", bool include_subdirs = true);
+    File ReadFile(const string& path);
+    FileHeader ReadFileHeader(const string& path);
+    ConfigFile ReadConfigFile(const string& path);
+    OutputFile WriteFile(const string& path, bool apply = false);
+    void DeleteFile(const string& path);
+    void DeleteDir(const string& path);
+    void RenameFile(const string& from_path, const string& to_path);
+
+    EventObserver<DataSource*> OnDataSourceAdded {};
+
+private:
+    string rootPath {};
+    vector<DataSource> dataSources {};
+    EventDispatcher<DataSource*> dataSourceAddedDispatcher {OnDataSourceAdded};
 };

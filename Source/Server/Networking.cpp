@@ -8,7 +8,6 @@
 
 #define ASIO_STANDALONE
 #include "asio.hpp"
-
 #define _WEBSOCKETPP_CPP11_FUNCTIONAL_
 #define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_
 #define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_
@@ -22,6 +21,7 @@
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = websocketpp::lib::asio::ssl::context;
+#include "zlib.h"
 
 class NetConnectionImpl : public NetConnection
 {

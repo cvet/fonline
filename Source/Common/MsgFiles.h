@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Common.h"
+
+#include "CacheStorage.h"
+#include "FileSystem.h"
 #include "MsgStr_Include.h"
 
 #define TEXTMSG_TEXT (0)
@@ -47,10 +50,8 @@ public:
     // Serialization
     void GetBinaryData(UCharVec& data);
     bool LoadFromBinaryData(const UCharVec& data);
-    bool LoadFromFile(const string& fname);
     bool LoadFromString(const string& str);
     void LoadFromMap(const StrMap& kv);
-    bool SaveToFile(const string& fname, bool to_data);
     void Clear();
 
 private:
@@ -74,11 +75,11 @@ public:
     bool IsAllMsgLoaded;
     FOMsg Msg[TEXTMSG_COUNT];
 
-    bool LoadFromFiles(const string& lang_name);
-    bool LoadFromCache(const string& lang_name);
+    void LoadFromFiles(FileManager& file_mngr, const string& lang_name);
+    void LoadFromCache(CacheStorage& cache, const string& lang_name);
     string GetMsgCacheName(int msg_num);
 
     LanguagePack();
     bool operator==(const uint& other) { return Name == other; }
 };
-typedef vector<LanguagePack> LangPackVec;
+using LangPackVec = vector<LanguagePack>;

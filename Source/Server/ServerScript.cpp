@@ -1,5 +1,4 @@
 #include "GraphicStructures.h"
-#include "IniFile.h"
 #include "Log.h"
 #include "Server.h"
 #include "Settings.h"
@@ -46,15 +45,9 @@ bool FOServer::InitScriptSystem()
 
     asThreadCleanup();
 
-    // Profiler settings
-    uint sample_time = MainConfig->GetInt("", "ProfilerSampleInterval", 0);
-    uint profiler_mode = MainConfig->GetInt("", "ProfilerMode", 0);
-    if (!profiler_mode)
-        sample_time = 0;
-
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_SERVER, &ProtoMngr, &EntityMngr);
-    if (!Script::Init(pragma_callback, "SERVER", sample_time, (profiler_mode & 1) != 0, (profiler_mode & 2) != 0))
+    if (!Script::Init(FileMngr, pragma_callback, "SERVER"))
     {
         WriteLog("Script system initialization failed.\n");
         return false;
@@ -3487,9 +3480,9 @@ void FOServer::ScriptFunc::Global_AllowSlot(uchar index, bool enable_send)
     Critter::SlotDataSendEnabled[index] = enable_send;
 }
 
-bool FOServer::ScriptFunc::Global_LoadDataFile(string dat_name)
+void FOServer::ScriptFunc::Global_AddDataSource(string dat_name)
 {
-    return File::LoadDataFile(dat_name);
+    Self->FileMngr.AddDataSource(dat_name);
 }
 
 struct ServerImage
@@ -3526,9 +3519,9 @@ bool FOServer::ScriptFunc::Global_LoadImage(uint index, string image_name, uint 
         SCRIPT_ERROR_R0("Wrong extension. Allowed only PNG.");
 
     // Load file to memory
-    FileCollection images("png");
-    File& fm = images.FindFile(image_name.substr(0, image_name.find_last_of('.')));
-    if (!fm.IsLoaded())
+    FileCollection images = Self->FileMngr.FilterFiles("png");
+    File file = images.FindFile(image_name.substr(0, image_name.find_last_of('.')));
+    if (!file)
         SCRIPT_ERROR_R0("File '{}' not found.", image_name);
 
     // Load PNG from memory
@@ -3567,8 +3560,8 @@ bool FOServer::ScriptFunc::Global_LoadImage(uint index, string image_name, uint 
             png_mem_data->current += length;
         }
     } png_mem_data;
-    png_mem_data.current = fm.GetBuf();
-    png_mem_data.last = fm.GetBuf() + fm.GetFsize();
+    png_mem_data.current = file.GetBuf();
+    png_mem_data.last = file.GetBuf() + file.GetFsize();
     png_mem_data.pp = pp;
     png_set_read_fn(pp, (png_voidp)&png_mem_data, png_mem_data.png_read_data_from_mem);
 

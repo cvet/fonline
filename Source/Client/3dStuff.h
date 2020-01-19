@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Common.h"
+
+#include "FileSystem.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
 
@@ -78,7 +80,7 @@ class Animation3dManager : public NonCopyable
 public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
-    Animation3dManager(EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
+    Animation3dManager(FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
     ~Animation3dManager();
 
     Bone* LoadModel(const string& fname);
@@ -99,6 +101,7 @@ private:
     void VecUnproject(const Vector& v, Vector& out);
     void ProjectPosition(Vector& v);
 
+    FileManager& fileMngr;
     EffectManager& effectMngr;
     MeshTextureCreator meshTexCreator {};
     StrVec processedFiles {};

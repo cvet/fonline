@@ -1,4 +1,3 @@
-#include "Crypt.h"
 #include "EffectManager.h"
 #include "Log.h"
 #include "SpriteManager.h"
@@ -307,8 +306,8 @@ bool SpriteManager::LoadFontFO(int index, const string& font_name, bool not_bord
 
     // Load font data
     string fname = _str("Fonts/{}.fofnt", font_name);
-    File fm;
-    if (!fm.LoadFile(fname))
+    File file = fileMngr.ReadFile(fname);
+    if (!file)
     {
         WriteLog("File '{}' not found.\n", fname);
         return false;
@@ -317,156 +316,98 @@ bool SpriteManager::LoadFontFO(int index, const string& font_name, bool not_bord
     FontData font(effectMngr.Effects.Font);
     string image_name;
 
-    uint font_cache_len;
-    uchar* font_cache_buf = Crypt.GetCache(fname, font_cache_len);
-    uint64 write_time = fm.GetWriteTime();
-    if (!font_cache_buf || write_time > *(uint64*)font_cache_buf)
+    // Parse data
+    istringstream str((char*)file.GetBuf());
+    string key;
+    string letter_buf;
+    Letter* cur_letter = nullptr;
+    int version = -1;
+    while (!str.eof() && !str.fail())
     {
-        SAFEDELA(font_cache_buf);
+        // Get key
+        str >> key;
 
-        // Parse data
-        istringstream str((char*)fm.GetBuf());
-        string key;
-        string letter_buf;
-        Letter* cur_letter = nullptr;
-        int version = -1;
-        while (!str.eof() && !str.fail())
+        // Cut off comments
+        size_t comment = key.find('#');
+        if (comment != string::npos)
+            key.erase(comment);
+        comment = key.find(';');
+        if (comment != string::npos)
+            key.erase(comment);
+
+        // Check version
+        if (version == -1)
         {
-            // Get key
-            str >> key;
-
-            // Cut off comments
-            size_t comment = key.find('#');
-            if (comment != string::npos)
-                key.erase(comment);
-            comment = key.find(';');
-            if (comment != string::npos)
-                key.erase(comment);
-
-            // Check version
-            if (version == -1)
+            if (key != "Version")
             {
-                if (key != "Version")
-                {
-                    WriteLog("Font '{}' 'Version' signature not found (used deprecated format of 'fofnt').\n", fname);
-                    return false;
-                }
-                str >> version;
-                if (version > 2)
-                {
-                    WriteLog("Font '{}' version {} not supported (try update client).\n", fname, version);
-                    return false;
-                }
-                continue;
+                WriteLog("Font '{}' 'Version' signature not found (used deprecated format of 'fofnt').\n", fname);
+                return false;
             }
-
-            // Get value
-            if (key == "Image")
+            str >> version;
+            if (version > 2)
             {
-                str >> image_name;
+                WriteLog("Font '{}' version {} not supported (try update client).\n", fname, version);
+                return false;
             }
-            else if (key == "LineHeight")
-            {
-                str >> font.LineHeight;
-            }
-            else if (key == "YAdvance")
-            {
-                str >> font.YAdvance;
-            }
-            else if (key == "End")
-            {
-                break;
-            }
-            else if (key == "Letter")
-            {
-                std::getline(str, letter_buf, '\n');
-                size_t utf8_letter_begin = letter_buf.find('\'');
-                if (utf8_letter_begin == string::npos)
-                {
-                    WriteLog("Font '{}' invalid letter specification.\n", fname);
-                    return false;
-                }
-                utf8_letter_begin++;
-
-                uint letter_len;
-                uint letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, &letter_len);
-                if (!utf8::IsValid(letter))
-                {
-                    WriteLog("Font '{}' invalid UTF8 letter at  '{}'.\n", fname, letter_buf);
-                    return false;
-                }
-
-                cur_letter = &font.Letters[letter];
-            }
-
-            if (!cur_letter)
-                continue;
-
-            if (key == "PositionX")
-                str >> cur_letter->PosX;
-            else if (key == "PositionY")
-                str >> cur_letter->PosY;
-            else if (key == "Width")
-                str >> cur_letter->W;
-            else if (key == "Height")
-                str >> cur_letter->H;
-            else if (key == "OffsetX")
-                str >> cur_letter->OffsX;
-            else if (key == "OffsetY")
-                str >> cur_letter->OffsY;
-            else if (key == "XAdvance")
-                str >> cur_letter->XAdvance;
+            continue;
         }
 
-        // Save cache
-        UCharVec font_cache;
-        WriteData(font_cache, write_time);
-        WriteData(font_cache, (uint)image_name.length());
-        WriteDataArr(font_cache, image_name.c_str(), (uint)image_name.length());
-        WriteData(font_cache, font.LineHeight);
-        WriteData(font_cache, font.YAdvance);
-        WriteData(font_cache, (uint)font.Letters.size());
-
-        for (LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it)
+        // Get value
+        if (key == "Image")
         {
-            Letter& l = it->second;
-            WriteData(font_cache, it->first);
-            WriteData(font_cache, l.PosX);
-            WriteData(font_cache, l.PosY);
-            WriteData(font_cache, l.W);
-            WriteData(font_cache, l.H);
-            WriteData(font_cache, l.OffsX);
-            WriteData(font_cache, l.OffsY);
-            WriteData(font_cache, l.XAdvance);
+            str >> image_name;
         }
-        Crypt.SetCache(fname, &font_cache[0], (uint)font_cache.size());
-    }
-    else
-    {
-        UCharVec font_cache;
-        WriteDataArr(font_cache, font_cache_buf, font_cache_len);
-        SAFEDELA(font_cache_buf);
-
-        // Load from cache
-        uint pos = 0;
-        ReadData<uint64>(font_cache, pos);
-        uint image_name_len = ReadData<uint>(font_cache, pos);
-        image_name.assign((char*)ReadDataArr<uchar>(font_cache, image_name_len, pos), image_name_len);
-        font.LineHeight = ReadData<int>(font_cache, pos);
-        font.YAdvance = ReadData<int>(font_cache, pos);
-        uint letters_count = ReadData<uint>(font_cache, pos);
-        while (letters_count--)
+        else if (key == "LineHeight")
         {
-            uint letter = ReadData<uint>(font_cache, pos);
-            Letter& l = font.Letters[letter];
-            l.PosX = ReadData<short>(font_cache, pos);
-            l.PosY = ReadData<short>(font_cache, pos);
-            l.W = ReadData<short>(font_cache, pos);
-            l.H = ReadData<short>(font_cache, pos);
-            l.OffsX = ReadData<short>(font_cache, pos);
-            l.OffsY = ReadData<short>(font_cache, pos);
-            l.XAdvance = ReadData<short>(font_cache, pos);
+            str >> font.LineHeight;
         }
+        else if (key == "YAdvance")
+        {
+            str >> font.YAdvance;
+        }
+        else if (key == "End")
+        {
+            break;
+        }
+        else if (key == "Letter")
+        {
+            std::getline(str, letter_buf, '\n');
+            size_t utf8_letter_begin = letter_buf.find('\'');
+            if (utf8_letter_begin == string::npos)
+            {
+                WriteLog("Font '{}' invalid letter specification.\n", fname);
+                return false;
+            }
+            utf8_letter_begin++;
+
+            uint letter_len;
+            uint letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, &letter_len);
+            if (!utf8::IsValid(letter))
+            {
+                WriteLog("Font '{}' invalid UTF8 letter at  '{}'.\n", fname, letter_buf);
+                return false;
+            }
+
+            cur_letter = &font.Letters[letter];
+        }
+
+        if (!cur_letter)
+            continue;
+
+        if (key == "PositionX")
+            str >> cur_letter->PosX;
+        else if (key == "PositionY")
+            str >> cur_letter->PosY;
+        else if (key == "Width")
+            str >> cur_letter->W;
+        else if (key == "Height")
+            str >> cur_letter->H;
+        else if (key == "OffsetX")
+            str >> cur_letter->OffsX;
+        else if (key == "OffsetY")
+            str >> cur_letter->OffsY;
+        else if (key == "XAdvance")
+            str >> cur_letter->XAdvance;
     }
 
     bool make_gray = false;
@@ -517,16 +458,14 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
     }
 
     FontData font(effectMngr.Effects.Font);
-    File fm;
-    File fm_tex;
-
-    if (!fm.LoadFile(_str("Fonts/{}.fnt", font_name)))
+    File file = fileMngr.ReadFile(_str("Fonts/{}.fnt", font_name));
+    if (!file)
     {
         WriteLog("Font file '{}.fnt' not found.\n", font_name);
         return false;
     }
 
-    uint signature = fm.GetLEUInt();
+    uint signature = file.GetLEUInt();
     if (signature != MAKEUINT('B', 'M', 'F', 3))
     {
         WriteLog("Invalid signature of font '{}'.\n", font_name);
@@ -534,57 +473,57 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
     }
 
     // Info
-    fm.GetUChar();
-    uint block_len = fm.GetLEUInt();
-    uint next_block = block_len + fm.GetCurPos() + 1;
+    file.GetUChar();
+    uint block_len = file.GetLEUInt();
+    uint next_block = block_len + file.GetCurPos() + 1;
 
-    fm.GoForward(7);
-    if (fm.GetUChar() != 1 || fm.GetUChar() != 1 || fm.GetUChar() != 1 || fm.GetUChar() != 1)
+    file.GoForward(7);
+    if (file.GetUChar() != 1 || file.GetUChar() != 1 || file.GetUChar() != 1 || file.GetUChar() != 1)
     {
         WriteLog("Wrong padding in font '{}'.\n", font_name);
         return false;
     }
 
     // Common
-    fm.SetCurPos(next_block);
-    block_len = fm.GetLEUInt();
-    next_block = block_len + fm.GetCurPos() + 1;
+    file.SetCurPos(next_block);
+    block_len = file.GetLEUInt();
+    next_block = block_len + file.GetCurPos() + 1;
 
-    int line_height = fm.GetLEUShort();
-    int base_height = fm.GetLEUShort();
-    fm.GetLEUShort(); // Texture width
-    fm.GetLEUShort(); // Texture height
+    int line_height = file.GetLEUShort();
+    int base_height = file.GetLEUShort();
+    file.GetLEUShort(); // Texture width
+    file.GetLEUShort(); // Texture height
 
-    if (fm.GetLEUShort() != 1)
+    if (file.GetLEUShort() != 1)
     {
         WriteLog("Texture for font '{}' must be one.\n", font_name);
         return false;
     }
 
     // Pages
-    fm.SetCurPos(next_block);
-    block_len = fm.GetLEUInt();
-    next_block = block_len + fm.GetCurPos() + 1;
+    file.SetCurPos(next_block);
+    block_len = file.GetLEUInt();
+    next_block = block_len + file.GetCurPos() + 1;
 
     // Image name
-    string image_name = fm.GetStrNT();
+    string image_name = file.GetStrNT();
     image_name.insert(0, "Fonts/");
 
     // Chars
-    fm.SetCurPos(next_block);
-    int count = fm.GetLEUInt() / 20;
+    file.SetCurPos(next_block);
+    int count = file.GetLEUInt() / 20;
     for (int i = 0; i < count; i++)
     {
         // Read data
-        uint id = fm.GetLEUInt();
-        int x = fm.GetLEUShort();
-        int y = fm.GetLEUShort();
-        int w = fm.GetLEUShort();
-        int h = fm.GetLEUShort();
-        int ox = fm.GetLEUShort();
-        int oy = fm.GetLEUShort();
-        int xa = fm.GetLEUShort();
-        fm.GoForward(2);
+        uint id = file.GetLEUInt();
+        int x = file.GetLEUShort();
+        int y = file.GetLEUShort();
+        int w = file.GetLEUShort();
+        int h = file.GetLEUShort();
+        int ox = file.GetLEUShort();
+        int oy = file.GetLEUShort();
+        int xa = file.GetLEUShort();
+        file.GoForward(2);
 
         // Fill data
         Letter& let = font.Letters[id];
@@ -602,7 +541,7 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
     font.MakeGray = true;
 
     // Load image
-    AnyFrames* image_normal = LoadAnimation(image_name.c_str());
+    AnyFrames* image_normal = LoadAnimation(image_name);
     if (!image_normal)
     {
         WriteLog("Image file '{}' not found.\n", image_name);
@@ -611,7 +550,7 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
     font.ImageNormal = image_normal;
 
     // Create bordered instance
-    AnyFrames* image_bordered = LoadAnimation(image_name.c_str());
+    AnyFrames* image_bordered = LoadAnimation(image_name);
     if (!image_bordered)
     {
         WriteLog("Can't load twice file '{}'.\n", image_name);
@@ -624,7 +563,6 @@ bool SpriteManager::LoadFontBMF(int index, const string& font_name)
         Fonts.resize(index + 1);
     SAFEDEL(Fonts[index]);
     Fonts[index] = new FontData(font);
-
     return true;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "scriptarray/scriptarray.h"
 
 struct DeferredCall

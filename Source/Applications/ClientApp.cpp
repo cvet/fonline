@@ -1,5 +1,6 @@
-#include "Client.h"
 #include "Common.h"
+
+#include "Client.h"
 #include "Keyboard.h"
 #include "Log.h"
 #include "SDL_main.h"

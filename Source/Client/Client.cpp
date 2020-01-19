@@ -1,9 +1,8 @@
 ﻿#include "Client.h"
 #include "CritterView.h"
-#include "Crypt.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
-#include "IniFile.h"
+#include "GenericUtils.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "LocationView.h"
@@ -14,26 +13,9 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+
 #include "sha1.h"
 #include "sha2.h"
-
-// Check buffer for error
-#define CHECK_IN_BUFF_ERROR \
-    if (Bin.IsError()) \
-    { \
-        WriteLog("Wrong network data!\n"); \
-        NetDisconnect(); \
-        return; \
-    }
-
-void* zlib_alloc_(void* opaque, unsigned int items, unsigned int size)
-{
-    return calloc(items, size);
-}
-void zlib_free_(void* opaque, void* address)
-{
-    free(address);
-}
 
 #define MOUSE_BUTTON_LEFT (0)
 #define MOUSE_BUTTON_RIGHT (1)
@@ -45,6 +27,14 @@ void zlib_free_(void* opaque, void* address)
 #define MOUSE_BUTTON_EXT2 (7)
 #define MOUSE_BUTTON_EXT3 (8)
 #define MOUSE_BUTTON_EXT4 (9)
+
+#define CHECK_IN_BUFF_ERROR \
+    if (Bin.IsError()) \
+    { \
+        WriteLog("Wrong network data!\n"); \
+        NetDisconnect(); \
+        return; \
+    }
 
 #if defined(FO_ANDROID) || defined(FO_IOS)
 int HandleAppEvents(void* userdata, SDL_Event* event)
@@ -87,20 +77,22 @@ int HandleAppEvents(void* userdata, SDL_Event* event)
 FOClient* FOClient::Self = nullptr;
 
 FOClient::FOClient() :
+    FileMngr(),
+    SndMngr(FileMngr),
     Keyb(SprMngr),
     ProtoMngr(),
-    EffectMngr(),
-    SprMngr(EffectMngr),
-    ResMngr(SprMngr),
-    HexMngr(false, ProtoMngr, SprMngr, ResMngr)
+    EffectMngr(FileMngr),
+    SprMngr(FileMngr, EffectMngr),
+    ResMngr(FileMngr, SprMngr),
+    HexMngr(false, ProtoMngr, SprMngr, ResMngr),
+    Cache("Data/Cache.bin"),
+    GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
     RUNTIME_ASSERT(!Self);
     Self = this;
 
     InitCalls = 0;
-    DoRestart = false;
-    ComLen = NetBuffer::DefaultBufSize;
-    ComBuf = new uchar[ComLen];
+    ComBuf.resize(NetBuffer::DefaultBufSize);
     ZStreamOk = false;
     Sock = INVALID_SOCKET;
     BytesReceive = 0;
@@ -142,7 +134,6 @@ FOClient::FOClient() :
     CurMapIndexInLoc = 0;
 
     SomeItem = nullptr;
-    GmapFog = nullptr;
     CanDrawInScripts = false;
     IsAutoLogin = false;
 
@@ -155,10 +146,6 @@ FOClient::FOClient() :
     SDL_SetEventFilter(HandleAppEvents, nullptr);
 #endif
 
-    // Cache
-    bool cache_ok = Crypt.InitCache();
-    RUNTIME_ASSERT_STR(cache_ok, "Can't create cache file");
-
     // Cursor position
     int sw = 0, sh = 0;
     SprMngr.GetWindowSize(sw, sh);
@@ -167,13 +154,30 @@ FOClient::FOClient() :
     GameOpt.MouseX = GameOpt.LastMouseX = CLAMP(mx, 0, sw - 1);
     GameOpt.MouseY = GameOpt.LastMouseY = CLAMP(my, 0, sh - 1);
 
-    // Sound manager
-    GameOpt.SoundVolume = MainConfig->GetInt("", "SoundVolume", 100);
-    GameOpt.MusicVolume = MainConfig->GetInt("", "MusicVolume", 100);
+    // Data sources
+#if defined(FO_IOS)
+    FileMngr.AddDataSource("../../Documents/");
+#elif defined(FO_ANDROID)
+    FileMngr.AddDataSource("$AndroidAssets");
+    FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath());
+    FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath());
+#elif defined(FO_WEB)
+    FileMngr.AddDataSource("Data/");
+    FileMngr.AddDataSource("PersistentData/");
+#else
+    FileMngr.AddDataSource("Data/");
+#endif
 
-    // Language Packs
-    string lang_name = MainConfig->GetStr("", "Language", DEFAULT_LANGUAGE);
-    CurLang.LoadFromCache(lang_name);
+    // Basic effects
+    bool basic_effects_ok = EffectMngr.LoadDefaultEffects();
+    RUNTIME_ASSERT(basic_effects_ok);
+
+    // Wait screen
+    ScreenModeMain = SCREEN_WAIT;
+    WaitPic = ResMngr.GetRandomSplash();
+    SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    WaitDraw();
+    SprMngr.EndScene();
 }
 
 FOClient::~FOClient()
@@ -183,40 +187,11 @@ FOClient::~FOClient()
     NetDisconnect();
     Script::Finish();
 
-    SAFEDELA(ComBuf);
-    SAFEDEL(GmapFog);
-
-    File::ClearDataFiles();
-
     Self = nullptr;
 }
 
-bool FOClient::Reset()
+bool FOClient::Init()
 {
-    // Reload cache
-    if (!CurLang.IsAllMsgLoaded)
-        CurLang.LoadFromCache(CurLang.NameStr);
-
-    if (!CurLang.IsAllMsgLoaded)
-    {
-        WriteLog("Language packs not found!\n");
-        return false;
-    }
-
-    // Basic effects
-    if (!EffectMngr.LoadDefaultEffects())
-        return false;
-
-    // Resource manager
-    ResMngr.Refresh();
-
-    // Wait screen
-    ScreenModeMain = SCREEN_WAIT;
-    WaitPic = ResMngr.GetRandomSplash();
-    SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-    WaitDraw();
-    SprMngr.EndScene();
-
     // Clean up previous data
     SAFEREL(SomeItem);
     SAFEREL(Globals);
@@ -225,8 +200,8 @@ bool FOClient::Reset()
     ProtoMngr.ClearProtos();
 
     // Scripts
-    if (!ReloadScripts())
-        return false;
+    bool reload_scripts_ok = ReloadScripts();
+    RUNTIME_ASSERT(reload_scripts_ok);
 
     // Recreate static atlas
     ResMngr.FreeResources(AtlasType::Static);
@@ -234,27 +209,17 @@ bool FOClient::Reset()
     SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
-    if (!Script::RunModuleInitFunctions())
-    {
-        AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
-        return false;
-    }
+    bool module_init_ok = Script::RunModuleInitFunctions();
+    RUNTIME_ASSERT(module_init_ok);
 
     // Start script
-    if (!Script::RaiseInternalEvent(ClientFunctions.Start))
-    {
-        WriteLog("Execute start script fail.\n");
-        return false;
-    }
+    bool start_script_ok = Script::RaiseInternalEvent(ClientFunctions.Start);
+    RUNTIME_ASSERT(start_script_ok);
 
     // Minimap
     LmapZoom = 2;
     LmapSwitchHi = false;
     LmapPrepareNextTick = 0;
-
-    // Global map
-    SAFEDEL(GmapFog);
-    GmapFog = new TwoBitMask(GM__MAXZONEX, GM__MAXZONEY, nullptr);
 
     // PickUp
     PupTransferType = 0;
@@ -268,11 +233,8 @@ bool FOClient::Reset()
     HexMngr.ReloadSprites();
 
     // Load fonts
-    if (!SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false))
-    {
-        WriteLog("Fonts initialization fail.\n");
-        return false;
-    }
+    bool default_font_ok = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false);
+    RUNTIME_ASSERT(default_font_ok);
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -293,7 +255,7 @@ bool FOClient::Reset()
 
     // Item prototypes
     UCharVec protos_data;
-    Crypt.GetCache("$protos.cache", protos_data);
+    Cache.GetCache("$protos.cache", protos_data);
     ProtoMngr.LoadProtosFromBinaryData(protos_data);
 
     // Other
@@ -326,7 +288,7 @@ void FOClient::ProcessAutoLogin()
     if (!ClientFunctions.AutoLogin)
         return;
 
-    string auto_login = MainConfig->GetStr("", "AutoLogin");
+    string auto_login = GameOpt.AutoLogin;
 
 #ifdef FO_WEB
     char* auto_login_web = (char*)EM_ASM_INT({
@@ -365,59 +327,49 @@ void FOClient::ProcessAutoLogin()
     }
 }
 
-void FOClient::Restart()
-{
-    WriteLog("Engine reinitialization.\n");
-
-    NetDisconnect();
-
-    if (Reset())
-        ScreenFadeOut();
-    else
-        GameOpt.Quit = true;
-}
-
 void FOClient::UpdateBinary()
 {
-#ifdef FO_WINDOWS
-    // Copy binaries
-    string exe_path = File::GetExePath();
-    string to_dir = _str(exe_path).extractDir();
-    string base_name = _str(exe_path).extractFileName().eraseFileExtension();
-    string from_dir = File::GetWritePath("");
-    bool copy_to_new = File::CopyFile(from_dir + base_name + ".exe", to_dir + base_name + ".new.exe");
-    RUNTIME_ASSERT(copy_to_new);
-    File::DeleteDir(to_dir + base_name + ".old.exe");
-    bool rename_to_old = File::RenameFile(to_dir + base_name + ".exe", to_dir + base_name + ".old.exe");
-    RUNTIME_ASSERT(rename_to_old);
-    bool rename_to_new = File::RenameFile(to_dir + base_name + ".new.exe", to_dir + base_name + ".exe");
-    RUNTIME_ASSERT(rename_to_new);
-    if (File::CopyFile(from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb"))
-    {
-        File::DeleteFile(to_dir + base_name + ".old.pdb");
-        File::RenameFile(to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb");
-        File::RenameFile(to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb");
-    }
+    /*
+    #ifdef FO_WINDOWS
+        // Copy binaries
+        string exe_path = File::GetExePath();
+        string to_dir = _str(exe_path).extractDir();
+        string base_name = _str(exe_path).extractFileName().eraseFileExtension();
+        string from_dir = File::GetWritePath("");
+        bool copy_to_new = File::CopyFile(from_dir + base_name + ".exe", to_dir + base_name + ".new.exe");
+        RUNTIME_ASSERT(copy_to_new);
+        File::DeleteDir(to_dir + base_name + ".old.exe");
+        bool rename_to_old = File::RenameFile(to_dir + base_name + ".exe", to_dir + base_name + ".old.exe");
+        RUNTIME_ASSERT(rename_to_old);
+        bool rename_to_new = File::RenameFile(to_dir + base_name + ".new.exe", to_dir + base_name + ".exe");
+        RUNTIME_ASSERT(rename_to_new);
+        if (File::CopyFile(from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb"))
+        {
+            File::DeleteFile(to_dir + base_name + ".old.pdb");
+            File::RenameFile(to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb");
+            File::RenameFile(to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb");
+        }
 
-    // Restart client
-    PROCESS_INFORMATION pi;
-    memzero(&pi, sizeof(pi));
-    STARTUPINFOW sui;
-    memzero(&sui, sizeof(sui));
-    sui.cb = sizeof(sui);
-    wchar_t command_line[TEMP_BUF_SIZE];
-    wcscpy(command_line, GetCommandLineW());
-    wcscat(command_line, L" --restart");
-    BOOL create_process = CreateProcessW(_str(exe_path).toWideChar().c_str(), command_line, nullptr, nullptr, FALSE,
-        NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi);
-    RUNTIME_ASSERT(create_process);
+        // Restart client
+        PROCESS_INFORMATION pi;
+        memzero(&pi, sizeof(pi));
+        STARTUPINFOW sui;
+        memzero(&sui, sizeof(sui));
+        sui.cb = sizeof(sui);
+        wchar_t command_line[TEMP_BUF_SIZE];
+        wcscpy(command_line, GetCommandLineW());
+        wcscat(command_line, L" --restart");
+        BOOL create_process = CreateProcessW(_str(exe_path).toWideChar().c_str(), command_line, nullptr, nullptr, FALSE,
+            NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi);
+        RUNTIME_ASSERT(create_process);
 
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    exit(0);
-#else
-    RUNTIME_ASSERT(!"Invalid platform for binary updating");
-#endif
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        exit(0);
+    #else
+        RUNTIME_ASSERT(!"Invalid platform for binary updating");
+    #endif
+    */
 }
 
 void FOClient::UpdateFilesStart()
@@ -519,7 +471,7 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesFilesChanged = false;
             SAFEDEL(UpdateFilesList);
             UpdateFileDownloading = false;
-            File::DeleteFile(File::GetWritePath("Update.bin"));
+            FileMngr.DeleteFile("Update.bin");
             UpdateFilesTick = Timer::FastTick();
 
             Net_SendUpdate();
@@ -551,13 +503,13 @@ void FOClient::UpdateFilesLoop()
 
                 if (update_file.Name[0] == '$')
                 {
-                    UpdateFileTemp = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), true);
+                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.bin")});
                     UpdateFilesCacheChanged = true;
                 }
                 else
                 {
-// Web client can receive only cache updates
-// Resources must be packed in main bundle
+                    // Web client can receive only cache updates
+                    // Resources must be packed in main bundle
 #ifdef FO_WEB
                     UpdateFilesAddText(STR_CLIENT_OUTDATED, "Client outdated!");
                     SAFEDEL(UpdateFilesList);
@@ -565,8 +517,8 @@ void FOClient::UpdateFilesLoop()
                     return;
 #endif
 
-                    File::DeleteFile(File::GetWritePath(update_file.Name));
-                    UpdateFileTemp = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), true);
+                    FileMngr.DeleteFile(update_file.Name);
+                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.bin")});
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -599,11 +551,11 @@ void FOClient::UpdateFilesLoop()
 
                 // Reinitialize data
                 if (UpdateFilesCacheChanged)
-                    CurLang.LoadFromCache(CurLang.NameStr);
+                    CurLang.LoadFromCache(Cache, CurLang.NameStr);
                 if (UpdateFilesFilesChanged)
                     GameOpt.Init(0, {});
                 if (InitCalls >= 2 && (UpdateFilesCacheChanged || UpdateFilesFilesChanged))
-                    DoRestart = true;
+                    throw ClientRestartException("Restart");
 
                 return;
             }
@@ -822,13 +774,6 @@ void FOClient::MainLoop()
     if (GameOpt.Quit)
         return;
 
-    // Restart logic
-    if (DoRestart)
-    {
-        DoRestart = false;
-        Restart();
-    }
-
     // Network connection
     if (IsConnecting)
     {
@@ -844,7 +789,7 @@ void FOClient::MainLoop()
 
     if (InitCalls < 2)
     {
-        if (InitCalls == 1 && !Reset())
+        if (InitCalls == 1 && !Init())
         {
             WriteLog("FOnline engine initialization failed.\n");
             GameOpt.Quit = true;
@@ -1340,8 +1285,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
 {
 #ifdef FO_WEB
     port++;
-    string wss_credentials = MainConfig->GetStr("", "WssCredentials", "");
-    if (wss_credentials.empty())
+    if (GameOpt.WssCredentials.empty())
     {
         EM_ASM(Module['websocket']['url'] = 'ws://');
         WriteLog("Connecting to server 'ws://{}:{}'.\n", host, port);
@@ -1360,10 +1304,11 @@ bool FOClient::NetConnect(const char* host, ushort port)
 
     if (!ZStreamOk)
     {
-        ZStream.zalloc = zlib_alloc_;
-        ZStream.zfree = zlib_free_;
+        ZStream.zalloc = [](void* opaque, unsigned int items, unsigned int size) { return calloc(items, size); };
+        ZStream.zfree = [](void* opaque, void* address) { free(address); };
         ZStream.opaque = nullptr;
-        RUNTIME_ASSERT(inflateInit(&ZStream) == Z_OK);
+        bool inf_init = inflateInit(&ZStream);
+        RUNTIME_ASSERT(inf_init == Z_OK);
         ZStreamOk = true;
     }
 
@@ -1752,11 +1697,11 @@ int FOClient::NetInput(bool unpack)
     DWORD len;
     DWORD flags = 0;
     WSABUF buf;
-    buf.buf = (char*)ComBuf;
-    buf.len = ComLen;
+    buf.buf = (char*)&ComBuf[0];
+    buf.len = (uint)ComBuf.size();
     if (WSARecv(Sock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-    int len = recv(Sock, ComBuf, ComLen, 0);
+    int len = recv(Sock, &ComBuf[0], (uint)ComBuf.size(), 0);
     if (len == SOCKET_ERROR)
 #endif
     {
@@ -1770,22 +1715,17 @@ int FOClient::NetInput(bool unpack)
     }
 
     uint whole_len = (uint)len;
-    while (whole_len == ComLen)
+    while (whole_len == (uint)ComBuf.size())
     {
-        uint newcomlen = (ComLen << 1);
-        uchar* combuf = new uchar[newcomlen];
-        memcpy(combuf, ComBuf, ComLen);
-        SAFEDELA(ComBuf);
-        ComBuf = combuf;
-        ComLen = newcomlen;
+        ComBuf.resize(ComBuf.size() * 2);
 
 #ifdef FO_WINDOWS
         flags = 0;
-        buf.buf = (char*)ComBuf + whole_len;
-        buf.len = ComLen - whole_len;
+        buf.buf = (char*)&ComBuf[0] + whole_len;
+        buf.len = (uint)ComBuf.size() - whole_len;
         if (WSARecv(Sock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-        len = recv(Sock, ComBuf + whole_len, ComLen - whole_len, 0);
+        len = recv(Sock, &ComBuf[0] + whole_len, (uint)ComBuf.size() - whole_len, 0);
         if (len == SOCKET_ERROR)
 #endif
         {
@@ -1813,7 +1753,7 @@ int FOClient::NetInput(bool unpack)
 
     if (unpack && !GameOpt.DisableZlibCompression)
     {
-        ZStream.next_in = ComBuf;
+        ZStream.next_in = &ComBuf[0];
         ZStream.avail_in = whole_len;
         ZStream.next_out = Bin.GetData() + Bin.GetEndPos();
         ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
@@ -1840,7 +1780,7 @@ int FOClient::NetInput(bool unpack)
     }
     else
     {
-        Bin.Push(ComBuf, whole_len, true);
+        Bin.Push(&ComBuf[0], whole_len, true);
     }
 
     BytesReceive += whole_len;
@@ -3809,7 +3749,7 @@ void FOClient::Net_OnLoadMap()
     {
         hash hash_tiles_cl = 0;
         hash hash_scen_cl = 0;
-        HexMngr.GetMapHash(map_pid, hash_tiles_cl, hash_scen_cl);
+        HexMngr.GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
 
         if (hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl)
         {
@@ -3818,7 +3758,7 @@ void FOClient::Net_OnLoadMap()
             return;
         }
 
-        if (!HexMngr.LoadMap(map_pid))
+        if (!HexMngr.LoadMap(Cache, map_pid))
         {
             WriteLog("Map not loaded. Disconnect.\n");
             NetDisconnect();
@@ -3887,32 +3827,30 @@ void FOClient::Net_OnMap()
     CHECK_IN_BUFF_ERROR;
 
     uint cache_len;
-    uchar* cache = Crypt.GetCache(map_name, cache_len);
-    File fm;
-
-    if (cache && fm.LoadStream(cache, cache_len))
+    uchar* cache = Cache.GetCache(map_name, cache_len);
+    if (cache)
     {
-        uint buf_len = fm.GetFsize();
-        uchar* buf = Crypt.Uncompress(fm.GetBuf(), buf_len, 50);
+        File compressed_file = File(cache, cache_len);
+        uint buf_len = compressed_file.GetFsize();
+        uchar* buf = Compressor::Uncompress(compressed_file.GetBuf(), buf_len, 50);
         if (buf)
         {
-            fm.UnloadFile();
-            fm.LoadStream(buf, buf_len);
+            File file = File(buf, buf_len);
             delete[] buf;
 
-            if (fm.GetBEUInt() == CLIENT_MAP_FORMAT_VER)
+            if (file.GetBEUInt() == CLIENT_MAP_FORMAT_VER)
             {
-                fm.GetBEUInt();
-                fm.GetBEUShort();
-                fm.GetBEUShort();
-                uint old_tiles_len = fm.GetBEUInt();
-                uint old_scen_len = fm.GetBEUInt();
+                file.GetBEUInt();
+                file.GetBEUShort();
+                file.GetBEUShort();
+                uint old_tiles_len = file.GetBEUInt();
+                uint old_scen_len = file.GetBEUInt();
 
                 if (!tiles)
                 {
                     tiles_len = old_tiles_len;
                     tiles_data = new char[tiles_len];
-                    fm.CopyMem(tiles_data, tiles_len);
+                    file.CopyMem(tiles_data, tiles_len);
                     tiles = true;
                 }
 
@@ -3920,11 +3858,9 @@ void FOClient::Net_OnMap()
                 {
                     scen_len = old_scen_len;
                     scen_data = new char[scen_len];
-                    fm.CopyMem(scen_data, scen_len);
+                    file.CopyMem(scen_data, scen_len);
                     scen = true;
                 }
-
-                fm.UnloadFile();
             }
         }
     }
@@ -3932,20 +3868,21 @@ void FOClient::Net_OnMap()
 
     if (tiles && scen)
     {
-        fm.UnloadFile();
-        fm.SetBEUInt(CLIENT_MAP_FORMAT_VER);
-        fm.SetBEUInt(map_pid);
-        fm.SetBEUShort(maxhx);
-        fm.SetBEUShort(maxhy);
-        fm.SetBEUInt(tiles_len);
-        fm.SetBEUInt(scen_len);
+        // Todo: rewrite
+        /*OutputFile output_file {};
+        output_file.SetBEUInt(CLIENT_MAP_FORMAT_VER);
+        output_file.SetBEUInt(map_pid);
+        output_file.SetBEUShort(maxhx);
+        output_file.SetBEUShort(maxhy);
+        output_file.SetBEUInt(tiles_len);
+        output_file.SetBEUInt(scen_len);
         if (tiles_len)
-            fm.SetData(tiles_data, tiles_len);
+            output_file.SetData(tiles_data, tiles_len);
         if (scen_len)
-            fm.SetData(scen_data, scen_len);
+            output_file.SetData(scen_data, scen_len);
 
-        uint obuf_len = fm.GetOutBufLen();
-        uchar* buf = Crypt.Compress(fm.GetOutBuf(), obuf_len);
+        uint obuf_len = output_file.GetOutBufLen();
+        uchar* buf = Compressor::Compress(output_file.GetOutBuf(), obuf_len);
         if (!buf)
         {
             WriteLog("Failed to compress data '{}', disconnect.\n", map_name);
@@ -3953,11 +3890,8 @@ void FOClient::Net_OnMap()
             return;
         }
 
-        fm.UnloadFile();
-        fm.SetData(buf, obuf_len);
-        delete[] buf;
-
-        Crypt.SetCache(map_name, fm.GetOutBuf(), fm.GetOutBufLen());
+        Cache.SetCache(map_name, buf, obuf_len);
+        delete[] buf;*/
     }
     else
     {
@@ -4033,7 +3967,7 @@ void FOClient::Net_OnGlobalInfo()
 
     if (FLAG(info_flags, GM_INFO_ZONES_FOG))
     {
-        Bin.Pop(GmapFog->GetData(), GM_ZONES_FOG_SIZE);
+        Bin.Pop(GmapFog.GetData(), GM_ZONES_FOG_SIZE);
     }
 
     if (FLAG(info_flags, GM_INFO_FOG))
@@ -4043,7 +3977,7 @@ void FOClient::Net_OnGlobalInfo()
         Bin >> zx;
         Bin >> zy;
         Bin >> fog;
-        GmapFog->Set2Bit(zx, zy, fog);
+        GmapFog.Set2Bit(zx, zy, fog);
     }
 
     if (FLAG(info_flags, GM_INFO_CRITTERS))
@@ -4116,8 +4050,7 @@ void FOClient::Net_OnUpdateFilesList()
 
     CHECK_IN_BUFF_ERROR;
 
-    File fm;
-    fm.LoadStream(&data[0], (uint)data.size());
+    File file(&data[0], (uint)data.size());
 
     SAFEDEL(UpdateFilesList);
     UpdateFilesList = new UpdateFileVec();
@@ -4125,28 +4058,28 @@ void FOClient::Net_OnUpdateFilesList()
     UpdateFilesClientOutdated = outdated;
 
 #ifdef FO_WINDOWS
-    bool have_exe = false;
+    /*bool have_exe = false;
     string exe_name;
     if (outdated)
-        exe_name = _str(File::GetExePath()).extractFileName();
+        exe_name = _str(File::GetExePath()).extractFileName();*/
 #endif
 
     for (uint file_index = 0;; file_index++)
     {
-        short name_len = fm.GetLEShort();
+        short name_len = file.GetLEShort();
         if (name_len == -1)
             break;
 
         RUNTIME_ASSERT(name_len > 0);
-        string name = string((const char*)fm.GetCurBuf(), name_len);
-        fm.GoForward(name_len);
-        uint size = fm.GetLEUInt();
-        uint hash = fm.GetLEUInt();
+        string name = string((const char*)file.GetCurBuf(), name_len);
+        file.GoForward(name_len);
+        uint size = file.GetLEUInt();
+        uint hash = file.GetLEUInt();
 
-// Skip platform depended
+        // Skip platform depended
 #ifdef FO_WINDOWS
-        if (outdated && _str(exe_name).compareIgnoreCase(name))
-            have_exe = true;
+        // if (outdated && _str(exe_name).compareIgnoreCase(name))
+        //    have_exe = true;
         string ext = _str(name).getFileExtension();
         if (!outdated && (ext == "exe" || ext == "pdb"))
             continue;
@@ -4158,19 +4091,19 @@ void FOClient::Net_OnUpdateFilesList()
 
         // Check hash
         uint cur_hash_len;
-        uint* cur_hash = (uint*)Crypt.GetCache(_str("{}.hash", name), cur_hash_len);
+        uint* cur_hash = (uint*)Cache.GetCache(_str("{}.hash", name), cur_hash_len);
         bool cached_hash_same = (cur_hash && cur_hash_len == sizeof(hash) && *cur_hash == hash);
         if (name[0] != '$')
         {
             // Real file, human can disturb file consistency, make base recheck
-            File file;
-            if (file.LoadFile(name, true) && file.GetFsize() == size)
+            FileHeader file_header = FileMngr.ReadFileHeader(name);
+            if (file_header && file_header.GetFsize() == size)
             {
-                if (cached_hash_same ||
-                    (file.LoadFile(name) && hash == Crypt.MurmurHash2(file.GetBuf(), file.GetFsize())))
+                File file = FileMngr.ReadFile(name);
+                if (cached_hash_same || (file && hash == Hashing::MurmurHash2(file.GetBuf(), file.GetFsize())))
                 {
                     if (!cached_hash_same)
-                        Crypt.SetCache(_str("{}.hash", name), (uchar*)&hash, sizeof(hash));
+                        Cache.SetCache(_str("{}.hash", name), (uchar*)&hash, sizeof(hash));
                     continue;
                 }
             }
@@ -4194,8 +4127,8 @@ void FOClient::Net_OnUpdateFilesList()
     }
 
 #ifdef FO_WINDOWS
-    if (UpdateFilesClientOutdated && !have_exe)
-        UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
+    // if (UpdateFilesClientOutdated && !have_exe)
+    //    UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #else
     if (UpdateFilesClientOutdated)
         UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
@@ -4213,11 +4146,8 @@ void FOClient::Net_OnUpdateFileData()
     UpdateFile& update_file = UpdateFilesList->front();
 
     // Write data to temp file
-    if (!DiskFileSystem::WriteFile(UpdateFileTemp, data, MIN(update_file.RemaningSize, sizeof(data))))
-    {
-        UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't write update file!");
-        return;
-    }
+    UpdateFileTemp->SetData(data, MIN(update_file.RemaningSize, sizeof(data)));
+    UpdateFileTemp->Save();
 
     // Get next portion or finalize data
     update_file.RemaningSize -= MIN(update_file.RemaningSize, sizeof(data));
@@ -4229,42 +4159,28 @@ void FOClient::Net_OnUpdateFileData()
     else
     {
         // Finalize received data
+        UpdateFileTemp->Save();
         UpdateFileTemp = nullptr;
 
         // Cache
         if (update_file.Name[0] == '$')
         {
-            auto temp_file = DiskFileSystem::OpenFile(File::GetWritePath("Update.bin"), false);
+            File temp_file = FileMngr.ReadFile("Update.bin");
             if (!temp_file)
             {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
                 return;
             }
 
-            uint len = DiskFileSystem::GetFileSize(temp_file);
-            UCharVec buf(len);
-            if (!DiskFileSystem::ReadFile(temp_file, &buf[0], len))
-            {
-                UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't read update file!");
-                return;
-            }
-            temp_file = nullptr;
-
-            Crypt.SetCache(update_file.Name, &buf[0], len);
-            Crypt.SetCache(update_file.Name + ".hash", (uchar*)&update_file.Hash, sizeof(update_file.Hash));
-            File::DeleteFile(File::GetWritePath("Update.bin"));
+            Cache.SetCache(update_file.Name, temp_file.GetBuf(), temp_file.GetFsize());
+            Cache.SetCache(update_file.Name + ".hash", (uchar*)&update_file.Hash, sizeof(update_file.Hash));
+            FileMngr.DeleteFile("Update.bin");
         }
         // File
         else
         {
-            string from_path = File::GetWritePath("Update.bin");
-            string to_path = File::GetWritePath(update_file.Name);
-            File::DeleteFile(to_path);
-            if (!File::RenameFile(from_path, to_path))
-            {
-                UpdateFilesAbort(STR_FILESYSTEM_ERROR, _str("Can't rename file '{}' to '{}'!", from_path, to_path));
-                return;
-            }
+            FileMngr.DeleteFile(update_file.Name);
+            FileMngr.RenameFile("Update.bin", update_file.Name);
         }
 
         UpdateFilesList->erase(UpdateFilesList->begin());
@@ -4523,7 +4439,8 @@ void FOClient::PlayVideo()
     CurVideo->AverageRenderTime = 0.0;
 
     // Open file
-    if (!CurVideo->RawData.LoadFile(video.FileName.c_str()))
+    CurVideo->RawData = FileMngr.ReadFile(video.FileName);
+    if (!CurVideo->RawData)
     {
         WriteLog("Video file '{}' not found.\n", video.FileName);
         SAFEDEL(CurVideo);
@@ -5176,7 +5093,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_CLIENT, &ProtoMngr, nullptr);
-    if (!Script::Init(pragma_callback, "CLIENT", 0, false, false))
+    if (!Script::Init(FileMngr, pragma_callback, "CLIENT"))
     {
         WriteLog("Unable to start script engine.\n");
         AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
@@ -5184,7 +5101,7 @@ bool FOClient::ReloadScripts()
     }
     Script::SetExceptionCallback([this](const string& str) {
         ShowErrorMessage(str, "");
-        DoRestart = true;
+        throw ClientRestartException("Restart");
     });
 
     // Bind stuff
@@ -5961,7 +5878,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     else if (cmd == "SetLanguage" && args.size() >= 2)
     {
         if (args[1].length() == 4)
-            Self->CurLang.LoadFromCache(args[1].c_str());
+            Self->CurLang.LoadFromCache(Self->Cache, args[1]);
     }
     else if (cmd == "SetResolution" && args.size() >= 3)
     {
@@ -6632,7 +6549,7 @@ int FOClient::SScriptFunc::Global_GetFog(ushort zone_x, ushort zone_y)
         SCRIPT_ERROR_R0("Chosen is destroyed.");
     if (zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight)
         SCRIPT_ERROR_R0("Invalid world map pos arg.");
-    return Self->GmapFog->Get2Bit(zone_x, zone_y);
+    return Self->GmapFog.Get2Bit(zone_x, zone_y);
 }
 
 uint FOClient::SScriptFunc::Global_GetDayTime(uint day_part)
@@ -7069,14 +6986,9 @@ void FOClient::SScriptFunc::Global_AllowSlot(uchar index, bool enable_send)
     CritterView::SlotEnabled[index] = true;
 }
 
-bool FOClient::SScriptFunc::Global_LoadDataFile(string dat_name)
+void FOClient::SScriptFunc::Global_AddDataSource(string dat_name)
 {
-    if (File::LoadDataFile(dat_name))
-    {
-        Self->ResMngr.Refresh();
-        return true;
-    }
-    return false;
+    Self->FileMngr.AddDataSource(dat_name);
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite(string spr_name)
@@ -7676,12 +7588,12 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot(string file_path)
 
 bool FOClient::SScriptFunc::Global_SaveText(string file_path, string text)
 {
-    auto f = DiskFileSystem::OpenFile(_str(file_path).formatPath(), true);
+    DiskFile f = DiskFileSystem::OpenFile(_str(file_path).formatPath(), true);
     if (!f)
         return false;
 
     if (text.length() > 0)
-        DiskFileSystem::WriteFile(f, text.c_str(), (uint)text.length());
+        f.Write(text.c_str(), (uint)text.length());
     return true;
 }
 
@@ -7689,7 +7601,7 @@ void FOClient::SScriptFunc::Global_SetCacheData(string name, const CScriptArray*
 {
     UCharVec data_vec;
     Script::AssignScriptArrayInVector(data_vec, data);
-    Crypt.SetCache(name, data_vec);
+    Self->Cache.SetCache(name, data_vec);
 }
 
 void FOClient::SScriptFunc::Global_SetCacheDataSize(string name, const CScriptArray* data, uint data_size)
@@ -7697,13 +7609,13 @@ void FOClient::SScriptFunc::Global_SetCacheDataSize(string name, const CScriptAr
     UCharVec data_vec;
     Script::AssignScriptArrayInVector(data_vec, data);
     data_vec.resize(data_size);
-    Crypt.SetCache(name, data_vec);
+    Self->Cache.SetCache(name, data_vec);
 }
 
 CScriptArray* FOClient::SScriptFunc::Global_GetCacheData(string name)
 {
     UCharVec data_vec;
-    if (!Crypt.GetCache(name, data_vec))
+    if (!Self->Cache.GetCache(name, data_vec))
         return nullptr;
 
     CScriptArray* arr = Script::CreateArray("uint8[]");
@@ -7713,32 +7625,32 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCacheData(string name)
 
 void FOClient::SScriptFunc::Global_SetCacheDataStr(string name, string str)
 {
-    Crypt.SetCache(name, str);
+    Self->Cache.SetCache(name, str);
 }
 
 string FOClient::SScriptFunc::Global_GetCacheDataStr(string name)
 {
-    return Crypt.GetCache(name);
+    return Self->Cache.GetCache(name);
 }
 
 bool FOClient::SScriptFunc::Global_IsCacheData(string name)
 {
-    return Crypt.IsCache(name);
+    return Self->Cache.IsCache(name);
 }
 
 void FOClient::SScriptFunc::Global_EraseCacheData(string name)
 {
-    Crypt.EraseCache(name);
+    Self->Cache.EraseCache(name);
 }
 
 void FOClient::SScriptFunc::Global_SetUserConfig(CScriptArray* key_values)
 {
-    File cfg_user;
+    OutputFile cfg_user = Self->FileMngr.WriteFile(CONFIG_NAME);
     for (asUINT i = 0; i < key_values->GetSize() - 1; i += 2)
     {
         string& key = *(string*)key_values->At(i);
         string& value = *(string*)key_values->At(i + 1);
         cfg_user.SetStr(_str("{} = {}\n", key, value));
     }
-    cfg_user.SaveFile(CONFIG_NAME);
+    cfg_user.Save();
 }

@@ -1334,7 +1334,7 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __IOsBuild", &GameOpt.IOsBuild));
 
     BIND_ASSERT(engine->RegisterGlobalFunction(
-        "bool LoadDataFile(string dataFileName)", SCRIPT_FUNC(BIND_CLASS Global_LoadDataFile), SCRIPT_FUNC_CONV));
+        "void AddDataSource(string dataSourceName)", SCRIPT_FUNC(BIND_CLASS Global_AddDataSource), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "void AllowSlot(uint8 index, bool enableSend)", SCRIPT_FUNC(BIND_CLASS Global_AllowSlot), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction("bool SetPropertyGetCallback(int propertyValue, ?&in func)",
@@ -1463,13 +1463,6 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
         "uint DecodeUTF8(string text, uint& length)", SCRIPT_FUNC(Global_DecodeUTF8), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "string EncodeUTF8(uint ucs)", SCRIPT_FUNC(Global_EncodeUTF8), SCRIPT_FUNC_CONV));
-    BIND_ASSERT(engine->RegisterGlobalFunction(
-        "array<string>@ GetFolderFileNames(string path, string extension, bool includeSubdirs)",
-        SCRIPT_FUNC(Global_GetFolderFileNames), SCRIPT_FUNC_CONV));
-    BIND_ASSERT(engine->RegisterGlobalFunction(
-        "bool DeleteFile(string fileName)", SCRIPT_FUNC(Global_DeleteFile), SCRIPT_FUNC_CONV));
-    BIND_ASSERT(engine->RegisterGlobalFunction(
-        "void CreateDirectoryTree(string path)", SCRIPT_FUNC(Global_CreateDirectoryTree), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction("void Yield(uint time)", SCRIPT_FUNC(Global_Yield), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction("string SHA1(string text)", SCRIPT_FUNC(Global_SHA1), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction("string SHA2(string text)", SCRIPT_FUNC(Global_SHA2), SCRIPT_FUNC_CONV));

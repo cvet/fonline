@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "GraphicStructures.h"
 
 #define SPRITES_POOL_GROW_SIZE (10000)

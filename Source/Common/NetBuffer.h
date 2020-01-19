@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "NetProtocol_Include.h"
 #include "Testing.h"
 

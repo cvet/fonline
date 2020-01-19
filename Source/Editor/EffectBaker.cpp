@@ -6,7 +6,6 @@
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
-
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
@@ -26,10 +25,10 @@ void EffectBaker::AutoBakeEffects()
     vector<future<void>> futs;
 
     allFiles.ResetCounter();
-    while (allFiles.IsNextFile())
+    while (allFiles.MoveNext())
     {
-        string relative_path;
-        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
+        FileHeader file_header = allFiles.GetCurFileHeader();
+        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
 
         {
             SCOPE_LOCK(bakedFilesLocker);
@@ -41,7 +40,7 @@ void EffectBaker::AutoBakeEffects()
         if (ext != "glsl")
             continue;
 
-        File& file = allFiles.GetCurFile();
+        File file = allFiles.GetCurFile();
         string content(file.GetCStr(), file.GetFsize());
         futs.emplace_back(std::async(&EffectBaker::BakeShaderProgram, this, relative_path, content));
     }

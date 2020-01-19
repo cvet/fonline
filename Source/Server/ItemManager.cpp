@@ -14,7 +14,7 @@
 
 ItemManager::ItemManager(
     ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr) :
-    protoMngr(proto_mngr), entityMngr(entity_mngr), mapMngr(map_mngr), crMngr(cr_mngr)
+    protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, crMngr {cr_mngr}
 {
 }
 

@@ -1,17 +1,21 @@
 #pragma once
 
-#include "AngelScriptExt/scriptdict.h"
 #include "Common.h"
+
+#include "FileSystem.h"
 #include "ScriptInvoker.h"
 #include "ScriptPragmas.h"
-#include "ScriptProfiler.h"
+
+#include "AngelScriptExt/scriptdict.h"
 #include "angelscript.h"
 #include "preprocessor.h"
 #include "scriptarray/scriptarray.h"
 #include "scriptdictionary/scriptdictionary.h"
-
 #ifdef AS_MAX_PORTABILITY
 #include "autowrapper/aswrappedcall.h"
+#endif
+
+#ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
 #define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
@@ -48,7 +52,6 @@ struct EngineData
 {
     ScriptPragmaCallback* PragmaCB;
     ScriptInvoker* Invoker;
-    ScriptProfiler* Profiler;
     StrIntMap CachedEnums;
     map<string, IntStrMap> CachedEnumNames;
 };
@@ -68,8 +71,7 @@ struct EventData;
 class Script
 {
 public:
-    static bool Init(ScriptPragmaCallback* pragma_callback, const string& target, uint profiler_sample_time,
-        bool profiler_save_to_file, bool profiler_dynamic_display);
+    static bool Init(FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target);
     static bool InitMono(const string& target, map<string, UCharVec>* assemblies_data);
     static bool GetMonoAssemblies(const string& target, map<string, UCharVec>& assemblies_data);
     static uint CreateMonoObject(const string& type_name);
@@ -108,9 +110,6 @@ public:
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     static bool LoadDeferredCalls();
 #endif
-
-    static void ProfilerContextCallback(asIScriptContext* ctx, void* obj);
-    static string GetProfilerStatistics();
 
     static StrVec GetCustomEntityTypes();
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)

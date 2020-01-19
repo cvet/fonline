@@ -453,7 +453,7 @@ class DbJson : public DataBase
 public:
     static DbJson* Create(const string& storage_dir)
     {
-        File::CreateDirectoryTree(storage_dir + "/");
+        DiskFileSystem::MakeDirTree(storage_dir + "/");
 
         DbJson* db_json = new DbJson();
         db_json->storageDir = storage_dir;
@@ -463,32 +463,33 @@ public:
     virtual UIntVec GetAllIds(const string& collection_name) override
     {
         UIntVec ids;
-        StrVec paths;
-        File::GetFolderFileNames(storageDir + "/" + collection_name + "/", false, "json", paths);
-        ids.reserve(paths.size());
-        for (const string& path : paths)
-        {
-            string id_str = _str(path).extractFileName().eraseFileExtension();
-            uint id = _str(id_str).toUInt();
-            RUNTIME_ASSERT(id);
-            ids.push_back(id);
-        }
+        DiskFileSystem::IterateDir(storageDir + "/" + collection_name + "/", "json", false,
+            [&ids](const string& path, uint size, uint64 write_time) {
+                string id_str = _str(path).extractFileName().eraseFileExtension();
+                uint id = _str(id_str).toUInt();
+                RUNTIME_ASSERT(id);
+                ids.push_back(id);
+            });
         return ids;
     }
 
 protected:
     virtual Document GetRecord(const string& collection_name, uint id) override
     {
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        auto f = DiskFileSystem::OpenFile(path.c_str(), false);
-        if (!f)
-            return Document();
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
 
-        uint length = DiskFileSystem::GetFileSize(f);
-        char* json = new char[length];
-        bool read_ok = DiskFileSystem::ReadFile(f, json, length);
-        RUNTIME_ASSERT(read_ok);
-        f = nullptr;
+        uint length;
+        char* json;
+        {
+            DiskFile f = DiskFileSystem::OpenFile(path.c_str(), false);
+            if (!f)
+                return Document();
+
+            length = f.GetSize();
+            json = new char[length];
+            bool read_ok = f.Read(json, length);
+            RUNTIME_ASSERT(read_ok);
+        }
 
         bson_t bson;
         bson_error_t error;
@@ -508,10 +509,12 @@ protected:
     {
         RUNTIME_ASSERT(!doc.empty());
 
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        auto f_check = DiskFileSystem::OpenFile(path, false);
-        RUNTIME_ASSERT(!f_check);
-        f_check = nullptr;
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
+
+        {
+            DiskFile f_check = DiskFileSystem::OpenFile(path, false);
+            RUNTIME_ASSERT(!f_check);
+        }
 
         bson_t bson;
         bson_init(&bson);
@@ -529,7 +532,7 @@ protected:
         auto f = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f);
 
-        bool write_ok = DiskFileSystem::WriteFile(f, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = f.Write(pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
     }
 
@@ -537,15 +540,19 @@ protected:
     {
         RUNTIME_ASSERT(!doc.empty());
 
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
-        auto f_read = DiskFileSystem::OpenFile(path, false);
-        RUNTIME_ASSERT(f_read);
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
 
-        uint length = DiskFileSystem::GetFileSize(f_read);
-        char* json = new char[length];
-        bool read_ok = DiskFileSystem::ReadFile(f_read, json, length);
-        RUNTIME_ASSERT(read_ok);
-        f_read = nullptr;
+        uint length;
+        char* json;
+        {
+            auto f_read = DiskFileSystem::OpenFile(path, false);
+            RUNTIME_ASSERT(f_read);
+
+            length = f_read.GetSize();
+            json = new char[length];
+            bool read_ok = f_read.Read(json, length);
+            RUNTIME_ASSERT(read_ok);
+        }
 
         bson_t bson;
         bson_error_t error;
@@ -568,13 +575,13 @@ protected:
         auto f_write = DiskFileSystem::OpenFile(path, true);
         RUNTIME_ASSERT(f_write);
 
-        bool write_ok = DiskFileSystem::WriteFile(f_write, pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
+        bool write_ok = f_write.Write(pretty_json_dump.c_str(), (uint)pretty_json_dump.length());
         RUNTIME_ASSERT(write_ok);
     }
 
     virtual void DeleteRecord(const string& collection_name, uint id) override
     {
-        string path = File::GetWritePath(_str("{}/{}/{}.json", storageDir, collection_name, id));
+        string path = _str("{}/{}/{}.json", storageDir, collection_name, id);
         bool file_deleted = DiskFileSystem::DeleteFile(path);
         RUNTIME_ASSERT(file_deleted);
     }
@@ -593,7 +600,7 @@ class DbUnQLite : public DataBase
 public:
     static DbUnQLite* Create(const string& storage_dir)
     {
-        File::CreateDirectoryTree(storage_dir + "/");
+        DiskFileSystem::MakeDirTree(storage_dir + "/");
 
         unqlite* ping_db;
         string ping_db_path = storage_dir + "/Ping.unqlite";
@@ -613,7 +620,7 @@ public:
         }
 
         unqlite_close(ping_db);
-        File::DeleteFile(ping_db_path);
+        DiskFileSystem::DeleteFile(ping_db_path);
 
         DbUnQLite* db_unqlite = new DbUnQLite();
         db_unqlite->storageDir = storage_dir;

@@ -1,6 +1,6 @@
 #include "MsgFiles.h"
-#include "Crypt.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -206,7 +206,7 @@ void FOMsg::GetBinaryData(UCharVec& data)
     }
 
     // Compress
-    Crypt.Compress(data);
+    Compressor::Compress(data);
 }
 
 bool FOMsg::LoadFromBinaryData(const UCharVec& data)
@@ -215,7 +215,7 @@ bool FOMsg::LoadFromBinaryData(const UCharVec& data)
 
     // Uncompress
     UCharVec data_copy = data;
-    if (!Crypt.Uncompress(data_copy, 10))
+    if (!Compressor::Uncompress(data_copy, 10))
         return false;
 
     // Read count of strings
@@ -245,17 +245,6 @@ bool FOMsg::LoadFromBinaryData(const UCharVec& data)
     }
 
     return true;
-}
-
-bool FOMsg::LoadFromFile(const string& fname)
-{
-    Clear();
-
-    File file;
-    if (!file.LoadFile(fname))
-        return false;
-
-    return LoadFromString(file.GetCStr());
 }
 
 bool FOMsg::LoadFromString(const string& str)
@@ -318,20 +307,6 @@ void FOMsg::LoadFromMap(const StrMap& kv)
     }
 }
 
-bool FOMsg::SaveToFile(const string& fname, bool to_data)
-{
-    string str;
-    for (auto it = strData.begin(), end = strData.end(); it != end; it++)
-        str += _str("{{{}}}{{}}{{{}}}", it->first, it->second);
-
-    char* buf = (char*)str.c_str();
-    uint buf_len = (uint)str.length();
-
-    File fm;
-    fm.SetData(buf, buf_len);
-    return fm.SaveFile(fname);
-}
-
 void FOMsg::Clear()
 {
     strData.clear();
@@ -368,31 +343,30 @@ LanguagePack::LanguagePack()
     IsAllMsgLoaded = false;
 }
 
-bool LanguagePack::LoadFromFiles(const string& lang_name)
+void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == 4);
     memcpy(NameStr, lang_name.c_str(), 4);
     NameStr[4] = 0;
     bool fail = false;
 
-    FileCollection msg_files("msg");
-    while (msg_files.IsNextFile())
+    FileCollection msg_files = file_mngr.FilterFiles("msg");
+    while (msg_files.MoveNext())
     {
-        string name, path;
-        File& msg_file = msg_files.GetNextFile(&name, &path);
+        File msg_file = msg_files.GetCurFile();
 
         // Check pattern '...Texts/lang/file'
-        StrVec dirs = _str(path).split('/');
+        StrVec dirs = _str(msg_file.GetPath()).split('/');
         if (dirs.size() >= 3 && dirs[dirs.size() - 3] == "Texts" && dirs[dirs.size() - 2] == lang_name)
         {
             for (int i = 0; i < TEXTMSG_COUNT; i++)
             {
                 string msg_name = _str(TextMsgFileName[i]).eraseFileExtension();
-                if (_str(msg_name).compareIgnoreCase(name))
+                if (_str(msg_name).compareIgnoreCase(msg_file.GetName()))
                 {
                     if (!Msg[i].LoadFromString(msg_file.GetCStr()))
                     {
-                        WriteLog("Invalid MSG file '{}'.\n", path);
+                        WriteLog("Invalid MSG file '{}'.\n", msg_file.GetPath());
                         fail = true;
                     }
                     break;
@@ -405,10 +379,9 @@ bool LanguagePack::LoadFromFiles(const string& lang_name)
         WriteLog("Unable to load '{}' from file.\n", TextMsgFileName[TEXTMSG_GAME]);
 
     IsAllMsgLoaded = (Msg[TEXTMSG_GAME].GetSize() > 0 && !fail);
-    return IsAllMsgLoaded;
 }
 
-bool LanguagePack::LoadFromCache(const string& lang_name)
+void LanguagePack::LoadFromCache(CacheStorage& cache, const string& lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == 4);
     memcpy(NameStr, lang_name.c_str(), 4);
@@ -418,7 +391,7 @@ bool LanguagePack::LoadFromCache(const string& lang_name)
     for (int i = 0; i < TEXTMSG_COUNT; i++)
     {
         uint buf_len;
-        uchar* buf = Crypt.GetCache(GetMsgCacheName(i), buf_len);
+        uchar* buf = cache.GetCache(GetMsgCacheName(i), buf_len);
         if (buf)
         {
             UCharVec data;
@@ -438,8 +411,7 @@ bool LanguagePack::LoadFromCache(const string& lang_name)
     if (errors)
         WriteLog("Cached language '{}' not found.\n", NameStr);
 
-    IsAllMsgLoaded = errors == 0;
-    return IsAllMsgLoaded;
+    IsAllMsgLoaded = (errors == 0);
 }
 
 string LanguagePack::GetMsgCacheName(int msg_num)

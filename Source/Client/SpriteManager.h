@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "FileSystem.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
@@ -96,7 +97,7 @@ class SpriteManager
 {
 private:
 public:
-    SpriteManager(EffectManager& effect_mngr);
+    SpriteManager(FileManager& file_mngr, EffectManager& effect_mngr);
     ~SpriteManager();
 
     void Preload3dModel(const string& model_name);
@@ -119,8 +120,9 @@ public:
     void BlinkWindow();
 
 private:
-    SDL_Window* mainWindow {};
+    FileManager& fileMngr;
     EffectManager& effectMngr;
+    SDL_Window* mainWindow {};
     Animation3dManager* anim3dMngr {};
     Matrix projectionMatrixCM {};
     bool sceneBeginned {};

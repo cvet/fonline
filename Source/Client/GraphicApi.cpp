@@ -9,7 +9,6 @@ bool OGL_framebuffer_object_ext = false;
 bool OGL_framebuffer_multisample = false;
 bool OGL_texture_multisample = false;
 bool OGL_vertex_array_object = false;
-bool OGL_get_program_binary = false;
 
 bool GraphicApi::Init()
 {
@@ -32,7 +31,6 @@ bool GraphicApi::Init()
 #else
     OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
 #endif
-    OGL_get_program_binary = GLEW_ARB_get_program_binary != 0;
 #endif
 
 // OpenGL ES extensions
@@ -44,7 +42,6 @@ bool GraphicApi::Init()
     OGL_framebuffer_multisample = false;
     OGL_texture_multisample = false;
     OGL_vertex_array_object = false;
-    OGL_get_program_binary = false;
 #ifdef FO_ANDROID
     OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
     OGL_framebuffer_multisample = SDL_GL_ExtensionSupported("GL_IMG_multisampled_render_to_texture");

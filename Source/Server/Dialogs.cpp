@@ -1,7 +1,6 @@
 #include "Dialogs.h"
 #include "Critter.h"
 #include "FileSystem.h"
-#include "IniFile.h"
 #include "Item.h"
 #include "Location.h"
 #include "Log.h"
@@ -74,42 +73,33 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
     return prop->GetRegIndex();
 }
 
-DialogManager::~DialogManager()
-{
-    for (auto& dlg : dialogPacks)
-        delete dlg.second;
-}
-
-bool DialogManager::LoadDialogs()
+bool DialogManager::LoadDialogs(FileManager& file_mngr)
 {
     WriteLog("Load dialogs...\n");
 
-    for (auto& dlg : dialogPacks)
-        delete dlg.second;
     dialogPacks.clear();
 
-    FileCollection files("fodlg");
+    FileCollection files = file_mngr.FilterFiles("fodlg");
     uint files_loaded = 0;
-    while (files.IsNextFile())
+    while (files.MoveNext())
     {
-        string name;
-        File& file = files.GetNextFile(&name);
-        if (!file.IsLoaded())
+        File file = files.GetCurFile();
+        if (!file)
         {
-            WriteLog("Unable to open file '{}'.\n", name);
+            WriteLog("Unable to open file '{}'.\n", file.GetName());
             continue;
         }
 
-        DialogPack* pack = ParseDialog(name.c_str(), (char*)file.GetBuf());
+        DialogPack* pack = ParseDialog(file.GetName(), (char*)file.GetBuf());
         if (!pack)
         {
-            WriteLog("Unable to parse dialog '{}'.\n", name);
+            WriteLog("Unable to parse dialog '{}'.\n", file.GetName());
             continue;
         }
 
         if (!AddDialog(pack))
         {
-            WriteLog("Unable to add dialog '{}'.\n", name);
+            WriteLog("Unable to add dialog '{}'.\n", file.GetName());
             continue;
         }
 
@@ -124,7 +114,7 @@ bool DialogManager::AddDialog(DialogPack* pack)
 {
     if (dialogPacks.count(pack->PackId))
     {
-        WriteLog("Dialog '{}' already added.\n", pack->PackName.c_str());
+        WriteLog("Dialog '{}' already added.\n", pack->PackName);
         return false;
     }
 
@@ -134,8 +124,7 @@ bool DialogManager::AddDialog(DialogPack* pack)
         uint check_pack_id = it->first & DLGID_MASK;
         if (pack_id == check_pack_id)
         {
-            WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName.c_str(),
-                it->second->PackName.c_str());
+            WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName, it->second->PackName);
             return false;
         }
     }
@@ -147,7 +136,7 @@ bool DialogManager::AddDialog(DialogPack* pack)
 DialogPack* DialogManager::GetDialog(hash pack_id)
 {
     auto it = dialogPacks.find(pack_id);
-    return it != dialogPacks.end() ? it->second : nullptr;
+    return it != dialogPacks.end() ? it->second.get() : nullptr;
 }
 
 DialogPack* DialogManager::GetDialogByIndex(uint index)
@@ -155,24 +144,21 @@ DialogPack* DialogManager::GetDialogByIndex(uint index)
     auto it = dialogPacks.begin();
     while (index-- && it != dialogPacks.end())
         ++it;
-    return it != dialogPacks.end() ? it->second : nullptr;
+    return it != dialogPacks.end() ? it->second.get() : nullptr;
 }
 
 void DialogManager::EraseDialog(hash pack_id)
 {
     auto it = dialogPacks.find(pack_id);
-    if (it == dialogPacks.end())
-        return;
-
-    delete it->second;
-    dialogPacks.erase(it);
+    if (it != dialogPacks.end())
+        dialogPacks.erase(it);
 }
 
 DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& data)
 {
-    IniFile fodlg;
+    ConfigFile fodlg {""};
     fodlg.CollectContent();
-    fodlg.AppendStr(data);
+    fodlg.AppendData(data);
 
 #define LOAD_FAIL(err) \
     { \

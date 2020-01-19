@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Common.h"
+
+#include "FileSystem.h"
 #include "MsgFiles.h"
 #include "Properties.h"
 
@@ -189,7 +191,7 @@ public:
     using TileVec = vector<Tile>;
 
     PROPERTIES_HEADER();
-    CLASS_PROPERTY(string, FileDir);
+    CLASS_PROPERTY(string, FilePath);
     CLASS_PROPERTY(ushort, Width);
     CLASS_PROPERTY(ushort, Height);
     CLASS_PROPERTY(ushort, WorkHexX);
@@ -208,11 +210,12 @@ private:
     using ItemLoadFunc = std::function<bool(uint id, ProtoItem* proto, const StrMap& kv)>;
     using TileLoadFunc = std::function<void(Tile&& tile)>;
 
-    bool BaseLoad(ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFunc item_load, TileLoadFunc tile_load);
+    bool BaseLoad(FileManager& file_mngr, ProtoManager& proto_mngr, CrLoadFunc cr_load, ItemLoadFunc item_load,
+        TileLoadFunc tile_load);
 
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 public:
-    bool ServerLoad(ProtoManager& proto_mngr);
+    bool ServerLoad(FileManager& file_mngr, ProtoManager& proto_mngr);
     void GetStaticItemTriggers(ushort hx, ushort hy, ItemVec& triggers);
     Item* GetStaticItem(ushort hx, ushort hy, hash pid);
     void GetStaticItemsHex(ushort hx, ushort hy, ItemVec& items);
@@ -240,10 +243,9 @@ private:
 
 #if defined(FONLINE_EDITOR)
 public:
-    static bool IsMapFile(const string& fname);
-    void GenNew();
-    bool EditorLoad(ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr);
-    bool EditorSave(const string& custom_name);
+    bool EditorLoad(
+        FileManager& file_mngr, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr);
+    void EditorSave(FileManager& file_mngr, const string& custom_name);
 
     TileVec Tiles;
     EntityVec AllEntities;

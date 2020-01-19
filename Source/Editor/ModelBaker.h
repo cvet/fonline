@@ -2,8 +2,8 @@
 
 #include "Common.h"
 
-class File;
-class FileCollection;
+#include "FileSystem.h"
+
 namespace fbxsdk
 {
     class FbxManager;

@@ -23,11 +23,10 @@ ModelBaker::~ModelBaker()
 void ModelBaker::AutoBakeModels()
 {
     allFiles.ResetCounter();
-    while (allFiles.IsNextFile())
+    while (allFiles.MoveNext())
     {
-        string relative_path;
-        allFiles.GetNextFile(nullptr, nullptr, &relative_path, true);
-
+        FileHeader file_header = allFiles.GetCurFileHeader();
+        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
         if (bakedFiles.count(relative_path))
             continue;
 
@@ -35,7 +34,7 @@ void ModelBaker::AutoBakeModels()
         if (!Is3dExtensionSupported(ext))
             continue;
 
-        File& file = allFiles.GetCurFile();
+        File file = allFiles.GetCurFile();
         UCharVec data = BakeFile(relative_path, file);
         bakedFiles.emplace(relative_path, std::move(data));
     }
@@ -99,10 +98,15 @@ public:
             file->SetCurPos(file->GetFsize() - (uint)offset);
     }
 
+    virtual int Read(void* data, int size) const override
+    {
+        file->CopyMem(data, size);
+        return size;
+    }
+
     virtual EState GetState() override { return curState; }
     virtual bool Flush() override { return true; }
     virtual int Write(const void* data, int size) override { return 0; }
-    virtual int Read(void* data, int size) const override { return file->CopyMem(data, size) ? size : 0; }
     virtual int GetReaderID() const override { return 0; }
     virtual int GetWriterID() const override { return -1; }
     virtual long GetPosition() const override { return file->GetCurPos(); }
@@ -369,20 +373,17 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
         aiReleaseImport(scene);
     }
 
-    // Make new file
-    File converted_file;
-    root_bone->Save(converted_file);
-    converted_file.SetBEUInt((uint)loaded_animations.size());
+    UCharVec data;
+    DataWriter writer {data};
+    root_bone->Save(writer);
+    writer.Write((uint)loaded_animations.size());
     for (size_t i = 0; i < loaded_animations.size(); i++)
-        loaded_animations[i]->Save(converted_file);
+        loaded_animations[i]->Save(writer);
 
     delete root_bone;
     for (size_t i = 0; i < loaded_animations.size(); i++)
         delete loaded_animations[i];
 
-    UCharVec data;
-    DataWriter writer {data};
-    writer.WritePtr(&data[0], data.size());
     return std::move(data);
 }
 

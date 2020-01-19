@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Common.h"
+
 #include "NetBuffer.h"
-#include "zlib.h"
 
 class NetConnection
 {

@@ -215,11 +215,21 @@ public:
     const char* what() const noexcept override { return exceptionMessage.c_str(); }
 
 private:
-    string exceptionMessage;
-    vector<string> exceptionParams;
+    string exceptionMessage {};
+    vector<string> exceptionParams {};
 };
 
-// Non copyable (but movable) base class
+#define DECLARE_EXCEPTION(exception_name) \
+    class exception_name : public fo_exception \
+    { \
+    public: \
+        template<typename... Args> \
+        exception_name(Args... args) : fo_exception(std::forward<Args>(args)...) \
+        { \
+        } \
+    }
+
+// Non copyable (but movable) class decorator
 class NonCopyable
 {
 public:
@@ -229,6 +239,198 @@ public:
     NonCopyable(NonCopyable&&) = default;
     NonCopyable& operator=(NonCopyable&&) = default;
 };
+
+// Non movable (and copyable) class decorator
+class NonMovable
+{
+public:
+    NonMovable() = default;
+    NonMovable(const NonMovable&) = delete;
+    NonMovable& operator=(const NonMovable&) = delete;
+    NonMovable(NonMovable&&) = delete;
+    NonMovable& operator=(NonMovable&&) = delete;
+};
+
+// Static class decorator
+class StaticClass
+{
+public:
+    StaticClass() = delete;
+    StaticClass(const StaticClass&) = delete;
+    StaticClass& operator=(const StaticClass&) = delete;
+    StaticClass(StaticClass&&) = delete;
+    StaticClass& operator=(StaticClass&&) = delete;
+};
+
+// Event system
+class EventUnsubscriberCallback : public NonCopyable
+{
+    template<typename...>
+    friend class EventObserver;
+    friend class EventUnsubscriber;
+
+private:
+    using Callback = std::function<void()>;
+    EventUnsubscriberCallback(Callback cb) : unsubscribeCallback {cb} {}
+    Callback unsubscribeCallback {};
+};
+
+class EventUnsubscriber : public NonCopyable
+{
+    template<typename...>
+    friend class EventObserver;
+
+public:
+    EventUnsubscriber() = default;
+    EventUnsubscriber(EventUnsubscriber&&) = default;
+    ~EventUnsubscriber() { Unsubscribe(); }
+    EventUnsubscriber& operator+=(EventUnsubscriberCallback&& cb)
+    {
+        unsubscribeCallbacks.push_back(std::move(cb));
+        return *this;
+    }
+    void Unsubscribe()
+    {
+        for (auto& cb : unsubscribeCallbacks)
+            cb.unsubscribeCallback();
+        unsubscribeCallbacks.clear();
+    }
+
+private:
+    using Callback = std::function<void()>;
+    EventUnsubscriber(EventUnsubscriberCallback cb) { unsubscribeCallbacks.push_back(std::move(cb)); }
+    vector<EventUnsubscriberCallback> unsubscribeCallbacks {};
+};
+
+template<typename... Args>
+class EventObserver : public NonCopyable, public NonMovable
+{
+    template<typename...>
+    friend class EventDispatcher;
+
+public:
+    using Callback = std::function<void(Args...)>;
+
+    EventObserver() = default;
+    EventObserver(EventObserver&&) = default;
+    ~EventObserver() { ThrowException(); }
+    [[nodiscard]] EventUnsubscriberCallback operator+=(Callback cb)
+    {
+        auto it = subscriberCallbacks.insert(subscriberCallbacks.end(), cb);
+        return EventUnsubscriberCallback([this, it]() { subscriberCallbacks.erase(it); });
+    }
+
+private:
+    void ThrowException()
+    {
+        if (!std::uncaught_exceptions())
+            throw fo_exception("Some of subscriber still alive", subscriberCallbacks.size());
+    }
+
+    list<Callback> subscriberCallbacks {};
+};
+
+template<typename... Args>
+class EventDispatcher : public NonCopyable
+{
+public:
+    using ObserverType = EventObserver<Args...>;
+    EventDispatcher(ObserverType& obs) : observer {obs} {}
+    void Dispatch(Args... args)
+    {
+        for (auto& cb : observer.callbacks)
+            cb(std::forward<Args>(args)...);
+    }
+
+private:
+    ObserverType& observer;
+};
+
+// Raw pointer observation
+class Pointable : public NonMovable
+{
+    template<typename>
+    friend class ptr;
+
+public:
+    virtual ~Pointable()
+    {
+        if (ptrCounter)
+            ThrowException();
+    }
+
+private:
+    void ThrowException()
+    {
+        if (!std::uncaught_exceptions())
+            throw fo_exception("Some of pointer still alive", ptrCounter);
+    }
+
+    uint ptrCounter {};
+};
+
+template<typename T>
+class ptr
+{
+    static_assert(std::is_base_of<Pointable, T>::value, "T must inherit from Pointable");
+    using type = ptr<T>;
+
+public:
+    ptr() = default;
+    ptr(T* p) : value {p}
+    {
+        if (value)
+            value->ptrCounter++;
+    }
+    ptr(const type& other)
+    {
+        value = other.value;
+        value->ptrCounter++;
+    }
+    ptr& operator=(const type& other)
+    {
+        if (value)
+            value->ptrCounter--;
+        value = other.value;
+        if (value)
+            value->ptrCounter++;
+    }
+    ptr(type&& other)
+    {
+        value = other.value;
+        other.value = nullptr;
+    }
+    ptr&& operator=(type&& other)
+    {
+        if (value)
+            value->ptrCounter--;
+        value = other.value;
+        other.value = nullptr;
+    }
+    ~ptr()
+    {
+        if (value)
+            value->ptrCounter--;
+    }
+    T* operator->() { return value; }
+    T& operator*() { return *value; }
+    operator bool() { return !!value; }
+    bool operator==(const T* other) { return value == other; }
+    bool operator==(const type& other) { return value == other.value; }
+    bool operator!=(const T* other) { return value != other; }
+    bool operator!=(const type& other) { return value != other.value; }
+    // T* operator&() { return value; }
+    // T* get() { return value; }
+
+private:
+    T* value {};
+};
+
+// C-strings literal helpers
+size_t constexpr operator"" _len(const char* str, size_t size)
+{
+    return size;
+}
 
 // Generic helpers
 #define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
@@ -297,7 +499,7 @@ public:
 #define MAX_INT (0x7FFFFFFF)
 
 // Generic
-#define CLIENT_DATA "./Data/"
+#define CONFIG_NAME "FOnline.cfg"
 #define WORLD_START_TIME "07:00 30:10:2246 x00"
 #define TEMP_BUF_SIZE (8192)
 #define MAX_FOPATH UTF8_BUF_SIZE(2048)
@@ -731,6 +933,14 @@ public:
     {
         readPos += size;
         return size ? &dataBuf[readPos - size] : nullptr;
+    }
+
+    template<class T>
+    inline void ReadPtr(T* ptr, size_t size)
+    {
+        readPos += size;
+        if (size)
+            memcpy(ptr, &dataBuf[readPos - size], size);
     }
 
 private:
