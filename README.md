@@ -1,7 +1,7 @@
 # FOnline Engine
 
-### Engine currently in unusable state due to heavy refactoring.
-### Estimated finishing date is middle of this year.
+> Engine currently in unusable state due to heavy refactoring.  
+> Estimated finishing date is middle of this year.
 
 [![GitHub](https://github.com/cvet/fonline/workflows/make-sdk/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
