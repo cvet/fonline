@@ -5,8 +5,8 @@
 class Settings
 {
 public:
-#define SETTING(type, name, init, desc) type name = init
-#define SETTING_ARR(type, name) type name = {}
+#define SETTING(type, name, ...) type name = {__VA_ARGS__}
+#define CONST_SETTING(type, name, ...) const type name = {__VA_ARGS__}
 #include "Settings_Include.h"
 
     void Init(int argc, char** argv);
@@ -14,4 +14,3 @@ public:
 };
 
 extern Settings GameOpt;
-extern StrVec ProjectFiles;

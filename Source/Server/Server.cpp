@@ -1790,7 +1790,7 @@ bool FOServer::InitReal()
     FileMngr.AddDataSource("./");
 
     // Modules data files
-    for (auto& module_path : ProjectFiles)
+    for (auto& module_path : GameOpt.ProjectFiles)
         FileMngr.AddDataSource(module_path);
 
     // Delete intermediate files if engine have been updated
@@ -1941,7 +1941,7 @@ bool FOServer::InitReal()
     Statistics.ServerStartTick = Timer::FastTick();
 
     // Net
-    ushort port = GameOpt.Port;
+    ushort port = GameOpt.ListenPort;
     WriteLog("Starting server on ports {} and {}.\n", port, port + 1);
 
     if (!(TcpServer = NetServerBase::StartTcpServer(

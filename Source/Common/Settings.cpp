@@ -4,12 +4,8 @@
 #include "WinApi_Include.h"
 
 #include "imgui.h"
-#ifndef FO_WINDOWS
-#include <unistd.h>
-#endif
 
 Settings GameOpt;
-StrVec ProjectFiles;
 
 static void SetEntry(string& entry, const string& value)
 {
@@ -38,6 +34,9 @@ static void SetEntry(bool& entry, const string& value)
 static void SetEntry(float& entry, const string& value)
 {
     entry = _str(value).toFloat();
+}
+static void SetEntry(vector<string>& entry, const string& value)
+{
 }
 
 static void DrawEntry(const char* name, const string& entry)
@@ -68,6 +67,10 @@ static void DrawEntry(const char* name, const float& entry)
 {
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
+static void DrawEntry(const char* name, const vector<string>& entry)
+{
+    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+}
 
 static void DrawEditableEntry(const char* name, string& entry)
 {
@@ -97,65 +100,71 @@ static void DrawEditableEntry(const char* name, float& entry)
 {
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
+static void DrawEditableEntry(const char* name, vector<string>& entry)
+{
+    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+}
 
 static void InitSettings(Settings& settings, StrMap& init_values)
 {
-#define SETTING(type, name, init, desc) \
+#define SETTING(type, name, ...) \
     if (init_values.count(#name)) \
     SetEntry(settings.name, init_values[#name])
-#define SETTING_ARR(type, name)
+#define CONST_SETTING(type, name, ...) \
+    if (init_values.count(#name)) \
+    SetEntry(const_cast<type&>(settings.name), init_values[#name])
 #include "Settings_Include.h"
 
 #ifdef FO_WEB
-    settings.WebBuild = true;
+    const_cast<bool&>(settings.WebBuild) = true;
 #else
-    settings.WebBuild = false;
+    const_cast<bool&>(settings.WebBuild) = false;
 #endif
 #ifdef FO_WINDOWS
-    settings.WindowsBuild = true;
+    const_cast<bool&>(settings.WindowsBuild) = true;
 #else
-    settings.WindowsBuild = false;
+    const_cast<bool&>(settings.WindowsBuild) = false;
 #endif
 #ifdef FO_LINUX
-    settings.LinuxBuild = true;
+    const_cast<bool&>(settings.LinuxBuild) = true;
 #else
-    settings.LinuxBuild = false;
+    const_cast<bool&>(settings.LinuxBuild) = false;
 #endif
 #ifdef FO_MAC
-    settings.MacOsBuild = true;
+    const_cast<bool&>(settings.MacOsBuild) = true;
 #else
-    settings.MacOsBuild = false;
+    const_cast<bool&>(settings.MacOsBuild) = false;
 #endif
 #ifdef FO_ANDROID
-    settings.AndroidBuild = true;
+    const_cast<bool&>(settings.AndroidBuild) = true;
 #else
-    settings.AndroidBuild = false;
+    const_cast<bool&>(settings.AndroidBuild) = false;
 #endif
 #ifdef FO_IOS
-    settings.IOsBuild = true;
+    const_cast<bool&>(settings.IOsBuild) = true;
 #else
-    settings.IOsBuild = false;
+    const_cast<bool&>(settings.IOsBuild) = false;
 #endif
-    settings.DesktopBuild = (settings.WindowsBuild || settings.LinuxBuild || settings.MacOsBuild);
-    settings.TabletBuild = (settings.AndroidBuild || settings.IOsBuild);
+    const_cast<bool&>(settings.DesktopBuild) = (settings.WindowsBuild || settings.LinuxBuild || settings.MacOsBuild);
+    const_cast<bool&>(settings.TabletBuild) = (settings.AndroidBuild || settings.IOsBuild);
 
 #ifdef FO_WINDOWS
     if (GetSystemMetrics(SM_TABLETPC) != 0)
     {
-        settings.DesktopBuild = false;
-        settings.TabletBuild = true;
+        const_cast<bool&>(settings.DesktopBuild) = false;
+        const_cast<bool&>(settings.TabletBuild) = true;
     }
 #endif
 }
 
 static void DrawSettings(Settings& settings, bool editable)
 {
-#define SETTING(type, name, init, desc) \
+#define SETTING(type, name, ...) \
     if (editable) \
         DrawEditableEntry(#name, settings.name); \
     else \
         DrawEntry(#name, settings.name)
-#define SETTING_ARR(type, name)
+#define CONST_SETTING(type, name, ...) DrawEntry(#name, settings.name)
 #include "Settings_Include.h"
 }
 
@@ -172,18 +181,18 @@ void Settings::Init(int argc, char** argv)
 
         // Find work path entry
         if (Str::Compare(argv[i], "-WorkDir") && i < argc - 1)
-            WorkDir = argv[i + 1];
+            const_cast<string&>(WorkDir) = argv[i + 1];
         if (Str::Compare(argv[i], "-ServerDir") && i < argc - 1)
-            ServerDir = argv[i + 1];
+            const_cast<string&>(ServerDir) = argv[i + 1];
 
         // Find config path entry
         if (Str::Compare(argv[i], "-AddConfig") && i < argc - 1)
             configs.push_back(argv[i + 1]);
 
         // Make single line
-        CommandLine += argv[i];
+        const_cast<string&>(CommandLine) += argv[i];
         if (i < argc - 1)
-            CommandLine += " ";
+            const_cast<string&>(CommandLine) += " ";
 
         // Map commands
         if (argv[i][0] == '-')
@@ -208,16 +217,6 @@ void Settings::Init(int argc, char** argv)
         UNUSED_VARIABLE(r);
 #endif
     }
-#ifdef FO_WINDOWS
-    wchar_t dir_buf[TEMP_BUF_SIZE];
-    GetCurrentDirectoryW(TEMP_BUF_SIZE, dir_buf);
-    WorkDir = _str().parseWideChar(dir_buf);
-#else
-    char dir_buf[TEMP_BUF_SIZE];
-    char* r = getcwd(dir_buf, sizeof(dir_buf));
-    UNUSED_VARIABLE(r);
-    WorkDir = dir_buf;
-#endif
 
     // Injected config
     static char InternalConfig[5022] = {
@@ -284,12 +283,15 @@ void Settings::Init(int argc, char** argv)
         {
             char* buf = new char[config_file.GetSize()];
             if (config_file.Read(buf, config_file.GetSize()))
+            {
                 config.AppendData(buf);
+                config.AppendData("\n");
+            }
             delete[] buf;
         }
     }
 
-    // Command line config
+    // Command line settings
     for (int i = 0; i < argc; i++)
     {
         string arg = argv[i];
@@ -308,142 +310,9 @@ void Settings::Init(int argc, char** argv)
         config.SetStr("", arg.substr(1), arg_value);
     }
 
-// Cache project files
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    string project_files = config.GetStr("", "ProjectFiles");
-    for (string project_path : _str(project_files).split(';'))
-    {
-        // Todo: settings
-        // project_path = _str(config_dir).combinePath(project_path).normalizePathSlashes().resolvePath();
-        // if (!project_path.empty() && project_path.back() != '/' && project_path.back() != '\\')
-        //    project_path += "/";
-        ProjectFiles.push_back(_str(project_path).normalizePathSlashes());
-    }
-#endif
-
-// Defines
-#define GETOPTIONS_CMD_LINE_INT(opt, str_id) \
-    do \
-    { \
-        string str = config.GetStr("", str_id); \
-        if (!str.empty()) \
-            opt = config.GetInt("", str_id); \
-    } while (0)
-#define GETOPTIONS_CMD_LINE_BOOL(opt, str_id) \
-    do \
-    { \
-        string str = config.GetStr("", str_id); \
-        if (!str.empty()) \
-            opt = config.GetInt("", str_id) != 0; \
-    } while (0)
-#define GETOPTIONS_CMD_LINE_BOOL_ON(opt, str_id) \
-    do \
-    { \
-        string str = config.GetStr("", str_id); \
-        if (!str.empty()) \
-            opt = true; \
-    } while (0)
-#define GETOPTIONS_CMD_LINE_STR(opt, str_id) \
-    do \
-    { \
-        string str = config.GetStr("", str_id); \
-        if (!str.empty()) \
-            opt = str; \
-    } while (0)
-#define GETOPTIONS_CHECK(val_, min_, max_, def_) \
-    do \
-    { \
-        int val__ = (int)val_; \
-        if (val__ < min_ || val__ > max_) \
-            val_ = def_; \
-    } while (0)
-
-    string buf;
-#define READ_CFG_STR_DEF(cfg, key, def_val) buf = config.GetStr("", key, def_val)
-
-    // Language
-    READ_CFG_STR_DEF(*MainConfig, "Language", "russ");
-    GETOPTIONS_CMD_LINE_STR(buf, "Language");
-
-    // Int / Bool
-    OpenGLDebug = config.GetInt("", "OpenGLDebug", 0) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(OpenGLDebug, "OpenGLDebug");
-    AssimpLogging = config.GetInt("", "AssimpLogging", 0) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(AssimpLogging, "AssimpLogging");
-    FullScreen = config.GetInt("", "FullScreen", 0) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(FullScreen, "FullScreen");
-    VSync = config.GetInt("", "VSync", 0) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(VSync, "VSync");
-    Light = config.GetInt("", "Light", 20);
-    GETOPTIONS_CMD_LINE_INT(Light, "Light");
-    GETOPTIONS_CHECK(Light, 0, 100, 20);
-    ScrollDelay = config.GetInt("", "ScrollDelay", 10);
-    GETOPTIONS_CMD_LINE_INT(ScrollDelay, "ScrollDelay");
-    GETOPTIONS_CHECK(ScrollDelay, 0, 100, 10);
-    ScrollStep = config.GetInt("", "ScrollStep", 12);
-    GETOPTIONS_CMD_LINE_INT(ScrollStep, "ScrollStep");
-    GETOPTIONS_CHECK(ScrollStep, 4, 32, 12);
-    TextDelay = config.GetInt("", "TextDelay", 3000);
-    GETOPTIONS_CMD_LINE_INT(TextDelay, "TextDelay");
-    GETOPTIONS_CHECK(TextDelay, 1000, 30000, 3000);
-    DamageHitDelay = config.GetInt("", "DamageHitDelay", 0);
-    GETOPTIONS_CMD_LINE_INT(DamageHitDelay, "OptDamageHitDelay");
-    GETOPTIONS_CHECK(DamageHitDelay, 0, 30000, 0);
-    ScreenWidth = config.GetInt("", "ScreenWidth", 0);
-    GETOPTIONS_CMD_LINE_INT(ScreenWidth, "ScreenWidth");
-    GETOPTIONS_CHECK(ScreenWidth, 100, 30000, 800);
-    ScreenHeight = config.GetInt("", "ScreenHeight", 0);
-    GETOPTIONS_CMD_LINE_INT(ScreenHeight, "ScreenHeight");
-    GETOPTIONS_CHECK(ScreenHeight, 100, 30000, 600);
-    AlwaysOnTop = config.GetInt("", "AlwaysOnTop", false) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(AlwaysOnTop, "AlwaysOnTop");
-    FixedFPS = config.GetInt("", "FixedFPS", 100);
-    GETOPTIONS_CMD_LINE_INT(FixedFPS, "FixedFPS");
-    GETOPTIONS_CHECK(FixedFPS, -10000, 10000, 100);
-    MsgboxInvert = config.GetInt("", "InvertMessBox", false) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(MsgboxInvert, "InvertMessBox");
-    MessNotify = config.GetInt("", "WinNotify", true) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(MessNotify, "WinNotify");
-    SoundNotify = config.GetInt("", "SoundNotify", false) != 0;
-    GETOPTIONS_CMD_LINE_BOOL(SoundNotify, "SoundNotify");
-    Port = config.GetInt("", "RemotePort", 4010);
-    GETOPTIONS_CMD_LINE_INT(Port, "RemotePort");
-    GETOPTIONS_CHECK(Port, 0, 0xFFFF, 4000);
-    ProxyType = config.GetInt("", "ProxyType", 0);
-    GETOPTIONS_CMD_LINE_INT(ProxyType, "ProxyType");
-    GETOPTIONS_CHECK(ProxyType, 0, 3, 0);
-    ProxyPort = config.GetInt("", "ProxyPort", 8080);
-    GETOPTIONS_CMD_LINE_INT(ProxyPort, "ProxyPort");
-    GETOPTIONS_CHECK(ProxyPort, 0, 0xFFFF, 1080);
-
-    uint dct = 500;
-#ifdef FO_WINDOWS
-    dct = (uint)GetDoubleClickTime();
-#endif
-    DoubleClickTime = config.GetInt("", "DoubleClickTime", dct);
-    GETOPTIONS_CMD_LINE_INT(DoubleClickTime, "DoubleClickTime");
-    GETOPTIONS_CHECK(DoubleClickTime, 0, 1000, dct);
-
-    GETOPTIONS_CMD_LINE_BOOL_ON(HelpInfo, "HelpInfo");
-    GETOPTIONS_CMD_LINE_BOOL_ON(DebugInfo, "DebugInfo");
-    GETOPTIONS_CMD_LINE_BOOL_ON(DebugNet, "DebugNet");
-
-    // Str
-    READ_CFG_STR_DEF(*MainConfig, "RemoteHost", "localhost");
-    GETOPTIONS_CMD_LINE_STR(buf, "RemoteHost");
-    Host = buf;
-    READ_CFG_STR_DEF(*MainConfig, "ProxyHost", "localhost");
-    GETOPTIONS_CMD_LINE_STR(buf, "ProxyHost");
-    ProxyHost = buf;
-    READ_CFG_STR_DEF(*MainConfig, "ProxyUser", "");
-    GETOPTIONS_CMD_LINE_STR(buf, "ProxyUser");
-    ProxyUser = buf;
-    READ_CFG_STR_DEF(*MainConfig, "ProxyPass", "");
-    GETOPTIONS_CMD_LINE_STR(buf, "ProxyPass");
-    ProxyPass = buf;
-    READ_CFG_STR_DEF(*MainConfig, "KeyboardRemap", "");
-    GETOPTIONS_CMD_LINE_STR(buf, "KeyboardRemap");
-    KeyboardRemap = buf;
+    // Fix Mono path
+    // GameOpt.MonoPath = _str(GameOpt.WorkDir).combinePath(GameOpt.MonoPath).normalizeLineEndings();
+    // DiskFileSystem::ResolvePath(GameOpt.MonoPath);
 }
 
 void Settings::Draw(bool editable)

@@ -58,6 +58,8 @@ private:
 class DiskFileSystem : public StaticClass
 {
 public:
+    static const string InitialDir;
+
     static DiskFile OpenFile(const string& fname, bool write, bool write_through = false);
     static DiskFind FindFiles(const string& path, const string& ext);
 

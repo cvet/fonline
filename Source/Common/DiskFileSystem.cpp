@@ -14,6 +14,25 @@
 #include "SDL.h"
 #endif
 
+const string DiskFileSystem::InitialDir {};
+struct InitialDirInit
+{
+    InitialDirInit()
+    {
+#ifdef FO_WINDOWS
+        wchar_t dir_buf[16384];
+        GetCurrentDirectoryW(sizeof(dir_buf), dir_buf);
+        const_cast<string&>(DiskFileSystem::InitialDir) = _str().parseWideChar(dir_buf);
+#else
+        char dir_buf[16384];
+        char* r = getcwd(dir_buf, sizeof(dir_buf));
+        UNUSED_VARIABLE(r);
+        const_cast<string&>(DiskFileSystem::InitialDir) = dir_buf;
+#endif
+    }
+};
+static InitialDirInit CrtInitialDirInit;
+
 DiskFile DiskFileSystem::OpenFile(const string& fname, bool write, bool write_through)
 {
     return DiskFile(fname, write, write_through);
@@ -771,25 +790,6 @@ bool DiskFileSystem::SetCurrentDir(const string& dir)
     return chdir(resolved_dir.c_str()) == 0;
 #endif
 }
-
-static string InitialDir;
-struct InitialDirInit
-{
-    InitialDirInit()
-    {
-#ifdef FO_WINDOWS
-        wchar_t dir_buf[4096];
-        GetCurrentDirectoryW(sizeof(dir_buf), dir_buf);
-        InitialDir = _str().parseWideChar(dir_buf);
-#else
-        char dir_buf[4096];
-        char* r = getcwd(dir_buf, sizeof(dir_buf));
-        UNUSED_VARIABLE(r);
-        InitialDir = dir_buf;
-#endif
-    }
-};
-static InitialDirInit InitialDirInit_;
 
 void DiskFileSystem::ResetCurDir()
 {

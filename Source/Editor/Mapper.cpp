@@ -153,16 +153,16 @@ FOMapper::FOMapper() :
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if (!GameOpt.Map.empty())
+    if (!GameOpt.StartMap.empty())
     {
-        string map_name = GameOpt.Map;
+        string map_name = GameOpt.StartMap;
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
         bool initialized = pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr);
 
         if (initialized && HexMngr.SetProtoMap(*pmap))
         {
-            int hexX = GameOpt.HexX;
-            int hexY = GameOpt.HexY;
+            int hexX = GameOpt.StartHexX;
+            int hexY = GameOpt.StartHexY;
             if (hexX < 0 || hexX >= pmap->GetWidth())
                 hexX = pmap->GetWorkHexX();
             if (hexY < 0 || hexY >= pmap->GetHeight())
@@ -4166,10 +4166,7 @@ void FOMapper::MessBoxGenerate()
         if (j <= MessBoxScroll)
             continue;
         // Add to message box
-        if (GameOpt.MsgboxInvert)
-            MessBoxCurText += m.Mess; // Back
-        else
-            MessBoxCurText = m.Mess + MessBoxCurText; // Front
+        MessBoxCurText = m.Mess + MessBoxCurText;
         i++;
         if (i >= max_lines)
             break;
@@ -4183,10 +4180,7 @@ void FOMapper::MessBoxDraw()
     if (MessBoxCurText.empty())
         return;
 
-    uint flags = 0;
-    if (!GameOpt.MsgboxInvert)
-        flags |= FT_UPPER | FT_BOTTOM;
-
+    uint flags = FT_UPPER | FT_BOTTOM;
     SprMngr.DrawStr(Rect(IntWWork[0] + IntX, IntWWork[1] + IntY, IntWWork[2] + IntX, IntWWork[3] + IntY),
         MessBoxCurText.c_str(), flags);
 }

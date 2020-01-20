@@ -448,7 +448,7 @@ void FOClient::UpdateFilesLoop()
 
         // Connect to server
         UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
-        NetConnect(GameOpt.Host.c_str(), GameOpt.Port);
+        NetConnect(GameOpt.RemoteHost.c_str(), GameOpt.RemotePort);
         UpdateFilesConnection = true;
     }
     else
@@ -887,7 +887,7 @@ void FOClient::MainLoop()
         // Connect to server
         if (!IsConnected)
         {
-            if (!NetConnect(GameOpt.Host.c_str(), GameOpt.Port))
+            if (!NetConnect(GameOpt.RemoteHost.c_str(), GameOpt.RemotePort))
             {
                 ShowMainScreen(SCREEN_LOGIN);
                 AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));

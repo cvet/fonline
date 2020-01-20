@@ -374,7 +374,7 @@ void SpriteManager::BlinkWindow()
 #ifdef FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
-    if (GameOpt.MessNotify && SDL_GetWindowWMInfo(mainWindow, &info))
+    if (GameOpt.WinNotify && SDL_GetWindowWMInfo(mainWindow, &info))
         FlashWindow(info.info.win.window, true);
 #endif
 }
