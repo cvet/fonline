@@ -255,7 +255,7 @@ static int main_disabled(int argc, char** argv)
     CatchExceptions("FOnlineEditor", FO_VERSION);
     LogToFile("FOnlineEditor.log");
     Settings.ParseArgs(argc, argv);
-        
+
     LogToBuffer(true);
     WriteLog("FOnline Editor ({:#x}).\n", FO_VERSION);
 

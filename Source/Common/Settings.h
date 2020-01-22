@@ -19,7 +19,7 @@ struct DummySettings
 struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings, EditorSettings
 {
 public:
-    GlobalSettings();
+    GlobalSettings() = default;
     void ParseArgs(int argc, char** argv);
     void Draw(bool editable);
 

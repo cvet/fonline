@@ -137,8 +137,10 @@ static void DrawEditableEntry(const char* name, vector<float>& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 
-GlobalSettings::GlobalSettings()
+void GlobalSettings::ParseArgs(int argc, char** argv)
 {
+    DiskFileSystem::ResetCurDir();
+
     // Injected config
     static char internal_config[5022] = {
         "###InternalConfig###\0"
@@ -193,18 +195,11 @@ GlobalSettings::GlobalSettings()
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"};
 
-    DiskFileSystem::ResetCurDir();
-
-    ConfigFile config = ConfigFile(internal_config);
-    for (auto& kv : config.GetApp(""))
-        SetValue(kv.first, kv.second);
-
-    ResetStrongConstants();
-}
-
-void GlobalSettings::ParseArgs(int argc, char** argv)
-{
-    DiskFileSystem::ResetCurDir();
+    {
+        ConfigFile config = ConfigFile(internal_config);
+        for (auto& kv : config.GetApp(""))
+            SetValue(kv.first, kv.second);
+    }
 
     for (int i = 0; i < argc; i++)
     {

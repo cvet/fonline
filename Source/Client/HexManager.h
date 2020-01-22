@@ -107,8 +107,8 @@ using DropVec = vector<Drop*>;
 class HexManager
 {
 public:
-    HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr,
-        SpriteManager& spr_mngr, ResourceManager& res_mngr);
+    HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
+        ResourceManager& res_mngr);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);

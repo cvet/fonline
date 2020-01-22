@@ -82,7 +82,8 @@ class Animation3dManager : public NonCopyable
 public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
-    Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
+    Animation3dManager(
+        RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
     ~Animation3dManager();
 
     Bone* LoadModel(const string& fname);

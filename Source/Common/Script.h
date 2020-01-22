@@ -72,7 +72,8 @@ struct EventData;
 class Script
 {
 public:
-    static bool Init(ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target);
+    static bool Init(
+        ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target);
     static bool InitMono(const string& target, map<string, UCharVec>* assemblies_data);
     static bool GetMonoAssemblies(const string& target, map<string, UCharVec>& assemblies_data);
     static uint CreateMonoObject(const string& type_name);

@@ -363,7 +363,7 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     if (errors)
         return false;
 
-    // Load maps data
+        // Load maps data
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     for (auto& kv : mapProtos)
     {
