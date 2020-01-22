@@ -4,7 +4,9 @@
 
 #include "Dialogs.h"
 #include "Entity.h"
+#include "GeometryHelper.h"
 #include "Networking.h"
+#include "Settings.h"
 #include "Timer.h"
 
 class MapManager;
@@ -25,16 +27,6 @@ class MapManager;
 class Critter : public Entity
 {
     friend class CritterManager;
-
-    uint startBreakTime;
-    uint breakTime;
-    uint waitEndTick;
-
-protected:
-    ItemVec invItems;
-
-    Critter(uint id, EntityType type, ProtoCritter* proto);
-    ~Critter();
 
 public:
     static bool SlotEnabled[0x100];
@@ -266,6 +258,19 @@ public:
     void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier);
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
+
+protected:
+    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett);
+    ~Critter();
+
+    CritterSettings& settings;
+    GeometryHelper geomHelper;
+    ItemVec invItems {};
+
+private:
+    uint startBreakTime {};
+    uint breakTime {};
+    uint waitEndTick {};
 };
 
 class Client : public Critter
@@ -290,7 +295,7 @@ public:
     uint UpdateFilePortion;
     Talking Talk;
 
-    Client(NetConnection* conn, ProtoCritter* proto);
+    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett);
     ~Client();
 
     uint GetIp();
@@ -359,7 +364,7 @@ class Npc : public Critter
     friend class CritterManager;
 
 public:
-    Npc(uint id, ProtoCritter* proto);
+    Npc(uint id, ProtoCritter* proto, CritterSettings& sett);
     ~Npc();
 
     uint GetTalkedPlayers();

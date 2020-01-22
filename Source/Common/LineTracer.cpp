@@ -1,12 +1,13 @@
 #include "LineTracer.h"
 
 LineTracer::LineTracer(
-    ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle, bool is_square)
+    GeometrySettings& sett, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) :
+    settings {sett}, geomHelper(settings)
 {
     maxHx = maxhx;
     maxHy = maxhy;
 
-    if (is_square)
+    if (!settings.MapHexagonal)
     {
         dir = atan2((float)(ty - hy), (float)(tx - hx)) + angle;
         dx = cos(dir);
@@ -90,8 +91,8 @@ uchar LineTracer::GetNextHex(ushort& cx, ushort& cy)
     ushort t2x = cx;
     ushort t1y = cy;
     ushort t2y = cy;
-    MoveHexByDir(t1x, t1y, dir1, maxHx, maxHy);
-    MoveHexByDir(t2x, t2y, dir2, maxHx, maxHy);
+    geomHelper.MoveHexByDir(t1x, t1y, dir1, maxHx, maxHy);
+    geomHelper.MoveHexByDir(t2x, t2y, dir2, maxHx, maxHy);
     float dist1 =
         dx * (y1 - (SQRT3T2_FLOAT * float(t1y) - (float(t1x & 1)) * SQRT3_FLOAT)) - dy * (x1 - 3 * float(t1x));
     float dist2 =

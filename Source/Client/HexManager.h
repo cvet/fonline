@@ -4,29 +4,12 @@
 
 #include "CacheStorage.h"
 #include "Entity.h"
+#include "GeometryHelper.h"
+#include "ProtoMap.h"
+#include "Settings.h"
 #include "Sprites.h"
 
 #define MAX_FIND_PATH (600)
-#define VIEW_WIDTH \
-    ((int)((GameOpt.ScreenWidth / GameOpt.MapHexWidth + ((GameOpt.ScreenWidth % GameOpt.MapHexWidth) ? 1 : 0)) * \
-        GameOpt.SpritesZoom))
-#define VIEW_HEIGHT \
-    ((int)((GameOpt.ScreenHeight / GameOpt.MapHexLineHeight + \
-               ((GameOpt.ScreenHeight % GameOpt.MapHexLineHeight) ? 1 : 0)) * \
-        GameOpt.SpritesZoom))
-#define SCROLL_OX (GameOpt.MapHexWidth)
-#define SCROLL_OY (GameOpt.MapHexLineHeight * 2)
-#define HEX_W (GameOpt.MapHexWidth)
-#define HEX_LINE_H (GameOpt.MapHexLineHeight)
-#define HEX_REAL_H (GameOpt.MapHexHeight)
-#define HEX_OX (GameOpt.MapHexWidth / 2)
-#define HEX_OY (GameOpt.MapHexHeight / 2)
-#define TILE_OX (GameOpt.MapTileOffsX)
-#define TILE_OY (GameOpt.MapTileOffsY)
-#define ROOF_OX (GameOpt.MapRoofOffsX)
-#define ROOF_OY (GameOpt.MapRoofOffsY)
-#define MAX_MOVE_OX (30000)
-#define MAX_MOVE_OY (30000)
 
 class ResourceManager;
 class ProtoManager;
@@ -36,40 +19,26 @@ struct AnyFrames;
 
 struct ViewField
 {
-    int HexX, HexY;
-    int ScrX, ScrY;
-    float ScrXf, ScrYf;
-
-    ViewField() : HexX(0), HexY(0), ScrX(0), ScrY(0), ScrXf(0.0f), ScrYf(0.0f) {};
+    int HexX {};
+    int HexY {};
+    int ScrX {};
+    int ScrY {};
+    float ScrXf {};
+    float ScrYf {};
 };
 
 struct LightSource
 {
-    ushort HexX;
-    ushort HexY;
-    uint ColorRGB;
-    uchar Distance;
-    uchar Flags;
-    int Intensity;
-    short* OffsX;
-    short* OffsY;
-    short LastOffsX;
-    short LastOffsY;
-
-    LightSource(ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags, short* ox = nullptr,
-        short* oy = nullptr) :
-        HexX(hx),
-        HexY(hy),
-        ColorRGB(color),
-        Distance(distance),
-        Flags(flags),
-        Intensity(inten),
-        OffsX(ox),
-        OffsY(oy),
-        LastOffsX(ox ? *ox : 0),
-        LastOffsY(oy ? *oy : 0)
-    {
-    }
+    ushort HexX {};
+    ushort HexY {};
+    uint ColorRGB {};
+    uchar Distance {};
+    uchar Flags {};
+    int Intensity {};
+    short* OffsX {};
+    short* OffsY {};
+    short LastOffsX {};
+    short LastOffsY {};
 };
 using LightSourceVec = vector<LightSource>;
 
@@ -77,26 +46,14 @@ struct Field
 {
     struct Tile
     {
-        AnyFrames* Anim;
-        short OffsX;
-        short OffsY;
-        uchar Layer;
+        AnyFrames* Anim {};
+        short OffsX {};
+        short OffsY {};
+        uchar Layer {};
     };
     using TileVec = vector<Tile>;
 
-    bool IsView;
-    Sprite* SpriteChain;
-    CritterView* Crit;
-    CritterViewVec* DeadCrits;
-    int ScrX;
-    int ScrY;
-    AnyFrames* SimplyTile[2]; // Tile / Roof
-    TileVec* Tiles[2]; // Tile / Roof
-    ItemHexViewVec* Items;
-    ItemHexViewVec* BlockLinesItems;
-    short RoofNum;
-
-    struct
+    struct FlagsType
     {
         bool ScrollBlock : 1;
         bool IsWall : 1;
@@ -106,13 +63,10 @@ struct Field
         bool IsNotRaked : 1;
         bool IsNoLight : 1;
         bool IsMultihex : 1;
-    } Flags;
-
-    uchar Corner;
+    };
 
     Field() = default;
     ~Field();
-
     void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
     void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
     Tile& AddTile(AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof);
@@ -124,42 +78,37 @@ struct Field
     void ProcessCache();
     void AddSpriteToChain(Sprite* spr);
     void UnvalidateSpriteChain();
+
+    bool IsView {};
+    Sprite* SpriteChain {};
+    CritterView* Crit {};
+    CritterViewVec* DeadCrits {};
+    int ScrX {};
+    int ScrY {};
+    AnyFrames* SimplyTile[2] {};
+    TileVec* Tiles[2] {};
+    ItemHexViewVec* Items {};
+    ItemHexViewVec* BlockLinesItems {};
+    short RoofNum {};
+    FlagsType Flags {};
+    uchar Corner {};
 };
 
 struct Drop
 {
-    uint CurSprId;
-    short OffsX;
-    short OffsY;
-    short GroundOffsY;
-    short DropCnt;
-
-    Drop() : CurSprId(0), OffsX(0), OffsY(0), GroundOffsY(0), DropCnt(0) {};
-    Drop(ushort id, short x, short y, short ground_y) :
-        CurSprId(id), OffsX(x), OffsY(y), GroundOffsY(ground_y), DropCnt(-1) {};
+    uint CurSprId {};
+    short OffsX {};
+    short OffsY {};
+    short GroundOffsY {};
+    short DropCnt {};
 };
 using DropVec = vector<Drop*>;
 
 class HexManager
 {
-    ProtoManager& protoMngr;
-    SpriteManager& sprMngr;
-    ResourceManager& resMngr;
-
-    ushort maxHexX = 0;
-    ushort maxHexY = 0;
-    Field* hexField = nullptr;
-    char* hexTrack = nullptr;
-    AnyFrames* picTrack1 = nullptr;
-    AnyFrames* picTrack2 = nullptr;
-    AnyFrames* picHexMask = nullptr;
-    bool isShowTrack = false;
-    bool isShowHex = false;
-    AnyFrames* picHex[3] = {nullptr, nullptr, nullptr};
-    string curDataPrefix = "";
-
 public:
-    HexManager(bool mapper_mode, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr);
+    HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr,
+        SpriteManager& spr_mngr, ResourceManager& res_mngr);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);
@@ -180,14 +129,34 @@ public:
         UShortPairVec* steps, bool check_passed);
     void FindSetCenter(int cx, int cy);
 
-    // Map load
 private:
-    hash curPidMap = 0;
-    int curMapTime = -1;
-    int dayTime[4] = {0};
-    uchar dayColor[12] = {0};
-    hash curHashTiles = 0;
-    hash curHashScen = 0;
+    int GetViewWidth();
+    int GetViewHeight();
+
+    HexSettings& settings;
+    GeometryHelper geomHelper;
+    ProtoManager& protoMngr;
+    SpriteManager& sprMngr;
+    ResourceManager& resMngr;
+
+    ushort maxHexX {};
+    ushort maxHexY {};
+    Field* hexField {};
+    char* hexTrack {};
+    AnyFrames* picTrack1 {};
+    AnyFrames* picTrack2 {};
+    AnyFrames* picHexMask {};
+    bool isShowTrack {};
+    bool isShowHex {};
+    AnyFrames* picHex[3] {};
+    string curDataPrefix {};
+
+    hash curPidMap {};
+    int curMapTime {-1};
+    int dayTime[4] {};
+    uchar dayColor[12] {};
+    hash curHashTiles {};
+    hash curHashScen {};
 
 public:
     bool IsMapLoaded() { return curPidMap != 0; }

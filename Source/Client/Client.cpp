@@ -8,7 +8,7 @@
 #include "LocationView.h"
 #include "Log.h"
 #include "MapView.h"
-#include "Settings.h"
+#include "NetCommand.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -76,15 +76,18 @@ int HandleAppEvents(void* userdata, SDL_Event* event)
 
 FOClient* FOClient::Self = nullptr;
 
-FOClient::FOClient() :
+FOClient::FOClient(ClientSettings& sett) :
+    Settings {sett},
+    GeomHelper(Settings),
+    GameTime(Settings, Globals),
     FileMngr(),
-    SndMngr(FileMngr),
-    Keyb(SprMngr),
+    SndMngr(Settings, FileMngr),
+    Keyb(Settings, SprMngr),
     ProtoMngr(),
-    EffectMngr(FileMngr),
-    SprMngr(FileMngr, EffectMngr),
+    EffectMngr(Settings, FileMngr),
+    SprMngr(Settings, FileMngr, EffectMngr),
     ResMngr(FileMngr, SprMngr),
-    HexMngr(false, ProtoMngr, SprMngr, ResMngr),
+    HexMngr(false, Settings, ProtoMngr, SprMngr, ResMngr),
     Cache("Data/Cache.bin"),
     GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
@@ -151,8 +154,8 @@ FOClient::FOClient() :
     SprMngr.GetWindowSize(sw, sh);
     int mx = 0, my = 0;
     SprMngr.GetMousePosition(mx, my);
-    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP(mx, 0, sw - 1);
-    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP(my, 0, sh - 1);
+    Settings.MouseX = Settings.LastMouseX = CLAMP(mx, 0, sw - 1);
+    Settings.MouseY = Settings.LastMouseY = CLAMP(my, 0, sh - 1);
 
     // Data sources
 #if defined(FO_IOS)
@@ -245,7 +248,7 @@ bool FOClient::Init()
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Preload 3d files
-    if (GameOpt.Enable3dRendering && !Preload3dFiles.empty())
+    if (Settings.Enable3dRendering && !Preload3dFiles.empty())
     {
         WriteLog("Preload 3d files...\n");
         for (size_t i = 0, j = Preload3dFiles.size(); i < j; i++)
@@ -288,7 +291,7 @@ void FOClient::ProcessAutoLogin()
     if (!ClientFunctions.AutoLogin)
         return;
 
-    string auto_login = GameOpt.AutoLogin;
+    string auto_login = Settings.AutoLogin;
 
 #ifdef FO_WEB
     char* auto_login_web = (char*)EM_ASM_INT({
@@ -421,7 +424,7 @@ void FOClient::UpdateFilesLoop()
         // State
         SprMngr.BeginScene(COLOR_RGB(50, 50, 50));
         string update_text = UpdateFilesText + UpdateFilesProgress + dots_str;
-        SprMngr.DrawStr(Rect(0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight), update_text.c_str(),
+        SprMngr.DrawStr(Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), update_text.c_str(),
             FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
         SprMngr.EndScene();
     }
@@ -448,7 +451,7 @@ void FOClient::UpdateFilesLoop()
 
         // Connect to server
         UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
-        NetConnect(GameOpt.RemoteHost.c_str(), GameOpt.RemotePort);
+        NetConnect(Settings.Host, Settings.Port);
         UpdateFilesConnection = true;
     }
     else
@@ -552,8 +555,8 @@ void FOClient::UpdateFilesLoop()
                 // Reinitialize data
                 if (UpdateFilesCacheChanged)
                     CurLang.LoadFromCache(Cache, CurLang.NameStr);
-                if (UpdateFilesFilesChanged)
-                    GameOpt.Init(0, {});
+                // if (UpdateFilesFilesChanged)
+                //    Settings.Init(0, {});
                 if (InitCalls >= 2 && (UpdateFilesCacheChanged || UpdateFilesFilesChanged))
                     throw ClientRestartException("Restart");
 
@@ -589,7 +592,7 @@ void FOClient::UpdateFilesAbort(uint num_str, const string& num_str_str)
         UpdateFileTemp = nullptr;
 
     SprMngr.BeginScene(COLOR_RGB(255, 0, 0));
-    SprMngr.DrawStr(Rect(0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight), UpdateFilesText,
+    SprMngr.DrawStr(Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), UpdateFilesText,
         FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
     SprMngr.EndScene();
 }
@@ -647,35 +650,35 @@ void FOClient::LookBordersPrepare()
     ushort maxhx = HexMngr.GetWidth();
     ushort maxhy = HexMngr.GetHeight();
     bool seek_start = true;
-    for (int i = 0; i < (GameOpt.MapHexagonal ? 6 : 4); i++)
+    for (int i = 0; i < (Settings.MapHexagonal ? 6 : 4); i++)
     {
-        int dir = (GameOpt.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+        int dir = (Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
-        for (uint j = 0, jj = (GameOpt.MapHexagonal ? dist : dist * 2); j < jj; j++)
+        for (uint j = 0, jj = (Settings.MapHexagonal ? dist : dist * 2); j < jj; j++)
         {
             if (seek_start)
             {
                 // Move to start position
                 for (uint l = 0; l < dist; l++)
-                    MoveHexByDirUnsafe(hx, hy, GameOpt.MapHexagonal ? 0 : 7);
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, Settings.MapHexagonal ? 0 : 7);
                 seek_start = false;
                 j = -1;
             }
             else
             {
                 // Move to next hex
-                MoveHexByDirUnsafe(hx, hy, dir);
+                GeomHelper.MoveHexByDirUnsafe(hx, hy, dir);
             }
 
             ushort hx_ = CLAMP(hx, 0, maxhx - 1);
             ushort hy_ = CLAMP(hy, 0, maxhy - 1);
-            if (FLAG(GameOpt.LookChecks, LOOK_CHECK_DIR))
+            if (FLAG(Settings.LookChecks, LOOK_CHECK_DIR))
             {
-                int dir_ = GetFarDir(base_hx, base_hy, hx_, hy_);
+                int dir_ = GeomHelper.GetFarDir(base_hx, base_hy, hx_, hy_);
                 int ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
-                if (ii > DIRS_COUNT / 2)
-                    ii = DIRS_COUNT - ii;
-                uint dist_ = dist - dist * GameOpt.LookDir[ii] / 100;
+                if (ii > Settings.MapDirCount / 2)
+                    ii = Settings.MapDirCount - ii;
+                uint dist_ = dist - dist * Settings.LookDir[ii] / 100;
                 UShortPair block;
                 HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, 0, nullptr,
                     &block, nullptr, false);
@@ -683,7 +686,7 @@ void FOClient::LookBordersPrepare()
                 hy_ = block.second;
             }
 
-            if (FLAG(GameOpt.LookChecks, LOOK_CHECK_TRACE))
+            if (FLAG(Settings.LookChecks, LOOK_CHECK_TRACE))
             {
                 UShortPair block;
                 HexMngr.TraceBullet(
@@ -692,14 +695,15 @@ void FOClient::LookBordersPrepare()
                 hy_ = block.second;
             }
 
-            uint dist_look = DistGame(base_hx, base_hy, hx_, hy_);
+            uint dist_look = GeomHelper.DistGame(base_hx, base_hy, hx_, hy_);
             if (DrawLookBorders)
             {
                 int x, y;
                 HexMngr.GetHexCurrentPosition(hx_, hy_, x, y);
                 short* ox = (dist_look == dist ? &Chosen->SprOx : nullptr);
                 short* oy = (dist_look == dist ? &Chosen->SprOy : nullptr);
-                LookBorders.push_back({x + HEX_OX, y + HEX_OY, COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
+                LookBorders.push_back({x + (Settings.MapHexWidth / 2), y + (Settings.MapHexHeight / 2),
+                    COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
             }
 
             if (DrawShootBorders)
@@ -715,10 +719,10 @@ void FOClient::LookBordersPrepare()
 
                 int x_, y_;
                 HexMngr.GetHexCurrentPosition(hx__, hy__, x_, y_);
-                uint result_shoot_dist = DistGame(base_hx, base_hy, hx__, hy__);
+                uint result_shoot_dist = GeomHelper.DistGame(base_hx, base_hy, hx__, hy__);
                 short* ox = (result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : nullptr);
                 short* oy = (result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : nullptr);
-                ShootBorders.push_back({x_ + HEX_OX, y_ + HEX_OY,
+                ShootBorders.push_back({x_ + (Settings.MapHexWidth / 2), y_ + (Settings.MapHexHeight / 2),
                     COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
             }
         }
@@ -730,13 +734,15 @@ void FOClient::LookBordersPrepare()
     {
         LookBorders.push_back(*LookBorders.begin());
         LookBorders.insert(LookBorders.begin(),
-            {base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(0, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy});
+            {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0),
+                &Chosen->SprOx, &Chosen->SprOy});
     }
     if (!ShootBorders.empty())
     {
         ShootBorders.push_back(*ShootBorders.begin());
         ShootBorders.insert(ShootBorders.begin(),
-            {base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA(255, 0, 0, 0), &Chosen->SprOx, &Chosen->SprOy});
+            {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0),
+                &Chosen->SprOx, &Chosen->SprOy});
     }
 
     HexMngr.SetFog(LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy);
@@ -751,7 +757,7 @@ void FOClient::MainLoop()
     static uint call_counter = 0;
     if ((Timer::FastTick() - last_call) >= 1000)
     {
-        GameOpt.FPS = call_counter;
+        Settings.FPS = call_counter;
         call_counter = 0;
         last_call = Timer::FastTick();
     }
@@ -767,11 +773,11 @@ void FOClient::MainLoop()
         while (SDL_PollEvent(&event))
             if ((event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) ||
                 event.type == SDL_QUIT)
-                GameOpt.Quit = true;
+                Settings.Quit = true;
     }
 
     // Game end
-    if (GameOpt.Quit)
+    if (Settings.Quit)
         return;
 
     // Network connection
@@ -792,7 +798,7 @@ void FOClient::MainLoop()
         if (InitCalls == 1 && !Init())
         {
             WriteLog("FOnline engine initialization failed.\n");
-            GameOpt.Quit = true;
+            Settings.Quit = true;
             return;
         }
 
@@ -818,25 +824,25 @@ void FOClient::MainLoop()
         {
             int sw = 0, sh = 0;
             SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(event.motion.x / (float)sw * (float)GameOpt.ScreenWidth);
-            int y = (int)(event.motion.y / (float)sh * (float)GameOpt.ScreenHeight);
-            GameOpt.MouseX = CLAMP(x, 0, GameOpt.ScreenWidth - 1);
-            GameOpt.MouseY = CLAMP(y, 0, GameOpt.ScreenHeight - 1);
+            int x = (int)(event.motion.x / (float)sw * (float)Settings.ScreenWidth);
+            int y = (int)(event.motion.y / (float)sh * (float)Settings.ScreenHeight);
+            Settings.MouseX = CLAMP(x, 0, Settings.ScreenWidth - 1);
+            Settings.MouseY = CLAMP(y, 0, Settings.ScreenHeight - 1);
         }
         else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
         {
-            MainWindowKeyboardEvents.push_back(event.type);
-            MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
-            MainWindowKeyboardEventsText.push_back("");
+            Settings.MainWindowKeyboardEvents.push_back(event.type);
+            Settings.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
+            Settings.MainWindowKeyboardEventsText.push_back("");
         }
         else if (event.type == SDL_TEXTINPUT)
         {
-            MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-            MainWindowKeyboardEvents.push_back(510);
-            MainWindowKeyboardEventsText.push_back(event.text.text);
-            MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-            MainWindowKeyboardEvents.push_back(510);
-            MainWindowKeyboardEventsText.push_back("");
+            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+            Settings.MainWindowKeyboardEvents.push_back(510);
+            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
+            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+            Settings.MainWindowKeyboardEvents.push_back(510);
+            Settings.MainWindowKeyboardEventsText.push_back("");
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
         {
@@ -859,25 +865,27 @@ void FOClient::MainLoop()
                 button = MOUSE_BUTTON_EXT4;
             if (button != -1)
             {
-                MainWindowMouseEvents.push_back(event.type);
-                MainWindowMouseEvents.push_back(button);
+                Settings.MainWindowMouseEvents.push_back(event.type);
+                Settings.MainWindowMouseEvents.push_back(button);
             }
         }
         else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
         {
-            GameOpt.MouseX = (int)(event.tfinger.x * (float)GameOpt.ScreenWidth);
-            GameOpt.MouseY = (int)(event.tfinger.y * (float)GameOpt.ScreenHeight);
+            Settings.MouseX = (int)(event.tfinger.x * (float)Settings.ScreenWidth);
+            Settings.MouseY = (int)(event.tfinger.y * (float)Settings.ScreenHeight);
         }
         else if (event.type == SDL_MOUSEWHEEL)
         {
-            MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
-            MainWindowMouseEvents.push_back(event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
-            MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
-            MainWindowMouseEvents.push_back(event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
+            Settings.MainWindowMouseEvents.push_back(
+                event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
+            Settings.MainWindowMouseEvents.push_back(
+                event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         }
         else if (event.type == SDL_QUIT)
         {
-            GameOpt.Quit = true;
+            Settings.Quit = true;
         }
     }
 
@@ -887,7 +895,7 @@ void FOClient::MainLoop()
         // Connect to server
         if (!IsConnected)
         {
-            if (!NetConnect(GameOpt.RemoteHost.c_str(), GameOpt.RemotePort))
+            if (!NetConnect(Settings.Host, Settings.Port))
             {
                 ShowMainScreen(SCREEN_LOGIN);
                 AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
@@ -927,7 +935,7 @@ void FOClient::MainLoop()
     AnimProcess();
 
     // Game time
-    if (Timer::ProcessGameTime())
+    if (GameTime.ProcessGameTime())
         SetDayTime(false);
 
     if (IsMainScreen(SCREEN_GLOBAL_MAP))
@@ -1012,15 +1020,15 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
 
 void FOClient::ScreenQuake(int noise, uint time)
 {
-    GameOpt.ScrOx -= ScreenOffsX;
-    GameOpt.ScrOy -= ScreenOffsY;
-    ScreenOffsX = Random(0, 1) ? noise : -noise;
-    ScreenOffsY = Random(0, 1) ? noise : -noise;
+    Settings.ScrOx -= ScreenOffsX;
+    Settings.ScrOy -= ScreenOffsY;
+    ScreenOffsX = GenericUtils::Random(0, 1) ? noise : -noise;
+    ScreenOffsY = GenericUtils::Random(0, 1) ? noise : -noise;
     ScreenOffsXf = (float)ScreenOffsX;
     ScreenOffsYf = (float)ScreenOffsY;
     ScreenOffsStep = fabs(ScreenOffsXf) / (time / 30);
-    GameOpt.ScrOx += ScreenOffsX;
-    GameOpt.ScrOy += ScreenOffsY;
+    Settings.ScrOx += ScreenOffsX;
+    Settings.ScrOy += ScreenOffsY;
     ScreenOffsNextTick = Timer::GameTick() + 30;
 }
 
@@ -1029,7 +1037,7 @@ void FOClient::ProcessScreenEffectFading()
     SprMngr.Flush();
 
     PointVec full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, Rect(0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight), 0);
+    SprMngr.PrepareSquare(full_screen_quad, Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
 
     for (auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {
@@ -1041,7 +1049,7 @@ void FOClient::ProcessScreenEffectFading()
         }
         else if (Timer::FastTick() >= e.BeginTick)
         {
-            int proc = Procent(e.Time, Timer::FastTick() - e.BeginTick) + 1;
+            int proc = GenericUtils::Procent(e.Time, Timer::FastTick() - e.BeginTick) + 1;
             int res[4];
 
             for (int i = 0; i < 4; i++)
@@ -1066,8 +1074,8 @@ void FOClient::ProcessScreenEffectQuake()
 {
     if ((ScreenOffsX || ScreenOffsY) && Timer::GameTick() >= ScreenOffsNextTick)
     {
-        GameOpt.ScrOx -= ScreenOffsX;
-        GameOpt.ScrOy -= ScreenOffsY;
+        Settings.ScrOx -= ScreenOffsX;
+        Settings.ScrOy -= ScreenOffsY;
         if (ScreenOffsXf < 0.0f)
             ScreenOffsXf += ScreenOffsStep;
         else if (ScreenOffsXf > 0.0f)
@@ -1080,8 +1088,8 @@ void FOClient::ProcessScreenEffectQuake()
         ScreenOffsYf = -ScreenOffsYf;
         ScreenOffsX = (int)ScreenOffsXf;
         ScreenOffsY = (int)ScreenOffsYf;
-        GameOpt.ScrOx += ScreenOffsX;
-        GameOpt.ScrOy += ScreenOffsY;
+        Settings.ScrOx += ScreenOffsX;
+        Settings.ScrOy += ScreenOffsY;
         ScreenOffsNextTick = Timer::GameTick() + 30;
     }
 }
@@ -1091,20 +1099,20 @@ void FOClient::ParseKeyboard()
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        MainWindowKeyboardEvents.clear();
-        MainWindowKeyboardEventsText.clear();
+        Settings.MainWindowKeyboardEvents.clear();
+        Settings.MainWindowKeyboardEventsText.clear();
         Keyb.Lost();
         Script::RaiseInternalEvent(ClientFunctions.InputLost);
         return;
     }
 
     // Get buffered data
-    if (MainWindowKeyboardEvents.empty())
+    if (Settings.MainWindowKeyboardEvents.empty())
         return;
-    IntVec events = MainWindowKeyboardEvents;
-    StrVec events_text = MainWindowKeyboardEventsText;
-    MainWindowKeyboardEvents.clear();
-    MainWindowKeyboardEventsText.clear();
+    IntVec events = Settings.MainWindowKeyboardEvents;
+    StrVec events_text = Settings.MainWindowKeyboardEventsText;
+    Settings.MainWindowKeyboardEvents.clear();
+    Settings.MainWindowKeyboardEventsText.clear();
 
     // Process events
     for (uint i = 0; i < events.size(); i += 2)
@@ -1167,27 +1175,27 @@ void FOClient::ParseMouse()
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        MainWindowMouseEvents.clear();
+        Settings.MainWindowMouseEvents.clear();
         Script::RaiseInternalEvent(ClientFunctions.InputLost);
         return;
     }
 
     // Mouse move
-    if (GameOpt.LastMouseX != GameOpt.MouseX || GameOpt.LastMouseY != GameOpt.MouseY)
+    if (Settings.LastMouseX != Settings.MouseX || Settings.LastMouseY != Settings.MouseY)
     {
-        int ox = GameOpt.MouseX - GameOpt.LastMouseX;
-        int oy = GameOpt.MouseY - GameOpt.LastMouseY;
-        GameOpt.LastMouseX = GameOpt.MouseX;
-        GameOpt.LastMouseY = GameOpt.MouseY;
+        int ox = Settings.MouseX - Settings.LastMouseX;
+        int oy = Settings.MouseY - Settings.LastMouseY;
+        Settings.LastMouseX = Settings.MouseX;
+        Settings.LastMouseY = Settings.MouseY;
 
         Script::RaiseInternalEvent(ClientFunctions.MouseMove, ox, oy);
     }
 
     // Get buffered data
-    if (MainWindowMouseEvents.empty())
+    if (Settings.MainWindowMouseEvents.empty())
         return;
-    IntVec events = MainWindowMouseEvents;
-    MainWindowMouseEvents.clear();
+    IntVec events = Settings.MainWindowMouseEvents;
+    Settings.MainWindowMouseEvents.clear();
 
     // Process events
     for (uint i = 0; i < events.size(); i += 2)
@@ -1281,11 +1289,11 @@ bool FOClient::CheckSocketStatus(bool for_write)
     return false;
 }
 
-bool FOClient::NetConnect(const char* host, ushort port)
+bool FOClient::NetConnect(const string& host, ushort port)
 {
 #ifdef FO_WEB
     port++;
-    if (GameOpt.WssCredentials.empty())
+    if (!Settings.SecuredWebSockets)
     {
         EM_ASM(Module['websocket']['url'] = 'ws://');
         WriteLog("Connecting to server 'ws://{}:{}'.\n", host, port);
@@ -1323,7 +1331,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
 
     if (!FillSockAddr(SockAddr, host, port))
         return false;
-    if (GameOpt.ProxyType && !FillSockAddr(ProxyAddr, GameOpt.ProxyHost.c_str(), GameOpt.ProxyPort))
+    if (Settings.ProxyType && !FillSockAddr(ProxyAddr, Settings.ProxyHost, Settings.ProxyPort))
         return false;
 
     Bin.SetEncryptKey(0);
@@ -1335,9 +1343,9 @@ bool FOClient::NetConnect(const char* host, ushort port)
         return false;
     }
 
-// Nagle
+    // Nagle
 #ifndef FO_WEB
-    if (GameOpt.DisableTcpNagle)
+    if (Settings.DisableTcpNagle)
     {
         int optval = 1;
         if (setsockopt(Sock, IPPROTO_TCP, TCP_NODELAY, (char*)&optval, sizeof(optval)))
@@ -1346,9 +1354,9 @@ bool FOClient::NetConnect(const char* host, ushort port)
 #endif
 
     // Direct connect
-    if (!GameOpt.ProxyType)
+    if (!Settings.ProxyType)
     {
-// Set non blocking mode
+        // Set non blocking mode
 #ifdef FO_WINDOWS
         unsigned long mode = 1;
         if (ioctlsocket(Sock, FIONBIO, &mode))
@@ -1419,7 +1427,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
         Bin.Reset();
         Bout.Reset();
         // Authentication
-        if (GameOpt.ProxyType == PROXY_SOCKS4)
+        if (Settings.ProxyType == PROXY_SOCKS4)
         {
             // Connect
             Bout << uchar(4); // Socks version
@@ -1455,7 +1463,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
                 return false;
             }
         }
-        else if (GameOpt.ProxyType == PROXY_SOCKS5)
+        else if (Settings.ProxyType == PROXY_SOCKS5)
         {
             Bout << uchar(5); // Socks version
             Bout << uchar(1); // Count methods
@@ -1469,10 +1477,10 @@ bool FOClient::NetConnect(const char* host, ushort port)
             if (b2 == 2) // User/Password
             {
                 Bout << uchar(1); // Subnegotiation version
-                Bout << uchar(GameOpt.ProxyUser.length()); // Name length
-                Bout.Push(GameOpt.ProxyUser.c_str(), (uint)GameOpt.ProxyUser.length()); // Name
-                Bout << uchar(GameOpt.ProxyPass.length()); // Pass length
-                Bout.Push(GameOpt.ProxyPass.c_str(), (uint)GameOpt.ProxyPass.length()); // Pass
+                Bout << uchar(Settings.ProxyUser.length()); // Name length
+                Bout.Push(Settings.ProxyUser.c_str(), (uint)Settings.ProxyUser.length()); // Name
+                Bout << uchar(Settings.ProxyPass.length()); // Pass length
+                Bout.Push(Settings.ProxyPass.c_str(), (uint)Settings.ProxyPass.length()); // Pass
 
                 if (!send_recv())
                     return false;
@@ -1538,7 +1546,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
                 return false;
             }
         }
-        else if (GameOpt.ProxyType == PROXY_HTTP)
+        else if (Settings.ProxyType == PROXY_HTTP)
         {
             string buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa(SockAddr.sin_addr), port);
             Bout.Push(buf.c_str(), (uint)buf.length());
@@ -1555,7 +1563,7 @@ bool FOClient::NetConnect(const char* host, ushort port)
         }
         else
         {
-            WriteLog("Unknown proxy type {}.\n", GameOpt.ProxyType);
+            WriteLog("Unknown proxy type {}.\n", Settings.ProxyType);
             return false;
         }
 
@@ -1573,13 +1581,13 @@ bool FOClient::NetConnect(const char* host, ushort port)
     return true;
 }
 
-bool FOClient::FillSockAddr(sockaddr_in& saddr, const char* host, ushort port)
+bool FOClient::FillSockAddr(sockaddr_in& saddr, const string& host, ushort port)
 {
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
-    if ((saddr.sin_addr.s_addr = inet_addr(host)) == uint(-1))
+    if ((saddr.sin_addr.s_addr = inet_addr(host.c_str())) == uint(-1))
     {
-        hostent* h = gethostbyname(host);
+        hostent* h = gethostbyname(host.c_str());
         if (!h)
         {
             WriteLog("Can't resolve remote host '{}', error '{}'.", host, GetLastSocketError());
@@ -1641,7 +1649,7 @@ void FOClient::ParseSocket()
     {
         NetProcess();
 
-        if (IsConnected && GameOpt.HelpInfo && Bout.IsEmpty() && !PingTick && GameOpt.PingPeriod &&
+        if (IsConnected && Settings.HelpInfo && Bout.IsEmpty() && !PingTick && Settings.PingPeriod &&
             Timer::FastTick() >= PingCallTick)
         {
             Net_SendPing(PING_PING);
@@ -1751,7 +1759,7 @@ int FOClient::NetInput(bool unpack)
     Bin.Refresh();
     uint old_pos = Bin.GetEndPos();
 
-    if (unpack && !GameOpt.DisableZlibCompression)
+    if (unpack && !Settings.DisableZlibCompression)
     {
         ZStream.next_in = &ComBuf[0];
         ZStream.avail_in = whole_len;
@@ -1797,7 +1805,7 @@ void FOClient::NetProcess()
 
         CHECK_IN_BUFF_ERROR;
 
-        if (GameOpt.DebugNet)
+        if (Settings.DebugNet)
         {
             static uint count = 0;
             AddMess(FOMB_GAME, _str("{:04}) Input net message {}.", count, (msg >> 8) & 0xFF));
@@ -1992,7 +2000,7 @@ void FOClient::NetProcess()
 
     if (Bin.IsError())
     {
-        if (GameOpt.DebugNet)
+        if (Settings.DebugNet)
             AddMess(FOMB_GAME, "Invalid network message. Disconnect.");
         WriteLog("Invalid network message. Disconnect.\n");
         NetDisconnect();
@@ -2315,7 +2323,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     {
         WriteLog("Critter id is zero.\n");
     }
-    else if (HexMngr.IsMapLoaded() && (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT))
+    else if (HexMngr.IsMapLoaded() &&
+        (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= Settings.MapDirCount))
     {
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
@@ -2323,7 +2332,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
         RUNTIME_ASSERT(proto);
-        CritterView* cr = new CritterView(crid, proto, SprMngr, ResMngr);
+        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr);
         cr->Props.RestoreData(TempPropertiesData);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -2461,7 +2470,7 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
     if (fstr.empty())
         return;
 
-    uint text_delay = GameOpt.TextDelay + (uint)fstr.length() * 100;
+    uint text_delay = Settings.TextDelay + (uint)fstr.length() * 100;
     string sstr = fstr;
     bool result = Script::RaiseInternalEvent(ClientFunctions.InMessage, &sstr, &how_say, &crid, &text_delay);
     if (!result)
@@ -2554,7 +2563,7 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
 
 void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
 {
-    uint text_delay = GameOpt.TextDelay + (uint)str.length() * 100;
+    uint text_delay = Settings.TextDelay + (uint)str.length() * 100;
     string sstr = str;
     Script::RaiseInternalEvent(ClientFunctions.MapMessage, &sstr, &hx, &hy, &color, &text_delay);
 
@@ -2676,7 +2685,7 @@ void FOClient::Net_OnCritterDir()
 
     CHECK_IN_BUFF_ERROR;
 
-    if (dir >= DIRS_COUNT)
+    if (dir >= Settings.MapDirCount)
     {
         WriteLog("Invalid dir {}.\n", dir);
         dir = 0;
@@ -2730,7 +2739,7 @@ void FOClient::Net_OnCritterMove()
                 }
                 break;
             }
-            MoveHexByDir(new_hx, new_hy, dir, HexMngr.GetWidth(), HexMngr.GetHeight());
+            GeomHelper.MoveHexByDir(new_hx, new_hy, dir, HexMngr.GetWidth(), HexMngr.GetHeight());
             if (j < 0)
                 continue;
             cr->MoveSteps.push_back(std::make_pair(new_hx, new_hy));
@@ -2937,7 +2946,7 @@ void FOClient::Net_OnCustomCommand()
 
     CHECK_IN_BUFF_ERROR;
 
-    if (GameOpt.DebugNet)
+    if (Settings.DebugNet)
         AddMess(FOMB_GAME, _str(" - crid {} index {} value {}.", crid, index, value));
 
     CritterView* cr = GetCritter(crid);
@@ -2946,7 +2955,7 @@ void FOClient::Net_OnCustomCommand()
 
     if (cr->IsChosen())
     {
-        if (GameOpt.DebugNet)
+        if (Settings.DebugNet)
             AddMess(FOMB_GAME, _str(" - index {} value {}.", index, value));
 
         switch (index)
@@ -3025,7 +3034,7 @@ void FOClient::Net_OnCritterXY()
 
     CHECK_IN_BUFF_ERROR;
 
-    if (GameOpt.DebugNet)
+    if (Settings.DebugNet)
         AddMess(FOMB_GAME, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
 
     if (!HexMngr.IsMapLoaded())
@@ -3035,7 +3044,7 @@ void FOClient::Net_OnCritterXY()
     if (!cr)
         return;
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT)
+    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= Settings.MapDirCount)
     {
         WriteLog("Error data, hx {}, hy {}, dir {}.\n", hx, hy, dir);
         return;
@@ -3054,7 +3063,7 @@ void FOClient::Net_OnCritterXY()
         cr->AnimateStay();
         if (cr == Chosen)
         {
-            // Chosen->TickStart(GameOpt.Breaktime);
+            // Chosen->TickStart(Settings.Breaktime);
             Chosen->TickStart(200);
             // SetAction(CHOSEN_NONE);
             Chosen->MoveSteps.clear();
@@ -3280,7 +3289,7 @@ void FOClient::Net_OnCombatResult()
     UIntVec data_vec;
     Bin >> msg_len;
     Bin >> data_count;
-    if (data_count > GameOpt.FloodSize / sizeof(uint))
+    if (data_count > Settings.FloodSize / sizeof(uint))
         return; // Insurance
     if (data_count)
     {
@@ -3319,9 +3328,9 @@ void FOClient::Net_OnEffect()
     // Radius hexes effect
     if (radius > MAX_HEX_OFFSET)
         radius = MAX_HEX_OFFSET;
-    int cnt = NumericalNumber(radius) * DIRS_COUNT;
+    int cnt = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
     short *sx, *sy;
-    GetHexOffsets(hx & 1, sx, sy);
+    GeomHelper.GetHexOffsets(hx & 1, sx, sy);
     int maxhx = HexMngr.GetWidth();
     int maxhy = HexMngr.GetHeight();
 
@@ -3399,7 +3408,7 @@ void FOClient::Net_OnPing()
 
     if (ping == PING_WAIT)
     {
-        GameOpt.WaitPing = false;
+        Settings.WaitPing = false;
     }
     else if (ping == PING_CLIENT)
     {
@@ -3408,9 +3417,9 @@ void FOClient::Net_OnPing()
     }
     else if (ping == PING_PING)
     {
-        GameOpt.Ping = Timer::FastTick() - PingTick;
+        Settings.Ping = Timer::FastTick() - PingTick;
         PingTick = 0;
-        PingCallTick = Timer::FastTick() + GameOpt.PingPeriod;
+        PingCallTick = Timer::FastTick() + Settings.PingPeriod;
     }
 }
 
@@ -3676,9 +3685,7 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    Timer::InitGameTime();
-    GameOpt.GameTimeTick = Timer::GameTick();
-
+    GameTime.Reset();
     HexMngr.SetWeather(time, rain);
     SetDayTime(true);
     NoLogOut = no_log_out;
@@ -3726,7 +3733,7 @@ void FOClient::Net_OnLoadMap()
         ScriptFunc.ClientCurMap->Props.RestoreData(TempPropertiesData);
     }
 
-    GameOpt.SpritesZoom = 1.0f;
+    Settings.SpritesZoom = 1.0f;
 
     CurMapPid = map_pid;
     CurMapLocPid = loc_pid;
@@ -4286,7 +4293,8 @@ void FOClient::SetDayTime(bool refresh)
         return;
 
     static uint old_color = -1;
-    uint color = GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
+    uint color =
+        GenericUtils::GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
     color = COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
 
     if (refresh)
@@ -4300,7 +4308,7 @@ void FOClient::SetDayTime(bool refresh)
 
 void FOClient::WaitPing()
 {
-    GameOpt.WaitPing = true;
+    Settings.WaitPing = true;
     Net_SendPing(PING_WAIT);
 }
 
@@ -4352,7 +4360,7 @@ void FOClient::TryExit()
         switch (GetMainScreen())
         {
         case SCREEN_LOGIN:
-            GameOpt.Quit = true;
+            Settings.Quit = true;
             break;
         case SCREEN_WAIT:
             NetDisconnect();
@@ -4375,11 +4383,12 @@ void FOClient::FlashGameWindow()
     if (SprMngr.IsWindowFocused())
         return;
 
-    SprMngr.BlinkWindow();
+    if (Settings.WinNotify)
+        SprMngr.BlinkWindow();
 
 #ifdef FO_WINDOWS
-    if (GameOpt.SoundNotify)
-        Beep(100, 200);
+    if (Settings.SoundNotify)
+        ::Beep(100, 200);
 #endif
 }
 
@@ -4512,8 +4521,8 @@ void FOClient::PlayVideo()
     // Start sound
     if (video.SoundName != "")
     {
-        MusicVolumeRestore = GameOpt.MusicVolume;
-        GameOpt.MusicVolume = 100;
+        MusicVolumeRestore = Settings.MusicVolume;
+        Settings.MusicVolume = 100;
         SndMngr.PlayMusic(video.SoundName, 0);
     }
 }
@@ -4700,13 +4709,13 @@ void FOClient::RenderVideo()
     SprMngr.DrawRenderTarget(CurVideo->RT, false);
 
     // Render to window
-    float mw = (float)GameOpt.ScreenWidth;
-    float mh = (float)GameOpt.ScreenHeight;
+    float mw = (float)Settings.ScreenWidth;
+    float mh = (float)Settings.ScreenHeight;
     float k = MIN(mw / w, mh / h);
     w = (uint)((float)w * k);
     h = (uint)((float)h * k);
-    int x = (GameOpt.ScreenWidth - w) / 2;
-    int y = (GameOpt.ScreenHeight - h) / 2;
+    int x = (Settings.ScreenWidth - w) / 2;
+    int y = (Settings.ScreenHeight - h) / 2;
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     Rect r = Rect(x, y, x + w, y + h);
     SprMngr.DrawRenderTarget(CurVideo->RT, false, nullptr, &r);
@@ -4762,7 +4771,7 @@ void FOClient::StopVideo()
     SndMngr.StopMusic();
     if (MusicVolumeRestore != -1)
     {
-        GameOpt.MusicVolume = MusicVolumeRestore;
+        Settings.MusicVolume = MusicVolumeRestore;
         MusicVolumeRestore = -1;
     }
 }
@@ -5049,9 +5058,383 @@ void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
         SCRIPT_ERROR_R("Unable to send location modifiable property '{}'", prop->GetName());
 }
 
-/************************************************************************/
-/* Scripts                                                              */
-/************************************************************************/
+void FOClient::GameDraw()
+{
+    // Move cursor
+    if (Settings.ShowMoveCursor)
+        HexMngr.SetCursorPos(Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+
+    // Look borders
+    if (RebuildLookBorders)
+    {
+        LookBordersPrepare();
+        RebuildLookBorders = false;
+    }
+
+    // Map
+    HexMngr.DrawMap();
+
+    // Text on head
+    for (auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++)
+        it->second->DrawTextOnHead();
+
+    // Texts on map
+    uint tick = Timer::GameTick();
+    for (auto it = GameMapTexts.begin(); it != GameMapTexts.end();)
+    {
+        MapText& mt = (*it);
+        if (tick >= mt.StartTick + mt.Tick)
+        {
+            it = GameMapTexts.erase(it);
+        }
+        else
+        {
+            uint dt = tick - mt.StartTick;
+            int procent = GenericUtils::Procent(mt.Tick, dt);
+            Rect r = mt.Pos.Interpolate(mt.EndPos, procent);
+            Field& f = HexMngr.GetField(mt.HexX, mt.HexY);
+            int x = (int)((f.ScrX + (Settings.MapHexWidth / 2) + Settings.ScrOx) / Settings.SpritesZoom - 100.0f -
+                (float)(mt.Pos.L - r.L));
+            int y = (int)((f.ScrY + (Settings.MapHexHeight / 2) - mt.Pos.H() - (mt.Pos.T - r.T) + Settings.ScrOy) /
+                    Settings.SpritesZoom -
+                70.0f);
+
+            uint color = mt.Color;
+            if (mt.Fade)
+                color = (color ^ 0xFF000000) | ((0xFF * (100 - procent) / 100) << 24);
+            else if (mt.Tick > 500)
+            {
+                uint hide = mt.Tick - 200;
+                if (dt >= hide)
+                {
+                    uint alpha = 0xFF * (100 - GenericUtils::Procent(mt.Tick - hide, dt - hide)) / 100;
+                    color = (alpha << 24) | (color & 0xFFFFFF);
+                }
+            }
+
+            SprMngr.DrawStr(Rect(x, y, x + 200, y + 70), mt.Text.c_str(), FT_CENTERX | FT_BOTTOM | FT_BORDERED, color);
+            it++;
+        }
+    }
+}
+
+void FOClient::AddMess(int mess_type, const string& msg, bool script_call)
+{
+    string text = msg;
+    Script::RaiseInternalEvent(ClientFunctions.MessageBox, &text, mess_type, script_call);
+}
+
+void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems)
+{
+    if (text == "error")
+    {
+        text = "Text not found!";
+        return;
+    }
+
+    StrVec dialogs;
+    int sex = 0;
+    bool sex_tags = false;
+    string tag;
+    tag[0] = 0;
+
+    for (size_t i = 0; i < text.length();)
+    {
+        switch (text[i])
+        {
+        case '#': {
+            text[i] = '\n';
+        }
+        break;
+        case '|': {
+            if (sex_tags)
+            {
+                tag = _str(text.substr(i + 1)).substringUntil('|');
+                text.erase(i, tag.length() + 2);
+
+                if (sex)
+                {
+                    if (sex == 1)
+                        text.insert(i, tag);
+                    sex--;
+                }
+                continue;
+            }
+        }
+        break;
+        case '@': {
+            if (text[i + 1] == '@')
+            {
+                dialogs.push_back(text.substr(0, i));
+                text.erase(0, i + 2);
+                i = 0;
+                continue;
+            }
+
+            tag = _str(text.substr(i + 1)).substringUntil('@');
+            text.erase(i, tag.length() + 2);
+            if (tag.empty())
+                break;
+
+            // Player name
+            if (_str(tag).compareIgnoreCase("pname"))
+            {
+                tag = (player ? player->GetName() : "");
+            }
+            // Npc name
+            else if (_str(tag).compareIgnoreCase("nname"))
+            {
+                tag = (npc ? npc->GetName() : "");
+            }
+            // Sex
+            else if (_str(tag).compareIgnoreCase("sex"))
+            {
+                sex = (player ? player->GetGender() + 1 : 1);
+                sex_tags = true;
+                continue;
+            }
+            // Random
+            else if (_str(tag).compareIgnoreCase("rnd"))
+            {
+                size_t first = text.find_first_of('|', i);
+                size_t last = text.find_last_of('|', i);
+                StrVec rnd = _str(text.substr(first, last - first + 1)).split('|');
+                text.erase(first, last - first + 1);
+                if (!rnd.empty())
+                    text.insert(first, rnd[GenericUtils::Random(0, (int)rnd.size() - 1)]);
+            }
+            // Lexems
+            else if (tag.length() > 4 && tag[0] == 'l' && tag[1] == 'e' && tag[2] == 'x' && tag[3] == ' ')
+            {
+                string lex = "$" + tag.substr(4);
+                size_t pos = lexems.find(lex);
+                if (pos != string::npos)
+                {
+                    pos += lex.length();
+                    tag = _str(lexems.substr(pos)).substringUntil('$').trim();
+                }
+                else
+                {
+                    tag = "<lexem not found>";
+                }
+            }
+            // Msg text
+            else if (tag.length() > 4 && tag[0] == 'm' && tag[1] == 's' && tag[2] == 'g' && tag[3] == ' ')
+            {
+                tag = tag.substr(4);
+                tag = _str(tag).erase('(').erase(')');
+                istringstream itag(tag);
+                string msg_type_name;
+                uint str_num;
+                if (itag >> msg_type_name >> str_num)
+                {
+                    int msg_type = FOMsg::GetMsgType(msg_type_name);
+                    if (msg_type < 0 || msg_type >= TEXTMSG_COUNT)
+                        tag = "<msg tag, unknown type>";
+                    else if (!CurLang.Msg[msg_type].Count(str_num))
+                        tag = _str("<msg tag, string {} not found>", str_num);
+                    else
+                        tag = CurLang.Msg[msg_type].GetStr(str_num);
+                }
+                else
+                {
+                    tag = "<msg tag parse fail>";
+                }
+            }
+            // Script
+            else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' &&
+                tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ')
+            {
+                string func_name = _str(tag.substr(7)).substringUntil('$');
+                uint bind_id = Script::BindByFuncName(func_name, "string %s(string)", true);
+                tag = "<script function not found>";
+                if (bind_id)
+                {
+                    string script_lexems = lexems;
+                    Script::PrepareContext(bind_id, "Game");
+                    Script::SetArgObject(&script_lexems);
+                    if (Script::RunPrepared())
+                        tag = *(string*)Script::GetReturnedObject();
+                }
+            }
+            // Error
+            else
+            {
+                tag = "<error>";
+            }
+
+            text.insert(i, tag);
+        }
+            continue;
+        default:
+            break;
+        }
+
+        ++i;
+    }
+
+    dialogs.push_back(text);
+    text = dialogs[GenericUtils::Random(0, (uint)dialogs.size() - 1)];
+}
+
+void FOClient::ShowMainScreen(int new_screen, CScriptDictionary* params /* = NULL */)
+{
+    while (GetActiveScreen() != SCREEN_NONE)
+        HideScreen(SCREEN_NONE);
+
+    if (ScreenModeMain == new_screen)
+        return;
+    if (IsAutoLogin && new_screen == SCREEN_LOGIN)
+        return;
+
+    int prev_main_screen = ScreenModeMain;
+    if (ScreenModeMain)
+        RunScreenScript(false, ScreenModeMain, nullptr);
+    ScreenModeMain = new_screen;
+    RunScreenScript(true, new_screen, params);
+
+    switch (GetMainScreen())
+    {
+    case SCREEN_LOGIN:
+        ScreenFadeOut();
+        break;
+    case SCREEN_GAME:
+        break;
+    case SCREEN_GLOBAL_MAP:
+        break;
+    case SCREEN_WAIT:
+        if (prev_main_screen != SCREEN_WAIT)
+        {
+            ScreenEffects.clear();
+            WaitPic = ResMngr.GetRandomSplash();
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
+{
+    static IntVec active_screens;
+    active_screens.clear();
+
+    CScriptArray* arr = Script::CreateArray("int[]");
+    Script::RaiseInternalEvent(ClientFunctions.GetActiveScreens, arr);
+    Script::AssignScriptArrayInVector(active_screens, arr);
+    arr->Release();
+
+    if (screens)
+        *screens = &active_screens;
+    int active = (active_screens.size() ? active_screens.back() : SCREEN_NONE);
+    if (active >= SCREEN_LOGIN && active <= SCREEN_WAIT)
+        active = SCREEN_NONE;
+    return active;
+}
+
+bool FOClient::IsScreenPresent(int screen)
+{
+    IntVec* active_screens;
+    GetActiveScreen(&active_screens);
+    return std::find(active_screens->begin(), active_screens->end(), screen) != active_screens->end();
+}
+
+void FOClient::ShowScreen(int screen, CScriptDictionary* params /* = NULL */)
+{
+    RunScreenScript(true, screen, params);
+}
+
+void FOClient::HideScreen(int screen)
+{
+    if (screen == SCREEN_NONE)
+        screen = GetActiveScreen();
+    if (screen == SCREEN_NONE)
+        return;
+
+    RunScreenScript(false, screen, nullptr);
+}
+
+void FOClient::RunScreenScript(bool show, int screen, CScriptDictionary* params)
+{
+    Script::RaiseInternalEvent(ClientFunctions.ScreenChange, show, screen, params);
+}
+
+void FOClient::LmapPrepareMap()
+{
+    LmapPrepPix.clear();
+
+    if (!Chosen)
+        return;
+
+    int maxpixx = (LmapWMap[2] - LmapWMap[0]) / 2 / LmapZoom;
+    int maxpixy = (LmapWMap[3] - LmapWMap[1]) / 2 / LmapZoom;
+    int bx = Chosen->GetHexX() - maxpixx;
+    int by = Chosen->GetHexY() - maxpixy;
+    int ex = Chosen->GetHexX() + maxpixx;
+    int ey = Chosen->GetHexY() + maxpixy;
+
+    uint vis = Chosen->GetLookDistance();
+    uint cur_color = 0;
+    int pix_x = LmapWMap[2] - LmapWMap[0], pix_y = 0;
+
+    for (int i1 = bx; i1 < ex; i1++)
+    {
+        for (int i2 = by; i2 < ey; i2++)
+        {
+            pix_y += LmapZoom;
+            if (i1 < 0 || i2 < 0 || i1 >= HexMngr.GetWidth() || i2 >= HexMngr.GetHeight())
+                continue;
+
+            bool is_far = false;
+            uint dist = GeomHelper.DistGame(Chosen->GetHexX(), Chosen->GetHexY(), i1, i2);
+            if (dist > vis)
+                is_far = true;
+
+            Field& f = HexMngr.GetField(i1, i2);
+            if (f.Crit)
+            {
+                cur_color = (f.Crit == Chosen ? 0xFF0000FF : 0xFFFF0000);
+                LmapPrepPix.push_back({LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y, cur_color});
+                LmapPrepPix.push_back({LmapWMap[0] + pix_x, LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color});
+            }
+            else if (f.Flags.IsWall || f.Flags.IsScen)
+            {
+                if (f.Flags.ScrollBlock)
+                    continue;
+                if (LmapSwitchHi == false && !f.Flags.IsWall)
+                    continue;
+                cur_color = (f.Flags.IsWall ? 0xFF00FF00 : 0x7F00FF00);
+            }
+            else
+            {
+                continue;
+            }
+
+            if (is_far)
+                cur_color = COLOR_CHANGE_ALPHA(cur_color, 0x22);
+            LmapPrepPix.push_back({LmapWMap[0] + pix_x, LmapWMap[1] + pix_y, cur_color});
+            LmapPrepPix.push_back(
+                {LmapWMap[0] + pix_x + (LmapZoom - 1), LmapWMap[1] + pix_y + ((LmapZoom - 1) / 2), cur_color});
+        }
+        pix_x -= LmapZoom;
+        pix_y = 0;
+    }
+
+    LmapPrepareNextTick = Timer::FastTick() + MINIMAP_PREPARE_TICK;
+}
+
+void FOClient::GmapNullParams()
+{
+    GmapLoc.clear();
+    GmapFog.Fill(0);
+    DeleteCritters();
+}
+
+void FOClient::WaitDraw()
+{
+    SprMngr.DrawSpriteSize(WaitPic, 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true);
+    SprMngr.Flush();
+}
 
 namespace ClientBind
 {
@@ -5093,14 +5476,14 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_CLIENT, &ProtoMngr, nullptr);
-    if (!Script::Init(FileMngr, pragma_callback, "CLIENT"))
+    if (!Script::Init(Settings, FileMngr, pragma_callback, "CLIENT"))
     {
         WriteLog("Unable to start script engine.\n");
         AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
         return false;
     }
     Script::SetExceptionCallback([this](const string& str) {
-        ShowErrorMessage(str, "");
+        GenericUtils::ShowErrorMessage(str, "");
         throw ClientRestartException("Restart");
     });
 
@@ -5267,28 +5650,6 @@ void FOClient::OnItemInvChanged(ItemView* old_item, ItemView* item)
 {
     Script::RaiseInternalEvent(ClientFunctions.ItemInvChanged, item, old_item);
     old_item->Release();
-}
-
-static int SortCritterHx_ = 0;
-static int SortCritterHy_ = 0;
-static bool SortCritterByDistPred(CritterView* cr1, CritterView* cr2)
-{
-    return DistGame(SortCritterHx_, SortCritterHy_, cr1->GetHexX(), cr1->GetHexY()) <
-        DistGame(SortCritterHx_, SortCritterHy_, cr2->GetHexX(), cr2->GetHexY());
-}
-
-static void SortCritterByDist(CritterView* cr, CritterViewVec& critters)
-{
-    SortCritterHx_ = cr->GetHexX();
-    SortCritterHy_ = cr->GetHexY();
-    std::sort(critters.begin(), critters.end(), SortCritterByDistPred);
-}
-
-static void SortCritterByDist(int hx, int hy, CritterViewVec& critters)
-{
-    SortCritterHx_ = hx;
-    SortCritterHy_ = hy;
-    std::sort(critters.begin(), critters.end(), SortCritterByDistPred);
 }
 
 bool FOClient::SScriptFunc::Crit_IsChosen(CritterView* cr)
@@ -5774,16 +6135,16 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     }
     else if (cmd == "SwitchFullscreen")
     {
-        if (!GameOpt.FullScreen)
+        if (!Self->Settings.FullScreen)
         {
             if (Self->SprMngr.EnableFullscreen())
-                GameOpt.FullScreen = true;
+                Self->Settings.FullScreen = true;
         }
         else
         {
             if (Self->SprMngr.DisableFullscreen())
             {
-                GameOpt.FullScreen = false;
+                Self->Settings.FullScreen = false;
 
                 if (Self->WindowResolutionDiffX || Self->WindowResolutionDiffY)
                 {
@@ -5838,15 +6199,15 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
             SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
             Self->SprMngr.SetMousePosition(x, y);
             SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
-            GameOpt.MouseX = GameOpt.LastMouseX = x;
-            GameOpt.MouseY = GameOpt.LastMouseY = y;
+            Self->Settings.MouseX = Self->Settings.LastMouseX = x;
+            Self->Settings.MouseY = Self->Settings.LastMouseY = y;
         }
 #endif
     }
     else if (cmd == "SetCursorPos")
     {
         if (Self->HexMngr.IsMapLoaded())
-            Self->HexMngr.SetCursorPos(GameOpt.MouseX, GameOpt.MouseY, Self->Keyb.CtrlDwn, true);
+            Self->HexMngr.SetCursorPos(Self->Settings.MouseX, Self->Settings.MouseY, Self->Keyb.CtrlDwn, true);
     }
     else if (cmd == "NetDisconnect")
     {
@@ -5884,14 +6245,14 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     {
         int w = _str(args[1]).toInt();
         int h = _str(args[2]).toInt();
-        int diff_w = w - GameOpt.ScreenWidth;
-        int diff_h = h - GameOpt.ScreenHeight;
+        int diff_w = w - Self->Settings.ScreenWidth;
+        int diff_h = h - Self->Settings.ScreenHeight;
 
-        GameOpt.ScreenWidth = w;
-        GameOpt.ScreenHeight = h;
+        Self->Settings.ScreenWidth = w;
+        Self->Settings.ScreenHeight = h;
         Self->SprMngr.SetWindowSize(w, h);
 
-        if (!GameOpt.FullScreen)
+        if (!Self->Settings.FullScreen)
         {
             int x, y;
             Self->SprMngr.GetWindowPosition(x, y);
@@ -5909,7 +6270,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     }
     else if (cmd == "RefreshAlwaysOnTop")
     {
-        Self->SprMngr.SetAlwaysOnTop(GameOpt.AlwaysOnTop);
+        Self->SprMngr.SetAlwaysOnTop(Self->Settings.AlwaysOnTop);
     }
     else if (cmd == "Command" && args.size() >= 2)
     {
@@ -6185,7 +6546,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion(CritterView* cr1, Critt
         SCRIPT_ERROR_R0("Critter2 arg is null.");
     if (cr2->IsDestroyed)
         SCRIPT_ERROR_R0("Critter2 arg is destroyed.");
-    return DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
+    return Self->GeomHelper.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
 }
 
 CritterView* FOClient::SScriptFunc::Global_GetCritter(uint critter_id)
@@ -6208,11 +6569,16 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCritters(ushort hx, ushort hy, ui
     for (auto it = crits.begin(), end = crits.end(); it != end; ++it)
     {
         CritterView* cr = it->second;
-        if (cr->CheckFind(find_type) && CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius))
+        if (cr->CheckFind(find_type) && Self->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius))
             critters.push_back(cr);
     }
 
-    SortCritterByDist(hx, hy, critters);
+    auto* self = Self;
+    std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](CritterView* cr1, CritterView* cr2) {
+        return self->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
+            self->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    });
+
     return Script::CreateArrayRef("Critter[]", critters);
 }
 
@@ -6547,7 +6913,7 @@ int FOClient::SScriptFunc::Global_GetFog(ushort zone_x, ushort zone_y)
 {
     if (!Self->Chosen || Self->Chosen->IsDestroyed)
         SCRIPT_ERROR_R0("Chosen is destroyed.");
-    if (zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight)
+    if (zone_x >= Self->Settings.GlobalMapWidth || zone_y >= Self->Settings.GlobalMapHeight)
         SCRIPT_ERROR_R0("Invalid world map pos arg.");
     return Self->GmapFog.Get2Bit(zone_x, zone_y);
 }
@@ -6594,7 +6960,7 @@ uint FOClient::SScriptFunc::Global_GetFullSecond(
     }
     else
     {
-        uint month_day = Timer::GameTimeMonthDay(year, month);
+        uint month_day = Self->GameTime.GameTimeMonthDay(year, month);
         day = CLAMP(day, 1, month_day);
     }
 
@@ -6605,13 +6971,13 @@ uint FOClient::SScriptFunc::Global_GetFullSecond(
     if (second > 59)
         second = 59;
 
-    return Timer::GetFullSecond(year, month, day, hour, minute, second);
+    return Self->GameTime.GetFullSecond(year, month, day, hour, minute, second);
 }
 
 void FOClient::SScriptFunc::Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day,
     ushort& day_of_week, ushort& hour, ushort& minute, ushort& second)
 {
-    DateTimeStamp dt = Timer::GetGameTime(full_second);
+    DateTimeStamp dt = Self->GameTime.GetGameTime(full_second);
     year = dt.Year;
     month = dt.Month;
     day_of_week = dt.DayOfWeek;
@@ -6625,7 +6991,7 @@ void FOClient::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar di
 {
     if (!Self->HexMngr.IsMapLoaded())
         SCRIPT_ERROR_R("Map not loaded.");
-    if (dir >= DIRS_COUNT)
+    if (dir >= Self->Settings.MapDirCount)
         SCRIPT_ERROR_R("Invalid dir arg.");
     if (!steps)
         SCRIPT_ERROR_R("Steps arg is zero.");
@@ -6633,11 +6999,11 @@ void FOClient::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar di
     if (steps > 1)
     {
         for (uint i = 0; i < steps; i++)
-            MoveHexByDir(hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight());
+            Self->GeomHelper.MoveHexByDir(hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight());
     }
     else
     {
-        MoveHexByDir(hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight());
+        Self->GeomHelper.MoveHexByDir(hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight());
     }
 }
 
@@ -6825,24 +7191,24 @@ void FOClient::SScriptFunc::Global_RefreshMap(bool only_tiles, bool only_roof, b
 
 void FOClient::SScriptFunc::Global_MouseClick(int x, int y, int button)
 {
-    IntVec prev_events = MainWindowMouseEvents;
-    MainWindowMouseEvents.clear();
-    int prev_x = GameOpt.MouseX;
-    int prev_y = GameOpt.MouseY;
-    int last_prev_x = GameOpt.LastMouseX;
-    int last_prev_y = GameOpt.LastMouseY;
-    GameOpt.MouseX = GameOpt.LastMouseX = x;
-    GameOpt.MouseY = GameOpt.LastMouseY = y;
-    MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
-    MainWindowMouseEvents.push_back(button);
-    MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
-    MainWindowMouseEvents.push_back(button);
+    IntVec prev_events = Self->Settings.MainWindowMouseEvents;
+    Self->Settings.MainWindowMouseEvents.clear();
+    int prev_x = Self->Settings.MouseX;
+    int prev_y = Self->Settings.MouseY;
+    int last_prev_x = Self->Settings.LastMouseX;
+    int last_prev_y = Self->Settings.LastMouseY;
+    Self->Settings.MouseX = Self->Settings.LastMouseX = x;
+    Self->Settings.MouseY = Self->Settings.LastMouseY = y;
+    Self->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
+    Self->Settings.MainWindowMouseEvents.push_back(button);
+    Self->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
+    Self->Settings.MainWindowMouseEvents.push_back(button);
     Self->ParseMouse();
-    MainWindowMouseEvents = prev_events;
-    GameOpt.MouseX = prev_x;
-    GameOpt.MouseY = prev_y;
-    GameOpt.LastMouseX = last_prev_x;
-    GameOpt.LastMouseY = last_prev_y;
+    Self->Settings.MainWindowMouseEvents = prev_events;
+    Self->Settings.MouseX = prev_x;
+    Self->Settings.MouseY = prev_y;
+    Self->Settings.LastMouseX = last_prev_x;
+    Self->Settings.LastMouseY = last_prev_y;
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text)
@@ -6850,33 +7216,33 @@ void FOClient::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string 
     if (!key1 && !key2)
         return;
 
-    IntVec prev_events = MainWindowKeyboardEvents;
-    StrVec prev_events_text = MainWindowKeyboardEventsText;
-    MainWindowKeyboardEvents.clear();
+    IntVec prev_events = Self->Settings.MainWindowKeyboardEvents;
+    StrVec prev_events_text = Self->Settings.MainWindowKeyboardEventsText;
+    Self->Settings.MainWindowKeyboardEvents.clear();
     if (key1)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        MainWindowKeyboardEventsText.push_back(key1_text);
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
+        Self->Settings.MainWindowKeyboardEventsText.push_back(key1_text);
     }
     if (key2)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        MainWindowKeyboardEventsText.push_back(key2_text);
-        MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        MainWindowKeyboardEventsText.push_back("");
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
+        Self->Settings.MainWindowKeyboardEventsText.push_back(key2_text);
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
+        Self->Settings.MainWindowKeyboardEventsText.push_back("");
     }
     if (key1)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        MainWindowKeyboardEventsText.push_back("");
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
+        Self->Settings.MainWindowKeyboardEventsText.push_back("");
     }
     Self->ParseKeyboard();
-    MainWindowKeyboardEvents = prev_events;
-    MainWindowKeyboardEventsText = prev_events_text;
+    Self->Settings.MainWindowKeyboardEvents = prev_events;
+    Self->Settings.MainWindowKeyboardEventsText = prev_events_text;
 }
 
 void FOClient::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, string drop_anim_name)
@@ -6887,36 +7253,36 @@ void FOClient::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, strin
 
 void FOClient::SScriptFunc::Global_ChangeZoom(float target_zoom)
 {
-    if (target_zoom == GameOpt.SpritesZoom)
+    if (target_zoom == Self->Settings.SpritesZoom)
         return;
 
-    float init_zoom = GameOpt.SpritesZoom;
+    float init_zoom = Self->Settings.SpritesZoom;
     if (target_zoom == 1.0f)
     {
         Self->HexMngr.ChangeZoom(0);
     }
-    else if (target_zoom > GameOpt.SpritesZoom)
+    else if (target_zoom > Self->Settings.SpritesZoom)
     {
-        while (target_zoom > GameOpt.SpritesZoom)
+        while (target_zoom > Self->Settings.SpritesZoom)
         {
-            float old_zoom = GameOpt.SpritesZoom;
+            float old_zoom = Self->Settings.SpritesZoom;
             Self->HexMngr.ChangeZoom(1);
-            if (GameOpt.SpritesZoom == old_zoom)
+            if (Self->Settings.SpritesZoom == old_zoom)
                 break;
         }
     }
-    else if (target_zoom < GameOpt.SpritesZoom)
+    else if (target_zoom < Self->Settings.SpritesZoom)
     {
-        while (target_zoom < GameOpt.SpritesZoom)
+        while (target_zoom < Self->Settings.SpritesZoom)
         {
-            float old_zoom = GameOpt.SpritesZoom;
+            float old_zoom = Self->Settings.SpritesZoom;
             Self->HexMngr.ChangeZoom(-1);
-            if (GameOpt.SpritesZoom == old_zoom)
+            if (Self->Settings.SpritesZoom == old_zoom)
                 break;
         }
     }
 
-    if (init_zoom != GameOpt.SpritesZoom)
+    if (init_zoom != Self->Settings.SpritesZoom)
         Self->RebuildLookBorders = true;
 }
 
@@ -7230,8 +7596,8 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(MapSprite* map_spr)
     Field& f = Self->HexMngr.GetField(map_spr->HexX, map_spr->HexY);
     Sprites& tree = Self->HexMngr.GetDrawTree();
     Sprite& spr = tree.InsertSprite(draw_order, map_spr->HexX, map_spr->HexY + draw_order_hy_offset, 0,
-        HEX_OX + map_spr->OffsX, HEX_OY + map_spr->OffsY, &f.ScrX, &f.ScrY,
-        map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(map_spr->FrameIndex), nullptr,
+        (Self->Settings.MapHexWidth / 2) + map_spr->OffsX, (Self->Settings.MapHexHeight / 2) + map_spr->OffsY, &f.ScrX,
+        &f.ScrY, map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(map_spr->FrameIndex), nullptr,
         map_spr->IsTweakOffs ? &map_spr->TweakOffsX : nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsY : nullptr,
         map_spr->IsTweakAlpha ? &map_spr->TweakAlpha : nullptr, nullptr, &map_spr->Valid);
 
@@ -7443,8 +7809,8 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt(int effect_subtype
 
     rt->DrawEffect = Self->OffscreenEffects[effect_subtype];
 
-    Rect from(CLAMP(x, 0, GameOpt.ScreenWidth), CLAMP(y, 0, GameOpt.ScreenHeight), CLAMP(x + w, 0, GameOpt.ScreenWidth),
-        CLAMP(y + h, 0, GameOpt.ScreenHeight));
+    Rect from(CLAMP(x, 0, Self->Settings.ScreenWidth), CLAMP(y, 0, Self->Settings.ScreenHeight),
+        CLAMP(x + w, 0, Self->Settings.ScreenWidth), CLAMP(y + h, 0, Self->Settings.ScreenHeight));
     Rect to = from;
     Self->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -7469,10 +7835,10 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2(
 
     rt->DrawEffect = Self->OffscreenEffects[effect_subtype];
 
-    Rect from(CLAMP(from_x, 0, GameOpt.ScreenWidth), CLAMP(from_y, 0, GameOpt.ScreenHeight),
-        CLAMP(from_x + from_w, 0, GameOpt.ScreenWidth), CLAMP(from_y + from_h, 0, GameOpt.ScreenHeight));
-    Rect to(CLAMP(to_x, 0, GameOpt.ScreenWidth), CLAMP(to_y, 0, GameOpt.ScreenHeight),
-        CLAMP(to_x + to_w, 0, GameOpt.ScreenWidth), CLAMP(to_y + to_h, 0, GameOpt.ScreenHeight));
+    Rect from(CLAMP(from_x, 0, Self->Settings.ScreenWidth), CLAMP(from_y, 0, Self->Settings.ScreenHeight),
+        CLAMP(from_x + from_w, 0, Self->Settings.ScreenWidth), CLAMP(from_y + from_h, 0, Self->Settings.ScreenHeight));
+    Rect to(CLAMP(to_x, 0, Self->Settings.ScreenWidth), CLAMP(to_y, 0, Self->Settings.ScreenHeight),
+        CLAMP(to_x + to_w, 0, Self->Settings.ScreenWidth), CLAMP(to_y + to_h, 0, Self->Settings.ScreenHeight));
     Self->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
@@ -7497,10 +7863,10 @@ bool FOClient::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& 
     if (Self->HexMngr.IsMapLoaded() && hx < Self->HexMngr.GetWidth() && hy < Self->HexMngr.GetHeight())
     {
         Self->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
-        x += GameOpt.ScrOx + HEX_OX;
-        y += GameOpt.ScrOy + HEX_OY;
-        x = (int)(x / GameOpt.SpritesZoom);
-        y = (int)(y / GameOpt.SpritesZoom);
+        x += Self->Settings.ScrOx + (Self->Settings.MapHexWidth / 2);
+        y += Self->Settings.ScrOy + (Self->Settings.MapHexHeight / 2);
+        x = (int)(x / Self->Settings.SpritesZoom);
+        y = (int)(y / Self->Settings.SpritesZoom);
         return true;
     }
     return false;
@@ -7508,14 +7874,14 @@ bool FOClient::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& 
 
 bool FOClient::SScriptFunc::Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy)
 {
-    int old_x = GameOpt.MouseX;
-    int old_y = GameOpt.MouseY;
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
+    int old_x = Self->Settings.MouseX;
+    int old_y = Self->Settings.MouseY;
+    Self->Settings.MouseX = x;
+    Self->Settings.MouseY = y;
     ushort hx_ = 0, hy_ = 0;
     bool result = Self->HexMngr.GetHexPixel(x, y, hx_, hy_);
-    GameOpt.MouseX = old_x;
-    GameOpt.MouseY = old_y;
+    Self->Settings.MouseX = old_x;
+    Self->Settings.MouseY = old_y;
     if (result)
     {
         hx = hx_;

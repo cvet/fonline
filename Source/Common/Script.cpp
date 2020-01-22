@@ -64,7 +64,8 @@ public:
 };
 typedef vector<BindFunction> BindFunctionVec;
 
-static asIScriptEngine* Engine = nullptr;
+static ScriptSettings* Settings;
+static asIScriptEngine* Engine;
 static BindFunctionVec BindedFunctions;
 static HashIntMap ScriptFuncBinds; // Func Num -> Bind Id
 static ExceptionCallback OnException;
@@ -107,8 +108,10 @@ ClientScriptFunctions ClientFunctions;
 MapperScriptFunctions MapperFunctions;
 #endif
 
-bool Script::Init(FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target)
+bool Script::Init(
+    ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target)
 {
+    Settings = &sett;
     FileMngr = &file_mngr;
 
     Engine = CreateEngine(pragma_callback, target);
@@ -502,7 +505,7 @@ static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*
 
 static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images)
 {
-    string mono_path = GameOpt.MonoPath;
+    string mono_path = Settings->MonoPath;
     string xbuild_path = _str(mono_path + "/bin/xbuild.bat");
     DiskFileSystem::ResolvePath(xbuild_path);
 
@@ -752,7 +755,7 @@ asIScriptEngine* Script::CreateEngine(ScriptPragmaCallback* pragma_callback, con
 
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
-    edata->Invoker = new ScriptInvoker();
+    edata->Invoker = new ScriptInvoker(*Settings);
     engine->SetUserData(edata);
     return engine;
 }

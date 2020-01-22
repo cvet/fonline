@@ -280,12 +280,13 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
     else
     {
         // Logging
-        if (GameOpt.AssimpLogging)
-        {
-            aiEnableVerboseLogging(true);
-            aiLogStream log_stream = aiGetPredefinedLogStream(aiDefaultLogStream_FILE, "Assimp.log");
-            aiAttachLogStream(&log_stream);
-        }
+        // Todo:
+        // if (GameOpt.AssimpLogging)
+        // {
+        //    aiEnableVerboseLogging(true);
+        //    aiLogStream log_stream = aiGetPredefinedLogStream(aiDefaultLogStream_FILE, "Assimp.log");
+        //    aiAttachLogStream(&log_stream);
+        // }
 
         // Properties
         static aiPropertyStore* import_props;

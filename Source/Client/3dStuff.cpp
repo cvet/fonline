@@ -1,6 +1,7 @@
 #include "3dStuff.h"
 #include "3dAnimation.h"
 #include "EffectManager.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Script.h"
 #include "Settings.h"
@@ -9,10 +10,10 @@
 #include "Timer.h"
 
 Animation3dManager::Animation3dManager(
-    FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator) :
-    fileMngr {file_mngr}, effectMngr {effect_mngr}, meshTexCreator {mesh_tex_creator}
+    RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator) :
+    settings {sett}, fileMngr {file_mngr}, effectMngr {effect_mngr}, meshTexCreator {mesh_tex_creator}
 {
-    if (!GameOpt.Enable3dRendering)
+    if (!settings.Enable3dRendering)
         return;
 
     worldMatrices.resize(effectMngr.MaxBones);
@@ -22,13 +23,13 @@ Animation3dManager::Animation3dManager(
     RUNTIME_ASSERT(load_3d_effects_ok);
 
     // Smoothing
-    moveTransitionTime = GameOpt.Animation3dSmoothTime / 1000.0f;
+    moveTransitionTime = settings.Animation3dSmoothTime / 1000.0f;
     if (moveTransitionTime < 0.001f)
         moveTransitionTime = 0.001f;
 
     // 2D rendering time
-    if (GameOpt.Animation3dFPS)
-        animDelay = 1000 / GameOpt.Animation3dFPS;
+    if (settings.Animation3dFPS)
+        animDelay = 1000 / settings.Animation3dFPS;
 }
 
 Animation3dManager::~Animation3dManager()
@@ -322,10 +323,10 @@ Animation3d::Animation3d(Animation3dManager& anim3d_mngr) : anim3dMngr(anim3d_mn
     speedAdjustBase = 1.0f;
     speedAdjustCur = 1.0f;
     speedAdjustLink = 1.0f;
-    dirAngle = (GameOpt.MapHexagonal ? 150.0f : 135.0f);
+    dirAngle = (anim3dMngr.settings.MapHexagonal ? 150.0f : 135.0f);
     childChecker = true;
     useGameTimer = true;
-    Matrix::RotationX(GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot);
+    Matrix::RotationX(anim3dMngr.settings.MapCameraAngle * PI_VALUE / 180.0f, matRot);
 }
 
 Animation3d::~Animation3d()
@@ -909,7 +910,7 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
 
 void Animation3d::SetDir(int dir)
 {
-    float angle = (float)(GameOpt.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45);
+    float angle = (float)(anim3dMngr.settings.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45);
     if (angle != dirAngle)
         dirAngle = angle;
 }
@@ -1454,7 +1455,7 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disa
         GL(glUseProgram(effect_pass.Program));
 
         if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
-            GL(glUniform1f(effect_pass.ZoomFactor, GameOpt.SpritesZoom));
+            GL(glUniform1f(effect_pass.ZoomFactor, anim3dMngr.settings.SpritesZoom));
         if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
             GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, anim3dMngr.matrixProjCM[0]));
         if (IS_EFFECT_VALUE(effect_pass.ColorMap) && textures[0])
@@ -1703,9 +1704,9 @@ bool Animation3dEntity::Load(const string& name)
             {
                 (*istr) >> buf;
                 if (token == "Layer")
-                    layer = (int)ConvertParamValue(buf, convert_value_fail);
+                    layer = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 else
-                    layer_val = (int)ConvertParamValue(buf, convert_value_fail);
+                    layer_val = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 link = &dummy_link;
                 mesh = 0;
@@ -1781,7 +1782,7 @@ bool Animation3dEntity::Load(const string& name)
                     {
                         if (layers[m] != "All")
                         {
-                            int layer = ConvertParamValue(layers[m], convert_value_fail);
+                            int layer = GenericUtils::ConvertParamValue(layers[m], convert_value_fail);
                             cut->Layers.push_back(layer);
                         }
                         else
@@ -1987,7 +1988,7 @@ bool Animation3dEntity::Load(const string& name)
                 StrVec layers = _str(buf).split('-');
                 for (uint m = 0, n = (uint)layers.size(); m < n; m++)
                 {
-                    int layer = ConvertParamValue(layers[m], convert_value_fail);
+                    int layer = GenericUtils::ConvertParamValue(layers[m], convert_value_fail);
                     if (layer >= 0 && layer < LAYERS3D_COUNT)
                     {
                         int* tmp = link->DisabledLayers;
@@ -2026,7 +2027,7 @@ bool Animation3dEntity::Load(const string& name)
             else if (token == "Texture")
             {
                 (*istr) >> buf;
-                int index = ConvertParamValue(buf, convert_value_fail);
+                int index = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
                 if (index >= 0 && index < EFFECT_TEXTURES)
                 {
@@ -2116,7 +2117,7 @@ bool Animation3dEntity::Load(const string& name)
                     data_len = (uint)ints.size() * sizeof(int);
                     data = new uchar[data_len];
                     for (uint i = 0, j = (uint)ints.size(); i < j; i++)
-                        ((int*)data)[i] = ConvertParamValue(ints[i], convert_value_fail);
+                        ((int*)data)[i] = GenericUtils::ConvertParamValue(ints[i], convert_value_fail);
                 }
                 else
                 {
@@ -2140,9 +2141,9 @@ bool Animation3dEntity::Load(const string& name)
                 // Index animation
                 int ind1 = 0, ind2 = 0;
                 (*istr) >> buf;
-                ind1 = ConvertParamValue(buf, convert_value_fail);
+                ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                ind2 = ConvertParamValue(buf, convert_value_fail);
+                ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 if (token == "Anim" || token == "AnimExt")
                 {
@@ -2175,15 +2176,15 @@ bool Animation3dEntity::Load(const string& name)
             {
                 int ind1 = 0, ind2 = 0;
                 (*istr) >> buf;
-                ind1 = ConvertParamValue(buf, convert_value_fail);
+                ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                ind2 = ConvertParamValue(buf, convert_value_fail);
+                ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 int layer = 0, value = 0;
                 (*istr) >> buf;
-                layer = ConvertParamValue(buf, convert_value_fail);
+                layer = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                value = ConvertParamValue(buf, convert_value_fail);
+                value = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
                 if (!animLayerValues.count(index))
@@ -2201,9 +2202,9 @@ bool Animation3dEntity::Load(const string& name)
 
                 int ind1 = 0, ind2 = 0;
                 (*istr) >> buf;
-                ind1 = ConvertParamValue(buf, convert_value_fail);
+                ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                ind2 = ConvertParamValue(buf, convert_value_fail);
+                ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 if (valuei == 1)
                     anim1Equals.insert(std::make_pair(ind1, ind2));
@@ -2231,7 +2232,7 @@ bool Animation3dEntity::Load(const string& name)
             {
                 (*istr) >> buf;
 
-                renderAnimDir = ConvertParamValue(buf, convert_value_fail);
+                renderAnimDir = GenericUtils::ConvertParamValue(buf, convert_value_fail);
             }
             else if (token == "DisableShadow")
             {
@@ -2241,9 +2242,9 @@ bool Animation3dEntity::Load(const string& name)
             {
                 int w = 0, h = 0;
                 (*istr) >> buf;
-                w = ConvertParamValue(buf, convert_value_fail);
+                w = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                h = ConvertParamValue(buf, convert_value_fail);
+                h = GenericUtils::ConvertParamValue(buf, convert_value_fail);
 
                 drawWidth = w;
                 drawHeight = h;

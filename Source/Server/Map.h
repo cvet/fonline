@@ -3,24 +3,15 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "GeometryHelper.h"
+#include "ProtoMap.h"
+#include "Settings.h"
 
 using ItemVecMap = map<uint, ItemVec>;
 
 class Map : public Entity
 {
     friend class MapManager;
-
-    uchar* hexFlags;
-    int hexFlagsSize;
-    CritterVec mapCritters;
-    ClientVec mapPlayers;
-    NpcVec mapNpcs;
-    ItemVec mapItems;
-    ItemMap mapItemsById;
-    ItemVecMap mapItemsByHex;
-    ItemVecMap mapBlockLinesByHex;
-    Location* mapLocation;
-    uint loopLastTick[5];
 
 public:
     PROPERTIES_HEADER();
@@ -43,7 +34,7 @@ public:
     CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
     CLASS_PROPERTY(bool, IsNoLogOut);
 
-    Map(uint id, ProtoMap* proto, Location* location);
+    Map(uint id, ProtoMap* proto, Location* location, MapSettings& sett);
     ~Map();
 
     void PlaceItemBlocks(ushort hx, ushort hy, Item* item);
@@ -124,4 +115,19 @@ public:
 
     // Script
     bool SetScript(asIScriptFunction* func, bool first_time);
+
+private:
+    MapSettings& settings;
+    GeometryHelper geomHelper;
+    uchar* hexFlags {};
+    int hexFlagsSize {};
+    CritterVec mapCritters {};
+    ClientVec mapPlayers {};
+    NpcVec mapNpcs {};
+    ItemVec mapItems {};
+    ItemMap mapItemsById {};
+    ItemVecMap mapItemsByHex {};
+    ItemVecMap mapBlockLinesByHex {};
+    Location* mapLocation {};
+    uint loopLastTick[5] {};
 };

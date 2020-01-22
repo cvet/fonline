@@ -1,4 +1,5 @@
 #include "ScriptPragmas.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "ProtoManager.h"
 #include "Script.h"
@@ -509,12 +510,12 @@ public:
             else if (opt_name == "Min")
             {
                 check_min_value = true;
-                min_value = ConvertParamValue(opt_svalue, fail);
+                min_value = GenericUtils::ConvertParamValue(opt_svalue, fail);
             }
             else if (opt_name == "Max")
             {
                 check_max_value = true;
-                max_value = ConvertParamValue(opt_svalue, fail);
+                max_value = GenericUtils::ConvertParamValue(opt_svalue, fail);
             }
             else if (opt_name == "GetCallabck")
             {
@@ -750,7 +751,7 @@ public:
         if (separator != string::npos)
         {
             bool fail = false;
-            value = ConvertParamValue(_str(other.substr(separator + 1)).trim(), fail);
+            value = GenericUtils::ConvertParamValue(_str(other.substr(separator + 1)).trim(), fail);
             if (fail)
             {
                 WriteLog("Error in 'enum' pragma '{}', value conversation error.\n", text);

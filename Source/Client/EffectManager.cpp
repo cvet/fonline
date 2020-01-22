@@ -1,4 +1,5 @@
 #include "EffectManager.h"
+#include "GenericUtils.h"
 #include "GraphicStructures.h"
 #include "Log.h"
 #include "StringUtils.h"
@@ -6,7 +7,7 @@
 #include "Timer.h"
 #include "Version_Include.h"
 
-EffectManager::EffectManager(FileManager& file_mngr) : fileMngr {file_mngr}
+EffectManager::EffectManager(EffectSettings& sett, FileManager& file_mngr) : settings {sett}, fileMngr {file_mngr}
 {
 #ifndef FO_OPENGL_ES
     GLint max_uniform_components = 0;
@@ -76,7 +77,7 @@ Effect* EffectManager::LoadEffect(const string& effect_name, bool use_in_2d, con
     uint passes = 1;
     for (size_t i = 0; i < commands.size(); i++)
         if (commands[i].size() >= 2 && commands[i][0] == "Passes")
-            passes = ConvertParamValue(commands[i][1], fail);
+            passes = GenericUtils::ConvertParamValue(commands[i][1], fail);
 
     // New effect
     auto effect = std::make_unique<Effect>();
@@ -141,7 +142,7 @@ Effect* EffectManager::LoadEffect(const string& effect_name, bool use_in_2d, con
         StrVec& tokens = commands[i];
         if (tokens[0] == "Pass" && tokens.size() >= 3)
         {
-            uint pass = ConvertParamValue(tokens[1], fail);
+            uint pass = GenericUtils::ConvertParamValue(tokens[1], fail);
             if (pass < passes)
             {
                 EffectPass& effect_pass = effect->Passes[pass];
@@ -446,13 +447,17 @@ void EffectManager::EffectProcessVariables(EffectPass& effect_pass, bool start, 
         if (effect_pass.IsRandom)
         {
             if (IS_EFFECT_VALUE(effect_pass.Random1))
-                SET_EFFECT_VALUE(effect, effect_pass.Random1, (float)((double)Random(0, 2000000000) / 2000000000.0));
+                SET_EFFECT_VALUE(
+                    effect, effect_pass.Random1, (float)((double)GenericUtils::Random(0, 2000000000) / 2000000000.0));
             if (IS_EFFECT_VALUE(effect_pass.Random2))
-                SET_EFFECT_VALUE(effect, effect_pass.Random2, (float)((double)Random(0, 2000000000) / 2000000000.0));
+                SET_EFFECT_VALUE(
+                    effect, effect_pass.Random2, (float)((double)GenericUtils::Random(0, 2000000000) / 2000000000.0));
             if (IS_EFFECT_VALUE(effect_pass.Random3))
-                SET_EFFECT_VALUE(effect, effect_pass.Random3, (float)((double)Random(0, 2000000000) / 2000000000.0));
+                SET_EFFECT_VALUE(
+                    effect, effect_pass.Random3, (float)((double)GenericUtils::Random(0, 2000000000) / 2000000000.0));
             if (IS_EFFECT_VALUE(effect_pass.Random4))
-                SET_EFFECT_VALUE(effect, effect_pass.Random4, (float)((double)Random(0, 2000000000) / 2000000000.0));
+                SET_EFFECT_VALUE(
+                    effect, effect_pass.Random4, (float)((double)GenericUtils::Random(0, 2000000000) / 2000000000.0));
         }
 
         if (effect_pass.IsTextures)
@@ -478,7 +483,7 @@ void EffectManager::EffectProcessVariables(EffectPass& effect_pass, bool start, 
         {
             for (int i = 0; i < EFFECT_SCRIPT_VALUES; i++)
                 if (IS_EFFECT_VALUE(effect_pass.ScriptValues[i]))
-                    SET_EFFECT_VALUE(effect, effect_pass.ScriptValues[i], GameOpt.EffectValues[i]);
+                    SET_EFFECT_VALUE(effect, effect_pass.ScriptValues[i], settings.EffectValues[i]);
         }
 
         if (effect_pass.IsAnimPos)

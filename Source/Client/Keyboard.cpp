@@ -2,7 +2,7 @@
 #include "SpriteManager.h"
 #include "StringUtils.h"
 
-Keyboard::Keyboard(SpriteManager& spr_mngr) : sprMngr(spr_mngr)
+Keyboard::Keyboard(InputSettings& sett, SpriteManager& spr_mngr) : settings {sett}, sprMngr {spr_mngr}
 {
 #define MAKE_KEY_CODE(name, index, code) \
     KeysMap[code] = index; \
@@ -13,7 +13,7 @@ Keyboard::Keyboard(SpriteManager& spr_mngr) : sprMngr(spr_mngr)
     for (uint i = 0; i < 0x100; i++)
         KeysMapUser[i] = i;
 
-    istringstream str(GameOpt.KeyboardRemap);
+    istringstream str(settings.KeyboardRemap);
     while (!str.eof())
     {
         int from, to;
@@ -117,12 +117,12 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
     else if (CtrlDwn && !ShiftDwn && dik == DIK_V)
     {
         const char* cb_text = SDL_GetClipboardText();
-        MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        MainWindowKeyboardEvents.push_back(511);
-        MainWindowKeyboardEventsText.push_back(cb_text);
-        MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        MainWindowKeyboardEvents.push_back(511);
-        MainWindowKeyboardEventsText.push_back(cb_text);
+        settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+        settings.MainWindowKeyboardEvents.push_back(511);
+        settings.MainWindowKeyboardEventsText.push_back(cb_text);
+        settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+        settings.MainWindowKeyboardEvents.push_back(511);
+        settings.MainWindowKeyboardEventsText.push_back(cb_text);
     }
     else if (dik == DIK_CLIPBOARD_PASTE)
     {

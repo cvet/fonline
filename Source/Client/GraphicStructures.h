@@ -4,7 +4,6 @@
 
 #include "FileSystem.h"
 #include "GraphicApi.h"
-#include "Settings.h"
 #include "Timer.h"
 
 #include "assimp/scene.h"
@@ -78,8 +77,7 @@ struct AnyFrames : public NonCopyable
     uint GetCnt() { return CntFrm; }
     uint GetCurSprId() { return CntFrm > 1 ? Ind[((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100] : Ind[0]; }
     uint GetCurSprIndex() { return CntFrm > 1 ? ((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100 : 0; }
-    int DirCount() { return HaveDirs ? DIRS_COUNT : 1; }
-    AnyFrames* GetDir(int dir) { return dir == 0 || !HaveDirs ? this : Dirs[dir - 1]; }
+    AnyFrames* GetDir(int dir) { return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1]; }
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
     short NextX[MAX_FRAMES] {};
@@ -89,7 +87,7 @@ struct AnyFrames : public NonCopyable
     uint Anim1 {};
     uint Anim2 {};
     hash NameHash {};
-    bool HaveDirs {};
+    int DirCount {1};
     AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };
 static_assert(std::is_standard_layout_v<AnyFrames>);

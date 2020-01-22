@@ -14,8 +14,8 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 ## Features
 
 * Open Source under [MIT license](https://github.com/cvet/fonline/blob/master/LICENSE)
-* OpenGL/ES/WebGL and DirectX *(wip)* rendering
-* C++17, AngelScript, C#/Mono and Fallout Star-Trek as scripting languages *(wip)*
+* OpenGL/ES/WebGL and DirectX rendering
+* C++17, AngelScript, C#/Mono and Fallout Star-Trek as scripting languages
 * Target platforms
   * Windows
   * Linux
@@ -23,8 +23,8 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
   * iOS
   * Android
   * Web
-  * PS4 *(wip)*
-* Online and singleplayer *(wip)* modes
+  * PlayStation
+* Online and singleplayer modes
 * Supporting of Fallout 1/2/Tactics, Arcanum and other isometric games asset formats
 * Supporting of 3d characters in modern graphic formats
 * Hexagonal/square map tiling
@@ -48,7 +48,6 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * Code refactoring (see separate section below)
 * C++ as native scripting language with additional optional submodules for AngelScript, C# and Fallout Star-Trek SL
 * [Multifunctional editor](https://github.com/cvet/fonline/issues/31)
-* YAML imprving as main formal for all text assets
 * [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
 * [Documentation](https://github.com/cvet/fonline/issues/49)
 
@@ -59,20 +58,20 @@ Bugs, performance cases and feature requests see at [Issues page](https://github
 * [Exclude FBX SDK from dependencies](https://github.com/cvet/fonline/issues/22)
 * [Parallelism where it needed](https://github.com/cvet/fonline/issues/32)
 * [Steam integration](https://github.com/cvet/fonline/issues/38)
+* YAML as main formal for all text assets
 
 #### Code refactoring plans
 
 * Move errors handling model from error code based to exception based
 * Eliminate singletons, statics, global functions
 * Preprocessor defines to constants and enums
-* Eliminate raw pointers, use only smart
-* Hide implementation details from headers using abstraction
+* Eliminate raw pointers, use raii and smart pointers for control objects lifetime
+* Hide implementation details from headers using abstraction and pimpl idiom
 * Fix all warnings from PVS Studio and other static analyzer tools
 * Improve more unit tests and gain code coverage to at least 80%
 * Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
 * Eliminate all preprocessor defines related to FONLINE_* (CLIENT, SERVER, EDITOR)
 * In general decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
-* Use more 'auto' keyword and replace 'simple for' on 'new foreach' (where it's possible)
 
 ## Repository structure
 

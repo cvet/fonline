@@ -2,6 +2,7 @@
 
 #include "Server.h"
 #include "Testing.h"
+#include "Version_Include.h"
 
 #if defined(FO_LINUX) || defined(FO_MAC)
 #include <errno.h>
@@ -10,14 +11,17 @@
 #include <unistd.h>
 #endif
 
+static GlobalSettings Settings {};
+
 #ifndef FO_TESTING
 int main(int argc, char** argv)
 #else
 static int main_disabled(int argc, char** argv)
 #endif
 {
+    CatchExceptions("FOnlineServerDaemon", FO_VERSION);
     LogToFile("FOnlineServerDaemon.log");
-    InitialSetup("FOnlineServerDaemon", argc, argv);
+    Settings.ParseArgs(argc, argv);
 
 #if defined(FO_LINUX) || defined(FO_MAC)
     // Start daemon
@@ -49,7 +53,7 @@ static int main_disabled(int argc, char** argv)
     RUNTIME_ASSERT(!"Invalid OS");
 #endif
 
-    FOServer server;
+    FOServer server(Settings);
     server.Run();
     return server.Run();
 }

@@ -1,12 +1,8 @@
 #include "StringUtils.h"
 #include "GenericUtils.h"
-#include "Log.h"
 #include "Testing.h"
 #include "UcsTables_Include.h"
 #include "WinApi_Include.h"
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "DataBase.h"
-#endif
 
 uint _str::length()
 {
@@ -476,9 +472,6 @@ std::wstring _str::toWideChar()
 }
 #endif
 
-static std::mutex HashNamesLocker;
-static map<hash, string> HashNames;
-
 hash _str::toHash()
 {
     if (s.empty())
@@ -489,66 +482,15 @@ hash _str::toHash()
     if (s.empty())
         return 0;
 
-    // Calculate hash
-    hash h = Hashing::MurmurHash2((const uchar*)s.c_str(), (uint)s.length());
-    if (!h)
-        return 0;
-
-    // Add hash
-    SCOPE_LOCK(HashNamesLocker);
-
-    auto ins = HashNames.insert(std::make_pair(h, ""));
-    if (ins.second)
-    {
-        ins.first->second = s;
-
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        if (DbStorage)
-        {
-            if (DbStorage->Get("Hashes", h).empty())
-                DbStorage->Insert("Hashes", h, {{"Value", s}});
-        }
-#endif
-    }
-    else if (ins.first->second != s)
-    {
-        WriteLog("Hash collision detected for names '{}' and '{}', hash {:#X}.\n", s, ins.first->second, h);
-    }
-
-    return h;
+    return Hashing::MurmurHash2((const uchar*)s.c_str(), (uint)s.length());
 }
 
 _str& _str::parseHash(hash h)
 {
-    SCOPE_LOCK(HashNamesLocker);
-
-    if (h)
-    {
-        auto it = HashNames.find(h);
-        if (it != HashNames.end())
-            s += it->second;
-    }
+    // Todo: hash
+    UNREACHABLE_PLACE;
     return *this;
 }
-
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-void _str::loadHashes()
-{
-    WriteLog("Load hashes...\n");
-
-    SCOPE_LOCK(HashNamesLocker);
-
-    UIntVec db_hashes = DbStorage->GetAllIds("Hashes");
-    for (uint hash_id : db_hashes)
-    {
-        DataBase::Document hash_doc = DbStorage->Get("Hashes", hash_id);
-        const string& hash_value = std::get<string>(hash_doc["Value"]);
-        HashNames[hash_id] = hash_value;
-    }
-
-    WriteLog("Load hashes complete.\n");
-}
-#endif
 
 void Str::Copy(char* to, size_t size, const char* from)
 {

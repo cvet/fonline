@@ -1,6 +1,7 @@
 #include "Dialogs.h"
 #include "Critter.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Item.h"
 #include "Location.h"
 #include "Log.h"
@@ -421,7 +422,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
         if (is_hash)
             ivalue = (int)_str(svalue).toHash();
         else
-            ivalue = ConvertParamValue(svalue, fail);
+            ivalue = GenericUtils::ConvertParamValue(svalue, fail);
     }
     break;
     case DR_ITEM: {
@@ -449,7 +450,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
 
         // Value
         input >> svalue;
-        ivalue = (int)ConvertParamValue(svalue, fail);
+        ivalue = GenericUtils::ConvertParamValue(svalue, fail);
     }
     break;
     case DR_SCRIPT: {
@@ -463,7 +464,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
 #define READ_SCRIPT_VALUE_(val) \
     { \
         input >> value_str; \
-        val = ConvertParamValue(value_str, fail); \
+        val = GenericUtils::ConvertParamValue(value_str, fail); \
     }
         char value_str[MAX_FOTEXT];
         if (values_count > 0)

@@ -2,12 +2,12 @@
 #include "3dStuff.h"
 #include "CritterView.h"
 #include "DiskFileSystem.h"
+#include "GenericUtils.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "LocationView.h"
 #include "Log.h"
 #include "MapView.h"
-#include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -24,17 +24,19 @@ string FOMapper::ClientWritePath;
 MapView* FOMapper::SScriptFunc::ClientCurMap;
 LocationView* FOMapper::SScriptFunc::ClientCurLocation;
 
-FOMapper::FOMapper() :
+FOMapper::FOMapper(MapperSettings& sett) :
+    Settings {sett},
+    GeomHelper(Settings),
     IfaceIni(""),
     FileMngr(),
     ServerFileMngr(),
     Cache("Data/Cache.bin"),
     ProtoMngr(),
-    EffectMngr(FileMngr),
-    SprMngr(FileMngr, EffectMngr),
+    EffectMngr(Settings, FileMngr),
+    SprMngr(Settings, FileMngr, EffectMngr),
     ResMngr(FileMngr, SprMngr),
-    HexMngr(true, ProtoMngr, SprMngr, ResMngr),
-    Keyb(SprMngr)
+    HexMngr(true, Settings, ProtoMngr, SprMngr, ResMngr),
+    Keyb(Settings, SprMngr)
 {
     Self = this;
     DrawCrExtInfo = 0;
@@ -50,15 +52,15 @@ FOMapper::FOMapper() :
     // Mouse
     int mx = 0, my = 0;
     SDL_GetMouseState(&mx, &my);
-    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP(mx, 0, GameOpt.ScreenWidth - 1);
-    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP(my, 0, GameOpt.ScreenHeight - 1);
+    Settings.MouseX = Settings.LastMouseX = CLAMP(mx, 0, Settings.ScreenWidth - 1);
+    Settings.MouseY = Settings.LastMouseY = CLAMP(my, 0, Settings.ScreenHeight - 1);
 
     // Options
-    GameOpt.ScrollCheck = false;
+    Settings.ScrollCheck = false;
 
     // Setup write paths
-    ServerWritePath = GameOpt.ServerDir;
-    ClientWritePath = GameOpt.WorkDir;
+    ServerWritePath = Settings.ServerDir;
+    ClientWritePath = Settings.WorkDir;
 
     // Resources
     FileMngr.AddDataSource("$Basic");
@@ -95,7 +97,7 @@ FOMapper::FOMapper() :
     RUNTIME_ASSERT(init_scripts_ok);
 
     // Language Packs
-    CurLang.LoadFromFiles(FileMngr, GameOpt.Language);
+    CurLang.LoadFromFiles(FileMngr, Settings.Language);
 
     // Prototypes
     bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
@@ -153,16 +155,16 @@ FOMapper::FOMapper() :
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if (!GameOpt.StartMap.empty())
+    if (!Settings.StartMap.empty())
     {
-        string map_name = GameOpt.StartMap;
+        string map_name = Settings.StartMap;
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
         bool initialized = pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr);
 
         if (initialized && HexMngr.SetProtoMap(*pmap))
         {
-            int hexX = GameOpt.StartHexX;
-            int hexY = GameOpt.StartHexY;
+            int hexX = Settings.StartHexX;
+            int hexY = Settings.StartHexY;
             if (hexX < 0 || hexX >= pmap->GetWidth())
                 hexX = pmap->GetWorkHexX();
             if (hexY < 0 || hexY >= pmap->GetHeight())
@@ -195,7 +197,7 @@ FOMapper::FOMapper() :
         prev = pos + 1;
     }
     ConsoleHistory = _str(history_str).normalizeLineEndings().split('\n');
-    while (ConsoleHistory.size() > GameOpt.ConsoleHistorySize)
+    while (ConsoleHistory.size() > Settings.ConsoleHistorySize)
         ConsoleHistory.erase(ConsoleHistory.begin());
     ConsoleHistoryCur = (int)ConsoleHistory.size();
 }
@@ -224,9 +226,9 @@ int FOMapper::InitIface()
 
     IfaceLoadRect(IntWMain, "IntMain");
     if (IntX == -1)
-        IntX = (GameOpt.ScreenWidth - IntWMain.W()) / 2;
+        IntX = (Settings.ScreenWidth - IntWMain.W()) / 2;
     if (IntY == -1)
-        IntY = GameOpt.ScreenHeight - IntWMain.H();
+        IntY = Settings.ScreenHeight - IntWMain.H();
 
     IfaceLoadRect(IntWWork, "IntWork");
     IfaceLoadRect(IntWHint, "IntHint");
@@ -319,7 +321,7 @@ int FOMapper::InitIface()
     IsSelectTile = false;
     IsSelectRoof = false;
 
-    GameOpt.ShowRoof = false;
+    Settings.ShowRoof = false;
 
     // Object
     IfaceLoadRect(ObjWMain, "ObjMain");
@@ -402,7 +404,8 @@ bool FOMapper::IfaceLoadRect(Rect& comp, const char* name)
 
 void FOMapper::ChangeGameTime()
 {
-    uint color = GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
+    uint color =
+        GenericUtils::GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
     SprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
     if (HexMngr.IsMapLoaded())
         HexMngr.RefreshMap();
@@ -564,8 +567,8 @@ void FOMapper::ParseKeyboard()
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        MainWindowKeyboardEvents.clear();
-        MainWindowKeyboardEventsText.clear();
+        Settings.MainWindowKeyboardEvents.clear();
+        Settings.MainWindowKeyboardEventsText.clear();
         Keyb.Lost();
         IntHold = INT_NONE;
         Script::RaiseInternalEvent(MapperFunctions.InputLost);
@@ -573,12 +576,12 @@ void FOMapper::ParseKeyboard()
     }
 
     // Get buffered data
-    if (MainWindowKeyboardEvents.empty())
+    if (Settings.MainWindowKeyboardEvents.empty())
         return;
-    IntVec events = MainWindowKeyboardEvents;
-    StrVec events_text = MainWindowKeyboardEventsText;
-    MainWindowKeyboardEvents.clear();
-    MainWindowKeyboardEventsText.clear();
+    IntVec events = Settings.MainWindowKeyboardEvents;
+    StrVec events_text = Settings.MainWindowKeyboardEventsText;
+    Settings.MainWindowKeyboardEvents.clear();
+    Settings.MainWindowKeyboardEventsText.clear();
 
     // Process events
     for (uint i = 0; i < events.size(); i += 2)
@@ -623,10 +626,10 @@ void FOMapper::ParseKeyboard()
         }
 
         // Disable keyboard events
-        if (!script_result || GameOpt.DisableKeyboardEvents)
+        if (!script_result || Settings.DisableKeyboardEvents)
         {
             if (dikdw == DIK_ESCAPE && Keyb.ShiftDwn)
-                GameOpt.Quit = true;
+                Settings.Quit = true;
             continue;
         }
 
@@ -650,34 +653,34 @@ void FOMapper::ParseKeyboard()
             switch (dikdw)
             {
             case DIK_F1:
-                GameOpt.ShowItem = !GameOpt.ShowItem;
+                Settings.ShowItem = !Settings.ShowItem;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F2:
-                GameOpt.ShowScen = !GameOpt.ShowScen;
+                Settings.ShowScen = !Settings.ShowScen;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F3:
-                GameOpt.ShowWall = !GameOpt.ShowWall;
+                Settings.ShowWall = !Settings.ShowWall;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F4:
-                GameOpt.ShowCrit = !GameOpt.ShowCrit;
+                Settings.ShowCrit = !Settings.ShowCrit;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F5:
-                GameOpt.ShowTile = !GameOpt.ShowTile;
+                Settings.ShowTile = !Settings.ShowTile;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F6:
-                GameOpt.ShowFast = !GameOpt.ShowFast;
+                Settings.ShowFast = !Settings.ShowFast;
                 HexMngr.RefreshMap();
                 break;
             case DIK_F7:
                 IntVisible = !IntVisible;
                 break;
             case DIK_F8:
-                GameOpt.MouseScroll = !GameOpt.MouseScroll;
+                Settings.MouseScroll = !Settings.MouseScroll;
                 break;
             case DIK_F9:
                 ObjVisible = !ObjVisible;
@@ -688,15 +691,15 @@ void FOMapper::ParseKeyboard()
 
             // Fullscreen
             case DIK_F11:
-                if (!GameOpt.FullScreen)
+                if (!Settings.FullScreen)
                 {
                     if (SprMngr.EnableFullscreen())
-                        GameOpt.FullScreen = true;
+                        Settings.FullScreen = true;
                 }
                 else
                 {
                     if (SprMngr.DisableFullscreen())
-                        GameOpt.FullScreen = false;
+                        Settings.FullScreen = false;
                 }
                 SprMngr.RefreshViewport();
                 continue;
@@ -826,19 +829,19 @@ void FOMapper::ParseKeyboard()
                 }
                 break;
             case DIK_D:
-                GameOpt.ScrollCheck = !GameOpt.ScrollCheck;
+                Settings.ScrollCheck = !Settings.ScrollCheck;
                 break;
             case DIK_B:
                 HexMngr.MarkPassedHexes();
                 break;
             case DIK_Q:
-                GameOpt.ShowCorners = !GameOpt.ShowCorners;
+                Settings.ShowCorners = !Settings.ShowCorners;
                 break;
             case DIK_W:
-                GameOpt.ShowSpriteCuts = !GameOpt.ShowSpriteCuts;
+                Settings.ShowSpriteCuts = !Settings.ShowSpriteCuts;
                 break;
             case DIK_E:
-                GameOpt.ShowDrawOrder = !GameOpt.ShowDrawOrder;
+                Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                 break;
             case DIK_M:
                 DrawCrExtInfo++;
@@ -868,16 +871,16 @@ void FOMapper::ParseKeyboard()
                     switch (dikdw)
                     {
                     case DIK_LEFT:
-                        GameOpt.ScrollKeybLeft = true;
+                        Settings.ScrollKeybLeft = true;
                         break;
                     case DIK_RIGHT:
-                        GameOpt.ScrollKeybRight = true;
+                        Settings.ScrollKeybRight = true;
                         break;
                     case DIK_UP:
-                        GameOpt.ScrollKeybUp = true;
+                        Settings.ScrollKeybUp = true;
                         break;
                     case DIK_DOWN:
-                        GameOpt.ScrollKeybDown = true;
+                        Settings.ScrollKeybDown = true;
                         break;
                     default:
                         break;
@@ -894,16 +897,16 @@ void FOMapper::ParseKeyboard()
             switch (dikup)
             {
             case DIK_LEFT:
-                GameOpt.ScrollKeybLeft = false;
+                Settings.ScrollKeybLeft = false;
                 break;
             case DIK_RIGHT:
-                GameOpt.ScrollKeybRight = false;
+                Settings.ScrollKeybRight = false;
                 break;
             case DIK_UP:
-                GameOpt.ScrollKeybUp = false;
+                Settings.ScrollKeybUp = false;
                 break;
             case DIK_DOWN:
-                GameOpt.ScrollKeybDown = false;
+                Settings.ScrollKeybDown = false;
                 break;
             default:
                 break;
@@ -927,25 +930,25 @@ void FOMapper::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     SDL_GetMouseState(&mx, &my);
-    GameOpt.MouseX = CLAMP(mx, 0, GameOpt.ScreenWidth - 1);
-    GameOpt.MouseY = CLAMP(my, 0, GameOpt.ScreenHeight - 1);
+    Settings.MouseX = CLAMP(mx, 0, Settings.ScreenWidth - 1);
+    Settings.MouseY = CLAMP(my, 0, Settings.ScreenHeight - 1);
 
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        MainWindowMouseEvents.clear();
+        Settings.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
         Script::RaiseInternalEvent(MapperFunctions.InputLost);
         return;
     }
 
     // Mouse move
-    if (GameOpt.LastMouseX != GameOpt.MouseX || GameOpt.LastMouseY != GameOpt.MouseY)
+    if (Settings.LastMouseX != Settings.MouseX || Settings.LastMouseY != Settings.MouseY)
     {
-        int ox = GameOpt.MouseX - GameOpt.LastMouseX;
-        int oy = GameOpt.MouseY - GameOpt.LastMouseY;
-        GameOpt.LastMouseX = GameOpt.MouseX;
-        GameOpt.LastMouseY = GameOpt.MouseY;
+        int ox = Settings.MouseX - Settings.LastMouseX;
+        int oy = Settings.MouseY - Settings.LastMouseY;
+        Settings.LastMouseX = Settings.MouseX;
+        Settings.LastMouseY = Settings.MouseY;
 
         Script::RaiseInternalEvent(MapperFunctions.MouseMove, ox, oy);
 
@@ -953,34 +956,34 @@ void FOMapper::ParseMouse()
     }
 
     // Mouse Scroll
-    if (GameOpt.MouseScroll)
+    if (Settings.MouseScroll)
     {
-        if (GameOpt.MouseX >= GameOpt.ScreenWidth - 1)
-            GameOpt.ScrollMouseRight = true;
+        if (Settings.MouseX >= Settings.ScreenWidth - 1)
+            Settings.ScrollMouseRight = true;
         else
-            GameOpt.ScrollMouseRight = false;
+            Settings.ScrollMouseRight = false;
 
-        if (GameOpt.MouseX <= 0)
-            GameOpt.ScrollMouseLeft = true;
+        if (Settings.MouseX <= 0)
+            Settings.ScrollMouseLeft = true;
         else
-            GameOpt.ScrollMouseLeft = false;
+            Settings.ScrollMouseLeft = false;
 
-        if (GameOpt.MouseY >= GameOpt.ScreenHeight - 1)
-            GameOpt.ScrollMouseDown = true;
+        if (Settings.MouseY >= Settings.ScreenHeight - 1)
+            Settings.ScrollMouseDown = true;
         else
-            GameOpt.ScrollMouseDown = false;
+            Settings.ScrollMouseDown = false;
 
-        if (GameOpt.MouseY <= 0)
-            GameOpt.ScrollMouseUp = true;
+        if (Settings.MouseY <= 0)
+            Settings.ScrollMouseUp = true;
         else
-            GameOpt.ScrollMouseUp = false;
+            Settings.ScrollMouseUp = false;
     }
 
     // Get buffered data
-    if (MainWindowMouseEvents.empty())
+    if (Settings.MainWindowMouseEvents.empty())
         return;
-    IntVec events = MainWindowMouseEvents;
-    MainWindowMouseEvents.clear();
+    IntVec events = Settings.MainWindowMouseEvents;
+    Settings.MainWindowMouseEvents.clear();
 
     // Process events
     for (uint i = 0; i < events.size(); i += 3)
@@ -1026,7 +1029,7 @@ void FOMapper::ParseMouse()
             script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
             script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4);
-        if (!script_result || GameOpt.DisableMouseEvents)
+        if (!script_result || Settings.DisableMouseEvents)
             continue;
 
         // Wheel
@@ -1159,7 +1162,7 @@ void FOMapper::MainLoop()
     static uint call_counter = 0;
     if ((Timer::FastTick() - last_call) >= 1000)
     {
-        GameOpt.FPS = call_counter;
+        Settings.FPS = call_counter;
         call_counter = 0;
         last_call = Timer::FastTick();
     }
@@ -1176,49 +1179,50 @@ void FOMapper::MainLoop()
         {
             int sw = 0, sh = 0;
             SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(event.motion.x / (float)sw * (float)GameOpt.ScreenWidth);
-            int y = (int)(event.motion.y / (float)sh * (float)GameOpt.ScreenHeight);
-            GameOpt.MouseX = CLAMP(x, 0, GameOpt.ScreenWidth - 1);
-            GameOpt.MouseY = CLAMP(y, 0, GameOpt.ScreenHeight - 1);
+            int x = (int)(event.motion.x / (float)sw * (float)Settings.ScreenWidth);
+            int y = (int)(event.motion.y / (float)sh * (float)Settings.ScreenHeight);
+            Settings.MouseX = CLAMP(x, 0, Settings.ScreenWidth - 1);
+            Settings.MouseY = CLAMP(y, 0, Settings.ScreenHeight - 1);
         }
         else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
         {
-            MainWindowKeyboardEvents.push_back(event.type);
-            MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
-            MainWindowKeyboardEventsText.push_back("");
+            Settings.MainWindowKeyboardEvents.push_back(event.type);
+            Settings.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
+            Settings.MainWindowKeyboardEventsText.push_back("");
         }
         else if (event.type == SDL_TEXTINPUT)
         {
-            MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-            MainWindowKeyboardEvents.push_back(510);
-            MainWindowKeyboardEventsText.push_back(event.text.text);
-            MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-            MainWindowKeyboardEvents.push_back(510);
-            MainWindowKeyboardEventsText.push_back(event.text.text);
+            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+            Settings.MainWindowKeyboardEvents.push_back(510);
+            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
+            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+            Settings.MainWindowKeyboardEvents.push_back(510);
+            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
         {
-            MainWindowMouseEvents.push_back(event.type);
-            MainWindowMouseEvents.push_back(event.button.button);
-            MainWindowMouseEvents.push_back(0);
+            Settings.MainWindowMouseEvents.push_back(event.type);
+            Settings.MainWindowMouseEvents.push_back(event.button.button);
+            Settings.MainWindowMouseEvents.push_back(0);
         }
         else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
         {
-            MainWindowMouseEvents.push_back(event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP);
-            MainWindowMouseEvents.push_back(SDL_BUTTON_LEFT);
-            MainWindowMouseEvents.push_back(0);
-            GameOpt.MouseX = (int)(event.tfinger.x * (float)GameOpt.ScreenWidth);
-            GameOpt.MouseY = (int)(event.tfinger.y * (float)GameOpt.ScreenHeight);
+            Settings.MainWindowMouseEvents.push_back(
+                event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP);
+            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_LEFT);
+            Settings.MainWindowMouseEvents.push_back(0);
+            Settings.MouseX = (int)(event.tfinger.x * (float)Settings.ScreenWidth);
+            Settings.MouseY = (int)(event.tfinger.y * (float)Settings.ScreenHeight);
         }
         else if (event.type == SDL_MOUSEWHEEL)
         {
-            MainWindowMouseEvents.push_back(event.type);
-            MainWindowMouseEvents.push_back(SDL_BUTTON_MIDDLE);
-            MainWindowMouseEvents.push_back(-event.wheel.y);
+            Settings.MainWindowMouseEvents.push_back(event.type);
+            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_MIDDLE);
+            Settings.MainWindowMouseEvents.push_back(-event.wheel.y);
         }
         else if (event.type == SDL_QUIT)
         {
-            GameOpt.Quit = true;
+            Settings.Quit = true;
         }
     }
 
@@ -1302,13 +1306,13 @@ void FOMapper::MainLoop()
                 it = GameMapTexts.erase(it);
             else
             {
-                int procent = Procent(t.Tick, tick - t.StartTick);
+                int procent = GenericUtils::Procent(t.Tick, tick - t.StartTick);
                 Rect r = t.Pos.Interpolate(t.EndPos, procent);
                 Field& f = HexMngr.GetField(t.HexX, t.HexY);
-                int x =
-                    (int)((f.ScrX + HEX_W / 2 + GameOpt.ScrOx) / GameOpt.SpritesZoom - 100.0f - (float)(t.Pos.L - r.L));
-                int y = (int)((f.ScrY + HEX_LINE_H / 2 - t.Pos.H() - (t.Pos.T - r.T) + GameOpt.ScrOy) /
-                        GameOpt.SpritesZoom -
+                int x = (int)((f.ScrX + Settings.MapHexWidth / 2 + Settings.ScrOx) / Settings.SpritesZoom - 100.0f -
+                    (float)(t.Pos.L - r.L));
+                int y = (int)((f.ScrY + Settings.MapHexLineHeight / 2 - t.Pos.H() - (t.Pos.T - r.T) + Settings.ScrOy) /
+                        Settings.SpritesZoom -
                     70.0f);
                 uint color = t.Color;
                 if (t.Fade)
@@ -1333,13 +1337,13 @@ void FOMapper::MainLoop()
     SprMngr.EndScene();
 
     // Fixed FPS
-    if (!GameOpt.VSync && GameOpt.FixedFPS)
+    if (!Settings.VSync && Settings.FixedFPS)
     {
-        if (GameOpt.FixedFPS > 0)
+        if (Settings.FixedFPS > 0)
         {
             static double balance = 0.0;
             double elapsed = Timer::AccurateTick() - start_loop;
-            double need_elapsed = 1000.0 / (double)GameOpt.FixedFPS;
+            double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
             if (need_elapsed > elapsed)
             {
                 double sleep = need_elapsed - elapsed + balance;
@@ -1349,7 +1353,7 @@ void FOMapper::MainLoop()
         }
         else
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(-GameOpt.FixedFPS));
+            std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
         }
     }
 }
@@ -1442,7 +1446,7 @@ void FOMapper::RefreshTiles(int tab)
 
                 // Make secondary collection name
                 string collection_name_ex;
-                if (GameOpt.SplitTilesCollection)
+                if (Settings.SplitTilesCollection)
                 {
                     size_t pos = fname.find_last_of('/');
                     if (pos == string::npos)
@@ -1600,19 +1604,19 @@ void FOMapper::IntDraw()
     SprMngr.DrawStr(Rect(IntBList, IntX, IntY), TabsName[INT_MODE_LIST].c_str(), FT_NOBREAK | FT_CENTERX | FT_CENTERY,
         COLOR_TEXT_WHITE);
 
-    if (GameOpt.ShowItem)
+    if (Settings.ShowItem)
         SprMngr.DrawSprite(IntPShow, IntBShowItem[0] + IntX, IntBShowItem[1] + IntY);
-    if (GameOpt.ShowScen)
+    if (Settings.ShowScen)
         SprMngr.DrawSprite(IntPShow, IntBShowScen[0] + IntX, IntBShowScen[1] + IntY);
-    if (GameOpt.ShowWall)
+    if (Settings.ShowWall)
         SprMngr.DrawSprite(IntPShow, IntBShowWall[0] + IntX, IntBShowWall[1] + IntY);
-    if (GameOpt.ShowCrit)
+    if (Settings.ShowCrit)
         SprMngr.DrawSprite(IntPShow, IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY);
-    if (GameOpt.ShowTile)
+    if (Settings.ShowTile)
         SprMngr.DrawSprite(IntPShow, IntBShowTile[0] + IntX, IntBShowTile[1] + IntY);
-    if (GameOpt.ShowRoof)
+    if (Settings.ShowRoof)
         SprMngr.DrawSprite(IntPShow, IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY);
-    if (GameOpt.ShowFast)
+    if (Settings.ShowFast)
         SprMngr.DrawSprite(IntPShow, IntBShowFast[0] + IntX, IntBShowFast[1] + IntY);
 
     if (IsSelectItem)
@@ -1797,7 +1801,7 @@ void FOMapper::IntDraw()
 
             uint color = (TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT);
             Rect r = Rect(SubTabsRect.L + SubTabsX + 5, SubTabsRect.T + SubTabsY + posy,
-                SubTabsRect.L + SubTabsX + 5 + GameOpt.ScreenWidth, SubTabsRect.T + SubTabsY + posy + line_height - 1);
+                SubTabsRect.L + SubTabsX + 5 + Settings.ScreenWidth, SubTabsRect.T + SubTabsY + posy + line_height - 1);
             if (IsCurInRect(r))
                 color = COLOR_TEXT_DWHITE;
 
@@ -1820,10 +1824,10 @@ void FOMapper::IntDraw()
     {
         bool hex_thru = false;
         ushort hx, hy;
-        if (HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, hx, hy))
+        if (HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy))
             hex_thru = true;
         int day_time = HexMngr.GetDayTime();
-        SprMngr.DrawStr(Rect(GameOpt.ScreenWidth - 100, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight),
+        SprMngr.DrawStr(Rect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             _str("Map '{}'\n"
                  "Hex {} {}\n"
                  "Time {} : {}\n"
@@ -1831,7 +1835,7 @@ void FOMapper::IntDraw()
                  "Tile layer {}\n"
                  "{}",
                 ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60,
-                GameOpt.FPS, TileLayer, GameOpt.ScrollCheck ? "Scroll check" : "")
+                Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : "")
                 .c_str(),
             FT_NOBREAK_LINE);
     }
@@ -2106,12 +2110,12 @@ void FOMapper::IntLMouseDown()
     {
         InContItem = nullptr;
 
-        if (!HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, SelectHX1, SelectHY1))
+        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX1, SelectHY1))
             return;
         SelectHX2 = SelectHX1;
         SelectHY2 = SelectHY1;
-        SelectX = GameOpt.MouseX;
-        SelectY = GameOpt.MouseY;
+        SelectX = Settings.MouseX;
+        SelectY = Settings.MouseY;
 
         if (CurMode == CUR_MODE_DEFAULT)
         {
@@ -2137,7 +2141,7 @@ void FOMapper::IntLMouseDown()
                         {
                             for (uint k = 0; k < steps.size(); k++)
                             {
-                                MoveHexByDir(hx, hy, steps[k], HexMngr.GetWidth(), HexMngr.GetHeight());
+                                GeomHelper.MoveHexByDir(hx, hy, steps[k], HexMngr.GetWidth(), HexMngr.GetHeight());
                                 cr->MoveSteps.push_back(UShortPair(hx, hy));
                             }
                             cr->IsRunning = is_run;
@@ -2174,7 +2178,7 @@ void FOMapper::IntLMouseDown()
     {
         if (IsCurInRect(ObjWWork, ObjX, ObjY))
         {
-            SelectEntityProp((GameOpt.MouseY - ObjY - ObjWWork[1]) / DRAW_NEXT_HEIGHT);
+            SelectEntityProp((Settings.MouseY - ObjY - ObjWWork[1]) / DRAW_NEXT_HEIGHT);
         }
 
         if (IsCurInRect(ObjBToAll, ObjX, ObjY))
@@ -2186,8 +2190,8 @@ void FOMapper::IntLMouseDown()
         else if (!ObjFix)
         {
             IntHold = INT_OBJECT;
-            ItemVectX = GameOpt.MouseX - ObjX;
-            ItemVectY = GameOpt.MouseY - ObjY;
+            ItemVectX = Settings.MouseX - ObjX;
+            ItemVectY = Settings.MouseY - ObjY;
         }
 
         return;
@@ -2199,7 +2203,7 @@ void FOMapper::IntLMouseDown()
 
     if (IsCurInRect(IntWWork, IntX, IntY))
     {
-        int ind = (GameOpt.MouseX - IntX - IntWWork[0]) / ProtoWidth;
+        int ind = (Settings.MouseX - IntX - IntWWork[0]) / ProtoWidth;
 
         if (IsObjectMode() && (*CurItemProtos).size())
         {
@@ -2475,37 +2479,37 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY))
     {
-        GameOpt.ShowItem = !GameOpt.ShowItem;
+        Settings.ShowItem = !Settings.ShowItem;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowScen, IntX, IntY))
     {
-        GameOpt.ShowScen = !GameOpt.ShowScen;
+        Settings.ShowScen = !Settings.ShowScen;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowWall, IntX, IntY))
     {
-        GameOpt.ShowWall = !GameOpt.ShowWall;
+        Settings.ShowWall = !Settings.ShowWall;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowCrit, IntX, IntY))
     {
-        GameOpt.ShowCrit = !GameOpt.ShowCrit;
+        Settings.ShowCrit = !Settings.ShowCrit;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowTile, IntX, IntY))
     {
-        GameOpt.ShowTile = !GameOpt.ShowTile;
+        Settings.ShowTile = !Settings.ShowTile;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowRoof, IntX, IntY))
     {
-        GameOpt.ShowRoof = !GameOpt.ShowRoof;
+        Settings.ShowRoof = !Settings.ShowRoof;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowFast, IntX, IntY))
     {
-        GameOpt.ShowFast = !GameOpt.ShowFast;
+        Settings.ShowFast = !Settings.ShowFast;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBSelectItem, IntX, IntY))
@@ -2523,8 +2527,8 @@ void FOMapper::IntLMouseDown()
     else if (!IntFix)
     {
         IntHold = INT_MAIN;
-        IntVectX = GameOpt.MouseX - IntX;
-        IntVectY = GameOpt.MouseY - IntY;
+        IntVectX = Settings.MouseX - IntX;
+        IntVectY = Settings.MouseY - IntY;
         return;
     }
     else
@@ -2535,7 +2539,7 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    if (IntHold == INT_SELECT && HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, SelectHX2, SelectHY2))
+    if (IntHold == INT_SELECT && HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2))
     {
         if (CurMode == CUR_MODE_DEFAULT)
         {
@@ -2572,9 +2576,9 @@ void FOMapper::IntLMouseUp()
                     HexMngr.GetCritters(hx, hy, critters, FIND_ALL);
 
                     // Tile, roof
-                    if (IsSelectTile && GameOpt.ShowTile)
+                    if (IsSelectTile && Settings.ShowTile)
                         SelectAddTile(hx, hy, false);
-                    if (IsSelectRoof && GameOpt.ShowRoof)
+                    if (IsSelectRoof && Settings.ShowRoof)
                         SelectAddTile(hx, hy, true);
                 }
 
@@ -2583,22 +2587,22 @@ void FOMapper::IntLMouseUp()
                     hash pid = items[k]->GetProtoId();
                     if (HexMngr.IsIgnorePid(pid))
                         continue;
-                    if (!GameOpt.ShowFast && HexMngr.IsFastPid(pid))
+                    if (!Settings.ShowFast && HexMngr.IsFastPid(pid))
                         continue;
 
-                    if (!items[k]->IsAnyScenery() && IsSelectItem && GameOpt.ShowItem)
+                    if (!items[k]->IsAnyScenery() && IsSelectItem && Settings.ShowItem)
                         SelectAddItem(items[k]);
-                    else if (items[k]->IsScenery() && IsSelectScen && GameOpt.ShowScen)
+                    else if (items[k]->IsScenery() && IsSelectScen && Settings.ShowScen)
                         SelectAddItem(items[k]);
-                    else if (items[k]->IsWall() && IsSelectWall && GameOpt.ShowWall)
+                    else if (items[k]->IsWall() && IsSelectWall && Settings.ShowWall)
                         SelectAddItem(items[k]);
-                    else if (GameOpt.ShowFast && HexMngr.IsFastPid(pid))
+                    else if (Settings.ShowFast && HexMngr.IsFastPid(pid))
                         SelectAddItem(items[k]);
                 }
 
                 for (uint l = 0; l < critters.size(); l++)
                 {
-                    if (IsSelectCrit && GameOpt.ShowCrit)
+                    if (IsSelectCrit && Settings.ShowCrit)
                         SelectAddCrit(critters[l]);
                 }
             }
@@ -2606,7 +2610,7 @@ void FOMapper::IntLMouseUp()
             {
                 ItemHexView* item;
                 CritterView* cr;
-                HexMngr.GetSmthPixel(GameOpt.MouseX, GameOpt.MouseY, item, cr);
+                HexMngr.GetSmthPixel(Settings.MouseX, Settings.MouseY, item, cr);
 
                 if (item)
                 {
@@ -2635,7 +2639,7 @@ void FOMapper::IntMouseMove()
     if (IntHold == INT_SELECT)
     {
         HexMngr.ClearHexTrack();
-        if (!HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, SelectHX2, SelectHY2))
+        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2))
         {
             if (SelectHX2 || SelectHY2)
             {
@@ -2676,8 +2680,8 @@ void FOMapper::IntMouseMove()
         {
             int offs_hx = (int)SelectHX2 - (int)SelectHX1;
             int offs_hy = (int)SelectHY2 - (int)SelectHY1;
-            int offs_x = GameOpt.MouseX - SelectX;
-            int offs_y = GameOpt.MouseY - SelectY;
+            int offs_x = Settings.MouseX - SelectX;
+            int offs_y = Settings.MouseY - SelectY;
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y))
             {
                 SelectHX1 += offs_hx;
@@ -2690,13 +2694,13 @@ void FOMapper::IntMouseMove()
     }
     else if (IntHold == INT_MAIN)
     {
-        IntX = GameOpt.MouseX - IntVectX;
-        IntY = GameOpt.MouseY - IntVectY;
+        IntX = Settings.MouseX - IntVectX;
+        IntY = Settings.MouseY - IntVectY;
     }
     else if (IntHold == INT_OBJECT)
     {
-        ObjX = GameOpt.MouseX - ItemVectX;
-        ObjY = GameOpt.MouseY - ItemVectY;
+        ObjX = Settings.MouseX - ItemVectX;
+        ObjY = Settings.MouseY - ItemVectY;
     }
 }
 
@@ -2796,12 +2800,12 @@ void FOMapper::IntSetMode(int mode)
         SubTabsY += IntY - SubTabsRect.H();
         if (SubTabsX < 0)
             SubTabsX = 0;
-        if (SubTabsX + SubTabsRect.W() > GameOpt.ScreenWidth)
-            SubTabsX -= SubTabsX + SubTabsRect.W() - GameOpt.ScreenWidth;
+        if (SubTabsX + SubTabsRect.W() > Settings.ScreenWidth)
+            SubTabsX -= SubTabsX + SubTabsRect.W() - Settings.ScreenWidth;
         if (SubTabsY < 0)
             SubTabsY = 0;
-        if (SubTabsY + SubTabsRect.H() > GameOpt.ScreenHeight)
-            SubTabsY -= SubTabsY + SubTabsRect.H() - GameOpt.ScreenHeight;
+        if (SubTabsY + SubTabsRect.H() > Settings.ScreenHeight)
+            SubTabsY -= SubTabsY + SubTabsRect.H() - Settings.ScreenHeight;
 
         return;
     }
@@ -2946,9 +2950,9 @@ void FOMapper::SelectAll()
     {
         for (uint j = 0; j < HexMngr.GetHeight(); j++)
         {
-            if (IsSelectTile && GameOpt.ShowTile)
+            if (IsSelectTile && Settings.ShowTile)
                 SelectAddTile(i, j, false);
-            if (IsSelectRoof && GameOpt.ShowRoof)
+            if (IsSelectRoof && Settings.ShowRoof)
                 SelectAddTile(i, j, true);
         }
     }
@@ -2959,15 +2963,15 @@ void FOMapper::SelectAll()
         if (HexMngr.IsIgnorePid(items[i]->GetProtoId()))
             continue;
 
-        if (!items[i]->IsAnyScenery() && IsSelectItem && GameOpt.ShowItem)
+        if (!items[i]->IsAnyScenery() && IsSelectItem && Settings.ShowItem)
             SelectAddItem(items[i]);
-        else if (items[i]->IsScenery() && IsSelectScen && GameOpt.ShowScen)
+        else if (items[i]->IsScenery() && IsSelectScen && Settings.ShowScen)
             SelectAddItem(items[i]);
-        else if (items[i]->IsWall() && IsSelectWall && GameOpt.ShowWall)
+        else if (items[i]->IsWall() && IsSelectWall && Settings.ShowWall)
             SelectAddItem(items[i]);
     }
 
-    if (IsSelectCrit && GameOpt.ShowCrit)
+    if (IsSelectCrit && Settings.ShowCrit)
     {
         CritterViewMap& crits = HexMngr.GetCritters();
         for (auto it = crits.begin(), end = crits.end(); it != end; ++it)
@@ -3000,10 +3004,10 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     // Tile step
     if (hex_move && !SelectedTile.empty())
     {
-        if (abs(offs_hx) < GameOpt.MapTileStep && abs(offs_hy) < GameOpt.MapTileStep)
+        if (abs(offs_hx) < Settings.MapTileStep && abs(offs_hy) < Settings.MapTileStep)
             return false;
-        offs_hx -= offs_hx % GameOpt.MapTileStep;
-        offs_hy -= offs_hy % GameOpt.MapTileStep;
+        offs_hx -= offs_hx % Settings.MapTileStep;
+        offs_hy -= offs_hy % Settings.MapTileStep;
     }
 
     // Setup hex moving switcher
@@ -3020,8 +3024,8 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     if (!hex_move)
     {
         static float small_ox = 0.0f, small_oy = 0.0f;
-        float ox = (float)offs_x * GameOpt.SpritesZoom + small_ox;
-        float oy = (float)offs_y * GameOpt.SpritesZoom + small_oy;
+        float ox = (float)offs_x * Settings.SpritesZoom + small_ox;
+        float oy = (float)offs_y * Settings.SpritesZoom + small_oy;
         if (offs_x && fabs(ox) < 1.0f)
             small_ox = ox;
         else
@@ -3043,13 +3047,13 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                                                                 ((ItemHexView*)entity)->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? ((CritterView*)entity)->GetHexY() :
                                                                 ((ItemHexView*)entity)->GetHexY());
-            if (GameOpt.MapHexagonal)
+            if (Settings.MapHexagonal)
             {
                 int sw = switcher;
                 for (int k = 0, l = abs(offs_hx); k < l; k++, sw++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
                 for (int k = 0, l = abs(offs_hy); k < l; k++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
             }
             else
             {
@@ -3066,13 +3070,13 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             SelMapTile& stile = SelectedTile[i];
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (GameOpt.MapHexagonal)
+            if (Settings.MapHexagonal)
             {
                 int sw = switcher;
                 for (int k = 0, l = abs(offs_hx); k < l; k++, sw++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
                 for (int k = 0, l = abs(offs_hy); k < l; k++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
             }
             else
             {
@@ -3095,8 +3099,6 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             ItemHexView* item = (ItemHexView*)entity;
             int ox = item->GetOffsetX() + offs_x;
             int oy = item->GetOffsetY() + offs_y;
-            ox = CLAMP(ox, -MAX_MOVE_OX, MAX_MOVE_OX);
-            oy = CLAMP(oy, -MAX_MOVE_OY, MAX_MOVE_OY);
             if (Keyb.AltDwn)
                 ox = oy = 0;
 
@@ -3110,13 +3112,13 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                                                                 ((ItemHexView*)entity)->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? ((CritterView*)entity)->GetHexY() :
                                                                 ((ItemHexView*)entity)->GetHexY());
-            if (GameOpt.MapHexagonal)
+            if (Settings.MapHexagonal)
             {
                 int sw = switcher;
                 for (int k = 0, l = abs(offs_hx); k < l; k++, sw++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
                 for (int k = 0, l = abs(offs_hy); k < l; k++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
             }
             else
             {
@@ -3164,8 +3166,6 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 {
                     int ox = tiles[k].OffsX + offs_x;
                     int oy = tiles[k].OffsY + offs_y;
-                    ox = CLAMP(ox, -MAX_MOVE_OX, MAX_MOVE_OX);
-                    oy = CLAMP(oy, -MAX_MOVE_OY, MAX_MOVE_OY);
                     if (Keyb.AltDwn)
                         ox = oy = 0;
 
@@ -3181,13 +3181,13 @@ bool FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         {
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (GameOpt.MapHexagonal)
+            if (Settings.MapHexagonal)
             {
                 int sw = switcher;
                 for (int k = 0, l = abs(offs_hx); k < l; k++, sw++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) ? 4 : 3) : ((sw & 1) ? 0 : 1));
                 for (int k = 0, l = abs(offs_hy); k < l; k++)
-                    MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
             }
             else
             {
@@ -3279,7 +3279,7 @@ CritterView* FOMapper::AddCritter(hash pid, ushort hx, ushort hy)
 
     SelectClear();
 
-    CritterView* cr = new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto, SprMngr, ResMngr);
+    CritterView* cr = new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto, Settings, SprMngr, ResMngr);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
     cr->SetDir(NpcDir);
@@ -3347,8 +3347,8 @@ void FOMapper::AddTile(hash name, ushort hx, ushort hy, short ox, short oy, ucha
 {
     RUNTIME_ASSERT(ActiveMap);
 
-    hx -= hx % GameOpt.MapTileStep;
-    hy -= hy % GameOpt.MapTileStep;
+    hx -= hx % Settings.MapTileStep;
+    hy -= hy % Settings.MapTileStep;
 
     if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight())
         return;
@@ -3380,7 +3380,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
             {
                 ushort hx_ = hx;
                 ushort hy_ = hy;
-                MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
+                GeomHelper.MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
                 if (!HexMngr.GetField(hx_, hy_).Crit)
                 {
                     hx = hx_;
@@ -3394,7 +3394,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
         }
 
         CritterView* cr = new CritterView(
-            --((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, SprMngr, ResMngr);
+            --((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings, SprMngr, ResMngr);
         cr->Props = ((CritterView*)entity)->Props;
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -3528,7 +3528,7 @@ void FOMapper::BufferPaste(int, int)
                 {
                     ushort hx_ = entity_buf.HexX;
                     ushort hy_ = entity_buf.HexY;
-                    MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
+                    GeomHelper.MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
                     if (!HexMngr.GetField(hx_, hy_).Crit)
                     {
                         hx = hx_;
@@ -3541,8 +3541,8 @@ void FOMapper::BufferPaste(int, int)
                     continue;
             }
 
-            CritterView* cr = new CritterView(
-                --((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity_buf.Proto, SprMngr, ResMngr);
+            CritterView* cr = new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
+                (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
             cr->Props = *entity_buf.Props;
             cr->SetHexX(hx);
             cr->SetHexY(hy);
@@ -3616,7 +3616,7 @@ void FOMapper::CurDraw()
         {
             SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId());
             if (si)
-                SprMngr.DrawSprite(anim, GameOpt.MouseX, GameOpt.MouseY, COLOR_IFACE);
+                SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
         }
     }
     break;
@@ -3626,19 +3626,19 @@ void FOMapper::CurDraw()
             ProtoItem* proto_item = (*CurItemProtos)[GetTabIndex()];
 
             ushort hx, hy;
-            if (!HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, hx, hy))
+            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy))
                 break;
 
             uint spr_id = GetProtoItemCurSprId(proto_item);
             SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id);
             if (si)
             {
-                int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + HEX_OX + GameOpt.ScrOx +
-                    proto_item->GetOffsetX();
-                int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy +
-                    proto_item->GetOffsetY();
-                SprMngr.DrawSpriteSize(spr_id, (int)(x / GameOpt.SpritesZoom), (int)(y / GameOpt.SpritesZoom),
-                    (int)(si->Width / GameOpt.SpritesZoom), (int)(si->Height / GameOpt.SpritesZoom), true, false);
+                int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) +
+                    Settings.ScrOx + proto_item->GetOffsetX();
+                int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) +
+                    Settings.ScrOy + proto_item->GetOffsetY();
+                SprMngr.DrawSpriteSize(spr_id, (int)(x / Settings.SpritesZoom), (int)(y / Settings.SpritesZoom),
+                    (int)(si->Width / Settings.SpritesZoom), (int)(si->Height / Settings.SpritesZoom), true, false);
             }
         }
         else if (IsTileMode() && CurTileHashes->size())
@@ -3648,30 +3648,30 @@ void FOMapper::CurDraw()
                 anim = ResMngr.ItemHexDefaultAnim;
 
             ushort hx, hy;
-            if (!HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, hx, hy))
+            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy))
                 break;
 
             SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId());
             if (si)
             {
-                hx -= hx % GameOpt.MapTileStep;
-                hy -= hy % GameOpt.MapTileStep;
+                hx -= hx % Settings.MapTileStep;
+                hy -= hy % Settings.MapTileStep;
                 int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
                 if (!DrawRoof)
                 {
-                    x += TILE_OX;
-                    y += TILE_OY;
+                    x += Settings.MapTileOffsX;
+                    y += Settings.MapTileOffsY;
                 }
                 else
                 {
-                    x += ROOF_OX;
-                    y += ROOF_OY;
+                    x += Settings.MapRoofOffsX;
+                    y += Settings.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim, (int)((x + GameOpt.ScrOx) / GameOpt.SpritesZoom),
-                    (int)((y + GameOpt.ScrOy) / GameOpt.SpritesZoom), (int)(si->Width / GameOpt.SpritesZoom),
-                    (int)(si->Height / GameOpt.SpritesZoom), true, false);
+                SprMngr.DrawSpriteSize(anim, (int)((x + Settings.ScrOx) / Settings.SpritesZoom),
+                    (int)((y + Settings.ScrOy) / Settings.SpritesZoom), (int)(si->Width / Settings.SpritesZoom),
+                    (int)(si->Height / Settings.SpritesZoom), true, false);
             }
         }
         else if (IsCritMode() && CurNpcProtos->size())
@@ -3682,7 +3682,7 @@ void FOMapper::CurDraw()
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);
 
             ushort hx, hy;
-            if (!HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, hx, hy))
+            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy))
                 break;
 
             SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id);
@@ -3691,9 +3691,10 @@ void FOMapper::CurDraw()
                 int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
-                SprMngr.DrawSpriteSize(spr_id, (int)((x + GameOpt.ScrOx + HEX_OX) / GameOpt.SpritesZoom),
-                    (int)((y + GameOpt.ScrOy + HEX_OY) / GameOpt.SpritesZoom), (int)(si->Width / GameOpt.SpritesZoom),
-                    (int)(si->Height / GameOpt.SpritesZoom), true, false);
+                SprMngr.DrawSpriteSize(spr_id,
+                    (int)((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom),
+                    (int)((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom),
+                    (int)(si->Width / Settings.SpritesZoom), (int)(si->Height / Settings.SpritesZoom), true, false);
             }
         }
         else
@@ -3734,7 +3735,7 @@ void FOMapper::CurMMouseDown()
     if (SelectedEntities.empty())
     {
         NpcDir++;
-        if (NpcDir >= DIRS_COUNT)
+        if (NpcDir >= Settings.MapDirCount)
             NpcDir = 0;
 
         DrawRoof = !DrawRoof;
@@ -3747,12 +3748,30 @@ void FOMapper::CurMMouseDown()
             {
                 CritterView* cr = (CritterView*)entity;
                 int dir = cr->GetDir() + 1;
-                if (dir >= DIRS_COUNT)
+                if (dir >= Settings.MapDirCount)
                     dir = 0;
                 cr->ChangeDir(dir);
             }
         }
     }
+}
+
+bool FOMapper::IsCurInRect(Rect& rect, int ax, int ay)
+{
+    return (Settings.MouseX >= rect[0] + ax && Settings.MouseY >= rect[1] + ay && Settings.MouseX <= rect[2] + ax &&
+        Settings.MouseY <= rect[3] + ay);
+}
+
+bool FOMapper::IsCurInRect(Rect& rect)
+{
+    return (Settings.MouseX >= rect[0] && Settings.MouseY >= rect[1] && Settings.MouseX <= rect[2] &&
+        Settings.MouseY <= rect[3]);
+}
+
+bool FOMapper::IsCurInRectNoTransp(uint spr_id, Rect& rect, int ax, int ay)
+{
+    return IsCurInRect(rect, ax, ay) &&
+        SprMngr.IsPixNoTransp(spr_id, Settings.MouseX - rect.L - ax, Settings.MouseY - rect.T - ay, false);
 }
 
 bool FOMapper::IsCurInInterface()
@@ -3772,20 +3791,20 @@ bool FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface)
     hx = hy = 0;
     if (!ignore_interface && IsCurInInterface())
         return false;
-    return HexMngr.GetHexPixel(GameOpt.MouseX, GameOpt.MouseY, hx, hy);
+    return HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy);
 }
 
 void FOMapper::ConsoleDraw()
 {
     if (ConsoleEdit)
-        SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : GameOpt.ScreenHeight) + ConsolePicY);
+        SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY);
 
     if (ConsoleEdit)
     {
         string buf = ConsoleStr;
         buf.insert(ConsoleCur, Timer::FastTick() % 800 < 400 ? "!" : ".");
-        SprMngr.DrawStr(Rect(IntX + ConsoleTextX, (IntVisible ? IntY : GameOpt.ScreenHeight) + ConsoleTextY,
-                            GameOpt.ScreenWidth, GameOpt.ScreenHeight),
+        SprMngr.DrawStr(Rect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY,
+                            Settings.ScreenWidth, Settings.ScreenHeight),
             buf, FT_NOBREAK);
     }
 }
@@ -3812,7 +3831,7 @@ void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
                         i = -1;
                     }
                 }
-                while (ConsoleHistory.size() > GameOpt.ConsoleHistorySize)
+                while (ConsoleHistory.size() > Settings.ConsoleHistorySize)
                     ConsoleHistory.erase(ConsoleHistory.begin());
                 ConsoleHistoryCur = (int)ConsoleHistory.size();
 
@@ -4237,14 +4256,14 @@ bool FOMapper::InitScriptSystem()
 
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_MAPPER, &ProtoMngr, nullptr);
-    if (!Script::Init(FileMngr, pragma_callback, "MAPPER"))
+    if (!Script::Init(Settings, FileMngr, pragma_callback, "MAPPER"))
     {
         WriteLog("Script system initialization fail.\n");
         return false;
     }
     Script::SetExceptionCallback([](const string& str) {
         CreateDump("ScriptException", str);
-        ShowErrorMessage(str, "");
+        GenericUtils::ShowErrorMessage(str, "");
         exit(1);
     });
 
@@ -4665,8 +4684,7 @@ void FOMapper::SScriptFunc::Global_AddTileHash(
 
     if (!pic_hash)
         return;
-    ox = CLAMP(ox, -MAX_MOVE_OX, MAX_MOVE_OX);
-    oy = CLAMP(oy, -MAX_MOVE_OY, MAX_MOVE_OY);
+
     layer = CLAMP(layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
     Self->HexMngr.SetTile(pic_hash, hx, hy, ox, oy, layer, roof, false);
@@ -4703,8 +4721,6 @@ void FOMapper::SScriptFunc::Global_AddTileName(
     if (pic_name.empty())
         return;
 
-    ox = CLAMP(ox, -MAX_MOVE_OX, MAX_MOVE_OX);
-    oy = CLAMP(oy, -MAX_MOVE_OY, MAX_MOVE_OY);
     layer = CLAMP(layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
     hash pic_hash = _str(pic_name).toHash();
@@ -5132,7 +5148,7 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar di
 {
     if (!Self->HexMngr.IsMapLoaded())
         SCRIPT_ERROR_R("Map not loaded.");
-    if (dir >= DIRS_COUNT)
+    if (dir >= Self->Settings.MapDirCount)
         SCRIPT_ERROR_R("Invalid dir arg.");
     if (!steps)
         SCRIPT_ERROR_R("Steps arg is zero.");
@@ -5140,11 +5156,11 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir(ushort& hx, ushort& hy, uchar di
     if (steps > 1)
     {
         for (uint i = 0; i < steps; i++)
-            MoveHexByDirUnsafe(hx_, hy_, dir);
+            Self->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
     }
     else
     {
-        MoveHexByDirUnsafe(hx_, hy_, dir);
+        Self->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
     }
     if (hx_ < 0)
         hx_ = 0;
@@ -5286,10 +5302,10 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& 
     if (Self->HexMngr.IsMapLoaded() && hx < Self->HexMngr.GetWidth() && hy < Self->HexMngr.GetHeight())
     {
         Self->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
-        x += GameOpt.ScrOx + HEX_OX;
-        y += GameOpt.ScrOy + HEX_OY;
-        x = (int)(x / GameOpt.SpritesZoom);
-        y = (int)(y / GameOpt.SpritesZoom);
+        x += Self->Settings.ScrOx + (Self->Settings.MapHexWidth / 2);
+        y += Self->Settings.ScrOy + (Self->Settings.MapHexHeight / 2);
+        x = (int)(x / Self->Settings.SpritesZoom);
+        y = (int)(y / Self->Settings.SpritesZoom);
         return true;
     }
     return false;
@@ -5298,13 +5314,13 @@ bool FOMapper::SScriptFunc::Global_GetHexPos(ushort hx, ushort hy, int& x, int& 
 bool FOMapper::SScriptFunc::Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy, bool ignore_interface)
 {
     ushort hx_, hy_;
-    int old_x = GameOpt.MouseX;
-    int old_y = GameOpt.MouseY;
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
+    int old_x = Self->Settings.MouseX;
+    int old_y = Self->Settings.MouseY;
+    Self->Settings.MouseX = x;
+    Self->Settings.MouseY = y;
     bool result = Self->GetCurHex(hx_, hy_, ignore_interface);
-    GameOpt.MouseX = old_x;
-    GameOpt.MouseY = old_y;
+    Self->Settings.MouseX = old_x;
+    Self->Settings.MouseY = old_y;
     if (result)
     {
         hx = hx_;
@@ -5324,7 +5340,7 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject(int x, int y, bool ignore
 
     ItemHexView* item;
     CritterView* cr;
-    Self->HexMngr.GetSmthPixel(GameOpt.MouseX, GameOpt.MouseY, item, cr);
+    Self->HexMngr.GetSmthPixel(Self->Settings.MouseX, Self->Settings.MouseY, item, cr);
 
     Entity* mobj = nullptr;
     if (item)
@@ -5382,25 +5398,25 @@ int MouseButtonToSdlButton(int button)
 
 void FOMapper::SScriptFunc::Global_MouseClick(int x, int y, int button)
 {
-    IntVec prev_events = MainWindowMouseEvents;
-    MainWindowMouseEvents.clear();
-    int prev_x = GameOpt.MouseX;
-    int prev_y = GameOpt.MouseY;
-    int last_prev_x = GameOpt.LastMouseX;
-    int last_prev_y = GameOpt.LastMouseY;
+    IntVec prev_events = Self->Settings.MainWindowMouseEvents;
+    Self->Settings.MainWindowMouseEvents.clear();
+    int prev_x = Self->Settings.MouseX;
+    int prev_y = Self->Settings.MouseY;
+    int last_prev_x = Self->Settings.LastMouseX;
+    int last_prev_y = Self->Settings.LastMouseY;
     int prev_cursor = Self->CurMode;
-    GameOpt.MouseX = GameOpt.LastMouseX = x;
-    GameOpt.MouseY = GameOpt.LastMouseY = y;
-    MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
-    MainWindowMouseEvents.push_back(MouseButtonToSdlButton(button));
-    MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
-    MainWindowMouseEvents.push_back(MouseButtonToSdlButton(button));
+    Self->Settings.MouseX = Self->Settings.LastMouseX = x;
+    Self->Settings.MouseY = Self->Settings.LastMouseY = y;
+    Self->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
+    Self->Settings.MainWindowMouseEvents.push_back(MouseButtonToSdlButton(button));
+    Self->Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
+    Self->Settings.MainWindowMouseEvents.push_back(MouseButtonToSdlButton(button));
     Self->ParseMouse();
-    MainWindowMouseEvents = prev_events;
-    GameOpt.MouseX = prev_x;
-    GameOpt.MouseY = prev_y;
-    GameOpt.LastMouseX = last_prev_x;
-    GameOpt.LastMouseY = last_prev_y;
+    Self->Settings.MainWindowMouseEvents = prev_events;
+    Self->Settings.MouseX = prev_x;
+    Self->Settings.MouseY = prev_y;
+    Self->Settings.LastMouseX = last_prev_x;
+    Self->Settings.LastMouseY = last_prev_y;
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text)
@@ -5408,33 +5424,33 @@ void FOMapper::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string 
     if (!key1 && !key2)
         return;
 
-    IntVec prev_events = MainWindowKeyboardEvents;
-    StrVec prev_events_text = MainWindowKeyboardEventsText;
-    MainWindowKeyboardEvents.clear();
+    IntVec prev_events = Self->Settings.MainWindowKeyboardEvents;
+    StrVec prev_events_text = Self->Settings.MainWindowKeyboardEventsText;
+    Self->Settings.MainWindowKeyboardEvents.clear();
     if (key1)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        MainWindowKeyboardEventsText.push_back(key1_text);
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
+        Self->Settings.MainWindowKeyboardEventsText.push_back(key1_text);
     }
     if (key2)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        MainWindowKeyboardEventsText.push_back(key2_text);
-        MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        MainWindowKeyboardEventsText.push_back("");
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
+        Self->Settings.MainWindowKeyboardEventsText.push_back(key2_text);
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
+        Self->Settings.MainWindowKeyboardEventsText.push_back("");
     }
     if (key1)
     {
-        MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        MainWindowKeyboardEventsText.push_back("");
+        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
+        Self->Settings.MainWindowKeyboardEventsText.push_back("");
     }
     Self->ParseKeyboard();
-    MainWindowKeyboardEvents = prev_events;
-    MainWindowKeyboardEventsText = prev_events_text;
+    Self->Settings.MainWindowKeyboardEvents = prev_events;
+    Self->Settings.MainWindowKeyboardEventsText = prev_events_text;
 }
 
 void FOMapper::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, string drop_anim_name)
@@ -5445,30 +5461,30 @@ void FOMapper::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, strin
 
 void FOMapper::SScriptFunc::Global_ChangeZoom(float target_zoom)
 {
-    if (target_zoom == GameOpt.SpritesZoom)
+    if (target_zoom == Self->Settings.SpritesZoom)
         return;
 
     if (target_zoom == 1.0f)
     {
         Self->HexMngr.ChangeZoom(0);
     }
-    else if (target_zoom > GameOpt.SpritesZoom)
+    else if (target_zoom > Self->Settings.SpritesZoom)
     {
-        while (target_zoom > GameOpt.SpritesZoom)
+        while (target_zoom > Self->Settings.SpritesZoom)
         {
-            float old_zoom = GameOpt.SpritesZoom;
+            float old_zoom = Self->Settings.SpritesZoom;
             Self->HexMngr.ChangeZoom(1);
-            if (GameOpt.SpritesZoom == old_zoom)
+            if (Self->Settings.SpritesZoom == old_zoom)
                 break;
         }
     }
-    else if (target_zoom < GameOpt.SpritesZoom)
+    else if (target_zoom < Self->Settings.SpritesZoom)
     {
-        while (target_zoom < GameOpt.SpritesZoom)
+        while (target_zoom < Self->Settings.SpritesZoom)
         {
-            float old_zoom = GameOpt.SpritesZoom;
+            float old_zoom = Self->Settings.SpritesZoom;
             Self->HexMngr.ChangeZoom(-1);
-            if (GameOpt.SpritesZoom == old_zoom)
+            if (Self->Settings.SpritesZoom == old_zoom)
                 break;
         }
     }
@@ -5694,8 +5710,8 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(MapSprite* map_spr)
     Field& f = Self->HexMngr.GetField(map_spr->HexX, map_spr->HexY);
     Sprites& tree = Self->HexMngr.GetDrawTree();
     Sprite& spr = tree.InsertSprite(draw_order, map_spr->HexX, map_spr->HexY + draw_order_hy_offset, 0,
-        HEX_OX + map_spr->OffsX, HEX_OY + map_spr->OffsY, &f.ScrX, &f.ScrY,
-        map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(map_spr->FrameIndex), nullptr,
+        (Self->Settings.MapHexWidth / 2) + map_spr->OffsX, (Self->Settings.MapHexHeight / 2) + map_spr->OffsY, &f.ScrX,
+        &f.ScrY, map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(map_spr->FrameIndex), nullptr,
         map_spr->IsTweakOffs ? &map_spr->TweakOffsX : nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsY : nullptr,
         map_spr->IsTweakAlpha ? &map_spr->TweakAlpha : nullptr, nullptr, nullptr);
 

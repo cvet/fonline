@@ -5,6 +5,7 @@
 #include "FileSystem.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
+#include "Settings.h"
 
 // Font flags
 #define FT_NOBREAK (0x0001)
@@ -22,17 +23,14 @@
 #define FT_SKIPLINES_END(l) (0x0800 | ((l) << 16))
 
 // Colors
-#define COLOR_LIGHT(c) \
-    SpriteManager::PackColor((((c) >> 16) & 0xFF) + GameOpt.Light, (((c) >> 8) & 0xFF) + GameOpt.Light, \
-        ((c)&0xFF) + GameOpt.Light, (((c) >> 24) & 0xFF))
+// Todo: Brightness
+#define COLOR_LIGHT(c) SpriteManager::PackColor(((c) >> 16) & 0xFF, ((c) >> 8) & 0xFF, (c)&0xFF, ((c) >> 24) & 0xFF)
 #define COLOR_SCRIPT_SPRITE(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_IFACE_FIX))
 #define COLOR_SCRIPT_TEXT(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_TEXT))
 #define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
 #define COLOR_IFACE_FIX COLOR_GAME_RGB(103, 95, 86)
-#define COLOR_IFACE \
-    SpriteManager::PackColor(((COLOR_IFACE_FIX >> 16) & 0xFF) + GameOpt.Light, \
-        ((COLOR_IFACE_FIX >> 8) & 0xFF) + GameOpt.Light, (COLOR_IFACE_FIX & 0xFF) + GameOpt.Light)
-#define COLOR_GAME_RGB(r, g, b) SpriteManager::PackColor((r) + GameOpt.Light, (g) + GameOpt.Light, (b) + GameOpt.Light)
+#define COLOR_IFACE COLOR_LIGHT(COLOR_IFACE_FIX)
+#define COLOR_GAME_RGB(r, g, b) SpriteManager::PackColor((r), (g), (b))
 #define COLOR_IFACE_RED (COLOR_IFACE | (0xFF << 16))
 #define COLOR_CRITTER_NAME COLOR_GAME_RGB(0xAD, 0xAD, 0xB9)
 #define COLOR_TEXT COLOR_GAME_RGB(60, 248, 0)
@@ -97,7 +95,7 @@ class SpriteManager
 {
 private:
 public:
-    SpriteManager(FileManager& file_mngr, EffectManager& effect_mngr);
+    SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr);
     ~SpriteManager();
 
     void Preload3dModel(const string& model_name);
@@ -120,6 +118,7 @@ public:
     void BlinkWindow();
 
 private:
+    RenderSettings& settings;
     FileManager& fileMngr;
     EffectManager& effectMngr;
     SDL_Window* mainWindow {};
@@ -184,7 +183,7 @@ public:
     void RefreshPure3dAnimationSprite(Animation3d* anim3d);
     void FreePure3dAnimation(Animation3d* anim3d);
     AnyFrames* CreateAnyFrames(uint frames, uint ticks);
-    void CreateAnyFramesDirAnims(AnyFrames* anim);
+    void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
 
     AnyFrames* DummyAnimation {};

@@ -5,6 +5,7 @@
 #include "CacheStorage.h"
 #include "EffectManager.h"
 #include "Entity.h"
+#include "GeometryHelper.h"
 #include "HexManager.h"
 #include "Keyboard.h"
 #include "MsgFiles.h"
@@ -12,6 +13,7 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Script.h"
+#include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Testing.h"
@@ -37,6 +39,8 @@ class FOMapper
 {
 public:
     static FOMapper* Self;
+    MapperSettings& Settings;
+    GeometryHelper GeomHelper;
     FileManager FileMngr;
     FileManager ServerFileMngr;
     CacheStorage Cache;
@@ -51,7 +55,7 @@ public:
     static string ClientWritePath;
     PropertyVec ShowProps;
 
-    FOMapper();
+    FOMapper(MapperSettings& sett);
     ~FOMapper();
     int InitIface();
     bool IfaceLoadRect(Rect& comp, const char* name);
@@ -132,21 +136,9 @@ public:
     void CurRMouseUp();
     void CurMMouseDown();
 
-    bool IsCurInRect(Rect& rect, int ax, int ay)
-    {
-        return (GameOpt.MouseX >= rect[0] + ax && GameOpt.MouseY >= rect[1] + ay && GameOpt.MouseX <= rect[2] + ax &&
-            GameOpt.MouseY <= rect[3] + ay);
-    }
-    bool IsCurInRect(Rect& rect)
-    {
-        return (GameOpt.MouseX >= rect[0] && GameOpt.MouseY >= rect[1] && GameOpt.MouseX <= rect[2] &&
-            GameOpt.MouseY <= rect[3]);
-    }
-    bool IsCurInRectNoTransp(uint spr_id, Rect& rect, int ax, int ay)
-    {
-        return IsCurInRect(rect, ax, ay) &&
-            SprMngr.IsPixNoTransp(spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false);
-    }
+    bool IsCurInRect(Rect& rect, int ax, int ay);
+    bool IsCurInRect(Rect& rect);
+    bool IsCurInRectNoTransp(uint spr_id, Rect& rect, int ax, int ay);
     bool IsCurInInterface();
     bool GetCurHex(ushort& hx, ushort& hy, bool ignore_interface);
 

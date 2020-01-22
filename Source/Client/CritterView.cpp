@@ -1,11 +1,11 @@
 #include "CritterView.h"
 #include "3dStuff.h"
 #include "EffectManager.h"
+#include "GenericUtils.h"
 #include "ItemView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Script.h"
-#include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
@@ -50,8 +50,13 @@ CLASS_PROPERTY_IMPL(CritterView, IsNoTalk);
 CLASS_PROPERTY_IMPL(CritterView, IsHide);
 CLASS_PROPERTY_IMPL(CritterView, IsNoFlatten);
 
-CritterView::CritterView(uint id, ProtoCritter* proto, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
-    Entity(id, EntityType::CritterView, PropertiesRegistrator, proto), sprMngr(spr_mngr), resMngr(res_mngr)
+CritterView::CritterView(
+    uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
+    Entity(id, EntityType::CritterView, PropertiesRegistrator, proto),
+    settings {sett},
+    geomHelper(settings),
+    sprMngr {spr_mngr},
+    resMngr {res_mngr}
 {
     SprId = 0;
     NameColor = 0;
@@ -85,7 +90,7 @@ CritterView::CritterView(uint id, ProtoCritter* proto, SpriteManager& spr_mngr, 
     Name = "";
     NameOnHead = "";
     Avatar = "";
-    tickFidget = Timer::GameTick() + Random(GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2);
+    tickFidget = Timer::GameTick() + GenericUtils::Random(settings.CritterFidgetTime, settings.CritterFidgetTime * 2);
     memzero(&stayAnim, sizeof(stayAnim));
     DrawEffect = resMngr.GetSpriteManager().GetEffectManager().Effects.Critter;
     memzero(anim3dLayers, sizeof(anim3dLayers));
@@ -143,7 +148,7 @@ void CritterView::SetFade(bool fade_up)
 uchar CritterView::GetFadeAlpha()
 {
     uint tick = Timer::GameTick();
-    int fading_proc = 100 - Procent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0);
+    int fading_proc = 100 - GenericUtils::Procent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0);
     fading_proc = CLAMP(fading_proc, 0, 100);
     if (fading_proc >= 100)
     {
@@ -240,7 +245,7 @@ uint CritterView::CountItemPid(hash item_pid)
 
 bool CritterView::IsCombatMode()
 {
-    return IS_TIMEOUT(GetTimeoutBattle());
+    return GetTimeoutBattle() > settings.FullSecond;
 }
 
 bool CritterView::CheckFind(int find_type)
@@ -271,7 +276,7 @@ void CritterView::DrawStay(Rect r)
     if (Timer::FastTick() - staySprTick > 500)
     {
         staySprDir++;
-        if (staySprDir >= DIRS_COUNT)
+        if (staySprDir >= settings.MapDirCount)
             staySprDir = 0;
         staySprTick = Timer::FastTick();
     }
@@ -327,7 +332,7 @@ ushort CritterView::PopLastHexY()
 
 void CritterView::Move(int dir)
 {
-    if (dir < 0 || dir >= DIRS_COUNT || GetIsNoRotate())
+    if (dir < 0 || dir >= settings.MapDirCount || GetIsNoRotate())
         dir = 0;
 
     SetDir(dir);
@@ -740,7 +745,7 @@ uint CritterView::GetAnim2()
     {
     case COND_LIFE:
         return GetAnim2Life() ? GetAnim2Life() :
-                                ((IsCombatMode() && GameOpt.Anim2CombatIdle) ? GameOpt.Anim2CombatIdle : ANIM2_IDLE);
+                                ((IsCombatMode() && settings.Anim2CombatIdle) ? settings.Anim2CombatIdle : ANIM2_IDLE);
     case COND_KNOCKOUT:
         return GetAnim2Knockout() ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
     case COND_DEAD:
@@ -817,7 +822,7 @@ void CritterView::RefreshAnim()
 
 void CritterView::ChangeDir(uchar dir, bool animate /* = true */)
 {
-    if (dir >= DIRS_COUNT || GetIsNoRotate())
+    if (dir >= settings.MapDirCount || GetIsNoRotate())
         dir = 0;
     if (GetDir() == dir)
         return;
@@ -838,7 +843,7 @@ void CritterView::Process()
     if (OffsExtNextTick && Timer::GameTick() >= OffsExtNextTick)
     {
         OffsExtNextTick = Timer::GameTick() + 30;
-        uint dist = DistSqrt(0, 0, OxExtI, OyExtI);
+        uint dist = GenericUtils::DistSqrt(0, 0, OxExtI, OyExtI);
         SprOx -= OxExtI;
         SprOy -= OyExtI;
         float mul = (float)(dist / 10);
@@ -848,7 +853,7 @@ void CritterView::Process()
         OyExtF += OyExtSpeed * mul;
         OxExtI = (int)OxExtF;
         OyExtI = (int)OyExtF;
-        if (DistSqrt(0, 0, OxExtI, OyExtI) > dist) // End of work
+        if (GenericUtils::DistSqrt(0, 0, OxExtI, OyExtI) > dist) // End of work
         {
             OffsExtNextTick = 0;
             OxExtI = 0;
@@ -933,12 +938,12 @@ void CritterView::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if (Anim3d && GameOpt.Anim2CombatIdle && !animSequence.size() && GetCond() == COND_LIFE && !GetAnim2Life())
+    if (Anim3d && settings.Anim2CombatIdle && !animSequence.size() && GetCond() == COND_LIFE && !GetAnim2Life())
     {
-        if (GameOpt.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2() != (int)GameOpt.Anim2CombatIdle)
-            Animate(0, GameOpt.Anim2CombatBegin, nullptr);
-        else if (GameOpt.Anim2CombatEnd && !IsCombatMode() && Anim3d->GetAnim2() == (int)GameOpt.Anim2CombatIdle)
-            Animate(0, GameOpt.Anim2CombatEnd, nullptr);
+        if (settings.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2() != (int)settings.Anim2CombatIdle)
+            Animate(0, settings.Anim2CombatBegin, nullptr);
+        else if (settings.Anim2CombatEnd && !IsCombatMode() && Anim3d->GetAnim2() == (int)settings.Anim2CombatIdle)
+            Animate(0, settings.Anim2CombatEnd, nullptr);
     }
 
     // Fidget animation
@@ -946,7 +951,8 @@ void CritterView::Process()
     {
         if (!animSequence.size() && GetCond() == COND_LIFE && IsFree() && !MoveSteps.size() && !IsCombatMode())
             Action(ACTION_FIDGET, 0, nullptr);
-        tickFidget = Timer::GameTick() + Random(GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2);
+        tickFidget =
+            Timer::GameTick() + GenericUtils::Random(settings.CritterFidgetTime, settings.CritterFidgetTime * 2);
     }
 }
 
@@ -1006,7 +1012,7 @@ void CritterView::AddOffsExt(short ox, short oy)
     OyExtI = oy;
     OxExtF = (float)ox;
     OyExtF = (float)oy;
-    GetStepsXY(OxExtSpeed, OyExtSpeed, 0, 0, ox, oy);
+    GenericUtils::GetStepsXY(OxExtSpeed, OyExtSpeed, 0, 0, ox, oy);
     OxExtSpeed = -OxExtSpeed;
     OyExtSpeed = -OyExtSpeed;
     OffsExtNextTick = Timer::GameTick() + 30;
@@ -1016,8 +1022,8 @@ void CritterView::AddOffsExt(short ox, short oy)
 void CritterView::GetWalkHexOffsets(int dir, int& ox, int& oy)
 {
     int hx = 1, hy = 1;
-    MoveHexByDirUnsafe(hx, hy, dir);
-    GetHexInterval(hx, hy, 1, 1, ox, oy);
+    geomHelper.MoveHexByDirUnsafe(hx, hy, dir);
+    geomHelper.GetHexInterval(hx, hy, 1, 1, ox, oy);
 }
 
 void CritterView::SetText(const char* str, uint color, uint text_delay)
@@ -1035,18 +1041,18 @@ void CritterView::GetNameTextInfo(bool& nameVisible, int& x, int& y, int& w, int
     string str;
     if (strTextOnHead.empty())
     {
-        if (IsPlayer() && !GameOpt.ShowPlayerNames)
+        if (IsPlayer() && !settings.ShowPlayerNames)
             return;
-        if (IsNpc() && !GameOpt.ShowNpcNames)
+        if (IsNpc() && !settings.ShowNpcNames)
             return;
 
         nameVisible = true;
 
         str = (NameOnHead.empty() ? Name : NameOnHead);
-        if (GameOpt.ShowCritId)
+        if (settings.ShowCritId)
             str += _str("  {}", GetId());
         if (FLAG(Flags, FCRIT_DISCONNECT))
-            str += GameOpt.PlayerOffAppendix;
+            str += settings.PlayerOffAppendix;
     }
     else
     {
@@ -1054,8 +1060,8 @@ void CritterView::GetNameTextInfo(bool& nameVisible, int& x, int& y, int& w, int
     }
 
     Rect tr = GetTextRect();
-    x = (int)((float)(tr.L + tr.W() / 2 + GameOpt.ScrOx) / GameOpt.SpritesZoom - 100.0f);
-    y = (int)((float)(tr.T + GameOpt.ScrOy) / GameOpt.SpritesZoom - 70.0f);
+    x = (int)((float)(tr.L + tr.W() / 2 + settings.ScrOx) / settings.SpritesZoom - 100.0f);
+    y = (int)((float)(tr.T + settings.ScrOy) / settings.SpritesZoom - 70.0f);
 
     sprMngr.GetTextInfo(200, 70, str.c_str(), -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines);
     x += 100 - (w / 2);
@@ -1066,17 +1072,17 @@ void CritterView::DrawTextOnHead()
 {
     if (strTextOnHead.empty())
     {
-        if (IsPlayer() && !GameOpt.ShowPlayerNames)
+        if (IsPlayer() && !settings.ShowPlayerNames)
             return;
-        if (IsNpc() && !GameOpt.ShowNpcNames)
+        if (IsNpc() && !settings.ShowNpcNames)
             return;
     }
 
     if (SprDrawValid)
     {
         Rect tr = GetTextRect();
-        int x = (int)((float)(tr.L + tr.W() / 2 + GameOpt.ScrOx) / GameOpt.SpritesZoom - 100.0f);
-        int y = (int)((float)(tr.T + GameOpt.ScrOy) / GameOpt.SpritesZoom - 70.0f);
+        int x = (int)((float)(tr.L + tr.W() / 2 + settings.ScrOx) / settings.SpritesZoom - 100.0f);
+        int y = (int)((float)(tr.T + settings.ScrOy) / settings.SpritesZoom - 70.0f);
         Rect r(x, y, x + 200, y + 70);
 
         string str;
@@ -1084,10 +1090,10 @@ void CritterView::DrawTextOnHead()
         if (strTextOnHead.empty())
         {
             str = (NameOnHead.empty() ? Name : NameOnHead);
-            if (GameOpt.ShowCritId)
+            if (settings.ShowCritId)
                 str += _str(" ({})", GetId());
             if (FLAG(Flags, FCRIT_DISCONNECT))
-                str += GameOpt.PlayerOffAppendix;
+                str += settings.PlayerOffAppendix;
             color = (NameColor ? NameColor : COLOR_CRITTER_NAME);
         }
         else
@@ -1101,7 +1107,7 @@ void CritterView::DrawTextOnHead()
                 uint hide = tickTextDelay - 200;
                 if (dt >= hide)
                 {
-                    uint alpha = 0xFF * (100 - Procent(tickTextDelay - hide, dt - hide)) / 100;
+                    uint alpha = 0xFF * (100 - GenericUtils::Procent(tickTextDelay - hide, dt - hide)) / 100;
                     color = (alpha << 24) | (color & 0xFFFFFF);
                 }
             }

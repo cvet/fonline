@@ -13,6 +13,8 @@
 extern SDL_Window* SprMngr_MainWindow;
 #endif
 
+static GlobalSettings Settings {};
+
 static void ClientEntry(void*)
 {
     static FOClient* client = nullptr;
@@ -24,7 +26,7 @@ static void ClientEntry(void*)
             return;
 #endif
 
-        client = new FOClient();
+        client = new FOClient(Settings);
     }
     client->MainLoop();
 }
@@ -35,12 +37,11 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    InitialSetup("FOnline", argc, argv);
-
-    // Logging
+    CatchExceptions("FOnline", FO_VERSION);
     LogToFile("FOnline.log");
+    Settings.ParseArgs(argc, argv);
 
-// Hard restart, need wait before event dissapeared
+    // Hard restart, need wait before event dissapeared
 #ifdef FO_WINDOWS
     if (wcsstr(GetCommandLineW(), L" --restart"))
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -64,23 +65,23 @@ static int main_disabled(int argc, char** argv)
     emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
 
 #elif defined(FO_ANDROID)
-    while (!GameOpt.Quit)
+    while (!Settings.Quit)
         ClientEntry(nullptr);
 
 #else
-    while (!GameOpt.Quit)
+    while (!Settings.Quit)
     {
         double start_loop = Timer::AccurateTick();
 
         ClientEntry(nullptr);
 
-        if (!GameOpt.VSync && GameOpt.FixedFPS)
+        if (!Settings.VSync && Settings.FixedFPS)
         {
-            if (GameOpt.FixedFPS > 0)
+            if (Settings.FixedFPS > 0)
             {
                 static double balance = 0.0;
                 double elapsed = Timer::AccurateTick() - start_loop;
-                double need_elapsed = 1000.0 / (double)GameOpt.FixedFPS;
+                double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
                 if (need_elapsed > elapsed)
                 {
                     double sleep = need_elapsed - elapsed + balance;
@@ -90,7 +91,7 @@ static int main_disabled(int argc, char** argv)
             }
             else
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(-GameOpt.FixedFPS));
+                std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
             }
         }
     }

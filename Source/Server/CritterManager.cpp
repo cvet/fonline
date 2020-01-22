@@ -1,6 +1,7 @@
 #include "CritterManager.h"
 #include "Critter.h"
 #include "EntityManager.h"
+#include "GenericUtils.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -13,9 +14,14 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-CritterManager::CritterManager(
-    ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr) :
-    protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, itemMngr {item_mngr}
+CritterManager::CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
+    MapManager& map_mngr, ItemManager& item_mngr) :
+    settings {sett},
+    geomHelper(settings),
+    protoMngr {proto_mngr},
+    entityMngr {entity_mngr},
+    mapMngr {map_mngr},
+    itemMngr {item_mngr}
 {
 }
 
@@ -97,7 +103,7 @@ Npc* CritterManager::CreateNpc(
         short hx_ = hx;
         short hy_ = hy;
         short *sx, *sy;
-        GetHexOffsets(hx & 1, sx, sy);
+        geomHelper.GetHexOffsets(hx & 1, sx, sy);
 
         // Find in 2 hex radius
         int pos = -1;
@@ -122,7 +128,7 @@ Npc* CritterManager::CreateNpc(
         hy = hy_;
     }
 
-    Npc* npc = new Npc(0, proto);
+    Npc* npc = new Npc(0, proto, settings);
     if (props)
         npc->Props = *props;
 
@@ -132,8 +138,8 @@ Npc* CritterManager::CreateNpc(
 
     Location* loc = map->GetLocation();
 
-    if (dir >= DIRS_COUNT)
-        dir = Random(0, DIRS_COUNT - 1);
+    if (dir >= settings.MapDirCount)
+        dir = GenericUtils::Random(0, settings.MapDirCount - 1);
     npc->SetWorldX(loc ? loc->GetWorldX() : 0);
     npc->SetWorldY(loc ? loc->GetWorldY() : 0);
     npc->SetHomeMapId(map->GetId());
@@ -164,7 +170,7 @@ bool CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document
         return false;
     }
 
-    Npc* npc = new Npc(id, proto);
+    Npc* npc = new Npc(id, proto, settings);
     if (!npc->Props.LoadFromDbDocument(doc))
     {
         WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
@@ -277,7 +283,7 @@ void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int
     for (auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it)
     {
         Critter* cr = *it;
-        if (!cr->GetMapId() && DistSqrt((int)cr->GetWorldX(), (int)cr->GetWorldY(), wx, wy) <= radius &&
+        if (!cr->GetMapId() && GenericUtils::DistSqrt((int)cr->GetWorldX(), (int)cr->GetWorldY(), wx, wy) <= radius &&
             cr->CheckFind(find_type))
             find_critters.push_back(cr);
     }
@@ -401,17 +407,17 @@ void CritterManager::ProcessTalk(Client* cl, bool force)
             hx = npc->GetHexX();
             hy = npc->GetHexY();
             talk_distance = npc->GetTalkDistance();
-            talk_distance = (talk_distance ? talk_distance : GameOpt.TalkDistance) + cl->GetMultihex();
+            talk_distance = (talk_distance ? talk_distance : settings.TalkDistance) + cl->GetMultihex();
         }
         else if (cl->Talk.TalkType == TALK_WITH_HEX)
         {
             map_id = cl->Talk.TalkHexMap;
             hx = cl->Talk.TalkHexX;
             hy = cl->Talk.TalkHexY;
-            talk_distance = GameOpt.TalkDistance + cl->GetMultihex();
+            talk_distance = settings.TalkDistance + cl->GetMultihex();
         }
 
-        if (cl->GetMapId() != map_id || !CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, talk_distance))
+        if (cl->GetMapId() != map_id || !geomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, talk_distance))
         {
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cl);

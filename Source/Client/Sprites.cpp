@@ -87,7 +87,7 @@ Sprite* Sprite::GetIntersected(int ox, int oy)
         spr = spr->Parent;
 
     // Check sprites
-    float oxf = (float)ox * GameOpt.SpritesZoom;
+    float oxf = (float)ox * Root->settings.SpritesZoom;
     while (spr)
     {
         if (oxf >= spr->CutX && oxf < spr->CutX + spr->CutW)
@@ -256,8 +256,8 @@ void Sprites::GrowPool()
         spritesPool.push_back(new Sprite());
 }
 
-Sprites::Sprites(SpriteManager& spr_mngr) :
-    sprMngr(spr_mngr), rootSprite {}, lastSprite {}, spriteCount {}, unvalidatedSprites {}
+Sprites::Sprites(HexSettings& sett, SpriteManager& spr_mngr) :
+    settings {sett}, sprMngr(spr_mngr), rootSprite {}, lastSprite {}, spriteCount {}, unvalidatedSprites {}
 {
 }
 
@@ -376,9 +376,9 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
     {
         bool hor = (cut == SPRITE_CUT_HORIZONTAL);
 
-        int stepi = GameOpt.MapHexWidth / 2;
-        if (GameOpt.MapHexagonal && hor)
-            stepi = (GameOpt.MapHexWidth + GameOpt.MapHexWidth / 2) / 2;
+        int stepi = settings.MapHexWidth / 2;
+        if (settings.MapHexagonal && hor)
+            stepi = (settings.MapHexWidth + settings.MapHexWidth / 2) / 2;
         float stepf = (float)stepi;
 
         SpriteInfo* si = sprMngr.GetSpriteInfo(id_ptr ? *id_ptr : id);

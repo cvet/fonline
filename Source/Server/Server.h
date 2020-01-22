@@ -8,6 +8,7 @@
 #include "Dialogs.h"
 #include "EntityManager.h"
 #include "FileSystem.h"
+#include "GeometryHelper.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -17,6 +18,7 @@
 #include "Networking.h"
 #include "ProtoManager.h"
 #include "Script.h"
+#include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
 
@@ -40,10 +42,12 @@ class CScriptArray;
 class FOServer
 {
 public:
-    FOServer();
+    FOServer(ServerSettings& sett);
 
     static FOServer* Self;
 
+    ServerSettings& Settings;
+    GeometryHelper GeomHelper;
     FileManager FileMngr;
     ProtoManager ProtoMngr;
     EntityManager EntityMngr;
@@ -51,6 +55,7 @@ public:
     CritterManager CrMngr;
     ItemManager ItemMngr;
     DialogManager DlgMngr;
+    GameTimer GameTime;
 
     static void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
@@ -178,6 +183,7 @@ public:
     bool Started() { return Active && !ActiveInProcess; }
     bool Stopping() { return !Active && ActiveInProcess; }
     bool Stopped() { return !Active && !ActiveInProcess; }
+    void Stop() { Settings.Quit = true; }
     void LogicTick();
 
     // Gui

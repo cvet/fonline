@@ -3,13 +3,14 @@
 #include "Common.h"
 
 #include "FileSystem.h"
+#include "Settings.h"
 
 DECLARE_EXCEPTION(ImageBakerException);
 
 class ImageBaker : public NonCopyable
 {
 public:
-    ImageBaker(FileCollection& all_files);
+    ImageBaker(GeometrySettings& sett, FileCollection& all_files);
     void AutoBakeImages();
     void BakeImage(const string& fname_with_opt);
     void FillBakedFiles(map<string, UCharVec>& baked_files);
@@ -66,6 +67,7 @@ private:
     FrameCollection LoadPng(const string& fname, const string& opt, File& file);
     FrameCollection LoadTga(const string& fname, const string& opt, File& file);
 
+    GeometrySettings& settings;
     FileCollection& allFiles;
     map<string, UCharVec> bakedFiles {};
     unordered_map<string, File> cachedFiles {};

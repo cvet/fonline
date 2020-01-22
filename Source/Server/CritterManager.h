@@ -3,6 +3,8 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "GeometryHelper.h"
+#include "Settings.h"
 
 class ProtoManager;
 class EntityManager;
@@ -12,7 +14,8 @@ class ItemManager;
 class CritterManager
 {
 public:
-    CritterManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr);
+    CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
+        ItemManager& item_mngr);
 
     Npc* CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy);
     bool RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc);
@@ -41,6 +44,8 @@ public:
     uint CrittersInGame();
 
 private:
+    ServerSettings& settings;
+    GeometryHelper geomHelper;
     ProtoManager& protoMngr;
     EntityManager& entityMngr;
     MapManager& mapMngr;

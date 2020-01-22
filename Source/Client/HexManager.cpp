@@ -8,11 +8,29 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Script.h"
-#include "Settings.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+
+#define FOREACH_PROTO_ITEM_LINES(lines, hx, hy, maxhx, maxhy, work) \
+    int hx__ = hx, hy__ = hy; \
+    int maxhx__ = maxhx, maxhy__ = maxhy; \
+    for (uint i__ = 0, j__ = (lines)->GetSize() / 2; i__ < j__; i__++) \
+    { \
+        uchar dir__ = *(uchar*)(lines)->At(i__ * 2); \
+        uchar steps__ = *(uchar*)(lines)->At(i__ * 2 + 1); \
+        if (dir__ >= settings.MapDirCount || !steps__ || steps__ > 9) \
+            break; \
+        for (uchar k__ = 0; k__ < steps__; k__++) \
+        { \
+            geomHelper.MoveHexByDirUnsafe(hx__, hy__, dir__); \
+            if (hx__ < 0 || hy__ < 0 || hx__ >= maxhx__ || hy__ >= maxhy__) \
+                continue; \
+            hx = hx__, hy = hy__; \
+            work \
+        } \
+    }
 
 Field::~Field()
 {
@@ -236,22 +254,25 @@ void Field::UnvalidateSpriteChain()
     }
 }
 
-HexManager::HexManager(bool mapper_mode, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
+HexManager::HexManager(
+    bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
+    settings {sett},
+    geomHelper(settings),
     protoMngr(proto_mngr),
     sprMngr(spr_mngr),
     resMngr(res_mngr),
-    mainTree(spr_mngr),
-    tilesTree(spr_mngr),
-    roofTree(spr_mngr),
-    roofRainTree(spr_mngr)
+    mainTree(settings, spr_mngr),
+    tilesTree(settings, spr_mngr),
+    roofTree(settings, spr_mngr),
+    roofRainTree(settings, spr_mngr)
 {
     mapperMode = mapper_mode;
 
     rtMap = sprMngr.CreateRenderTarget(false, false, true, 0, 0, false, sprMngr.GetEffectManager().Effects.FlushMap);
     RUNTIME_ASSERT(rtMap);
 
-    rtScreenOX = (uint)ceilf((float)SCROLL_OX / MIN_ZOOM);
-    rtScreenOY = (uint)ceilf((float)SCROLL_OY / MIN_ZOOM);
+    rtScreenOX = (uint)ceilf((float)settings.MapHexWidth / MIN_ZOOM);
+    rtScreenOY = (uint)ceilf((float)(settings.MapHexLineHeight * 2) / MIN_ZOOM);
 
     rtLight = sprMngr.CreateRenderTarget(
         false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, sprMngr.GetEffectManager().Effects.FlushLight);
@@ -287,7 +308,8 @@ HexManager::HexManager(bool mapper_mode, ProtoManager& proto_mngr, SpriteManager
     picRainDropName = "Rain/Drop.fofrm";
 
 #ifdef FONLINE_EDITOR
-    ClearSelTiles();
+    if (mapperMode)
+        ClearSelTiles();
 #endif
 }
 
@@ -310,9 +332,23 @@ HexManager::~HexManager()
     ResizeField(0, 0);
 }
 
+int HexManager::GetViewWidth()
+{
+    return (
+        int)((settings.ScreenWidth / settings.MapHexWidth + ((settings.ScreenWidth % settings.MapHexWidth) ? 1 : 0)) *
+        settings.SpritesZoom);
+}
+
+int HexManager::GetViewHeight()
+{
+    return (int)((settings.ScreenHeight / settings.MapHexLineHeight +
+                     ((settings.ScreenHeight % settings.MapHexLineHeight) ? 1 : 0)) *
+        settings.SpritesZoom);
+}
+
 void HexManager::ReloadSprites()
 {
-    curDataPrefix = GameOpt.MapDataPrefix;
+    curDataPrefix = settings.MapDataPrefix;
 
     // Must be valid
     picHex[0] = sprMngr.LoadAnimation(curDataPrefix + "hex1.png", true);
@@ -411,8 +447,8 @@ uint HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent())
         {
             Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), hx, hy + item->GetDrawOrderOffsetHexY(),
-                item->GetSpriteCut(), HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY,
-                &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                item->GetSpriteCut(), (settings.MapHexWidth / 2), (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0,
+                &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
             if (!item->GetIsNoLightInfluence())
                 spr.SetLight(item->GetCorner(), hexLight, maxHexX, maxHexY);
             item->SetSprite(&spr);
@@ -495,7 +531,7 @@ void HexManager::ProcessItems()
                 ushort hy = item->GetHexY();
 
                 int x, y;
-                GetHexInterval(hx, hy, step.first, step.second, x, y);
+                geomHelper.GetHexInterval(hx, hy, step.first, step.second, x, y);
                 item->EffOffsX -= x;
                 item->EffOffsY -= y;
 
@@ -512,9 +548,9 @@ void HexManager::ProcessItems()
                 if (IsHexToDraw(step.first, step.second))
                 {
                     item->SprDraw = &mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), step.first,
-                        step.second + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), HEX_OX, HEX_OY, &f.ScrX,
-                        &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect,
-                        &item->SprDrawValid);
+                        step.second + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (settings.MapHexWidth / 2),
+                        (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY,
+                        &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                     if (!item->GetIsNoLightInfluence())
                         item->SprDraw->SetLight(item->GetCorner(), hexLight, maxHexX, maxHexY);
                     f.AddSpriteToChain(item->SprDraw);
@@ -677,22 +713,23 @@ bool HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
         TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, nullptr,
             &item->EffSteps, false);
         int x, y;
-        GetHexInterval(from_hx, from_hy, to_hx, to_hy, x, y);
-        y += Random(5, 25); // Center of body
-        GetStepsXY(sx, sy, 0, 0, x, y);
-        dist = DistSqrt(0, 0, x, y);
+        geomHelper.GetHexInterval(from_hx, from_hy, to_hx, to_hy, x, y);
+        y += GenericUtils::Random(5, 25); // Center of body
+        GenericUtils::GetStepsXY(sx, sy, 0, 0, x, y);
+        dist = GenericUtils::DistSqrt(0, 0, x, y);
     }
 
-    item->SetEffect(sx, sy, dist, GetFarDir(from_hx, from_hy, to_hx, to_hy));
+    item->SetEffect(sx, sy, dist, geomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy));
 
     AddFieldItem(from_hx, from_hy, item);
     hexItems.push_back(item);
 
     if (IsHexToDraw(from_hx, from_hy))
     {
-        item->SprDraw = &mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), from_hx,
-            from_hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-            &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+        item->SprDraw =
+            &mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), from_hx, from_hy + item->GetDrawOrderOffsetHexY(),
+                item->GetSpriteCut(), (settings.MapHexWidth / 2), (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0,
+                &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
         if (!item->GetIsNoLightInfluence())
             item->SprDraw->SetLight(item->GetCorner(), hexLight, maxHexX, maxHexY);
         f.AddSpriteToChain(item->SprDraw);
@@ -708,7 +745,7 @@ void HexManager::ProcessRain()
 
     static uint last_tick = Timer::GameTick();
     uint delta = Timer::GameTick() - last_tick;
-    if (delta < GameOpt.RainTick)
+    if (delta < settings.RainTick)
         return;
 
     for (auto it = rainData.begin(), end = rainData.end(); it != end; ++it)
@@ -718,8 +755,8 @@ void HexManager::ProcessRain()
         // Fall
         if (cur_drop->DropCnt == -1)
         {
-            cur_drop->OffsX += GameOpt.RainSpeedX;
-            cur_drop->OffsY += GameOpt.RainSpeedY;
+            cur_drop->OffsX += settings.RainSpeedX;
+            cur_drop->OffsY += settings.RainSpeedY;
             if (cur_drop->OffsY >= cur_drop->GroundOffsY)
             {
                 cur_drop->DropCnt = 0;
@@ -734,8 +771,8 @@ void HexManager::ProcessRain()
             {
                 cur_drop->CurSprId = picRainFall->GetCurSprId();
                 cur_drop->DropCnt = -1;
-                cur_drop->OffsX = Random(-10, 10);
-                cur_drop->OffsY = -100 - Random(0, 100);
+                cur_drop->OffsX = GenericUtils::Random(-10, 10);
+                cur_drop->OffsY = -100 - GenericUtils::Random(0, 100);
             }
             else
             {
@@ -787,7 +824,7 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
         int cy = chosen->GetHexY();
         uint mh = chosen->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (f.Flags.IsNotPassed && (!mh || !CheckDist(cx, cy, hx, hy, mh))))
+        if ((cx == hx && cy == hy) || (f.Flags.IsNotPassed && (!mh || !geomHelper.CheckDist(cx, cy, hx, hy, mh))))
         {
             drawCursorX = -1;
         }
@@ -824,27 +861,28 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 
 void HexManager::DrawCursor(uint spr_id)
 {
-    if (GameOpt.HideCursor || !GameOpt.ShowMoveCursor)
+    if (settings.HideCursor || !settings.ShowMoveCursor)
         return;
 
     SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
     if (si)
     {
-        sprMngr.DrawSpriteSize(spr_id, (int)((float)(cursorX + GameOpt.ScrOx) / GameOpt.SpritesZoom),
-            (int)((float)(cursorY + GameOpt.ScrOy) / GameOpt.SpritesZoom),
-            (int)((float)si->Width / GameOpt.SpritesZoom), (int)((float)si->Height / GameOpt.SpritesZoom), true, false);
+        sprMngr.DrawSpriteSize(spr_id, (int)((float)(cursorX + settings.ScrOx) / settings.SpritesZoom),
+            (int)((float)(cursorY + settings.ScrOy) / settings.SpritesZoom),
+            (int)((float)si->Width / settings.SpritesZoom), (int)((float)si->Height / settings.SpritesZoom), true,
+            false);
     }
 }
 
 void HexManager::DrawCursor(const char* text)
 {
-    if (GameOpt.HideCursor || !GameOpt.ShowMoveCursor)
+    if (settings.HideCursor || !settings.ShowMoveCursor)
         return;
 
-    int x = (int)((float)(cursorX + GameOpt.ScrOx) / GameOpt.SpritesZoom);
-    int y = (int)((float)(cursorY + GameOpt.ScrOy) / GameOpt.SpritesZoom);
-    sprMngr.DrawStr(Rect(x, y, (int)((float)(x + HEX_W) / GameOpt.SpritesZoom),
-                        (int)((float)(y + HEX_REAL_H) / GameOpt.SpritesZoom)),
+    int x = (int)((float)(cursorX + settings.ScrOx) / settings.SpritesZoom);
+    int y = (int)((float)(cursorY + settings.ScrOy) / settings.SpritesZoom);
+    sprMngr.DrawStr(Rect(x, y, (int)((float)(x + settings.MapHexWidth) / settings.SpritesZoom),
+                        (int)((float)(y + settings.MapHexHeight) / settings.SpritesZoom)),
         text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE);
 }
 
@@ -904,8 +942,9 @@ void HexManager::RebuildMap(int rx, int ry)
         {
             uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId());
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
-            Sprite& spr = mainTree.AddSprite(DRAW_ORDER_TRACK, nx, ny, 0, HEX_OX, HEX_OY + (si ? si->Height / 2 : 0),
-                &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            Sprite& spr = mainTree.AddSprite(DRAW_ORDER_TRACK, nx, ny, 0, (settings.MapHexWidth / 2),
+                (settings.MapHexHeight / 2) + (si ? si->Height / 2 : 0), &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr);
             f.AddSpriteToChain(&spr);
         }
 
@@ -920,7 +959,7 @@ void HexManager::RebuildMap(int rx, int ry)
         }
 
         // Rain
-        if (rainCapacity && rainCapacity >= Random(0, 255))
+        if (rainCapacity && rainCapacity >= GenericUtils::Random(0, 255))
         {
             int rofx = nx;
             int rofy = ny;
@@ -932,32 +971,34 @@ void HexManager::RebuildMap(int rx, int ry)
             Drop* new_drop = nullptr;
             if (!GetField(rofx, rofy).GetTilesCount(true))
             {
-                new_drop = new Drop(picRainFall->GetCurSprId(), Random(-10, 10), -Random(0, 200), 0);
+                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
+                    (short)-GenericUtils::Random(0, 200), 0, -1};
                 rainData.push_back(new_drop);
 
-                Sprite& spr = mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-                    &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                Sprite& spr = mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
+                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
             else if (!roofSkip || roofSkip != GetField(rofx, rofy).RoofNum)
             {
-                new_drop = new Drop(picRainFall->GetCurSprId(), Random(-10, 10), -100 - Random(0, 100), -100);
+                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
+                    (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
                 rainData.push_back(new_drop);
 
-                Sprite& spr = roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-                    &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                Sprite& spr = roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
+                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
             if (new_drop)
             {
-                new_drop->OffsX = Random(-10, 10);
-                new_drop->OffsY = -100 - Random(0, 100);
+                new_drop->OffsX = GenericUtils::Random(-10, 10);
+                new_drop->OffsY = -100 - GenericUtils::Random(0, 100);
                 if (new_drop->OffsY < 0)
-                    new_drop->OffsY = Random(new_drop->OffsY, 0);
+                    new_drop->OffsY = GenericUtils::Random(new_drop->OffsY, 0);
             }
         }
 
@@ -972,24 +1013,24 @@ void HexManager::RebuildMap(int rx, int ry)
                 {
                     if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent())
                         continue;
-                    if (!GameOpt.ShowScen && item->IsScenery())
+                    if (!settings.ShowScen && item->IsScenery())
                         continue;
-                    if (!GameOpt.ShowItem && !item->IsAnyScenery())
+                    if (!settings.ShowItem && !item->IsAnyScenery())
                         continue;
-                    if (!GameOpt.ShowWall && item->IsWall())
+                    if (!settings.ShowWall && item->IsWall())
                         continue;
                 }
                 else
                 {
 #ifdef FONLINE_EDITOR
                     bool is_fast = fastPids.count(item->GetProtoId()) != 0;
-                    if (!GameOpt.ShowScen && !is_fast && item->IsScenery())
+                    if (!settings.ShowScen && !is_fast && item->IsScenery())
                         continue;
-                    if (!GameOpt.ShowItem && !is_fast && !item->IsAnyScenery())
+                    if (!settings.ShowItem && !is_fast && !item->IsAnyScenery())
                         continue;
-                    if (!GameOpt.ShowWall && !is_fast && item->IsWall())
+                    if (!settings.ShowWall && !is_fast && item->IsWall())
                         continue;
-                    if (!GameOpt.ShowFast && is_fast)
+                    if (!settings.ShowFast && is_fast)
                         continue;
                     if (ignorePids.count(item->GetProtoId()))
                         continue;
@@ -997,8 +1038,8 @@ void HexManager::RebuildMap(int rx, int ry)
                 }
 
                 Sprite& spr = mainTree.AddSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(),
-                    item->GetSpriteCut(), HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY,
-                    &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                    item->GetSpriteCut(), (settings.MapHexWidth / 2), (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0,
+                    &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence())
                     spr.SetLight(item->GetCorner(), hexLight, maxHexX, maxHexY);
                 item->SetSprite(&spr);
@@ -1008,10 +1049,11 @@ void HexManager::RebuildMap(int rx, int ry)
 
         // Critters
         CritterView* cr = f.Crit;
-        if (cr && GameOpt.ShowCrit && cr->Visible)
+        if (cr && settings.ShowCrit && cr->Visible)
         {
-            Sprite& spr = mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-                &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+            Sprite& spr = mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, (settings.MapHexWidth / 2),
+                (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha,
+                &cr->DrawEffect, &cr->SprDrawValid);
             spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
@@ -1027,7 +1069,7 @@ void HexManager::RebuildMap(int rx, int ry)
         }
 
         // Dead critters
-        if (f.DeadCrits && GameOpt.ShowCrit)
+        if (f.DeadCrits && settings.ShowCrit)
         {
             for (auto it = f.DeadCrits->begin(), end = f.DeadCrits->end(); it != end; ++it)
             {
@@ -1035,8 +1077,9 @@ void HexManager::RebuildMap(int rx, int ry)
                 if (!cr->Visible)
                     continue;
 
-                Sprite& spr = mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY,
-                    0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+                Sprite& spr = mainTree.AddSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha,
+                    &cr->DrawEffect, &cr->SprDrawValid);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 cr->SprDraw = &spr;
                 cr->SetSprRect();
@@ -1147,8 +1190,9 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         {
             uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId());
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
-            Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_TRACK, nx, ny, 0, HEX_OX, HEX_OY + (si ? si->Height / 2 : 0),
-                &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+            Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_TRACK, nx, ny, 0, (settings.MapHexWidth / 2),
+                (settings.MapHexHeight / 2) + (si ? si->Height / 2 : 0), &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr);
             f.AddSpriteToChain(&spr);
         }
 
@@ -1163,7 +1207,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         }
 
         // Rain
-        if (rainCapacity && rainCapacity >= Random(0, 255))
+        if (rainCapacity && rainCapacity >= GenericUtils::Random(0, 255))
         {
             int rofx = nx;
             int rofy = ny;
@@ -1175,32 +1219,34 @@ void HexManager::RebuildMapOffset(int ox, int oy)
             Drop* new_drop = nullptr;
             if (!GetField(rofx, rofy).GetTilesCount(true))
             {
-                new_drop = new Drop(picRainFall->GetCurSprId(), Random(-10, 10), -Random(0, 200), 0);
+                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
+                    (short)-GenericUtils::Random(0, 200), 0, -1};
                 rainData.push_back(new_drop);
 
-                Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-                    &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
+                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
             else if (!roofSkip || roofSkip != GetField(rofx, rofy).RoofNum)
             {
-                new_drop = new Drop(picRainFall->GetCurSprId(), Random(-10, 10), -100 - Random(0, 100), -100);
+                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
+                    (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
                 rainData.push_back(new_drop);
 
-                Sprite& spr = roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-                    &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr,
-                    &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                Sprite& spr = roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
+                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
             if (new_drop)
             {
-                new_drop->OffsX = Random(-10, 10);
-                new_drop->OffsY = -100 - Random(0, 100);
+                new_drop->OffsX = GenericUtils::Random(-10, 10);
+                new_drop->OffsY = -100 - GenericUtils::Random(0, 100);
                 if (new_drop->OffsY < 0)
-                    new_drop->OffsY = Random(new_drop->OffsY, 0);
+                    new_drop->OffsY = GenericUtils::Random(new_drop->OffsY, 0);
             }
         }
 
@@ -1215,24 +1261,24 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 {
                     if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent())
                         continue;
-                    if (!GameOpt.ShowScen && item->IsScenery())
+                    if (!settings.ShowScen && item->IsScenery())
                         continue;
-                    if (!GameOpt.ShowItem && !item->IsAnyScenery())
+                    if (!settings.ShowItem && !item->IsAnyScenery())
                         continue;
-                    if (!GameOpt.ShowWall && item->IsWall())
+                    if (!settings.ShowWall && item->IsWall())
                         continue;
                 }
                 else
                 {
 #ifdef FONLINE_EDITOR
                     bool is_fast = fastPids.count(item->GetProtoId()) != 0;
-                    if (!GameOpt.ShowScen && !is_fast && item->IsScenery())
+                    if (!settings.ShowScen && !is_fast && item->IsScenery())
                         continue;
-                    if (!GameOpt.ShowItem && !is_fast && !item->IsAnyScenery())
+                    if (!settings.ShowItem && !is_fast && !item->IsAnyScenery())
                         continue;
-                    if (!GameOpt.ShowWall && !is_fast && item->IsWall())
+                    if (!settings.ShowWall && !is_fast && item->IsWall())
                         continue;
-                    if (!GameOpt.ShowFast && is_fast)
+                    if (!settings.ShowFast && is_fast)
                         continue;
                     if (ignorePids.count(item->GetProtoId()))
                         continue;
@@ -1240,8 +1286,8 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 }
 
                 Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(),
-                    item->GetSpriteCut(), HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY,
-                    &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                    item->GetSpriteCut(), (settings.MapHexWidth / 2), (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0,
+                    &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence())
                     spr.SetLight(item->GetCorner(), hexLight, maxHexX, maxHexY);
                 item->SetSprite(&spr);
@@ -1251,10 +1297,11 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
         // Critters
         CritterView* cr = f.Crit;
-        if (cr && GameOpt.ShowCrit && cr->Visible)
+        if (cr && settings.ShowCrit && cr->Visible)
         {
-            Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY,
-                0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+            Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, (settings.MapHexWidth / 2),
+                (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha,
+                &cr->DrawEffect, &cr->SprDrawValid);
             spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
@@ -1270,7 +1317,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         }
 
         // Dead critters
-        if (f.DeadCrits && GameOpt.ShowCrit)
+        if (f.DeadCrits && settings.ShowCrit)
         {
             for (auto it = f.DeadCrits->begin(), end = f.DeadCrits->end(); it != end; ++it)
             {
@@ -1278,8 +1325,9 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 if (!cr->Visible)
                     continue;
 
-                Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, HEX_OX, HEX_OY, &f.ScrX,
-                    &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+                Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), nx, ny, 0, (settings.MapHexWidth / 2),
+                    (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha,
+                    &cr->DrawEffect, &cr->SprDrawValid);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 cr->SprDraw = &spr;
                 cr->SetSprRect();
@@ -1290,7 +1338,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
         // Tiles
         uint tiles_count = f.GetTilesCount(false);
-        if (GameOpt.ShowTile && tiles_count)
+        if (settings.ShowTile && tiles_count)
         {
             for (uint i = 0; i < tiles_count; i++)
             {
@@ -1299,13 +1347,14 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
 #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& tiles = GetTiles(nx, ny, false);
-                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX,
-                    tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#else
-                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX,
-                    tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr,
+                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
+                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
                     &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+#else
+                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
+                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #endif
                 f.AddSpriteToChain(&spr);
             }
@@ -1313,7 +1362,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
         // Roof
         uint roofs_count = f.GetTilesCount(true);
-        if (GameOpt.ShowRoof && roofs_count && (!roofSkip || roofSkip != f.RoofNum))
+        if (settings.ShowRoof && roofs_count && (!roofSkip || roofSkip != f.RoofNum))
         {
             for (uint i = 0; i < roofs_count; i++)
             {
@@ -1322,14 +1371,14 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
 #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& roofs = GetTiles(nx, ny, true);
-                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX,
-                    roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    roofs[i].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof,
-                    nullptr);
-#else
-                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0, roof.OffsX + ROOF_OX,
-                    roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha,
+                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
+                    roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
                     &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+#else
+                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
+                    roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, &settings.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #endif
                 spr.SetEgg(EGG_ALWAYS);
                 f.AddSpriteToChain(&spr);
@@ -1406,9 +1455,9 @@ void HexManager::PrepareLightToDraw()
         sprMngr.ClearCurrentRenderTarget(0);
         PointF offset((float)rtScreenOX, (float)rtScreenOY);
         for (uint i = 0; i < lightPointsCount; i++)
-            sprMngr.DrawPoints(lightPoints[i], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset,
+            sprMngr.DrawPoints(lightPoints[i], PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset,
                 sprMngr.GetEffectManager().Effects.Light);
-        sprMngr.DrawPoints(lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, &offset,
+        sprMngr.DrawPoints(lightSoftPoints, PRIMITIVE_TRIANGLELIST, &settings.SpritesZoom, &offset,
             sprMngr.GetEffectManager().Effects.Light);
         sprMngr.PopRenderTarget();
     }
@@ -1417,7 +1466,7 @@ void HexManager::PrepareLightToDraw()
 #define MAX_LIGHT_VALUE (10000)
 #define MAX_LIGHT_HEX (200)
 #define MAX_LIGHT_ALPHA (255)
-#define LIGHT_SOFT_LENGTH (HEX_W)
+#define LIGHT_SOFT_LENGTH (settings.MapHexWidth)
 
 void HexManager::MarkLight(ushort hx, ushort hy, uint inten)
 {
@@ -1480,7 +1529,7 @@ void HexManager::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, usho
             north_south = true;
     }
 
-    int dir = GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    int dir = geomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy);
     if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5)))
     {
         MarkLight(to_hx, to_hy, inten);
@@ -1522,7 +1571,7 @@ void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ush
     if (f.Flags.IsWallTransp)
     {
         bool north_south = (f.Corner == CORNER_NORTH_SOUTH || f.Corner == CORNER_NORTH || f.Corner == CORNER_WEST);
-        int dir = GetFarDir(from_hx, from_hy, to_hx, to_hy);
+        int dir = geomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy);
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5)))
             MarkLight(to_hx, to_hy, inten);
     }
@@ -1535,7 +1584,7 @@ void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ush
 void HexManager::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten)
 {
     float base_sx, base_sy;
-    GetStepsXY(base_sx, base_sy, from_hx, from_hy, hx, hy);
+    GenericUtils::GetStepsXY(base_sx, base_sy, from_hx, from_hy, hx, hy);
     float sx1f = base_sx;
     float sy1f = base_sy;
     float curx1f = (float)from_hx;
@@ -1660,9 +1709,9 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
         inten = 100;
     inten *= 100;
     if (FLAG(ls.Flags, LIGHT_GLOBAL))
-        GetColorDay(GetMapDayTime(), GetMapDayColor(), GetDayTime(), &lightCapacity);
+        GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetDayTime(), &lightCapacity);
     else if (ls.Intensity >= 0)
-        GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), &lightCapacity);
+        GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), &lightCapacity);
     else
         lightCapacity = 100;
     if (FLAG(ls.Flags, LIGHT_INVERSE))
@@ -1680,39 +1729,39 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
     MarkLight(hx, hy, inten);
     int base_x, base_y;
     GetHexCurrentPosition(hx, hy, base_x, base_y);
-    base_x += HEX_OX;
-    base_y += HEX_OY;
+    base_x += (settings.MapHexWidth / 2);
+    base_y += (settings.MapHexHeight / 2);
 
     lightPointsCount++;
     if (lightPoints.size() < lightPointsCount)
         lightPoints.push_back(PointVec());
     PointVec& points = lightPoints[lightPointsCount - 1];
     points.clear();
-    points.reserve(3 + dist * DIRS_COUNT);
+    points.reserve(3 + dist * settings.MapDirCount);
     points.push_back({base_x, base_y, color, ls.OffsX, ls.OffsY}); // Center of light
 
     int hx_far = hx, hy_far = hy;
     bool seek_start = true;
     ushort last_hx = -1, last_hy = -1;
 
-    for (int i = 0, ii = (GameOpt.MapHexagonal ? 6 : 4); i < ii; i++)
+    for (int i = 0, ii = (settings.MapHexagonal ? 6 : 4); i < ii; i++)
     {
-        int dir = (GameOpt.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+        int dir = (settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
-        for (int j = 0, jj = (GameOpt.MapHexagonal ? dist : dist * 2); j < jj; j++)
+        for (int j = 0, jj = (settings.MapHexagonal ? dist : dist * 2); j < jj; j++)
         {
             if (seek_start)
             {
                 // Move to start position
                 for (int l = 0; l < dist; l++)
-                    MoveHexByDirUnsafe(hx_far, hy_far, GameOpt.MapHexagonal ? 0 : 7);
+                    geomHelper.MoveHexByDirUnsafe(hx_far, hy_far, settings.MapHexagonal ? 0 : 7);
                 seek_start = false;
                 j = -1;
             }
             else
             {
                 // Move to next hex
-                MoveHexByDirUnsafe(hx_far, hy_far, dir);
+                geomHelper.MoveHexByDirUnsafe(hx_far, hy_far, dir);
             }
 
             ushort hx_ = CLAMP(hx_far, 0, maxHexX - 1);
@@ -1733,7 +1782,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
                 short* oy = nullptr;
                 if ((int)hx_ != hx_far || (int)hy_ != hy_far)
                 {
-                    int a = alpha - DistGame(hx, hy, hx_, hy_) * alpha / dist;
+                    int a = alpha - geomHelper.DistGame(hx, hy, hx_, hy_) * alpha / dist;
                     a = CLAMP(a, 0, alpha);
                     color = COLOR_RGBA(a, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
                 }
@@ -1744,7 +1793,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
                     oy = ls.OffsY;
                 }
                 int x, y;
-                GetHexInterval(hx, hy, hx_, hy_, x, y);
+                geomHelper.GetHexInterval(hx, hy, hx_, hy_, x, y);
                 points.push_back({base_x + x, base_y + y, color, ox, oy});
                 last_hx = hx_;
                 last_hy = hy_;
@@ -1756,15 +1805,15 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
     {
         PrepPoint& cur = points[i];
         PrepPoint& next = points[i >= points.size() - 1 ? 1 : i + 1];
-        if (DistSqrt(cur.PointX, cur.PointY, next.PointX, next.PointY) > (uint)LIGHT_SOFT_LENGTH)
+        if (GenericUtils::DistSqrt(cur.PointX, cur.PointY, next.PointX, next.PointY) > (uint)LIGHT_SOFT_LENGTH)
         {
-            bool dist_comp =
-                (DistSqrt(base_x, base_y, cur.PointX, cur.PointY) > DistSqrt(base_x, base_y, next.PointX, next.PointY));
+            bool dist_comp = (GenericUtils::DistSqrt(base_x, base_y, cur.PointX, cur.PointY) >
+                GenericUtils::DistSqrt(base_x, base_y, next.PointX, next.PointY));
             lightSoftPoints.push_back({next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY});
             lightSoftPoints.push_back({cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             float x = (float)(dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX);
             float y = (float)(dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY);
-            ChangeStepsXY(x, y, dist_comp ? -2.5f : 2.5f);
+            GenericUtils::ChangeStepsXY(x, y, dist_comp ? -2.5f : 2.5f);
             if (dist_comp)
                 lightSoftPoints.push_back(
                     {cur.PointX + int(x), cur.PointY + int(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
@@ -1813,15 +1862,15 @@ void HexManager::CollectLightSources()
 #else
     for (auto& item : hexItems)
         if (item->IsStatic() && item->GetIsLight())
-            lightSources.push_back(LightSource(item->GetHexX(), item->GetHexY(), item->GetLightColor(),
-                item->GetLightDistance(), item->GetLightIntensity(), item->GetLightFlags()));
+            lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(),
+                item->GetLightFlags(), item->GetLightIntensity()});
 #endif
 
     // Items on ground
     for (auto& item : hexItems)
         if (!item->IsStatic() && item->GetIsLight())
-            lightSources.push_back(LightSource(item->GetHexX(), item->GetHexY(), item->GetLightColor(),
-                item->GetLightDistance(), item->GetLightIntensity(), item->GetLightFlags()));
+            lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(),
+                item->GetLightFlags(), item->GetLightIntensity()});
 
     // Items in critters slots
     for (auto& kv : allCritters)
@@ -1832,19 +1881,18 @@ void HexManager::CollectLightSources()
         {
             if (item->GetIsLight() && item->GetCritSlot())
             {
-                lightSources.push_back(
-                    LightSource(cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(),
-                        item->GetLightIntensity(), item->GetLightFlags(), &cr->SprOx, &cr->SprOy));
+                lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(),
+                    item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOx, &cr->SprOy});
                 added = true;
             }
         }
 
-// Default chosen light
+        // Default chosen light
 #ifndef FONLINE_EDITOR
         if (cr->IsChosen() && !added)
             lightSources.push_back(
-                LightSource(cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance,
-                    GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags, &cr->SprOx, &cr->SprOy));
+                {cr->GetHexX(), cr->GetHexY(), settings.ChosenLightColor, settings.ChosenLightDistance,
+                    settings.ChosenLightFlags, settings.ChosenLightIntensity, &cr->SprOx, &cr->SprOy});
 #endif
     }
 }
@@ -1855,8 +1903,8 @@ void HexManager::CollectLightSources()
 
 bool HexManager::CheckTilesBorder(Field::Tile& tile, bool is_roof)
 {
-    int ox = (is_roof ? ROOF_OX : TILE_OX) + tile.OffsX;
-    int oy = (is_roof ? ROOF_OY : TILE_OY) + tile.OffsY;
+    int ox = (is_roof ? settings.MapRoofOffsX : settings.MapTileOffsX) + tile.OffsX;
+    int oy = (is_roof ? settings.MapRoofOffsY : settings.MapTileOffsY) + tile.OffsY;
     return ProcessHexBorders(tile.Anim->GetSprId(0), ox, oy, false);
 }
 
@@ -1864,7 +1912,7 @@ void HexManager::RebuildTiles()
 {
     tilesTree.Unvalidate();
 
-    if (!GameOpt.ShowTile)
+    if (!settings.ShowTile)
         return;
 
     int vpos;
@@ -1894,13 +1942,14 @@ void HexManager::RebuildTiles()
 
 #ifdef FONLINE_EDITOR
                 ProtoMap::TileVec& tiles = GetTiles(hx, hy, false);
-                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX,
-                    tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                    tiles[i].IsSelected ? &SelectAlpha : nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#else
-                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + TILE_OX,
-                    tile.OffsY + TILE_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr,
+                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
+                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
                     &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+#else
+                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
+                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
+                    nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
 #endif
                 f.AddSpriteToChain(&spr);
             }
@@ -1916,7 +1965,7 @@ void HexManager::RebuildRoof()
 {
     roofTree.Unvalidate();
 
-    if (!GameOpt.ShowRoof)
+    if (!settings.ShowRoof)
         return;
 
     int vpos;
@@ -1946,14 +1995,15 @@ void HexManager::RebuildRoof()
 
 #ifdef FONLINE_EDITOR
                     ProtoMap::TileVec& roofs = GetTiles(hx, hy, true);
-                    Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX,
-                        roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                        roofs[i].IsSelected ? &SelectAlpha : &GameOpt.RoofAlpha,
+                    Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
+                        roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
                         &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #else
-                    Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + ROOF_OX,
-                        roof.OffsY + ROOF_OY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha,
-                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                    Sprite& spr =
+                        roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + settings.MapRoofOffsX,
+                            roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
+                            &settings.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof, nullptr);
 #endif
                     spr.SetEgg(EGG_ALWAYS);
                     f.AddSpriteToChain(&spr);
@@ -1988,15 +2038,15 @@ void HexManager::MarkRoofNum(int hx, int hy, int num)
     if (GetField(hx, hy).RoofNum)
         return;
 
-    for (int x = 0; x < GameOpt.MapRoofSkipSize; x++)
-        for (int y = 0; y < GameOpt.MapRoofSkipSize; y++)
+    for (int x = 0; x < settings.MapRoofSkipSize; x++)
+        for (int y = 0; y < settings.MapRoofSkipSize; y++)
             if (hx + x >= 0 && hx + x < maxHexX && hy + y >= 0 && hy + y < maxHexY)
                 GetField(hx + x, hy + y).RoofNum = num;
 
-    MarkRoofNum(hx + GameOpt.MapRoofSkipSize, hy, num);
-    MarkRoofNum(hx - GameOpt.MapRoofSkipSize, hy, num);
-    MarkRoofNum(hx, hy + GameOpt.MapRoofSkipSize, num);
-    MarkRoofNum(hx, hy - GameOpt.MapRoofSkipSize, num);
+    MarkRoofNum(hx + settings.MapRoofSkipSize, hy, num);
+    MarkRoofNum(hx - settings.MapRoofSkipSize, hy, num);
+    MarkRoofNum(hx, hy + settings.MapRoofSkipSize, num);
+    MarkRoofNum(hx, hy - settings.MapRoofSkipSize, num);
 }
 
 bool HexManager::IsVisible(uint spr_id, int ox, int oy)
@@ -2007,12 +2057,12 @@ bool HexManager::IsVisible(uint spr_id, int ox, int oy)
     if (!si)
         return false;
 
-    int top = oy + si->OffsY - si->Height - SCROLL_OY;
-    int bottom = oy + si->OffsY + SCROLL_OY;
-    int left = ox + si->OffsX - si->Width / 2 - SCROLL_OX;
-    int right = ox + si->OffsX + si->Width / 2 + SCROLL_OX;
-    return !(top > GameOpt.ScreenHeight * GameOpt.SpritesZoom || bottom < 0 ||
-        left > GameOpt.ScreenWidth * GameOpt.SpritesZoom || right < 0);
+    int top = oy + si->OffsY - si->Height - (settings.MapHexLineHeight * 2);
+    int bottom = oy + si->OffsY + (settings.MapHexLineHeight * 2);
+    int left = ox + si->OffsX - si->Width / 2 - settings.MapHexWidth;
+    int right = ox + si->OffsX + si->Width / 2 + settings.MapHexWidth;
+    return !(top > settings.ScreenHeight * settings.SpritesZoom || bottom < 0 ||
+        left > settings.ScreenWidth * settings.SpritesZoom || right < 0);
 }
 
 bool HexManager::ProcessHexBorders(ItemHexView* item)
@@ -2026,26 +2076,26 @@ bool HexManager::ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map)
     if (!si)
         return false;
 
-    int top = si->OffsY + oy - hTop * HEX_LINE_H + SCROLL_OY;
+    int top = si->OffsY + oy - hTop * settings.MapHexLineHeight + (settings.MapHexLineHeight * 2);
     if (top < 0)
         top = 0;
-    int bottom = si->Height - si->OffsY - oy - hBottom * HEX_LINE_H + SCROLL_OY;
+    int bottom = si->Height - si->OffsY - oy - hBottom * settings.MapHexLineHeight + (settings.MapHexLineHeight * 2);
     if (bottom < 0)
         bottom = 0;
-    int left = si->Width / 2 + si->OffsX + ox - wLeft * HEX_W + SCROLL_OX;
+    int left = si->Width / 2 + si->OffsX + ox - wLeft * settings.MapHexWidth + settings.MapHexWidth;
     if (left < 0)
         left = 0;
-    int right = si->Width / 2 - si->OffsX - ox - wRight * HEX_W + SCROLL_OX;
+    int right = si->Width / 2 - si->OffsX - ox - wRight * settings.MapHexWidth + settings.MapHexWidth;
     if (right < 0)
         right = 0;
 
     if (top || bottom || left || right)
     {
         // Resize
-        hTop += top / HEX_LINE_H + ((top % HEX_LINE_H) ? 1 : 0);
-        hBottom += bottom / HEX_LINE_H + ((bottom % HEX_LINE_H) ? 1 : 0);
-        wLeft += left / HEX_W + ((left % HEX_W) ? 1 : 0);
-        wRight += right / HEX_W + ((right % HEX_W) ? 1 : 0);
+        hTop += top / settings.MapHexLineHeight + ((top % settings.MapHexLineHeight) ? 1 : 0);
+        hBottom += bottom / settings.MapHexLineHeight + ((bottom % settings.MapHexLineHeight) ? 1 : 0);
+        wLeft += left / settings.MapHexWidth + ((left % settings.MapHexWidth) ? 1 : 0);
+        wRight += right / settings.MapHexWidth + ((right % settings.MapHexWidth) ? 1 : 0);
 
         if (resize_map)
         {
@@ -2104,11 +2154,11 @@ void HexManager::SwitchShowTrack()
 
 void HexManager::InitView(int cx, int cy)
 {
-    if (GameOpt.MapHexagonal)
+    if (settings.MapHexagonal)
     {
         // Get center offset
-        int hw = VIEW_WIDTH / 2 + wRight;
-        int hv = VIEW_HEIGHT / 2 + hTop;
+        int hw = GetViewWidth() / 2 + wRight;
+        int hv = GetViewHeight() / 2 + hTop;
         int vw = hv / 2 + (hv & 1) + 1;
         int vh = hv - vw / 2 - 1;
         for (int i = 0; i < hw; i++)
@@ -2122,10 +2172,10 @@ void HexManager::InitView(int cx, int cy)
         cx -= abs(vw);
         cy -= abs(vh);
 
-        int xa = -(wRight * HEX_W);
-        int xb = -(HEX_W / 2) - (wRight * HEX_W);
-        int oy = -HEX_LINE_H * hTop;
-        int wx = (int)(GameOpt.ScreenWidth * GameOpt.SpritesZoom);
+        int xa = -(wRight * settings.MapHexWidth);
+        int xb = -(settings.MapHexWidth / 2) - (wRight * settings.MapHexWidth);
+        int oy = -settings.MapHexLineHeight * hTop;
+        int wx = (int)(settings.ScreenWidth * settings.SpritesZoom);
 
         for (int yv = 0; yv < hVisible; yv++)
         {
@@ -2149,25 +2199,25 @@ void HexManager::InitView(int cx, int cy)
                 if (hx & 1)
                     hy--;
                 hx++;
-                ox += HEX_W;
+                ox += settings.MapHexWidth;
             }
-            oy += HEX_LINE_H;
+            oy += settings.MapHexLineHeight;
         }
     }
     else
     {
         // Calculate data
-        int halfw = VIEW_WIDTH / 2 + wRight;
-        int halfh = VIEW_HEIGHT / 2 + hTop;
+        int halfw = GetViewWidth() / 2 + wRight;
+        int halfh = GetViewHeight() / 2 + hTop;
         int basehx = cx - halfh / 2 - halfw;
         int basehy = cy - halfh / 2 + halfw;
         int y2 = 0;
         int vpos;
         int x;
-        int xa = -HEX_W * wRight;
-        int xb = -HEX_W * wRight - HEX_W / 2;
-        int y = -HEX_LINE_H * hTop;
-        int wx = (int)(GameOpt.ScreenWidth * GameOpt.SpritesZoom);
+        int xa = -settings.MapHexWidth * wRight;
+        int xb = -settings.MapHexWidth * wRight - settings.MapHexWidth / 2;
+        int y = -settings.MapHexLineHeight * hTop;
+        int wx = (int)(settings.ScreenWidth * settings.SpritesZoom);
         int hx, hy;
 
         // Initialize field
@@ -2189,7 +2239,7 @@ void HexManager::InitView(int cx, int cy)
 
                 hx++;
                 hy--;
-                x += HEX_W;
+                x += settings.MapHexWidth;
             }
 
             if (j & 1)
@@ -2197,7 +2247,7 @@ void HexManager::InitView(int cx, int cy)
             else
                 basehx++;
 
-            y += HEX_LINE_H;
+            y += settings.MapHexLineHeight;
             y2 += wVisible;
         }
     }
@@ -2219,8 +2269,8 @@ void HexManager::ResizeView()
         }
     }
 
-    hVisible = VIEW_HEIGHT + hTop + hBottom;
-    wVisible = VIEW_WIDTH + wLeft + wRight;
+    hVisible = GetViewHeight() + hTop + hBottom;
+    wVisible = GetViewWidth() + wLeft + wRight;
     SAFEDELA(viewField);
     viewField = new ViewField[hVisible * wVisible];
 }
@@ -2229,17 +2279,17 @@ void HexManager::ChangeZoom(int zoom)
 {
     if (!IsMapLoaded())
         return;
-    if (GameOpt.SpritesZoomMin == GameOpt.SpritesZoomMax)
+    if (settings.SpritesZoomMin == settings.SpritesZoomMax)
         return;
-    if (!zoom && GameOpt.SpritesZoom == 1.0f)
+    if (!zoom && settings.SpritesZoom == 1.0f)
         return;
-    if (zoom > 0 && GameOpt.SpritesZoom >= MIN(GameOpt.SpritesZoomMax, MAX_ZOOM))
+    if (zoom > 0 && settings.SpritesZoom >= MIN(settings.SpritesZoomMax, MAX_ZOOM))
         return;
-    if (zoom < 0 && GameOpt.SpritesZoom <= MAX(GameOpt.SpritesZoomMin, MIN_ZOOM))
+    if (zoom < 0 && settings.SpritesZoom <= MAX(settings.SpritesZoomMin, MIN_ZOOM))
         return;
 
     // Check screen blockers
-    if (GameOpt.ScrollCheck && (zoom > 0 || (zoom == 0 && GameOpt.SpritesZoom < 1.0f)))
+    if (settings.ScrollCheck && (zoom > 0 || (zoom == 0 && settings.SpritesZoom < 1.0f)))
     {
         for (int x = -1; x <= 1; x++)
         {
@@ -2251,28 +2301,29 @@ void HexManager::ChangeZoom(int zoom)
         }
     }
 
-    if (zoom || GameOpt.SpritesZoom < 1.0f)
+    if (zoom || settings.SpritesZoom < 1.0f)
     {
-        float old_zoom = GameOpt.SpritesZoom;
-        float w = (float)(GameOpt.ScreenWidth / HEX_W + ((GameOpt.ScreenWidth % HEX_W) ? 1 : 0));
-        GameOpt.SpritesZoom = (w * GameOpt.SpritesZoom + (zoom >= 0 ? 2.0f : -2.0f)) / w;
+        float old_zoom = settings.SpritesZoom;
+        float w = (float)(settings.ScreenWidth / settings.MapHexWidth +
+            ((settings.ScreenWidth % settings.MapHexWidth) ? 1 : 0));
+        settings.SpritesZoom = (w * settings.SpritesZoom + (zoom >= 0 ? 2.0f : -2.0f)) / w;
 
-        if (GameOpt.SpritesZoom < MAX(GameOpt.SpritesZoomMin, MIN_ZOOM) ||
-            GameOpt.SpritesZoom > MIN(GameOpt.SpritesZoomMax, MAX_ZOOM))
+        if (settings.SpritesZoom < MAX(settings.SpritesZoomMin, MIN_ZOOM) ||
+            settings.SpritesZoom > MIN(settings.SpritesZoomMax, MAX_ZOOM))
         {
-            GameOpt.SpritesZoom = old_zoom;
+            settings.SpritesZoom = old_zoom;
             return;
         }
     }
     else
     {
-        GameOpt.SpritesZoom = 1.0f;
+        settings.SpritesZoom = 1.0f;
     }
 
     ResizeView();
     RefreshMap();
 
-    if (zoom == 0 && GameOpt.SpritesZoom != 1.0f)
+    if (zoom == 0 && settings.SpritesZoom != 1.0f)
         ChangeZoom(0);
 }
 
@@ -2288,7 +2339,7 @@ void HexManager::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y)
     int center_hx = center_hex.HexX;
     int center_hy = center_hex.HexY;
 
-    GetHexInterval(center_hx, center_hy, hx, hy, x, y);
+    geomHelper.GetHexInterval(center_hx, center_hy, hx, hy, x, y);
     x += center_hex.ScrX;
     y += center_hex.ScrY;
 }
@@ -2302,9 +2353,9 @@ void HexManager::DrawMap()
     PrepareFogToDraw();
 
     // Prerendered offsets
-    int ox = rtScreenOX - (int)roundf((float)GameOpt.ScrOx / GameOpt.SpritesZoom);
-    int oy = rtScreenOY - (int)roundf((float)GameOpt.ScrOy / GameOpt.SpritesZoom);
-    Rect prerenderedRect = Rect(ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight);
+    int ox = rtScreenOX - (int)roundf((float)settings.ScrOx / settings.SpritesZoom);
+    int oy = rtScreenOY - (int)roundf((float)settings.ScrOy / settings.SpritesZoom);
+    Rect prerenderedRect = Rect(ox, oy, ox + settings.ScreenWidth, oy + settings.ScreenHeight);
 
     // Separate render target
     if (rtMap)
@@ -2314,7 +2365,7 @@ void HexManager::DrawMap()
     }
 
     // Tiles
-    if (GameOpt.ShowTile)
+    if (settings.ShowTile)
         sprMngr.DrawSprites(tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
     // Flat sprites
@@ -2331,7 +2382,7 @@ void HexManager::DrawMap()
     sprMngr.DrawSprites(mainTree, true, true, DRAW_ORDER_LIGHT, DRAW_ORDER_LAST);
 
     // Roof
-    if (GameOpt.ShowRoof)
+    if (settings.ShowRoof)
     {
         sprMngr.DrawSprites(roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
         if (rainCapacity)
@@ -2391,9 +2442,9 @@ void HexManager::PrepareFogToDraw()
     sprMngr.PushRenderTarget(rtFog);
     sprMngr.ClearCurrentRenderTarget(0);
     sprMngr.DrawPoints(
-        fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
+        fogLookPoints, PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
     sprMngr.DrawPoints(
-        fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
+        fogShootPoints, PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
     sprMngr.PopRenderTarget();
 }
 
@@ -2404,21 +2455,21 @@ bool HexManager::Scroll()
 
     // Scroll delay
     float time_k = 1.0f;
-    if (GameOpt.ScrollDelay)
+    if (settings.ScrollDelay)
     {
         uint tick = Timer::FastTick();
         static uint last_tick = tick;
-        if (tick - last_tick < GameOpt.ScrollDelay / 2)
+        if (tick - last_tick < settings.ScrollDelay / 2)
             return false;
-        time_k = (float)(tick - last_tick) / (float)GameOpt.ScrollDelay;
+        time_k = (float)(tick - last_tick) / (float)settings.ScrollDelay;
         last_tick = tick;
     }
 
     bool is_scroll =
-        (GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybLeft || GameOpt.ScrollMouseRight || GameOpt.ScrollKeybRight ||
-            GameOpt.ScrollMouseUp || GameOpt.ScrollKeybUp || GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown);
-    int scr_ox = GameOpt.ScrOx;
-    int scr_oy = GameOpt.ScrOy;
+        (settings.ScrollMouseLeft || settings.ScrollKeybLeft || settings.ScrollMouseRight || settings.ScrollKeybRight ||
+            settings.ScrollMouseUp || settings.ScrollKeybUp || settings.ScrollMouseDown || settings.ScrollKeybDown);
+    int scr_ox = settings.ScrOx;
+    int scr_oy = settings.ScrOy;
     int prev_scr_ox = scr_ox;
     int prev_scr_oy = scr_oy;
 
@@ -2439,7 +2490,7 @@ bool HexManager::Scroll()
         if (cr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY))
         {
             int ox, oy;
-            GetHexInterval(
+            geomHelper.GetHexInterval(
                 AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY(), ox, oy);
             ScrollOffset(ox, oy, 0.02f, true);
             AutoScroll.CritterLastHexX = cr->GetHexX();
@@ -2455,25 +2506,25 @@ bool HexManager::Scroll()
         AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed * time_k;
         xscroll = (int)AutoScroll.OffsXStep;
         yscroll = (int)AutoScroll.OffsYStep;
-        if (xscroll > SCROLL_OX)
+        if (xscroll > settings.MapHexWidth)
         {
-            xscroll = SCROLL_OX;
-            AutoScroll.OffsXStep = (float)SCROLL_OX;
+            xscroll = settings.MapHexWidth;
+            AutoScroll.OffsXStep = (float)settings.MapHexWidth;
         }
-        if (xscroll < -SCROLL_OX)
+        if (xscroll < -settings.MapHexWidth)
         {
-            xscroll = -SCROLL_OX;
-            AutoScroll.OffsXStep = -(float)SCROLL_OX;
+            xscroll = -settings.MapHexWidth;
+            AutoScroll.OffsXStep = -(float)settings.MapHexWidth;
         }
-        if (yscroll > SCROLL_OY)
+        if (yscroll > (settings.MapHexLineHeight * 2))
         {
-            yscroll = SCROLL_OY;
-            AutoScroll.OffsYStep = (float)SCROLL_OY;
+            yscroll = (settings.MapHexLineHeight * 2);
+            AutoScroll.OffsYStep = (float)(settings.MapHexLineHeight * 2);
         }
-        if (yscroll < -SCROLL_OY)
+        if (yscroll < -(settings.MapHexLineHeight * 2))
         {
-            yscroll = -SCROLL_OY;
-            AutoScroll.OffsYStep = -(float)SCROLL_OY;
+            yscroll = -(settings.MapHexLineHeight * 2);
+            AutoScroll.OffsYStep = -(float)(settings.MapHexLineHeight * 2);
         }
 
         AutoScroll.OffsX -= xscroll;
@@ -2482,7 +2533,7 @@ bool HexManager::Scroll()
         AutoScroll.OffsYStep -= yscroll;
         if (!xscroll && !yscroll)
             return false;
-        if (!DistSqrt(0, 0, (int)AutoScroll.OffsX, (int)AutoScroll.OffsY))
+        if (!GenericUtils::DistSqrt(0, 0, (int)AutoScroll.OffsX, (int)AutoScroll.OffsY))
             AutoScroll.Active = false;
     }
     else
@@ -2490,34 +2541,35 @@ bool HexManager::Scroll()
         if (!is_scroll)
             return false;
 
-        if (GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybLeft)
+        if (settings.ScrollMouseLeft || settings.ScrollKeybLeft)
             xscroll += 1;
-        if (GameOpt.ScrollMouseRight || GameOpt.ScrollKeybRight)
+        if (settings.ScrollMouseRight || settings.ScrollKeybRight)
             xscroll -= 1;
-        if (GameOpt.ScrollMouseUp || GameOpt.ScrollKeybUp)
+        if (settings.ScrollMouseUp || settings.ScrollKeybUp)
             yscroll += 1;
-        if (GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown)
+        if (settings.ScrollMouseDown || settings.ScrollKeybDown)
             yscroll -= 1;
         if (!xscroll && !yscroll)
             return false;
 
-        xscroll = (int)(xscroll * GameOpt.ScrollStep * GameOpt.SpritesZoom * time_k);
-        yscroll = (int)(yscroll * (GameOpt.ScrollStep * SCROLL_OY / SCROLL_OX) * GameOpt.SpritesZoom * time_k);
+        xscroll = (int)(xscroll * settings.ScrollStep * settings.SpritesZoom * time_k);
+        yscroll = (int)(yscroll * (settings.ScrollStep * (settings.MapHexLineHeight * 2) / settings.MapHexWidth) *
+            settings.SpritesZoom * time_k);
     }
     scr_ox += xscroll;
     scr_oy += yscroll;
 
-    if (GameOpt.ScrollCheck)
+    if (settings.ScrollCheck)
     {
         int xmod = 0;
         int ymod = 0;
-        if (scr_ox - GameOpt.ScrOx > 0)
+        if (scr_ox - settings.ScrOx > 0)
             xmod = 1;
-        if (scr_ox - GameOpt.ScrOx < 0)
+        if (scr_ox - settings.ScrOx < 0)
             xmod = -1;
-        if (scr_oy - GameOpt.ScrOy > 0)
+        if (scr_oy - settings.ScrOy > 0)
             ymod = -1;
-        if (scr_oy - GameOpt.ScrOy < 0)
+        if (scr_oy - settings.ScrOy < 0)
             ymod = 1;
         if ((xmod || ymod) && ScrollCheck(xmod, ymod))
         {
@@ -2541,59 +2593,59 @@ bool HexManager::Scroll()
 
     int xmod = 0;
     int ymod = 0;
-    if (scr_ox >= SCROLL_OX)
+    if (scr_ox >= settings.MapHexWidth)
     {
         xmod = 1;
-        scr_ox -= SCROLL_OX;
-        if (scr_ox > SCROLL_OX)
-            scr_ox = SCROLL_OX;
+        scr_ox -= settings.MapHexWidth;
+        if (scr_ox > settings.MapHexWidth)
+            scr_ox = settings.MapHexWidth;
     }
-    else if (scr_ox <= -SCROLL_OX)
+    else if (scr_ox <= -settings.MapHexWidth)
     {
         xmod = -1;
-        scr_ox += SCROLL_OX;
-        if (scr_ox < -SCROLL_OX)
-            scr_ox = -SCROLL_OX;
+        scr_ox += settings.MapHexWidth;
+        if (scr_ox < -settings.MapHexWidth)
+            scr_ox = -settings.MapHexWidth;
     }
-    if (scr_oy >= SCROLL_OY)
+    if (scr_oy >= (settings.MapHexLineHeight * 2))
     {
         ymod = -2;
-        scr_oy -= SCROLL_OY;
-        if (scr_oy > SCROLL_OY)
-            scr_oy = SCROLL_OY;
+        scr_oy -= (settings.MapHexLineHeight * 2);
+        if (scr_oy > (settings.MapHexLineHeight * 2))
+            scr_oy = (settings.MapHexLineHeight * 2);
     }
-    else if (scr_oy <= -SCROLL_OY)
+    else if (scr_oy <= -(settings.MapHexLineHeight * 2))
     {
         ymod = 2;
-        scr_oy += SCROLL_OY;
-        if (scr_oy < -SCROLL_OY)
-            scr_oy = -SCROLL_OY;
+        scr_oy += (settings.MapHexLineHeight * 2);
+        if (scr_oy < -(settings.MapHexLineHeight * 2))
+            scr_oy = -(settings.MapHexLineHeight * 2);
     }
 
-    GameOpt.ScrOx = scr_ox;
-    GameOpt.ScrOy = scr_oy;
+    settings.ScrOx = scr_ox;
+    settings.ScrOy = scr_oy;
 
     if (xmod || ymod)
     {
         RebuildMapOffset(xmod, ymod);
 
-        if (GameOpt.ScrollCheck)
+        if (settings.ScrollCheck)
         {
-            if (GameOpt.ScrOx > 0 && ScrollCheck(1, 0))
-                GameOpt.ScrOx = 0;
-            else if (GameOpt.ScrOx < 0 && ScrollCheck(-1, 0))
-                GameOpt.ScrOx = 0;
-            if (GameOpt.ScrOy > 0 && ScrollCheck(0, -1))
-                GameOpt.ScrOy = 0;
-            else if (GameOpt.ScrOy < 0 && ScrollCheck(0, 1))
-                GameOpt.ScrOy = 0;
+            if (settings.ScrOx > 0 && ScrollCheck(1, 0))
+                settings.ScrOx = 0;
+            else if (settings.ScrOx < 0 && ScrollCheck(-1, 0))
+                settings.ScrOx = 0;
+            if (settings.ScrOy > 0 && ScrollCheck(0, -1))
+                settings.ScrOy = 0;
+            else if (settings.ScrOy < 0 && ScrollCheck(0, 1))
+                settings.ScrOy = 0;
         }
     }
 
     if (!mapperMode)
     {
-        int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
-        int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + (-ymod / 2) * SCROLL_OY;
+        int final_scr_ox = settings.ScrOx - prev_scr_ox + xmod * settings.MapHexWidth;
+        int final_scr_oy = settings.ScrOy - prev_scr_oy + (-ymod / 2) * (settings.MapHexLineHeight * 2);
         if (final_scr_ox || final_scr_oy)
             Script::RaiseInternalEvent(ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy);
     }
@@ -2615,12 +2667,12 @@ bool HexManager::ScrollCheckPos(int (&positions)[4], int dir1, int dir2)
         if (hx >= maxHexX || hy >= maxHexY)
             return true;
 
-        MoveHexByDir(hx, hy, dir1, maxHexX, maxHexY);
+        geomHelper.MoveHexByDir(hx, hy, dir1, maxHexX, maxHexY);
         if (GetField(hx, hy).Flags.ScrollBlock)
             return true;
         if (dir2 >= 0)
         {
-            MoveHexByDir(hx, hy, dir2, maxHexX, maxHexY);
+            geomHelper.MoveHexByDir(hx, hy, dir2, maxHexX, maxHexY);
             if (GetField(hx, hy).Flags.ScrollBlock)
                 return true;
         }
@@ -2631,24 +2683,24 @@ bool HexManager::ScrollCheckPos(int (&positions)[4], int dir1, int dir2)
 bool HexManager::ScrollCheck(int xmod, int ymod)
 {
     int positions_left[4] = {
-        hTop * wVisible + wRight + VIEW_WIDTH, // Left top
-        (hTop + VIEW_HEIGHT - 1) * wVisible + wRight + VIEW_WIDTH, // Left bottom
-        (hTop + 1) * wVisible + wRight + VIEW_WIDTH, // Left top 2
-        (hTop + VIEW_HEIGHT - 1 - 1) * wVisible + wRight + VIEW_WIDTH, // Left bottom 2
+        hTop * wVisible + wRight + GetViewWidth(), // Left top
+        (hTop + GetViewHeight() - 1) * wVisible + wRight + GetViewWidth(), // Left bottom
+        (hTop + 1) * wVisible + wRight + GetViewWidth(), // Left top 2
+        (hTop + GetViewHeight() - 1 - 1) * wVisible + wRight + GetViewWidth(), // Left bottom 2
     };
     int positions_right[4] = {
-        (hTop + VIEW_HEIGHT - 1) * wVisible + wRight + 1, // Right bottom
+        (hTop + GetViewHeight() - 1) * wVisible + wRight + 1, // Right bottom
         hTop * wVisible + wRight + 1, // Right top
-        (hTop + VIEW_HEIGHT - 1 - 1) * wVisible + wRight + 1, // Right bottom 2
+        (hTop + GetViewHeight() - 1 - 1) * wVisible + wRight + 1, // Right bottom 2
         (hTop + 1) * wVisible + wRight + 1, // Right top 2
     };
 
     int dirs[8] = {0, 5, 2, 3, 4, -1, 1, -1}; // Hexagonal
-    if (!GameOpt.MapHexagonal)
+    if (!settings.MapHexagonal)
         dirs[0] = 7, dirs[1] = -1, dirs[2] = 3, dirs[3] = -1, dirs[4] = 5, dirs[5] = -1, dirs[6] = 1,
         dirs[7] = -1; // Square
 
-    if (GameOpt.MapHexagonal)
+    if (settings.MapHexagonal)
     {
         if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0)))
             return true; // Up
@@ -2672,14 +2724,14 @@ bool HexManager::ScrollCheck(int xmod, int ymod)
     }
 
     // Add precise for zooming infelicity
-    if (GameOpt.SpritesZoom != 1.0f)
+    if (settings.SpritesZoom != 1.0f)
     {
         for (int i = 0; i < 4; i++)
             positions_left[i]--;
         for (int i = 0; i < 4; i++)
             positions_right[i]++;
 
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
         {
             if (ymod < 0 && (ScrollCheckPos(positions_left, 0, 5) || ScrollCheckPos(positions_right, 5, 0)))
                 return true; // Up
@@ -2710,7 +2762,7 @@ void HexManager::ScrollToHex(int hx, int hy, float speed, bool can_stop)
     int sx, sy;
     GetScreenHexes(sx, sy);
     int ox, oy;
-    GetHexInterval(sx, sy, hx, hy, ox, oy);
+    geomHelper.GetHexInterval(sx, sy, hx, hy, ox, oy);
     AutoScroll.Active = false;
     ScrollOffset(ox, oy, speed, can_stop);
 }
@@ -2759,8 +2811,9 @@ void HexManager::SetCritter(CritterView* cr)
 
     if (IsHexToDraw(hx, hy) && cr->Visible)
     {
-        Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), hx, hy, 0, HEX_OX, HEX_OY, &f.ScrX, &f.ScrY, 0,
-            &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+        Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_CRIT_AUTO(cr), hx, hy, 0, (settings.MapHexWidth / 2),
+            (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha,
+            &cr->DrawEffect, &cr->SprDrawValid);
         spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
         cr->SprDraw = &spr;
 
@@ -2955,25 +3008,25 @@ bool HexManager::TransitCritter(CritterView* cr, int hx, int hy, bool animate, b
     int old_hy = cr->GetHexY();
     cr->SetHexX(hx);
     cr->SetHexY(hy);
-    int dir = GetFarDir(old_hx, old_hy, hx, hy);
+    int dir = geomHelper.GetFarDir(old_hx, old_hy, hx, hy);
 
     if (animate)
     {
         cr->Move(dir);
-        if (DistGame(old_hx, old_hy, hx, hy) > 1)
+        if (geomHelper.DistGame(old_hx, old_hy, hx, hy) > 1)
         {
             ushort hx_ = hx;
             ushort hy_ = hy;
-            MoveHexByDir(hx_, hy_, ReverseDir(dir), maxHexX, maxHexY);
+            geomHelper.MoveHexByDir(hx_, hy_, geomHelper.ReverseDir(dir), maxHexX, maxHexY);
             int ox, oy;
-            GetHexInterval(hx_, hy_, old_hx, old_hy, ox, oy);
+            geomHelper.GetHexInterval(hx_, hy_, old_hx, old_hy, ox, oy);
             cr->AddOffsExt(ox, oy);
         }
     }
     else
     {
         int ox, oy;
-        GetHexInterval(hx, hy, old_hx, old_hy, ox, oy);
+        geomHelper.GetHexInterval(hx, hy, old_hx, old_hy, ox, oy);
         cr->AddOffsExt(ox, oy);
     }
 
@@ -2986,8 +3039,8 @@ void HexManager::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
     if (IsMapLoaded() && multihex)
     {
         short *sx, *sy;
-        GetHexOffsets(hx & 1, sx, sy);
-        for (int i = 0, j = NumericalNumber(multihex) * DIRS_COUNT; i < j; i++)
+        geomHelper.GetHexOffsets(hx & 1, sx, sy);
+        for (int i = 0, j = GenericUtils::NumericalNumber(multihex) * settings.MapDirCount; i < j; i++)
         {
             short cx = (short)hx + sx[i];
             short cy = (short)hy + sy[i];
@@ -3006,10 +3059,10 @@ bool HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy)
     if (!IsMapLoaded())
         return false;
 
-    float xf = (float)x - (float)GameOpt.ScrOx / GameOpt.SpritesZoom;
-    float yf = (float)y - (float)GameOpt.ScrOy / GameOpt.SpritesZoom;
-    float ox = (float)HEX_W / GameOpt.SpritesZoom;
-    float oy = (float)HEX_REAL_H / GameOpt.SpritesZoom;
+    float xf = (float)x - (float)settings.ScrOx / settings.SpritesZoom;
+    float yf = (float)y - (float)settings.ScrOy / settings.SpritesZoom;
+    float ox = (float)settings.MapHexWidth / settings.SpritesZoom;
+    float oy = (float)settings.MapHexHeight / settings.SpritesZoom;
     int y2 = 0;
     int vpos = 0;
 
@@ -3019,8 +3072,8 @@ bool HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy)
         {
             vpos = y2 + tx;
 
-            float x_ = viewField[vpos].ScrXf / GameOpt.SpritesZoom;
-            float y_ = viewField[vpos].ScrYf / GameOpt.SpritesZoom;
+            float x_ = viewField[vpos].ScrXf / settings.SpritesZoom;
+            float y_ = viewField[vpos].ScrYf / settings.SpritesZoom;
 
             if (xf >= x_ && xf < x_ + ox && yf >= y_ && yf < y_ + oy)
             {
@@ -3033,13 +3086,13 @@ bool HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy)
                     uint r =
                         (sprMngr.GetPixColor(picHexMask->Ind[0], (int)(xf - x_), (int)(yf - y_)) & 0x00FF0000) >> 16;
                     if (r == 50)
-                        MoveHexByDirUnsafe(hx_, hy_, GameOpt.MapHexagonal ? 5 : 6);
+                        geomHelper.MoveHexByDirUnsafe(hx_, hy_, settings.MapHexagonal ? 5 : 6);
                     else if (r == 100)
-                        MoveHexByDirUnsafe(hx_, hy_, GameOpt.MapHexagonal ? 0 : 0);
+                        geomHelper.MoveHexByDirUnsafe(hx_, hy_, settings.MapHexagonal ? 0 : 0);
                     else if (r == 150)
-                        MoveHexByDirUnsafe(hx_, hy_, GameOpt.MapHexagonal ? 3 : 4);
+                        geomHelper.MoveHexByDirUnsafe(hx_, hy_, settings.MapHexagonal ? 3 : 4);
                     else if (r == 200)
-                        MoveHexByDirUnsafe(hx_, hy_, GameOpt.MapHexagonal ? 2 : 2);
+                        geomHelper.MoveHexByDirUnsafe(hx_, hy_, settings.MapHexagonal ? 2 : 2);
                 }
 
                 if (hx_ >= 0 && hy_ >= 0 && hx_ < maxHexX && hy_ < maxHexY)
@@ -3078,24 +3131,24 @@ ItemHexView* HexManager::GetItemPixel(int x, int y, bool& item_egg)
         {
             if (item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent())
                 continue;
-            if (item->IsScenery() && !GameOpt.ShowScen)
+            if (item->IsScenery() && !settings.ShowScen)
                 continue;
-            if (!item->IsAnyScenery() && !GameOpt.ShowItem)
+            if (!item->IsAnyScenery() && !settings.ShowItem)
                 continue;
-            if (item->IsWall() && !GameOpt.ShowWall)
+            if (item->IsWall() && !settings.ShowWall)
                 continue;
         }
         else
         {
 #ifdef FONLINE_EDITOR
             bool is_fast = fastPids.count(item->GetProtoId()) != 0;
-            if (item->IsScenery() && !GameOpt.ShowScen && !is_fast)
+            if (item->IsScenery() && !settings.ShowScen && !is_fast)
                 continue;
-            if (!item->IsAnyScenery() && !GameOpt.ShowItem && !is_fast)
+            if (!item->IsAnyScenery() && !settings.ShowItem && !is_fast)
                 continue;
-            if (item->IsWall() && !GameOpt.ShowWall && !is_fast)
+            if (item->IsWall() && !settings.ShowWall && !is_fast)
                 continue;
-            if (!GameOpt.ShowFast && is_fast)
+            if (!settings.ShowFast && is_fast)
                 continue;
             if (ignorePids.count(item->GetProtoId()))
                 continue;
@@ -3106,13 +3159,17 @@ ItemHexView* HexManager::GetItemPixel(int x, int y, bool& item_egg)
         if (!si)
             continue;
 
-        int l = (int)((*item->HexScrX + item->ScrX + si->OffsX + HEX_OX + GameOpt.ScrOx - si->Width / 2) /
-            GameOpt.SpritesZoom);
-        int r = (int)((*item->HexScrX + item->ScrX + si->OffsX + HEX_OX + GameOpt.ScrOx + si->Width / 2) /
-            GameOpt.SpritesZoom);
-        int t = (int)((*item->HexScrY + item->ScrY + si->OffsY + HEX_OY + GameOpt.ScrOy - si->Height) /
-            GameOpt.SpritesZoom);
-        int b = (int)((*item->HexScrY + item->ScrY + si->OffsY + HEX_OY + GameOpt.ScrOy) / GameOpt.SpritesZoom);
+        int l = (int)((*item->HexScrX + item->ScrX + si->OffsX + (settings.MapHexWidth / 2) + settings.ScrOx -
+                          si->Width / 2) /
+            settings.SpritesZoom);
+        int r = (int)((*item->HexScrX + item->ScrX + si->OffsX + (settings.MapHexWidth / 2) + settings.ScrOx +
+                          si->Width / 2) /
+            settings.SpritesZoom);
+        int t = (int)((*item->HexScrY + item->ScrY + si->OffsY + (settings.MapHexHeight / 2) + settings.ScrOy -
+                          si->Height) /
+            settings.SpritesZoom);
+        int b = (int)((*item->HexScrY + item->ScrY + si->OffsY + (settings.MapHexHeight / 2) + settings.ScrOy) /
+            settings.SpritesZoom);
 
         if (x >= l && x <= r && y >= t && y <= b)
         {
@@ -3167,7 +3224,7 @@ ItemHexView* HexManager::GetItemPixel(int x, int y, bool& item_egg)
 
 CritterView* HexManager::GetCritterPixel(int x, int y, bool ignore_dead_and_chosen)
 {
-    if (!IsMapLoaded() || !GameOpt.ShowCrit)
+    if (!IsMapLoaded() || !settings.ShowCrit)
         return nullptr;
 
     CritterViewVec crits;
@@ -3179,12 +3236,12 @@ CritterView* HexManager::GetCritterPixel(int x, int y, bool ignore_dead_and_chos
         if (ignore_dead_and_chosen && (cr->IsDead() || cr->IsChosen()))
             continue;
 
-        if (x >= (cr->DRect.L + GameOpt.ScrOx) / GameOpt.SpritesZoom &&
-            x <= (cr->DRect.R + GameOpt.ScrOx) / GameOpt.SpritesZoom &&
-            y >= (cr->DRect.T + GameOpt.ScrOy) / GameOpt.SpritesZoom &&
-            y <= (cr->DRect.B + GameOpt.ScrOy) / GameOpt.SpritesZoom &&
-            sprMngr.IsPixNoTransp(cr->SprId, (int)(x - (cr->DRect.L + GameOpt.ScrOx) / GameOpt.SpritesZoom),
-                (int)(y - (cr->DRect.T + GameOpt.ScrOy) / GameOpt.SpritesZoom)))
+        if (x >= (cr->DRect.L + settings.ScrOx) / settings.SpritesZoom &&
+            x <= (cr->DRect.R + settings.ScrOx) / settings.SpritesZoom &&
+            y >= (cr->DRect.T + settings.ScrOy) / settings.SpritesZoom &&
+            y <= (cr->DRect.B + settings.ScrOy) / settings.SpritesZoom &&
+            sprMngr.IsPixNoTransp(cr->SprId, (int)(x - (cr->DRect.L + settings.ScrOx) / settings.SpritesZoom),
+                (int)(y - (cr->DRect.T + settings.ScrOy) / settings.SpritesZoom)))
         {
             crits.push_back(cr);
         }
@@ -3262,9 +3319,9 @@ bool HexManager::FindPath(
             int hy = coords[p].second;
 
             short *sx, *sy;
-            GetHexOffsets(hx & 1, sx, sy);
+            geomHelper.GetHexOffsets(hx & 1, sx, sy);
 
-            for (int j = 0, jj = DIRS_COUNT; j < jj; j++)
+            for (int j = 0, jj = settings.MapDirCount; j < jj; j++)
             {
                 int nx = hx + sx[j];
                 int ny = hy + sy[j];
@@ -3282,36 +3339,36 @@ bool HexManager::FindPath(
                     // Base hex
                     int nx_ = nx, ny_ = ny;
                     for (uint k = 0; k < mh; k++)
-                        MoveHexByDirUnsafe(nx_, ny_, j);
+                        geomHelper.MoveHexByDirUnsafe(nx_, ny_, j);
                     if (nx_ < 0 || ny_ < 0 || nx_ >= maxHexX || ny_ >= maxHexY)
                         continue;
                     if (GetField(nx_, ny_).Flags.IsNotPassed)
                         continue;
 
                     // Clock wise hexes
-                    bool is_square_corner = (!GameOpt.MapHexagonal && IS_DIR_CORNER(j));
+                    bool is_square_corner = (!settings.MapHexagonal && IS_DIR_CORNER(j));
                     uint steps_count = (is_square_corner ? mh * 2 : mh);
                     bool not_passed = false;
-                    int dir_ = (GameOpt.MapHexagonal ? ((j + 2) % 6) : ((j + 2) % 8));
+                    int dir_ = (settings.MapHexagonal ? ((j + 2) % 6) : ((j + 2) % 8));
                     if (is_square_corner)
                         dir_ = (dir_ + 1) % 8;
                     int nx__ = nx_, ny__ = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++)
                     {
-                        MoveHexByDirUnsafe(nx__, ny__, dir_);
+                        geomHelper.MoveHexByDirUnsafe(nx__, ny__, dir_);
                         not_passed = GetField(nx__, ny__).Flags.IsNotPassed;
                     }
                     if (not_passed)
                         continue;
 
                     // Counter clock wise hexes
-                    dir_ = (GameOpt.MapHexagonal ? ((j + 4) % 6) : ((j + 6) % 8));
+                    dir_ = (settings.MapHexagonal ? ((j + 4) % 6) : ((j + 6) % 8));
                     if (is_square_corner)
                         dir_ = (dir_ + 7) % 8;
                     nx__ = nx_, ny__ = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++)
                     {
-                        MoveHexByDirUnsafe(nx__, ny__, dir_);
+                        geomHelper.MoveHexByDirUnsafe(nx__, ny__, dir_);
                         not_passed = GetField(nx__, ny__).Flags.IsNotPassed;
                     }
                     if (not_passed)
@@ -3321,7 +3378,7 @@ bool HexManager::FindPath(
                 GRID(nx, ny) = numindex;
                 coords.push_back(std::make_pair(nx, ny));
 
-                if (cut >= 0 && CheckDist(nx, ny, end_x, end_y, cut))
+                if (cut >= 0 && geomHelper.CheckDist(nx, ny, end_x, end_y, cut))
                 {
                     end_x = nx;
                     end_y = ny;
@@ -3342,15 +3399,15 @@ label_FindOk:
     steps.resize(numindex - 1);
 
     // From end
-    if (GameOpt.MapHexagonal)
+    if (settings.MapHexagonal)
     {
         static bool switcher = false;
-        if (!GameOpt.MapSmoothPath)
+        if (!settings.MapSmoothPath)
             switcher = false;
 
         while (numindex > 1)
         {
-            if (GameOpt.MapSmoothPath && numindex & 1)
+            if (settings.MapSmoothPath && numindex & 1)
                 switcher = !switcher;
             numindex--;
 
@@ -3531,7 +3588,7 @@ label_FindOk:
     {
         // Smooth data
         int switch_count = 0, switch_begin = 0;
-        if (GameOpt.MapSmoothPath)
+        if (settings.MapSmoothPath)
         {
             int x2 = start_x, y2 = start_y;
             int dx = abs(x1 - x2);
@@ -3550,7 +3607,7 @@ label_FindOk:
             numindex--;
 
             // Without smoothing
-            if (!GameOpt.MapSmoothPath)
+            if (!settings.MapSmoothPath)
             {
                 if (GRID(x1 - 1, y1) == numindex)
                 {
@@ -3741,18 +3798,18 @@ bool HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint di
         ClearHexTrack();
 
     if (!dist)
-        dist = DistGame(hx, hy, tx, ty);
+        dist = geomHelper.DistGame(hx, hy, tx, ty);
 
     ushort cx = hx;
     ushort cy = hy;
     ushort old_cx = cx;
     ushort old_cy = cy;
 
-    LineTracer line_tracer(hx, hy, tx, ty, maxHexX, maxHexY, angle, !GameOpt.MapHexagonal);
+    LineTracer line_tracer(settings, hx, hy, tx, ty, maxHexX, maxHexY, angle);
 
     for (uint i = 0; i < dist; i++)
     {
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             line_tracer.GetNextHex(cx, cy);
         else
             line_tracer.GetNextSquare(cx, cy);
@@ -3805,20 +3862,20 @@ void HexManager::FindSetCenter(int cx, int cy)
 
     if (!mapperMode)
     {
-        int iw = VIEW_WIDTH / 2 + 2;
-        int ih = VIEW_HEIGHT / 2 + 2;
+        int iw = GetViewWidth() / 2 + 2;
+        int ih = GetViewHeight() / 2 + 2;
         ushort hx = cx;
         ushort hy = cy;
 
         auto find_set_center_dir = [this, &hx, &hy](const array<int, 2>& dirs, int steps) {
             ushort sx = hx;
             ushort sy = hy;
-            int dirs_count = (dirs[1] == -1 ? 1 : 2);
+            int dirs_index = (dirs[1] == -1 ? 1 : 2);
 
             int i;
             for (i = 0; i < steps; i++)
             {
-                if (!MoveHexByDir(sx, sy, dirs[i % dirs_count], maxHexX, maxHexY))
+                if (!geomHelper.MoveHexByDir(sx, sy, dirs[i % dirs_index], maxHexX, maxHexY))
                     break;
 
                 GetHexTrack(sx, sy) = 1;
@@ -3828,53 +3885,53 @@ void HexManager::FindSetCenter(int cx, int cy)
             }
 
             for (; i < steps; i++)
-                MoveHexByDir(hx, hy, ReverseDir(dirs[i % dirs_count]), maxHexX, maxHexY);
+                geomHelper.MoveHexByDir(hx, hy, geomHelper.ReverseDir(dirs[i % dirs_index]), maxHexX, maxHexY);
         };
 
         // Up
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({0, 5}, ih);
         else
             find_set_center_dir({0, 6}, ih);
 
         // Down
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({3, 2}, ih);
         else
             find_set_center_dir({4, 2}, ih);
 
         // Right
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({1, -1}, iw);
         else
             find_set_center_dir({1, -1}, iw);
 
         // Left
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({4, -1}, iw);
         else
             find_set_center_dir({5, -1}, iw);
 
         // Up-Right
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({0, -1}, ih);
         else
             find_set_center_dir({0, -1}, ih);
 
         // Down-Left
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({3, -1}, ih);
         else
             find_set_center_dir({4, -1}, ih);
 
         // Up-Left
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({5, -1}, ih);
         else
             find_set_center_dir({6, -1}, ih);
 
         // Down-Right
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
             find_set_center_dir({2, -1}, ih);
         else
             find_set_center_dir({2, 1}, ih);
@@ -3891,7 +3948,7 @@ bool HexManager::LoadMap(CacheStorage& cache, hash map_pid)
     UnloadMap();
 
     // Check data sprites reloading
-    if (curDataPrefix != GameOpt.MapDataPrefix)
+    if (curDataPrefix != settings.MapDataPrefix)
         ReloadSprites();
 
     // Make name
@@ -4005,7 +4062,7 @@ bool HexManager::LoadMap(CacheStorage& cache, hash map_pid)
                 for (int i = 0; i < 6; i++)
                 {
                     ushort hx_ = hx, hy_ = hy;
-                    MoveHexByDir(hx_, hy_, i, maxHexX, maxHexY);
+                    geomHelper.MoveHexByDir(hx_, hy_, i, maxHexX, maxHexY);
                     GetField(hx_, hy_).Flags.IsNotPassed = true;
                 }
             }
@@ -4164,8 +4221,8 @@ void HexManager::GenerateItem(uint id, hash proto_id, Properties& props)
 
     if (scenery->GetIsLight())
     {
-        lightSourcesScen.push_back(LightSource(scenery->GetHexX(), scenery->GetHexY(), scenery->GetLightColor(),
-            scenery->GetLightDistance(), scenery->GetLightIntensity(), scenery->GetLightFlags()));
+        lightSourcesScen.push_back({scenery->GetHexX(), scenery->GetHexY(), scenery->GetLightColor(),
+            scenery->GetLightDistance(), scenery->GetLightFlags(), scenery->GetLightIntensity()});
     }
 
     PushItem(scenery);
@@ -4210,7 +4267,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
     UnloadMap();
 
-    if (curDataPrefix != GameOpt.MapDataPrefix)
+    if (curDataPrefix != settings.MapDataPrefix)
         ReloadSprites();
 
     ResizeField(pmap.GetWidth(), pmap.GetHeight());
@@ -4220,7 +4277,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
     int day_time = pmap.GetCurDayTime();
     Globals->SetMinute(day_time % 60);
     Globals->SetHour(day_time / 60 % 24);
-    uint color = GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr);
+    uint color = GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr);
     sprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
 
     CScriptArray* dt = pmap.GetDayTime();
@@ -4304,7 +4361,8 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
         else if (entity->Type == EntityType::CritterView)
         {
             CritterView* entity_cr = (CritterView*)entity;
-            CritterView* cr = new CritterView(entity_cr->Id, (ProtoCritter*)entity_cr->Proto, sprMngr, resMngr);
+            CritterView* cr =
+                new CritterView(entity_cr->Id, (ProtoCritter*)entity_cr->Proto, settings, sprMngr, resMngr);
             cr->Props = entity_cr->Props;
             cr->Init();
             AddCritter(cr);
@@ -4336,12 +4394,14 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
 
     auto* spr_mngr = &sprMngr;
     auto* res_mngr = &resMngr;
-    std::function<void(Entity*)> fill_recursively = [&fill_recursively, &pmap, spr_mngr, res_mngr](Entity* entity) {
+    auto* sett = &settings;
+    std::function<void(Entity*)> fill_recursively = [&fill_recursively, &pmap, sett, spr_mngr, res_mngr](
+                                                        Entity* entity) {
         Entity* store_entity = nullptr;
         if (entity->Type == EntityType::ItemHexView || entity->Type == EntityType::Item)
             store_entity = new ItemView(entity->Id, (ProtoItem*)entity->Proto);
         else if (entity->Type == EntityType::CritterView)
-            store_entity = new CritterView(entity->Id, (ProtoCritter*)entity->Proto, *spr_mngr, *res_mngr);
+            store_entity = new CritterView(entity->Id, (ProtoCritter*)entity->Proto, *sett, *spr_mngr, *res_mngr);
         else
             UNREACHABLE_PLACE;
 
@@ -4538,14 +4598,14 @@ void HexManager::GetHexesRect(const Rect& rect, UShortPairVec& hexes)
 {
     hexes.clear();
 
-    if (GameOpt.MapHexagonal)
+    if (settings.MapHexagonal)
     {
         int x, y;
-        GetHexInterval(rect.L, rect.T, rect.R, rect.B, x, y);
+        geomHelper.GetHexInterval(rect.L, rect.T, rect.R, rect.B, x, y);
         x = -x;
 
-        int dx = x / HEX_W;
-        int dy = y / HEX_LINE_H;
+        int dx = x / settings.MapHexWidth;
+        int dy = y / settings.MapHexLineHeight;
         int adx = abs(dx);
         int ady = abs(dy);
 
@@ -4586,14 +4646,16 @@ void HexManager::GetHexesRect(const Rect& rect, UShortPairVec& hexes)
     else
     {
         int rw, rh; // Rect width/height
-        GetHexInterval(rect.L, rect.T, rect.R, rect.B, rw, rh);
+        geomHelper.GetHexInterval(rect.L, rect.T, rect.R, rect.B, rw, rh);
         if (!rw)
             rw = 1;
         if (!rh)
             rh = 1;
 
-        int hw = abs(rw / (HEX_W / 2)) + ((rw % (HEX_W / 2)) ? 1 : 0) + (abs(rw) >= HEX_W / 2 ? 1 : 0); // Hexes width
-        int hh = abs(rh / HEX_LINE_H) + ((rh % HEX_LINE_H) ? 1 : 0) + (abs(rh) >= HEX_LINE_H ? 1 : 0); // Hexes height
+        int hw = abs(rw / (settings.MapHexWidth / 2)) + ((rw % (settings.MapHexWidth / 2)) ? 1 : 0) +
+            (abs(rw) >= settings.MapHexWidth / 2 ? 1 : 0); // Hexes width
+        int hh = abs(rh / settings.MapHexLineHeight) + ((rh % settings.MapHexLineHeight) ? 1 : 0) +
+            (abs(rh) >= settings.MapHexLineHeight ? 1 : 0); // Hexes height
         int shx = rect.L;
         int shy = rect.T;
 

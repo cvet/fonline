@@ -4,6 +4,7 @@
 #endif
 
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Script.h"
 #include "StringUtils.h"
@@ -473,7 +474,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
     }
 
     if (except)
-        ShowErrorMessage(message, traceback);
+        GenericUtils::ShowErrorMessage(message, traceback);
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -639,7 +640,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
 
     if (siginfo)
     {
-        ShowErrorMessage(message, traceback);
+        GenericUtils::ShowErrorMessage(message, traceback);
         exit(1);
     }
 }
@@ -687,7 +688,7 @@ bool RaiseAssert(const string& message, const string& file, int line)
     traceback = ss.str();
 #endif
 
-    ShowErrorMessage(
+    GenericUtils::ShowErrorMessage(
         _str("Assert failed!\nVersion: {:#x}\nFile: {} ({})\n\n{}", FO_VERSION, name, line, message), traceback);
 #endif
 

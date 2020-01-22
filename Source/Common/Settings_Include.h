@@ -1,191 +1,256 @@
-#if !defined(SETTING) || !defined(CONST_SETTING)
-#error SETTING or CONST_SETTING not defined
-#define SETTING(type, name, ...)
-#define CONST_SETTING(type, name, ...)
+#if !defined(SETTING) || !defined(VAR_SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
+#error SETTING or VAR_SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
 #include "Common.h"
 #endif
 
-// Common
-CONST_SETTING(string, WorkDir, "");
-CONST_SETTING(vector<string>, ProjectFiles);
-CONST_SETTING(string, CommandLine, "");
-CONST_SETTING(string, WindowName, "FOnline");
-CONST_SETTING(string, MonoPath, "");
-CONST_SETTING(bool, OpenGLRendering, true);
-CONST_SETTING(bool, OpenGLDebug, false);
-CONST_SETTING(bool, Enable3dRendering, false);
-CONST_SETTING(bool, VSync, false);
-CONST_SETTING(uint, ScriptRunSuspendTimeout, 30000);
-CONST_SETTING(uint, ScriptRunMessageTimeout, 10000);
-CONST_SETTING(uint, TalkDistance, 3);
-CONST_SETTING(uint, MinNameLength, 4);
-CONST_SETTING(uint, MaxNameLength, 12);
-CONST_SETTING(bool, DisableTcpNagle, false);
-CONST_SETTING(bool, DisableZlibCompression, false);
-CONST_SETTING(uint, GlobalMapWidth, 28);
-CONST_SETTING(uint, GlobalMapHeight, 30);
-CONST_SETTING(uint, GlobalMapZoneLength, 50);
-CONST_SETTING(bool, RunOnCombat, false);
-CONST_SETTING(bool, RunOnTransfer, false);
-CONST_SETTING(uint, Breaktime, 1200);
-CONST_SETTING(uint, TimeoutTransfer, 3);
-CONST_SETTING(uint, TimeoutBattle, 10);
-SETTING(bool, Quit, false);
-SETTING(uint, YearStartFTLo, 0);
-SETTING(uint, YearStartFTHi, 0);
-SETTING(uint, FullSecondStart, 0);
-SETTING(uint, FullSecond, 0);
-SETTING(uint, GameTimeTick, 0);
+SETTING_GROUP(CommonSettings, virtual DummySettings);
+SETTING(string, WorkDir, "");
+SETTING(string, CommandLine, "");
+SETTING(vector<string>, CommandLineArgs);
+SETTING(uint, MinNameLength, 4);
+SETTING(uint, MaxNameLength, 12);
+SETTING(uint, Breaktime, 1200);
+SETTING(string, Language, "engl");
+VAR_SETTING(bool, Quit, false);
+SETTING_GROUP_END();
 
-// Client
-CONST_SETTING(string, RemoteHost, "localhost");
-CONST_SETTING(uint, RemotePort, 4000);
-CONST_SETTING(uint, ProxyType, 0);
-CONST_SETTING(string, ProxyHost, "");
-CONST_SETTING(uint, ProxyPort, 8080);
-CONST_SETTING(string, ProxyUser, "");
-CONST_SETTING(string, ProxyPass, "");
-CONST_SETTING(uint, PingPeriod, 2000);
-CONST_SETTING(uint, TextDelay, 3000);
-CONST_SETTING(bool, WinNotify, true);
-CONST_SETTING(bool, SoundNotify, false);
-CONST_SETTING(string, PlayerOffAppendix, "_off");
-CONST_SETTING(uint, ChosenLightColor, 0);
-CONST_SETTING(uchar, ChosenLightDistance, 4);
-CONST_SETTING(int, ChosenLightIntensity, 2500);
-CONST_SETTING(uchar, ChosenLightFlags, 0);
-SETTING(bool, WaitPing, false);
-SETTING(uint, FPS, 0);
-SETTING(uint, Ping, 0);
+SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
+SETTING(uint, TalkDistance, 3);
+SETTING(bool, RunOnCombat, false);
+SETTING(bool, RunOnTransfer, false);
+SETTING(uint, TimeoutTransfer, 3);
+SETTING(uint, TimeoutBattle, 10);
+SETTING(uint, GlobalMapWidth, 28);
+SETTING(uint, GlobalMapHeight, 30);
+SETTING(uint, GlobalMapZoneLength, 50);
+SETTING(int, LookChecks, 0);
+SETTING(vector<uint>, LookDir, 0, 20, 40, 60, 60);
+SETTING(vector<uint>, LookSneakDir, 90, 60, 30, 0, 0);
+SETTING_GROUP_END();
 
-// Mapper
-CONST_SETTING(string, ServerDir, "");
-CONST_SETTING(string, AutoLogin, "");
-CONST_SETTING(string, StartMap, "");
-CONST_SETTING(int, StartHexX, -1);
-CONST_SETTING(int, StartHexY, -1);
-CONST_SETTING(int, FixedFPS, 100);
-CONST_SETTING(bool, SplitTilesCollection, true);
-SETTING(bool, ShowCorners, false);
-SETTING(bool, ShowSpriteCuts, false);
-SETTING(bool, ShowDrawOrder, false);
+SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
+SETTING(uint, MinimumOfflineTime, 180000);
+SETTING(uint, RegistrationTimeout, 5);
+SETTING(uint, NpcMaxTalkers, 1);
+SETTING(uint, DlgTalkMinTime, 0);
+SETTING(uint, DlgBarterMinTime, 0);
+SETTING(uint, WhisperDist, 2);
+SETTING(uint, ShoutDist, 200);
+SETTING(bool, NoAnswerShuffle, false);
+SETTING(uint, SneakDivider, 6);
+SETTING(uint, LookMinimum, 6);
+SETTING(int, DeadHitPoints, -6);
+SETTING_GROUP_END();
 
-// Client & Mapper
-CONST_SETTING(string, Language, "engl");
-CONST_SETTING(uint, ScrollDelay, 10);
-CONST_SETTING(int, ScrollStep, 12);
-CONST_SETTING(int, MultiSampling, -1);
-CONST_SETTING(uint, DoubleClickTime, 500);
-CONST_SETTING(uint, Animation3dSmoothTime, 150);
-CONST_SETTING(uint, Animation3dFPS, 30);
-CONST_SETTING(string, KeyboardRemap, "");
-CONST_SETTING(uint, ConsoleHistorySize, 100);
-CONST_SETTING(uint, CritterFidgetTime, 50000);
-CONST_SETTING(uint, Anim2CombatBegin, 0);
-CONST_SETTING(uint, Anim2CombatIdle, 0);
-CONST_SETTING(uint, Anim2CombatEnd, 0);
-CONST_SETTING(uint, RainTick, 60);
-CONST_SETTING(short, RainSpeedX, 0);
-CONST_SETTING(short, RainSpeedY, 15);
-CONST_SETTING(float, SpritesZoomMax, MAX_ZOOM);
-CONST_SETTING(float, SpritesZoomMin, MIN_ZOOM);
-SETTING(uchar, RoofAlpha, 200);
-SETTING(bool, FullScreen, false);
-SETTING(int, Light, 20);
-SETTING(bool, ScrollCheck, true);
+SETTING_GROUP(NetworkSettings, virtual DummySettings);
+SETTING(uint, Port, 4000);
+SETTING(bool, SecuredWebSockets, false);
+SETTING(bool, DisableTcpNagle, true);
+SETTING(bool, DisableZlibCompression, false);
+SETTING(uint, FloodSize, 2048);
+SETTING_GROUP_END();
+
+SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
+SETTING(string, WssPrivateKey, "");
+SETTING(string, WssCertificate, "");
+SETTING_GROUP_END();
+
+SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
+SETTING(string, Host, "localhost");
+SETTING(uint, ProxyType, 0);
+SETTING(string, ProxyHost, "");
+SETTING(uint, ProxyPort, 8080);
+SETTING(string, ProxyUser, "");
+SETTING(string, ProxyPass, "");
+SETTING(uint, PingPeriod, 2000);
+VAR_SETTING(bool, WaitPing, false);
+VAR_SETTING(uint, Ping, 0);
+VAR_SETTING(bool, DebugNet, false);
+SETTING_GROUP_END();
+
+SETTING_GROUP(SoundSettings, virtual DummySettings);
+VAR_SETTING(int, SoundVolume, 100);
+VAR_SETTING(int, MusicVolume, 100);
+SETTING_GROUP_END();
+
+SETTING_GROUP(ViewSettings, virtual DummySettings);
+VAR_SETTING(int, ScreenWidth, 1024);
+VAR_SETTING(int, ScreenHeight, 768);
+VAR_SETTING(float, SpritesZoom, 1.0f);
+VAR_SETTING(int, ScrOx, 0);
+VAR_SETTING(int, ScrOy, 0);
+SETTING_GROUP_END();
+
+SETTING_GROUP(EffectSettings, virtual DummySettings);
+VAR_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+SETTING_GROUP_END();
+
+SETTING_GROUP(GeometrySettings, virtual DummySettings);
+SETTING(bool, MapHexagonal, true);
+SETTING(int, MapDirCount);
+SETTING(int, MapHexWidth, 32);
+SETTING(int, MapHexHeight, 16);
+SETTING(int, MapHexLineHeight, 12);
+SETTING(int, MapTileOffsX, -8);
+SETTING(int, MapTileOffsY, 32);
+SETTING(int, MapTileStep, 2);
+SETTING(int, MapRoofOffsX, -8);
+SETTING(int, MapRoofOffsY, -66);
+SETTING(int, MapRoofSkipSize, 2);
+SETTING(float, MapCameraAngle, 25.7f);
+SETTING(bool, MapSmoothPath, true);
+SETTING(string, MapDataPrefix, "art/geometry/fallout_");
+SETTING_GROUP_END();
+
+SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual EffectSettings, virtual GeometrySettings);
+SETTING(string, WindowName, "FOnline");
+SETTING(bool, OpenGLRendering, true);
+SETTING(bool, OpenGLDebug, false);
+SETTING(uint, Animation3dSmoothTime, 150);
+SETTING(uint, Animation3dFPS, 30);
+SETTING(bool, Enable3dRendering, false);
+SETTING(int, MultiSampling, -1);
+SETTING(bool, VSync, false);
 SETTING(bool, AlwaysOnTop, false);
-SETTING(int, ScreenWidth, 1024);
-SETTING(int, ScreenHeight, 768);
-SETTING(bool, MouseScroll, true);
-SETTING(bool, HideCursor, false);
-SETTING(bool, ShowMoveCursor, false);
-SETTING(bool, DisableMouseEvents, false);
-SETTING(bool, DisableKeyboardEvents, false);
-SETTING(int, SoundVolume, 100);
-SETTING(int, MusicVolume, 100);
-SETTING(float, EffectValues[EFFECT_SCRIPT_VALUES]);
-SETTING(bool, MapZooming, false);
-SETTING(float, SpritesZoom, 1.0f);
-SETTING(bool, ShowTile, true);
-SETTING(bool, ShowRoof, true);
-SETTING(bool, ShowItem, true);
-SETTING(bool, ShowScen, true);
-SETTING(bool, ShowWall, true);
-SETTING(bool, ShowCrit, true);
-SETTING(bool, ShowFast, true);
+VAR_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+VAR_SETTING(bool, FullScreen, false);
+VAR_SETTING(int, Brightness, 20);
+VAR_SETTING(bool, ShowCorners, false);
+VAR_SETTING(bool, ShowSpriteCuts, false);
+VAR_SETTING(bool, ShowDrawOrder, false);
+VAR_SETTING(bool, ShowSpriteBorders, false);
+VAR_SETTING(uint, FPS, 0);
+SETTING(int, FixedFPS, 100);
+SETTING_GROUP_END();
+
+SETTING_GROUP(TimerSettings, virtual DummySettings);
+VAR_SETTING(uint, FullSecondStart, 0);
+VAR_SETTING(uint, FullSecond, 0);
+VAR_SETTING(uint, GameTimeTick, 0);
+SETTING_GROUP_END();
+
+SETTING_GROUP(ScriptSettings, virtual TimerSettings);
+SETTING(string, MonoPath, "");
+SETTING(uint, ScriptRunSuspendTimeout, 30000);
+SETTING(uint, ScriptRunMessageTimeout, 10000);
+SETTING_GROUP_END();
+
+SETTING_GROUP(MapSettings, virtual ServerGameplaySettings, virtual GeometrySettings);
+SETTING_GROUP_END();
+
+SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings,
+    virtual GeometrySettings);
+SETTING_GROUP_END();
+
+SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
+SETTING(uint, CritterFidgetTime, 50000);
+SETTING(uint, Anim2CombatBegin, 0);
+SETTING(uint, Anim2CombatIdle, 0);
+SETTING(uint, Anim2CombatEnd, 0);
+SETTING(string, PlayerOffAppendix, "_off");
 SETTING(bool, ShowPlayerNames, false);
 SETTING(bool, ShowNpcNames, false);
 SETTING(bool, ShowCritId, false);
 SETTING(bool, ShowGroups, true);
-SETTING(bool, HelpInfo, false);
-SETTING(bool, DebugInfo, false);
-SETTING(bool, DebugNet, false);
-SETTING(bool, ScrollKeybLeft, false);
-SETTING(bool, ScrollKeybRight, false);
-SETTING(bool, ScrollKeybUp, false);
-SETTING(bool, ScrollKeybDown, false);
-SETTING(bool, ScrollMouseLeft, false);
-SETTING(bool, ScrollMouseRight, false);
-SETTING(bool, ScrollMouseUp, false);
-SETTING(bool, ScrollMouseDown, false);
-SETTING(int, MouseX, 0);
-SETTING(int, MouseY, 0);
-SETTING(int, LastMouseX, 0);
-SETTING(int, LastMouseY, 0);
-SETTING(int, ScrOx, 0);
-SETTING(int, ScrOy, 0);
+SETTING_GROUP_END();
 
-// Server
-CONST_SETTING(uint, ListenPort, 4000);
-CONST_SETTING(uint, AdminPanelPort, 0);
-CONST_SETTING(bool, AssimpLogging, false);
-CONST_SETTING(bool, ForceRebuildResources, false);
-CONST_SETTING(string, DbStorage, "Memory");
-CONST_SETTING(string, DbHistory, "None");
-CONST_SETTING(string, WssCredentials, "");
-CONST_SETTING(bool, NoStart, false);
-CONST_SETTING(uint, MinimumOfflineTime, 180000);
-CONST_SETTING(uint, RegistrationTimeout, 5);
-CONST_SETTING(uint, NpcMaxTalkers, 1);
-CONST_SETTING(uint, DlgTalkMinTime, 0);
-CONST_SETTING(uint, DlgBarterMinTime, 0);
-CONST_SETTING(int, LookChecks, 0);
-CONST_SETTING(uint, LookDir[5], 0, 20, 40, 60, 60);
-CONST_SETTING(uint, LookSneakDir[5], 90, 60, 30, 0, 0);
-CONST_SETTING(uint, WhisperDist, 2);
-CONST_SETTING(uint, ShoutDist, 200);
-CONST_SETTING(int, GameSleep, 0);
-CONST_SETTING(uint, FloodSize, 2048);
-CONST_SETTING(bool, NoAnswerShuffle, false);
-CONST_SETTING(uint, SneakDivider, 6);
-CONST_SETTING(uint, LookMinimum, 6);
-CONST_SETTING(int, DeadHitPoints, -6);
-SETTING(bool, DialogDemandRecheck, false);
+SETTING_GROUP(HexSettings, virtual ViewSettings, virtual GeometrySettings, virtual CritterViewSettings);
+SETTING(float, SpritesZoomMax, MAX_ZOOM);
+SETTING(float, SpritesZoomMin, MIN_ZOOM);
+SETTING(uint, ScrollDelay, 10);
+SETTING(int, ScrollStep, 12);
+SETTING(uint, RainTick, 60);
+SETTING(short, RainSpeedX, 0);
+SETTING(short, RainSpeedY, 15);
+SETTING(uint, ChosenLightColor, 0);
+SETTING(uchar, ChosenLightDistance, 4);
+SETTING(int, ChosenLightIntensity, 2500);
+SETTING(uchar, ChosenLightFlags, 0);
+VAR_SETTING(bool, MouseScroll, true);
+VAR_SETTING(bool, ScrollCheck, true);
+VAR_SETTING(bool, ScrollKeybLeft, false);
+VAR_SETTING(bool, ScrollKeybRight, false);
+VAR_SETTING(bool, ScrollKeybUp, false);
+VAR_SETTING(bool, ScrollKeybDown, false);
+VAR_SETTING(bool, ScrollMouseLeft, false);
+VAR_SETTING(bool, ScrollMouseRight, false);
+VAR_SETTING(bool, ScrollMouseUp, false);
+VAR_SETTING(bool, ScrollMouseDown, false);
+VAR_SETTING(uchar, RoofAlpha, 200);
+VAR_SETTING(bool, ShowTile, true);
+VAR_SETTING(bool, ShowRoof, true);
+VAR_SETTING(bool, ShowItem, true);
+VAR_SETTING(bool, ShowScen, true);
+VAR_SETTING(bool, ShowWall, true);
+VAR_SETTING(bool, ShowCrit, true);
+VAR_SETTING(bool, ShowFast, true);
+VAR_SETTING(bool, HideCursor, false);
+VAR_SETTING(bool, ShowMoveCursor, false);
+SETTING_GROUP_END();
 
-// Geometry
-CONST_SETTING(bool, MapHexagonal, true);
-CONST_SETTING(int, MapHexWidth, 32);
-CONST_SETTING(int, MapHexHeight, 16);
-CONST_SETTING(int, MapHexLineHeight, 12);
-CONST_SETTING(int, MapTileOffsX, -8);
-CONST_SETTING(int, MapTileOffsY, 32);
-CONST_SETTING(int, MapTileStep, 2);
-CONST_SETTING(int, MapRoofOffsX, -8);
-CONST_SETTING(int, MapRoofOffsY, -66);
-CONST_SETTING(int, MapRoofSkipSize, 2);
-CONST_SETTING(float, MapCameraAngle, 25.7f);
-CONST_SETTING(bool, MapSmoothPath, true);
-CONST_SETTING(string, MapDataPrefix, "art/geometry/fallout_");
+SETTING_GROUP(PlatformSettings, virtual DummySettings);
+SETTING(bool, WebBuild);
+SETTING(bool, WindowsBuild);
+SETTING(bool, LinuxBuild);
+SETTING(bool, MacOsBuild);
+SETTING(bool, AndroidBuild);
+SETTING(bool, IOsBuild);
+SETTING(bool, DesktopBuild);
+SETTING(bool, TabletBuild);
+SETTING_GROUP_END();
 
-// Build platform
-CONST_SETTING(bool, WebBuild);
-CONST_SETTING(bool, WindowsBuild);
-CONST_SETTING(bool, LinuxBuild);
-CONST_SETTING(bool, MacOsBuild);
-CONST_SETTING(bool, AndroidBuild);
-CONST_SETTING(bool, IOsBuild);
-CONST_SETTING(bool, DesktopBuild);
-CONST_SETTING(bool, TabletBuild);
+SETTING_GROUP(InputSettings, virtual DummySettings);
+SETTING(uint, DoubleClickTime, 500);
+SETTING(string, KeyboardRemap, "");
+SETTING(uint, ConsoleHistorySize, 100);
+VAR_SETTING(bool, DisableMouseEvents, false);
+VAR_SETTING(bool, DisableKeyboardEvents, false);
+VAR_SETTING(int, MouseX, 0);
+VAR_SETTING(int, MouseY, 0);
+VAR_SETTING(int, LastMouseX, 0);
+VAR_SETTING(int, LastMouseY, 0);
+VAR_SETTING(vector<int>, MainWindowKeyboardEvents);
+VAR_SETTING(vector<string>, MainWindowKeyboardEventsText);
+VAR_SETTING(vector<int>, MainWindowMouseEvents);
+SETTING_GROUP_END();
+
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings,
+    virtual ScriptSettings, virtual SoundSettings, virtual ViewSettings, virtual RenderSettings,
+    virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings,
+    virtual InputSettings, virtual CritterViewSettings);
+SETTING(string, AutoLogin, "");
+SETTING(uint, TextDelay, 3000);
+SETTING(bool, WinNotify, true);
+SETTING(bool, SoundNotify, false);
+VAR_SETTING(bool, HelpInfo, false);
+SETTING_GROUP_END();
+
+SETTING_GROUP(MapperSettings, virtual CommonSettings, virtual ScriptSettings, virtual ViewSettings,
+    virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings,
+    virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings);
+SETTING(string, ServerDir, "");
+SETTING(string, StartMap, "");
+SETTING(int, StartHexX, -1);
+SETTING(int, StartHexY, -1);
+SETTING(bool, SplitTilesCollection, true);
+SETTING_GROUP_END();
+
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSettings, virtual ScriptSettings,
+    virtual SoundSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings,
+    virtual TimerSettings, virtual ServerGameplaySettings, virtual MapSettings, virtual CritterSettings);
+SETTING(uint, AdminPanelPort, 0);
+SETTING(bool, AssimpLogging, false);
+SETTING(string, DbStorage, "Memory");
+SETTING(string, DbHistory, "None");
+SETTING(bool, NoStart, false);
+SETTING(int, GameSleep, 0);
+SETTING_GROUP_END();
+
+SETTING_GROUP(EditorSettings, virtual DummySettings);
+SETTING(vector<string>, ProjectFiles);
+SETTING_GROUP_END();
 
 #undef SETTING
-#undef CONST_SETTING
+#undef VAR_SETTING
+#undef SETTING_GROUP
+#undef SETTING_GROUP_END

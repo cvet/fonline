@@ -928,13 +928,12 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
         engine->RegisterGlobalFunction("bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)",
             asFUNCTION(BIND_CLASS Global_AddPropertySetCallback), asCALL_GENERIC));
 
-    BIND_ASSERT(engine->RegisterGlobalProperty("const uint __FullSecond", (void*)&GameOpt.FullSecond));
+    /*BIND_ASSERT(engine->RegisterGlobalProperty("const uint __FullSecond", (void*)&GameOpt.FullSecond));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __DisableTcpNagle", (void*)&GameOpt.DisableTcpNagle));
     BIND_ASSERT(
         engine->RegisterGlobalProperty("bool __DisableZlibCompression", (void*)&GameOpt.DisableZlibCompression));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __FloodSize", (void*)&GameOpt.FloodSize));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __NoAnswerShuffle", (void*)&GameOpt.NoAnswerShuffle));
-    BIND_ASSERT(engine->RegisterGlobalProperty("bool __DialogDemandRecheck", (void*)&GameOpt.DialogDemandRecheck));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __SneakDivider", (void*)&GameOpt.SneakDivider));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __LookMinimum", (void*)&GameOpt.LookMinimum));
     BIND_ASSERT(engine->RegisterGlobalProperty("int __DeadHitPoints", (void*)&GameOpt.DeadHitPoints));
@@ -972,7 +971,7 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __DlgBarterMinTime", (void*)&GameOpt.DlgBarterMinTime));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __MinimumOfflineTime", (void*)&GameOpt.MinimumOfflineTime));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __ForceRebuildResources", (void*)&GameOpt.ForceRebuildResources));
-    BIND_ASSERT(engine->RegisterGlobalProperty("string __CommandLine", (void*)&GameOpt.CommandLine));
+    BIND_ASSERT(engine->RegisterGlobalProperty("string __CommandLine", (void*)&GameOpt.CommandLine));*/
 #endif
 
 #ifdef BIND_MAPPER
@@ -1134,11 +1133,11 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "void ChangeZoom(float targetZoom)", SCRIPT_FUNC(BIND_CLASS Global_ChangeZoom), SCRIPT_FUNC_CONV));
 
-    BIND_ASSERT(engine->RegisterGlobalProperty("string __ServerDir", (void*)&GameOpt.ServerDir));
+    /*BIND_ASSERT(engine->RegisterGlobalProperty("string __ServerDir", (void*)&GameOpt.ServerDir));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __ShowCorners", (void*)&GameOpt.ShowCorners));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __ShowSpriteCuts", (void*)&GameOpt.ShowSpriteCuts));
     BIND_ASSERT(engine->RegisterGlobalProperty("bool __ShowDrawOrder", (void*)&GameOpt.ShowDrawOrder));
-    BIND_ASSERT(engine->RegisterGlobalProperty("bool __SplitTilesCollection", (void*)&GameOpt.SplitTilesCollection));
+    BIND_ASSERT(engine->RegisterGlobalProperty("bool __SplitTilesCollection", (void*)&GameOpt.SplitTilesCollection));*/
 #endif
 
 #if defined(BIND_CLIENT) || defined(BIND_MAPPER)
@@ -1216,7 +1215,7 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "void PopDrawScissor()", SCRIPT_FUNC(BIND_CLASS Global_PopDrawScissor), SCRIPT_FUNC_CONV));
 
-    BIND_ASSERT(engine->RegisterGlobalProperty("bool __Quit", (void*)&GameOpt.Quit));
+    /*BIND_ASSERT(engine->RegisterGlobalProperty("bool __Quit", (void*)&GameOpt.Quit));
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __WaitPing", (void*)&GameOpt.WaitPing));
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __OpenGLRendering", (void*)&GameOpt.OpenGLRendering));
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __OpenGLDebug", (void*)&GameOpt.OpenGLDebug));
@@ -1280,7 +1279,6 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __DoubleClickTime", (void*)&GameOpt.DoubleClickTime));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __Animation3dSmoothTime", (void*)&GameOpt.Animation3dSmoothTime));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __Animation3dFPS", (void*)&GameOpt.Animation3dFPS));
-    BIND_ASSERT(engine->RegisterGlobalProperty("bool __MapZooming", (void*)&GameOpt.MapZooming));
     BIND_ASSERT(engine->RegisterGlobalProperty("float __SpritesZoom", (void*)&GameOpt.SpritesZoom));
     BIND_ASSERT(engine->RegisterGlobalProperty("float __SpritesZoomMin", (void*)&GameOpt.SpritesZoomMin));
     BIND_ASSERT(engine->RegisterGlobalProperty("float __SpritesZoomMax", (void*)&GameOpt.SpritesZoomMax));
@@ -1304,10 +1302,10 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalProperty("uint __ChosenLightColor", (void*)&GameOpt.ChosenLightColor));
     BIND_ASSERT(engine->RegisterGlobalProperty("uint8 __ChosenLightDistance", (void*)&GameOpt.ChosenLightDistance));
     BIND_ASSERT(engine->RegisterGlobalProperty("int __ChosenLightIntensity", (void*)&GameOpt.ChosenLightIntensity));
-    BIND_ASSERT(engine->RegisterGlobalProperty("uint8 __ChosenLightFlags", (void*)&GameOpt.ChosenLightFlags));
+    BIND_ASSERT(engine->RegisterGlobalProperty("uint8 __ChosenLightFlags", (void*)&GameOpt.ChosenLightFlags));*/
 #endif
 
-    BIND_ASSERT(engine->RegisterGlobalProperty("bool __MapHexagonal", (void*)&GameOpt.MapHexagonal));
+    /*BIND_ASSERT(engine->RegisterGlobalProperty("bool __MapHexagonal", (void*)&GameOpt.MapHexagonal));
     BIND_ASSERT(engine->RegisterGlobalProperty("int __MapHexWidth", (void*)&GameOpt.MapHexWidth));
     BIND_ASSERT(engine->RegisterGlobalProperty("int __MapHexHeight", (void*)&GameOpt.MapHexHeight));
     BIND_ASSERT(engine->RegisterGlobalProperty("int __MapHexLineHeight", (void*)&GameOpt.MapHexLineHeight));
@@ -1327,7 +1325,7 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __LinuxBuild", (void*)&GameOpt.LinuxBuild));
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __MacOsBuild", (void*)&GameOpt.MacOsBuild));
     BIND_ASSERT(engine->RegisterGlobalProperty("const bool __AndroidBuild", (void*)&GameOpt.AndroidBuild));
-    BIND_ASSERT(engine->RegisterGlobalProperty("const bool __IOsBuild", (void*)&GameOpt.IOsBuild));
+    BIND_ASSERT(engine->RegisterGlobalProperty("const bool __IOsBuild", (void*)&GameOpt.IOsBuild));*/
 
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "void AddDataSource(string dataSourceName)", SCRIPT_FUNC(BIND_CLASS Global_AddDataSource), SCRIPT_FUNC_CONV));

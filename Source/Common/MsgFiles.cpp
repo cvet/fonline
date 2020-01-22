@@ -84,7 +84,7 @@ string FOMsg::GetStr(uint num)
     case 1:
         break;
     default:
-        for (int i = 0, j = Random(0, str_count) - 1; i < j; i++)
+        for (int i = 0, j = GenericUtils::Random(0, str_count) - 1; i < j; i++)
             ++it;
         break;
     }
@@ -133,7 +133,7 @@ int FOMsg::GetInt(uint num)
     case 1:
         break;
     default:
-        for (int i = 0, j = Random(0, str_count) - 1; i < j; i++)
+        for (int i = 0, j = GenericUtils::Random(0, str_count) - 1; i < j; i++)
             ++it;
         break;
     }

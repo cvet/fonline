@@ -1,5 +1,6 @@
 #include "ItemHexView.h"
 #include "EffectManager.h"
+#include "GenericUtils.h"
 #include "GraphicStructures.h"
 #include "Log.h"
 #include "ResourceManager.h"
@@ -102,7 +103,7 @@ void ItemHexView::AfterConstruction()
     RefreshAlpha();
     if (GetIsShowAnim())
         isAnimated = true;
-    animNextTick = Timer::GameTick() + Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    animNextTick = Timer::GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
     SetFade(true);
 }
 
@@ -137,13 +138,13 @@ void ItemHexView::Process()
     // Animation
     if (begSpr != endSpr)
     {
-        int anim_proc = Procent(Anim->Ticks, Timer::GameTick() - animTick);
+        int anim_proc = GenericUtils::Procent(Anim->Ticks, Timer::GameTick() - animTick);
         if (anim_proc >= 100)
         {
             begSpr = animEndSpr;
             SetSpr(endSpr);
-            animNextTick =
-                Timer::GameTick() + GetAnimWaitBase() * 10 + Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+            animNextTick = Timer::GameTick() + GetAnimWaitBase() * 10 +
+                GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
         }
         else
         {
@@ -182,7 +183,7 @@ void ItemHexView::Process()
 
             SetAnimOffs();
             effLastTick = Timer::GameTick();
-            if (DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY) >= effDist)
+            if (GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY) >= effDist)
                 Finish();
         }
     }
@@ -190,7 +191,7 @@ void ItemHexView::Process()
     // Fading
     if (fading)
     {
-        int fading_proc = 100 - Procent(FADING_PERIOD, fadingTick - Timer::GameTick());
+        int fading_proc = 100 - GenericUtils::Procent(FADING_PERIOD, fadingTick - Timer::GameTick());
         fading_proc = CLAMP(fading_proc, 0, 100);
         if (fading_proc >= 100)
         {
@@ -228,10 +229,10 @@ void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
 
 UShortPair ItemHexView::GetEffectStep()
 {
-    uint dist = DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY);
+    uint dist = GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY);
     if (dist > effDist)
         dist = effDist;
-    int proc = Procent(effDist, dist);
+    int proc = GenericUtils::Procent(effDist, dist);
     if (proc > 99)
         proc = 99;
     return EffSteps[EffSteps.size() * proc / 100];
@@ -316,8 +317,8 @@ int ItemHexView::GetEggType()
 void ItemHexView::StartAnimate()
 {
     SetStayAnim();
-    animNextTick =
-        Timer::GameTick() + GetAnimWaitBase() * 10 + Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    animNextTick = Timer::GameTick() + GetAnimWaitBase() * 10 +
+        GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
     isAnimated = true;
 }
 

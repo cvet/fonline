@@ -82,7 +82,8 @@ CLASS_PROPERTY_IMPL(Critter, ShowCritterDist2);
 CLASS_PROPERTY_IMPL(Critter, ShowCritterDist3);
 CLASS_PROPERTY_IMPL(Critter, ScriptId);
 
-Critter::Critter(uint id, EntityType type, ProtoCritter* proto) : Entity(id, type, PropertiesRegistrator, proto)
+Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett) :
+    Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings)
 {
     CritterIsNpc = false;
     GlobalMapGroup = nullptr;
@@ -748,9 +749,9 @@ void Critter::SendAA_Text(const CritterVec& to_cr, const string& text, uchar how
 
     int dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD)
-        dist = GameOpt.ShoutDist + GetMultihex();
+        dist = settings.ShoutDist + GetMultihex();
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD)
-        dist = GameOpt.WhisperDist + GetMultihex();
+        dist = settings.WhisperDist + GetMultihex();
 
     for (Critter* cr : to_cr)
     {
@@ -759,7 +760,7 @@ void Critter::SendAA_Text(const CritterVec& to_cr, const string& text, uchar how
 
         if (dist == -1)
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
-        else if (CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
+        else if (geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
     }
 }
@@ -774,9 +775,9 @@ void Critter::SendAA_Msg(const CritterVec& to_cr, uint num_str, uchar how_say, u
 
     int dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD)
-        dist = GameOpt.ShoutDist + GetMultihex();
+        dist = settings.ShoutDist + GetMultihex();
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD)
-        dist = GameOpt.WhisperDist + GetMultihex();
+        dist = settings.WhisperDist + GetMultihex();
 
     for (auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it)
     {
@@ -790,7 +791,7 @@ void Critter::SendAA_Msg(const CritterVec& to_cr, uint num_str, uchar how_say, u
 
         if (dist == -1)
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
-        else if (CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
+        else if (geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
     }
 }
@@ -805,9 +806,9 @@ void Critter::SendAA_MsgLex(const CritterVec& to_cr, uint num_str, uchar how_say
 
     int dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD)
-        dist = GameOpt.ShoutDist + GetMultihex();
+        dist = settings.ShoutDist + GetMultihex();
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD)
-        dist = GameOpt.WhisperDist + GetMultihex();
+        dist = settings.WhisperDist + GetMultihex();
 
     for (auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it)
     {
@@ -821,7 +822,7 @@ void Critter::SendAA_MsgLex(const CritterVec& to_cr, uint num_str, uchar how_say
 
         if (dist == -1)
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
-        else if (CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
+        else if (geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex()))
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
     }
 }
@@ -927,13 +928,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 
 bool Critter::IsTransferTimeouts(bool send)
 {
-    if (IS_TIMEOUT(GetTimeoutTransfer()))
+    if (GetTimeoutTransfer() > settings.FullSecond)
     {
         if (send)
             Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         return true;
     }
-    if (IS_TIMEOUT(GetTimeoutBattle()))
+    if (GetTimeoutBattle() > settings.FullSecond)
     {
         if (send)
             Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
@@ -945,7 +946,7 @@ bool Critter::IsTransferTimeouts(bool send)
 void Critter::AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier)
 {
     if (duration)
-        duration += GameOpt.FullSecond;
+        duration += settings.FullSecond;
 
     CScriptArray* te_next_time = GetTE_NextTime();
     CScriptArray* te_func_num = GetTE_FuncNum();
@@ -1018,7 +1019,8 @@ void Critter::ContinueTimeEvents(int offs_time)
     te_next_time->Release();
 }
 
-Client::Client(NetConnection* conn, ProtoCritter* proto) : Critter(0, EntityType::Client, proto)
+Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett) :
+    Critter(0, EntityType::Client, proto, sett)
 {
     Connection = conn;
     Access = ACCESS_DEFAULT;
@@ -1087,7 +1089,8 @@ uint Client::GetOfflineTime()
 
 bool Client::IsToPing()
 {
-    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !IS_TIMEOUT(GetTimeoutTransfer());
+    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick &&
+        !(GetTimeoutTransfer() > settings.FullSecond);
 }
 
 void Client::PingClient()
@@ -2016,7 +2019,7 @@ void Client::Send_CombatResult(uint* combat_res, uint len)
 {
     if (IsSendDisabled() || IsOffline())
         return;
-    if (!combat_res || len > GameOpt.FloodSize / sizeof(uint))
+    if (!combat_res || len > settings.FloodSize / sizeof(uint))
         return;
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(len) + len * sizeof(uint);
@@ -2222,7 +2225,7 @@ bool Client::IsTalking()
     return Talk.TalkType != TALK_NONE;
 }
 
-Npc::Npc(uint id, ProtoCritter* proto) : Critter(id, EntityType::Npc, proto)
+Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett) : Critter(id, EntityType::Npc, proto, sett)
 {
     CritterIsNpc = true;
     SETFLAG(Flags, FCRIT_NPC);
@@ -2282,6 +2285,6 @@ bool Npc::IsFreeToTalk()
     if (max_talkers < 0)
         return false;
     else if (!max_talkers)
-        max_talkers = (uint)GameOpt.NpcMaxTalkers;
+        max_talkers = (uint)settings.NpcMaxTalkers;
     return GetTalkedPlayers() < (uint)max_talkers;
 }

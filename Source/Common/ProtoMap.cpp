@@ -1,4 +1,4 @@
-#include "Entity.h"
+#include "ProtoMap.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "ProtoManager.h"
@@ -194,7 +194,8 @@ bool ProtoMap::BaseLoad(FileManager& file_mngr, ProtoManager& proto_mngr, CrLoad
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ProtoMap::ServerLoad(FileManager& file_mngr, ProtoManager& proto_mngr)
 {
-    if (!BaseLoad(
+    // Todo:
+    /*if (!BaseLoad(
             file_mngr, proto_mngr,
             [this](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
                 Npc* npc = new Npc(id, proto);
@@ -221,7 +222,7 @@ bool ProtoMap::ServerLoad(FileManager& file_mngr, ProtoManager& proto_mngr)
             [this](Tile&& tile) { Tiles.push_back(std::move(tile)); }))
     {
         return false;
-    }
+    }*/
 
     return OnAfterLoad();
 }
@@ -283,9 +284,10 @@ bool ProtoMap::OnAfterLoad()
             // Block around
             for (int k = 0; k < 6; k++)
             {
-                ushort hx_ = hx, hy_ = hy;
-                MoveHexByDir(hx_, hy_, k, maxhx, maxhy);
-                SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+                // Todo:
+                // ushort hx_ = hx, hy_ = hy;
+                // MoveHexByDir(hx_, hy_, k, maxhx, maxhy);
+                // SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
             }
         }
 
@@ -301,9 +303,10 @@ bool ProtoMap::OnAfterLoad()
         {
             ushort hx_ = hx, hy_ = hy;
             bool raked = item->GetIsShootThru();
-            FOREACH_PROTO_ITEM_LINES(
-                item->GetBlockLines(), hx_, hy_, maxhx, maxhy, SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
-                if (!raked) SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_NOTRAKE););
+            // Todo:
+            // FOREACH_PROTO_ITEM_LINES(
+            //    item->GetBlockLines(), hx_, hy_, maxhx, maxhy, SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+            //    if (!raked) SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_NOTRAKE););
         }
 
         // Data for client
@@ -435,9 +438,10 @@ void ProtoMap::GetStaticItemsHex(ushort hx, ushort hy, ItemVec& items)
 
 void ProtoMap::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items)
 {
-    for (auto& item : StaticItemsVec)
-        if ((!pid || item->GetProtoId() == pid) && DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius)
-            items.push_back(item);
+    // Todo:
+    // for (auto& item : StaticItemsVec)
+    //    if ((!pid || item->GetProtoId() == pid) && DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius)
+    //        items.push_back(item);
 }
 
 void ProtoMap::GetStaticItemsByPid(hash pid, ItemVec& items)
@@ -452,7 +456,8 @@ void ProtoMap::GetStaticItemsByPid(hash pid, ItemVec& items)
 bool ProtoMap::EditorLoad(
     FileManager& file_mngr, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr)
 {
-    if (!BaseLoad(
+    // Todo:
+    /*if (!BaseLoad(
             file_mngr, proto_mngr,
             [this, &spr_mngr, &res_mngr](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
                 CritterView* npc = new CritterView(id, proto, spr_mngr, res_mngr);
@@ -486,7 +491,7 @@ bool ProtoMap::EditorLoad(
     {
         if (!LastEntityId || LastEntityId < entity->Id)
             LastEntityId = entity->Id;
-    }
+    }*/
 
     return true;
 }

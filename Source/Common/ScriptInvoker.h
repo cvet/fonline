@@ -2,6 +2,8 @@
 
 #include "Common.h"
 
+#include "Settings.h"
+
 #include "scriptarray/scriptarray.h"
 
 struct DeferredCall
@@ -25,9 +27,10 @@ class ScriptInvoker
     friend class Script;
 
 private:
+    TimerSettings& settings;
     DeferredCallList deferredCalls;
 
-    ScriptInvoker();
+    ScriptInvoker(TimerSettings& sett);
     uint AddDeferredCall(uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values);
     bool IsDeferredCallPending(uint id);
     bool CancelDeferredCall(uint id);

@@ -1,6 +1,5 @@
 #include "Timer.h"
 #include "Entity.h"
-#include "Settings.h"
 #include "WinApi_Include.h"
 
 #ifdef FO_WINDOWS
@@ -20,19 +19,24 @@ static int64 QPCStartValue = 0;
 static int64 QPCFrequency = 0;
 #endif
 
-void Timer::Init()
+class TimerInit
 {
+public:
+    TimerInit()
+    {
 #ifdef FO_WINDOWS
-    QueryPerformanceCounter((LARGE_INTEGER*)&QPCStartValue);
-    QueryPerformanceFrequency((LARGE_INTEGER*)&QPCFrequency);
+        QueryPerformanceCounter((LARGE_INTEGER*)&QPCStartValue);
+        QueryPerformanceFrequency((LARGE_INTEGER*)&QPCFrequency);
 #endif
 
-    InitialAccurateTick = AccurateTick();
-    UpdateTick();
-    LastGameTick = FastTick();
-    SkipGameTick = LastGameTick;
-    GameTickPaused = false;
-}
+        InitialAccurateTick = Timer::AccurateTick();
+        Timer::UpdateTick();
+        LastGameTick = Timer::FastTick();
+        SkipGameTick = LastGameTick;
+        GameTickPaused = false;
+    }
+};
+static TimerInit CrtTimerInit;
 
 void Timer::UpdateTick()
 {
@@ -202,38 +206,39 @@ void Timer::ContinueTime(DateTimeStamp& td, int seconds)
     FullTimeToDateTime(ft, td);
 }
 
-void Timer::InitGameTime()
+GameTimer::GameTimer(TimerSettings& sett, GlobalVars* glob) : settings {sett}, globals {glob}
 {
-    DateTimeStamp dt = {Globals->GetYearStart(), 1, 0, 1, 0, 0, 0, 0};
-    uint64 start_ft;
-    DateTimeToFullTime(dt, start_ft);
-    GameOpt.YearStartFTHi = (start_ft >> 32) & 0xFFFFFFFF;
-    GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
-
-    GameOpt.FullSecond = GetFullSecond(Globals->GetYear(), Globals->GetMonth(), Globals->GetDay(), Globals->GetHour(),
-        Globals->GetMinute(), Globals->GetSecond());
-    GameOpt.FullSecondStart = GameOpt.FullSecond;
-    GameOpt.GameTimeTick = Timer::GameTick();
+    Reset();
 }
 
-uint Timer::GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+void GameTimer::Reset()
+{
+    DateTimeStamp dt = {globals->GetYearStart(), 1, 0, 1, 0, 0, 0, 0};
+    Timer::DateTimeToFullTime(dt, yearStartFullTime);
+    settings.FullSecond = GetFullSecond(globals->GetYear(), globals->GetMonth(), globals->GetDay(), globals->GetHour(),
+        globals->GetMinute(), globals->GetSecond());
+    settings.FullSecondStart = settings.FullSecond;
+    settings.GameTimeTick = Timer::GameTick();
+}
+
+uint GameTimer::GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
     DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     uint64 ft = 0;
     Timer::DateTimeToFullTime(dt, ft);
-    ft -= PACKUINT64(GameOpt.YearStartFTHi, GameOpt.YearStartFTLo);
+    ft -= yearStartFullTime;
     return (uint)(ft / 10000000ULL);
 }
 
-DateTimeStamp Timer::GetGameTime(uint full_second)
+DateTimeStamp GameTimer::GetGameTime(uint full_second)
 {
-    uint64 ft = PACKUINT64(GameOpt.YearStartFTHi, GameOpt.YearStartFTLo) + uint64(full_second) * 10000000ULL;
+    uint64 ft = yearStartFullTime + uint64(full_second) * 10000000ULL;
     DateTimeStamp dt;
     Timer::FullTimeToDateTime(ft, dt);
     return dt;
 }
 
-uint Timer::GameTimeMonthDay(ushort year, ushort month)
+uint GameTimer::GameTimeMonthDay(ushort year, ushort month)
 {
     switch (month)
     {
@@ -255,22 +260,22 @@ uint Timer::GameTimeMonthDay(ushort year, ushort month)
     return 0;
 }
 
-bool Timer::ProcessGameTime()
+bool GameTimer::ProcessGameTime()
 {
     uint tick = Timer::GameTick();
-    uint dt = tick - GameOpt.GameTimeTick;
-    uint delta_second = dt / 1000 * Globals->GetTimeMultiplier() + dt % 1000 * Globals->GetTimeMultiplier() / 1000;
-    uint fs = GameOpt.FullSecondStart + delta_second;
-    if (GameOpt.FullSecond != fs)
+    uint dt = tick - settings.GameTimeTick;
+    uint delta_second = dt / 1000 * globals->GetTimeMultiplier() + dt % 1000 * globals->GetTimeMultiplier() / 1000;
+    uint fs = settings.FullSecondStart + delta_second;
+    if (settings.FullSecond != fs)
     {
-        GameOpt.FullSecond = fs;
-        DateTimeStamp st = GetGameTime(GameOpt.FullSecond);
-        Globals->SetYear(st.Year);
-        Globals->SetMonth(st.Month);
-        Globals->SetDay(st.Day);
-        Globals->SetHour(st.Hour);
-        Globals->SetMinute(st.Minute);
-        Globals->SetSecond(st.Second);
+        settings.FullSecond = fs;
+        DateTimeStamp st = GetGameTime(settings.FullSecond);
+        globals->SetYear(st.Year);
+        globals->SetMonth(st.Month);
+        globals->SetDay(st.Day);
+        globals->SetHour(st.Hour);
+        globals->SetMinute(st.Minute);
+        globals->SetSecond(st.Second);
         return true;
     }
     return false;

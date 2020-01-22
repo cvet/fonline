@@ -8,9 +8,8 @@
 #include "DataBase.h"
 #endif
 
-ScriptInvoker::ScriptInvoker()
+ScriptInvoker::ScriptInvoker(TimerSettings& sett) : settings {sett}
 {
-    // Dummy
 }
 
 uint ScriptInvoker::AddDeferredCall(uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values)
@@ -29,7 +28,7 @@ uint ScriptInvoker::AddDeferredCall(uint delay, bool saved, asIScriptFunction* f
 
     DeferredCall call;
     call.Id = 0;
-    call.FireFullSecond = (delay ? GameOpt.FullSecond + delay * time_mul / 1000 : 0);
+    call.FireFullSecond = (delay ? settings.FullSecond + delay * time_mul / 1000 : 0);
     call.FuncNum = func_num;
     call.BindId = bind_id;
     call.Saved = saved;
@@ -160,7 +159,7 @@ void ScriptInvoker::Process()
         for (auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it)
         {
             RUNTIME_ASSERT(it->FireFullSecond != 0);
-            if (GameOpt.FullSecond >= it->FireFullSecond)
+            if (settings.FullSecond >= it->FireFullSecond)
             {
                 DeferredCall call = *it;
                 it = deferredCalls.erase(it);
@@ -214,8 +213,9 @@ string ScriptInvoker::GetStatistics()
     {
         DeferredCall& call = *it;
         string func_name = Script::GetBindFuncName(call.BindId);
-        uint delay =
-            call.FireFullSecond > GameOpt.FullSecond ? (call.FireFullSecond - GameOpt.FullSecond) * time_mul / 1000 : 0;
+        uint delay = call.FireFullSecond > settings.FullSecond ?
+            (call.FireFullSecond - settings.FullSecond) * time_mul / 1000 :
+            0;
 
         result += _str("{:<10} {:<10} {:<8} {:<70}", call.Id, delay, call.Saved ? "true" : "false", func_name.c_str());
 
@@ -375,8 +375,8 @@ bool ScriptInvoker::Global_GetDeferredCallData(uint id, uint& delay, CScriptArra
     DeferredCall call;
     if (self->GetDeferredCallData(id, call))
     {
-        delay = (call.FireFullSecond > GameOpt.FullSecond ?
-                (call.FireFullSecond - GameOpt.FullSecond) * Globals->GetTimeMultiplier() / 1000 :
+        delay = (call.FireFullSecond > self->settings.FullSecond ?
+                (call.FireFullSecond - self->settings.FullSecond) * Globals->GetTimeMultiplier() / 1000 :
                 0);
         if (values)
         {

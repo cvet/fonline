@@ -6,6 +6,7 @@
 #include "CacheStorage.h"
 #include "EffectManager.h"
 #include "Entity.h"
+#include "GeometryHelper.h"
 #include "HexManager.h"
 #include "Keyboard.h"
 #include "MsgFiles.h"
@@ -13,6 +14,7 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Script.h"
+#include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Testing.h"
@@ -76,7 +78,7 @@ class FOClient
 {
 public:
     static FOClient* Self;
-    FOClient();
+    FOClient(ClientSettings& sett);
     ~FOClient();
     bool Init();
     void ProcessAutoLogin();
@@ -88,6 +90,8 @@ public:
     void NetDisconnect();
     void DrawIface();
 
+    ClientSettings Settings;
+    GeometryHelper GeomHelper;
     int InitCalls;
     FileManager FileMngr;
     Keyboard Keyb;
@@ -98,6 +102,7 @@ public:
     ResourceManager ResMngr;
     SoundManager SndMngr;
     CacheStorage Cache;
+    GameTimer GameTime;
 
     hash CurMapPid;
     hash CurMapLocPid;
@@ -186,8 +191,8 @@ public:
     UCharVec TempPropertyData;
 
     bool CheckSocketStatus(bool for_write);
-    bool NetConnect(const char* host, ushort port);
-    bool FillSockAddr(sockaddr_in& saddr, const char* host, ushort port);
+    bool NetConnect(const string& host, ushort port);
+    bool FillSockAddr(sockaddr_in& saddr, const string& host, ushort port);
     void ParseSocket();
     int NetInput(bool unpack);
     bool NetOutput();

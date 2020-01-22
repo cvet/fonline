@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include "GraphicStructures.h"
+#include "Settings.h"
 
 #define SPRITES_POOL_GROW_SIZE (10000)
 
@@ -72,7 +73,7 @@ class Sprites
 
 public:
     static void GrowPool();
-    Sprites(SpriteManager& spr_mngr);
+    Sprites(HexSettings& sett, SpriteManager& spr_mngr);
     ~Sprites();
     Sprite* RootSprite();
     Sprite& AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr,
@@ -86,6 +87,7 @@ public:
 
 private:
     static SpriteVec spritesPool;
+    HexSettings& settings;
     SpriteManager& sprMngr;
     Sprite* rootSprite;
     Sprite* lastSprite;

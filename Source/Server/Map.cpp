@@ -1,6 +1,7 @@
 #include "Map.h"
 #include "Critter.h"
 #include "CritterManager.h"
+#include "GenericUtils.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -32,7 +33,8 @@ CLASS_PROPERTY_IMPL(Map, DayTime);
 CLASS_PROPERTY_IMPL(Map, DayColor);
 CLASS_PROPERTY_IMPL(Map, IsNoLogOut);
 
-Map::Map(uint id, ProtoMap* proto, Location* location) : Entity(id, EntityType::Map, PropertiesRegistrator, proto)
+Map::Map(uint id, ProtoMap* proto, Location* location, MapSettings& sett) :
+    Entity(id, EntityType::Map, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings)
 {
     RUNTIME_ASSERT(proto);
 
@@ -88,8 +90,8 @@ bool Map::FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, 
     short hx_ = hx;
     short hy_ = hy;
     short *sx, *sy;
-    GetHexOffsets(hx & 1, sx, sy);
-    int max_pos = NumericalNumber(seek_radius) * DIRS_COUNT;
+    geomHelper.GetHexOffsets(hx & 1, sx, sy);
+    int max_pos = GenericUtils::NumericalNumber(seek_radius) * settings.MapDirCount;
 
     int pos = -1;
     while (true)
@@ -178,13 +180,13 @@ bool Map::AddItem(Item* item, ushort hx, ushort hy)
             if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed = false;
-                if (item->GetIsTrap() && FLAG(GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
+                if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
                     allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
                 }
                 else
                 {
-                    int dist = DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
+                    int dist = geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
                     if (item->GetIsTrap())
                         dist += item->GetTrapValue();
                     allowed = (dist <= (int)cr->GetLookDistance());
@@ -318,13 +320,13 @@ void Map::ChangeViewItem(Item* item)
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed = false;
-                if (item->GetIsTrap() && FLAG(GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
+                if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
                     allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
                 }
                 else
                 {
-                    int dist = DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap())
                         dist += item->GetTrapValue();
                     allowed = (dist <= (int)cr->GetLookDistance());
@@ -342,13 +344,13 @@ void Map::ChangeViewItem(Item* item)
             if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed = false;
-                if (item->GetIsTrap() && FLAG(GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
+                if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
                     allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
                 }
                 else
                 {
-                    int dist = DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap())
                         dist += item->GetTrapValue();
                     allowed = (dist <= (int)cr->GetLookDistance());
@@ -415,7 +417,8 @@ void Map::GetItemsHex(ushort hx, ushort hy, ItemVec& items)
 void Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items)
 {
     for (Item* item : mapItems)
-        if ((!pid || item->GetProtoId() == pid) && DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius)
+        if ((!pid || item->GetProtoId() == pid) &&
+            geomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius)
             items.push_back(item);
 }
 
@@ -442,33 +445,34 @@ bool Map::IsPlaceForProtoItem(ushort hx, ushort hy, ProtoItem* proto_item)
     if (!IsHexPassed(hx, hy))
         return false;
 
-    FOREACH_PROTO_ITEM_LINES(
-        proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), if (IsHexCritter(hx, hy)) return false;);
+    // Todo:
+    // FOREACH_PROTO_ITEM_LINES(
+    //    proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), if (IsHexCritter(hx, hy)) return false;);
     return true;
 }
 
 void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES(
-        item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-        mapBlockLinesByHex.insert(std::make_pair((hy << 16) | hx, ItemVec())).first->second.push_back(item);
-
-        RecacheHexFlags(hx, hy););
+    // Todo:
+    // bool raked = item->GetIsShootThru();
+    // FOREACH_PROTO_ITEM_LINES(
+    //    item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+    //    mapBlockLinesByHex.insert(std::make_pair((hy << 16) | hx, ItemVec())).first->second.push_back(item);
+    //    RecacheHexFlags(hx, hy););
 }
 
 void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES(
-        item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-        auto it_hex_all_bl = mapBlockLinesByHex.find((hy << 16) | hx);
-        RUNTIME_ASSERT(it_hex_all_bl != mapBlockLinesByHex.end());
-        auto it_hex_bl = std::find(it_hex_all_bl->second.begin(), it_hex_all_bl->second.end(), item);
-        RUNTIME_ASSERT(it_hex_bl != it_hex_all_bl->second.end()); it_hex_all_bl->second.erase(it_hex_bl);
-        if (it_hex_all_bl->second.empty()) mapBlockLinesByHex.erase(it_hex_all_bl);
-
-        RecacheHexFlags(hx, hy););
+    // Todo:
+    // bool raked = item->GetIsShootThru();
+    // FOREACH_PROTO_ITEM_LINES(
+    //    item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+    //    auto it_hex_all_bl = mapBlockLinesByHex.find((hy << 16) | hx);
+    //    RUNTIME_ASSERT(it_hex_all_bl != mapBlockLinesByHex.end());
+    //    auto it_hex_bl = std::find(it_hex_all_bl->second.begin(), it_hex_all_bl->second.end(), item);
+    //    RUNTIME_ASSERT(it_hex_bl != it_hex_all_bl->second.end()); it_hex_all_bl->second.erase(it_hex_bl);
+    //    if (it_hex_all_bl->second.empty()) mapBlockLinesByHex.erase(it_hex_all_bl);
+    //    RecacheHexFlags(hx, hy););
 }
 
 void Map::RecacheHexFlags(ushort hx, ushort hy)
@@ -569,8 +573,8 @@ bool Map::IsHexesPassed(ushort hx, ushort hy, uint radius)
 
     // Neighbors
     short *sx, *sy;
-    GetHexOffsets(hx & 1, sx, sy);
-    uint count = NumericalNumber(radius) * DIRS_COUNT;
+    geomHelper.GetHexOffsets(hx & 1, sx, sy);
+    uint count = GenericUtils::NumericalNumber(radius) * settings.MapDirCount;
     short maxhx = GetWidth();
     short maxhy = GetHeight();
     for (uint i = 0; i < count; i++)
@@ -593,34 +597,34 @@ bool Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex)
     // Base hex
     int hx_ = hx, hy_ = hy;
     for (uint k = 0; k < multihex; k++)
-        MoveHexByDirUnsafe(hx_, hy_, dir);
+        geomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
     if (hx_ < 0 || hy_ < 0 || hx_ >= GetWidth() || hy_ >= GetHeight())
         return false;
     if (!IsHexPassed(hx_, hy_))
         return false;
 
     // Clock wise hexes
-    bool is_square_corner = (!GameOpt.MapHexagonal && IS_DIR_CORNER(dir));
+    bool is_square_corner = (!settings.MapHexagonal && IS_DIR_CORNER(dir));
     uint steps_count = (is_square_corner ? multihex * 2 : multihex);
-    int dir_ = (GameOpt.MapHexagonal ? ((dir + 2) % 6) : ((dir + 2) % 8));
+    int dir_ = (settings.MapHexagonal ? ((dir + 2) % 6) : ((dir + 2) % 8));
     if (is_square_corner)
         dir_ = (dir_ + 1) % 8;
     int hx__ = hx_, hy__ = hy_;
     for (uint k = 0; k < steps_count; k++)
     {
-        MoveHexByDirUnsafe(hx__, hy__, dir_);
+        geomHelper.MoveHexByDirUnsafe(hx__, hy__, dir_);
         if (!IsHexPassed(hx__, hy__))
             return false;
     }
 
     // Counter clock wise hexes
-    dir_ = (GameOpt.MapHexagonal ? ((dir + 4) % 6) : ((dir + 6) % 8));
+    dir_ = (settings.MapHexagonal ? ((dir + 4) % 6) : ((dir + 6) % 8));
     if (is_square_corner)
         dir_ = (dir_ + 7) % 8;
     hx__ = hx_, hy__ = hy_;
     for (uint k = 0; k < steps_count; k++)
     {
-        MoveHexByDirUnsafe(hx__, hy__, dir_);
+        geomHelper.MoveHexByDirUnsafe(hx__, hy__, dir_);
         if (!IsHexPassed(hx__, hy__))
             return false;
     }
@@ -668,8 +672,8 @@ void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
         if (multihex)
         {
             short *sx, *sy;
-            GetHexOffsets(hx & 1, sx, sy);
-            int count = NumericalNumber(multihex) * DIRS_COUNT;
+            geomHelper.GetHexOffsets(hx & 1, sx, sy);
+            int count = GenericUtils::NumericalNumber(multihex) * settings.MapDirCount;
             short maxhx = GetWidth();
             short maxhy = GetHeight();
             for (int i = 0; i < count; i++)
@@ -702,8 +706,8 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
         if (multihex > 0)
         {
             short *sx, *sy;
-            GetHexOffsets(hx & 1, sx, sy);
-            int count = NumericalNumber(multihex) * DIRS_COUNT;
+            geomHelper.GetHexOffsets(hx & 1, sx, sy);
+            int count = GenericUtils::NumericalNumber(multihex) * settings.MapDirCount;
             short maxhx = GetWidth();
             short maxhy = GetHeight();
             for (int i = 0; i < count; i++)
@@ -766,7 +770,7 @@ Critter* Map::GetHexCritter(ushort hx, ushort hy, bool dead)
             }
             else
             {
-                if (CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh))
+                if (geomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh))
                     return cr;
             }
         }
@@ -780,7 +784,8 @@ void Map::GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, Critt
     find_critters.reserve(mapCritters.size());
     for (Critter* cr : mapCritters)
     {
-        if (cr->CheckFind(find_type) && CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex()))
+        if (cr->CheckFind(find_type) &&
+            geomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex()))
             find_critters.push_back(cr);
     }
 
@@ -810,7 +815,7 @@ NpcVec Map::GetNpcs()
 void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
 {
     for (Client* cl : mapPlayers)
-        if (CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, cl->LookCacheValue + radius))
+        if (geomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, cl->LookCacheValue + radius))
             cl->Send_Effect(eff_pid, hx, hy, radius);
 }
 
@@ -818,7 +823,8 @@ void Map::SendFlyEffect(
     hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     for (Client* cl : mapPlayers)
-        if (IntersectCircleLine(cl->GetHexX(), cl->GetHexY(), cl->LookCacheValue, from_hx, from_hy, to_hx, to_hy))
+        if (GenericUtils::IntersectCircleLine(
+                cl->GetHexX(), cl->GetHexY(), cl->LookCacheValue, from_hx, from_hy, to_hx, to_hy))
             cl->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
 }
 
@@ -852,7 +858,7 @@ void Map::SetText(ushort hx, ushort hy, uint color, const string& text, bool uns
 
     for (Client* cl : mapPlayers)
     {
-        if (cl->LookCacheValue >= DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
+        if (cl->LookCacheValue >= geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
             cl->Send_MapText(hx, hy, color, text, unsafe_text);
     }
 }
@@ -864,7 +870,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
 
     for (Client* cl : mapPlayers)
     {
-        if (cl->LookCacheValue >= DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
+        if (cl->LookCacheValue >= geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
             cl->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
     }
 }
@@ -877,7 +883,7 @@ void Map::SetTextMsgLex(
 
     for (Client* cl : mapPlayers)
     {
-        if (cl->LookCacheValue >= DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
+        if (cl->LookCacheValue >= geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
             cl->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems, lexems_len);
     }
 }

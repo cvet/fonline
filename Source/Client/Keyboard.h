@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include "KeyCodes_Include.h"
+#include "Settings.h"
 
 // Keyboard input flags
 #define KIF_NO_SPEC_SYMBOLS (1) // Ignore \n \r \t
@@ -14,7 +15,7 @@ class SpriteManager;
 class Keyboard : public NonCopyable
 {
 public:
-    Keyboard(SpriteManager& spr_mngr);
+    Keyboard(InputSettings& sett, SpriteManager& spr_mngr);
     ~Keyboard();
     void Lost();
     void GetChar(uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags);
@@ -30,6 +31,7 @@ public:
 private:
     bool IsInvalidChar(const char* str, uint flags, uint& length);
 
+    InputSettings& settings;
     SpriteManager& sprMngr;
     uchar KeysMap[0x200] = {};
     ushort KeysMapRevert[0x100] = {};

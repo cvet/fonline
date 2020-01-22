@@ -27,7 +27,7 @@ namespace Str
 
     void HexToStr(uchar hex, char* str); // 2 bytes string
     uchar StrToHex(const char* str);
-} // namespace Str
+}
 
 class _str
 {
@@ -107,10 +107,6 @@ public:
 
     hash toHash();
     _str& parseHash(hash h);
-
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    static void loadHashes();
-#endif
 };
 
 namespace utf8
@@ -120,7 +116,7 @@ namespace utf8
     uint Encode(uint ucs, char (&buf)[4]);
     uint Lower(uint ucs);
     uint Upper(uint ucs);
-} // namespace utf8
+}
 
 namespace fmt
 {
@@ -139,4 +135,4 @@ namespace fmt
             return format_to(ctx.out(), "{}", s.str());
         }
     };
-} // namespace fmt
+}

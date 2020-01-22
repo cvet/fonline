@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "ProtoMap.h"
 
 class MapView : public Entity
 {

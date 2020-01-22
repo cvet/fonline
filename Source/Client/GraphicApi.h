@@ -72,7 +72,8 @@
 #endif
 #endif
 
-#define GL(expr) \
+#define GL(expr) expr
+/*#define GL(expr) \
     { \
         expr; \
         if (GameOpt.OpenGLDebug) \
@@ -80,7 +81,7 @@
             GLenum err__ = glGetError(); \
             RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {:#X}", err__)); \
         } \
-    }
+    }*/
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;

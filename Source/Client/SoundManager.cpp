@@ -1,5 +1,6 @@
 #include "SoundManager.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "ResourceManager.h"
 #include "StringUtils.h"
@@ -33,7 +34,7 @@ struct SoundManager::Sound
     unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>> OggStream {};
 };
 
-SoundManager::SoundManager(FileManager& file_mngr) : fileMngr {file_mngr}
+SoundManager::SoundManager(SoundSettings& sett, FileManager& file_mngr) : settings {sett}, fileMngr {file_mngr}
 {
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -107,7 +108,7 @@ void SoundManager::ProcessSounds(uchar* output)
         Sound* sound = *it;
         if (ProcessSound(sound, &outputBuf[0]))
         {
-            int volume = (sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume);
+            int volume = (sound->IsMusic ? settings.MusicVolume : settings.SoundVolume);
             volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
             SDL_MixAudioFormat(output, &outputBuf[0], pImpl->SoundSpec.format, pImpl->SoundSpec.size, volume);
             ++it;
@@ -513,7 +514,7 @@ bool SoundManager::ConvertData(Sound* sound)
 
 bool SoundManager::PlaySound(const StrMap& sound_names, const string& name)
 {
-    if (!isActive || !GameOpt.SoundVolume)
+    if (!isActive || !settings.SoundVolume)
         return true;
 
     // Make 'NAME'
@@ -529,7 +530,7 @@ bool SoundManager::PlaySound(const StrMap& sound_names, const string& name)
     while (sound_names.find(_str("{}_{}", sound_name, count + 1)) != sound_names.end())
         count++;
     if (count)
-        return Load(sound_names.find(_str("{}_{}", sound_name, Random(1, count)))->second, false) != nullptr;
+        return !!Load(sound_names.find(_str("{}_{}", sound_name, GenericUtils::Random(1, count)))->second, false);
 
     return false;
 }

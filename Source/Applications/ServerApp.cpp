@@ -8,7 +8,9 @@
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+#include "Version_Include.h"
 
+static GlobalSettings Settings {};
 static FOServer* Server;
 static std::thread ServerThread;
 static std::atomic_bool StartServer;
@@ -18,7 +20,7 @@ static void ServerEntry()
     while (!StartServer)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    Server = new FOServer();
+    Server = new FOServer(Settings);
     Server->Run();
     FOServer* server = Server;
     Server = nullptr;
@@ -31,17 +33,17 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 static int main_disabled(int argc, char** argv)
 #endif
 {
+    CatchExceptions("FOnlineServer", FO_VERSION);
     LogToFile("FOnlineServer.log");
-    LogToBuffer(true);
-    InitialSetup("FOnlineServer", argc, argv);
+    Settings.ParseArgs(argc, argv);
 
     // Gui
-    bool use_dx = !GameOpt.OpenGLRendering;
+    bool use_dx = !Settings.OpenGLRendering;
     if (!AppGui::Init("FOnline Server", use_dx, false, false))
         return -1;
 
     // Autostart
-    if (!GameOpt.NoStart)
+    if (!Settings.NoStart)
         StartServer = true;
 
     // Server loop in separate thread
@@ -59,7 +61,7 @@ static int main_disabled(int argc, char** argv)
                 exit(0);
 
             // Graceful finish
-            GameOpt.Quit = true;
+            Settings.Quit = true;
         }
 
         if (!StartServer)

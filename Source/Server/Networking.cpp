@@ -23,20 +23,70 @@ using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = websocketpp::lib::asio::ssl::context;
 #include "zlib.h"
 
+class NetTcpServer : public NetServerBase
+{
+public:
+    NetTcpServer(ServerNetworkSettings& sett, ConnectionCallback callback);
+    virtual ~NetTcpServer() override;
+
+private:
+    void Run();
+    void AcceptNext();
+    void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket);
+
+    ServerNetworkSettings& settings;
+    asio::ip::tcp::acceptor acceptor;
+    ConnectionCallback connectionCallback {};
+    asio::io_service ioService {};
+    std::thread runThread {};
+};
+
+class NetNoTlsWebSocketsServer : public NetServerBase
+{
+public:
+    NetNoTlsWebSocketsServer(ServerNetworkSettings& sett, ConnectionCallback callback);
+    virtual ~NetNoTlsWebSocketsServer() override;
+
+private:
+    void Run();
+    void OnOpen(websocketpp::connection_hdl hdl);
+    bool OnValidate(websocketpp::connection_hdl hdl);
+
+    ServerNetworkSettings& settings;
+    ConnectionCallback connectionCallback {};
+    web_sockets_no_tls server {};
+    std::thread runThread {};
+};
+
+class NetTlsWebSocketsServer : public NetServerBase
+{
+public:
+    NetTlsWebSocketsServer(ServerNetworkSettings& sett, ConnectionCallback callback);
+    virtual ~NetTlsWebSocketsServer() override;
+
+private:
+    void Run();
+    void OnOpen(websocketpp::connection_hdl hdl);
+    bool OnValidate(websocketpp::connection_hdl hdl);
+    websocketpp::lib::shared_ptr<ssl_context> OnTlsInit(websocketpp::connection_hdl hdl);
+
+    ServerNetworkSettings& settings;
+    ConnectionCallback connectionCallback {};
+    web_sockets_tls server {};
+    std::thread runThread {};
+};
+
 class NetConnectionImpl : public NetConnection
 {
-    z_stream* zStream;
-    uchar outBuf[NetBuffer::DefaultBufSize];
-
 public:
-    NetConnectionImpl()
+    NetConnectionImpl(ServerNetworkSettings& sett) : settings {sett}
     {
         IsDisconnected = false;
         DisconnectTick = 0;
         zStream = nullptr;
         memzero(outBuf, sizeof(outBuf));
 
-        if (!GameOpt.DisableZlibCompression)
+        if (!settings.DisableZlibCompression)
         {
             zStream = new z_stream();
             zStream->zalloc = [](void* opaque, unsigned int items, unsigned int size) { return calloc(items, size); };
@@ -145,7 +195,7 @@ protected:
     {
         SCOPE_LOCK(BinLocker);
 
-        if (Bin.GetCurPos() + len < GameOpt.FloodSize)
+        if (Bin.GetCurPos() + len < settings.FloodSize)
         {
             Bin.Push(buf, len, true);
         }
@@ -155,15 +205,35 @@ protected:
             Disconnect();
         }
     }
+
+    ServerNetworkSettings& settings;
+
+private:
+    z_stream* zStream {};
+    uchar outBuf[NetBuffer::DefaultBufSize] {};
 };
 
 class NetConnectionAsio : public NetConnectionImpl
 {
-    asio::ip::tcp::socket* socket;
-    std::atomic_bool writePending;
-    uchar inBuf[NetBuffer::DefaultBufSize];
-    asio::error_code dummyError;
+public:
+    NetConnectionAsio(ServerNetworkSettings& sett, asio::ip::tcp::socket* socket) :
+        NetConnectionImpl(sett), socket {socket}
+    {
+        const auto& address = socket->remote_endpoint().address();
+        Ip = (address.is_v4() ? address.to_v4().to_ulong() : uint(-1));
+        Host = address.to_string();
+        Port = socket->remote_endpoint().port();
 
+        if (settings.DisableTcpNagle)
+            socket->set_option(asio::ip::tcp::no_delay(true), dummyError);
+        memzero(inBuf, sizeof(inBuf));
+        writePending = 0;
+        NextAsyncRead();
+    }
+
+    virtual ~NetConnectionAsio() override { delete socket; }
+
+private:
     void NextAsyncRead()
     {
         asio::async_read(*socket, asio::buffer(inBuf), asio::transfer_at_least(1),
@@ -224,72 +294,10 @@ class NetConnectionAsio : public NetConnectionImpl
         socket->close(dummyError);
     }
 
-public:
-    NetConnectionAsio(asio::ip::tcp::socket* socket) : socket(socket)
-    {
-        const auto& address = socket->remote_endpoint().address();
-        Ip = (address.is_v4() ? address.to_v4().to_ulong() : uint(-1));
-        Host = address.to_string();
-        Port = socket->remote_endpoint().port();
-
-        if (GameOpt.DisableTcpNagle)
-            socket->set_option(asio::ip::tcp::no_delay(true), dummyError);
-        memzero(inBuf, sizeof(inBuf));
-        writePending = 0;
-        NextAsyncRead();
-    }
-
-    virtual ~NetConnectionAsio() override { delete socket; }
-};
-
-class NetTcpServer : public NetServerBase
-{
-    ConnectionCallback connectionCallback;
-    asio::io_service ioService;
-    asio::ip::tcp::acceptor acceptor;
-    std::thread runThread;
-
-    void Run()
-    {
-        asio::error_code error;
-        ioService.run(error);
-    }
-
-    void AcceptNext()
-    {
-        asio::ip::tcp::socket* socket = new asio::ip::tcp::socket(ioService);
-        acceptor.async_accept(*socket, std::bind(&NetTcpServer::AcceptConnection, this, std::placeholders::_1, socket));
-    }
-
-    void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
-    {
-        if (!error)
-        {
-            connectionCallback(new NetConnectionAsio(socket));
-        }
-        else
-        {
-            WriteLog("Accept error: {}.\n", error.message());
-            delete socket;
-        }
-
-        AcceptNext();
-    }
-
-public:
-    NetTcpServer(ushort port, ConnectionCallback callback) :
-        acceptor(ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port))
-    {
-        connectionCallback = callback;
-        AcceptNext();
-        runThread = std::thread(&NetTcpServer::Run, this);
-    }
-
-    virtual ~NetTcpServer() override
-    {
-        ioService.stop();
-        runThread.join();
-    }
+    asio::ip::tcp::socket* socket {};
+    std::atomic_bool writePending {};
+    uchar inBuf[NetBuffer::DefaultBufSize] {};
+    asio::error_code dummyError {};
 };
 
 template<typename web_sockets>
@@ -298,9 +306,29 @@ class NetConnectionWS : public NetConnectionImpl
     using connection_ptr = typename web_sockets::connection_ptr;
     using message_ptr = typename web_sockets::message_ptr;
 
-    web_sockets* server;
-    connection_ptr connection;
+public:
+    NetConnectionWS(ServerNetworkSettings& sett, web_sockets* server, connection_ptr connection) :
+        NetConnectionImpl(sett), server {server}, connection {connection}
+    {
+        const auto& address = connection->get_raw_socket().remote_endpoint().address();
+        Ip = (address.is_v4() ? address.to_v4().to_ulong() : uint(-1));
+        Host = address.to_string();
+        Port = connection->get_raw_socket().remote_endpoint().port();
 
+        if (settings.DisableTcpNagle)
+        {
+            asio::error_code error;
+            connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
+        }
+
+        connection->set_message_handler(
+            websocketpp::lib::bind(&NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2));
+        connection->set_fail_handler(websocketpp::lib::bind(&NetConnectionWS::OnFail, this));
+        connection->set_close_handler(websocketpp::lib::bind(&NetConnectionWS::OnClose, this));
+        connection->set_http_handler(websocketpp::lib::bind(&NetConnectionWS::OnHttp, this));
+    }
+
+private:
     void OnMessage(message_ptr msg)
     {
         const string& payload = msg->get_payload();
@@ -342,139 +370,155 @@ class NetConnectionWS : public NetConnectionImpl
         connection->terminate(error);
     }
 
-public:
-    NetConnectionWS(web_sockets* server, connection_ptr connection) : server(server), connection(connection)
-    {
-        const auto& address = connection->get_raw_socket().remote_endpoint().address();
-        Ip = (address.is_v4() ? address.to_v4().to_ulong() : uint(-1));
-        Host = address.to_string();
-        Port = connection->get_raw_socket().remote_endpoint().port();
-
-        if (GameOpt.DisableTcpNagle)
-        {
-            asio::error_code error;
-            connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
-        }
-
-        connection->set_message_handler(
-            websocketpp::lib::bind(&NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2));
-        connection->set_fail_handler(websocketpp::lib::bind(&NetConnectionWS::OnFail, this));
-        connection->set_close_handler(websocketpp::lib::bind(&NetConnectionWS::OnClose, this));
-        connection->set_http_handler(websocketpp::lib::bind(&NetConnectionWS::OnHttp, this));
-    }
+    web_sockets* server {};
+    connection_ptr connection {};
 };
 
-class NetNoTlsWebSocketsServer : public NetServerBase
+NetTcpServer::NetTcpServer(ServerNetworkSettings& sett, ConnectionCallback callback) :
+    settings {sett}, acceptor(ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), settings.Port))
 {
-    ConnectionCallback connectionCallback;
-    web_sockets_no_tls server;
-    std::thread runThread;
+    connectionCallback = callback;
+    AcceptNext();
+    runThread = std::thread(&NetTcpServer::Run, this);
+}
 
-    void Run() { server.run(); }
-
-    void OnOpen(websocketpp::connection_hdl hdl)
-    {
-        web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
-        connectionCallback(new NetConnectionWS<web_sockets_no_tls>(&server, connection));
-    }
-
-    bool OnValidate(websocketpp::connection_hdl hdl)
-    {
-        web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
-        std::error_code error;
-        connection->select_subprotocol("binary", error);
-        return !error;
-    }
-
-public:
-    NetNoTlsWebSocketsServer(ushort port, ConnectionCallback callback)
-    {
-        connectionCallback = callback;
-
-        server.init_asio();
-        server.set_open_handler(
-            websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-        server.set_validate_handler(
-            websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
-        server.listen(asio::ip::tcp::v6(), port);
-        server.start_accept();
-
-        runThread = std::thread(&NetNoTlsWebSocketsServer::Run, this);
-    }
-
-    virtual ~NetNoTlsWebSocketsServer() override
-    {
-        server.stop();
-        runThread.join();
-    }
-};
-
-class NetTlsWebSocketsServer : public NetServerBase
+NetTcpServer::~NetTcpServer()
 {
-    ConnectionCallback connectionCallback;
-    web_sockets_tls server;
-    std::thread runThread;
-    string privateKey;
-    string certificate;
+    ioService.stop();
+    runThread.join();
+}
 
-    void Run() { server.run(); }
+void NetTcpServer::Run()
+{
+    asio::error_code error;
+    ioService.run(error);
+}
 
-    void OnOpen(websocketpp::connection_hdl hdl)
+void NetTcpServer::AcceptNext()
+{
+    asio::ip::tcp::socket* socket = new asio::ip::tcp::socket(ioService);
+    acceptor.async_accept(*socket, std::bind(&NetTcpServer::AcceptConnection, this, std::placeholders::_1, socket));
+}
+
+void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
+{
+    if (!error)
     {
-        web_sockets_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
-        connectionCallback(new NetConnectionWS<web_sockets_tls>(&server, connection));
+        connectionCallback(new NetConnectionAsio(settings, socket));
+    }
+    else
+    {
+        WriteLog("Accept error: {}.\n", error.message());
+        delete socket;
     }
 
-    bool OnValidate(websocketpp::connection_hdl hdl)
-    {
-        web_sockets_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
-        std::error_code error;
-        connection->select_subprotocol("binary", error);
-        return !error;
-    }
+    AcceptNext();
+}
 
-    websocketpp::lib::shared_ptr<ssl_context> OnTlsInit(websocketpp::connection_hdl hdl)
-    {
-        websocketpp::lib::shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
-        ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 |
-            ssl_context::single_dh_use);
-        ctx->use_certificate_chain_file(certificate);
-        ctx->use_private_key_file(privateKey, ssl_context::pem);
-        return ctx;
-    }
+NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& sett, ConnectionCallback callback) :
+    settings {sett}
+{
+    connectionCallback = callback;
 
-public:
-    NetTlsWebSocketsServer(ushort port, string private_key, string cert, ConnectionCallback callback)
-    {
-        connectionCallback = callback;
-        privateKey = private_key;
-        certificate = cert;
+    server.init_asio();
+    server.set_open_handler(
+        websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
+    server.set_validate_handler(
+        websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
+    server.listen(asio::ip::tcp::v6(), settings.Port + 1);
+    server.start_accept();
 
-        server.init_asio();
-        server.set_open_handler(
-            websocketpp::lib::bind(&NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-        server.set_validate_handler(
-            websocketpp::lib::bind(&NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
-        server.set_tls_init_handler(
-            websocketpp::lib::bind(&NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1));
-        server.listen(asio::ip::tcp::v6(), port);
-        server.start_accept();
+    runThread = std::thread(&NetNoTlsWebSocketsServer::Run, this);
+}
 
-        runThread = std::thread(&NetTlsWebSocketsServer::Run, this);
-    }
+NetNoTlsWebSocketsServer::~NetNoTlsWebSocketsServer()
+{
+    server.stop();
+    runThread.join();
+}
 
-    virtual ~NetTlsWebSocketsServer() override
-    {
-        server.stop();
-        runThread.join();
-    }
-};
+void NetNoTlsWebSocketsServer::Run()
+{
+    server.run();
+}
 
-NetServerBase* NetServerBase::StartTcpServer(ushort port, ConnectionCallback callback)
+void NetNoTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
+{
+    web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
+    connectionCallback(new NetConnectionWS<web_sockets_no_tls>(settings, &server, connection));
+}
+
+bool NetNoTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl)
+{
+    web_sockets_no_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
+    std::error_code error;
+    connection->select_subprotocol("binary", error);
+    return !error;
+}
+
+NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& sett, ConnectionCallback callback) :
+    settings {sett}
+{
+    if (settings.WssPrivateKey.empty())
+        throw fo_exception("'WssPrivateKey' not provided");
+    if (settings.WssCertificate.empty())
+        throw fo_exception("'WssCertificate' not provided");
+
+    connectionCallback = callback;
+
+    server.init_asio();
+    server.set_open_handler(
+        websocketpp::lib::bind(&NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
+    server.set_validate_handler(
+        websocketpp::lib::bind(&NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
+    server.set_tls_init_handler(
+        websocketpp::lib::bind(&NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1));
+    server.listen(asio::ip::tcp::v6(), settings.Port + 1);
+    server.start_accept();
+
+    runThread = std::thread(&NetTlsWebSocketsServer::Run, this);
+}
+
+NetTlsWebSocketsServer::~NetTlsWebSocketsServer()
+{
+    server.stop();
+    runThread.join();
+}
+
+void NetTlsWebSocketsServer::Run()
+{
+    server.run();
+}
+
+void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
+{
+    web_sockets_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
+    connectionCallback(new NetConnectionWS<web_sockets_tls>(settings, &server, connection));
+}
+
+bool NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl)
+{
+    web_sockets_tls::connection_ptr connection = server.get_con_from_hdl(hdl);
+    std::error_code error;
+    connection->select_subprotocol("binary", error);
+    return !error;
+}
+
+websocketpp::lib::shared_ptr<ssl_context> NetTlsWebSocketsServer::OnTlsInit(websocketpp::connection_hdl hdl)
+{
+    websocketpp::lib::shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
+    ctx->set_options(
+        ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
+    ctx->use_certificate_chain_file(settings.WssCertificate);
+    ctx->use_private_key_file(settings.WssPrivateKey, ssl_context::pem);
+    return ctx;
+}
+
+NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback)
 {
     try
     {
-        return new NetTcpServer(port, callback);
+        return new NetTcpServer(settings, callback);
     }
     catch (std::exception ex)
     {
@@ -483,22 +527,14 @@ NetServerBase* NetServerBase::StartTcpServer(ushort port, ConnectionCallback cal
     }
 }
 
-NetServerBase* NetServerBase::StartWebSocketsServer(ushort port, string wss_credentials, ConnectionCallback callback)
+NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback)
 {
     try
     {
-        if (wss_credentials.empty())
-        {
-            return new NetNoTlsWebSocketsServer(port, callback);
-        }
+        if (!settings.SecuredWebSockets)
+            return new NetNoTlsWebSocketsServer(settings, callback);
         else
-        {
-            StrVec keys = _str(wss_credentials).split(' ');
-            if (keys.size() != 2)
-                throw fo_exception("Invalid 'WssCredentials' option", wss_credentials);
-
-            return new NetTlsWebSocketsServer(port, keys[0], keys[1], callback);
-        }
+            return new NetTlsWebSocketsServer(settings, callback);
     }
     catch (std::exception ex)
     {

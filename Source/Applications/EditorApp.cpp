@@ -12,6 +12,8 @@
 #include "Testing.h"
 #include "Version_Include.h"
 
+static GlobalSettings Settings {};
+
 static void DockSpaceBegin();
 static void DockSpaceEnd();
 
@@ -172,7 +174,7 @@ struct MapperWindow : GuiWindow
 
     MapperWindow(std::string map_name) : GuiWindow("Map")
     {
-        Mapper = new FOMapper();
+        Mapper = new FOMapper(Settings);
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
         if (!pmap->EditorLoad(Mapper->ServerFileMngr, Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
@@ -235,7 +237,7 @@ struct SettingsWindow : GuiWindow
             // bool changed = ResourceConverter::Generate(resource_names);
         }
 
-        GameOpt.Draw(true);
+        Settings.Draw(true);
         return true;
     }
 };
@@ -250,15 +252,15 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    InitialSetup("FOnlineEditor", argc, argv);
-
-    // Logging
+    CatchExceptions("FOnlineEditor", FO_VERSION);
     LogToFile("FOnlineEditor.log");
+    Settings.ParseArgs(argc, argv);
+        
     LogToBuffer(true);
     WriteLog("FOnline Editor ({:#x}).\n", FO_VERSION);
 
     // Initialize Gui
-    bool use_dx = !GameOpt.OpenGLRendering;
+    bool use_dx = !Settings.OpenGLRendering;
     if (!AppGui::Init("FOnline Editor", use_dx, true, true))
         return -1;
 
@@ -271,7 +273,7 @@ static int main_disabled(int argc, char** argv)
     Windows.push_back(new SettingsWindow());
 
     // Main loop
-    while (!GameOpt.Quit)
+    while (!Settings.Quit)
     {
         if (!AppGui::BeginFrame())
             break;

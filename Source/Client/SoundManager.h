@@ -3,11 +3,12 @@
 #include "Common.h"
 
 #include "FileSystem.h"
+#include "Settings.h"
 
 class SoundManager : public NonCopyable
 {
 public:
-    SoundManager(FileManager& file_mngr);
+    SoundManager(SoundSettings& sett, FileManager& file_mngr);
     ~SoundManager();
     bool PlaySound(const StrMap& sound_names, const string& name);
     bool PlayMusic(const string& fname, uint repeat_time);
@@ -29,6 +30,7 @@ private:
     bool StreamOGG(Sound* sound);
     bool ConvertData(Sound* sound);
 
+    SoundSettings& settings;
     FileManager& fileMngr;
     bool isActive {};
     bool isAudioInited {};

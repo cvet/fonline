@@ -1,4 +1,5 @@
 #include "Entity.h"
+#include "ProtoMap.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)

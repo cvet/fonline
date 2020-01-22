@@ -3,6 +3,8 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "GeometryHelper.h"
+#include "Settings.h"
 
 class ResourceManager;
 class SpriteManager;
@@ -68,13 +70,16 @@ public:
     ItemViewVec InvItems;
 
 private:
+    CritterViewSettings& settings;
+    GeometryHelper geomHelper;
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
 
 public:
     static bool SlotEnabled[0x100];
 
-    CritterView(uint id, ProtoCritter* proto, SpriteManager& spr_mngr, ResourceManager& res_mngr);
+    CritterView(
+        uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr, ResourceManager& res_mngr);
     ~CritterView();
     void Init();
     void Finish();

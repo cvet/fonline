@@ -2,6 +2,9 @@
 
 #include "Common.h"
 
+#include "Entity.h"
+#include "Settings.h"
+
 struct DateTimeStamp
 {
     ushort Year; // 1601 .. 30827
@@ -14,9 +17,24 @@ struct DateTimeStamp
     ushort Milliseconds; // 0 .. 999
 };
 
+class GameTimer : public NonCopyable
+{
+public:
+    GameTimer(TimerSettings& sett, GlobalVars* glob);
+    void Reset();
+    uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
+    DateTimeStamp GetGameTime(uint full_second);
+    uint GameTimeMonthDay(ushort year, ushort month);
+    bool ProcessGameTime();
+
+private:
+    TimerSettings& settings;
+    GlobalVars* globals {};
+    uint64 yearStartFullTime {};
+};
+
 namespace Timer
 {
-    void Init();
     void UpdateTick();
 
     uint FastTick();
@@ -31,11 +49,4 @@ namespace Timer
     void FullTimeToDateTime(uint64 ft, DateTimeStamp& dt);
     int GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2);
     void ContinueTime(DateTimeStamp& dt, int seconds);
-
-    // Game time
-    void InitGameTime();
-    uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
-    DateTimeStamp GetGameTime(uint full_second);
-    uint GameTimeMonthDay(ushort year, ushort month);
-    bool ProcessGameTime();
 };

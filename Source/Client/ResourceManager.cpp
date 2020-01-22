@@ -5,7 +5,6 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Script.h"
-#include "Settings.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 
@@ -116,9 +115,6 @@ static uint AnimMapId(hash model_name, uint anim1, uint anim2, bool is_fallout)
 
 AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim2, int dir)
 {
-    // Process dir
-    dir = CLAMP(dir, 0, DIRS_COUNT - 1);
-
     // Make animation id
     uint id = AnimMapId(model_name, anim1, anim2, false);
 
@@ -161,7 +157,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim
                         sprMngr.PopAtlasType();
 
                         // Fix by dirs
-                        for (int d = 0; anim && d < anim->DirCount(); d++)
+                        for (int d = 0; anim && d < anim->DirCount; d++)
                         {
                             AnyFrames* dir_anim = anim->GetDir(d);
 
@@ -250,7 +246,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim
     // Store resulted animation indices
     if (anim)
     {
-        for (int d = 0; d < anim->DirCount(); d++)
+        for (int d = 0; d < anim->DirCount; d++)
         {
             anim->GetDir(d)->Anim1 = anim1;
             anim->GetDir(d)->Anim2 = anim2;
@@ -283,10 +279,10 @@ AnyFrames* ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint an
 
             AnyFrames* anim_merge_base =
                 sprMngr.CreateAnyFrames(anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks);
-            for (int d = 0; d < anim->DirCount(); d++)
+            for (int d = 0; d < anim->DirCount; d++)
             {
                 if (d == 1)
-                    sprMngr.CreateAnyFramesDirAnims(anim_merge_base);
+                    sprMngr.CreateAnyFramesDirAnims(anim_merge_base, anim->DirCount);
                 AnyFrames* anim_merge = anim_merge_base->GetDir(d);
                 AnyFrames* anim_ = anim->GetDir(d);
                 AnyFrames* animex_ = animex->GetDir(d);
@@ -313,10 +309,10 @@ AnyFrames* ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint an
         {
             AnyFrames* anim_clone_base = sprMngr.CreateAnyFrames(
                 !FLAG(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->Ticks);
-            for (int d = 0; d < anim->DirCount(); d++)
+            for (int d = 0; d < anim->DirCount; d++)
             {
                 if (d == 1)
-                    sprMngr.CreateAnyFramesDirAnims(anim_clone_base);
+                    sprMngr.CreateAnyFramesDirAnims(anim_clone_base, anim->DirCount);
                 AnyFrames* anim_clone = anim_clone_base->GetDir(d);
                 AnyFrames* anim_ = anim->GetDir(d);
                 if (!FLAG(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME))
@@ -353,7 +349,7 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
 {
     if (!stay_frm_base)
         return;
-    for (int d = 0; d < stay_frm_base->DirCount(); d++)
+    for (int d = 0; d < stay_frm_base->DirCount; d++)
     {
         AnyFrames* frames = frames_base->GetDir(d);
         AnyFrames* stay_frm = stay_frm_base->GetDir(d);
@@ -375,7 +371,7 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
 {
     if (!stay_frm_base)
         return;
-    for (int d = 0; d < stay_frm_base->DirCount(); d++)
+    for (int d = 0; d < stay_frm_base->DirCount; d++)
     {
         AnyFrames* frames = frames_base->GetDir(d);
         AnyFrames* stay_frm = stay_frm_base->GetDir(d);
@@ -610,7 +606,7 @@ AnyFrames* ResourceManager::GetRandomSplash()
 {
     if (splashNames.empty())
         return 0;
-    int rnd = Random(0, (int)splashNames.size() - 1);
+    int rnd = GenericUtils::Random(0, (int)splashNames.size() - 1);
     static AnyFrames* splash = nullptr;
     sprMngr.PushAtlasType(AtlasType::Splash, true);
     splash = sprMngr.ReloadAnimation(splash, splashNames[rnd]);

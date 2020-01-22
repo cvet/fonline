@@ -14,7 +14,7 @@
 static uchar* LoadPNG(const uchar* data, uint data_size, uint& result_width, uint& result_height);
 static uchar* LoadTGA(const uchar* data, uint data_size, uint& result_width, uint& result_height);
 
-ImageBaker::ImageBaker(FileCollection& all_files) : allFiles {all_files}
+ImageBaker::ImageBaker(GeometrySettings& sett, FileCollection& all_files) : settings {sett}, allFiles {all_files}
 {
     // Swap palette R&B
     static std::once_flag once;
@@ -82,7 +82,7 @@ void ImageBaker::BakeCollection(const string& fname, const FrameCollection& coll
     UCharVec data;
     DataWriter writer {data};
     const ushort check_number = 42;
-    uchar dirs = (collection.HaveDirs ? DIRS_COUNT : 1);
+    uchar dirs = (collection.HaveDirs ? settings.MapDirCount : 1);
 
     writer.Write(check_number);
     writer.Write(collection.SequenceSize);
@@ -199,7 +199,7 @@ ImageBaker::FrameCollection ImageBaker::LoadFofrm(const string& fname, const str
 
     collection.EffectName = fofrm.GetStr("", "effect");
 
-    for (int dir = 0; dir < DIRS_COUNT; dir++)
+    for (int dir = 0; dir < settings.MapDirCount; dir++)
     {
         vector<tuple<FrameCollection, int, int>> sub_collections;
         sub_collections.reserve(10);
@@ -303,12 +303,12 @@ ImageBaker::FrameCollection ImageBaker::LoadFrm(const string& fname, const strin
     collection.SequenceSize = frm_num;
     collection.AnimTicks = 1000 / frm_fps * frm_num;
 
-    for (int dir = 0; dir < DIRS_COUNT; dir++)
+    for (int dir = 0; dir < settings.MapDirCount; dir++)
     {
         FrameSequence& sequence = (dir == 0 ? collection.Main : collection.Dirs[dir - 1]);
 
         int dir_frm = dir;
-        if (!GameOpt.MapHexagonal)
+        if (!settings.MapHexagonal)
         {
             if (dir >= 3)
                 dir_frm--;
@@ -526,12 +526,12 @@ ImageBaker::FrameCollection ImageBaker::LoadFrX(const string& fname, const strin
     collection.AnimTicks = 1000 / frm_fps * frm_num;
     collection.NewExtension = "frm";
 
-    for (int dir = 0; dir < DIRS_COUNT; dir++)
+    for (int dir = 0; dir < settings.MapDirCount; dir++)
     {
         FrameSequence& sequence = (dir == 0 ? collection.Main : collection.Dirs[dir - 1]);
 
         int dir_frm = dir;
-        if (!GameOpt.MapHexagonal)
+        if (!settings.MapHexagonal)
         {
             if (dir >= 3)
                 dir_frm--;
@@ -901,12 +901,12 @@ ImageBaker::FrameCollection ImageBaker::LoadArt(const string& fname, const strin
     collection.AnimTicks = 1000 / frm_fps * frm_count_anim;
     collection.HaveDirs = (header.rotationCount == 8);
 
-    for (int dir = 0; dir < DIRS_COUNT; dir++)
+    for (int dir = 0; dir < settings.MapDirCount; dir++)
     {
         FrameSequence& sequence = (dir == 0 ? collection.Main : collection.Dirs[dir - 1]);
 
         int dir_art = dir;
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
         {
             switch (dir_art)
             {
@@ -1050,10 +1050,10 @@ ImageBaker::FrameCollection ImageBaker::LoadSpr(const string& fname, const strin
 {
     FrameCollection collection;
 
-    for (int dir = 0; dir < DIRS_COUNT; dir++)
+    for (int dir = 0; dir < settings.MapDirCount; dir++)
     {
         int dir_spr = dir;
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
         {
             switch (dir_spr)
             {

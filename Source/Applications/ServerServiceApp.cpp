@@ -4,8 +4,10 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
+#include "Version_Include.h"
 #include "WinApi_Include.h"
 
+static GlobalSettings Settings {};
 static FOServer* Server;
 static std::thread ServerThread;
 
@@ -18,7 +20,7 @@ static void SetFOServiceStatus(uint state);
 
 static void ServerEntry()
 {
-    Server = new FOServer();
+    Server = new FOServer(Settings);
     Server->Run();
     FOServer* server = Server;
     Server = nullptr;
@@ -31,17 +33,18 @@ int main(int argc, char** argv)
 static int main_disabled(int argc, char** argv)
 #endif
 {
+    CatchExceptions("FOnlineServerService", FO_VERSION);
     LogToFile("FOnlineServerService.log");
-    InitialSetup("FOnlineServerService", argc, argv);
+    Settings.ParseArgs(argc, argv);
 
 #ifdef FO_WINDOWS
-    if (GameOpt.CommandLine.find("--server-service-start") != string::npos)
+    if (Settings.CommandLine.find("--server-service-start") != string::npos)
     {
         // Start
         SERVICE_TABLE_ENTRY dispatch_table[] = {{L"FOnlineServer", FOServiceStart}, {nullptr, nullptr}};
         StartServiceCtrlDispatcher(dispatch_table);
     }
-    else if (GameOpt.CommandLine.find("--server-service-delete") != string::npos)
+    else if (Settings.CommandLine.find("--server-service-delete") != string::npos)
     {
         // Delete
         SC_HANDLE manager = OpenSCManager(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
@@ -83,7 +86,7 @@ static int main_disabled(int argc, char** argv)
         bool error = false;
 
         // Compile service path
-        string path = _str("\"{}\" {} --server-service", DiskFileSystem::GetExePath(), GameOpt.CommandLine);
+        string path = _str("\"{}\" {} --server-service", DiskFileSystem::GetExePath(), Settings.CommandLine);
 
         // Change executable path, if changed
         if (service)
@@ -165,7 +168,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
     {
     case SERVICE_CONTROL_STOP:
         SetFOServiceStatus(SERVICE_STOP_PENDING);
-        GameOpt.Quit = true;
+        Settings.Quit = true;
         if (ServerThread.joinable())
             ServerThread.join();
         SetFOServiceStatus(SERVICE_STOPPED);

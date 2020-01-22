@@ -54,7 +54,7 @@ static void Global_ThrowException(string message)
 
 static int Global_Random(int min, int max)
 {
-    return Random(min, max);
+    return GenericUtils::Random(min, max);
 }
 
 static void Global_Log(string text)
@@ -80,17 +80,23 @@ static bool Global_StrToFloat(string text, float& result)
 
 static uint Global_GetDistantion(ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
-    return DistGame(hx1, hy1, hx2, hy2);
+    // Todo:
+    // return DistGame(hx1, hy1, hx2, hy2);
+    return 0;
 }
 
 static uchar Global_GetDirection(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
-    return GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    // Todo:
+    // return GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    return 0;
 }
 
 static uchar Global_GetOffsetDir(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset)
 {
-    return GetFarDir(from_hx, from_hy, to_hx, to_hy, offset);
+    // Todo:
+    // return GetFarDir(from_hx, from_hy, to_hx, to_hy, offset);
+    return 0;
 }
 
 static uint Global_GetTick()

@@ -3,6 +3,8 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "GeometryHelper.h"
+#include "Settings.h"
 
 class ProtoManager;
 class EntityManager;
@@ -83,7 +85,8 @@ using PathStepVec = vector<PathStep>;
 class MapManager
 {
 public:
-    MapManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr);
+    MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr,
+        ItemManager& item_mngr);
 
     // Maps
     bool FindPlaceOnMap(Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius);
@@ -136,13 +139,14 @@ private:
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
+    ServerSettings& settings;
+    GeometryHelper geomHelper;
     ProtoManager& protoMngr;
     EntityManager& entityMngr;
     CritterManager& crMngr;
     ItemManager& itemMngr;
-
-    bool runGarbager = true;
-    PathStepVec pathesPool[FPATH_DATA_SIZE];
-    uint pathNumCur = 0;
-    bool smoothSwitcher = false;
+    bool runGarbager {true};
+    PathStepVec pathesPool[FPATH_DATA_SIZE] {};
+    uint pathNumCur {};
+    bool smoothSwitcher {};
 };

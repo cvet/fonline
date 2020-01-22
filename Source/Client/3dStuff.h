@@ -3,8 +3,10 @@
 #include "Common.h"
 
 #include "FileSystem.h"
+#include "GeometryHelper.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
+#include "Settings.h"
 
 #define ANIMATION_STAY (0x01)
 #define ANIMATION_ONE_TIME (0x02)
@@ -80,7 +82,7 @@ class Animation3dManager : public NonCopyable
 public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
-    Animation3dManager(FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
+    Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
     ~Animation3dManager();
 
     Bone* LoadModel(const string& fname);
@@ -101,6 +103,7 @@ private:
     void VecUnproject(const Vector& v, Vector& out);
     void ProjectPosition(Vector& v);
 
+    RenderSettings& settings;
     FileManager& fileMngr;
     EffectManager& effectMngr;
     MeshTextureCreator meshTexCreator {};

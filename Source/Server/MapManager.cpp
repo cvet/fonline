@@ -14,9 +14,14 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-MapManager::MapManager(
-    ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr) :
-    protoMngr(proto_mngr), entityMngr(entity_mngr), crMngr(cr_mngr), itemMngr(item_mngr)
+MapManager::MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
+    CritterManager& cr_mngr, ItemManager& item_mngr) :
+    settings {sett},
+    geomHelper(settings),
+    protoMngr(proto_mngr),
+    entityMngr(entity_mngr),
+    crMngr(cr_mngr),
+    itemMngr(item_mngr)
 {
     for (int i = 1; i < FPATH_DATA_SIZE; i++)
         pathesPool[i].reserve(100);
@@ -44,7 +49,7 @@ void MapManager::GenerateMapContent(Map* map)
         {
             if (npc->GetCond() == COND_DEAD)
             {
-                npc->SetCurrentHp(GameOpt.DeadHitPoints - 1);
+                npc->SetCurrentHp(settings.DeadHitPoints - 1);
 
                 uint multihex = npc->GetMultihex();
                 map->UnsetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, false);
@@ -217,7 +222,7 @@ Location* MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy)
         return nullptr;
     }
 
-    if (wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength)
+    if (wx >= GM__MAXZONEX * settings.GlobalMapZoneLength || wy >= GM__MAXZONEY * settings.GlobalMapZoneLength)
     {
         WriteLog("Invalid location '{}' coordinates.\n", _str().parseHash(proto_id));
         return nullptr;
@@ -276,7 +281,7 @@ Map* MapManager::CreateMap(hash proto_id, Location* loc)
         return nullptr;
     }
 
-    Map* map = new Map(0, proto_map, loc);
+    Map* map = new Map(0, proto_map, loc, settings);
     MapVec& maps = loc->GetMapsRaw();
     map->SetLocId(loc->GetId());
     map->SetLocMapIndex((uint)maps.size());
@@ -295,7 +300,7 @@ bool MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& do
         return false;
     }
 
-    Map* map = new Map(id, proto, nullptr);
+    Map* map = new Map(id, proto, nullptr, settings);
     if (!map->Props.LoadFromDbDocument(doc))
     {
         WriteLog("Fail to restore properties for map '{}' ({}).\n", _str().parseHash(proto_id), id);
@@ -365,7 +370,7 @@ Location* MapManager::GetLocationByPid(hash loc_pid, uint skip_count)
 
 bool MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones)
 {
-    int zl = GM_ZONE_LEN;
+    int zl = settings.GlobalMapZoneLength;
     Rect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones,
         (wy1 + w1_radius) / zl + zones);
     Rect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
@@ -376,8 +381,8 @@ void MapManager::GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_
 {
     LocationVec locs;
     entityMngr.GetLocations(locs);
-    int wx = zx * GM_ZONE_LEN;
-    int wy = zy * GM_ZONE_LEN;
+    int wx = zx * settings.GlobalMapZoneLength;
+    int wy = zy * settings.GlobalMapZoneLength;
     for (auto it = locs.begin(), end = locs.end(); it != end; ++it)
     {
         Location* loc = *it;
@@ -493,7 +498,7 @@ void MapManager::TraceBullet(TraceData& trace)
 
     uint dist = trace.Dist;
     if (!dist)
-        dist = DistGame(hx, hy, tx, ty);
+        dist = geomHelper.DistGame(hx, hy, tx, ty);
 
     ushort cx = hx;
     ushort cy = hy;
@@ -501,7 +506,7 @@ void MapManager::TraceBullet(TraceData& trace)
     ushort old_cy = cy;
     uchar dir;
 
-    LineTracer line_tracer(hx, hy, tx, ty, maxhx, maxhy, trace.Angle, !GameOpt.MapHexagonal);
+    LineTracer line_tracer(settings, hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
 
     trace.IsFullTrace = false;
     trace.IsCritterFounded = false;
@@ -515,14 +520,14 @@ void MapManager::TraceBullet(TraceData& trace)
             break;
         }
 
-        if (GameOpt.MapHexagonal)
+        if (settings.MapHexagonal)
         {
             dir = line_tracer.GetNextHex(cx, cy);
         }
         else
         {
             line_tracer.GetNextSquare(cx, cy);
-            dir = GetNearDir(old_cx, old_cy, cx, cy);
+            dir = geomHelper.GetNearDir(old_cx, old_cy, cx, cy);
         }
 
         if (trace.HexCallback)
@@ -603,7 +608,7 @@ int MapManager::FindPath(PathFindData& pfd)
     bool is_run = pfd.IsRun;
     bool check_cr = pfd.CheckCrit;
     bool check_gag_items = pfd.CheckGagItems;
-    int dirs_count = DIRS_COUNT;
+    int dirs_count = settings.MapDirCount;
 
     // Checks
     if (trace && !pfd.TraceCr)
@@ -618,7 +623,7 @@ int MapManager::FindPath(PathFindData& pfd)
     if (from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy)
         return FPATH_INVALID_HEXES;
 
-    if (CheckDist(from_hx, from_hy, to_hx, to_hy, cut))
+    if (geomHelper.CheckDist(from_hx, from_hy, to_hx, to_hy, cut))
         return FPATH_ALREADY_HERE;
     if (!cut && FLAG(map->GetHexFlags(to_hx, to_hy), FH_NOWAY))
         return FPATH_HEX_BUSY;
@@ -627,7 +632,7 @@ int MapManager::FindPath(PathFindData& pfd)
     if (cut <= 1 && !multihex)
     {
         short *rsx, *rsy;
-        GetHexOffsets(to_hx & 1, rsx, rsy);
+        geomHelper.GetHexOffsets(to_hx & 1, rsx, rsy);
 
         int i = 0;
         for (; i < dirs_count; i++, rsx++, rsy++)
@@ -650,7 +655,7 @@ int MapManager::FindPath(PathFindData& pfd)
     // Parse previous move params
     /*UShortPairVec first_steps;
        uchar first_dir=pfd.MoveParams&7;
-       if(first_dir<DIRS_COUNT)
+       if(first_dir<settings.MapDirCount)
        {
             ushort hx_=from_hx;
             ushort hy_=from_hy;
@@ -691,13 +696,13 @@ int MapManager::FindPath(PathFindData& pfd)
             cy = coords[p].second;
             numindex = GRID(cx, cy);
 
-            if (CheckDist(cx, cy, to_hx, to_hy, cut))
+            if (geomHelper.CheckDist(cx, cy, to_hx, to_hy, cut))
                 goto label_FindOk;
             if (++numindex > FPATH_MAX_PATH)
                 return FPATH_TOOFAR;
 
             short *sx, *sy;
-            GetHexOffsets(cx & 1, sx, sy);
+            geomHelper.GetHexOffsets(cx & 1, sx, sy);
 
             for (int j = 0; j < dirs_count; j++)
             {
@@ -744,9 +749,9 @@ int MapManager::FindPath(PathFindData& pfd)
                        //if(!IsHexPassed(hx_,hy_)) return false;
 
                        // Clock wise hexes
-                       bool is_square_corner=(!GameOpt.MapHexagonal && IS_DIR_CORNER(j));
+                       bool is_square_corner=(!settings.MapHexagonal && IS_DIR_CORNER(j));
                        uint steps_count=(is_square_corner?multihex*2:multihex);
-                       int dir_=(GameOpt.MapHexagonal?((j+2)%6):((j+2)%8));
+                       int dir_=(settings.MapHexagonal?((j+2)%6):((j+2)%8));
                        if(is_square_corner) dir_=(dir_+1)%8;
                        int hx__=hx_,hy__=hy_;
                        for(uint k=0;k<steps_count;k++)
@@ -756,7 +761,7 @@ int MapManager::FindPath(PathFindData& pfd)
                        }
 
                        // Counter clock wise hexes
-                       dir_=(GameOpt.MapHexagonal?((j+4)%6):((j+6)%8));
+                       dir_=(settings.MapHexagonal?((j+4)%6):((j+6)%8));
                        if(is_square_corner) dir_=(dir_+7)%8;
                        hx__=hx_,hy__=hy_;
                        for(uint k=0;k<steps_count;k++)
@@ -827,11 +832,11 @@ label_FindOk:
     path.resize(numindex - 1);
 
     // Smooth data
-    if (!GameOpt.MapSmoothPath)
+    if (!settings.MapSmoothPath)
         smoothSwitcher = false;
 
     int smooth_count = 0, smooth_iteration = 0;
-    if (GameOpt.MapSmoothPath && !GameOpt.MapHexagonal)
+    if (settings.MapSmoothPath && !settings.MapHexagonal)
     {
         int x1 = cx, y1 = cy;
         int x2 = from_hx, y2 = from_hy;
@@ -854,9 +859,9 @@ label_FindOk:
 
     while (numindex > 1)
     {
-        if (GameOpt.MapSmoothPath)
+        if (settings.MapSmoothPath)
         {
-            if (GameOpt.MapHexagonal)
+            if (settings.MapHexagonal)
             {
                 if (numindex & 1)
                     smoothSwitcher = !smoothSwitcher;
@@ -948,7 +953,7 @@ label_FindOk:
 
                 PathStep& ps = path[i];
 
-                if (!CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace))
+                if (!geomHelper.CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace))
                     continue;
 
                 trace_.BeginHx = ps.HexX;
@@ -991,7 +996,7 @@ label_FindOk:
 int MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher)
 {
     // Hexagonal
-    if (GameOpt.MapHexagonal)
+    if (settings.MapHexagonal)
     {
         if (smooth_switcher)
         {
@@ -1144,7 +1149,7 @@ int MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swit
     else
     {
         // Without smoothing
-        if (!GameOpt.MapSmoothPath)
+        if (!settings.MapSmoothPath)
         {
             if (GRID(hx - 1, hy) == index)
             {
@@ -1347,7 +1352,7 @@ bool MapManager::Transit(
     // Check force
     if (!force)
     {
-        if (IS_TIMEOUT(cr->GetTimeoutTransfer()) || IS_TIMEOUT(cr->GetTimeoutBattle()))
+        if (cr->GetTimeoutTransfer() > settings.FullSecond || cr->GetTimeoutBattle() > settings.FullSecond)
             return false;
         if (cr->IsDead())
             return false;
@@ -1383,7 +1388,7 @@ bool MapManager::Transit(
 
         cr->LockMapTransfers++;
 
-        cr->SetDir(dir >= DIRS_COUNT ? 0 : dir);
+        cr->SetDir(dir >= settings.MapDirCount ? 0 : dir);
         map->UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, cr->IsDead());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -1468,7 +1473,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
     cr->LockMapTransfers++;
 
     cr->SetTimeoutBattle(0);
-    cr->SetTimeoutTransfer(GameOpt.FullSecond + GameOpt.TimeoutTransfer);
+    cr->SetTimeoutTransfer(settings.FullSecond + settings.TimeoutTransfer);
 
     if (map)
     {
@@ -1617,7 +1622,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     int vis;
     int look_base_self = view_cr->GetLookDistance();
     int dir_self = view_cr->GetDir();
-    int dirs_count = DIRS_COUNT;
+    int dirs_count = settings.MapDirCount;
     uint show_cr_dist1 = view_cr->GetShowCritterDist1();
     uint show_cr_dist2 = view_cr->GetShowCritterDist2();
     uint show_cr_dist3 = view_cr->GetShowCritterDist3();
@@ -1634,9 +1639,9 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr == view_cr || cr->IsDestroyed)
             continue;
 
-        int dist = DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+        int dist = geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
 
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_SCRIPT))
+        if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
         {
             bool allow_self = Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr);
             bool allow_opp = Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, cr, view_cr);
@@ -1767,28 +1772,28 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         int look_opp = cr->GetLookDistance();
 
         // Dir modifier
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_DIR))
+        if (FLAG(settings.LookChecks, LOOK_CHECK_DIR))
         {
             // Self
-            int real_dir = GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+            int real_dir = geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
             int i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
             if (i > dirs_count / 2)
                 i = dirs_count - i;
-            look_self -= look_self * GameOpt.LookDir[i] / 100;
+            look_self -= look_self * settings.LookDir[i] / 100;
             // Opponent
             int dir_opp = cr->GetDir();
             real_dir = ((real_dir + dirs_count / 2) % dirs_count);
             i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
             if (i > dirs_count / 2)
                 i = dirs_count - i;
-            look_opp -= look_opp * GameOpt.LookDir[i] / 100;
+            look_opp -= look_opp * settings.LookDir[i] / 100;
         }
 
         if (dist > look_self && dist > look_opp)
             dist = MAX_INT;
 
         // Trace
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
+        if (FLAG(settings.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
         {
             TraceData trace;
             trace.TraceMap = map;
@@ -1805,15 +1810,16 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr->GetIsHide() && dist != MAX_INT)
         {
             int sneak_opp = cr->GetSneakCoefficient();
-            if (FLAG(GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR))
+            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
             {
-                int real_dir = GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+                int real_dir =
+                    geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
                 int i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
                 if (i > dirs_count / 2)
                     i = dirs_count - i;
-                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[i] / 100;
+                sneak_opp -= sneak_opp * settings.LookSneakDir[i] / 100;
             }
-            sneak_opp /= (int)GameOpt.SneakDivider;
+            sneak_opp /= (int)settings.SneakDivider;
             if (sneak_opp < 0)
                 sneak_opp = 0;
             vis = look_self - sneak_opp;
@@ -1822,8 +1828,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         {
             vis = look_self;
         }
-        if (vis < (int)GameOpt.LookMinimum)
-            vis = GameOpt.LookMinimum;
+        if (vis < (int)settings.LookMinimum)
+            vis = settings.LookMinimum;
 
         if (vis >= dist)
         {
@@ -1886,16 +1892,17 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (view_cr->GetIsHide() && dist != MAX_INT)
         {
             int sneak_self = sneak_base_self;
-            if (FLAG(GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR))
+            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
             {
                 int dir_opp = cr->GetDir();
-                int real_dir = GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
+                int real_dir =
+                    geomHelper.GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
                 int i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
                 if (i > dirs_count / 2)
                     i = dirs_count - i;
-                sneak_self -= sneak_self * GameOpt.LookSneakDir[i] / 100;
+                sneak_self -= sneak_self * settings.LookSneakDir[i] / 100;
             }
-            sneak_self /= (int)GameOpt.SneakDivider;
+            sneak_self /= (int)settings.SneakDivider;
             if (sneak_self < 0)
                 sneak_self = 0;
             vis = look_opp - sneak_self;
@@ -1904,8 +1911,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         {
             vis = look_opp;
         }
-        if (vis < (int)GameOpt.LookMinimum)
-            vis = GameOpt.LookMinimum;
+        if (vis < (int)settings.LookMinimum)
+            vis = settings.LookMinimum;
 
         if (vis >= dist)
         {
@@ -2000,13 +2007,14 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         else
         {
             bool allowed = false;
-            if (item->GetIsTrap() && FLAG(GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
+            if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
             {
                 allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
             }
             else
             {
-                int dist = DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                int dist =
+                    geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
                 if (item->GetIsTrap())
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
@@ -2042,38 +2050,38 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
     view_cr->Send_GameInfo(map);
 
     // Critters
-    int dirs_count = DIRS_COUNT;
+    int dirs_count = settings.MapDirCount;
     int vis;
     for (Critter* cr : map->GetCritters())
     {
         if (cr == view_cr || cr->IsDestroyed)
             continue;
 
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_SCRIPT))
+        if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
         {
             if (Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr))
                 view_cr->Send_AddCritter(cr);
             continue;
         }
 
-        int dist = DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
+        int dist = geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
         int look_self = look;
 
         // Dir modifier
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_DIR))
+        if (FLAG(settings.LookChecks, LOOK_CHECK_DIR))
         {
-            int real_dir = GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+            int real_dir = geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
             int i = (dir > real_dir ? dir - real_dir : real_dir - dir);
             if (i > dirs_count / 2)
                 i = dirs_count - i;
-            look_self -= look_self * GameOpt.LookDir[i] / 100;
+            look_self -= look_self * settings.LookDir[i] / 100;
         }
 
         if (dist > look_self)
             continue;
 
         // Trace
-        if (FLAG(GameOpt.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
+        if (FLAG(settings.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
         {
             TraceData trace;
             trace.TraceMap = map;
@@ -2090,15 +2098,15 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         if (cr->GetIsHide())
         {
             int sneak_opp = cr->GetSneakCoefficient();
-            if (FLAG(GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR))
+            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
             {
-                int real_dir = GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+                int real_dir = geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
                 int i = (dir > real_dir ? dir - real_dir : real_dir - dir);
                 if (i > dirs_count / 2)
                     i = dirs_count - i;
-                sneak_opp -= sneak_opp * GameOpt.LookSneakDir[i] / 100;
+                sneak_opp -= sneak_opp * settings.LookSneakDir[i] / 100;
             }
-            sneak_opp /= (int)GameOpt.SneakDivider;
+            sneak_opp /= (int)settings.SneakDivider;
             if (sneak_opp < 0)
                 sneak_opp = 0;
             vis = look_self - sneak_opp;
@@ -2107,8 +2115,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         {
             vis = look_self;
         }
-        if (vis < (int)GameOpt.LookMinimum)
-            vis = GameOpt.LookMinimum;
+        if (vis < (int)settings.LookMinimum)
+            vis = settings.LookMinimum;
         if (vis >= dist)
             view_cr->Send_AddCritter(cr);
     }
@@ -2127,13 +2135,13 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         else
         {
             bool allowed = false;
-            if (item->GetIsTrap() && FLAG(GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
+            if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
             {
                 allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
             }
             else
             {
-                int dist = DistGame(hx, hy, item->GetHexX(), item->GetHexY());
+                int dist = geomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
                 if (item->GetIsTrap())
                     dist += item->GetTrapValue();
                 allowed = look >= dist;

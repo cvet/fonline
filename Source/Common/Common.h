@@ -1,15 +1,5 @@
 #pragma once
 
-// FOnline build target (passed outside)
-#if !defined(FONLINE_SERVER) && !defined(FONLINE_CLIENT) && !defined(FONLINE_EDITOR)
-#error "Build target not specified"
-#endif
-#if (defined(FONLINE_SERVER) && (defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR))) || \
-    (defined(FONLINE_CLIENT) && (defined(FONLINE_SERVER) || defined(FONLINE_EDITOR))) || \
-    (defined(FONLINE_EDITOR) && (defined(FONLINE_SERVER) || defined(FONLINE_CLIENT)))
-#error "Multiple build targets not allowed"
-#endif
-
 // Operating system (passed outside)
 // FO_WINDOWS
 // FO_LINUX
@@ -17,22 +7,10 @@
 // FO_IOS
 // FO_ANDROID
 // FO_WEB
-#if !defined(FO_WINDOWS) && !defined(FO_LINUX) && !defined(FO_MAC) && !defined(FO_ANDROID) && !defined(FO_IOS) && \
-    !defined(FO_WEB)
+#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
 #error "Unknown operating system"
 #endif
-#if (defined(FO_WINDOWS) && \
-    (defined(FO_LINUX) || defined(FO_MAC) || defined(FO_ANDROID) || defined(FO_IOS) || defined(FO_WEB))) || \
-    (defined(FO_LINUX) && \
-        (defined(FO_WINDOWS) || defined(FO_MAC) || defined(FO_ANDROID) || defined(FO_IOS) || defined(FO_WEB))) || \
-    (defined(FO_MAC) && \
-        (defined(FO_LINUX) || defined(FO_WINDOWS) || defined(FO_ANDROID) || defined(FO_IOS) || defined(FO_WEB))) || \
-    (defined(FO_ANDROID) && \
-        (defined(FO_LINUX) || defined(FO_MAC) || defined(FO_WINDOWS) || defined(FO_IOS) || defined(FO_WEB))) || \
-    (defined(FO_IOS) && \
-        (defined(FO_LINUX) || defined(FO_MAC) || defined(FO_ANDROID) || defined(FO_WINDOWS) || defined(FO_WEB))) || \
-    (defined(FO_WEB) && \
-        (defined(FO_LINUX) || defined(FO_MAC) || defined(FO_ANDROID) || defined(FO_IOS) || defined(FO_WINDOWS)))
+#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB != 1
 #error "Multiple operating systems not allowed"
 #endif
 
@@ -336,10 +314,13 @@ class EventDispatcher : public NonCopyable
 public:
     using ObserverType = EventObserver<Args...>;
     EventDispatcher(ObserverType& obs) : observer {obs} {}
-    void Dispatch(Args... args)
+    EventDispatcher& operator()(Args... args)
     {
-        for (auto& cb : observer.callbacks)
-            cb(std::forward<Args>(args)...);
+        // Todo: recursion guard
+        if (!observer.subscriberCallbacks.empty())
+            for (auto& cb : observer.subscriberCallbacks)
+                cb(std::forward<Args>(args)...);
+        return *this;
     }
 
 private:
@@ -506,7 +487,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define MAX_HOLO_INFO (250)
 #define EFFECT_SCRIPT_VALUES (10)
 #define ABC_SIZE (26)
-#define DIRS_COUNT (GameOpt.MapHexagonal ? 6 : 8)
 #define IS_DIR_CORNER(dir) (((dir)&1) != 0) // 1, 3, 5, 7
 #define UTF8_BUF_SIZE(count) ((count)*4)
 #define DLGID_MASK (0xFFFFC000)
@@ -561,9 +541,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define CRITTER_INV_VOLUME (1000)
 
 // Global map
-#define GM_MAXX (GameOpt.GlobalMapWidth * GameOpt.GlobalMapZoneLength)
-#define GM_MAXY (GameOpt.GlobalMapHeight * GameOpt.GlobalMapZoneLength)
-#define GM_ZONE_LEN (GameOpt.GlobalMapZoneLength) // Can be multiple to GM_MAXX and GM_MAXY
 #define GM__MAXZONEX (100)
 #define GM__MAXZONEY (100)
 #define GM_ZONES_FOG_SIZE (((GM__MAXZONEX / 4) + ((GM__MAXZONEX % 4) ? 1 : 0)) * GM__MAXZONEY)
@@ -573,7 +550,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define GM_FOG_NONE (3)
 #define GM_ANSWER_WAIT_TIME (20000)
 #define GM_LIGHT_TIME (5000)
-#define GM_ZONE(x) ((x) / GM_ZONE_LEN)
 #define GM_ENTRANCES_SEND_TIME (60000)
 #define GM_TRACE_TIME (1000)
 
@@ -670,9 +646,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define SHOW_SCREEN_FIXBOY (9) // Fix-boy.
 #define SHOW_SCREEN_PIPBOY (10) // Pip-boy.
 #define SHOW_SCREEN_MINIMAP (11) // Mini-map.
-
-// Timeouts
-#define IS_TIMEOUT(to) ((to) > GameOpt.FullSecond)
 
 // Special send params
 #define OTHER_BREAK_TIME (0)
@@ -821,57 +794,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define LAYERS3D_COUNT (30)
 #define DEFAULT_DRAW_SIZE (128)
 
-// Lines foreach helper
-#define FOREACH_PROTO_ITEM_LINES(lines, hx, hy, maxhx, maxhy, work) \
-    int hx__ = hx, hy__ = hy; \
-    int maxhx__ = maxhx, maxhy__ = maxhy; \
-    for (uint i__ = 0, j__ = (lines)->GetSize() / 2; i__ < j__; i__++) \
-    { \
-        uchar dir__ = *(uchar*)(lines)->At(i__ * 2); \
-        uchar steps__ = *(uchar*)(lines)->At(i__ * 2 + 1); \
-        if (dir__ >= DIRS_COUNT || !steps__ || steps__ > 9) \
-            break; \
-        for (uchar k__ = 0; k__ < steps__; k__++) \
-        { \
-            MoveHexByDirUnsafe(hx__, hy__, dir__); \
-            if (hx__ < 0 || hy__ < 0 || hx__ >= maxhx__ || hy__ >= maxhy__) \
-                continue; \
-            hx = hx__, hy = hy__; \
-            work \
-        } \
-    }
-
-extern void InitialSetup(const string& app_name, uint argc, char** argv);
-extern int Random(int minimum, int maximum);
-extern int Procent(int full, int peace);
-extern uint NumericalNumber(uint num);
-extern uint DistSqrt(int x1, int y1, int x2, int y2);
-extern uint DistGame(int x1, int y1, int x2, int y2);
-extern int GetNearDir(int x1, int y1, int x2, int y2);
-extern int GetFarDir(int x1, int y1, int x2, int y2);
-extern int GetFarDir(int x1, int y1, int x2, int y2, float offset);
-extern bool CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist);
-extern int ReverseDir(int dir);
-extern void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
-extern void ChangeStepsXY(float& sx, float& sy, float deq);
-extern bool MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy);
-extern void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir);
-extern bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
-extern void ShowErrorMessage(const string& message, const string& traceback);
-extern int ConvertParamValue(const string& str, bool& fail);
-
-// Hex offsets
-#define MAX_HEX_OFFSET (50) // Must be not odd
-extern void GetHexOffsets(bool odd, short*& sx, short*& sy);
-extern void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
-
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
-extern IntVec MainWindowKeyboardEvents;
-extern StrVec MainWindowKeyboardEventsText;
-extern IntVec MainWindowMouseEvents;
-extern uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light);
-#endif
-
 // Zoom
 #define MIN_ZOOM (0.1f)
 #define MAX_ZOOM (20.0f)
@@ -1015,20 +937,71 @@ inline T* ReadDataArr(UCharVec& vec, uint size, uint& pos)
 class TwoBitMask
 {
 public:
-    TwoBitMask();
-    TwoBitMask(uint width_2bit, uint height_2bit, uchar* ptr);
-    ~TwoBitMask();
-    void Set2Bit(uint x, uint y, int val);
-    int Get2Bit(uint x, uint y);
-    void Fill(int fill);
-    uchar* GetData();
+    TwoBitMask() = default;
+
+    TwoBitMask(uint width_2bit, uint height_2bit, uchar* ptr)
+    {
+        if (!width_2bit)
+            width_2bit = 1;
+        if (!height_2bit)
+            height_2bit = 1;
+
+        width = width_2bit;
+        height = height_2bit;
+        widthBytes = width / 4;
+
+        if (width % 4)
+            widthBytes++;
+
+        if (ptr)
+        {
+            isAlloc = false;
+            data = ptr;
+        }
+        else
+        {
+            isAlloc = true;
+            data = new uchar[widthBytes * height];
+            Fill(0);
+        }
+    }
+
+    ~TwoBitMask()
+    {
+        if (isAlloc)
+            delete[] data;
+        data = nullptr;
+    }
+
+    void Set2Bit(uint x, uint y, int val)
+    {
+        if (x >= width || y >= height)
+            return;
+
+        uchar& b = data[y * widthBytes + x / 4];
+        int bit = (x % 4 * 2);
+
+        UNSETFLAG(b, 3 << bit);
+        SETFLAG(b, (val & 3) << bit);
+    }
+
+    int Get2Bit(uint x, uint y)
+    {
+        if (x >= width || y >= height)
+            return 0;
+
+        return (data[y * widthBytes + x / 4] >> (x % 4 * 2)) & 3;
+    }
+
+    void Fill(int fill) { memset(data, fill, widthBytes * height); }
+    uchar* GetData() { return data; }
 
 private:
-    bool isAlloc;
-    uchar* data;
-    uint width;
-    uint height;
-    uint widthBytes;
+    bool isAlloc {};
+    uchar* data {};
+    uint width {};
+    uint height {};
+    uint widthBytes {};
 };
 
 // Flex rect
@@ -1173,11 +1146,6 @@ struct FlexPoint
 };
 using Point = FlexPoint<int>;
 using PointF = FlexPoint<float>;
-
-// Net command helper
-class NetBuffer;
-extern bool PackNetCommand(
-    const string& str, NetBuffer* pbuf, std::function<void(const string&)> logcb, const string& name);
 
 class NetProperty
 {

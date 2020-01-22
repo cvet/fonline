@@ -2,6 +2,7 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "ProtoMap.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
@@ -317,7 +318,7 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     if (errors)
         return false;
 
-// Mapper collections
+        // Mapper collections
 #ifdef FONLINE_EDITOR
     for (auto& kv : itemProtos)
     {
@@ -362,7 +363,7 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     if (errors)
         return false;
 
-// Load maps data
+    // Load maps data
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     for (auto& kv : mapProtos)
     {

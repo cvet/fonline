@@ -1,6 +1,7 @@
 #include "AdminPanel.h"
 #include "Log.h"
 #include "NetBuffer.h"
+#include "NetCommand.h"
 #include "Server.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -295,11 +296,8 @@ static void AdminWork(FOServer* server, Session* session)
                 ADMIN_LOG("Server already stopping.\n");
             else
             {
-                if (!GameOpt.Quit)
-                {
-                    ADMIN_LOG("Stopping server.\n");
-                    GameOpt.Quit = true;
-                }
+                ADMIN_LOG("Stopping server.\n");
+                server->Stop();
             }
         }
         else if (cmd == "state")

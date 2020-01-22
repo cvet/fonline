@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include "NetBuffer.h"
+#include "Settings.h"
 
 class NetConnection
 {
@@ -28,8 +29,8 @@ class NetServerBase
 public:
     using ConnectionCallback = std::function<void(NetConnection*)>;
 
-    static NetServerBase* StartTcpServer(ushort port, ConnectionCallback callback);
-    static NetServerBase* StartWebSocketsServer(ushort port, string wss_credentials, ConnectionCallback callback);
+    static NetServerBase* StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback);
+    static NetServerBase* StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback);
 
     virtual ~NetServerBase() = default;
 };
