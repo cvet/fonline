@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-﻿#include "Client.h"
+#include "Client.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
