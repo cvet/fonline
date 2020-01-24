@@ -1,6 +1,16 @@
+      __________        ___               ______            _
+     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+                                                  /____/
+FOnline Engine
+https://fonline.ru
+https://github.com/cvet/fonline
+
 MIT License
 
-Copyright (c) 2019 cvet
+Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
