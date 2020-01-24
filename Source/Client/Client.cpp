@@ -910,7 +910,7 @@ void FOClient::MainLoop()
             // else if( reason == INIT_NET_REASON_LOAD )
             //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
             else if (reason != INIT_NET_REASON_CUSTOM)
-                UNREACHABLE_PLACE;
+                throw UnreachablePlaceException("Unreachable place");
         }
     }
 

@@ -975,7 +975,7 @@ class EventPragma
                 else if (arg_info.PodSize == 8)
                     va_args.push_back((uint64)va_arg(args, int64));
                 else
-                    UNREACHABLE_PLACE;
+                    throw UnreachablePlaceException("Unreachable place");
             }
 
             return event->RaiseImpl(nullptr, &va_args);
@@ -1013,7 +1013,7 @@ class EventPragma
                 else if (arg_info.PodSize == 8)
                     memcpy(&value, GET_ARG_ADDR, arg_info.PodSize);
                 else
-                    UNREACHABLE_PLACE;
+                    throw UnreachablePlaceException("Unreachable place");
 
                 auto range = arg_info.Callbacks.equal_range(value);
                 for (auto it = range.first; it != range.second; ++it)
@@ -1058,7 +1058,7 @@ class EventPragma
                     else if (arg_info.PodSize == 8)
                         Script::SetArgUInt64(GET_ARG(uint64));
                     else
-                        UNREACHABLE_PLACE;
+                        throw UnreachablePlaceException("Unreachable place");
                 }
 
                 if (!Deferred)
@@ -1562,7 +1562,7 @@ public:
                 else if (size == 8)
                     Script::SetArgUInt64(*(uint64*)value);
                 else
-                    UNREACHABLE_PLACE;
+                    throw UnreachablePlaceException("Unreachable place");
             }
             else
             {

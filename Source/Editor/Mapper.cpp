@@ -1885,7 +1885,7 @@ void FOMapper::ObjDraw()
     else if (item && item->IsStatic())
         DrawLine("Type", "", "Static Item", true, r);
     else
-        UNREACHABLE_PLACE;
+        throw UnreachablePlaceException("Unreachable place");
 
     for (auto& prop : ShowProps)
     {
@@ -2300,7 +2300,7 @@ void FOMapper::IntLMouseDown()
                     }
                     else
                     {
-                        UNREACHABLE_PLACE;
+                        throw UnreachablePlaceException("Unreachable place");
                     }
                     InContItem = nullptr;
 
@@ -3420,7 +3420,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
     }
     else
     {
-        UNREACHABLE_PLACE;
+        throw UnreachablePlaceException("Unreachable place");
     }
 
     auto pmap = (ProtoMap*)ActiveMap->Proto;

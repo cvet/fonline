@@ -1020,7 +1020,7 @@ bool Script::RaiseInternalEvent(EventData* ev_data, ...)
             else if (arg_info == 8)
                 mono_args[i] = &(mono_args_data[i] = (int64)va_arg(args, int64));
             else
-                UNREACHABLE_PLACE;
+                throw UnreachablePlaceException("Unreachable place");
         }
         va_end(args);
 

@@ -4368,7 +4368,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
             }
             else
             {
-                UNREACHABLE_PLACE;
+                throw UnreachablePlaceException("Unreachable place");
             }
         }
         else if (entity->Type == EntityType::CritterView)
@@ -4382,7 +4382,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
         }
         else
         {
-            UNREACHABLE_PLACE;
+            throw UnreachablePlaceException("Unreachable place");
         }
     }
 
@@ -4417,7 +4417,7 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
         else if (entity->Type == EntityType::CritterView)
             store_entity = new CritterView(entity->Id, (ProtoCritter*)entity->Proto, *sett, *spr_mngr, *res_mngr);
         else
-            UNREACHABLE_PLACE;
+            throw UnreachablePlaceException("Unreachable place");
 
         store_entity->Props = entity->Props;
         pmap.AllEntities.push_back(store_entity);

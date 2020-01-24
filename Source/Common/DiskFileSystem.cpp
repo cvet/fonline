@@ -318,7 +318,7 @@ uint64 DiskFile::GetWriteTime()
 #endif
     }
 
-    UNREACHABLE_PLACE;
+    throw UnreachablePlaceException("Unreachable place");
 }
 
 uint DiskFile::GetSize()

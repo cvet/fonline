@@ -488,7 +488,7 @@ hash _str::toHash()
 _str& _str::parseHash(hash h)
 {
     // Todo: hash
-    UNREACHABLE_PLACE;
+    throw UnreachablePlaceException("Unreachable place");
     return *this;
 }
 

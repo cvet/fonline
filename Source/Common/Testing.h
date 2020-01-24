@@ -18,7 +18,6 @@
 #define TEST_CASE() [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
 #define TEST_SECTION() if (!!(__LINE__))
 #endif
-#define UNREACHABLE_PLACE throw UnreachablePlaceException("Unreachable place")
 
 DECLARE_EXCEPTION(UnreachablePlaceException);
 

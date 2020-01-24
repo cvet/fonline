@@ -20,7 +20,6 @@ static const char* GetEntityTypeMonoName(EntityType type)
         return "Global";
     else if (type == EntityType::Custom)
         return "Custom";
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     else if (type == EntityType::Item)
         return "Item";
     else if (type == EntityType::Client)
@@ -31,8 +30,6 @@ static const char* GetEntityTypeMonoName(EntityType type)
         return "Location";
     else if (type == EntityType::Map)
         return "Map";
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
     else if (type == EntityType::ItemView)
         return "Item";
     else if (type == EntityType::CritterView)
@@ -43,9 +40,8 @@ static const char* GetEntityTypeMonoName(EntityType type)
         return "Location";
     else if (type == EntityType::MapView)
         return "Map";
-#endif
 
-    UNREACHABLE_PLACE;
+    throw UnreachablePlaceException("Unreachable place");
     return nullptr;
 }
 
@@ -74,7 +70,7 @@ void EntityManager::RegisterEntity(Entity* entity)
         else if (entity->Type == EntityType::Custom)
             DbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
         else
-            UNREACHABLE_PLACE;
+            throw UnreachablePlaceException("Unreachable place");
     }
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));
@@ -329,7 +325,7 @@ bool EntityManager::LoadEntities()
             }
             else
             {
-                UNREACHABLE_PLACE;
+                throw UnreachablePlaceException("Unreachable place");
             }
         }
     }

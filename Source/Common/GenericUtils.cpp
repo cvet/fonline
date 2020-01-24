@@ -324,7 +324,7 @@ int GenericUtils::ConvertParamValue(const string& str, bool& fail)
 
     // Todo: script
     // return Script::GetEnumValue(str, fail);
-    UNREACHABLE_PLACE;
+    throw UnreachablePlaceException("Unreachable place");
 }
 
 uint GenericUtils::GetColorDay(int* day_time, uchar* colors, int game_time, int* light)

@@ -2399,7 +2399,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
     else if (entity->Type == EntityType::Global)
         DbStorage->Update("Globals", entity->Id, prop->GetName(), value);
     else
-        UNREACHABLE_PLACE;
+        throw UnreachablePlaceException("Unreachable place");
 
     if (DbHistory && !prop->IsNoHistory())
     {
@@ -2430,7 +2430,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
         else if (entity->Type == EntityType::Global)
             DbHistory->Insert("GlobalsHistory", id, doc);
         else
-            UNREACHABLE_PLACE;
+            throw UnreachablePlaceException("Unreachable place");
     }
 }
 
