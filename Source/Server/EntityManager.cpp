@@ -1,13 +1,10 @@
 #include "EntityManager.h"
-#include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
-#include "Item.h"
 #include "ItemManager.h"
-#include "Location.h"
 #include "Log.h"
-#include "Map.h"
 #include "MapManager.h"
+#include "PropertiesSerializator.h"
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -15,7 +12,6 @@
 EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr) :
     mapMngr(map_mngr), crMngr(cr_mngr), itemMngr(item_mngr)
 {
-    memzero(entitiesCount, sizeof(entitiesCount));
 }
 
 static const char* GetEntityTypeMonoName(EntityType type)
@@ -63,7 +59,8 @@ void EntityManager::RegisterEntity(Entity* entity)
 
         entity->SetId(id);
 
-        DataBase::Document doc = entity->Props.SaveToDbDocument(entity->Proto ? &entity->Proto->Props : nullptr);
+        DataBase::Document doc =
+            PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto ? &entity->Proto->Props : nullptr);
         doc["_Proto"] = entity->Proto ? entity->Proto->GetName() : "";
 
         if (entity->Type == EntityType::Location)
@@ -82,7 +79,6 @@ void EntityManager::RegisterEntity(Entity* entity)
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));
     RUNTIME_ASSERT(it.second);
-    entitiesCount[(int)entity->Type]++;
 
     entity->MonoHandle = Script::CreateMonoObject(GetEntityTypeMonoName(entity->Type));
     RUNTIME_ASSERT(entity->MonoHandle);
@@ -101,7 +97,6 @@ void EntityManager::UnregisterEntity(Entity* entity)
     auto it = allEntities.find(entity->Id);
     RUNTIME_ASSERT(it != allEntities.end());
     allEntities.erase(it);
-    entitiesCount[(int)entity->Type]--;
 
     Script::RemoveEventsEntity(entity);
 

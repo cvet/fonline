@@ -106,7 +106,6 @@ CritterView::~CritterView()
 {
     sprMngr.FreePure3dAnimation(Anim3d);
     sprMngr.FreePure3dAnimation(Anim3dStay);
-    Anim3d = Anim3dStay = nullptr;
 }
 
 void CritterView::Init()

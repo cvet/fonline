@@ -33,15 +33,15 @@ CLASS_PROPERTY_IMPL(Map, DayTime);
 CLASS_PROPERTY_IMPL(Map, DayColor);
 CLASS_PROPERTY_IMPL(Map, IsNoLogOut);
 
-Map::Map(uint id, ProtoMap* proto, Location* location, MapSettings& sett) :
-    Entity(id, EntityType::Map, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings)
+Map::Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett) :
+    Entity(id, EntityType::Map, PropertiesRegistrator, proto),
+    mapLocation {location},
+    staticMap {static_map},
+    settings {sett},
+    geomHelper(settings)
 {
     RUNTIME_ASSERT(proto);
-
-    mapLocation = location;
-
-    hexFlags = nullptr;
-    memzero(loopLastTick, sizeof(loopLastTick));
+    RUNTIME_ASSERT(staticMap);
 
     hexFlagsSize = GetWidth() * GetHeight();
     hexFlags = new uchar[hexFlagsSize];
@@ -51,7 +51,6 @@ Map::Map(uint id, ProtoMap* proto, Location* location, MapSettings& sett) :
 Map::~Map()
 {
     SAFEDELA(hexFlags);
-    hexFlagsSize = 0;
 }
 
 void Map::Process()
@@ -73,9 +72,19 @@ void Map::ProcessLoop(int index, uint time, uint tick)
     }
 }
 
+ProtoMap* Map::GetProtoMap()
+{
+    return (ProtoMap*)Proto;
+}
+
 Location* Map::GetLocation()
 {
     return mapLocation;
+}
+
+void Map::SetLocation(Location* loc)
+{
+    mapLocation = loc;
 }
 
 bool Map::FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe)
@@ -406,6 +415,11 @@ Item* Map::GetItemGag(ushort hx, ushort hy)
     return nullptr;
 }
 
+ItemVec Map::GetItems()
+{
+    return mapItems;
+}
+
 void Map::GetItemsHex(ushort hx, ushort hy, ItemVec& items)
 {
     auto it_hex_all = mapItemsByHex.find((hy << 16) | hx);
@@ -540,7 +554,9 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
 
 ushort Map::GetHexFlags(ushort hx, ushort hy)
 {
-    return (hexFlags[hy * GetWidth() + hx] << 8) | GetProtoMap()->HexFlags[hy * GetWidth() + hx];
+    // Todo: HexFlags
+    // return (hexFlags[hy * GetWidth() + hx] << 8) | GetProtoMap()->HexFlags[hy * GetWidth() + hx];
+    return 0;
 }
 
 void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
@@ -648,7 +664,9 @@ bool Map::IsHexGag(ushort hx, ushort hy)
 
 bool Map::IsHexStaticTrigger(ushort hx, ushort hy)
 {
-    return FLAG(GetProtoMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
+    // Todo: HexFlags
+    // return FLAG(GetProtoMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
+    return false;
 }
 
 bool Map::IsFlagCritter(ushort hx, ushort hy, bool dead)
@@ -812,6 +830,36 @@ NpcVec Map::GetNpcs()
     return mapNpcs;
 }
 
+CritterVec& Map::GetCrittersRaw()
+{
+    return mapCritters;
+}
+
+ClientVec& Map::GetPlayersRaw()
+{
+    return mapPlayers;
+}
+
+NpcVec& Map::GetNpcsRaw()
+{
+    return mapNpcs;
+}
+
+uint Map::GetCrittersCount()
+{
+    return (uint)mapCritters.size();
+}
+
+uint Map::GetPlayersCount()
+{
+    return (uint)mapPlayers.size();
+}
+
+uint Map::GetNpcsCount()
+{
+    return (uint)mapNpcs.size();
+}
+
 void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
 {
     for (Client* cl : mapPlayers)
@@ -886,4 +934,41 @@ void Map::SetTextMsgLex(
         if (cl->LookCacheValue >= geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY()))
             cl->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems, lexems_len);
     }
+}
+
+void Map::GetStaticItemTriggers(ushort hx, ushort hy, ItemVec& triggers)
+{
+    for (auto& item : staticMap->TriggerItemsVec)
+        if (item->GetHexX() == hx && item->GetHexY() == hy)
+            triggers.push_back(item);
+}
+
+Item* Map::GetStaticItem(ushort hx, ushort hy, hash pid)
+{
+    for (auto& item : staticMap->StaticItemsVec)
+        if ((!pid || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy)
+            return item;
+    return nullptr;
+}
+
+void Map::GetStaticItemsHex(ushort hx, ushort hy, ItemVec& items)
+{
+    for (auto& item : staticMap->StaticItemsVec)
+        if (item->GetHexX() == hx && item->GetHexY() == hy)
+            items.push_back(item);
+}
+
+void Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items)
+{
+    for (auto& item : staticMap->StaticItemsVec)
+        if ((!pid || item->GetProtoId() == pid) &&
+            geomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius)
+            items.push_back(item);
+}
+
+void Map::GetStaticItemsByPid(hash pid, ItemVec& items)
+{
+    for (auto& item : staticMap->StaticItemsVec)
+        if (!pid || item->GetProtoId() == pid)
+            items.push_back(item);
 }

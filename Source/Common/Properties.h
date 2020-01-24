@@ -3,9 +3,6 @@
 #include "Common.h"
 
 #include "Testing.h"
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-#include "DataBase.h"
-#endif
 
 #include "angelscript.h"
 #include "scriptarray/scriptarray.h"
@@ -71,6 +68,7 @@ class Property
 {
     friend class PropertyRegistrator;
     friend class Properties;
+    friend class PropertiesSerializator;
 
 public:
     enum AccessType
@@ -212,6 +210,7 @@ class Properties
 {
     friend class PropertyRegistrator;
     friend class Property;
+    friend class PropertiesSerializator;
 
 public:
     Properties(PropertyRegistrator* reg);
@@ -225,11 +224,6 @@ public:
     void RestoreData(UCharVecVec& all_data);
     bool LoadFromText(const StrMap& key_values);
     void SaveToText(StrMap& key_values, Properties* base);
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    DataBase::Document SaveToDbDocument(Properties* base);
-    bool LoadFromDbDocument(const DataBase::Document& doc);
-    DataBase::Value SavePropertyToDbValue(Property* prop);
-#endif
     bool LoadPropertyFromText(Property* prop, const string& text);
     string SavePropertyToText(Property* prop);
     static int GetValueAsInt(Entity* entity, int enum_value);
@@ -312,6 +306,7 @@ class PropertyRegistrator
 {
     friend class Properties;
     friend class Property;
+    friend class PropertiesSerializator;
 
 public:
     PropertyRegistrator(bool is_server, const string& class_name);

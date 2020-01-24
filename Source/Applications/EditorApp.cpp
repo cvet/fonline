@@ -177,11 +177,12 @@ struct MapperWindow : GuiWindow
         Mapper = new FOMapper(Settings);
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        if (!pmap->EditorLoad(Mapper->ServerFileMngr, Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
+        // Todo: !!!
+        /*if (!pmap->EditorLoad(Mapper->ServerFileMngr, Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
         {
             Mapper->AddMess("File not found or truncated.");
             return;
-        }
+        }*/
 
         if (Mapper->ActiveMap)
             Mapper->HexMngr.GetProtoMap(*(ProtoMap*)Mapper->ActiveMap->Proto);

@@ -9,8 +9,6 @@
 #include "Settings.h"
 #include "Timer.h"
 
-class MapManager;
-
 #define CLIENT_OUTPUT_BEGIN(cl) \
     { \
         SCOPE_LOCK(cl->Connection->BoutLocker)
@@ -23,6 +21,26 @@ class MapManager;
 #define STATE_CONNECTED (1)
 #define STATE_PLAYING (2)
 #define STATE_TRANSFERRING (3)
+
+class MapManager;
+class Item;
+using ItemVec = vector<Item*>;
+using ItemMap = map<uint, Item*>;
+class Critter;
+using CritterMap = map<uint, Critter*>;
+using CritterVec = vector<Critter*>;
+class Npc;
+using NpcMap = map<uint, Npc*>;
+using NpcVec = vector<Npc*>;
+class Client;
+using ClientMap = map<uint, Client*>;
+using ClientVec = vector<Client*>;
+class Map;
+using MapVec = vector<Map*>;
+using MapMap = map<uint, Map*>;
+class Location;
+using LocationVec = vector<Location*>;
+using LocationMap = map<uint, Location*>;
 
 class Critter : public Entity
 {

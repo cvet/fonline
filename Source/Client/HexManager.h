@@ -3,9 +3,12 @@
 #include "Common.h"
 
 #include "CacheStorage.h"
+#include "CritterView.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
-#include "ProtoMap.h"
+#include "ItemHexView.h"
+#include "ItemView.h"
+#include "MapLoader.h"
 #include "Settings.h"
 #include "Sprites.h"
 
@@ -380,7 +383,7 @@ public:
     void DrawCursor(uint spr_id);
     void DrawCursor(const char* text);
 
-#ifdef FONLINE_EDITOR
+    // Editor stuff
 public:
     uchar SelectAlpha = 100;
     ProtoMap* CurProtoMap = nullptr;
@@ -389,10 +392,10 @@ public:
     void GetProtoMap(ProtoMap& pmap);
 
     // Selected tile, roof
-    using TileVecVec = vector<ProtoMap::TileVec>;
+    using TileVecVec = vector<MapTileVec>;
     TileVecVec TilesField;
     TileVecVec RoofsField;
-    ProtoMap::TileVec& GetTiles(ushort hx, ushort hy, bool is_roof)
+    MapTileVec& GetTiles(ushort hx, ushort hy, bool is_roof)
     {
         return is_roof ? RoofsField[hy * GetWidth() + hx] : TilesField[hy * GetWidth() + hx];
     }
@@ -418,5 +421,4 @@ public:
 
     void GetHexesRect(const Rect& rect, UShortPairVec& hexes);
     void MarkPassedHexes();
-#endif
 };

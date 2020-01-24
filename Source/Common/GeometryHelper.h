@@ -23,6 +23,8 @@ public:
     void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
 
 private:
+    void InitializeHexOffsets();
+
     GeometrySettings& settings;
     short* sxEven {};
     short* syEven {};

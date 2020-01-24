@@ -4,17 +4,39 @@
 
 #include "Entity.h"
 
+class Item;
+using ItemVec = vector<Item*>;
+using ItemMap = map<uint, Item*>;
+class Critter;
+using CritterMap = map<uint, Critter*>;
+using CritterVec = vector<Critter*>;
+
 class Item : public Entity
 {
     friend class Entity;
     friend class ItemManager;
 
-    ItemVec* childItems = nullptr;
-
 public:
-    bool ViewPlaceOnMap = false;
-    uint SceneryScriptBindId = 0;
-    Critter* ViewByCritter = nullptr;
+    Item(uint id, ProtoItem* proto);
+
+    ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
+    void SetProto(ProtoItem* proto);
+    bool SetScript(asIScriptFunction* func, bool first_time);
+    void SetSortValue(ItemVec& items);
+    void ChangeCount(int val);
+
+    Item* ContGetItem(uint item_id, bool skip_hide);
+    void ContGetAllItems(ItemVec& items, bool skip_hide);
+    Item* ContGetItemByPid(hash pid, uint stack_id);
+    void ContGetItems(ItemVec& items, uint stack_id);
+    bool ContIsItems();
+
+    bool IsStatic() { return GetIsStatic(); }
+    bool IsAnyScenery() { return IsScenery() || IsWall(); }
+    bool IsScenery() { return GetIsScenery(); }
+    bool IsWall() { return GetIsWall(); }
+    bool RadioIsSendActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_SEND); }
+    bool RadioIsRecvActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_RECV); }
 
     PROPERTIES_HEADER();
     CLASS_PROPERTY(bool, Stackable);
@@ -88,25 +110,10 @@ public:
     CLASS_PROPERTY(short, OffsetY);
     CLASS_PROPERTY(float, FlyEffectSpeed);
 
-    Item(uint id, ProtoItem* proto);
-    ~Item();
+    bool ViewPlaceOnMap {};
+    uint SceneryScriptBindId {};
+    Critter* ViewByCritter {};
 
-    ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
-    void SetProto(ProtoItem* proto);
-    bool SetScript(asIScriptFunction* func, bool first_time);
-    void SetSortValue(ItemVec& items);
-    void ChangeCount(int val);
-
-    Item* ContGetItem(uint item_id, bool skip_hide);
-    void ContGetAllItems(ItemVec& items, bool skip_hide);
-    Item* ContGetItemByPid(hash pid, uint stack_id);
-    void ContGetItems(ItemVec& items, uint stack_id);
-    bool ContIsItems();
-
-    bool IsStatic() { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery() { return GetIsScenery(); }
-    bool IsWall() { return GetIsWall(); }
-    bool RadioIsSendActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_SEND); }
-    bool RadioIsRecvActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_RECV); }
+private:
+    ItemVec* childItems {};
 };

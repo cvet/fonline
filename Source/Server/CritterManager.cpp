@@ -1,13 +1,10 @@
 #include "CritterManager.h"
-#include "Critter.h"
 #include "EntityManager.h"
 #include "GenericUtils.h"
-#include "Item.h"
 #include "ItemManager.h"
-#include "Location.h"
 #include "Log.h"
-#include "Map.h"
 #include "MapManager.h"
+#include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Script.h"
 #include "Settings.h"
@@ -137,6 +134,7 @@ Npc* CritterManager::CreateNpc(
     npc->SetCond(COND_LIFE);
 
     Location* loc = map->GetLocation();
+    RUNTIME_ASSERT(loc);
 
     if (dir >= settings.MapDirCount)
         dir = GenericUtils::Random(0, settings.MapDirCount - 1);
@@ -171,7 +169,7 @@ bool CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document
     }
 
     Npc* npc = new Npc(id, proto, settings);
-    if (!npc->Props.LoadFromDbDocument(doc))
+    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc))
     {
         WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
         npc->Release();

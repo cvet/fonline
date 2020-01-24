@@ -12,6 +12,7 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
+// Todo: remove static SlotEnabled and SlotDataSendEnabled
 bool Critter::SlotEnabled[0x100];
 bool Critter::SlotDataSendEnabled[0x100];
 
@@ -1203,8 +1204,8 @@ void Client::Send_LoadMap(Map* map, MapManager& map_mngr)
         map_index_in_loc = (uchar)loc->GetMapIndex(pid_map);
         map_time = map->GetCurDayTime();
         map_rain = map->GetRainCapacity();
-        hash_tiles = map->GetProtoMap()->HashTiles;
-        hash_scen = map->GetProtoMap()->HashScen;
+        hash_tiles = map->GetStaticMap()->HashTiles;
+        hash_scen = map->GetStaticMap()->HashScen;
     }
 
     uint msg_len =

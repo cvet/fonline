@@ -1,13 +1,8 @@
 ﻿#include "Client.h"
-#include "CritterView.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
-#include "ItemHexView.h"
-#include "ItemView.h"
-#include "LocationView.h"
 #include "Log.h"
-#include "MapView.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -6069,7 +6064,8 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems(ItemView* cont, uint stack_id
 
     ItemViewVec items;
 #ifdef FONLINE_EDITOR
-    cont->ContGetItems(items, stack_id);
+    // Todo: !!!
+    // cont->ContGetItems(items, stack_id);
 #endif
     return Script::CreateArrayRef("Item[]", items);
 }

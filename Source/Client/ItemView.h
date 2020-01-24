@@ -3,10 +3,27 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "Properties.h"
+
+class ItemView;
+using ItemViewVec = vector<ItemView*>;
+using ItemViewMap = map<uint, ItemView*>;
 
 class ItemView : public Entity
 {
 public:
+    ItemView(uint id, ProtoItem* proto);
+    ItemView* Clone();
+    bool IsStatic();
+    bool IsAnyScenery();
+    bool IsScenery();
+    bool IsWall();
+    bool IsColorize();
+    uint GetColor();
+    uchar GetAlpha();
+    uint GetInvColor();
+    uint LightGetHash();
+
     PROPERTIES_HEADER();
     CLASS_PROPERTY(bool, Stackable);
     CLASS_PROPERTY(bool, Opened);
@@ -78,31 +95,4 @@ public:
     CLASS_PROPERTY(short, OffsetX);
     CLASS_PROPERTY(short, OffsetY);
     CLASS_PROPERTY(float, FlyEffectSpeed);
-
-    ItemView(uint id, ProtoItem* proto);
-    ~ItemView();
-
-    ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
-    ItemView* Clone();
-
-    bool IsStatic() { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery() { return GetIsScenery(); }
-    bool IsWall() { return GetIsWall(); }
-    bool IsColorize() { return GetIsColorize(); }
-    uint GetColor() { return GetLightColor() & 0xFFFFFF; }
-    uchar GetAlpha() { return GetLightColor() >> 24; }
-    uint GetInvColor() { return GetIsColorizeInv() ? GetLightColor() : 0; }
-    uint LightGetHash()
-    {
-        return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
-    }
-
-#ifdef FONLINE_EDITOR
-    ItemViewVec* ChildItems = nullptr;
-
-    void ContSetItem(ItemView* item);
-    void ContEraseItem(ItemView* item);
-    void ContGetItems(ItemViewVec& items, uint stack_id);
-#endif
 };

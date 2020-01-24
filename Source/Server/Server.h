@@ -76,7 +76,7 @@ public:
     void Process_Ping(Client* cl);
     void Process_Property(Client* cl, uint data_size);
 
-    void Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery);
+    void Send_MapData(Client* cl, ProtoMap* pmap, StaticMap* static_map, bool send_tiles, bool send_scenery);
 
     // Update files
     struct UpdateFile

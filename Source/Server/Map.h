@@ -4,38 +4,51 @@
 
 #include "Entity.h"
 #include "GeometryHelper.h"
-#include "ProtoMap.h"
+#include "MapLoader.h"
 #include "Settings.h"
 
-using ItemVecMap = map<uint, ItemVec>;
+class Item;
+using ItemVec = vector<Item*>;
+using ItemMap = map<uint, Item*>;
+class Critter;
+using CritterMap = map<uint, Critter*>;
+using CritterVec = vector<Critter*>;
+class Npc;
+using NpcMap = map<uint, Npc*>;
+using NpcVec = vector<Npc*>;
+class Client;
+using ClientMap = map<uint, Client*>;
+using ClientVec = vector<Client*>;
+class Map;
+using MapVec = vector<Map*>;
+using MapMap = map<uint, Map*>;
+class Location;
+using LocationVec = vector<Location*>;
+using LocationMap = map<uint, Location*>;
+
+struct StaticMap : public NonCopyable
+{
+    UCharVec SceneryData {};
+    hash HashTiles {};
+    hash HashScen {};
+    CritterVec CrittersVec {};
+    ItemVec AllItemsVec {};
+    ItemVec HexItemsVec {};
+    ItemVec ChildItemsVec {};
+    ItemVec StaticItemsVec {};
+    ItemVec TriggerItemsVec {};
+    uchar* HexFlags {};
+    vector<MapTile> Tiles {};
+};
 
 class Map : public Entity
 {
     friend class MapManager;
 
 public:
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY(uint, LoopTime1);
-    CLASS_PROPERTY(uint, LoopTime2);
-    CLASS_PROPERTY(uint, LoopTime3);
-    CLASS_PROPERTY(uint, LoopTime4);
-    CLASS_PROPERTY(uint, LoopTime5);
-    CLASS_PROPERTY(string, FileDir);
-    CLASS_PROPERTY(ushort, Width);
-    CLASS_PROPERTY(ushort, Height);
-    CLASS_PROPERTY(ushort, WorkHexX);
-    CLASS_PROPERTY(ushort, WorkHexY);
-    CLASS_PROPERTY(uint, LocId);
-    CLASS_PROPERTY(uint, LocMapIndex);
-    CLASS_PROPERTY(uchar, RainCapacity);
-    CLASS_PROPERTY(int, CurDayTime);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
-    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
-    CLASS_PROPERTY(bool, IsNoLogOut);
-
-    Map(uint id, ProtoMap* proto, Location* location, MapSettings& sett);
+    Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett);
     ~Map();
+    StaticMap* GetStaticMap() { return staticMap; }
 
     void PlaceItemBlocks(ushort hx, ushort hy, Item* item);
     void RemoveItemBlocks(ushort hx, ushort hy, Item* item);
@@ -43,9 +56,9 @@ public:
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
 
-    ProtoMap* GetProtoMap() { return (ProtoMap*)Proto; }
+    ProtoMap* GetProtoMap();
     Location* GetLocation();
-    void SetLocation(Location* loc) { mapLocation = loc; }
+    void SetLocation(Location* loc);
 
     void SetText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
     void SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str);
@@ -68,7 +81,7 @@ public:
     Item* GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker);
     Item* GetItemGag(ushort hx, ushort hy);
 
-    ItemVec GetItems() { return mapItems; } // Make copy
+    ItemVec GetItems();
     void GetItemsHex(ushort hx, ushort hy, ItemVec& items);
     void GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items);
     void GetItemsPid(hash pid, ItemVec& items);
@@ -96,29 +109,54 @@ public:
     Critter* GetCritter(uint crid);
     Critter* GetNpc(int npc_role, int find_type, uint skip_count);
     Critter* GetHexCritter(ushort hx, ushort hy, bool dead);
-    void GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters); // Critters append
+    void GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters);
 
     CritterVec GetCritters();
     ClientVec GetPlayers();
     NpcVec GetNpcs();
-    CritterVec& GetCrittersRaw() { return mapCritters; }
-    ClientVec& GetPlayersRaw() { return mapPlayers; }
-    NpcVec& GetNpcsRaw() { return mapNpcs; }
-    uint GetCrittersCount() { return (uint)mapCritters.size(); }
-    uint GetPlayersCount() { return (uint)mapPlayers.size(); }
-    uint GetNpcsCount() { return (uint)mapNpcs.size(); }
+    CritterVec& GetCrittersRaw();
+    ClientVec& GetPlayersRaw();
+    NpcVec& GetNpcsRaw();
+    uint GetCrittersCount();
+    uint GetPlayersCount();
+    uint GetNpcsCount();
 
-    // Sends
     void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
     void SendFlyEffect(
         hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
 
-    // Script
     bool SetScript(asIScriptFunction* func, bool first_time);
+
+    void GetStaticItemTriggers(ushort hx, ushort hy, ItemVec& triggers);
+    Item* GetStaticItem(ushort hx, ushort hy, hash pid);
+    void GetStaticItemsHex(ushort hx, ushort hy, ItemVec& items);
+    void GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items);
+    void GetStaticItemsByPid(hash pid, ItemVec& items);
+
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY(uint, LoopTime1);
+    CLASS_PROPERTY(uint, LoopTime2);
+    CLASS_PROPERTY(uint, LoopTime3);
+    CLASS_PROPERTY(uint, LoopTime4);
+    CLASS_PROPERTY(uint, LoopTime5);
+    CLASS_PROPERTY(string, FileDir);
+    CLASS_PROPERTY(ushort, Width);
+    CLASS_PROPERTY(ushort, Height);
+    CLASS_PROPERTY(ushort, WorkHexX);
+    CLASS_PROPERTY(ushort, WorkHexY);
+    CLASS_PROPERTY(uint, LocId);
+    CLASS_PROPERTY(uint, LocMapIndex);
+    CLASS_PROPERTY(uchar, RainCapacity);
+    CLASS_PROPERTY(int, CurDayTime);
+    CLASS_PROPERTY(hash, ScriptId);
+    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
+    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
+    CLASS_PROPERTY(bool, IsNoLogOut);
 
 private:
     MapSettings& settings;
     GeometryHelper geomHelper;
+    StaticMap* staticMap {};
     uchar* hexFlags {};
     int hexFlagsSize {};
     CritterVec mapCritters {};
@@ -126,8 +164,8 @@ private:
     NpcVec mapNpcs {};
     ItemVec mapItems {};
     ItemMap mapItemsById {};
-    ItemVecMap mapItemsByHex {};
-    ItemVecMap mapBlockLinesByHex {};
+    map<uint, ItemVec> mapItemsByHex {};
+    map<uint, ItemVec> mapBlockLinesByHex {};
     Location* mapLocation {};
     uint loopLastTick[5] {};
 };

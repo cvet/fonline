@@ -86,10 +86,6 @@ Item::Item(uint id, ProtoItem* proto) : Entity(id, EntityType::Item, PropertiesR
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-Item::~Item()
-{
-}
-
 void Item::SetProto(ProtoItem* proto)
 {
     RUNTIME_ASSERT(proto);

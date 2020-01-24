@@ -2,6 +2,29 @@
 
 GeometryHelper::GeometryHelper(GeometrySettings& sett) : settings {sett}
 {
+}
+
+GeometryHelper::~GeometryHelper()
+{
+    if (sxEven)
+    {
+        if (settings.MapHexagonal)
+        {
+            delete[] sxEven;
+            delete[] syEven;
+            delete[] sxOdd;
+            delete[] syOdd;
+        }
+        else
+        {
+            delete[] sxEven;
+            delete[] syEven;
+        }
+    }
+}
+
+void GeometryHelper::InitializeHexOffsets()
+{
     int size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * settings.MapDirCount;
     if (settings.MapHexagonal)
     {
@@ -82,22 +105,6 @@ GeometryHelper::GeometryHelper(GeometrySettings& sett) : settings {sett}
                 }
             }
         }
-    }
-}
-
-GeometryHelper::~GeometryHelper()
-{
-    if (settings.MapHexagonal)
-    {
-        delete[] sxEven;
-        delete[] syEven;
-        delete[] sxOdd;
-        delete[] syOdd;
-    }
-    else
-    {
-        delete[] sxEven;
-        delete[] syEven;
     }
 }
 
@@ -402,6 +409,9 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir)
 
 void GeometryHelper::GetHexOffsets(bool odd, short*& sx, short*& sy)
 {
+    if (!sxEven)
+        InitializeHexOffsets();
+
     sx = (odd ? sxOdd : sxEven);
     sy = (odd ? syOdd : syEven);
 }

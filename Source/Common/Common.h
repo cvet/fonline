@@ -1,5 +1,143 @@
 #pragma once
 
+// Milestone list
+// Milestone: DirectX rendering
+// Milestone: DirectX rendering
+// Milestone: DirectX rendering
+
+// Generic todo'es
+// Todo: GLSL -> SPIRV
+// Todo: DirectX rendering
+// Todo: 60 fps at target
+// Todo: add pragma once everywhere
+// Todo: split sources to Server/Client/Other(? Mapper)/Common/ThirdParty(with ReadMe of versions)/Applications
+// Todo: in headers only Common.h other in cpp
+// Todo: review push_back -> emplace_back
+// Todo: use smart pointers instead raw
+// Todo: PVS Studio fix & Codacy fix
+// Todo: entity protos accessors
+// Todo: SHA replace to openssl SHA
+// Todo: remove mbedTLS use OpenSSL
+// Todo: add static hash https://gist.github.com/Lee-R/3839813
+// Todo: use pimpl https://github.com/oliora/samples/blob/master/spimpl.h
+// Todo: AdminTool to separate file
+// Todo: review RUNTIME_ASSERT( (
+// Todo: review add_definitions -> set_target_properties
+// Todo: review local #define -> #undef
+// Todo: make daemon/service to separate apps
+// Todo: add TestingApp.cpp? CodeCoverageApp?
+// Todo: Linux 32 bit builds?
+// Todo: Docker for: linux/android/web/mac/windows build, docker with preinstalled linux server/editor
+// Todo: improve valgrind
+// Todo: do something with CACHE STRING "" FORCE )
+// Todo: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
+// Todo: stacktrace in Assert (with Copy button?)
+// Todo: defines to const
+// Todo: add to cmake message STATUS
+// Todo: improve YAML
+// Todo: suspend all threads on Assertation
+// Todo: fix format source under linux
+// Todo: Renderer -> OpenGL, Direct3D, Null
+// Todo: exclude singletons
+// Todo: copy source to server/editor binaries?
+// Todo: CMake ServerLib/ClientLib/...
+// Todo: exclude FO_NO_GRAPHIC, FONLINE_SERVER/CLIENT/EDITOR
+// Todo: ProtoMap -> ClientProtoMap, ServerProtoMap
+// Todo: HexManager -> MapView
+// Todo: save dump files by Save button?; copied full report; crash report writted to log anyway
+// Todo: server logs append not rewrite with checking of size
+// Todo: add timestamps and process id and thread id to file logs
+// Todo: /GR - no rtti /EHsc - disable
+// Todo: update formatting tool + fix run on linux
+// Todo: remove using std, always use explicit std::
+// Todo: store Cache.bin in player Local
+// Todo: clean up repository from not used files (third-party docs, bins, Documentation, Other)
+// Todo: Jenkinsfile fix kubernetes, add to README.md about labels (or move to cross-compile)
+// Todo: Mac cross-compile https://github.com/tpoechtrager/osxcross
+// Todo: Windows cross-compile https://arrayfire.com/cross-compile-to-windows-from-linux/
+// Todo: wrap fonline code to namespace
+// Todo: fix readme.md newlines for site
+// Todo: use precompiled headers
+// Todo: LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
+// Todo: LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
+// Todo: fix build warnings
+// Todo: FO_GCC -> FO_GCC_CLANG
+// Todo: CMAKE_VS_PLATFORM_TOOLSET need?
+// Todo: refactor Settings params, make it const
+// Todo: all define -> undef
+// Todo: HexManager -> MapView
+// Todo: SpriteManager - split loaders
+// Todo: "Acm" "Ogg" "Vorbis" "Theora" "${PNG16}" to Editor
+// Todo: upgrade NDK, include NDK/JDK to SDK
+// Todo: thread emulation in main loop? Or move threading to server-only
+// Todo: engine version naming convention 2019.1/2/3/4
+// Todo: IniFile to YamlFile
+// Todo: id and hash to 8 byte long
+// Todo: audio loader with variety formats, then encode to raw wav's
+// Todo: ServiceLocator - Logger, Randomizer, AudioManager, ProtoManager, FileManager, Settings
+// Todo: add to copyrigths https://github.com/taka-no-me/android-cmake
+// Todo: write about sudo on build
+// Todo: LLVM as main compiler
+// Todo: make all depedencies as git submodules
+// Todo: TryCopy/TryMove files?
+// Todo: fix FO_VERSION collisions
+// Todo: erase add_include, add add include for targets + include to root third-party?
+// Todo: or maybe copy all nessesary headers during cmake configuration in separate dir
+// Todo: own std::variant
+// Todo: check std::string_view
+// Todo: check std::filesystem
+// Todo: Renderers - OpenGL, OpenGL ES / WebGL, DirectX, Metal, Vulkan
+// Todo: compile with -fpedantic (and use clang for all!)
+// Todo: fo_exception -> std::runtime_error?
+// Todo: 'Path' class as filesystem path representation
+// Todo: look at std::filesystem
+// Todo: separate Editor Local/Global settings and Project settings
+// Todo: editor Undo/Redo
+// Todo: c-style arrays to std::array
+// Todo: THREAD -> thread_local
+// Todo: thread -> future
+// Todo: CMake verbose output FONLINE_* and FO_* variables separately
+// Todo: return MongoDB to Linux server
+// Todo: id to uint64 uid
+// Todo: hash to uint64
+// Todo: add standalone Mapper application
+// Todo: size_t to auto, and use more auto in general
+// Todo: Thread::Sleep(0) -> this_thread::yield()
+// Todo: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
+// Todo: par (for_each(par, v, [](int x))
+// Todo: some single standard to initialize objects ({} or ())
+// Todo: iterator -> const_iterator, auto -> const auto
+// Todo: typedef -> using
+// Todo: unscoped enums to scoped enums
+// Todo: disable objects moving/copying where it's not necessary
+// Todo: declare class ctors/dtros/copy/move methods; structs only for pod without ctors/dtors/etc
+// Todo: use noexcept
+// Todo: use constexpr
+// Todo: WriteData/ReadData to BitReader/BitWriter
+// Todo: use clang-format
+// Todo: organize class members as public, protected, private; methods, fields
+// Todo: revert Log and Randomizer classes
+// Todo: improve exception safety (https://en.wikipedia.org/wiki/Exception_safety)
+// Todo: c++20 modules
+// Todo: eliminate volatile, replace to atomic
+// Todo: Visual Studio toolset - clang-cl
+// Todo: if(auto i = do(); i < 0) i... else i...
+// Todo: use std::to_string
+// Todo: casts between int types via NumericCast<to>()
+// Todo: timers to std::chrono
+// Todo: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
+// Todo: AdminPanel network to Asio
+// Todo: move Common.h to precompiled headers (don't forgot about FONLINE_* defines)
+// Todo: build debug sanitiziers
+// Todo: time ticks to uint64
+// Todo: delete LF from write log
+// Todo: improve custom exceptions for every subsustem
+// Todo: use std::quick_exit
+// Todo: fix name char/short/int to portable 8/16/32 bits (maybe i8/i16/i32/i64/ui8/ui16/ui32/ui64)?
+// Todo: auto expand exceptions fo_exception("message", var1, var2...) -> "message (var1, var2)"
+// Todo: rename usings like StrUIntMap to string_uint_map
+// Todo: ImageBaker cache Spr files
+
 // Operating system (passed outside)
 // FO_WINDOWS
 // FO_LINUX
@@ -7,6 +145,7 @@
 // FO_IOS
 // FO_ANDROID
 // FO_WEB
+// Todo: detect OS automatically not from passed constant from build system
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
 #error "Unknown operating system"
 #endif
@@ -64,10 +203,18 @@
 #include <emscripten/html5.h>
 #endif
 
-// String formatting
+// String formatting lib
 #include "fmt/format.h"
 
-// Types
+// Base types
+// Todo: rename uchar to uint8 and use uint8_t as alias
+// Todo: rename ushort to uint16 and use uint16_t as alias
+// Todo: rename uint to uint32 and use uint32_t as alias
+// Todo: rename char to int8 and use int8_t as alias
+// Todo: split meanings if int8 and char in code
+// Todo: rename short to int16 and use int16_t as alias
+// Todo: rename int to int32 and use int32_t as alias
+// Todo: move from 32 bit hashes to 64 bit
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
@@ -89,6 +236,7 @@ static_assert(sizeof(bool) == 1);
 static_assert(sizeof(void*) >= 4);
 static_assert(sizeof(void*) == sizeof(size_t));
 
+// Bind to global scope frequently used types
 using std::array;
 using std::deque;
 using std::future;
@@ -110,6 +258,7 @@ using std::unordered_set;
 using std::variant;
 using std::vector;
 
+// Todo: remove map/vector/set/pair bindings
 using StrUCharMap = map<string, uchar>;
 using UCharStrMap = map<uchar, string>;
 using StrMap = map<string, string>;
@@ -132,8 +281,6 @@ using HashIntMap = map<hash, int>;
 using HashUIntMap = map<hash, uint>;
 using IntStrMap = map<int, string>;
 using StrIntMap = map<string, int>;
-
-using UIntStrMulMap = multimap<uint, string>;
 
 using PtrVec = vector<void*>;
 using IntVec = vector<int>;
@@ -180,7 +327,7 @@ using UIntUIntPairMap = map<uint, UIntPair>;
 using UIntIntPairVecMap = map<uint, IntPairVec>;
 using UIntHashVecMap = map<uint, HashVec>;
 
-// Generic exception
+// Generic engine exception
 class fo_exception : public std::exception
 {
 public:
@@ -208,7 +355,7 @@ private:
     }
 
 // Non copyable (but movable) class decorator
-class NonCopyable
+class NonCopyable // Todo: use NonCopyable as default class specifier
 {
 public:
     NonCopyable() = default;
@@ -230,7 +377,7 @@ public:
 };
 
 // Static class decorator
-class StaticClass
+class StaticClass // Todo: set StaticClass class specifier to all static classes
 {
 public:
     StaticClass() = delete;
@@ -328,6 +475,7 @@ private:
 };
 
 // Raw pointer observation
+// Todo: improve ptr<> system for leng term pointer observing
 class Pointable : public NonMovable
 {
     template<typename>
@@ -408,6 +556,7 @@ private:
 };
 
 // C-strings literal helpers
+// Todo: add _hash c-string literal helper
 size_t constexpr operator"" _len(const char* str, size_t size)
 {
     return size;
@@ -428,6 +577,7 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
 
+// Todo: remove SAFEREL/SAFEDEL/SAFEDELA macro
 #define SAFEREL(x) \
     { \
         if (x) \
@@ -447,8 +597,9 @@ size_t constexpr operator"" _len(const char* str, size_t size)
         (x) = nullptr; \
     }
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b)) // Todo: MIN/MAX to std::min/std::max
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define PACKUINT64(u32hi, u32lo) (((uint64)u32hi << 32) | ((uint64)u32lo))
 #define MAKEUINT(ch0, ch1, ch2, ch3) \
     ((uint)(uchar)(ch0) | ((uint)(uchar)(ch1) << 8) | ((uint)(uchar)(ch2) << 16) | ((uint)(uchar)(ch3) << 24))
@@ -461,6 +612,7 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define BIAS_FLOAT (0.02f)
 #define RAD2DEG (57.29577951f)
 #define RAD(deg) ((deg)*3.141592654f / 180.0f)
+#define MAX_INT (0x7FFFFFFF)
 
 // Bits
 #define BIN__N(x) (x) | x >> 3 | x >> 6 | x >> 9
@@ -475,20 +627,38 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define SETFLAG(x, y) ((x) = (x) | (y))
 #define UNSETFLAG(x, y) ((x) = ((x) | (y)) ^ (y))
 
-// Other stuff
-#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#define MAX_INT (0x7FFFFFFF)
-
-// Generic
+// Generic constants
+// Todo: eliminate as much defines as possible
+// Todo: convert all defines to constants and enums
 #define CONFIG_NAME "FOnline.cfg"
 #define WORLD_START_TIME "07:00 30:10:2246 x00"
 #define TEMP_BUF_SIZE (8192)
+#define UTF8_BUF_SIZE(count) ((count)*4)
 #define MAX_FOPATH UTF8_BUF_SIZE(2048)
 #define MAX_HOLO_INFO (250)
 #define EFFECT_SCRIPT_VALUES (10)
-#define ABC_SIZE (26)
 #define IS_DIR_CORNER(dir) (((dir)&1) != 0) // 1, 3, 5, 7
-#define UTF8_BUF_SIZE(count) ((count)*4)
+#define AGGRESSOR_TICK (60000)
+#define MAX_ENEMY_STACK (30)
+#define CRITTER_INV_VOLUME (1000)
+#define CLIENT_MAP_FORMAT_VER (10)
+#define MAX_ANSWERS (100)
+#define PROCESS_TALK_TICK (1000)
+#define TURN_BASED_TIMEOUT (1000)
+#define FADING_PERIOD (1000)
+#define RESPOWN_TIME_PLAYER (3)
+#define RESPOWN_TIME_NPC (120)
+#define RESPOWN_TIME_INFINITY (4 * 24 * 60 * 60000)
+#define AP_DIVIDER (100)
+#define MAX_ADDED_NOGROUP_ITEMS (30)
+#define LAYERS3D_COUNT (30)
+#define DEFAULT_DRAW_SIZE (128)
+#define MIN_ZOOM (0.1f)
+#define MAX_ZOOM (20.0f)
+
+// Id helpers
+#define MAKE_CLIENT_ID(name) ((1 << 31) | _str(name).toHash())
+#define IS_CLIENT_ID(id) (((id) >> 31) != 0)
 #define DLGID_MASK (0xFFFFC000)
 #define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
@@ -497,10 +667,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define ITEM_STR_ID(item_pid, idx) (((item_pid)&ITEMPID_MASK) | ((idx) & ~ITEMPID_MASK))
 #define CRPID_MASK (0xFFFFFFF0)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
-
-// Critters
-#define AGGRESSOR_TICK (60000)
-#define MAX_ENEMY_STACK (30)
 
 // Critter find types
 #define FIND_LIFE (0x01)
@@ -537,9 +703,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define TARGET_CRITTER (2)
 #define TARGET_ITEM (3)
 
-// Critters
-#define CRITTER_INV_VOLUME (1000)
-
 // Global map
 #define GM__MAXZONEX (100)
 #define GM__MAXZONEY (100)
@@ -561,12 +724,12 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define GM_INFO_FOG (0x10)
 #define GM_INFO_LOCATION (0x20)
 
-// Flags Hex
-// Proto map
+// Proto map hex flags
 #define FH_BLOCK BIN8(00000001)
 #define FH_NOTRAKE BIN8(00000010)
 #define FH_STATIC_TRIGGER BIN8(00100000)
-// Map copy
+
+// Map instance hex flags
 #define FH_CRITTER BIN8(00000001)
 #define FH_DEAD_CRITTER BIN8(00000010)
 #define FH_DOOR BIN8(00001000)
@@ -575,11 +738,9 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define FH_TRIGGER BIN8(01000000)
 #define FH_GAG_ITEM BIN8(10000000)
 
+// Both proto map and map instance flags
 #define FH_NOWAY BIN16(00010001, 00000001)
 #define FH_NOSHOOT BIN16(00100000, 00000010)
-
-// Client map
-#define CLIENT_MAP_FORMAT_VER (10)
 
 // Coordinates
 #define MAXHEX_DEF (200)
@@ -598,25 +759,10 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define PASS_HASH_SIZE (32)
 #define FILE_UPDATE_PORTION (16384)
 
-// Critters
-#define MAKE_CLIENT_ID(name) ((1 << 31) | _str(name).toHash())
-#define IS_CLIENT_ID(id) (((id) >> 31) != 0)
-#define MAX_ANSWERS (100)
-#define PROCESS_TALK_TICK (1000)
-#define TURN_BASED_TIMEOUT (1000)
-#define FADING_PERIOD (1000)
-
-#define RESPOWN_TIME_PLAYER (3)
-#define RESPOWN_TIME_NPC (120)
-#define RESPOWN_TIME_INFINITY (4 * 24 * 60 * 60000)
-
 // Answer
 #define ANSWER_BEGIN (0xF0)
 #define ANSWER_END (0xF1)
 #define ANSWER_BARTER (0xF2)
-
-// Time AP
-#define AP_DIVIDER (100)
 
 // Crit conditions
 #define COND_LIFE (1)
@@ -634,12 +780,10 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
 #define SHOW_SCREEN_CLOSE (0) // Close top window.
 #define SHOW_SCREEN_TIMER (1) // Timer box. Output: picture index in INVEN.LST. Input I: time in game minutes (1..599).
-#define SHOW_SCREEN_DIALOGBOX \
-    (2) // Dialog box. Output: buttons count - 0..20 (exit button added automatically). Input I: Choosed button - 0..19.
+#define SHOW_SCREEN_DIALOGBOX (2) // Dialog box. Output: buttons - 0..20. Input I: Choosed button - 0..19.
 #define SHOW_SCREEN_SKILLBOX (3) // Skill box. Input I: selected skill.
 #define SHOW_SCREEN_BAG (4) // Bag box. Input I: id of selected item.
-#define SHOW_SCREEN_SAY \
-    (5) // Say box. Output: all symbols - 0 or only numbers - any other number. Input S: typed string.
+#define SHOW_SCREEN_SAY (5) // Say box. Output: all symbols - 0 or only numbers - any number. Input S: typed string.
 #define SHOW_ELEVATOR (6) // Elevator. Output: look ELEVATOR_* macro. Input I: Choosed level button.
 #define SHOW_SCREEN_INVENTORY (7) // Inventory.
 #define SHOW_SCREEN_CHARACTER (8) // Character.
@@ -659,20 +803,19 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 // l - hardcoded local call
 // s - hardcoded server call
 // for all others critters actions call only server
-//                                          flags    actionExt                                                      item
-#define ACTION_MOVE_ITEM (2) // l s      from slot                                                      +
-#define ACTION_MOVE_ITEM_SWAP (3) // l s      from slot                                                      +
-#define ACTION_DROP_ITEM (5) // l s      from slot                                                      +
-#define ACTION_KNOCKOUT (16) //   s      0 - knockout anim2begin
-#define ACTION_STANDUP (17) //   s      0 - knockout anim2end
+//  flags actionExt item
+#define ACTION_MOVE_ITEM (2) // l s from slot +
+#define ACTION_MOVE_ITEM_SWAP (3) // l s from slot +
+#define ACTION_DROP_ITEM (5) // l s from slot +
+#define ACTION_KNOCKOUT (16) // s 0 - knockout anim2begin
+#define ACTION_STANDUP (17) // s 0 - knockout anim2end
 #define ACTION_FIDGET (18) // l
-#define ACTION_DEAD (19) //   s      dead type anim2 (see Anim2 in _animation.fos)
-#define ACTION_CONNECT (20) //
-#define ACTION_DISCONNECT (21) //
-#define ACTION_RESPAWN (22) //   s
-#define ACTION_REFRESH (23) //   s
+#define ACTION_DEAD (19) // s dead type anim2 (see Anim2 in _animation.fos)
+#define ACTION_CONNECT (20)
+#define ACTION_DISCONNECT (21)
+#define ACTION_RESPAWN (22) // s
+#define ACTION_REFRESH (23) // s
 
-// Script defines
 // Look checks
 #define LOOK_CHECK_DIR (0x01)
 #define LOOK_CHECK_SNEAK_DIR (0x02)
@@ -680,14 +823,13 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define LOOK_CHECK_SCRIPT (0x10)
 #define LOOK_CHECK_ITEM_SCRIPT (0x20)
 
-// In SendMessage
+// SendMessage types
 #define MESSAGE_TO_VISIBLE_ME (0)
 #define MESSAGE_TO_IAM_VISIBLE (1)
 #define MESSAGE_TO_ALL_ON_MAP (2)
 
-// Anim1
+// Anims
 #define ANIM1_UNARMED (1)
-// Anim2
 #define ANIM2_IDLE (1)
 #define ANIM2_WALK (3)
 #define ANIM2_LIMP (4)
@@ -724,9 +866,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define ITEM_ACCESSORY_HEX (2)
 #define ITEM_ACCESSORY_CONTAINER (3)
 
-// Generic
-#define MAX_ADDED_NOGROUP_ITEMS (30)
-
 // Uses
 #define USE_PRIMARY (0)
 #define USE_SECONDARY (1)
@@ -738,17 +877,15 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define MAKE_ITEM_MODE(use, aim) ((((aim) << 4) | ((use)&0xF)) & 0xFF)
 
 // Radio
-// Flags
 #define RADIO_DISABLE_SEND (0x01)
 #define RADIO_DISABLE_RECV (0x02)
-// Broadcast
 #define RADIO_BROADCAST_WORLD (0)
 #define RADIO_BROADCAST_MAP (20)
 #define RADIO_BROADCAST_LOCATION (40)
 #define RADIO_BROADCAST_ZONE(x) (100 + CLAMP(x, 1, 100)) // 1..100
 #define RADIO_BROADCAST_FORCE_ALL (250)
 
-// Light flags
+// Light
 #define LIGHT_DISABLE_DIR(dir) (1 << CLAMP(dir, 0, 5))
 #define LIGHT_GLOBAL (0x40)
 #define LIGHT_INVERSE (0x80)
@@ -790,13 +927,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define CMD_DEV_EXEC (38)
 #define CMD_DEV_FUNC (39)
 #define CMD_DEV_GVAR (40)
-
-#define LAYERS3D_COUNT (30)
-#define DEFAULT_DRAW_SIZE (128)
-
-// Zoom
-#define MIN_ZOOM (0.1f)
-#define MAX_ZOOM (20.0f)
 
 // Memory pool
 template<int StructSize, int PoolSize>
@@ -898,6 +1028,7 @@ private:
     UCharVec& dataBuf;
 };
 
+// Todo: WriteData/ReadData to DataWriter/DataReader
 template<class T>
 inline void WriteData(UCharVec& vec, T data)
 {
@@ -934,6 +1065,7 @@ inline T* ReadDataArr(UCharVec& vec, uint size, uint& pos)
 }
 
 // Two bit mask
+// Todo: find something from STL instead TwoBitMask
 class TwoBitMask
 {
 public:
@@ -1008,8 +1140,6 @@ private:
 template<typename Ty>
 struct FlexRect
 {
-    Ty L, T, R, B;
-
     FlexRect() : L(0), T(0), R(0), B(0) {}
     template<typename Ty2>
     FlexRect(const FlexRect<Ty2>& fr) : L((Ty)fr.L), T((Ty)fr.T), R((Ty)fr.R), B((Ty)fr.B)
@@ -1088,6 +1218,11 @@ struct FlexRect
         result.B += (Ty)((int)(to.B - B) * procent / 100);
         return result;
     }
+
+    Ty L {};
+    Ty T {};
+    Ty R {};
+    Ty B {};
 };
 using Rect = FlexRect<int>;
 using RectF = FlexRect<float>;
@@ -1097,8 +1232,6 @@ using FltRectVec = std::vector<RectF>;
 template<typename Ty>
 struct FlexPoint
 {
-    Ty X, Y;
-
     FlexPoint() : X(0), Y(0) {}
     template<typename Ty2>
     FlexPoint(const FlexPoint<Ty2>& r) : X((Ty)r.X), Y((Ty)r.Y)
@@ -1143,10 +1276,14 @@ struct FlexPoint
         Y = y;
         return *this;
     }
+
+    Ty X {};
+    Ty Y {};
 };
 using Point = FlexPoint<int>;
 using PointF = FlexPoint<float>;
 
+// Todo: move NetProperty to more proper place
 class NetProperty
 {
 public:

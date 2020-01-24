@@ -2,6 +2,7 @@
 
 #include "Common.h"
 
+#include "DataBase.h"
 #include "Entity.h"
 
 #include "angelscript.h"

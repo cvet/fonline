@@ -2,12 +2,16 @@
 
 #include "Common.h"
 
+#include "Entity.h"
 #include "ItemView.h"
 
 class ResourceManager;
 struct AnyFrames;
 class Sprite;
 struct Effect;
+class ItemHexView;
+using ItemHexViewVec = vector<ItemHexView*>;
+using ItemHexViewMap = map<uint, ItemHexView*>;
 
 class ItemHexView : public ItemView
 {

@@ -2,9 +2,17 @@
 
 #include "Common.h"
 
+#include "Critter.h"
+#include "DataBase.h"
 #include "Entity.h"
+#include "FileSystem.h"
 #include "GeometryHelper.h"
+#include "Item.h"
+#include "Location.h"
+#include "Map.h"
 #include "Settings.h"
+
+DECLARE_EXCEPTION(MapManagerException);
 
 class ProtoManager;
 class EntityManager;
@@ -28,57 +36,57 @@ class CritterManager;
 struct TraceData
 {
     // Input
-    Map* TraceMap = nullptr;
-    ushort BeginHx = 0;
-    ushort BeginHy = 0;
-    ushort EndHx = 0;
-    ushort EndHy = 0;
-    uint Dist = 0;
-    float Angle = 0.0f;
-    Critter* FindCr = nullptr;
-    int FindType = 0;
-    bool LastPassedSkipCritters = false;
-    void (*HexCallback)(Map*, Critter*, ushort, ushort, ushort, ushort, uchar) = nullptr;
+    Map* TraceMap {};
+    ushort BeginHx {};
+    ushort BeginHy {};
+    ushort EndHx {};
+    ushort EndHy {};
+    uint Dist {};
+    float Angle {};
+    Critter* FindCr {};
+    int FindType {};
+    bool LastPassedSkipCritters {};
+    void (*HexCallback)(Map*, Critter*, ushort, ushort, ushort, ushort, uchar) {};
 
     // Output
-    CritterVec* Critters = nullptr;
-    UShortPair* PreBlock = nullptr;
-    UShortPair* Block = nullptr;
-    UShortPair* LastPassed = nullptr;
-    bool IsFullTrace = false;
-    bool IsCritterFounded = false;
-    bool IsHaveLastPassed = false;
+    CritterVec* Critters {};
+    UShortPair* PreBlock {};
+    UShortPair* Block {};
+    UShortPair* LastPassed {};
+    bool IsFullTrace {};
+    bool IsCritterFounded {};
+    bool IsHaveLastPassed {};
 };
 
 struct PathFindData
 {
-    uint MapId = 0;
-    ushort MoveParams = 0;
-    Critter* FromCritter = nullptr;
-    ushort FromX = 0;
-    ushort FromY = 0;
-    ushort ToX = 0;
-    ushort ToY = 0;
-    ushort NewToX = 0;
-    ushort NewToY = 0;
-    uint Multihex = 0;
-    uint Cut = 0;
-    uint PathNum = 0;
-    uint Trace = 0;
-    bool IsRun = false;
-    bool CheckCrit = false;
-    bool CheckGagItems = false;
-    Critter* TraceCr = nullptr;
-    Critter* GagCritter = nullptr;
-    Item* GagItem = nullptr;
+    uint MapId {};
+    ushort MoveParams {};
+    Critter* FromCritter {};
+    ushort FromX {};
+    ushort FromY {};
+    ushort ToX {};
+    ushort ToY {};
+    ushort NewToX {};
+    ushort NewToY {};
+    uint Multihex {};
+    uint Cut {};
+    uint PathNum {};
+    uint Trace {};
+    bool IsRun {};
+    bool CheckCrit {};
+    bool CheckGagItems {};
+    Critter* TraceCr {};
+    Critter* GagCritter {};
+    Item* GagItem {};
 };
 
 struct PathStep
 {
-    ushort HexX = 0;
-    ushort HexY = 0;
-    uint MoveParams = 0;
-    uchar Dir = 0;
+    ushort HexX {};
+    ushort HexY {};
+    uint MoveParams {};
+    uchar Dir {};
 };
 using PathStepVec = vector<PathStep>;
 
@@ -87,6 +95,9 @@ class MapManager
 public:
     MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr,
         ItemManager& item_mngr);
+
+    void LoadStaticMaps(FileManager& file_mngr);
+    StaticMap* FindStaticMap(ProtoMap* pmap);
 
     // Maps
     bool FindPlaceOnMap(Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius);
@@ -136,6 +147,7 @@ public:
     string GetLocationsMapsStatistics();
 
 private:
+    void LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
@@ -149,4 +161,5 @@ private:
     PathStepVec pathesPool[FPATH_DATA_SIZE] {};
     uint pathNumCur {};
     bool smoothSwitcher {};
+    map<ProtoMap*, StaticMap> staticMaps {};
 };

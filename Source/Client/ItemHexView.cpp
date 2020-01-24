@@ -9,7 +9,7 @@
 #include "Testing.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr) : ItemView(id, proto), resMngr(res_mngr)
+ItemHexView::ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr) : ItemView(id, proto), resMngr {res_mngr}
 {
     const_cast<EntityType&>(Type) = EntityType::ItemHexView;
 

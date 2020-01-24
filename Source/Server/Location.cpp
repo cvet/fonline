@@ -1,14 +1,8 @@
 #include "Location.h"
 #include "Critter.h"
-#include "CritterManager.h"
-#include "ItemManager.h"
-#include "Log.h"
 #include "Map.h"
-#include "MapManager.h"
 #include "Script.h"
-#include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 PROPERTIES_IMPL(Location);
 CLASS_PROPERTY_IMPL(Location, MapProtos);
@@ -30,14 +24,10 @@ Location::Location(uint id, ProtoLocation* proto) : Entity(id, EntityType::Locat
     RUNTIME_ASSERT(proto);
 }
 
-Location::~Location()
-{
-    //
-}
-
 void Location::BindScript()
 {
     EntranceScriptBindId = 0;
+
     if (GetEntranceScript())
     {
         string func_name = _str().parseHash(GetEntranceScript());
@@ -46,9 +36,29 @@ void Location::BindScript()
     }
 }
 
+ProtoLocation* Location::GetProtoLoc()
+{
+    return (ProtoLocation*)Proto;
+}
+
+bool Location::IsLocVisible()
+{
+    return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
+}
+
+MapVec& Location::GetMapsRaw()
+{
+    return locMaps;
+};
+
 MapVec Location::GetMaps()
 {
     return locMaps;
+}
+
+uint Location::GetMapsCount()
+{
+    return (uint)locMaps.size();
 }
 
 Map* Location::GetMapByIndex(uint index)
@@ -134,9 +144,11 @@ bool Location::IsCanDelete()
     for (Map* map : maps)
     {
         for (Npc* npc : map->GetNpcs())
+        {
             if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) ||
                 npc->IsHaveGeckItem())
                 return false;
+        }
     }
     return true;
 }

@@ -2,6 +2,7 @@
 
 #include "Common.h"
 
+#include "DataBase.h"
 #include "FileSystem.h"
 #include "ScriptInvoker.h"
 #include "ScriptPragmas.h"

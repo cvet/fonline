@@ -9,6 +9,7 @@
 #include "Critter.h"
 #include "Dialogs.h"
 #include "EntityManager.h"
+#include "PropertiesSerializator.h"
 #endif
 #if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
 #include "Client.h"
@@ -161,7 +162,7 @@ public:
     bool RestoreEntity(uint id, const DataBase::Document& doc)
     {
         CustomEntity* entity = new CustomEntity(id, SubType, Registrator);
-        if (!entity->Props.LoadFromDbDocument(doc))
+        if (!PropertiesSerializator::LoadFromDbDocument(&entity->Props, doc))
         {
             WriteLog("Fail to restore properties for custom entity '{}' ({}).\n", Registrator->GetClassName(), id);
             entity->Release();

@@ -4,6 +4,7 @@
 
 #include "Entity.h"
 #include "GeometryHelper.h"
+#include "Properties.h"
 #include "Settings.h"
 
 class ResourceManager;
@@ -14,6 +15,9 @@ class Animation3d;
 struct AnyFrames;
 class ItemView;
 using ItemViewVec = vector<ItemView*>;
+class CritterView;
+using CritterViewMap = map<uint, CritterView*>;
+using CritterViewVec = vector<CritterView*>;
 
 class CritterView : public Entity
 {

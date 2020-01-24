@@ -3,7 +3,11 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "ProtoMap.h"
+#include "Properties.h"
+
+class MapView;
+using MapViewVec = vector<MapView*>;
+using MapViewMap = map<uint, MapView*>;
 
 class MapView : public Entity
 {
@@ -24,5 +28,4 @@ public:
     CLASS_PROPERTY(bool, IsNoLogOut);
 
     MapView(uint id, ProtoMap* proto);
-    ~MapView() = default;
 };

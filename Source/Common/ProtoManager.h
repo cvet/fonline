@@ -5,10 +5,10 @@
 #include "Entity.h"
 #include "FileSystem.h"
 
-class ProtoManager
+class ProtoManager : public NonCopyable
 {
 public:
-    void ClearProtos();
+    void ClearProtos(); // Todo: remove ProtoManager::ClearProtos
     bool LoadProtosFromFiles(FileManager& file_mngr);
     void GetBinaryData(UCharVec& data);
     void LoadProtosFromBinaryData(UCharVec& data);
@@ -19,14 +19,14 @@ public:
     ProtoMap* GetProtoMap(hash pid);
     ProtoLocation* GetProtoLocation(hash pid);
 
-    const ProtoItemMap& GetProtoItems() { return itemProtos; }
-    const ProtoCritterMap& GetProtoCritters() { return crProtos; }
-    const ProtoMapMap& GetProtoMaps() { return mapProtos; }
-    const ProtoLocationMap& GetProtoLocations() { return locProtos; }
+    const ProtoItemMap& GetProtoItems();
+    const ProtoCritterMap& GetProtoCritters();
+    const ProtoMapMap& GetProtoMaps();
+    const ProtoLocationMap& GetProtoLocations();
 
 private:
-    ProtoItemMap itemProtos;
-    ProtoCritterMap crProtos;
-    ProtoMapMap mapProtos;
-    ProtoLocationMap locProtos;
+    ProtoItemMap itemProtos {};
+    ProtoCritterMap crProtos {};
+    ProtoMapMap mapProtos {};
+    ProtoLocationMap locProtos {};
 };

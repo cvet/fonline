@@ -1,8 +1,6 @@
 #include "HexManager.h"
-#include "CritterView.h"
 #include "EffectManager.h"
 #include "GenericUtils.h"
-#include "ItemHexView.h"
 #include "LineTracer.h"
 #include "Log.h"
 #include "ProtoManager.h"
@@ -307,10 +305,8 @@ HexManager::HexManager(
     picRainFallName = "Rain/Fall.fofrm";
     picRainDropName = "Rain/Drop.fofrm";
 
-#ifdef FONLINE_EDITOR
     if (mapperMode)
         ClearSelTiles();
-#endif
 }
 
 HexManager::~HexManager()
@@ -482,9 +478,8 @@ void HexManager::FinishItem(uint id, bool is_deleted)
     if (is_deleted)
         item->SetHideAnim();
 
-#ifdef FONLINE_EDITOR
-    DeleteItem(item);
-#endif
+    if (mapperMode)
+        DeleteItem(item);
 }
 
 void HexManager::DeleteItem(
@@ -1022,7 +1017,6 @@ void HexManager::RebuildMap(int rx, int ry)
                 }
                 else
                 {
-#ifdef FONLINE_EDITOR
                     bool is_fast = fastPids.count(item->GetProtoId()) != 0;
                     if (!settings.ShowScen && !is_fast && item->IsScenery())
                         continue;
@@ -1034,7 +1028,6 @@ void HexManager::RebuildMap(int rx, int ry)
                         continue;
                     if (ignorePids.count(item->GetProtoId()))
                         continue;
-#endif
                 }
 
                 Sprite& spr = mainTree.AddSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(),
@@ -1270,7 +1263,6 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 }
                 else
                 {
-#ifdef FONLINE_EDITOR
                     bool is_fast = fastPids.count(item->GetProtoId()) != 0;
                     if (!settings.ShowScen && !is_fast && item->IsScenery())
                         continue;
@@ -1282,7 +1274,6 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                         continue;
                     if (ignorePids.count(item->GetProtoId()))
                         continue;
-#endif
                 }
 
                 Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(),
@@ -1345,18 +1336,22 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 Field::Tile& tile = f.GetTile(i, false);
                 uint spr_id = tile.Anim->GetSprId(0);
 
-#ifdef FONLINE_EDITOR
-                ProtoMap::TileVec& tiles = GetTiles(nx, ny, false);
-                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
-                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
-                    &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#else
-                Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
-                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#endif
-                f.AddSpriteToChain(&spr);
+                if (mapperMode)
+                {
+                    MapTileVec& tiles = GetTiles(nx, ny, false);
+                    Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
+                        tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
+                        &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                    f.AddSpriteToChain(&spr);
+                }
+                else
+                {
+                    Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
+                        tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                    f.AddSpriteToChain(&spr);
+                }
             }
         }
 
@@ -1369,19 +1364,25 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 Field::Tile& roof = f.GetTile(i, true);
                 uint spr_id = roof.Anim->GetSprId(0);
 
-#ifdef FONLINE_EDITOR
-                ProtoMap::TileVec& roofs = GetTiles(nx, ny, true);
-                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
-                    roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
-                    &sprMngr.GetEffectManager().Effects.Roof, nullptr);
-#else
-                Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
-                    roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, &settings.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof, nullptr);
-#endif
-                spr.SetEgg(EGG_ALWAYS);
-                f.AddSpriteToChain(&spr);
+                if (mapperMode)
+                {
+                    MapTileVec& roofs = GetTiles(nx, ny, true);
+                    Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
+                        roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
+                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                    spr.SetEgg(EGG_ALWAYS);
+                    f.AddSpriteToChain(&spr);
+                }
+                else
+                {
+                    Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
+                        roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha,
+                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                    spr.SetEgg(EGG_ALWAYS);
+                    f.AddSpriteToChain(&spr);
+                }
             }
         }
     };
@@ -1856,15 +1857,18 @@ void HexManager::CollectLightSources()
     if (!IsMapLoaded())
         return;
 
-// Scenery
-#ifndef FONLINE_EDITOR
-    lightSources = lightSourcesScen;
-#else
-    for (auto& item : hexItems)
-        if (item->IsStatic() && item->GetIsLight())
-            lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(), item->GetLightDistance(),
-                item->GetLightFlags(), item->GetLightIntensity()});
-#endif
+    // Scenery
+    if (mapperMode)
+    {
+        for (auto& item : hexItems)
+            if (item->IsStatic() && item->GetIsLight())
+                lightSources.push_back({item->GetHexX(), item->GetHexY(), item->GetLightColor(),
+                    item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity()});
+    }
+    else
+    {
+        lightSources = lightSourcesScen;
+    }
 
     // Items on ground
     for (auto& item : hexItems)
@@ -1888,12 +1892,13 @@ void HexManager::CollectLightSources()
         }
 
         // Default chosen light
-#ifndef FONLINE_EDITOR
-        if (cr->IsChosen() && !added)
-            lightSources.push_back(
-                {cr->GetHexX(), cr->GetHexY(), settings.ChosenLightColor, settings.ChosenLightDistance,
-                    settings.ChosenLightFlags, settings.ChosenLightIntensity, &cr->SprOx, &cr->SprOy});
-#endif
+        if (!mapperMode)
+        {
+            if (cr->IsChosen() && !added)
+                lightSources.push_back(
+                    {cr->GetHexX(), cr->GetHexY(), settings.ChosenLightColor, settings.ChosenLightDistance,
+                        settings.ChosenLightFlags, settings.ChosenLightIntensity, &cr->SprOx, &cr->SprOy});
+        }
     }
 }
 
@@ -1940,18 +1945,22 @@ void HexManager::RebuildTiles()
                 Field::Tile& tile = f.GetTile(i, false);
                 uint spr_id = tile.Anim->GetSprId(0);
 
-#ifdef FONLINE_EDITOR
-                ProtoMap::TileVec& tiles = GetTiles(hx, hy, false);
-                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
-                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
-                    &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#else
-                Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
-                    tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id,
-                    nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
-#endif
-                f.AddSpriteToChain(&spr);
+                if (mapperMode)
+                {
+                    MapTileVec& tiles = GetTiles(hx, hy, false);
+                    Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
+                        tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
+                        &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                    f.AddSpriteToChain(&spr);
+                }
+                else
+                {
+                    Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
+                        tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                    f.AddSpriteToChain(&spr);
+                }
             }
         }
         y2 += wVisible;
@@ -1993,20 +2002,25 @@ void HexManager::RebuildRoof()
                     Field::Tile& roof = f.GetTile(i, true);
                     uint spr_id = roof.Anim->GetSprId(0);
 
-#ifdef FONLINE_EDITOR
-                    ProtoMap::TileVec& roofs = GetTiles(hx, hy, true);
-                    Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
-                        roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
-                        spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
-                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
-#else
-                    Sprite& spr =
-                        roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, roof.OffsX + settings.MapRoofOffsX,
-                            roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
-                            &settings.RoofAlpha, &sprMngr.GetEffectManager().Effects.Roof, nullptr);
-#endif
-                    spr.SetEgg(EGG_ALWAYS);
-                    f.AddSpriteToChain(&spr);
+                    if (mapperMode)
+                    {
+                        MapTileVec& roofs = GetTiles(hx, hy, true);
+                        Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
+                            roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
+                            spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
+                            &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                        spr.SetEgg(EGG_ALWAYS);
+                        f.AddSpriteToChain(&spr);
+                    }
+                    else
+                    {
+                        Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
+                            roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
+                            spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha,
+                            &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                        spr.SetEgg(EGG_ALWAYS);
+                        f.AddSpriteToChain(&spr);
+                    }
                 }
             }
         }
@@ -3140,7 +3154,6 @@ ItemHexView* HexManager::GetItemPixel(int x, int y, bool& item_egg)
         }
         else
         {
-#ifdef FONLINE_EDITOR
             bool is_fast = fastPids.count(item->GetProtoId()) != 0;
             if (item->IsScenery() && !settings.ShowScen && !is_fast)
                 continue;
@@ -3152,7 +3165,6 @@ ItemHexView* HexManager::GetItemPixel(int x, int y, bool& item_egg)
                 continue;
             if (ignorePids.count(item->GetProtoId()))
                 continue;
-#endif
         }
 
         SpriteInfo* si = sprMngr.GetSpriteInfo(item->SprId);
@@ -3997,9 +4009,9 @@ bool HexManager::LoadMap(CacheStorage& cache, hash map_pid)
 
     // Tiles
     curHashTiles = (tiles_len ? Hashing::MurmurHash2(map_file.GetCurBuf(), tiles_len) : maxhx * maxhy);
-    for (uint i = 0; i < tiles_len / sizeof(ProtoMap::Tile); i++)
+    for (uint i = 0; i < tiles_len / sizeof(MapTile); i++)
     {
-        ProtoMap::Tile tile;
+        MapTile tile;
         map_file.CopyMem(&tile, sizeof(tile));
         if (tile.HexX >= maxHexX || tile.HexY >= maxHexY)
             continue;
@@ -4142,10 +4154,11 @@ void HexManager::UnloadMap()
     ResizeField(0, 0);
     DeleteCritters();
 
-#ifdef FONLINE_EDITOR
-    TilesField.clear();
-    RoofsField.clear();
-#endif
+    if (mapperMode)
+    {
+        TilesField.clear();
+        RoofsField.clear();
+    }
 }
 
 void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen)
@@ -4260,10 +4273,10 @@ void HexManager::OnResolutionChanged()
     RefreshMap();
 }
 
-#ifdef FONLINE_EDITOR
 bool HexManager::SetProtoMap(ProtoMap& pmap)
 {
-    WriteLog("Create map from prototype.\n");
+    // Todo: !!!
+    /*WriteLog("Create map from prototype.\n");
 
     UnloadMap();
 
@@ -4315,11 +4328,11 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
             for (int r = 0; r <= 1; r++) // Tile/roof
             {
-                ProtoMap::TileVec& tiles = GetTiles(hx, hy, r != 0);
+                MapTileVec& tiles = GetTiles(hx, hy, r != 0);
 
                 for (uint i = 0, j = (uint)tiles.size(); i < j; i++)
                 {
-                    ProtoMap::Tile& tile = tiles[i];
+                    MapTile& tile = tiles[i];
                     AnyFrames* anim = resMngr.GetItemAnim(tile.Name);
                     if (anim)
                     {
@@ -4377,13 +4390,14 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
     curHashTiles = hash(-1);
     curHashScen = hash(-1);
-    WriteLog("Create map from prototype complete.\n");
+    WriteLog("Create map from prototype complete.\n");*/
     return true;
 }
 
 void HexManager::GetProtoMap(ProtoMap& pmap)
 {
-    pmap.SetWorkHexX(screenHexX);
+    // Todo: !!!
+    /*pmap.SetWorkHexX(screenHexX);
     pmap.SetWorkHexY(screenHexY);
     pmap.SetCurDayTime(GetDayTime());
 
@@ -4429,14 +4443,14 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
     {
         for (ushort hx = 0; hx < width; hx++)
         {
-            ProtoMap::TileVec& tiles = TilesField[hy * width + hx];
+            MapTileVec& tiles = TilesField[hy * width + hx];
             for (uint i = 0, j = (uint)tiles.size(); i < j; i++)
                 pmap.Tiles.push_back(tiles[i]);
-            ProtoMap::TileVec& roofs = RoofsField[hy * width + hx];
+            MapTileVec& roofs = RoofsField[hy * width + hx];
             for (uint i = 0, j = (uint)roofs.size(); i < j; i++)
                 pmap.Tiles.push_back(roofs[i]);
         }
-    }
+    }*/
 }
 
 void HexManager::ClearSelTiles()
@@ -4448,7 +4462,7 @@ void HexManager::ClearSelTiles()
             Field& f = GetField(hx, hy);
             if (f.GetTilesCount(false))
             {
-                ProtoMap::TileVec& tiles = GetTiles(hx, hy, false);
+                MapTileVec& tiles = GetTiles(hx, hy, false);
                 for (uint i = 0; i < tiles.size();)
                 {
                     if (tiles[i].IsSelected)
@@ -4462,7 +4476,7 @@ void HexManager::ClearSelTiles()
             }
             if (f.GetTilesCount(true))
             {
-                ProtoMap::TileVec& roofs = GetTiles(hx, hy, true);
+                MapTileVec& roofs = GetTiles(hx, hy, true);
                 for (uint i = 0; i < roofs.size();)
                 {
                     if (roofs[i].IsSelected)
@@ -4489,7 +4503,7 @@ void HexManager::ParseSelTiles()
             {
                 bool roof = (r == 1);
                 Field& f = GetField(hx, hy);
-                ProtoMap::TileVec& tiles = GetTiles(hx, hy, roof);
+                MapTileVec& tiles = GetTiles(hx, hy, roof);
                 for (size_t i = 0; i < tiles.size();)
                 {
                     if (tiles[i].IsSelected)
@@ -4522,7 +4536,7 @@ void HexManager::SetTile(hash name, ushort hx, ushort hy, short ox, short oy, uc
         EraseTile(hx, hy, layer, is_roof, (uint)-1);
 
     Field::Tile& ftile = f.AddTile(anim, 0, 0, layer, is_roof);
-    ProtoMap::TileVec& tiles = GetTiles(hx, hy, is_roof);
+    MapTileVec& tiles = GetTiles(hx, hy, is_roof);
     tiles.push_back({name, hx, hy, ox, oy, layer, is_roof});
     tiles.back().IsSelected = select;
 
@@ -4549,7 +4563,7 @@ void HexManager::EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint
         if (tile.Layer == layer && i != skip_index)
         {
             f.EraseTile(i, is_roof);
-            ProtoMap::TileVec& tiles = GetTiles(hx, hy, is_roof);
+            MapTileVec& tiles = GetTiles(hx, hy, is_roof);
             tiles.erase(tiles.begin() + i);
             break;
         }
@@ -4730,5 +4744,3 @@ void HexManager::MarkPassedHexes()
     }
     RefreshMap();
 }
-
-#endif // FONLINE_EDITOR

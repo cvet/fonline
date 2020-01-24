@@ -2,8 +2,13 @@
 
 #include "Common.h"
 
+#include "Critter.h"
+#include "DataBase.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
+#include "Item.h"
+#include "Location.h"
+#include "Map.h"
 #include "Settings.h"
 
 class ProtoManager;

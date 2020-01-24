@@ -2,7 +2,6 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "ProtoMap.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
@@ -318,22 +317,18 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     if (errors)
         return false;
 
-        // Mapper collections
-#ifdef FONLINE_EDITOR
+    // Mapper collections
     for (auto& kv : itemProtos)
     {
-        ProtoItem* proto_item = (ProtoItem*)kv.second;
-        if (!proto_item->Components.empty())
-            proto_item->CollectionName = _str().parseHash(*proto_item->Components.begin()).lower();
+        if (!kv.second->Components.empty())
+            kv.second->CollectionName = _str().parseHash(*kv.second->Components.begin()).lower();
         else
-            proto_item->CollectionName = "other";
+            kv.second->CollectionName = "other";
     }
     for (auto& kv : crProtos)
     {
-        ProtoCritter* proto_cr = (ProtoCritter*)kv.second;
-        proto_cr->CollectionName = "all";
+        kv.second->CollectionName = "all";
     }
-#endif
 
     // Check player proto
     if (!crProtos.count(_str("Player").toHash()))
@@ -363,22 +358,8 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     if (errors)
         return false;
 
-        // Load maps data
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    for (auto& kv : mapProtos)
-    {
-        if (!kv.second->ServerLoad(file_mngr, *this))
-        {
-            WriteLog("Load proto map '{}' fail.\n", kv.second->GetName());
-            errors++;
-        }
-    }
-    if (errors)
-        return false;
-#endif
-
     WriteLog("Load prototypes complete, count {}.\n",
-        (uint)(itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size()));
+        itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size());
     return true;
 }
 
@@ -470,4 +451,24 @@ ProtoLocation* ProtoManager::GetProtoLocation(hash pid)
 {
     auto it = locProtos.find(pid);
     return it != locProtos.end() ? it->second : nullptr;
+}
+
+const ProtoItemMap& ProtoManager::GetProtoItems()
+{
+    return itemProtos;
+}
+
+const ProtoCritterMap& ProtoManager::GetProtoCritters()
+{
+    return crProtos;
+}
+
+const ProtoMapMap& ProtoManager::GetProtoMaps()
+{
+    return mapProtos;
+}
+
+const ProtoLocationMap& ProtoManager::GetProtoLocations()
+{
+    return locProtos;
 }

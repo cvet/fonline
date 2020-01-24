@@ -2,7 +2,11 @@
 
 #include "Common.h"
 
+#include "Critter.h"
 #include "Entity.h"
+#include "Item.h"
+#include "Location.h"
+#include "Map.h"
 
 class MapManager;
 class CritterManager;
@@ -10,18 +14,6 @@ class ItemManager;
 
 class EntityManager
 {
-    MapManager& mapMngr;
-    CritterManager& crMngr;
-    ItemManager& itemMngr;
-
-    EntityMap allEntities;
-    uint entitiesCount[(int)EntityType::Max];
-
-    bool LinkMaps();
-    bool LinkNpc();
-    bool LinkItems();
-    void InitAfterLoad();
-
 public:
     EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr);
 
@@ -42,4 +34,16 @@ public:
 
     bool LoadEntities();
     void ClearEntities();
+
+private:
+    bool LinkMaps();
+    bool LinkNpc();
+    bool LinkItems();
+    void InitAfterLoad();
+
+    MapManager& mapMngr;
+    CritterManager& crMngr;
+    ItemManager& itemMngr;
+    EntityMap allEntities {};
+    uint entitiesCount[(int)EntityType::Max] {};
 };

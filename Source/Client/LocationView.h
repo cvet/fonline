@@ -3,6 +3,11 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "Properties.h"
+
+class LocationView;
+using LocationViewVec = vector<LocationView*>;
+using LocationViewMap = map<uint, LocationView*>;
 
 class LocationView : public Entity
 {
@@ -22,5 +27,4 @@ public:
     CLASS_PROPERTY(uint, Color);
 
     LocationView(uint id, ProtoLocation* proto);
-    ~LocationView() = default;
 };

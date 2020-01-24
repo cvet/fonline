@@ -1,12 +1,9 @@
 #include "ItemManager.h"
-#include "Critter.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
-#include "Item.h"
-#include "Location.h"
 #include "Log.h"
-#include "Map.h"
 #include "MapManager.h"
+#include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Script.h"
 #include "StringUtils.h"
@@ -197,7 +194,7 @@ bool ItemManager::RestoreItem(uint id, hash proto_id, const DataBase::Document& 
     }
 
     Item* item = new Item(id, proto);
-    if (!item->Props.LoadFromDbDocument(doc))
+    if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc))
     {
         WriteLog("Fail to restore properties for item '{}' ({}).\n", _str().parseHash(proto_id), id);
         item->Release();

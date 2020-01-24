@@ -2,7 +2,7 @@
 #include "AdminPanel.h"
 #include "GenericUtils.h"
 #include "GraphicStructures.h"
-#include "ProtoMap.h"
+#include "PropertiesSerializator.h"
 #include "Testing.h"
 #include "Version_Include.h"
 #include "WinApi_Include.h"
@@ -1871,7 +1871,7 @@ bool FOServer::InitReal()
     }
     else
     {
-        if (!Globals->Props.LoadFromDbDocument(globals_doc))
+        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc))
         {
             WriteLog("Failed to load globals document.\n");
             return false;
@@ -2382,7 +2382,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
     if (!entity->Id || prop->IsTemporary())
         return;
 
-    DataBase::Value value = entity->Props.SavePropertyToDbValue(prop);
+    DataBase::Value value = PropertiesSerializator::SavePropertyToDbValue(&entity->Props, prop);
 
     if (entity->Type == EntityType::Location)
         DbStorage->Update("Locations", entity->Id, prop->GetName(), value);
@@ -2596,7 +2596,7 @@ void FOServer::VerifyTrigger(
     if (map->IsHexStaticTrigger(from_hx, from_hy))
     {
         ItemVec triggers;
-        map->GetProtoMap()->GetStaticItemTriggers(from_hx, from_hy, triggers);
+        map->GetStaticItemTriggers(from_hx, from_hy, triggers);
         for (Item* item : triggers)
         {
             if (item->SceneryScriptBindId)
@@ -2616,7 +2616,7 @@ void FOServer::VerifyTrigger(
     if (map->IsHexStaticTrigger(to_hx, to_hy))
     {
         ItemVec triggers;
-        map->GetProtoMap()->GetStaticItemTriggers(to_hx, to_hy, triggers);
+        map->GetStaticItemTriggers(to_hx, to_hy, triggers);
         for (Item* item : triggers)
         {
             if (item->SceneryScriptBindId)
@@ -3070,7 +3070,7 @@ void FOServer::Process_LogIn(Client*& cl)
         cl->SetId(id);
 
         // Data
-        if (!cl->Props.LoadFromDbDocument(doc))
+        if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc))
         {
             WriteLog("Player '{}' data truncated.\n", cl->Name);
             cl->Send_TextMsg(cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME);
@@ -3328,7 +3328,10 @@ void FOServer::Process_GiveMap(Client* cl)
         }
     }
 
-    Send_MapData(cl, pmap, pmap->HashTiles != hash_tiles, pmap->HashScen != hash_scen);
+    StaticMap* static_map = MapMngr.FindStaticMap(pmap);
+    RUNTIME_ASSERT(static_map);
+
+    Send_MapData(cl, pmap, static_map, static_map->HashTiles != hash_tiles, static_map->HashScen != hash_scen);
 
     if (!automap)
     {
@@ -3339,7 +3342,7 @@ void FOServer::Process_GiveMap(Client* cl)
     }
 }
 
-void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery)
+void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, StaticMap* static_map, bool send_tiles, bool send_scenery)
 {
     uint msg = NETMSG_MAP;
     hash map_pid = pmap->ProtoId;
@@ -3348,9 +3351,9 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool se
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(map_pid) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
 
     if (send_tiles)
-        msg_len += sizeof(uint) + (uint)pmap->Tiles.size() * sizeof(ProtoMap::Tile);
+        msg_len += sizeof(uint) + (uint)static_map->Tiles.size() * sizeof(MapTile);
     if (send_scenery)
-        msg_len += sizeof(uint) + (uint)pmap->SceneryData.size();
+        msg_len += sizeof(uint) + (uint)static_map->SceneryData.size();
 
     CLIENT_OUTPUT_BEGIN(cl);
     cl->Connection->Bout << msg;
@@ -3362,15 +3365,15 @@ void FOServer::Send_MapData(Client* cl, ProtoMap* pmap, bool send_tiles, bool se
     cl->Connection->Bout << send_scenery;
     if (send_tiles)
     {
-        cl->Connection->Bout << (uint)(pmap->Tiles.size() * sizeof(ProtoMap::Tile));
-        if (pmap->Tiles.size())
-            cl->Connection->Bout.Push(&pmap->Tiles[0], (uint)pmap->Tiles.size() * sizeof(ProtoMap::Tile));
+        cl->Connection->Bout << (uint)(static_map->Tiles.size() * sizeof(MapTile));
+        if (static_map->Tiles.size())
+            cl->Connection->Bout.Push(&static_map->Tiles[0], (uint)static_map->Tiles.size() * sizeof(MapTile));
     }
     if (send_scenery)
     {
-        cl->Connection->Bout << (uint)pmap->SceneryData.size();
-        if (pmap->SceneryData.size())
-            cl->Connection->Bout.Push(&pmap->SceneryData[0], (uint)pmap->SceneryData.size());
+        cl->Connection->Bout << (uint)static_map->SceneryData.size();
+        if (static_map->SceneryData.size())
+            cl->Connection->Bout.Push(&static_map->SceneryData[0], (uint)static_map->SceneryData.size());
     }
     CLIENT_OUTPUT_END(cl);
 }
@@ -6937,7 +6940,7 @@ Item* FOServer::ScriptFunc::Map_GetStaticItem(Map* map, ushort hx, ushort hy, ha
     if (hx >= map->GetWidth() || hy >= map->GetHeight())
         SCRIPT_ERROR_R0("Invalid hexes args.");
 
-    return map->GetProtoMap()->GetStaticItem(hx, hy, pid);
+    return map->GetStaticItem(hx, hy, pid);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHex(Map* map, ushort hx, ushort hy)
@@ -6948,7 +6951,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHex(Map* map, ushort hx, u
         SCRIPT_ERROR_R0("Invalid hexes args.");
 
     ItemVec static_items;
-    map->GetProtoMap()->GetStaticItemsHex(hx, hy, static_items);
+    map->GetStaticItemsHex(hx, hy, static_items);
 
     return Script::CreateArrayRef("array<const Item>", static_items);
 }
@@ -6961,7 +6964,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHexEx(Map* map, ushort hx,
         SCRIPT_ERROR_R0("Invalid hexes args.");
 
     ItemVec static_items;
-    map->GetProtoMap()->GetStaticItemsHexEx(hx, hy, radius, pid, static_items);
+    map->GetStaticItemsHexEx(hx, hy, radius, pid, static_items);
     return Script::CreateArrayRef("array<const Item>", static_items);
 }
 
@@ -6971,7 +6974,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsByPid(Map* map, hash pid)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
     ItemVec static_items;
-    map->GetProtoMap()->GetStaticItemsByPid(pid, static_items);
+    map->GetStaticItemsByPid(pid, static_items);
     return Script::CreateArrayRef("array<const Item>", static_items);
 }
 
@@ -6983,7 +6986,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsPredicate(Map* map, asIScr
     uint bind_id = Script::BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
-    ItemVec& map_static_items = map->GetProtoMap()->StaticItemsVec;
+    ItemVec& map_static_items = map->GetStaticMap()->StaticItemsVec;
     ItemVec items;
     items.reserve(map_static_items.size());
     for (Item* item : map_static_items)
@@ -7009,7 +7012,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsAll(Map* map)
     if (map->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    return Script::CreateArrayRef("array<const Item>", map->GetProtoMap()->StaticItemsVec);
+    return Script::CreateArrayRef("array<const Item>", map->GetStaticMap()->StaticItemsVec);
 }
 
 Critter* FOServer::ScriptFunc::Map_GetCritterById(Map* map, uint crid)
@@ -7938,7 +7941,7 @@ Critter* FOServer::ScriptFunc::Global_GetPlayer(string name)
     cl = new Client(nullptr, cl_proto, Self->Settings);
     cl->SetId(id);
     cl->Name = name;
-    if (!cl->Props.LoadFromDbDocument(doc))
+    if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc))
         SCRIPT_ERROR_R0("Client data db read failed.");
     return cl;
 }

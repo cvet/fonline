@@ -4,13 +4,31 @@
 
 #include "Entity.h"
 
+class Map;
+using MapVec = vector<Map*>;
+using MapMap = map<uint, Map*>;
+class Location;
+using LocationVec = vector<Location*>;
+using LocationMap = map<uint, Location*>;
+
 class Location : public Entity
 {
-    MapVec locMaps;
-
 public:
-    uint EntranceScriptBindId = 0;
-    int GeckCount = 0;
+    Location(uint id, ProtoLocation* proto);
+    void BindScript();
+    ProtoLocation* GetProtoLoc();
+    bool IsLocVisible();
+    MapVec& GetMapsRaw();
+    MapVec GetMaps();
+    uint GetMapsCount();
+    Map* GetMapByIndex(uint index);
+    Map* GetMapByPid(hash map_pid);
+    uint GetMapIndex(hash map_pid);
+    bool IsCanEnter(uint players_count);
+    bool IsNoCrit();
+    bool IsNoPlayer();
+    bool IsNoNpc();
+    bool IsCanDelete();
 
     PROPERTIES_HEADER();
     CLASS_PROPERTY(CScriptArray*, MapProtos); // hash[]
@@ -27,22 +45,10 @@ public:
     CLASS_PROPERTY(bool, ToGarbage);
     CLASS_PROPERTY(uint, Color);
 
-    Location(uint id, ProtoLocation* proto);
-    ~Location();
+    // Todo: encapsulate Location data
+    uint EntranceScriptBindId {};
+    int GeckCount {};
 
-    void BindScript();
-    ProtoLocation* GetProtoLoc() { return (ProtoLocation*)Proto; }
-    bool IsLocVisible() { return !GetHidden() || (GetGeckVisible() && GeckCount > 0); }
-    MapVec& GetMapsRaw() { return locMaps; };
-    MapVec GetMaps();
-    uint GetMapsCount() { return (uint)locMaps.size(); }
-    Map* GetMapByIndex(uint index);
-    Map* GetMapByPid(hash map_pid);
-    uint GetMapIndex(hash map_pid);
-    bool IsCanEnter(uint players_count);
-
-    bool IsNoCrit();
-    bool IsNoPlayer();
-    bool IsNoNpc();
-    bool IsCanDelete();
+private:
+    MapVec locMaps {};
 };

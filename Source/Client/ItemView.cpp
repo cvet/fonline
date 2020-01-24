@@ -79,12 +79,8 @@ CLASS_PROPERTY_IMPL(ItemView, FlyEffectSpeed);
 
 ItemView::ItemView(uint id, ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
 {
-    RUNTIME_ASSERT(proto);
+    RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);
-}
-
-ItemView::~ItemView()
-{
 }
 
 ItemView* ItemView::Clone()
@@ -94,46 +90,47 @@ ItemView* ItemView::Clone()
     return clone;
 }
 
-#ifdef FONLINE_EDITOR
-void ItemView::ContSetItem(ItemView* item)
+bool ItemView::IsStatic()
 {
-    if (!ChildItems)
-        ChildItems = new ItemViewVec();
-
-    RUNTIME_ASSERT(std::find(ChildItems->begin(), ChildItems->end(), item) == ChildItems->end());
-
-    ChildItems->push_back(item);
-    item->SetAccessory(ITEM_ACCESSORY_CONTAINER);
-    item->SetContainerId(Id);
+    return GetIsStatic();
 }
 
-void ItemView::ContEraseItem(ItemView* item)
+bool ItemView::IsAnyScenery()
 {
-    RUNTIME_ASSERT(ChildItems);
-    RUNTIME_ASSERT(item);
-
-    auto it = std::find(ChildItems->begin(), ChildItems->end(), item);
-    RUNTIME_ASSERT(it != ChildItems->end());
-    ChildItems->erase(it);
-
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
-    item->SetContainerId(0);
-    item->SetContainerStack(0);
-
-    if (ChildItems->empty())
-        SAFEDEL(ChildItems);
+    return IsScenery() || IsWall();
 }
 
-void ItemView::ContGetItems(ItemViewVec& items, uint stack_id)
+bool ItemView::IsScenery()
 {
-    if (!ChildItems)
-        return;
-
-    for (auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it)
-    {
-        ItemView* item = *it;
-        if (stack_id == uint(-1) || item->GetContainerStack() == stack_id)
-            items.push_back(item);
-    }
+    return GetIsScenery();
 }
-#endif
+
+bool ItemView::IsWall()
+{
+    return GetIsWall();
+}
+
+bool ItemView::IsColorize()
+{
+    return GetIsColorize();
+}
+
+uint ItemView::GetColor()
+{
+    return GetLightColor() & 0xFFFFFF;
+}
+
+uchar ItemView::GetAlpha()
+{
+    return GetLightColor() >> 24;
+}
+
+uint ItemView::GetInvColor()
+{
+    return GetIsColorizeInv() ? GetLightColor() : 0;
+}
+
+uint ItemView::LightGetHash()
+{
+    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
+}

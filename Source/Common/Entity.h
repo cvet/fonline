@@ -7,141 +7,85 @@
 
 enum class EntityType
 {
-    None = 0,
-    EntityProto = 1,
-    ItemProto = 2,
-    CritterProto = 3,
-    MapProto = 4,
-    LocationProto = 5,
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    Item = 6,
-    Client = 7,
-    Npc = 8,
-    Map = 9,
-    Location = 10,
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
-    ItemView = 11,
-    ItemHexView = 12,
-    CritterView = 13,
-    MapView = 14,
-    LocationView = 15,
-#endif
-    Custom = 16,
-    Global = 17,
-    Max = 28,
+    ItemProto,
+    CritterProto,
+    MapProto,
+    LocationProto,
+    Item,
+    Client,
+    Npc,
+    Map,
+    Location,
+    ItemView,
+    ItemHexView,
+    CritterView,
+    MapView,
+    LocationView,
+    Custom,
+    Global,
+    Max,
 };
 
+class CScriptArray;
 class Entity;
 using EntityVec = vector<Entity*>;
 using EntityMap = map<uint, Entity*>;
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-class Item;
-using ItemVec = vector<Item*>;
-using ItemMap = map<uint, Item*>;
-class Critter;
-using CritterMap = map<uint, Critter*>;
-using CritterVec = vector<Critter*>;
-class Npc;
-using NpcMap = map<uint, Npc*>;
-using NpcVec = vector<Npc*>;
-class Client;
-using ClientMap = map<uint, Client*>;
-using ClientVec = vector<Client*>;
-class Map;
-using MapVec = vector<Map*>;
-using MapMap = map<uint, Map*>;
-class Location;
-using LocationVec = vector<Location*>;
-using LocationMap = map<uint, Location*>;
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
-class ItemView;
-using ItemViewVec = vector<ItemView*>;
-using ItemViewMap = map<uint, ItemView*>;
-class ItemHexView;
-using ItemHexViewVec = vector<ItemHexView*>;
-using ItemHexViewMap = map<uint, ItemHexView*>;
-class CritterView;
-using CritterViewMap = map<uint, CritterView*>;
-using CritterViewVec = vector<CritterView*>;
-class MapView;
-using MapViewVec = vector<MapView*>;
-using MapViewMap = map<uint, MapView*>;
-class LocationView;
-using LocationViewVec = vector<LocationView*>;
-using LocationViewMap = map<uint, LocationView*>;
-#endif
 class ProtoEntity;
 using ProtoEntityVec = vector<ProtoEntity*>;
 using ProtoEntityMap = map<hash, ProtoEntity*>;
-class ProtoLocation;
-using ProtoLocationVec = vector<ProtoLocation*>;
-using ProtoLocationMap = map<hash, ProtoLocation*>;
-class ProtoMap;
-using ProtoMapVec = vector<ProtoMap*>;
-using ProtoMapMap = map<hash, ProtoMap*>;
-class ProtoCritter;
-using ProtoCritterMap = map<hash, ProtoCritter*>;
-using ProtoCritterVec = vector<ProtoCritter*>;
-class ProtoItem;
-using ProtoItemVec = vector<ProtoItem*>;
-using ProtoItemMap = map<hash, ProtoItem*>;
 
-class CScriptArray;
-
-class Entity
+class Entity : public NonCopyable
 {
-protected:
-    Entity(uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto);
-    ~Entity();
-
 public:
-    Properties Props;
-    const uint Id;
-    const EntityType Type;
-    ProtoEntity* Proto;
-    uint MonoHandle;
-    mutable long RefCounter;
-    bool IsDestroyed;
-    bool IsDestroying;
-
     uint GetId() const;
     void SetId(uint id);
     hash GetProtoId() const;
     string GetName() const;
-    EntityVec GetChildren() const;
     void AddRef() const;
     void Release() const;
+
+    Properties Props;
+    const uint Id;
+    const EntityType Type;
+    ProtoEntity* Proto {};
+    uint MonoHandle {};
+    mutable int RefCounter {1};
+    bool IsDestroyed {};
+    bool IsDestroying {};
+
+protected:
+    Entity(uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto);
+    virtual ~Entity();
 };
 
 class ProtoEntity : public Entity
 {
+public:
+    bool HaveComponent(hash name) const;
+
+    const hash ProtoId;
+    UIntVec TextsLang {};
+    FOMsgVec Texts {};
+    HashSet Components {};
+    string CollectionName {};
+
 protected:
     ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator);
-
-public:
-    const hash ProtoId;
-    UIntVec TextsLang;
-    FOMsgVec Texts;
-    HashSet Components;
-#ifdef FONLINE_EDITOR
-    string CollectionName;
-#endif
-
-    bool HaveComponent(hash name) const;
 };
 
 class CustomEntity : public Entity
 {
 public:
     CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator);
+
     const uint SubType;
 };
 
 class GlobalVars : public Entity
 {
 public:
+    GlobalVars();
+
     PROPERTIES_HEADER();
     CLASS_PROPERTY(ushort, YearStart);
     CLASS_PROPERTY(ushort, Year);
@@ -154,32 +98,20 @@ public:
     CLASS_PROPERTY(uint, LastEntityId);
     CLASS_PROPERTY(uint, LastDeferredCallId);
     CLASS_PROPERTY(uint, HistoryRecordsId);
-
-    GlobalVars();
 };
 extern GlobalVars* Globals;
-
-class ProtoLocation : public ProtoEntity
-{
-public:
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY(CScriptArray*, MapProtos);
-
-    ProtoLocation(hash pid);
-};
-
-class ProtoCritter : public ProtoEntity
-{
-public:
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY(uint, Multihex);
-
-    ProtoCritter(hash pid);
-};
 
 class ProtoItem : public ProtoEntity
 {
 public:
+    ProtoItem(hash pid);
+    bool IsStatic() { return GetIsStatic(); }
+    bool IsAnyScenery() { return IsScenery() || IsWall(); }
+    bool IsScenery() { return GetIsScenery(); }
+    bool IsWall() { return GetIsWall(); }
+
+    int64 InstanceCount {};
+
     PROPERTIES_HEADER();
     CLASS_PROPERTY(hash, PicMap);
     CLASS_PROPERTY(hash, PicInv);
@@ -206,13 +138,48 @@ public:
     CLASS_PROPERTY(uchar, AnimStay0);
     CLASS_PROPERTY(uchar, AnimStay1);
     CLASS_PROPERTY(CScriptArray*, BlockLines);
-
-    ProtoItem(hash pid);
-
-    int64 InstanceCount;
-
-    bool IsStatic() { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery() { return GetIsScenery(); }
-    bool IsWall() { return GetIsWall(); }
 };
+using ProtoItemVec = vector<ProtoItem*>;
+using ProtoItemMap = map<hash, ProtoItem*>;
+
+class ProtoCritter : public ProtoEntity
+{
+public:
+    ProtoCritter(hash pid);
+
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY(uint, Multihex);
+};
+using ProtoCritterMap = map<hash, ProtoCritter*>;
+using ProtoCritterVec = vector<ProtoCritter*>;
+
+class ProtoMap : public ProtoEntity
+{
+public:
+    ProtoMap(hash pid);
+
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY(string, FilePath);
+    CLASS_PROPERTY(ushort, Width);
+    CLASS_PROPERTY(ushort, Height);
+    CLASS_PROPERTY(ushort, WorkHexX);
+    CLASS_PROPERTY(ushort, WorkHexY);
+    CLASS_PROPERTY(int, CurDayTime);
+    CLASS_PROPERTY(hash, ScriptId);
+    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
+    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
+    CLASS_PROPERTY(bool, IsNoLogOut);
+};
+using ProtoMapVec = vector<ProtoMap*>;
+using ProtoMapMap = map<hash, ProtoMap*>;
+
+class ProtoLocation : public ProtoEntity
+{
+public:
+    ProtoLocation(hash pid);
+
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY(CScriptArray*, MapProtos);
+};
+using ProtoLocationVec = vector<ProtoLocation*>;
+using ProtoLocationMap = map<hash, ProtoLocation*>;
