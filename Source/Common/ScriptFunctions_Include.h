@@ -23,17 +23,17 @@ static T* EntityUpCast(Entity* a)
         b->AddRef(); \
         return b; \
     }
-    // Todo: rework FONLINE_
-    /*CHECK_CAST(Location, EntityType::Location);
-    CHECK_CAST(Map, EntityType::Map);
-    CHECK_CAST(Critter, EntityType::Npc);
-    CHECK_CAST(Critter, EntityType::Client);
-    CHECK_CAST(Item, EntityType::Item);
-    CHECK_CAST(LocationView, EntityType::LocationView);
-    CHECK_CAST(MapView, EntityType::MapView);
-    CHECK_CAST(CritterView, EntityType::CritterView);
-    CHECK_CAST(ItemView, EntityType::ItemView);
-    CHECK_CAST(ItemView, EntityType::ItemHexView);*/
+        // Todo: rework FONLINE_
+        /*CHECK_CAST(Location, EntityType::Location);
+        CHECK_CAST(Map, EntityType::Map);
+        CHECK_CAST(Critter, EntityType::Npc);
+        CHECK_CAST(Critter, EntityType::Client);
+        CHECK_CAST(Item, EntityType::Item);
+        CHECK_CAST(LocationView, EntityType::LocationView);
+        CHECK_CAST(MapView, EntityType::MapView);
+        CHECK_CAST(CritterView, EntityType::CritterView);
+        CHECK_CAST(ItemView, EntityType::ItemView);
+        CHECK_CAST(ItemView, EntityType::ItemHexView);*/
 #undef CHECK_CAST
     return nullptr;
 }

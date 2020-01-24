@@ -2,7 +2,8 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-#include "ryml.hpp"
+// Todo: improve YAML supporting to config file
+// #include "ryml.hpp"
 
 static bool IsYaml(const string& str)
 {
@@ -23,7 +24,7 @@ void ConfigFile::ParseStr(const string& str)
 {
     if (IsYaml(str))
     {
-        ryml::Tree tree = ryml::parse(c4::to_csubstr(str.c_str()));
+        // ryml::Tree tree = ryml::parse(c4::to_csubstr(str.c_str()));
         // RUNTIME_ASSERT
     }
     else

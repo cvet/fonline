@@ -3,6 +3,7 @@
 #include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MessageBox.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -4277,7 +4278,7 @@ bool FOMapper::InitScriptSystem()
     }
     Script::SetExceptionCallback([](const string& str) {
         CreateDump("ScriptException", str);
-        GenericUtils::ShowErrorMessage(str, "");
+        MessageBox::ShowErrorMessage(str, "");
         exit(1);
     });
 

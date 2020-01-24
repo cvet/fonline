@@ -9,10 +9,8 @@
 #include "json.hpp"
 #include "unqlite.h"
 
-// Temporary workaround cause segfault before main on linux
-#ifdef FO_LINUX
+// Todo: Restore mongodb (linux segfault and linking errors)
 #define REMOVE_MONGO
-#endif
 
 #ifndef REMOVE_MONGO
 #include "mongoc.h"

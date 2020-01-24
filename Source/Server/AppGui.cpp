@@ -1,7 +1,4 @@
 #include "AppGui.h"
-
-#ifndef FO_SERVER_NO_GUI
-
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -959,5 +956,3 @@ static void Renderer_RenderWindow(ImGuiViewport* viewport, void*)
 
     RenderDrawData(viewport->DrawData);
 }
-
-#endif

@@ -1,8 +1,6 @@
 #include "AppGui.h"
 
-#ifndef FO_SERVER_NO_GUI
 #ifdef FO_HAVE_DX
-
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -1232,6 +1230,4 @@ static void Renderer_SwapBuffers(ImGuiViewport* viewport, void*)
     HRESULT hr = data->SwapChain->Present(nullptr, nullptr, data->D3dPP.hDeviceWindow, nullptr, 0);
     RUNTIME_ASSERT(hr == D3D_OK);
 }
-
-#endif
 #endif

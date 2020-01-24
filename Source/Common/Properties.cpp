@@ -2189,9 +2189,9 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
         disable_set = true;
 
     // Todo: rework FONLINE_
-/*#ifdef FONLINE_EDITOR
-    disable_get = false;
-#endif*/
+    /*#ifdef FONLINE_EDITOR
+        disable_get = false;
+    #endif*/
 
     // Register default getter
     bool is_handle = (data_type == Property::Array || data_type == Property::Dict);

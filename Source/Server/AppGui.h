@@ -1,13 +1,11 @@
 #pragma once
 
-#ifndef FO_SERVER_NO_GUI
-
 #include "Common.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
 
-class AppGui
+class AppGui : public StaticClass
 {
 public:
     static bool Init(const string& app_name, bool use_dx, bool docking, bool maximized);
@@ -21,5 +19,3 @@ private:
     static void EndFrameDX();
 #endif
 };
-
-#endif

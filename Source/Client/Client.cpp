@@ -3,6 +3,7 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MessageBox.h"
 #include "NetCommand.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -5478,7 +5479,7 @@ bool FOClient::ReloadScripts()
         return false;
     }
     Script::SetExceptionCallback([this](const string& str) {
-        GenericUtils::ShowErrorMessage(str, "");
+        MessageBox::ShowErrorMessage(str, "");
         throw ClientRestartException("Restart");
     });
 

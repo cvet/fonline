@@ -27,7 +27,6 @@ public:
     static int Procent(int full, int peace);
     static uint NumericalNumber(uint num);
     static bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
-    static void ShowErrorMessage(const string& message, const string& traceback);
     static int ConvertParamValue(const string& str, bool& fail);
     static uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light);
     static uint DistSqrt(int x1, int y1, int x2, int y2);
