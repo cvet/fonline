@@ -317,11 +317,11 @@ bool EntityManager::LoadEntities()
             }
             else if (type == EntityType::Custom)
             {
-                if (!Script::RestoreCustomEntity(custom_types[custom_index], id, doc))
+                /*if (!Script::RestoreCustomEntity(custom_types[custom_index], id, doc))
                 {
                     WriteLog("Fail to restore entity {} of type {}.\n", id, custom_types[custom_index]);
                     continue;
-                }
+                }*/
             }
             else
             {

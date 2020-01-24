@@ -100,13 +100,9 @@ struct EventData
     MonoMethod* MMethod;
 };
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 ServerScriptFunctions ServerFunctions;
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
 ClientScriptFunctions ClientFunctions;
 MapperScriptFunctions MapperFunctions;
-#endif
 
 bool Script::Init(
     ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target)
@@ -474,9 +470,10 @@ static int SystemCall(const string& command, string& output)
 static MonoAssembly* LoadNetAssembly(const string& name)
 {
     string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
-#ifdef FONLINE_SERVER
+    // Todo: rework FONLINE_
+    /*#ifdef FONLINE_SERVER
     assemblies_path = "Resources/Mono/" + assemblies_path;
-#endif
+    #endif*/
 
     File file = FileMngr->ReadFile(assemblies_path);
     RUNTIME_ASSERT(file);
@@ -944,13 +941,14 @@ void Script::ProcessDeferredCalls()
     edata->Invoker->Process();
 }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+// Todo: rework FONLINE_
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool Script::LoadDeferredCalls()
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->Invoker->LoadDeferredCalls();
 }
-#endif
+#endif*/
 
 StrVec Script::GetCustomEntityTypes()
 {
@@ -958,13 +956,13 @@ StrVec Script::GetCustomEntityTypes()
     return edata->PragmaCB->GetCustomEntityTypes();
 }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool Script::RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc)
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->PragmaCB->RestoreCustomEntity(type_name, id, doc);
 }
-#endif
+#endif*/
 
 EventData* Script::FindInternalEvent(const string& event_name)
 {

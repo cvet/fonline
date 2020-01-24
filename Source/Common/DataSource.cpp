@@ -165,7 +165,7 @@ private:
     FileNameVec filesTreeNames {};
 };
 
-DataSource::DataSource(const string& path)
+DataSource::DataSource(const string& path, bool cache_dirs)
 {
     string ext = _str(path).getFileExtension();
     if (path == "$AndroidAssets")
@@ -174,12 +174,10 @@ DataSource::DataSource(const string& path)
         pImpl = std::make_unique<FalloutDat>(path);
     else if (ext == "zip" || ext == "bos" || path[0] == '$')
         pImpl = std::make_unique<ZipFile>(path);
-    else
-#ifdef FONLINE_EDITOR
+    else if (!cache_dirs)
         pImpl = std::make_unique<NonCachedDir>(path);
-#else
+    else
         pImpl = std::make_unique<CachedDir>(path);
-#endif
 }
 
 DataSource::~DataSource()

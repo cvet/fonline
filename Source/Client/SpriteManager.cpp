@@ -2441,7 +2441,6 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         if (++curDrawQuad == drawQuadCount)
             Flush();
 
-#ifdef FONLINE_EDITOR
         // Corners indication
         if (settings.ShowCorners && spr->EggType)
         {
@@ -2518,7 +2517,6 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
             DrawStr(Rect(x1, y1, x1 + 100, y1 + 100), _str("{}", spr->TreeIndex), 0);
         }
-#endif
 
         // Process contour effect
         if (collect_contours && spr->ContourType)

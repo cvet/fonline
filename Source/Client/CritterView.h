@@ -62,7 +62,6 @@ public:
     CLASS_PROPERTY(char, Gender); // GUI
     CLASS_PROPERTY(bool, IsNoFlatten); // Draw order (migrate to proto? to critter type option?)
 
-    // Data
     uint NameColor;
     uint ContourColor;
     UShortVec LastHexX, LastHexY;
@@ -78,12 +77,13 @@ private:
     GeometryHelper geomHelper;
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
+    bool mapperMode;
 
 public:
     static bool SlotEnabled[0x100];
 
-    CritterView(
-        uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr, ResourceManager& res_mngr);
+    CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
+        ResourceManager& res_mngr, bool mapper_mode);
     ~CritterView();
     void Init();
     void Finish();

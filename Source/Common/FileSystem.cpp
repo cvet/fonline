@@ -486,9 +486,9 @@ void FileCollection::ResetCounter()
     curFileIndex = -1;
 }
 
-void FileManager::AddDataSource(const string& path)
+void FileManager::AddDataSource(const string& path, bool cache_dirs)
 {
-    dataSources.push_back(DataSource(path));
+    dataSources.push_back(DataSource(path, cache_dirs));
 }
 
 FileCollection FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs)

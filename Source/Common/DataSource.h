@@ -9,7 +9,7 @@ class DataSource : public Pointable
 public:
     class Impl;
 
-    DataSource(const string& path);
+    DataSource(const string& path, bool cache_dirs);
     ~DataSource();
     DataSource(DataSource&&);
     bool IsDiskDir();

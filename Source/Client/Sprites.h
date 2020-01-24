@@ -48,10 +48,7 @@ public:
     Sprite** ChainLast;
     Sprite* ChainParent;
     Sprite* ChainChild;
-
-#ifdef FONLINE_EDITOR
     int CutOyL, CutOyR;
-#endif
 
     Sprite();
     void Unvalidate();

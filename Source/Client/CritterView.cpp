@@ -50,13 +50,14 @@ CLASS_PROPERTY_IMPL(CritterView, IsNoTalk);
 CLASS_PROPERTY_IMPL(CritterView, IsHide);
 CLASS_PROPERTY_IMPL(CritterView, IsNoFlatten);
 
-CritterView::CritterView(
-    uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
+CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
+    ResourceManager& res_mngr, bool mapper_mode) :
     Entity(id, EntityType::CritterView, PropertiesRegistrator, proto),
     settings {sett},
     geomHelper(settings),
     sprMngr {spr_mngr},
-    resMngr {res_mngr}
+    resMngr {res_mngr},
+    mapperMode {mapper_mode}
 {
     SprId = 0;
     NameColor = 0;
@@ -810,11 +811,12 @@ void CritterView::RefreshAnim()
 
         Anim3d->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
 
-// Start mesh generation for Mapper
-#ifdef FONLINE_EDITOR
-        Anim3d->StartMeshGeneration();
-        Anim3dStay->StartMeshGeneration();
-#endif
+        // Start mesh generation for Mapper
+        if (mapperMode)
+        {
+            Anim3d->StartMeshGeneration();
+            Anim3dStay->StartMeshGeneration();
+        }
     }
     sprMngr.PopAtlasType();
 }

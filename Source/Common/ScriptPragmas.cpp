@@ -5,7 +5,8 @@
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+// Todo: rework FONLINE_
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 #include "Critter.h"
 #include "Dialogs.h"
 #include "EntityManager.h"
@@ -13,7 +14,7 @@
 #endif
 #if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
 #include "Client.h"
-#endif
+#endif*/
 
 #include "angelscript.h"
 
@@ -146,7 +147,7 @@ public:
         SubType = ++sub_type_id;
     }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     CustomEntity* CreateEntity()
     {
         CustomEntity* entity = new CustomEntity(0, SubType, Registrator);
@@ -225,7 +226,7 @@ public:
     static void DeleteEntityById_Generic(asIScriptGeneric* gen) {}
     CustomEntity* GetEntity(uint id) { return nullptr; }
     static void GetEntity_Generic(asIScriptGeneric* gen) {}
-#endif
+#endif*/
 };
 
 class EntityPragma
@@ -286,7 +287,7 @@ public:
         EntityCreator* entity_creator = new EntityCreator(isServer, class_name, entityMngr);
         if (isServer)
         {
-#ifdef AS_MAX_PORTABILITY
+            /*#ifdef AS_MAX_PORTABILITY
             if (engine->RegisterGlobalFunction(_str("{}@+ Create{}()", class_name, class_name).c_str(),
                     asFUNCTION(EntityCreator::CreateEntity_Generic), asCALL_GENERIC, entity_creator) < 0 ||
                 engine->RegisterGlobalFunction(_str("void Delete{}({}@+ entity)", class_name, class_name).c_str(),
@@ -304,7 +305,7 @@ public:
                     asMETHOD(EntityCreator, DeleteEntityById), asCALL_THISCALL_ASGLOBAL, entity_creator) < 0 ||
                 engine->RegisterGlobalFunction(_str("{}@+ Get{}(uint id)", class_name, class_name).c_str(),
                     asMETHOD(EntityCreator, GetEntity), asCALL_THISCALL_ASGLOBAL, entity_creator) < 0)
-#endif
+#endif*/
             {
                 WriteLog("Error in 'entity' pragma '{}', fail to register management functions.\n", text);
                 return false;
@@ -331,13 +332,13 @@ public:
         return true;
     }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    bool RestoreEntity(const string& class_name, uint id, const DataBase::Document& doc)
-    {
-        EntityCreator* entity_creator = entityCreators[class_name];
-        return entity_creator->RestoreEntity(id, doc);
-    }
-#endif
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+        bool RestoreEntity(const string& class_name, uint id, const DataBase::Document& doc)
+        {
+            EntityCreator* entity_creator = entityCreators[class_name];
+            return entity_creator->RestoreEntity(id, doc);
+        }
+    #endif*/
 
     StrVec GetTypeNames()
     {
@@ -682,40 +683,40 @@ public:
     bool Finish()
     {
         int errors = 0;
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        for (auto it = filesToCheck[1].begin(); it != filesToCheck[1].end(); ++it)
-        {
-            if (!protoMngr->GetProtoItem(it->second))
-            {
-                WriteLog("Item file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
-        for (auto it = filesToCheck[2].begin(); it != filesToCheck[2].end(); ++it)
-        {
-            if (!protoMngr->GetProtoCritter(it->second))
-            {
-                WriteLog("Critter file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
-        for (auto it = filesToCheck[3].begin(); it != filesToCheck[3].end(); ++it)
-        {
-            if (!protoMngr->GetProtoLocation(it->second))
-            {
-                WriteLog("Location file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
-        for (auto it = filesToCheck[4].begin(); it != filesToCheck[4].end(); ++it)
-        {
-            if (!protoMngr->GetProtoMap(it->second))
-            {
-                WriteLog("Map file '{}' not found.\n", it->first);
-                errors++;
-            }
-        }
-#endif
+        /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                for (auto it = filesToCheck[1].begin(); it != filesToCheck[1].end(); ++it)
+                {
+                    if (!protoMngr->GetProtoItem(it->second))
+                    {
+                        WriteLog("Item file '{}' not found.\n", it->first);
+                        errors++;
+                    }
+                }
+                for (auto it = filesToCheck[2].begin(); it != filesToCheck[2].end(); ++it)
+                {
+                    if (!protoMngr->GetProtoCritter(it->second))
+                    {
+                        WriteLog("Critter file '{}' not found.\n", it->first);
+                        errors++;
+                    }
+                }
+                for (auto it = filesToCheck[3].begin(); it != filesToCheck[3].end(); ++it)
+                {
+                    if (!protoMngr->GetProtoLocation(it->second))
+                    {
+                        WriteLog("Location file '{}' not found.\n", it->first);
+                        errors++;
+                    }
+                }
+                for (auto it = filesToCheck[4].begin(); it != filesToCheck[4].end(); ++it)
+                {
+                    if (!protoMngr->GetProtoMap(it->second))
+                    {
+                        WriteLog("Map file '{}' not found.\n", it->first);
+                        errors++;
+                    }
+                }
+        #endif*/
         return errors == 0;
     }
 };
@@ -1438,7 +1439,7 @@ public:
 
     static void Rpc(asIScriptGeneric* gen)
     {
-        uint msg = NETMSG_RPC;
+        /*uint msg = NETMSG_RPC;
         uint func_index = *(uint*)gen->GetAuxiliary();
         uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(func_index);
 
@@ -1486,92 +1487,91 @@ public:
         }
 #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
         CLIENT_OUTPUT_END(cl);
-#endif
+#endif*/
     }
 
     void HandleRpc(void* context)
     {
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        Client* cl = (Client*)context;
-        NetBuffer& net_buf = cl->Connection->Bin;
-#else
-        NetBuffer& net_buf = *(NetBuffer*)context;
-#endif
+        /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                Client* cl = (Client*)context;
+                NetBuffer& net_buf = cl->Connection->Bin;
+        #else
+                NetBuffer& net_buf = *(NetBuffer*)context;
+        #endif
 
-        uint msg_len;
-        uint func_index;
-        net_buf >> msg_len;
-        net_buf >> func_index;
-        if (net_buf.IsError())
-            return;
+                uint msg_len;
+                uint func_index;
+                net_buf >> msg_len;
+                net_buf >> func_index;
+                if (net_buf.IsError())
+                    return;
 
-        if (func_index >= (uint)inFunc.size())
-        {
-            net_buf.SetError(true);
-            return;
-        }
+                if (func_index >= (uint)inFunc.size())
+                {
+                    net_buf.SetError(true);
+                    return;
+                }
 
-        Script::PrepareContext(inFuncBind[func_index], "Rpc");
+                Script::PrepareContext(inFuncBind[func_index], "Rpc");
 
-        char buf[0xFFFF + 1];
-        uchar pod_buf[8];
-        bool is_error = false;
+                char buf[0xFFFF + 1];
+                uchar pod_buf[8];
+                bool is_error = false;
 
-        asIScriptEngine* engine = Script::GetEngine();
-        asIScriptFunction* func = inFunc[func_index];
-        for (asUINT i = 0; i < func->GetParamCount(); i++)
-        {
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-            if (i == 0)
-            {
-                Script::SetArgEntity(cl);
-                continue;
-            }
-#endif
+                asIScriptEngine* engine = Script::GetEngine();
+                asIScriptFunction* func = inFunc[func_index];
+                for (asUINT i = 0; i < func->GetParamCount(); i++)
+                {
+        #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                    if (i == 0)
+                    {
+                        Script::SetArgEntity(cl);
+                        continue;
+                    }
+        #endif
 
-            ushort len;
-            net_buf >> len;
-            if (net_buf.IsError())
-                return;
-            net_buf.Pop(buf, len);
-            if (net_buf.IsError())
-                return;
-            buf[len] = 0;
+                    ushort len;
+                    net_buf >> len;
+                    if (net_buf.IsError())
+                        return;
+                    net_buf.Pop(buf, len);
+                    if (net_buf.IsError())
+                        return;
+                    buf[len] = 0;
 
-            int type_id;
-            asDWORD flags;
-            func->GetParam(i, &type_id, &flags);
-            asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? engine->GetTypeInfoById(type_id) : nullptr);
-            bool is_hashes[] = {false, false, false, false};
-            void* value = ReadValue(buf, type_id, obj_type, is_hashes, 0, pod_buf, is_error);
-            if (is_error)
-            {
-                net_buf.SetError(true);
-                return;
-            }
+                    int type_id;
+                    asDWORD flags;
+                    func->GetParam(i, &type_id, &flags);
+                    asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? engine->GetTypeInfoById(type_id) :
+        nullptr); bool is_hashes[] = {false, false, false, false}; void* value = ReadValue(buf, type_id, obj_type,
+        is_hashes, 0, pod_buf, is_error); if (is_error)
+                    {
+                        net_buf.SetError(true);
+                        return;
+                    }
 
-            if (!(type_id & asTYPEID_MASK_OBJECT))
-            {
-                int size = engine->GetSizeOfPrimitiveType(type_id);
-                if (size == 1)
-                    Script::SetArgUChar(*(uchar*)value);
-                else if (size == 2)
-                    Script::SetArgUShort(*(ushort*)value);
-                else if (size == 4)
-                    Script::SetArgUInt(*(uint*)value);
-                else if (size == 8)
-                    Script::SetArgUInt64(*(uint64*)value);
-                else
-                    throw UnreachablePlaceException("Unreachable place");
-            }
-            else
-            {
-                Script::SetArgObject(value);
-                Script::GetEngine()->ReleaseScriptObject(value, obj_type);
-            }
-        }
+                    if (!(type_id & asTYPEID_MASK_OBJECT))
+                    {
+                        int size = engine->GetSizeOfPrimitiveType(type_id);
+                        if (size == 1)
+                            Script::SetArgUChar(*(uchar*)value);
+                        else if (size == 2)
+                            Script::SetArgUShort(*(ushort*)value);
+                        else if (size == 4)
+                            Script::SetArgUInt(*(uint*)value);
+                        else if (size == 8)
+                            Script::SetArgUInt64(*(uint64*)value);
+                        else
+                            throw UnreachablePlaceException("Unreachable place");
+                    }
+                    else
+                    {
+                        Script::SetArgObject(value);
+                        Script::GetEngine()->ReleaseScriptObject(value, obj_type);
+                    }
+                }
 
-        Script::RunPrepared();
+                Script::RunPrepared();*/
     }
 };
 
@@ -1678,12 +1678,12 @@ StrVec ScriptPragmaCallback::GetCustomEntityTypes()
     return entityPragma->GetTypeNames();
 }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptPragmaCallback::RestoreCustomEntity(const string& class_name, uint id, const DataBase::Document& doc)
 {
     return entityPragma->RestoreEntity(class_name, id, doc);
 }
-#endif
+#endif*/
 
 void* ScriptPragmaCallback::FindInternalEvent(const string& event_name)
 {

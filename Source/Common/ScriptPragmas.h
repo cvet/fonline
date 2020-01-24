@@ -53,9 +53,10 @@ public:
     bool IsError();
     PropertyRegistrator** GetPropertyRegistrators();
     StrVec GetCustomEntityTypes();
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    // Todo: rework FONLINE_
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
     bool RestoreCustomEntity(const string& class_name, uint id, const DataBase::Document& doc);
-#endif
+    #endif*/
     void* FindInternalEvent(const string& event_name);
     bool RaiseInternalEvent(void* event_ptr, va_list args);
     const IntVec& GetInternalEventArgInfos(void* event_ptr);

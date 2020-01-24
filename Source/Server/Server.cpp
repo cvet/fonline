@@ -1795,7 +1795,7 @@ bool FOServer::InitReal()
     WriteLog("***   Starting initialization   ***\n");
 
     // Root data file
-    FileMngr.AddDataSource("./");
+    FileMngr.AddDataSource("./", false);
 
     // Delete intermediate files if engine have been updated
     File version_file = FileMngr.ReadFile("Version.txt");
@@ -1884,8 +1884,8 @@ bool FOServer::InitReal()
     // _str::loadHashes();
 
     // Deferred calls
-    if (!Script::LoadDeferredCalls())
-        return false;
+    // if (!Script::LoadDeferredCalls())
+    //    return false;
 
     // Modules initialization
     Timer::UpdateTick();
@@ -8432,7 +8432,7 @@ void FOServer::ScriptFunc::Global_AllowSlot(uchar index, bool enable_send)
 
 void FOServer::ScriptFunc::Global_AddDataSource(string dat_name)
 {
-    Self->FileMngr.AddDataSource(dat_name);
+    Self->FileMngr.AddDataSource(dat_name, false);
 }
 
 struct ServerImage

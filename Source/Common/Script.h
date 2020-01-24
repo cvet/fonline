@@ -110,14 +110,15 @@ public:
     static ScriptInvoker* GetInvoker();
     static string GetDeferredCallsStatistics();
     static void ProcessDeferredCalls();
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    static bool LoadDeferredCalls();
-#endif
+    // Todo: rework FONLINE_
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+        static bool LoadDeferredCalls();
+    #endif*/
 
     static StrVec GetCustomEntityTypes();
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    static bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
-#endif
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+        static bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
+    #endif*/
 
     static EventData* FindInternalEvent(const string& event_name);
     static bool RaiseInternalEvent(EventData* event_ptr, ...);
@@ -276,7 +277,6 @@ public:
     std::vector<asBYTE>& GetBuf() { return binBuf; }
 };
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 struct ServerScriptFunctions
 {
     EventData* ResourcesGenerated;
@@ -333,8 +333,7 @@ struct ServerScriptFunctions
 
     EventData* StaticItemWalk;
 } extern ServerFunctions;
-#endif
-#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
+
 struct ClientScriptFunctions
 {
     EventData* Start;
@@ -397,4 +396,3 @@ struct MapperScriptFunctions
     EventData* MapSave;
     EventData* InspectorProperties;
 } extern MapperFunctions;
-#endif

@@ -40,9 +40,10 @@ private:
     void RunDeferredCall(DeferredCall& call);
     string GetStatistics();
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-    bool LoadDeferredCalls();
-#endif
+    // Todo: rework FONLINE_
+    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+        bool LoadDeferredCalls();
+    #endif*/
 
 public:
     static uint Global_DeferredCall(uint delay, asIScriptFunction* func);

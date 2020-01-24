@@ -424,12 +424,13 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
             spr_.CutTexR = si->SprRect.L + (si->SprRect.R - si->SprRect.L) * ((xx + ww) / widthf);
             spr_.CutType = cut;
 
-#ifdef FONLINE_EDITOR
-            spr_.CutOyL = (hor ? -6 : -12) * ((hor ? hx : hy) - i);
-            spr_.CutOyR = spr_.CutOyL;
-            if (ww < stepf)
-                spr_.CutOyR += (int)((hor ? 3.6f : -8.0f) * (1.0f - (ww / stepf)));
-#endif
+            if (settings.ShowSpriteCuts)
+            {
+                spr_.CutOyL = (hor ? -6 : -12) * ((hor ? hx : hy) - i);
+                spr_.CutOyR = spr_.CutOyL;
+                if (ww < stepf)
+                    spr_.CutOyR += (int)((hor ? 3.6f : -8.0f) * (1.0f - (ww / stepf)));
+            }
 
             xx += stepf;
             if (xx > widthf)

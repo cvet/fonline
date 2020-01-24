@@ -58,10 +58,10 @@ FOMapper::FOMapper(MapperSettings& sett) :
     ClientWritePath = Settings.WorkDir;
 
     // Resources
-    FileMngr.AddDataSource("$Basic");
-    FileMngr.AddDataSource(ClientWritePath + "Data/");
-    ServerFileMngr.AddDataSource("$Basic");
-    ServerFileMngr.AddDataSource(ServerWritePath);
+    FileMngr.AddDataSource("$Basic", false);
+    FileMngr.AddDataSource(ClientWritePath + "Data/", false);
+    ServerFileMngr.AddDataSource("$Basic", false);
+    ServerFileMngr.AddDataSource(ServerWritePath, false);
 
     // Default effects
     bool default_effects_ok = EffectMngr.LoadDefaultEffects();
@@ -5371,7 +5371,7 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject(int x, int y, bool ignore
 
 void FOMapper::SScriptFunc::Global_AddDataSource(string dat_name)
 {
-    Self->FileMngr.AddDataSource(dat_name);
+    Self->FileMngr.AddDataSource(dat_name, false);
 
     for (int tab = 0; tab < TAB_COUNT; tab++)
         Self->RefreshTiles(tab);

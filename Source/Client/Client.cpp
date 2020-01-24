@@ -154,16 +154,16 @@ FOClient::FOClient(ClientSettings& sett) :
 
     // Data sources
 #if defined(FO_IOS)
-    FileMngr.AddDataSource("../../Documents/");
+    FileMngr.AddDataSource("../../Documents/", true);
 #elif defined(FO_ANDROID)
-    FileMngr.AddDataSource("$AndroidAssets");
-    FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath());
-    FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath());
+    FileMngr.AddDataSource("$AndroidAssets", true);
+    FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
+    FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
 #elif defined(FO_WEB)
-    FileMngr.AddDataSource("Data/");
-    FileMngr.AddDataSource("PersistentData/");
+    FileMngr.AddDataSource("Data/", true);
+    FileMngr.AddDataSource("PersistentData/", true);
 #else
-    FileMngr.AddDataSource("Data/");
+    FileMngr.AddDataSource("Data/", true);
 #endif
 
     // Basic effects
@@ -2327,7 +2327,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
         RUNTIME_ASSERT(proto);
-        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr);
+        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr, false);
         cr->Props.RestoreData(TempPropertiesData);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -6063,10 +6063,8 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems(ItemView* cont, uint stack_id
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
     ItemViewVec items;
-#ifdef FONLINE_EDITOR
     // Todo: !!!
     // cont->ContGetItems(items, stack_id);
-#endif
     return Script::CreateArrayRef("Item[]", items);
 }
 
@@ -7350,7 +7348,7 @@ void FOClient::SScriptFunc::Global_AllowSlot(uchar index, bool enable_send)
 
 void FOClient::SScriptFunc::Global_AddDataSource(string dat_name)
 {
-    Self->FileMngr.AddDataSource(dat_name);
+    Self->FileMngr.AddDataSource(dat_name, true);
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite(string spr_name)

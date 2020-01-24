@@ -123,7 +123,7 @@ class FileManager : public NonCopyable
 {
 public:
     FileManager() = default;
-    void AddDataSource(const string& path);
+    void AddDataSource(const string& path, bool cache_dirs);
     FileCollection FilterFiles(const string& ext, const string& dir = "", bool include_subdirs = true);
     File ReadFile(const string& path);
     FileHeader ReadFileHeader(const string& path);

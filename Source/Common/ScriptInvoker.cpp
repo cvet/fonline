@@ -4,9 +4,10 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+// Todo: rework FONLINE_
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 #include "DataBase.h"
-#endif
+#endif*/
 
 ScriptInvoker::ScriptInvoker(TimerSettings& sett) : settings {sett}
 {
@@ -73,31 +74,31 @@ uint ScriptInvoker::AddDeferredCall(uint delay, bool saved, asIScriptFunction* f
         Globals->SetLastDeferredCallId(call.Id);
         deferredCalls.push_back(call);
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        if (call.Saved)
-        {
-            DataBase::Document call_doc;
-            call_doc["Script"] = _str().parseHash(call.FuncNum);
-            call_doc["FireFullSecond"] = (int64)call.FireFullSecond;
+        /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                if (call.Saved)
+                {
+                    DataBase::Document call_doc;
+                    call_doc["Script"] = _str().parseHash(call.FuncNum);
+                    call_doc["FireFullSecond"] = (int64)call.FireFullSecond;
 
-            if (call.IsValue)
-            {
-                call_doc["ValueSigned"] = call.ValueSigned;
-                call_doc["Value"] = call.Value;
-            }
+                    if (call.IsValue)
+                    {
+                        call_doc["ValueSigned"] = call.ValueSigned;
+                        call_doc["Value"] = call.Value;
+                    }
 
-            if (call.IsValues)
-            {
-                call_doc["ValuesSigned"] = call.ValuesSigned;
-                DataBase::Array values;
-                for (int v : call.Values)
-                    values.push_back(v);
-                call_doc["Values"] = values;
-            }
+                    if (call.IsValues)
+                    {
+                        call_doc["ValuesSigned"] = call.ValuesSigned;
+                        DataBase::Array values;
+                        for (int v : call.Values)
+                            values.push_back(v);
+                        call_doc["Values"] = values;
+                    }
 
-            DbStorage->Insert("DeferredCalls", call.Id, call_doc);
-        }
-#endif
+                    DbStorage->Insert("DeferredCalls", call.Id, call_doc);
+                }
+        #endif*/
     }
     return call.Id;
 }
@@ -116,10 +117,10 @@ bool ScriptInvoker::CancelDeferredCall(uint id)
     {
         if (it->Id == id)
         {
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-            if (it->Saved)
-                DbStorage->Delete("DeferredCalls", id);
-#endif
+            /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                        if (it->Saved)
+                            DbStorage->Delete("DeferredCalls", id);
+            #endif*/
 
             deferredCalls.erase(it);
             return true;
@@ -164,10 +165,10 @@ void ScriptInvoker::Process()
                 DeferredCall call = *it;
                 it = deferredCalls.erase(it);
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-                if (call.Saved)
-                    DbStorage->Delete("DeferredCalls", call.Id);
-#endif
+                /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+                                if (call.Saved)
+                                    DbStorage->Delete("DeferredCalls", call.Id);
+                #endif*/
 
                 RunDeferredCall(call);
                 done = false;
@@ -240,7 +241,7 @@ string ScriptInvoker::GetStatistics()
     return result;
 }
 
-#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptInvoker::LoadDeferredCalls()
 {
     WriteLog("Load deferred calls...\n");
@@ -326,7 +327,7 @@ bool ScriptInvoker::LoadDeferredCalls()
     WriteLog("Load deferred calls complete, count {}.\n", (uint)deferredCalls.size());
     return errors == 0;
 }
-#endif
+#endif*/
 
 uint ScriptInvoker::Global_DeferredCall(uint delay, asIScriptFunction* func)
 {
