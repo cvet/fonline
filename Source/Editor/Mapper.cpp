@@ -189,7 +189,7 @@ FOMapper::FOMapper(MapperSettings& sett) :
         string map_name = Settings.StartMap;
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
         bool initialized = 0;
-        // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: !!!
+        // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
         if (initialized && HexMngr.SetProtoMap(*pmap))
         {
@@ -853,7 +853,7 @@ void FOMapper::ParseKeyboard()
                 if (ActiveMap)
                 {
                     HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
-                    // Todo: !!!
+                    // Todo: need attention!
                     // ((ProtoMap*)ActiveMap->Proto)->EditorSave(FileMngr, "");
                     AddMess("Map saved.");
                     RunMapSaveScript(ActiveMap);
@@ -1767,7 +1767,8 @@ void FOMapper::IntDraw()
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty())
     {
         Entity* entity = SelectedEntities[0];
-        EntityVec children; // Todo: !!! = entity->GetChildren();
+        EntityVec children; // Todo: need attention!
+        // = entity->GetChildren();
         uint i = InContScroll;
         uint j = i + ProtosOnScreen;
         if (j > children.size())
@@ -2273,7 +2274,7 @@ void FOMapper::IntLMouseDown()
 
                 if (proto_item->GetStackable())
                 {
-                    // Todo: !!!
+                    // Todo: need attention!
                     /*for (auto& child : SelectedEntities[0]->GetChildren())
                     {
                         if (proto_item->ProtoId == child->GetProtoId())
@@ -2307,7 +2308,7 @@ void FOMapper::IntLMouseDown()
             InContItem = nullptr;
             ind += InContScroll;
             EntityVec children;
-            // Todo: !!!
+            // Todo: need attention!
             // if (!SelectedEntities.empty())
             //    children = SelectedEntities[0]->GetChildren();
 
@@ -2329,7 +2330,7 @@ void FOMapper::IntLMouseDown()
                     {
                         ItemView* owner = HexMngr.GetItemById(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
-                        // owner->ContEraseItem(InContItem); // Todo: !!!
+                        // owner->ContEraseItem(InContItem); // Todo: need attention!
                         InContItem->Release();
                     }
                     else
@@ -2353,7 +2354,7 @@ void FOMapper::IntLMouseDown()
                         to_slot++;
                     to_slot %= 256;
 
-                    // Todo: !!!
+                    // Todo: need attention!
                     // for (auto& child : cr->GetChildren())
                     //    if (((ItemView*)child)->GetCritSlot() == to_slot)
                     //        ((ItemView*)child)->SetCritSlot(0);
@@ -2658,7 +2659,7 @@ void FOMapper::IntLMouseUp()
             }
 
             // Crits or item container
-            // Todo: !!!
+            // Todo: need attention!
             // if (!SelectedEntities.empty() && !SelectedEntities[0]->GetChildren().empty())
             //    IntSetMode(INT_MODE_INCONT);
         }
@@ -3314,7 +3315,7 @@ CritterView* FOMapper::AddCritter(hash pid, ushort hx, ushort hy)
 
     SelectClear();
 
-    CritterView* cr = 0; // Todo: !!!
+    CritterView* cr = 0; // Todo: need attention!
     // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto, Settings, SprMngr, ResMngr);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
@@ -3352,7 +3353,7 @@ ItemView* FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner)
     ItemView* item;
     if (owner)
     {
-        // Todo: !!!
+        // Todo: need attention!
         /*item = new ItemView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto_item);
         if (owner->Type == EntityType::CritterView)
             ((CritterView*)owner)->AddItem(item);
@@ -3361,7 +3362,7 @@ ItemView* FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner)
     }
     else
     {
-        // Todo: !!!
+        // Todo: need attention!
         // uint id = HexMngr.AddItem(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, pid, hx, hy, 0, nullptr);
         // item = HexMngr.GetItemById(id);
     }
@@ -3431,7 +3432,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
                 return nullptr;
         }
 
-        CritterView* cr = 0; // Todo: !!!
+        CritterView* cr = 0; // Todo: need attention!
                              // new CritterView(
                              //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
                              // SprMngr, ResMngr);
@@ -3445,7 +3446,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
     }
     else if (entity->Type == EntityType::ItemHexView)
     {
-        uint id = 0; // Todo: !!!
+        uint id = 0; // Todo: need attention!
         // HexMngr.AddItem(
         //  --((ProtoMap*)ActiveMap->Proto)->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr);
         ItemHexView* item = HexMngr.GetItemById(id);
@@ -3460,7 +3461,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
     auto pmap = (ProtoMap*)ActiveMap->Proto;
     std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children, &pmap](
                                                                     Entity* from, Entity* to) {
-        // Todo: !!!
+        // Todo: need attention!
         /*for (auto& from_child : from->GetChildren())
         {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
@@ -3503,7 +3504,7 @@ void FOMapper::BufferCopy()
         entity_buf->Type = entity->Type;
         entity_buf->Proto = entity->Proto;
         entity_buf->Props = new Properties(entity->Props);
-        // Todo: !!!
+        // Todo: need attention!
         /*for (auto& child : entity->GetChildren())
         {
             EntityBuf* child_buf = new EntityBuf();
@@ -3584,7 +3585,7 @@ void FOMapper::BufferPaste(int, int)
                     continue;
             }
 
-            CritterView* cr = 0; // Todo: !!!
+            CritterView* cr = 0; // Todo: need attention!
             // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
             //  (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
             cr->Props = *entity_buf.Props;
@@ -3597,7 +3598,7 @@ void FOMapper::BufferPaste(int, int)
         }
         else if (entity_buf.Type == EntityType::ItemHexView)
         {
-            uint id = 0; // Todo: !!!
+            uint id = 0; // Todo: need attention!
             // HexMngr.AddItem(
             //  --((ProtoMap*)ActiveMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
             ItemHexView* item = HexMngr.GetItemById(id);
@@ -3611,7 +3612,7 @@ void FOMapper::BufferPaste(int, int)
                                                                            EntityBuf* entity_buf, Entity* entity) {
             for (auto& child_buf : entity_buf->Children)
             {
-                // Todo: !!!
+                // Todo: need attention!
                 /*RUNTIME_ASSERT(child_buf->Type == EntityType::Item);
                 ItemView* child = new ItemView(--pmap->LastEntityId, (ProtoItem*)child_buf->Proto);
                 child->Props = *child_buf->Props;
@@ -3976,7 +3977,7 @@ void FOMapper::ParseCommand(const string& command)
         }
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        // Todo: !!!
+        // Todo: need attention!
         /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
         {
             AddMess("File not found or truncated.");
@@ -4021,7 +4022,7 @@ void FOMapper::ParseCommand(const string& command)
 
         HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
 
-        // Todo: !!!
+        // Todo: need attention!
         // ((ProtoMap*)ActiveMap->Proto)->EditorSave(ServerFileMngr, map_name);
 
         AddMess("Save map success.");
@@ -4521,7 +4522,7 @@ ItemView* FOMapper::SScriptFunc::Crit_AddChild(CritterView* cr, hash pid)
 CScriptArray* FOMapper::SScriptFunc::Item_GetChildren(ItemView* item)
 {
     ItemViewVec children;
-    // Todo: !!!
+    // Todo: need attention!
     // item->ContGetItems(children, 0);
     return Script::CreateArrayRef("Item[]", children);
 }
@@ -4807,7 +4808,7 @@ void FOMapper::SScriptFunc::Global_SetPropertyGetCallback(asIScriptGeneric* gen)
 MapView* FOMapper::SScriptFunc::Global_LoadMap(string file_name)
 {
     ProtoMap* pmap = new ProtoMap(_str(file_name).toHash());
-    // Todo: !!!
+    // Todo: need attention!
     // if (!pmap->EditorLoad(Self->ServerFileMngr, Self->ProtoMngr, Self->SprMngr, Self->ResMngr))
     //     return nullptr;
 
@@ -4842,7 +4843,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap(MapView* map, string custom_name)
     if (!map)
         SCRIPT_ERROR_R0("Proto map arg nullptr.");
 
-    // Todo: !!!
+    // Todo: need attention!
     //((ProtoMap*)map->Proto)->EditorSave(Self->ServerFileMngr, custom_name);
     Self->RunMapSaveScript(map);
     return true;
@@ -4919,7 +4920,7 @@ void FOMapper::SScriptFunc::Global_ResizeMap(ushort width, ushort height)
     // Delete truncated entities
     if (maxhx < old_maxhx || maxhy < old_maxhy)
     {
-        // Todo: !!!
+        // Todo: need attention!
         /*for (auto it = pmap->AllEntities.begin(); it != pmap->AllEntities.end();)
         {
             Entity* entity = *it;
@@ -4942,7 +4943,7 @@ void FOMapper::SScriptFunc::Global_ResizeMap(ushort width, ushort height)
     // Delete truncated tiles
     if (maxhx < old_maxhx || maxhy < old_maxhy)
     {
-        // Todo: !!!
+        // Todo: need attention!
         /*for (auto it = pmap->Tiles.begin(); it != pmap->Tiles.end();)
         {
             MapTile& tile = *it;

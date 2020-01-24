@@ -243,9 +243,9 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
 
     BIND_ASSERT(
         engine->RegisterObjectMethod("Critter", "array<Critter@>@ GetCritters(bool lookOnMe, int findType) const",
-            SCRIPT_FUNC_THIS(BIND_CLASS Crit_GetCritters), SCRIPT_FUNC_THIS_CONV)); // Todo: const
+            SCRIPT_FUNC_THIS(BIND_CLASS Crit_GetCritters), SCRIPT_FUNC_THIS_CONV)); // Todo: const Crit_GetCritters
     BIND_ASSERT(engine->RegisterObjectMethod("Critter", "array<Critter@>@ GetTalkedPlayers() const",
-        SCRIPT_FUNC_THIS(BIND_CLASS Npc_GetTalkedPlayers), SCRIPT_FUNC_THIS_CONV)); // Todo: const
+        SCRIPT_FUNC_THIS(BIND_CLASS Npc_GetTalkedPlayers), SCRIPT_FUNC_THIS_CONV)); // Todo: const Npc_GetTalkedPlayers
     BIND_ASSERT(engine->RegisterObjectMethod(
         "Critter", "bool IsSee(Critter@+ cr) const", SCRIPT_FUNC_THIS(BIND_CLASS Crit_IsSeeCr), SCRIPT_FUNC_THIS_CONV));
     BIND_ASSERT(engine->RegisterObjectMethod("Critter", "bool IsSeenBy(Critter@+ cr) const",

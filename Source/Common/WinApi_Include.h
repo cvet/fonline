@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: move WinApi to separate module because it's give too much garbage in global namespace
+
 // WinApi universal header
 #ifdef FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN

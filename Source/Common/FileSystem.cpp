@@ -594,7 +594,7 @@ ConfigFile FileManager::ReadConfigFile(const string& path)
 OutputFile FileManager::WriteFile(const string& path, bool apply)
 {
     DiskFileSystem::SetCurrentDir(rootPath);
-    // Todo: handle apply
+    // Todo: handle apply file writing
     DiskFile file = DiskFileSystem::OpenFile(path, true);
     if (!file)
         throw FileSystemExeption("Can't open file for writing", path, apply);

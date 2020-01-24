@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: add standalone Mapper application
+
 #pragma once
 
 #include "Common.h"

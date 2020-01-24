@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: move HexManager to MapView?
+
 #pragma once
 
 #include "Common.h"

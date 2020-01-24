@@ -31,6 +31,9 @@
 // SOFTWARE.
 //
 
+// Todo: improve DirectX rendering
+// Todo: maybe restrict fps at 60?
+
 #pragma once
 
 #include "Common.h"
@@ -56,7 +59,7 @@
 #define FT_SKIPLINES_END(l) (0x0800 | ((l) << 16))
 
 // Colors
-// Todo: Brightness
+// Todo: improve client rendering brightness
 #define COLOR_LIGHT(c) SpriteManager::PackColor(((c) >> 16) & 0xFF, ((c) >> 8) & 0xFF, (c)&0xFF, ((c) >> 24) & 0xFF)
 #define COLOR_SCRIPT_SPRITE(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_IFACE_FIX))
 #define COLOR_SCRIPT_TEXT(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_TEXT))

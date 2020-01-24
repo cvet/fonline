@@ -423,7 +423,7 @@ void CritterManager::ProcessTalk(Client* cl, bool force)
             return;
         }
 
-        // Todo: IsPlaneNoTalk
+        // Todo: don't remeber but need check (IsPlaneNoTalk)
     }
 
     // Check distance

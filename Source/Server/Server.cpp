@@ -183,7 +183,7 @@ string FOServer::GetIngamePlayersStatistics()
 // Accesses
 void FOServer::GetAccesses(StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names)
 {
-    // Todo: settings
+    // Todo: restore settings
     // client = _str(MainConfig->GetStr("", "Access_client")).split(' ');
     // tester = _str(MainConfig->GetStr("", "Access_tester")).split(' ');
     // moder = _str(MainConfig->GetStr("", "Access_moder")).split(' ');
@@ -1913,7 +1913,7 @@ bool FOServer::InitReal()
         GameTime.Reset();
     }
 
-    // Todo: Restore hashes
+    // Todo: restore hashes loading
     // _str::loadHashes();
 
     // Deferred calls
@@ -2000,7 +2000,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
     uint cur_lang = 0;
     while (true)
     {
-        // Todo: settings
+        // Todo: restore settings
         string cur_str_lang; // = _str("Language_{}", cur_lang);
         string lang_name; // = MainConfig->GetStr("", cur_str_lang);
         if (lang_name.empty())
@@ -2142,7 +2142,7 @@ bool FOServer::InitLangPacksItems(LangPackVec& lang_packs)
     return true;
 }
 
-// Todo: Clients logging may be not thread safe
+// Todo: clients logging may be not thread safe
 void FOServer::LogToClients(const string& str)
 {
     string str_fixed = str;
@@ -2539,7 +2539,7 @@ void FOServer::ProcessCritter(Critter* cr)
         }
 
         // Cache look distance
-        // Todo: Disable look distance caching
+        // Todo: disable look distance caching
         if (Timer::GameTick() >= cl->CacheValuesNextTick)
         {
             cl->LookCacheValue = cl->GetLookDistance();
@@ -3565,7 +3565,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
     {
         uint len =
             msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
-        // Todo: Control max size explicitly, add option to property registration
+        // Todo: control max size explicitly, add option to property registration
         if (len > 0xFFFF) // For now 64Kb for all
             return;
         data.resize(len);
@@ -3653,7 +3653,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
     if (!prop->IsPOD() && data_size != 0)
         return;
 
-    // Todo: Disable send changing field by client to this client
+    // Todo: disable send changing field by client to this client
     prop->SetData(entity, !data.empty() ? &data[0] : nullptr, (uint)data.size());
 }
 
@@ -4442,7 +4442,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
             return;
         }
 
-        // Todo: IsPlaneNoTalk
+        // Todo: don't remeber but need check (IsPlaneNoTalk)
 
         Script::RaiseInternalEvent(ServerFunctions.CritterTalk, cl, npc, true, npc->GetTalkedPlayers() + 1);
 
@@ -4826,7 +4826,6 @@ Item* FOServer::CreateItemOnHex(
 void FOServer::OnSendItemValue(Entity* entity, Property* prop)
 {
     Item* item = (Item*)entity;
-    // Todo: Clean up server 0 and -1 item ids
     if (item->Id && item->Id != uint(-1))
     {
         bool is_public = (prop->GetAccess() & Property::PublicMask) != 0;
@@ -4856,7 +4855,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
         }
         else if (item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
         {
-            // Todo: Add container properties changing notifications
+            // Todo: add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
         }
     }
@@ -4935,7 +4934,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_val
         Map* map = Self->MapMngr.GetMap(item->GetMapId());
         if (map)
         {
-            // Todo: Make BlockLines changable in runtime
+            // Todo: make BlockLines changable in runtime
         }
     }
 }
@@ -5642,7 +5641,7 @@ void FOServer::ScriptFunc::Crit_TransitToMapHex(Critter* cr, Map* map, ushort hx
     if (!Self->MapMngr.Transit(cr, map, hx, hy, dir, 2, 0, true))
         SCRIPT_ERROR_R("Transit to map hex fail.");
 
-    // Todo: need???
+    // Todo: need attention!
     Location* loc = map->GetLocation();
     if (loc &&
         GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius())

@@ -33,143 +33,55 @@
 
 #pragma once
 
-// Milestone list
-// Milestone: DirectX rendering
-// Milestone: DirectX rendering
-// Milestone: DirectX rendering
-
-// Generic todo'es
-// Todo: GLSL -> SPIRV
-// Todo: DirectX rendering
-// Todo: 60 fps at target
-// Todo: add pragma once everywhere
-// Todo: split sources to Server/Client/Other(? Mapper)/Common/ThirdParty(with ReadMe of versions)/Applications
-// Todo: in headers only Common.h other in cpp
+// Todo: use Common.h as precompiled header
 // Todo: review push_back -> emplace_back
 // Todo: use smart pointers instead raw
-// Todo: PVS Studio fix & Codacy fix
-// Todo: entity protos accessors
+// Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
-// Todo: remove mbedTLS use OpenSSL
-// Todo: add static hash https://gist.github.com/Lee-R/3839813
-// Todo: use pimpl https://github.com/oliora/samples/blob/master/spimpl.h
-// Todo: AdminTool to separate file
-// Todo: review RUNTIME_ASSERT( (
-// Todo: review add_definitions -> set_target_properties
-// Todo: review local #define -> #undef
-// Todo: make daemon/service to separate apps
-// Todo: add TestingApp.cpp? CodeCoverageApp?
-// Todo: Linux 32 bit builds?
-// Todo: Docker for: linux/android/web/mac/windows build, docker with preinstalled linux server/editor
+// Todo: add #undef for every local #define
+// Todo: need Linux 32-bit builds?
 // Todo: improve valgrind
-// Todo: do something with CACHE STRING "" FORCE )
 // Todo: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
-// Todo: stacktrace in Assert (with Copy button?)
-// Todo: defines to const
-// Todo: add to cmake message STATUS
-// Todo: improve YAML
-// Todo: suspend all threads on Assertation
-// Todo: fix format source under linux
-// Todo: Renderer -> OpenGL, Direct3D, Null
-// Todo: exclude singletons
-// Todo: copy source to server/editor binaries?
-// Todo: CMake ServerLib/ClientLib/...
-// Todo: exclude FO_NO_GRAPHIC, FONLINE_SERVER/CLIENT/EDITOR
-// Todo: ProtoMap -> ClientProtoMap, ServerProtoMap
-// Todo: HexManager -> MapView
-// Todo: save dump files by Save button?; copied full report; crash report writted to log anyway
-// Todo: server logs append not rewrite with checking of size
-// Todo: add timestamps and process id and thread id to file logs
-// Todo: /GR - no rtti /EHsc - disable
-// Todo: update formatting tool + fix run on linux
-// Todo: remove using std, always use explicit std::
-// Todo: store Cache.bin in player Local
-// Todo: clean up repository from not used files (third-party docs, bins, Documentation, Other)
-// Todo: Jenkinsfile fix kubernetes, add to README.md about labels (or move to cross-compile)
-// Todo: Mac cross-compile https://github.com/tpoechtrager/osxcross
-// Todo: Windows cross-compile https://arrayfire.com/cross-compile-to-windows-from-linux/
+// Todo: move defines to const and enums
+// Todo: don't use rtti and remove from compilation options
+// Todo: research mac cross-compile https://github.com/tpoechtrager/osxcross
+// Todo: research windows cross-compile https://arrayfire.com/cross-compile-to-windows-from-linux/
 // Todo: wrap fonline code to namespace
-// Todo: fix readme.md newlines for site
-// Todo: use precompiled headers
-// Todo: LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
-// Todo: LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
-// Todo: fix build warnings
-// Todo: FO_GCC -> FO_GCC_CLANG
-// Todo: CMAKE_VS_PLATFORM_TOOLSET need?
-// Todo: refactor Settings params, make it const
-// Todo: all define -> undef
-// Todo: HexManager -> MapView
-// Todo: SpriteManager - split loaders
-// Todo: "Acm" "Ogg" "Vorbis" "Theora" "${PNG16}" to Editor
-// Todo: upgrade NDK, include NDK/JDK to SDK
-// Todo: thread emulation in main loop? Or move threading to server-only
-// Todo: engine version naming convention 2019.1/2/3/4
-// Todo: IniFile to YamlFile
-// Todo: id and hash to 8 byte long
-// Todo: audio loader with variety formats, then encode to raw wav's
-// Todo: ServiceLocator - Logger, Randomizer, AudioManager, ProtoManager, FileManager, Settings
-// Todo: add to copyrigths https://github.com/taka-no-me/android-cmake
-// Todo: write about sudo on build
-// Todo: LLVM as main compiler
-// Todo: make all depedencies as git submodules
-// Todo: TryCopy/TryMove files?
-// Todo: fix FO_VERSION collisions
-// Todo: erase add_include, add add include for targets + include to root third-party?
-// Todo: or maybe copy all nessesary headers during cmake configuration in separate dir
-// Todo: own std::variant
-// Todo: check std::string_view
-// Todo: check std::filesystem
-// Todo: Renderers - OpenGL, OpenGL ES / WebGL, DirectX, Metal, Vulkan
-// Todo: compile with -fpedantic (and use clang for all!)
-// Todo: fo_exception -> std::runtime_error?
-// Todo: 'Path' class as filesystem path representation
-// Todo: look at std::filesystem
-// Todo: separate Editor Local/Global settings and Project settings
-// Todo: editor Undo/Redo
+// Todo: fix LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
+// Todo: fix LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
+// Todo: fix build warnings for all platforms
+// Todo: sound and video preprocessing move to editor
+// Todo: research about engine version naming convention (maybe 2019.1/2/3/4?)
+// Todo: id and hash to 8 byte integer
+// Todo: add to copyrigths for https://github.com/taka-no-me/android-cmake
+// Todo: llvm as main compiler?
+// Todo: make all depedencies as git submodules?
+// Todo: research about std::string_view
+// Todo: research about std::filesystem
+// Todo: compile with -fpedantic
 // Todo: c-style arrays to std::array
-// Todo: THREAD -> thread_local
-// Todo: thread -> future
-// Todo: CMake verbose output FONLINE_* and FO_* variables separately
-// Todo: return MongoDB to Linux server
-// Todo: id to uint64 uid
-// Todo: hash to uint64
-// Todo: add standalone Mapper application
-// Todo: size_t to auto, and use more auto in general
-// Todo: Thread::Sleep(0) -> this_thread::yield()
 // Todo: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
-// Todo: par (for_each(par, v, [](int x))
-// Todo: some single standard to initialize objects ({} or ())
+// Todo: use par (for_each(par, v, [](int x))
+// Todo: improve some single standard to initialize objects ({} or ())
 // Todo: iterator -> const_iterator, auto -> const auto
-// Todo: typedef -> using
-// Todo: unscoped enums to scoped enums
-// Todo: disable objects moving/copying where it's not necessary
-// Todo: declare class ctors/dtros/copy/move methods; structs only for pod without ctors/dtors/etc
-// Todo: use noexcept
-// Todo: use constexpr
-// Todo: WriteData/ReadData to BitReader/BitWriter
-// Todo: use clang-format
+// Todo: add constness as much as nessesary
+// Todo: use using instead of typedef
+// Todo: rework unscoped enums to scoped enums
+// Todo: use more noexcept
+// Todo: use more constexpr
+// Todo: improve BitReader/BitWriter to better network/disk space utilization
 // Todo: organize class members as public, protected, private; methods, fields
-// Todo: revert Log and Randomizer classes
-// Todo: improve exception safety (https://en.wikipedia.org/wiki/Exception_safety)
-// Todo: c++20 modules
-// Todo: eliminate volatile, replace to atomic
-// Todo: Visual Studio toolset - clang-cl
-// Todo: if(auto i = do(); i < 0) i... else i...
-// Todo: use std::to_string
+// Todo: research c++20 modules
+// Todo: eliminate volatile, replace to atomic if needed
+// Todo: change Visual Studio toolset to clang-cl?
+// Todo: prefer this construction if(auto i = do(); i < 0) i... else i...
+// Todo: improve std::to_string or fmt::format to string conversions
 // Todo: casts between int types via NumericCast<to>()
-// Todo: timers to std::chrono
 // Todo: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
-// Todo: AdminPanel network to Asio
-// Todo: move Common.h to precompiled headers (don't forgot about FONLINE_* defines)
 // Todo: build debug sanitiziers
 // Todo: time ticks to uint64
-// Todo: delete LF from write log
 // Todo: improve custom exceptions for every subsustem
-// Todo: use std::quick_exit
-// Todo: fix name char/short/int to portable 8/16/32 bits (maybe i8/i16/i32/i64/ui8/ui16/ui32/ui64)?
-// Todo: auto expand exceptions fo_exception("message", var1, var2...) -> "message (var1, var2)"
-// Todo: rename usings like StrUIntMap to string_uint_map
-// Todo: ImageBaker cache Spr files
+// Todo: reasearch about std::quick_exit
 
 // Operating system (passed outside)
 // FO_WINDOWS
@@ -374,6 +286,7 @@ public:
 
 private:
     string exceptionMessage {};
+    // Todo: auto expand exception parameters to readable state
     vector<string> exceptionParams {};
 };
 
@@ -496,7 +409,7 @@ public:
     EventDispatcher(ObserverType& obs) : observer {obs} {}
     EventDispatcher& operator()(Args... args)
     {
-        // Todo: recursion guard
+        // Todo: recursion guard for EventDispatcher
         if (!observer.subscriberCallbacks.empty())
             for (auto& cb : observer.subscriberCallbacks)
                 cb(std::forward<Args>(args)...);
@@ -525,10 +438,10 @@ private:
     void ThrowException()
     {
         if (!std::uncaught_exceptions())
-            throw fo_exception("Some of pointer still alive", ptrCounter);
+            throw fo_exception("Some of pointer still alive", ptrCounter.load());
     }
 
-    uint ptrCounter {};
+    std::atomic_int ptrCounter {};
 };
 
 template<typename T>
@@ -630,7 +543,7 @@ size_t constexpr operator"" _len(const char* str, size_t size)
         (x) = nullptr; \
     }
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b)) // Todo: MIN/MAX to std::min/std::max
+#define MAX(a, b) (((a) > (b)) ? (a) : (b)) // Todo: move MIN/MAX to std::min/std::max
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define PACKUINT64(u32hi, u32lo) (((uint64)u32hi << 32) | ((uint64)u32lo))
@@ -1061,7 +974,7 @@ private:
     UCharVec& dataBuf;
 };
 
-// Todo: WriteData/ReadData to DataWriter/DataReader
+// Todo: move WriteData/ReadData to DataWriter/DataReader
 template<class T>
 inline void WriteData(UCharVec& vec, T data)
 {

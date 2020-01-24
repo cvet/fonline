@@ -614,7 +614,7 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
             return;
         }
 
-        // Todo: Migrate critter on head text moving in scripts
+        // Todo: migrate critter on head text moving in scripts
         bool move_text = true;
         //			(Cond==COND_DEAD || Cond==COND_KNOCKOUT ||
         //			(anim2!=ANIM2_SHOW_WEAPON && anim2!=ANIM2_HIDE_WEAPON && anim2!=ANIM2_PREPARE_WEAPON &&

@@ -1875,7 +1875,7 @@ void HexManager::RealRebuildLight()
     for (auto it = lightSources.begin(), end = lightSources.end(); it != end; ++it)
     {
         LightSource& ls = *it;
-        // Todo: Optimize lighting rebuilding to skip unvisible lights
+        // Todo: optimize lighting rebuilding to skip unvisible lights
         // if( (int) ls.HexX < lightMinHx - (int) ls.Distance || (int) ls.HexX > lightMaxHx + (int) ls.Distance ||
         //    (int) ls.HexY < lightMinHy - (int) ls.Distance || (int) ls.HexY > lightMaxHy + (int) ls.Distance )
         //    continue;
@@ -4308,7 +4308,7 @@ void HexManager::OnResolutionChanged()
 
 bool HexManager::SetProtoMap(ProtoMap& pmap)
 {
-    // Todo: !!!
+    // Todo: need attention!
     /*WriteLog("Create map from prototype.\n");
 
     UnloadMap();
@@ -4429,7 +4429,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
 
 void HexManager::GetProtoMap(ProtoMap& pmap)
 {
-    // Todo: !!!
+    // Todo: need attention!
     /*pmap.SetWorkHexX(screenHexX);
     pmap.SetWorkHexY(screenHexY);
     pmap.SetCurDayTime(GetDayTime());

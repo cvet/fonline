@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: rework Script singleton
+
 #pragma once
 
 #include "Common.h"

@@ -201,7 +201,7 @@ public:
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
 
     // Lang packs
-    LangPackVec LangPacks; // Todo: synchronize
+    LangPackVec LangPacks; // Todo: synchronize LangPacks
     bool InitLangPacks(LangPackVec& lang_packs);
     bool InitLangPacksDialogs(LangPackVec& lang_packs);
     bool InitLangPacksLocations(LangPackVec& lang_packs);

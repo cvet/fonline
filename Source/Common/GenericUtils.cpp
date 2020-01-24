@@ -303,7 +303,7 @@ int GenericUtils::ConvertParamValue(const string& str, bool& fail)
     if (_str(str).compareIgnoreCase("false"))
         return 0;
 
-    // Todo: script
+    // Todo: script handling in ConvertParamValue
     // return Script::GetEnumValue(str, fail);
     throw UnreachablePlaceException("Unreachable place");
 }

@@ -861,7 +861,7 @@ if( NOT FONLINE_BUILD_ONLY_EDITOR AND NOT FONLINE_UNIT_TESTS AND NOT FONLINE_COD
 		StatusMessage( "+ FOnline" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnline" )
 		add_executable( FOnline WIN32 "Source/Applications/ClientApp.cpp" "Source/Common/MessageBox.cpp" "Resources/Default.rc" )
-		# Todo: Make bundles for Mac and maybe iOS
+		# Todo: cmake make bundles for Mac and iOS
 		# add_executable( FOnline MACOSX_BUNDLE ... "Default.rc" )
 		set_target_properties( FOnline PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_CLIENT_OUTPUT}
 			RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_CLIENT_OUTPUT} )

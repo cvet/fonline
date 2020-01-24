@@ -110,21 +110,21 @@ static bool Global_StrToFloat(string text, float& result)
 
 static uint Global_GetDistantion(ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
-    // Todo:
+    // Todo: need attention!
     // return DistGame(hx1, hy1, hx2, hy2);
     return 0;
 }
 
 static uchar Global_GetDirection(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
-    // Todo:
+    // Todo: need attention!
     // return GetFarDir(from_hx, from_hy, to_hx, to_hy);
     return 0;
 }
 
 static uchar Global_GetOffsetDir(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset)
 {
-    // Todo:
+    // Todo: need attention!
     // return GetFarDir(from_hx, from_hy, to_hx, to_hy, offset);
     return 0;
 }

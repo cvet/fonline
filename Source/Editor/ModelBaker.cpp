@@ -313,7 +313,7 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
     else
     {
         // Logging
-        // Todo:
+        // Todo: need attention!
         // if (GameOpt.AssimpLogging)
         // {
         //    aiEnableVerboseLogging(true);

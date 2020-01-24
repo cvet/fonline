@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: store Cache.bin in player local dir for Windows users?
+
 #pragma once
 
 #include "Common.h"

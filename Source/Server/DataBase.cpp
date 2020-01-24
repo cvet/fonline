@@ -42,7 +42,7 @@
 #include "json.hpp"
 #include "unqlite.h"
 
-// Todo: Restore mongodb (linux segfault and linking errors)
+// Todo: restore mongodb (linux segfault and linking errors)
 #define REMOVE_MONGO
 
 #ifndef REMOVE_MONGO

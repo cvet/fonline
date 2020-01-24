@@ -3372,7 +3372,7 @@ void FOClient::Net_OnEffect()
     }
 }
 
-// Todo: Synchronize effects showing
+// Todo: synchronize effects showing (for example shot and kill)
 void FOClient::Net_OnFlyEffect()
 {
     hash eff_pid;
@@ -3904,7 +3904,7 @@ void FOClient::Net_OnMap()
 
     if (tiles && scen)
     {
-        // Todo: rewrite
+        // Todo: need attention!
         /*OutputFile output_file {};
         output_file.SetBEUInt(CLIENT_MAP_FORMAT_VER);
         output_file.SetBEUInt(map_pid);
@@ -4970,7 +4970,6 @@ void FOClient::OnSetCritterModelName(Entity* entity, Property* prop, void* cur_v
 
 void FOClient::OnSendItemValue(Entity* entity, Property* prop)
 {
-    // Todo: Clean up client 0 and -1 item ids
     ItemView* item = (ItemView*)entity;
     if (item->Id && item->Id != uint(-1))
     {
@@ -6097,7 +6096,7 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems(ItemView* cont, uint stack_id
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
     ItemViewVec items;
-    // Todo: !!!
+    // Todo: need attention!
     // cont->ContGetItems(items, stack_id);
     return Script::CreateArrayRef("Item[]", items);
 }

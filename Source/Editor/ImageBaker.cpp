@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: finish with GLSL to SPIRV to GLSL/HLSL/MSL
+
 #include "ImageBaker.h"
 #include "F2Palette_Include.h"
 #include "FileSystem.h"

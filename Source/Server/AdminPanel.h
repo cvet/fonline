@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: admin panel network to Asio
+
 #pragma once
 
 #include "Common.h"

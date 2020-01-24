@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+// Todo: server logs append not rewrite (with checking of size)
+// Todo: add timestamps and process id and thread id to file logs
+// Todo: delete \n appendix from WriteLog
+
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"

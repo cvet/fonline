@@ -1214,7 +1214,8 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
         root += _str("#include \"{}\"\n", script.Name);
 
     // Set preprocessor defines from command line
-    StrMap config; // Todo: settings const StrMap& config = MainConfig->GetApp("");
+    StrMap config; // Todo: fill settings to scripts
+    // const StrMap& config = MainConfig->GetApp("");
     for (auto& kv : config)
     {
         if (kv.first.length() > 2 && kv.first[0] == '-' && kv.first[1] == '-')

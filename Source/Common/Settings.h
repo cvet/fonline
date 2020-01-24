@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-// Todo: remove VAR_SETTING
+// Todo: remove VAR_SETTING must stay only constant values
 
 struct DummySettings
 {

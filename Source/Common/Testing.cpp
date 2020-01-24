@@ -680,7 +680,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
 }
 
 #else
-// Todo: Handle exceptions
+// Todo: improve global exceptions handlers for mobile os
 
 void CatchExceptions(const string& app_name, int app_ver)
 {

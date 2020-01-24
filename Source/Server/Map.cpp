@@ -492,7 +492,7 @@ bool Map::IsPlaceForProtoItem(ushort hx, ushort hy, ProtoItem* proto_item)
     if (!IsHexPassed(hx, hy))
         return false;
 
-    // Todo:
+    // Todo: rework FOREACH_PROTO_ITEM_LINES
     // FOREACH_PROTO_ITEM_LINES(
     //    proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), if (IsHexCritter(hx, hy)) return false;);
     return true;
@@ -500,7 +500,7 @@ bool Map::IsPlaceForProtoItem(ushort hx, ushort hy, ProtoItem* proto_item)
 
 void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    // Todo:
+    // Todo: rework FOREACH_PROTO_ITEM_LINES
     // bool raked = item->GetIsShootThru();
     // FOREACH_PROTO_ITEM_LINES(
     //    item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
@@ -510,7 +510,7 @@ void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 
 void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    // Todo:
+    // Todo: rework FOREACH_PROTO_ITEM_LINES
     // bool raked = item->GetIsShootThru();
     // FOREACH_PROTO_ITEM_LINES(
     //    item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
@@ -587,9 +587,7 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
 
 ushort Map::GetHexFlags(ushort hx, ushort hy)
 {
-    // Todo: HexFlags
-    // return (hexFlags[hy * GetWidth() + hx] << 8) | GetProtoMap()->HexFlags[hy * GetWidth() + hx];
-    return 0;
+    return (hexFlags[hy * GetWidth() + hx] << 8) | GetStaticMap()->HexFlags[hy * GetWidth() + hx];
 }
 
 void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
@@ -697,9 +695,7 @@ bool Map::IsHexGag(ushort hx, ushort hy)
 
 bool Map::IsHexStaticTrigger(ushort hx, ushort hy)
 {
-    // Todo: HexFlags
-    // return FLAG(GetProtoMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
-    return false;
+    return FLAG(GetStaticMap()->HexFlags[hy * GetWidth() + hx], FH_STATIC_TRIGGER);
 }
 
 bool Map::IsFlagCritter(ushort hx, ushort hy, bool dead)

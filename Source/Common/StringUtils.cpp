@@ -520,7 +520,7 @@ hash _str::toHash()
 
 _str& _str::parseHash(hash h)
 {
-    // Todo: hash
+    // Todo: restore hash parsing
     throw UnreachablePlaceException("Unreachable place");
     return *this;
 }

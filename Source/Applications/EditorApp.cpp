@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: improve editor Undo/Redo
+
 #include "Common.h"
 
 #include "AppGui.h"
@@ -210,7 +212,7 @@ struct MapperWindow : GuiWindow
         Mapper = new FOMapper(Settings);
 
         ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
-        // Todo: !!!
+        // Todo: need attention!
         /*if (!pmap->EditorLoad(Mapper->ServerFileMngr, Mapper->ProtoMngr, Mapper->SprMngr, Mapper->ResMngr))
         {
             Mapper->AddMess("File not found or truncated.");

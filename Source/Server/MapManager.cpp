@@ -227,7 +227,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         {
             ushort hx_ = hx, hy_ = hy;
             bool raked = item->GetIsShootThru();
-            // Todo: !!!
+            // Todo: need attention!
             // FOREACH_PROTO_ITEM_LINES(
             //    item->GetBlockLines(), hx_, hy_, maxhx, maxhy, SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
             //    if (!raked) SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_NOTRAKE););

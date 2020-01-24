@@ -39,6 +39,7 @@ regularLine = 'Todo:'
 doubtLine = 'Doubt todo:'
 tailLine = '  '
 githubUrl = 'https://github.com/cvet/fonline/blob/master/'
+priorityFiles = 'Common.h;Common.cpp'
 
 def decideNewLine(fileLines):
     crCount = 0
@@ -92,12 +93,36 @@ def processFile(filePath, todoInfo):
                 else:
                     todoInfo[entryIndex][1].append((filePath, lineIndex))
 
+def getFilesAtPath(path):
+    def fillRecursive(path, pathList):
+        if os.path.isfile(path):
+            filePathList.append(path)
+        elif os.path.isdir(path):
+            for p in os.listdir(path):
+                fillRecursive(os.path.join(path, p), todoInfo)
+    def isNeedParse(path):
+        ext = os.path.splitext(path)[1].lower()[1:]
+        return ext in sourceExt.split(';')
+
+    filePathList = []
+    fillRecursive(path, filePathList)
+    filePathList = filter(isNeedParse, filePathList)
+    filePathList.sort()
+
+    priorityPathList = []
+    for priorityFile in priorityFiles.split(';'):
+        for filePath in filePathList[:]:
+            if priorityFile in filePath:
+                priorityPathList.append(filePath)
+                filePathList.remove(filePath)
+                break
+
+    return priorityPathList + filePathList
+
 def processPath(path, todoInfo):
-    if os.path.isfile(path):
+    filePathList = getFilesAtPath(path)
+    for path in filePathList:
         processFile(path, todoInfo)
-    elif os.path.isdir(path):
-        for p in os.listdir(path):
-            processPath(os.path.join(path, p), todoInfo)
 
 def generateTodoDesc(todoInfo):
     descList = []

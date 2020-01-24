@@ -2180,8 +2180,7 @@ bool Animation3dEntity::Load(const string& name)
 
                 if (token == "Anim" || token == "AnimExt")
                 {
-                    // Deferred loading
-                    // Todo: Reverse play
+                    // Todo: add reverse playing of 3d animation
 
                     string a1, a2;
                     (*istr) >> a1 >> a2;

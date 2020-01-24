@@ -1023,7 +1023,7 @@ void Property::SetPODValueAsInt(Entity* entity, int value)
 
 string Property::SetGetCallback(asIScriptFunction* func)
 {
-    // Todo: Check can get
+    // Todo: check can get in SetGetCallback
 
     uint bind_id = Script::BindByFunc(func, false);
     if (!bind_id)
