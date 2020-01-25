@@ -13,10 +13,17 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 
 ## Features
 
-* Open Source under [MIT license](https://github.com/cvet/fonline/blob/master/LICENSE)
-* OpenGL/ES/WebGL and DirectX rendering
-* C++17, AngelScript, C#/Mono and Fallout Star-Trek as scripting languages
-* Target platforms
+* C++17
+* Open source under [MIT license](https://github.com/cvet/fonline/blob/master/LICENSE)
+* Online mode with authoritative server
+* Singleplayer mode *(with or without back run in online mode)*
+* Flexible scripting system with varies supporting languages:
+  * Native C bindings *(that allows add more languages for work with engine)*
+  * Native C++
+  * C#/Mono
+  * AngelScript *(with supporting of scripts writtlen for old engine versions like r412)*
+  * Fallout Star-Trek *(for run original Fallout1/2 out of the box)*
+* Cross-platform with target platforms:
   * Windows
   * Linux
   * macOS
@@ -24,10 +31,24 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
   * Android
   * Web
   * PlayStation
-* Online and singleplayer modes
-* Supporting of Fallout 1/2/Tactics, Arcanum and other isometric games asset formats
-* Supporting of 3d characters in modern graphic formats
-* Hexagonal/square map tiling
+  * UWP *(PC, Mobile, Xbox)*
+* Rendering with:
+  * OpenGL
+  * OpenGLES
+  * WebGL
+  * DirectX
+  * Metal
+  * Vulkan
+* Supporting of following asset formats:
+  * Fallout 1/2
+  * Fallout Tactics
+  * Arcanum
+  * Boldur's Gate
+  * 3d characters in modern graphic formats
+  * and more...
+* Supporting of hexagonal and square map tiling
+
+Important note: *Not all from descripted above features are already implemented, for additional information look at 'Work in progress' section below*.
 
 ## Media
 
@@ -41,24 +62,21 @@ And two videos to who don't like to google:
 
 ## Work in progress
 
-Bugs, performance cases and feature requests see at [Issues page](https://github.com/cvet/fonline/issues).
+Bugs, performance cases and feature requests you can disscuss at [Issues page](https://github.com/cvet/fonline/issues).
 
-#### Some major issues (that I work currently)
+#### Roadmap
 
-* Code refactoring (see separate section below)
-* C++ as native scripting language with additional optional submodules for AngelScript, C# and Fallout Star-Trek SL
+* Code refactoring *(look at separate section below)*
+* Rework scripting system *(add C bindings with optional submodules for C++, AngelScript and C#/Mono)*
 * [Multifunctional editor](https://github.com/cvet/fonline/issues/31)
 * [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
+* Improve DirectX/Metal/Vulkan rendering
+* Improve supporting of Universal Windows Platform
 * [Documentation](https://github.com/cvet/fonline/issues/49)
-
-#### Some minor issues
-
-* [Direct X rendering](https://github.com/cvet/fonline/issues/47)
-* [Supporting of UDP](https://github.com/cvet/fonline/issues/14)
-* [Exclude FBX SDK from dependencies](https://github.com/cvet/fonline/issues/22)
-* [Parallelism where it needed](https://github.com/cvet/fonline/issues/32)
-* [Steam integration](https://github.com/cvet/fonline/issues/38)
-* YAML as main formal for all text assets
+* API freezing and continuing development with it's backward compatibility
+* Adopt Fallout Star-Trek SL for run Fallout on engine out of the box
+* Adding supporting of old engine asset formats *(especially r412)*
+* Improve supporting of PlayStation
 
 #### Code refactoring plans
 
