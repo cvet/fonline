@@ -779,6 +779,8 @@ void FOClient::LookBordersPrepare()
 
 void FOClient::MainLoop()
 {
+    // Todo: remove all memory allocations from client loop
+
     Timer::UpdateTick();
 
     // FPS counter

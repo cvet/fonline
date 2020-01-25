@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: don't preserve memory for not allocated components in entity
+
 #pragma once
 
 #include "Common.h"

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-#pragma once
-
 // Todo: use Common.h as precompiled header
 // Todo: review push_back -> emplace_back
 // Todo: use smart pointers instead raw
@@ -82,6 +80,13 @@
 // Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
 // Todo: reasearch about std::quick_exit
+// Todo: improve particle system based on SPARK engine
+// Todo: research about Steam integration
+// Todo: support of loading r412 content
+// Todo: speed up content loading from server
+// Todo: temporary entities, disable writing to data base
+
+#pragma once
 
 // Operating system (passed outside)
 // FO_WINDOWS

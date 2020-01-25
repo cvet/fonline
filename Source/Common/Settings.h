@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: exclude server specific settings from client
+
 #pragma once
 
 #include "Common.h"

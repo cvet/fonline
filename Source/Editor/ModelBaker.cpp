@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: fix assimp, exclude fbxsdk
+
 #include "ModelBaker.h"
 #include "3dAnimation.h"
 #include "GraphicStructures.h"

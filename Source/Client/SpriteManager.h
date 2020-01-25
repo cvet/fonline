@@ -33,6 +33,7 @@
 
 // Todo: improve DirectX rendering
 // Todo: maybe restrict fps at 60?
+// Todo: optimize sprite atlas filling
 
 #pragma once
 

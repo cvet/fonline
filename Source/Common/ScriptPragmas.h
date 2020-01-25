@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: fix pragma parsing as tokens not as strings
+
 #pragma once
 
 #include "Common.h"

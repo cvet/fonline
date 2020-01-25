@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: exclude sprite cut system?
+
 #include "Sprites.h"
 #include "Settings.h"
 #include "SpriteManager.h"

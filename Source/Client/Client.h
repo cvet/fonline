@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: fix soft scroll if critter teleports
+
 #pragma once
 
 #include "Common.h"
