@@ -38,13 +38,12 @@
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
-#include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
-ItemManager::ItemManager(
-    ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr) :
-    protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, crMngr {cr_mngr}
+ItemManager::ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
+    CritterManager& cr_mngr, ScriptSystem& script_sys) :
+    protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, crMngr {cr_mngr}, scriptSys {script_sys}
 {
 }
 
@@ -187,7 +186,7 @@ Item* ItemManager::CreateItem(hash pid, uint count /* = 0 */, Properties* props 
         return nullptr;
     }
 
-    Item* item = new Item(0, proto);
+    Item* item = new Item(0, proto, scriptSys);
     if (props)
         item->Props = *props;
 
@@ -203,7 +202,7 @@ Item* ItemManager::CreateItem(hash pid, uint count /* = 0 */, Properties* props 
         RadioRegister(item, true);
 
     // Scripts
-    Script::RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
+    scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
     if (!item->IsDestroyed)
         item->SetScript(nullptr, true);
 
@@ -226,8 +225,8 @@ bool ItemManager::RestoreItem(uint id, hash proto_id, const DataBase::Document& 
         return false;
     }
 
-    Item* item = new Item(id, proto);
-    if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc))
+    Item* item = new Item(id, proto, scriptSys);
+    if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for item '{}' ({}).\n", _str().parseHash(proto_id), id);
         item->Release();
@@ -246,7 +245,7 @@ void ItemManager::DeleteItem(Item* item)
     item->IsDestroying = true;
 
     // Finish events
-    Script::RaiseInternalEvent(ServerFunctions.ItemFinish, item);
+    scriptSys.RaiseInternalEvent(ServerFunctions.ItemFinish, item);
 
     // Tear off from environment
     while (item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems())
@@ -558,7 +557,7 @@ bool ItemManager::SetItemCritter(Critter* cr, hash pid, uint count)
 
 bool ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to)
 {
-    return Script::RaiseInternalEvent(ServerFunctions.ItemCheckMove, item, count, from, to);
+    return scriptSys.RaiseInternalEvent(ServerFunctions.ItemCheckMove, item, count, from, to);
 }
 
 bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, Item* item, uint count)

@@ -39,6 +39,7 @@
 #include "GeometryHelper.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
+#include "Script.h"
 #include "Settings.h"
 
 #define ANIMATION_STAY (0x01)
@@ -115,8 +116,8 @@ class Animation3dManager : public NonCopyable
 public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
-    Animation3dManager(
-        RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, MeshTextureCreator mesh_tex_creator);
+    Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
+        ScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator);
     ~Animation3dManager();
 
     Bone* LoadModel(const string& fname);
@@ -140,6 +141,7 @@ private:
     RenderSettings& settings;
     FileManager& fileMngr;
     EffectManager& effectMngr;
+    ScriptSystem& scriptSys;
     MeshTextureCreator meshTexCreator {};
     StrVec processedFiles {};
     BoneVec loadedModels {};

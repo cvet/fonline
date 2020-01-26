@@ -131,11 +131,12 @@ static int main_disabled(int argc, char** argv)
 #endif
 
     // Finish script
-    if (Script::GetEngine())
+    // Todo: fix script system
+    /*if (Script::GetEngine())
     {
         Script::RunMandatorySuspended();
         Script::RaiseInternalEvent(ClientFunctions.Finish);
-    }
+    }*/
 
     // Just kill process
     // System automatically clean up all resources

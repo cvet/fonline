@@ -39,19 +39,19 @@
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
-#include "Script.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
 CritterManager::CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    MapManager& map_mngr, ItemManager& item_mngr) :
+    MapManager& map_mngr, ItemManager& item_mngr, ScriptSystem& script_sys) :
     settings {sett},
     geomHelper(settings),
     protoMngr {proto_mngr},
     entityMngr {entity_mngr},
     mapMngr {map_mngr},
-    itemMngr {item_mngr}
+    itemMngr {item_mngr},
+    scriptSys {script_sys}
 {
 }
 
@@ -86,7 +86,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     }
 
     // Change item
-    Script::RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, -1);
+    scriptSys.RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, -1);
 }
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
@@ -105,7 +105,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     if (item->GetCritSlot())
         cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
 
-    Script::RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, item->GetCritSlot());
+    scriptSys.RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, item->GetCritSlot());
 }
 
 Npc* CritterManager::CreateNpc(
@@ -158,7 +158,7 @@ Npc* CritterManager::CreateNpc(
         hy = hy_;
     }
 
-    Npc* npc = new Npc(0, proto, settings);
+    Npc* npc = new Npc(0, proto, settings, scriptSys);
     if (props)
         npc->Props = *props;
 
@@ -184,7 +184,7 @@ Npc* CritterManager::CreateNpc(
     RUNTIME_ASSERT(can);
     mapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
-    Script::RaiseInternalEvent(ServerFunctions.CritterInit, npc, true);
+    scriptSys.RaiseInternalEvent(ServerFunctions.CritterInit, npc, true);
     npc->SetScript(nullptr, true);
 
     mapMngr.ProcessVisibleCritters(npc);
@@ -201,8 +201,8 @@ bool CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document
         return false;
     }
 
-    Npc* npc = new Npc(id, proto, settings);
-    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc))
+    Npc* npc = new Npc(id, proto, settings, scriptSys);
+    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
         npc->Release();
@@ -223,7 +223,7 @@ void CritterManager::DeleteNpc(Critter* cr)
     cr->IsDestroying = true;
 
     // Finish event
-    Script::RaiseInternalEvent(ServerFunctions.CritterFinish, cr);
+    scriptSys.RaiseInternalEvent(ServerFunctions.CritterFinish, cr);
 
     // Tear off from environment
     cr->LockMapTransfers++;
@@ -468,19 +468,20 @@ void CritterManager::CloseTalk(Client* cl)
             if (npc)
             {
                 if (cl->Talk.Barter)
-                    Script::RaiseInternalEvent(ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers());
-                Script::RaiseInternalEvent(ServerFunctions.CritterTalk, cl, npc, false, npc->GetTalkedPlayers());
+                    scriptSys.RaiseInternalEvent(
+                        ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers());
+                scriptSys.RaiseInternalEvent(ServerFunctions.CritterTalk, cl, npc, false, npc->GetTalkedPlayers());
             }
         }
 
         if (cl->Talk.CurDialog.DlgScript)
         {
-            Script::PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-            Script::SetArgEntity(cl);
-            Script::SetArgEntity(npc);
-            Script::SetArgEntity(nullptr);
+            scriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
+            scriptSys.SetArgEntity(cl);
+            scriptSys.SetArgEntity(npc);
+            scriptSys.SetArgEntity(nullptr);
             cl->Talk.Locked = true;
-            Script::RunPrepared();
+            scriptSys.RunPrepared();
             cl->Talk.Locked = false;
         }
     }

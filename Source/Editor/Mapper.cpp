@@ -46,10 +46,21 @@
 #include "sha1.h"
 #include "sha2.h"
 
+#define SCRIPT_ERROR_R(error, ...) \
+    do \
+    { \
+        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        return; \
+    } while (0)
+#define SCRIPT_ERROR_R0(error, ...) \
+    do \
+    { \
+        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        return 0; \
+    } while (0)
+
 bool FOMapper::SpritesCanDraw;
 FOMapper* FOMapper::Self;
-string FOMapper::ServerWritePath;
-string FOMapper::ClientWritePath;
 MapView* FOMapper::SScriptFunc::ClientCurMap;
 LocationView* FOMapper::SScriptFunc::ClientCurLocation;
 
@@ -59,12 +70,13 @@ FOMapper::FOMapper(MapperSettings& sett) :
     IfaceIni(""),
     FileMngr(),
     ServerFileMngr(),
+    ScriptSys(Settings, FileMngr),
     Cache("Data/Cache.bin"),
     ProtoMngr(),
     EffectMngr(Settings, FileMngr),
-    SprMngr(Settings, FileMngr, EffectMngr),
-    ResMngr(FileMngr, SprMngr),
-    HexMngr(true, Settings, ProtoMngr, SprMngr, ResMngr),
+    SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
+    ResMngr(FileMngr, SprMngr, ScriptSys),
+    HexMngr(true, Settings, ProtoMngr, SprMngr, ResMngr, ScriptSys),
     Keyb(Settings, SprMngr)
 {
     Self = this;
@@ -230,11 +242,6 @@ FOMapper::FOMapper(MapperSettings& sett) :
     while (ConsoleHistory.size() > Settings.ConsoleHistorySize)
         ConsoleHistory.erase(ConsoleHistory.begin());
     ConsoleHistoryCur = (int)ConsoleHistory.size();
-}
-
-FOMapper::~FOMapper()
-{
-    FinishScriptSystem();
 }
 
 int FOMapper::InitIface()
@@ -601,7 +608,7 @@ void FOMapper::ParseKeyboard()
         Settings.MainWindowKeyboardEventsText.clear();
         Keyb.Lost();
         IntHold = INT_NONE;
-        Script::RaiseInternalEvent(MapperFunctions.InputLost);
+        ScriptSys.RaiseInternalEvent(MapperFunctions.InputLost);
         return;
     }
 
@@ -647,12 +654,12 @@ void FOMapper::ParseKeyboard()
         if (dikdw)
         {
             string event_text_script = event_text;
-            script_result = Script::RaiseInternalEvent(MapperFunctions.KeyDown, dikdw, &event_text_script);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.KeyDown, dikdw, &event_text_script);
         }
         if (dikup)
         {
             string event_text_script = event_text;
-            script_result = Script::RaiseInternalEvent(MapperFunctions.KeyUp, dikup, &event_text_script);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.KeyUp, dikup, &event_text_script);
         }
 
         // Disable keyboard events
@@ -969,7 +976,7 @@ void FOMapper::ParseMouse()
     {
         Settings.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        Script::RaiseInternalEvent(MapperFunctions.InputLost);
+        ScriptSys.RaiseInternalEvent(MapperFunctions.InputLost);
         return;
     }
 
@@ -981,7 +988,7 @@ void FOMapper::ParseMouse()
         Settings.LastMouseX = Settings.MouseX;
         Settings.LastMouseY = Settings.MouseY;
 
-        Script::RaiseInternalEvent(MapperFunctions.MouseMove, ox, oy);
+        ScriptSys.RaiseInternalEvent(MapperFunctions.MouseMove, ox, oy);
 
         IntMouseMove();
     }
@@ -1026,40 +1033,40 @@ void FOMapper::ParseMouse()
         // Scripts
         bool script_result = true;
         if (event == SDL_MOUSEWHEEL)
-            script_result = Script::RaiseInternalEvent(
+            script_result = ScriptSys.RaiseInternalEvent(
                 MapperFunctions.MouseDown, event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_LEFT);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_LEFT);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_RIGHT);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_RIGHT);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_MIDDLE);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_MIDDLE);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT0);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT0);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT1);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT1);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT2);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT2);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT3);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT3);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = Script::RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4);
+            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4);
         if (!script_result || Settings.DisableMouseEvents)
             continue;
 
@@ -1258,7 +1265,7 @@ void FOMapper::MainLoop()
     }
 
     // Script loop
-    Script::RaiseInternalEvent(MapperFunctions.Loop);
+    ScriptSys.RaiseInternalEvent(MapperFunctions.Loop);
 
     // Input
     ConsoleProcess();
@@ -1298,10 +1305,10 @@ void FOMapper::MainLoop()
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
 
     // Process pending invocations
-    Script::ProcessDeferredCalls();
+    ScriptSys.ProcessDeferredCalls();
 
     // Suspended contexts
-    Script::RunSuspended();
+    ScriptSys.RunSuspended();
 
     DrawIfaceLayer(0);
     if (HexMngr.IsMapLoaded())
@@ -2073,13 +2080,13 @@ Entity* FOMapper::GetInspectorEntity()
 
     if (entity)
     {
-        CScriptArray* arr = Script::CreateArray("int[]");
+        CScriptArray* arr = ScriptSys.CreateArray("int[]");
         RUNTIME_ASSERT(arr);
 
-        Script::RaiseInternalEvent(MapperFunctions.InspectorProperties, entity, arr);
+        ScriptSys.RaiseInternalEvent(MapperFunctions.InspectorProperties, entity, arr);
 
         IntVec enum_values;
-        Script::AssignScriptArrayInVector(enum_values, arr);
+        ScriptSys.AssignScriptArrayInVector(enum_values, arr);
         for (auto enum_value : enum_values)
             ShowProps.push_back(enum_value ? entity->Props.FindByEnum(enum_value) : nullptr);
 
@@ -3890,7 +3897,7 @@ void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
 
                 // Process command
                 bool process_command = true;
-                process_command = Script::RaiseInternalEvent(MapperFunctions.ConsoleMessage, &ConsoleStr);
+                process_command = ScriptSys.RaiseInternalEvent(MapperFunctions.ConsoleMessage, &ConsoleStr);
 
                 AddMess(ConsoleStr.c_str());
                 if (process_command)
@@ -4040,15 +4047,15 @@ void FOMapper::ParseCommand(const string& command)
         }
 
         // Reparse module
-        uint bind_id = Script::BindByFuncName(func_name, "string %s(string)", true);
+        uint bind_id = ScriptSys.BindByFuncName(func_name, "string %s(string)", true);
         if (bind_id)
         {
             string str = _str(command).substringAfter(' ').trim();
-            Script::PrepareContext(bind_id, "Mapper");
-            Script::SetArgObject(&str);
-            if (Script::RunPrepared())
+            ScriptSys.PrepareContext(bind_id, "Mapper");
+            ScriptSys.SetArgObject(&str);
+            if (ScriptSys.RunPrepared())
             {
-                string result = *(string*)Script::GetReturnedRawAddress();
+                string result = *(string*)ScriptSys.GetReturnedRawAddress();
                 AddMess(_str("Result: {}", result).c_str());
             }
             else
@@ -4122,12 +4129,12 @@ void FOMapper::ParseCommand(const string& command)
             // Nigh		23.00 -  4.59	1380
             IntVec vec = {300, 600, 1140, 1380};
             UCharVec vec2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-            CScriptArray* arr = Script::CreateArray("int[]");
-            Script::AppendVectorToArray(vec, arr);
+            CScriptArray* arr = ScriptSys.CreateArray("int[]");
+            ScriptSys.AppendVectorToArray(vec, arr);
             pmap->SetDayTime(arr);
             arr->Release();
-            CScriptArray* arr2 = Script::CreateArray("uint8[]");
-            Script::AppendVectorToArray(vec2, arr2);
+            CScriptArray* arr2 = ScriptSys.CreateArray("uint8[]");
+            ScriptSys.AppendVectorToArray(vec2, arr2);
             pmap->SetDayColor(arr2);
             arr2->Release();
 
@@ -4176,7 +4183,6 @@ void FOMapper::ParseCommand(const string& command)
         }
         else if (command_ext == "scripts")
         {
-            FinishScriptSystem();
             if (InitScriptSystem())
                 RunStartScript();
             AddMess("Scripts reloaded.");
@@ -4305,36 +4311,36 @@ bool FOMapper::InitScriptSystem()
 
     // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_MAPPER, &ProtoMngr, nullptr);
-    if (!Script::Init(Settings, FileMngr, pragma_callback, "MAPPER"))
+    if (!ScriptSys.Init(pragma_callback, "MAPPER"))
     {
         WriteLog("Script system initialization fail.\n");
         return false;
     }
-    Script::SetExceptionCallback([](const string& str) {
+    ScriptSys.SetExceptionCallback([](const string& str) {
         CreateDump("ScriptException", str);
         MessageBox::ShowErrorMessage(str, "");
         exit(1);
     });
 
     // Bind vars and functions, look bind.h
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = ScriptSys.GetEngine();
     PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
     int errors = MapperBind::Bind(engine, registrators);
     if (errors)
         return false;
 
     // Load scripts
-    Script::Undef("");
-    Script::Define("__MAPPER");
-    Script::Define(_str("__VERSION {}", FO_VERSION));
-    if (!Script::ReloadScripts("Mapper"))
+    ScriptSys.Undef("");
+    ScriptSys.Define("__MAPPER");
+    ScriptSys.Define(_str("__VERSION {}", FO_VERSION));
+    if (!ScriptSys.ReloadScripts("Mapper"))
     {
         WriteLog("Invalid mapper scripts.\n");
         return false;
     }
 
-#define BIND_INTERNAL_EVENT(name) MapperFunctions.name = Script::FindInternalEvent("Event" #name)
-#define BIND_INTERNAL_EVENT_CLIENT(name) ClientFunctions.name = Script::FindInternalEvent("Event" #name)
+#define BIND_INTERNAL_EVENT(name) MapperFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
+#define BIND_INTERNAL_EVENT_CLIENT(name) ClientFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
     BIND_INTERNAL_EVENT(Start);
     BIND_INTERNAL_EVENT(Finish);
     BIND_INTERNAL_EVENT(Loop);
@@ -4382,13 +4388,13 @@ bool FOMapper::InitScriptSystem()
     LocationView::SetPropertyRegistrator(registrators[4]);
     ProtoLocation::SetPropertyRegistrator(registrators[4]);
 
-    if (!Script::PostInitScriptSystem())
+    if (!ScriptSys.PostInitScriptSystem())
     {
         WriteLog("Post init fail.\n");
         return false;
     }
 
-    if (!Script::RunModuleInitFunctions())
+    if (!ScriptSys.RunModuleInitFunctions())
     {
         WriteLog("Run module init functions fail.\n");
         return false;
@@ -4398,33 +4404,27 @@ bool FOMapper::InitScriptSystem()
     return true;
 }
 
-void FOMapper::FinishScriptSystem()
-{
-    Script::Finish();
-    memzero(&MapperFunctions, sizeof(MapperFunctions));
-}
-
 void FOMapper::RunStartScript()
 {
-    Script::RaiseInternalEvent(MapperFunctions.Start);
+    ScriptSys.RaiseInternalEvent(MapperFunctions.Start);
 }
 
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    Script::RaiseInternalEvent(MapperFunctions.MapLoad, map);
+    ScriptSys.RaiseInternalEvent(MapperFunctions.MapLoad, map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    Script::RaiseInternalEvent(MapperFunctions.MapSave, map);
+    ScriptSys.RaiseInternalEvent(MapperFunctions.MapSave, map);
 }
 
 void FOMapper::DrawIfaceLayer(uint layer)
 {
     SpritesCanDraw = true;
-    Script::RaiseInternalEvent(MapperFunctions.RenderIface, layer);
+    ScriptSys.RaiseInternalEvent(MapperFunctions.RenderIface, layer);
     SpritesCanDraw = false;
 }
 
@@ -4524,12 +4524,12 @@ CScriptArray* FOMapper::SScriptFunc::Item_GetChildren(ItemView* item)
     ItemViewVec children;
     // Todo: need attention!
     // item->ContGetItems(children, 0);
-    return Script::CreateArrayRef("Item[]", children);
+    return Self->ScriptSys.CreateArrayRef("Item[]", children);
 }
 
 CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren(CritterView* cr)
 {
-    return Script::CreateArrayRef("Item[]", cr->InvItems);
+    return Self->ScriptSys.CreateArrayRef("Item[]", cr->InvItems);
 }
 
 ItemView* FOMapper::SScriptFunc::Global_AddItem(hash pid, ushort hx, ushort hy)
@@ -4563,7 +4563,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetItemsByHex(ushort hx, ushort hy)
 {
     ItemHexViewVec items;
     Self->HexMngr.GetItems(hx, hy, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CritterView* FOMapper::SScriptFunc::Global_GetCritterByHex(ushort hx, ushort hy, int find_type)
@@ -4577,7 +4577,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetCrittersByHex(ushort hx, ushort h
 {
     CritterViewVec critters;
     Self->HexMngr.GetCritters(hx, hy, critters, find_type);
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 void FOMapper::SScriptFunc::Global_MoveEntity(Entity* entity, ushort hx, ushort hy)
@@ -4646,7 +4646,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetSelectedEntities()
     entities.reserve(Self->SelectedEntities.size());
     for (uint i = 0, j = (uint)Self->SelectedEntities.size(); i < j; i++)
         entities.push_back(Self->SelectedEntities[i]);
-    return Script::CreateArrayRef("Entity[]", entities);
+    return Self->ScriptSys.CreateArrayRef("Entity[]", entities);
 }
 
 uint FOMapper::SScriptFunc::Global_GetTilesCount(ushort hx, ushort hy, bool roof)
@@ -4874,12 +4874,12 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps(int& index)
         if (map == Self->ActiveMap)
             index = i;
     }
-    return Script::CreateArrayRef("Map[]", Self->LoadedMaps);
+    return Self->ScriptSys.CreateArrayRef("Map[]", Self->LoadedMaps);
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames(string dir)
 {
-    CScriptArray* names = Script::CreateArray("string[]");
+    CScriptArray* names = Self->ScriptSys.CreateArray("string[]");
     FileCollection map_files = Self->ServerFileMngr.FilterFiles("fomap", dir);
     while (map_files.MoveNext())
     {
@@ -4976,7 +4976,7 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs(int tab, CScriptArray* dir_nam
         }
     }
     if (include_subdirs)
-        Script::AppendVectorToArray(ttab.TileSubDirs, include_subdirs);
+        Self->ScriptSys.AppendVectorToArray(ttab.TileSubDirs, include_subdirs);
     return (uint)ttab.TileDirs.size();
 }
 
@@ -4989,7 +4989,7 @@ uint FOMapper::SScriptFunc::Global_TabGetItemPids(int tab, string sub_tab, CScri
 
     SubTab& stab = Self->Tabs[tab][!sub_tab.empty() ? sub_tab : DEFAULT_SUB_TAB];
     if (item_pids)
-        Script::AppendVectorToArray(stab.ItemProtos, item_pids);
+        Self->ScriptSys.AppendVectorToArray(stab.ItemProtos, item_pids);
     return (uint)stab.ItemProtos.size();
 }
 
@@ -5002,7 +5002,7 @@ uint FOMapper::SScriptFunc::Global_TabGetCritterPids(int tab, string sub_tab, CS
 
     SubTab& stab = Self->Tabs[tab][!sub_tab.empty() ? sub_tab : DEFAULT_SUB_TAB];
     if (critter_pids)
-        Script::AppendVectorToArray(stab.NpcProtos, critter_pids);
+        Self->ScriptSys.AppendVectorToArray(stab.NpcProtos, critter_pids);
     return (uint)stab.NpcProtos.size();
 }
 

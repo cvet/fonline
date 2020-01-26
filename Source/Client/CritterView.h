@@ -38,6 +38,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
+#include "Script.h"
 #include "Settings.h"
 
 class ResourceManager;
@@ -110,13 +111,14 @@ private:
     GeometryHelper geomHelper;
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
+    ScriptSystem& scriptSys;
     bool mapperMode;
 
 public:
     static bool SlotEnabled[0x100];
 
     CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, bool mapper_mode);
+        ResourceManager& res_mngr, ScriptSystem& script_sys, bool mapper_mode);
     ~CritterView();
     void Init();
     void Finish();

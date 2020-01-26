@@ -31,6 +31,7 @@
 // SOFTWARE.
 //
 
+#include "ScriptExtensions.h"
 #include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -208,7 +209,7 @@ static bool CScriptArray_Equals(CScriptArray* arr, const CScriptArray* other)
     return *arr == *other;
 }
 
-void Script::RegisterScriptArrayExtensions(asIScriptEngine* engine)
+void ScriptExtensions::RegisterScriptArrayExtensions(asIScriptEngine* engine)
 {
     int r = engine->RegisterObjectMethod(
         "array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS(CScriptArray_InsertFirst), SCRIPT_FUNC_THIS_CONV);
@@ -304,7 +305,7 @@ static bool ScriptDict_Equals(CScriptDict* dict, const CScriptDict* other)
     return *dict == *other;
 }
 
-void Script::RegisterScriptDictExtensions(asIScriptEngine* engine)
+void ScriptExtensions::RegisterScriptDictExtensions(asIScriptEngine* engine)
 {
     int r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_FACTORY,
         "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC(ScriptDict_Factory), SCRIPT_FUNC_CONV);
@@ -592,7 +593,8 @@ static string ScriptString_TrimEnd(const string& str, const string& chars)
 
 static CScriptArray* ScriptString_Split(const string& str, const string& delim)
 {
-    CScriptArray* array = Script::CreateArray("string[]");
+    asIScriptEngine* engine = asGetActiveContext()->GetEngine();
+    CScriptArray* array = CScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("string[]")));
 
     // Find the existence of the delimiter in the input string
     int pos = 0, prev = 0, count = 0;
@@ -642,7 +644,7 @@ static string ScriptString_Join(const CScriptArray* array, const string& delim)
     return str;
 }
 
-void Script::RegisterScriptStdStringExtensions(asIScriptEngine* engine)
+void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine)
 {
     int r = engine->RegisterObjectMethod(
         "string", "void clear()", SCRIPT_FUNC_THIS(ScriptString_Clear), SCRIPT_FUNC_THIS_CONV);

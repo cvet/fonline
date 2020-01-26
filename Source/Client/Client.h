@@ -114,10 +114,12 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-class FOClient
+class FOClient :
+    public NonCopyable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
 {
 public:
-    static FOClient* Self;
+    static FOClient* Self; // Todo: remove client Self singleton
+
     FOClient(ClientSettings& sett);
     ~FOClient();
     bool Init();
@@ -134,6 +136,7 @@ public:
     GeometryHelper GeomHelper;
     int InitCalls;
     FileManager FileMngr;
+    ScriptSystem ScriptSys;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;

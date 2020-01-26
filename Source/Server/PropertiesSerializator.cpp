@@ -33,11 +33,11 @@
 
 #include "PropertiesSerializator.h"
 #include "Log.h"
-#include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
-DataBase::Document PropertiesSerializator::SaveToDbDocument(Properties* props, Properties* base)
+DataBase::Document PropertiesSerializator::SaveToDbDocument(
+    Properties* props, Properties* base, NameResolver& name_resolver)
 {
     RUNTIME_ASSERT((!base || props->registrator == base->registrator));
 
@@ -86,13 +86,14 @@ DataBase::Document PropertiesSerializator::SaveToDbDocument(Properties* props, P
             }
         }
 
-        doc.insert(std::make_pair(prop->propName, SavePropertyToDbValue(props, prop)));
+        doc.insert(std::make_pair(prop->propName, SavePropertyToDbValue(props, prop, name_resolver)));
     }
 
     return doc;
 }
 
-bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBase::Document& doc)
+bool PropertiesSerializator::LoadFromDbDocument(
+    Properties* props, const DataBase::Document& doc, NameResolver& name_resolver)
 {
     bool is_error = false;
     for (const auto& kv : doc)
@@ -127,7 +128,7 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                 continue;
             }
 
-            int e = Script::GetEnumValue(prop->asObjType->GetName(), std::get<string>(value), is_error);
+            int e = name_resolver.GetEnumValue(prop->asObjType->GetName(), std::get<string>(value), is_error);
             prop->SetPropRawData(props, (uchar*)&e, prop->baseSize);
         }
         else if (prop->isHash || prop->isResource)
@@ -264,7 +265,7 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                 {
                     RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
 
-                    int e = Script::GetEnumValue(enum_name, std::get<string>(arr[i]), is_error);
+                    int e = name_resolver.GetEnumValue(enum_name, std::get<string>(arr[i]), is_error);
                     *(int*)(data + i * sizeof(int)) = e;
                 }
 
@@ -569,7 +570,7 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                 else if (key_element_type_id == asTYPEID_BOOL)
                     *(bool*)(data + data_pos) = (bool)_str(kv.first).toBool();
                 else if (!(key_element_type_id & asTYPEID_MASK_OBJECT) && key_element_type_id > asTYPEID_DOUBLE)
-                    *(int*)(data + data_pos) = Script::GetEnumValue(key_element_type_name, kv.first, is_error);
+                    *(int*)(data + data_pos) = name_resolver.GetEnumValue(key_element_type_name, kv.first, is_error);
                 else
                     throw UnreachablePlaceException("Unreachable place");
 
@@ -591,7 +592,7 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                         for (auto& e : arr)
                         {
                             *(int*)(data + data_pos) =
-                                Script::GetEnumValue(arr_element_type_name, std::get<string>(e), is_error);
+                                name_resolver.GetEnumValue(arr_element_type_name, std::get<string>(e), is_error);
                             data_pos += sizeof(int);
                         }
                     }
@@ -727,7 +728,7 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                         PARSE_VALUE(bool);
                     else
                         *(int*)(data + data_pos) =
-                            Script::GetEnumValue(value_element_type_name, std::get<string>(kv.second), is_error);
+                            name_resolver.GetEnumValue(value_element_type_name, std::get<string>(kv.second), is_error);
 
 #undef PARSE_VALUE
 
@@ -750,7 +751,8 @@ bool PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
     return !is_error;
 }
 
-DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props, Property* prop)
+DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
+    Properties* props, Property* prop, NameResolver& name_resolver)
 {
     RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
     RUNTIME_ASSERT(!prop->isTemporary);
@@ -783,7 +785,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
 
 #undef PARSE_VALUE
 
-        return Script::GetEnumValueName(prop->asObjType->GetName(), *(int*)&props->podData[prop->podDataOffset]);
+        return name_resolver.GetEnumValueName(prop->asObjType->GetName(), *(int*)&props->podData[prop->podDataOffset]);
     }
     else if (prop->dataType == Property::String)
     {
@@ -857,7 +859,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
                 else if (element_type_id == asTYPEID_BOOL)
                     arr.push_back((bool)*(bool*)(data + i * element_size));
                 else if (!(element_type_id & asTYPEID_MASK_OBJECT) && element_type_id > asTYPEID_DOUBLE)
-                    arr.push_back(Script::GetEnumValueName(element_type_name, *(int*)(data + i * element_size)));
+                    arr.push_back(name_resolver.GetEnumValueName(element_type_name, *(int*)(data + i * element_size)));
                 else
                     throw UnreachablePlaceException("Unreachable place");
             }
@@ -869,7 +871,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
         DataBase::Dict dict;
         if (data_size)
         {
-            auto get_key_string = [](void* p, int type_id, string type_name, bool is_hash) -> string {
+            auto get_key_string = [&name_resolver](void* p, int type_id, string type_name, bool is_hash) -> string {
                 if (is_hash)
                     return _str().parseHash(*(hash*)p).str();
                 else if (type_id == asTYPEID_INT8)
@@ -895,7 +897,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
                 else if (type_id == asTYPEID_BOOL)
                     return _str("{}", (bool)*(bool*)p).str();
                 else if (!(type_id & asTYPEID_MASK_OBJECT) && type_id > asTYPEID_DOUBLE)
-                    return Script::GetEnumValueName(type_name, *(int*)p);
+                    return name_resolver.GetEnumValueName(type_name, *(int*)p);
                 else
                     throw UnreachablePlaceException("Unreachable place");
                 return string();
@@ -966,7 +968,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
                                     arr.push_back((bool)*(bool*)(data + i * arr_element_size));
                                 else if (!(arr_element_type_id & asTYPEID_MASK_OBJECT) &&
                                     arr_element_type_id > asTYPEID_DOUBLE)
-                                    arr.push_back(Script::GetEnumValueName(
+                                    arr.push_back(name_resolver.GetEnumValueName(
                                         arr_element_type_name, *(int*)(data + i * arr_element_size)));
                                 else
                                     throw UnreachablePlaceException("Unreachable place");
@@ -1039,8 +1041,8 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(Properties* props,
                     else if (value_type_id == asTYPEID_BOOL)
                         dict.insert(std::make_pair(std::move(key_str), (bool)*(bool*)pvalue));
                     else if (!(value_type_id & asTYPEID_MASK_OBJECT) && value_type_id > asTYPEID_DOUBLE)
-                        dict.insert(std::make_pair(
-                            std::move(key_str), Script::GetEnumValueName(value_element_type_name, *(int*)pvalue)));
+                        dict.insert(std::make_pair(std::move(key_str),
+                            name_resolver.GetEnumValueName(value_element_type_name, *(int*)pvalue)));
                     else
                         throw UnreachablePlaceException("Unreachable place");
                 }

@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "Script.h"
 
 class Map;
 using MapVec = vector<Map*>;
@@ -47,7 +48,7 @@ using LocationMap = map<uint, Location*>;
 class Location : public Entity
 {
 public:
-    Location(uint id, ProtoLocation* proto);
+    Location(uint id, ProtoLocation* proto, ScriptSystem& script_sys);
     void BindScript();
     ProtoLocation* GetProtoLoc();
     bool IsLocVisible();
@@ -83,5 +84,6 @@ public:
     int GeckCount {};
 
 private:
+    ScriptSystem& scriptSys;
     MapVec locMaps {};
 };

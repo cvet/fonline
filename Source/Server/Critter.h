@@ -39,6 +39,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Networking.h"
+#include "Script.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -311,11 +312,12 @@ public:
     void ContinueTimeEvents(int offs_time);
 
 protected:
-    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett);
+    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
     ~Critter();
 
     CritterSettings& settings;
     GeometryHelper geomHelper;
+    ScriptSystem& scriptSys;
     ItemVec invItems {};
 
 private:
@@ -324,6 +326,7 @@ private:
     uint waitEndTick {};
 };
 
+// Todo: rework Client class to ClientConnection
 class Client : public Critter
 {
     friend class CritterManager;
@@ -346,7 +349,7 @@ public:
     uint UpdateFilePortion;
     Talking Talk;
 
-    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett);
+    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
     ~Client();
 
     uint GetIp();
@@ -415,8 +418,7 @@ class Npc : public Critter
     friend class CritterManager;
 
 public:
-    Npc(uint id, ProtoCritter* proto, CritterSettings& sett);
-    ~Npc();
+    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
 
     uint GetTalkedPlayers();
     bool IsTalkedPlayers();

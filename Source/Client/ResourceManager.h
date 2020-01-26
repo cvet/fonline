@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "GraphicStructures.h"
+#include "Script.h"
 #include "SpriteManager.h"
 
 class Animation3d;
@@ -50,7 +51,7 @@ typedef map<hash, LoadedAnim> LoadedAnimMap;
 class ResourceManager : public NonCopyable
 {
 public:
-    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr);
+    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ScriptSystem& script_sys);
     void FreeResources(AtlasType atlas_type);
     void ReinitializeDynamicAtlas();
     AnyFrames* GetAnim(hash name_hash, AtlasType atlas_type);
@@ -76,6 +77,7 @@ private:
 
     FileManager& fileMngr;
     SpriteManager& sprMngr;
+    ScriptSystem& scriptSys;
     EventUnsubscriber eventUnsubscriber {};
     UIntStrMap namesHash {};
     LoadedAnimMap loadedAnims {};

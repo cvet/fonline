@@ -35,17 +35,13 @@
 #include "AngelScriptExt/reflection.h"
 #include "FileSystem.h"
 #include "Log.h"
+#include "ScriptExtensions.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
 
 #include "datetime/datetime.h"
-#include "mono/dis/meta.h"
-#include "mono/metadata/assembly.h"
-#include "mono/metadata/debug-helpers.h"
-#include "mono/metadata/mono-config.h"
-#include "mono/mini/jit.h"
 #include "preprocessor.h"
 #include "scriptany/scriptany.h"
 #include "scriptfile/scriptfile.h"
@@ -54,13 +50,6 @@
 #include "scriptmath/scriptmath.h"
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
-
-static FileManager* FileMngr;
-static map<string, MonoImage*> EngineAssemblyImages;
-static void SetMonoInternalCalls();
-static MonoAssembly* LoadNetAssembly(const string& name);
-static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*>& assembly_images);
-static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images);
 
 static const string ContextStatesStr[] = {
     "Finished",
@@ -73,98 +62,60 @@ static const string ContextStatesStr[] = {
     "Error",
 };
 
-class BindFunction
-{
-public:
-    asIScriptFunction* ScriptFunc;
-    string FuncName;
-
-    BindFunction() { ScriptFunc = nullptr; }
-
-    BindFunction(asIScriptFunction* func)
-    {
-        ScriptFunc = func;
-        FuncName = func->GetDeclaration();
-        func->AddRef();
-    }
-
-    void Clear()
-    {
-        if (ScriptFunc)
-            ScriptFunc->Release();
-        memzero(this, sizeof(BindFunction));
-    }
-};
-typedef vector<BindFunction> BindFunctionVec;
-
-static ScriptSettings* Settings;
-static asIScriptEngine* Engine;
-static BindFunctionVec BindedFunctions;
-static HashIntMap ScriptFuncBinds; // Func Num -> Bind Id
-static ExceptionCallback OnException;
-
-// Contexts
-struct ContextData
-{
-    char Info[1024];
-    uint StartTick;
-    uint SuspendEndTick;
-    Entity* EntityArgs[20];
-    uint EntityArgsCount;
-    asIScriptContext* Parent;
-};
-static ContextVec FreeContexts;
-static ContextVec BusyContexts;
-
-// Script watcher
-#if 0
-#define SCRIPT_WATCHER
-#endif
-#ifdef SCRIPT_WATCHER
-static Thread ScriptWatcherThread;
-static bool ScriptWatcherFinish = false;
-static uint RunTimeoutAbort = 600000; // 10 minutes
-static uint RunTimeoutMessage = 300000; // 5 minutes
-#endif
-
 struct EventData
 {
     void* ASEvent;
-    MonoMethod* MMethod;
 };
 
 ServerScriptFunctions ServerFunctions;
 ClientScriptFunctions ClientFunctions;
 MapperScriptFunctions MapperFunctions;
 
-bool Script::Init(
-    ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target)
+ScriptSystem::ScriptSystem(ScriptSettings& sett, FileManager& file_mngr) : settings {sett}, fileMngr {file_mngr}
 {
-    Settings = &sett;
-    FileMngr = &file_mngr;
+    asEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    if (!asEngine)
+        throw ScriptSystemException("Can't create AS engine");
 
-    Engine = CreateEngine(pragma_callback, target);
-    if (!Engine)
-    {
-        WriteLog("Can't create AS engine.\n");
-        return false;
-    }
+    asEngine->SetMessageCallback(
+        asMETHODPR(ScriptSystem, CallbackMessage, (const asSMessageInfo*, void*), void), this, asCALL_THISCALL);
 
-    if (!BindedFunctions.empty())
-        BindedFunctions[1].ScriptFunc = nullptr;
-    for (auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it)
-        it->Clear();
-    BindedFunctions.clear();
-    BindedFunctions.reserve(10000);
-    BindedFunctions.push_back(BindFunction()); // None
-    BindedFunctions.push_back(BindFunction()); // Temp
-    ScriptFuncBinds.clear();
+    asEngine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+    asEngine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true);
+    asEngine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true);
+    asEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+    asEngine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true);
+    asEngine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true);
+    asEngine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true);
+    asEngine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
+    asEngine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
 
-    Engine->SetModuleUserDataCleanupCallback([](asIScriptModule* module) {
+    RegisterScriptArray(asEngine, true);
+    ScriptExtensions::RegisterScriptArrayExtensions(asEngine);
+    RegisterStdString(asEngine);
+    ScriptExtensions::RegisterScriptStdStringExtensions(asEngine);
+    RegisterScriptAny(asEngine);
+    RegisterScriptDictionary(asEngine);
+    RegisterScriptDict(asEngine);
+    ScriptExtensions::RegisterScriptDictExtensions(asEngine);
+    RegisterScriptFile(asEngine);
+    RegisterScriptFileSystem(asEngine);
+    RegisterScriptDateTime(asEngine);
+    RegisterScriptMath(asEngine);
+    RegisterScriptWeakRef(asEngine);
+    RegisterScriptReflection(asEngine);
+
+    invoker = new ScriptInvoker(settings);
+
+    bindedFunctions.reserve(10000);
+    bindedFunctions.push_back(BindFunction()); // None
+    bindedFunctions.push_back(BindFunction()); // Temp
+
+    asEngine->SetModuleUserDataCleanupCallback([](asIScriptModule* module) {
         Preprocessor::DeleteLineNumberTranslator((Preprocessor::LineNumberTranslator*)module->GetUserData());
         module->SetUserData(nullptr);
     });
-    Engine->SetFunctionUserDataCleanupCallback([](asIScriptFunction* func) {
+    asEngine->SetFunctionUserDataCleanupCallback([](asIScriptFunction* func) {
         hash* func_num_ptr = (hash*)func->GetUserData();
         if (func_num_ptr)
         {
@@ -173,239 +124,50 @@ bool Script::Init(
         }
     });
 
-    while (FreeContexts.size() < 10)
+    while (freeContexts.size() < 10)
         CreateContext();
 
 #ifdef SCRIPT_WATCHER
-    ScriptWatcherFinish = false;
-    ScriptWatcherThread.Start(Script::Watcher, "ScriptWatcher");
+    scriptWatcherThread = std::thread(&ScriptSystem::Watcher, this);
 #endif
-    return true;
 }
 
-bool Script::InitMono(const string& target, map<string, UCharVec>* assemblies_data)
+ScriptSystem::~ScriptSystem()
 {
-    g_set_print_handler([](const gchar* string) { WriteLog("{}", string); });
-    g_set_printerr_handler([](const gchar* string) { WriteLog("{}", string); });
-
-    mono_config_parse_memory(R"(
-    <configuration>
-        <dllmap dll="i:cygwin1.dll" target="libc.so.6" os="!windows" />
-        <dllmap dll="libc" target="libc.so.6" os="!windows"/>
-        <dllmap dll="intl" target="libc.so.6" os="!windows"/>
-        <dllmap dll="intl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
-        <dllmap dll="libintl" name="bind_textdomain_codeset" target="libc.so.6" os="solaris"/>
-        <dllmap dll="libintl" target="libc.so.6" os="!windows"/>
-        <dllmap dll="i:libxslt.dll" target="libxslt.so" os="!windows"/>
-        <dllmap dll="i:odbc32.dll" target="libodbc.so" os="!windows"/>
-        <dllmap dll="i:odbc32.dll" target="libiodbc.dylib" os="osx"/>
-        <dllmap dll="oci" target="libclntsh.so" os="!windows"/>
-        <dllmap dll="db2cli" target="libdb2_36.so" os="!windows"/>
-        <dllmap dll="MonoPosixHelper" target="$mono_libdir/libMonoPosixHelper.so" os="!windows" />
-        <dllmap dll="System.Native" target="$mono_libdir/libmono-system-native.so" os="!windows" />
-        <dllmap dll="libmono-btls-shared" target="$mono_libdir/libmono-btls-shared.so" os="!windows" />
-        <dllmap dll="i:msvcrt" target="libc.so.6" os="!windows"/>
-        <dllmap dll="i:msvcrt.dll" target="libc.so.6" os="!windows"/>
-        <dllmap dll="sqlite" target="libsqlite.so.0" os="!windows"/>
-        <dllmap dll="sqlite3" target="libsqlite3.so.0" os="!windows"/>
-        <dllmap dll="libX11" target="libX11.so" os="!windows" />
-        <dllmap dll="libgdk-x11-2.0" target="libgdk-x11-2.0.so.0" os="!windows"/>
-        <dllmap dll="libgdk_pixbuf-2.0" target="libgdk_pixbuf-2.0.so.0" os="!windows"/>
-        <dllmap dll="libgtk-x11-2.0" target="libgtk-x11-2.0.so.0" os="!windows"/>
-        <dllmap dll="libglib-2.0" target="libglib-2.0.so.0" os="!windows"/>
-        <dllmap dll="libgobject-2.0" target="libgobject-2.0.so.0" os="!windows"/>
-        <dllmap dll="libgnomeui-2" target="libgnomeui-2.so.0" os="!windows"/>
-        <dllmap dll="librsvg-2" target="librsvg-2.so.2" os="!windows"/>
-        <dllmap dll="libXinerama" target="libXinerama.so.1" os="!windows" />
-        <dllmap dll="libasound" target="libasound.so.2" os="!windows" />
-        <dllmap dll="libcairo-2.dll" target="libcairo.so.2" os="!windows"/>
-        <dllmap dll="libcairo-2.dll" target="libcairo.2.dylib" os="osx"/>
-        <dllmap dll="libcups" target="libcups.so.2" os="!windows"/>
-        <dllmap dll="libcups" target="libcups.dylib" os="osx"/>
-        <dllmap dll="i:kernel32.dll">
-            <dllentry dll="__Internal" name="CopyMemory" target="mono_win32_compat_CopyMemory"/>
-            <dllentry dll="__Internal" name="FillMemory" target="mono_win32_compat_FillMemory"/>
-            <dllentry dll="__Internal" name="MoveMemory" target="mono_win32_compat_MoveMemory"/>
-            <dllentry dll="__Internal" name="ZeroMemory" target="mono_win32_compat_ZeroMemory"/>
-        </dllmap>
-        <dllmap dll="gdiplus" target="libgdiplus.so" os="!windows"/>
-        <dllmap dll="gdiplus.dll" target="libgdiplus.so"  os="!windows"/>
-        <dllmap dll="gdi32" target="libgdiplus.so" os="!windows"/>
-        <dllmap dll="gdi32.dll" target="libgdiplus.so" os="!windows"/>
-    </configuration>)");
-
-    mono_set_dirs("./dummy/lib", "./dummy/etc");
-    mono_set_assemblies_path("./dummy/lib/gac");
-
-    RUNTIME_ASSERT(EngineAssemblyImages.empty());
-    mono_install_assembly_preload_hook(
-        [](MonoAssemblyName* aname, char** assemblies_path, void* user_data) -> MonoAssembly* {
-            auto assembly_images = (map<string, MonoImage*>*)user_data;
-            if (assembly_images->count(aname->name))
-                return LoadGameAssembly(aname->name, *assembly_images);
-            return LoadNetAssembly(aname->name);
-        },
-        (void*)&EngineAssemblyImages);
-
-    MonoDomain* domain = mono_jit_init_version("FOnlineDomain", "v4.0.30319");
-    RUNTIME_ASSERT(domain);
-
-    SetMonoInternalCalls();
-
-    if (assemblies_data)
-    {
-        for (auto& kv : *assemblies_data)
-        {
-            MonoImageOpenStatus status = MONO_IMAGE_OK;
-            MonoImage* image = mono_image_open_from_data((char*)&kv.second[0], (uint)kv.second.size(), TRUE, &status);
-            RUNTIME_ASSERT((status == MONO_IMAGE_OK && image));
-
-            EngineAssemblyImages[kv.first] = image;
-        }
-    }
-    else
-    {
-        bool ok = CompileGameAssemblies(target, EngineAssemblyImages);
-        RUNTIME_ASSERT(ok);
-    }
-
-    for (auto& kv : EngineAssemblyImages)
-    {
-        bool ok = LoadGameAssembly(kv.first, EngineAssemblyImages);
-        RUNTIME_ASSERT(ok);
-    }
-
-    MonoClass* global_events_class =
-        mono_class_from_name(EngineAssemblyImages["FOnline.Core.dll"], "FOnlineEngine", "GlobalEvents");
-    RUNTIME_ASSERT(global_events_class);
-    MonoMethodDesc* init_method_desc = mono_method_desc_new(":Initialize()", FALSE);
-    RUNTIME_ASSERT(init_method_desc);
-    MonoMethod* init_method = mono_method_desc_search_in_class(init_method_desc, global_events_class);
-    RUNTIME_ASSERT(init_method);
-    mono_method_desc_free(init_method_desc);
-
-    MonoObject* exc;
-    MonoObject* init_method_result = mono_runtime_invoke(init_method, NULL, NULL, &exc);
-    if (exc)
-        mono_print_unhandled_exception(exc);
-
-    if (exc || *(bool*)mono_object_unbox(init_method_result) == false)
-        return false;
-
-    return true;
-}
-
-bool Script::GetMonoAssemblies(const string& target, map<string, UCharVec>& assemblies_data)
-{
-    map<string, MonoImage*> assembly_images;
-    if (!CompileGameAssemblies(target, assembly_images))
-        return false;
-
-    for (auto& kv : assembly_images)
-    {
-        UCharVec data(kv.second->raw_data_len);
-        memcpy(&data[0], kv.second->raw_data, data.size());
-        assemblies_data[kv.first] = std::move(data);
-    }
-    return true;
-}
-
-uint Script::CreateMonoObject(const string& type_name)
-{
-    MonoImage* image = EngineAssemblyImages["FOnline.Core.dll"];
-    RUNTIME_ASSERT(image);
-    MonoClass* obj_class = mono_class_from_name(image, "FOnlineEngine", type_name.c_str());
-    RUNTIME_ASSERT(obj_class);
-
-    MonoObject* mono_obj = mono_object_new(mono_domain_get(), obj_class);
-    RUNTIME_ASSERT(mono_obj);
-    mono_runtime_object_init(mono_obj);
-
-    return mono_gchandle_new(mono_obj, TRUE);
-}
-
-void Script::CallMonoObjectMethod(const string& type_name, const string& method_name, uint obj, void* arg)
-{
-    MonoImage* image = EngineAssemblyImages["FOnline.Core.dll"];
-    RUNTIME_ASSERT(image);
-    MonoClass* obj_class = mono_class_from_name(image, "FOnlineEngine", type_name.c_str());
-    RUNTIME_ASSERT(obj_class);
-    MonoMethodDesc* method_desc = mono_method_desc_new(_str(":{}", method_name).c_str(), FALSE);
-    RUNTIME_ASSERT(method_desc);
-    MonoMethod* method = mono_method_desc_search_in_class(method_desc, obj_class);
-    RUNTIME_ASSERT(method);
-    mono_method_desc_free(method_desc);
-
-    RUNTIME_ASSERT(obj);
-    MonoObject* mono_obj = mono_gchandle_get_target(obj);
-    RUNTIME_ASSERT(mono_obj);
-
-    MonoObject* exc;
-    void* args[1] = {arg};
-    mono_runtime_invoke(method, mono_obj, args, &exc);
-    if (exc)
-        mono_print_unhandled_exception(exc);
-}
-
-void Script::DestroyMonoObject(uint obj)
-{
-    RUNTIME_ASSERT(obj);
-    mono_gchandle_free(obj);
-}
-
-static void Engine_Log(MonoString* s)
-{
-    const char* utf8 = mono_string_to_utf8(s);
-    WriteLog("{}\n", utf8);
-    mono_free((void*)utf8);
-}
-
-static void SetMonoInternalCalls()
-{
-    mono_add_internal_call("FOnlineEngine.Engine::Log", (void*)&Engine_Log);
-}
-
-void Script::Finish()
-{
-    if (!Engine)
-        return;
-
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    SAFEDEL(edata->Invoker);
+    SAFEDEL(invoker);
 
 #ifdef SCRIPT_WATCHER
-    RunTimeoutAbort = 0;
-    RunTimeoutMessage = 0;
-    ScriptWatcherFinish = true;
-    ScriptWatcherThread.Wait();
+    scriptWatcherFinish = true;
+    scriptWatcherThread.join();
 #endif
 
-    if (!BindedFunctions.empty())
-        BindedFunctions[1].ScriptFunc = nullptr;
-    for (auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it)
+    for (auto it = bindedFunctions.begin(), end = bindedFunctions.end(); it != end; ++it)
         it->Clear();
-    BindedFunctions.clear();
-    ScriptFuncBinds.clear();
 
     Preprocessor::SetPragmaCallback(nullptr);
     Preprocessor::UndefAll();
     UnloadScripts();
 
-    while (!BusyContexts.empty())
-        ReturnContext(BusyContexts[0]);
-    while (!FreeContexts.empty())
-        FinishContext(FreeContexts[0]);
+    while (!busyContexts.empty())
+        ReturnContext(busyContexts[0]);
+    while (!freeContexts.empty())
+        FinishContext(freeContexts[0]);
 
-    FinishEngine(Engine); // Finish default engine
-
-    mono_jit_cleanup(mono_domain_get());
+    delete pragmaCB;
+    asEngine->ShutDownAndRelease();
 }
 
-void Script::UnloadScripts()
+bool ScriptSystem::Init(ScriptPragmaCallback* pragma_callback, const string& target)
 {
-    for (asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++)
+    pragmaCB = pragma_callback;
+    return true;
+}
+
+void ScriptSystem::UnloadScripts()
+{
+    for (asUINT i = 0, j = asEngine->GetModuleCount(); i < j; i++)
     {
-        asIScriptModule* module = Engine->GetModuleByIndex(i);
+        asIScriptModule* module = asEngine->GetModuleByIndex(i);
         int result = module->ResetGlobalVars();
         if (result < 0)
             WriteLog("Reset global vars fail, module '{}', error {}.\n", module->GetName(), result);
@@ -414,190 +176,18 @@ void Script::UnloadScripts()
             WriteLog("Unbind fail, module '{}', error {}.\n", module->GetName(), result);
     }
 
-    while (Engine->GetModuleCount() > 0)
-        Engine->GetModuleByIndex(0)->Discard();
+    while (asEngine->GetModuleCount() > 0)
+        asEngine->GetModuleByIndex(0)->Discard();
 }
 
-static int SystemCall(const string& command, string& output)
-{
-#if defined(FO_WINDOWS) && !defined(WINRT)
-    HANDLE out_read = nullptr;
-    HANDLE out_write = nullptr;
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = nullptr;
-    if (!::CreatePipe(&out_read, &out_write, &sa, 0))
-        return -1;
-    if (!::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0))
-    {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
-    STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(STARTUPINFO));
-    si.cb = sizeof(STARTUPINFO);
-    si.hStdError = out_write;
-    si.hStdOutput = out_write;
-    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-    si.wShowWindow = SW_HIDE;
-
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-
-    wchar_t* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
-    BOOL result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
-    SAFEDELA(cmd_line);
-    if (!result)
-    {
-        ::CloseHandle(out_read);
-        ::CloseHandle(out_write);
-        return -1;
-    }
-
-    string log;
-    while (true)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-        DWORD bytes;
-        while (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) && bytes > 0)
-        {
-            char buf[TEMP_BUF_SIZE];
-            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr))
-                output.append(buf, bytes);
-        }
-
-        if (::WaitForSingleObject(pi.hProcess, 0) != WAIT_TIMEOUT)
-            break;
-    }
-
-    DWORD retval;
-    ::GetExitCodeProcess(pi.hProcess, &retval);
-    ::CloseHandle(out_read);
-    ::CloseHandle(out_write);
-    ::CloseHandle(pi.hProcess);
-    ::CloseHandle(pi.hThread);
-    return (int)retval;
-
-#elif !defined(FO_WINDOWS) && !defined(FO_WEB)
-    FILE* in = popen(command.c_str(), "r");
-    if (!in)
-        return -1;
-
-    string log;
-    char buf[TEMP_BUF_SIZE];
-    while (fgets(buf, sizeof(buf), in))
-        output.append(buf);
-
-    return pclose(in);
-
-#else
-    WriteLog("Not supported!");
-    return -1;
-#endif
-}
-
-static MonoAssembly* LoadNetAssembly(const string& name)
-{
-    string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
-    // Todo: rework FONLINE_
-    /*#ifdef FONLINE_SERVER
-    assemblies_path = "Resources/Mono/" + assemblies_path;
-    #endif*/
-
-    File file = FileMngr->ReadFile(assemblies_path);
-    RUNTIME_ASSERT(file);
-
-    MonoImageOpenStatus status = MONO_IMAGE_OK;
-    MonoImage* image = mono_image_open_from_data((char*)file.GetBuf(), file.GetFsize(), TRUE, &status);
-    RUNTIME_ASSERT((status == MONO_IMAGE_OK && image));
-
-    MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
-    RUNTIME_ASSERT((status == MONO_IMAGE_OK && assembly));
-
-    return assembly;
-}
-
-static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*>& assembly_images)
-{
-    RUNTIME_ASSERT(assembly_images.count(name));
-    MonoImage* image = assembly_images[name];
-
-    MonoImageOpenStatus status = MONO_IMAGE_OK;
-    MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
-    RUNTIME_ASSERT((status == MONO_IMAGE_OK && assembly));
-
-    return assembly;
-}
-
-static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images)
-{
-    string mono_path = Settings->MonoPath;
-    string xbuild_path = _str(mono_path + "/bin/xbuild.bat");
-    DiskFileSystem::ResolvePath(xbuild_path);
-
-    FileCollection proj_files = FileMngr->FilterFiles("csproj");
-    while (proj_files.MoveNext())
-    {
-        File file = proj_files.GetCurFile();
-        RUNTIME_ASSERT(file);
-
-        // Compile
-        string command =
-            _str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, file.GetPath());
-        string output;
-        int call_result = SystemCall(command, output);
-        if (call_result)
-        {
-            StrVec errors = _str(output).split('\n');
-            WriteLog("Compilation failed! Error{}:", errors.size() > 1 ? "s" : "");
-            for (string& error : errors)
-                WriteLog("{}\n", error);
-            return false;
-        }
-
-        // Get output path
-        string file_content = (char*)file.GetBuf();
-        size_t pos = file_content.find("'$(Configuration)|$(Platform)' == '" + target + "|");
-        RUNTIME_ASSERT(pos != string::npos);
-        pos = file_content.find("<OutputPath>", pos);
-        RUNTIME_ASSERT(pos != string::npos);
-        size_t epos = file_content.find("</OutputPath>", pos);
-        RUNTIME_ASSERT(epos != string::npos);
-        pos += _str("<OutputPath>").length();
-
-        string assembly_name = file.GetName() + ".dll";
-        string assembly_path =
-            _str("{}/{}/{}", _str(file.GetPath()).extractDir(), file_content.substr(pos, epos - pos), assembly_name);
-        DiskFileSystem::ResolvePath(assembly_path);
-
-        File assembly_file = FileMngr->ReadFile(assembly_path);
-        RUNTIME_ASSERT(assembly_file);
-
-        MonoImageOpenStatus status = MONO_IMAGE_OK;
-        MonoImage* image =
-            mono_image_open_from_data((char*)assembly_file.GetCStr(), assembly_file.GetFsize(), TRUE, &status);
-        RUNTIME_ASSERT((status == MONO_IMAGE_OK && image));
-
-        assembly_images[assembly_name] = image;
-    }
-
-    return true;
-}
-
-bool Script::ReloadScripts(const string& target)
+bool ScriptSystem::ReloadScripts(const string& target)
 {
     WriteLog("Reload scripts...\n");
 
-    Script::UnloadScripts();
-
-    EngineData* edata = (EngineData*)Engine->GetUserData();
+    ScriptSystem::UnloadScripts();
 
     // Combine scripts
-    FileCollection fos_files = FileMngr->FilterFiles("fos");
+    FileCollection fos_files = fileMngr.FilterFiles("fos");
     int file_index = 0;
     int errors = 0;
     ScriptEntryVec scripts;
@@ -677,17 +267,16 @@ bool Script::ReloadScripts(const string& target)
     return true;
 }
 
-bool Script::PostInitScriptSystem()
+bool ScriptSystem::PostInitScriptSystem()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    if (edata->PragmaCB->IsError())
+    if (pragmaCB->IsError())
     {
         WriteLog("Error in pragma(s) during loading.\n");
         return false;
     }
 
-    edata->PragmaCB->Finish();
-    if (edata->PragmaCB->IsError())
+    pragmaCB->Finish();
+    if (pragmaCB->IsError())
     {
         WriteLog("Error in pragma(s) after finalization.\n");
         return false;
@@ -695,11 +284,11 @@ bool Script::PostInitScriptSystem()
     return true;
 }
 
-bool Script::RunModuleInitFunctions()
+bool ScriptSystem::RunModuleInitFunctions()
 {
-    RUNTIME_ASSERT(Engine->GetModuleCount() == 1);
+    RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
 
-    asIScriptModule* module = Engine->GetModuleByIndex(0);
+    asIScriptModule* module = asEngine->GetModuleByIndex(0);
     for (asUINT i = 0; i < module->GetFunctionCount(); i++)
     {
         asIScriptFunction* func = module->GetFunctionByIndex(i);
@@ -718,16 +307,16 @@ bool Script::RunModuleInitFunctions()
             return false;
         }
 
-        uint bind_id = Script::BindByFunc(func, true);
-        Script::PrepareContext(bind_id, "Script");
+        uint bind_id = ScriptSystem::BindByFunc(func, true);
+        ScriptSystem::PrepareContext(bind_id, "Script");
 
-        if (!Script::RunPrepared())
+        if (!ScriptSystem::RunPrepared())
         {
             WriteLog("Error executing init function '{}::{}'.\n", func->GetNamespace(), func->GetName());
             return false;
         }
 
-        if (func->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool())
+        if (func->GetReturnTypeId() == asTYPEID_BOOL && !ScriptSystem::GetReturnedBool())
         {
             WriteLog("Initialization stopped by init function '{}::{}'.\n", func->GetNamespace(), func->GetName());
             return false;
@@ -737,114 +326,50 @@ bool Script::RunModuleInitFunctions()
     return true;
 }
 
-asIScriptEngine* Script::GetEngine()
+void ScriptSystem::CreateContext()
 {
-    return Engine;
-}
-
-void Script::SetEngine(asIScriptEngine* engine)
-{
-    Engine = engine;
-}
-
-asIScriptEngine* Script::CreateEngine(ScriptPragmaCallback* pragma_callback, const string& target)
-{
-    asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    if (!engine)
-    {
-        WriteLog("asCreateScriptEngine fail.\n");
-        return nullptr;
-    }
-
-    engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL);
-
-    engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
-    engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true);
-    engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true);
-    engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
-    engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true);
-    engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true);
-    engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true);
-    engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
-    engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
-
-    RegisterScriptArray(engine, true);
-    RegisterScriptArrayExtensions(engine);
-    RegisterStdString(engine);
-    RegisterScriptStdStringExtensions(engine);
-    RegisterScriptAny(engine);
-    RegisterScriptDictionary(engine);
-    RegisterScriptDict(engine);
-    RegisterScriptDictExtensions(engine);
-    RegisterScriptFile(engine);
-    RegisterScriptFileSystem(engine);
-    RegisterScriptDateTime(engine);
-    RegisterScriptMath(engine);
-    RegisterScriptWeakRef(engine);
-    RegisterScriptReflection(engine);
-
-    EngineData* edata = new EngineData();
-    edata->PragmaCB = pragma_callback;
-    edata->Invoker = new ScriptInvoker(*Settings);
-    engine->SetUserData(edata);
-    return engine;
-}
-
-void Script::FinishEngine(asIScriptEngine*& engine)
-{
-    if (engine)
-    {
-        EngineData* edata = (EngineData*)engine->SetUserData(nullptr);
-        delete edata->PragmaCB;
-        delete edata;
-        engine->ShutDownAndRelease();
-        engine = nullptr;
-    }
-}
-
-void Script::CreateContext()
-{
-    asIScriptContext* ctx = Engine->CreateContext();
+    asIScriptContext* ctx = asEngine->CreateContext();
     RUNTIME_ASSERT(ctx);
 
-    int r = ctx->SetExceptionCallback(asFUNCTION(CallbackException), nullptr, asCALL_CDECL);
+    int r = ctx->SetExceptionCallback(
+        asMETHODPR(ScriptSystem, CallbackException, (asIScriptContext*, void*), void), this, asCALL_THISCALL);
     RUNTIME_ASSERT(r >= 0);
 
     ContextData* ctx_data = new ContextData();
     memzero(ctx_data, sizeof(ContextData));
     ctx->SetUserData(ctx_data);
 
-    FreeContexts.push_back(ctx);
+    freeContexts.push_back(ctx);
 }
 
-void Script::FinishContext(asIScriptContext* ctx)
+void ScriptSystem::FinishContext(asIScriptContext* ctx)
 {
-    auto it = std::find(FreeContexts.begin(), FreeContexts.end(), ctx);
-    RUNTIME_ASSERT(it != FreeContexts.end());
-    FreeContexts.erase(it);
+    auto it = std::find(freeContexts.begin(), freeContexts.end(), ctx);
+    RUNTIME_ASSERT(it != freeContexts.end());
+    freeContexts.erase(it);
 
     delete (ContextData*)ctx->GetUserData();
     ctx->Release();
     ctx = nullptr;
 }
 
-asIScriptContext* Script::RequestContext()
+asIScriptContext* ScriptSystem::RequestContext()
 {
-    if (FreeContexts.empty())
+    if (freeContexts.empty())
         CreateContext();
 
-    asIScriptContext* ctx = FreeContexts.back();
-    FreeContexts.pop_back();
-    BusyContexts.push_back(ctx);
+    asIScriptContext* ctx = freeContexts.back();
+    freeContexts.pop_back();
+    busyContexts.push_back(ctx);
     return ctx;
 }
 
-void Script::ReturnContext(asIScriptContext* ctx)
+void ScriptSystem::ReturnContext(asIScriptContext* ctx)
 {
-    auto it = std::find(BusyContexts.begin(), BusyContexts.end(), ctx);
-    RUNTIME_ASSERT(it != BusyContexts.end());
-    BusyContexts.erase(it);
-    FreeContexts.push_back(ctx);
+    auto it = std::find(busyContexts.begin(), busyContexts.end(), ctx);
+    RUNTIME_ASSERT(it != busyContexts.end());
+    busyContexts.erase(it);
+    freeContexts.push_back(ctx);
 
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
     for (uint i = 0; i < ctx_data->EntityArgsCount; i++)
@@ -852,12 +377,12 @@ void Script::ReturnContext(asIScriptContext* ctx)
     memzero(ctx_data, sizeof(ContextData));
 }
 
-void Script::SetExceptionCallback(ExceptionCallback callback)
+void ScriptSystem::SetExceptionCallback(ExceptionCallback callback)
 {
-    OnException = callback;
+    onException = callback;
 }
 
-void Script::RaiseException(const string& message)
+void ScriptSystem::RaiseException(const string& message)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (ctx && ctx->GetState() == asEXECUTION_EXCEPTION)
@@ -869,12 +394,12 @@ void Script::RaiseException(const string& message)
         HandleException(nullptr, _str("{}", "Engine exception: {}\n", message));
 }
 
-void Script::PassException()
+void ScriptSystem::PassException()
 {
     RaiseException("Pass");
 }
 
-void Script::HandleException(asIScriptContext* ctx, const string& message)
+void ScriptSystem::HandleException(asIScriptContext* ctx, const string& message)
 {
     string buf = message;
 
@@ -893,14 +418,14 @@ void Script::HandleException(asIScriptContext* ctx, const string& message)
 
     WriteLog("{}", buf);
 
-    if (OnException)
-        OnException(buf);
+    if (onException)
+        onException(buf);
 }
 
-string Script::GetTraceback()
+string ScriptSystem::GetTraceback()
 {
     string result = "";
-    ContextVec contexts = BusyContexts;
+    ContextVec contexts = busyContexts;
     for (int i = (int)contexts.size() - 1; i >= 0; i--)
     {
         result += MakeContextTraceback(contexts[i]);
@@ -909,7 +434,7 @@ string Script::GetTraceback()
     return result;
 }
 
-string Script::MakeContextTraceback(asIScriptContext* ctx)
+string ScriptSystem::MakeContextTraceback(asIScriptContext* ctx)
 {
     string result = "";
     int line;
@@ -956,129 +481,84 @@ string Script::MakeContextTraceback(asIScriptContext* ctx)
     return result;
 }
 
-ScriptInvoker* Script::GetInvoker()
+asIScriptEngine* ScriptSystem::GetEngine()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    return edata->Invoker;
+    return asEngine;
 }
 
-string Script::GetDeferredCallsStatistics()
+const Pragmas& ScriptSystem::GetProcessedPragmas()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    return edata->Invoker->GetStatistics();
+    return pragmaCB->GetProcessedPragmas();
 }
 
-void Script::ProcessDeferredCalls()
+ScriptInvoker* ScriptSystem::GetInvoker()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    edata->Invoker->Process();
+    return invoker;
+}
+
+string ScriptSystem::GetDeferredCallsStatistics()
+{
+    return invoker->GetStatistics();
+}
+
+void ScriptSystem::ProcessDeferredCalls()
+{
+    invoker->Process();
 }
 
 // Todo: rework FONLINE_
 /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool Script::LoadDeferredCalls()
+bool ScriptSystem::LoadDeferredCalls()
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->Invoker->LoadDeferredCalls();
 }
 #endif*/
 
-StrVec Script::GetCustomEntityTypes()
+StrVec ScriptSystem::GetCustomEntityTypes()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    return edata->PragmaCB->GetCustomEntityTypes();
+    return pragmaCB->GetCustomEntityTypes();
 }
 
 /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool Script::RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc)
+bool ScriptSystem::RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc)
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->PragmaCB->RestoreCustomEntity(type_name, id, doc);
 }
 #endif*/
 
-EventData* Script::FindInternalEvent(const string& event_name)
+EventData* ScriptSystem::FindInternalEvent(const string& event_name)
 {
     EventData* ev_data = new EventData;
     memzero(ev_data, sizeof(EventData));
 
-    // AngelScript part
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    void* as_event = edata->PragmaCB->FindInternalEvent(event_name);
+    void* as_event = pragmaCB->FindInternalEvent(event_name);
     RUNTIME_ASSERT(as_event);
     ev_data->ASEvent = as_event;
-
-    // Mono part
-    MonoClass* global_events_class =
-        mono_class_from_name(EngineAssemblyImages["FOnline.Core.dll"], "FOnlineEngine", "GlobalEvents");
-    RUNTIME_ASSERT(global_events_class);
-    string mono_event_name = ":On" + _str(event_name).erase('E', 't') + "Event";
-    MonoMethodDesc* init_method_desc = mono_method_desc_new(mono_event_name.c_str(), FALSE);
-    RUNTIME_ASSERT(init_method_desc);
-    MonoMethod* init_method = mono_method_desc_search_in_class(init_method_desc, global_events_class);
-    // RUNTIME_ASSERT(init_method);
-    mono_method_desc_free(init_method_desc);
-    ev_data->MMethod = init_method;
-
     return ev_data;
 }
 
-bool Script::RaiseInternalEvent(EventData* ev_data, ...)
+bool ScriptSystem::RaiseInternalEvent(EventData* ev_data, ...)
 {
-    // AngelScript part
-    EngineData* edata = (EngineData*)Engine->GetUserData();
     va_list args;
     va_start(args, ev_data);
-    bool result = edata->PragmaCB->RaiseInternalEvent(ev_data->ASEvent, args);
+    bool result = pragmaCB->RaiseInternalEvent(ev_data->ASEvent, args);
     va_end(args);
-
-    // Mono part
-    if (ev_data->MMethod)
-    {
-        void* mono_args[16];
-        int64 mono_args_data[16];
-        const IntVec& arg_infos = edata->PragmaCB->GetInternalEventArgInfos(ev_data->ASEvent);
-        va_start(args, ev_data);
-        for (size_t i = 0; i < arg_infos.size(); i++)
-        {
-            int arg_info = arg_infos[i];
-            if (arg_info == -2)
-                mono_args[i] = mono_gchandle_get_target(va_arg(args, Entity*)->MonoHandle);
-            else if (arg_info == -3)
-                mono_args[i] = va_arg(args, void*);
-            else if (arg_info == 1 || arg_info == 2 || arg_info == 4)
-                mono_args[i] = &(mono_args_data[i] = (int64)va_arg(args, int));
-            else if (arg_info == 8)
-                mono_args[i] = &(mono_args_data[i] = (int64)va_arg(args, int64));
-            else
-                throw UnreachablePlaceException("Unreachable place");
-        }
-        va_end(args);
-
-        MonoObject* exc;
-        MonoObject* method_result = mono_runtime_invoke(ev_data->MMethod, nullptr, mono_args, &exc);
-        if (exc)
-            mono_print_unhandled_exception(exc);
-        if (exc || (method_result && *(bool*)mono_object_unbox(method_result) == false))
-            return false;
-    }
-
     return result;
 }
 
-void Script::RemoveEventsEntity(Entity* entity)
+void ScriptSystem::RemoveEventsEntity(Entity* entity)
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    edata->PragmaCB->RemoveEventsEntity(entity);
+    pragmaCB->RemoveEventsEntity(entity);
 }
 
-void Script::HandleRpc(void* context)
+void ScriptSystem::HandleRpc(void* context)
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    edata->PragmaCB->HandleRpc(context);
+    pragmaCB->HandleRpc(context);
 }
 
-string Script::GetActiveFuncName()
+string ScriptSystem::GetActiveFuncName()
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx)
@@ -1089,48 +569,36 @@ string Script::GetActiveFuncName()
     return func->GetName();
 }
 
-void Script::Watcher(void*)
+void ScriptSystem::Watcher()
 {
 #ifdef SCRIPT_WATCHER
-    while (!ScriptWatcherFinish)
+    while (!scriptWatcherFinish)
     {
         // Execution timeout
-        if (RunTimeoutAbort)
+        if (settings.ScriptRunSuspendTimeout)
         {
             uint cur_tick = Timer::FastTick();
-            for (auto it = BusyContexts.begin(); it != BusyContexts.end(); ++it)
+            for (auto it = busyContexts.begin(); it != busyContexts.end(); ++it)
             {
                 asIScriptContext* ctx = *it;
                 ContextData* ctx_data = (ContextData*)ctx->GetUserData();
                 if (ctx->GetState() == asEXECUTION_ACTIVE && ctx_data->StartTick &&
-                    cur_tick >= ctx_data->StartTick + RunTimeoutAbort)
+                    cur_tick >= ctx_data->StartTick + settings.ScriptRunSuspendTimeout)
                     ctx->Abort();
             }
         }
 
-        Thread::Sleep(100);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 #endif
 }
 
-void Script::SetRunTimeout(uint abort_timeout, uint message_timeout)
-{
-#ifdef SCRIPT_WATCHER
-    RunTimeoutAbort = abort_timeout;
-    RunTimeoutMessage = message_timeout;
-#endif
-}
-
-/************************************************************************/
-/* Load / Bind                                                          */
-/************************************************************************/
-
-void Script::Define(const string& define)
+void ScriptSystem::Define(const string& define)
 {
     Preprocessor::Define(define);
 }
 
-void Script::Undef(const string& define)
+void ScriptSystem::Undef(const string& define)
 {
     if (!define.empty())
         Preprocessor::Undef(define);
@@ -1138,27 +606,20 @@ void Script::Undef(const string& define)
         Preprocessor::UndefAll();
 }
 
-void Script::CallPragmas(const Pragmas& pragmas)
+void ScriptSystem::CallPragmas(const Pragmas& pragmas)
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
+    Preprocessor::SetPragmaCallback(pragmaCB);
 
-    // Set current pragmas
-    Preprocessor::SetPragmaCallback(edata->PragmaCB);
-
-    // Call pragmas
     for (size_t i = 0; i < pragmas.size(); i++)
         Preprocessor::CallPragma(pragmas[i]);
 }
 
-bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
+bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
 {
-    RUNTIME_ASSERT(Engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(asEngine->GetModuleCount() == 0);
 
-    // Set current pragmas
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    Preprocessor::SetPragmaCallback(edata->PragmaCB);
+    Preprocessor::SetPragmaCallback(pragmaCB);
 
-    // File loader
     class MemoryFileLoader : public Preprocessor::FileLoader
     {
         string* rootScript;
@@ -1248,21 +709,21 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
             continue;
 
         // Find property, with prefix and without
-        int index = Engine->GetGlobalPropertyIndexByName(("__" + kv.first).c_str());
+        int index = asEngine->GetGlobalPropertyIndexByName(("__" + kv.first).c_str());
         if (index < 0)
         {
-            index = Engine->GetGlobalPropertyIndexByName(kv.first.c_str());
+            index = asEngine->GetGlobalPropertyIndexByName(kv.first.c_str());
             if (index < 0)
                 continue;
         }
 
         int type_id;
         void* ptr;
-        int r = Engine->GetGlobalPropertyByIndex(index, nullptr, nullptr, &type_id, nullptr, nullptr, &ptr, nullptr);
+        int r = asEngine->GetGlobalPropertyByIndex(index, nullptr, nullptr, &type_id, nullptr, nullptr, &ptr, nullptr);
         RUNTIME_ASSERT(r >= 0);
 
         // Try set value
-        asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? Engine->GetTypeInfoById(type_id) : nullptr);
+        asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? asEngine->GetTypeInfoById(type_id) : nullptr);
         bool is_hashes[] = {false, false, false, false};
         uchar pod_buf[8];
         bool is_error = false;
@@ -1271,24 +732,24 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
         {
             if (!obj_type)
             {
-                memcpy(ptr, value, Engine->GetSizeOfPrimitiveType(type_id));
+                memcpy(ptr, value, asEngine->GetSizeOfPrimitiveType(type_id));
             }
             else if (type_id & asTYPEID_OBJHANDLE)
             {
                 if (*(void**)ptr)
-                    Engine->ReleaseScriptObject(*(void**)ptr, obj_type);
+                    asEngine->ReleaseScriptObject(*(void**)ptr, obj_type);
                 *(void**)ptr = value;
             }
             else
             {
-                Engine->AssignScriptObject(ptr, value, obj_type);
-                Engine->ReleaseScriptObject(value, obj_type);
+                asEngine->AssignScriptObject(ptr, value, obj_type);
+                asEngine->ReleaseScriptObject(value, obj_type);
             }
         }
     }
 
     // Add new
-    asIScriptModule* module = Engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
     if (!module)
     {
         WriteLog("Create 'Root' module fail.\n");
@@ -1323,13 +784,13 @@ bool Script::LoadRootModule(const ScriptEntryVec& scripts, string& result_code)
     return true;
 }
 
-bool Script::RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_data)
+bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_data)
 {
-    RUNTIME_ASSERT(Engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(asEngine->GetModuleCount() == 0);
     RUNTIME_ASSERT(!bytecode.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 
-    asIScriptModule* module = Engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
     if (!module)
     {
         WriteLog("Create 'Root' module fail.\n");
@@ -1352,10 +813,11 @@ bool Script::RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_dat
     return true;
 }
 
-uint Script::BindByFuncName(const string& func_name, const string& decl, bool is_temp, bool disable_log /* = false */)
+uint ScriptSystem::BindByFuncName(
+    const string& func_name, const string& decl, bool is_temp, bool disable_log /* = false */)
 {
     // Collect functions in all modules
-    RUNTIME_ASSERT(Engine->GetModuleCount() == 1);
+    RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
 
     // Find function
     string func_decl;
@@ -1364,7 +826,7 @@ uint Script::BindByFuncName(const string& func_name, const string& decl, bool is
     else
         func_decl = func_name;
 
-    asIScriptModule* module = Engine->GetModuleByIndex(0);
+    asIScriptModule* module = asEngine->GetModuleByIndex(0);
     asIScriptFunction* func = module->GetFunctionByDecl(func_decl.c_str());
     if (!func)
     {
@@ -1376,45 +838,45 @@ uint Script::BindByFuncName(const string& func_name, const string& decl, bool is
     // Save to temporary bind
     if (is_temp)
     {
-        BindedFunctions[1].ScriptFunc = func;
+        bindedFunctions[1].ScriptFunc = func;
         return 1;
     }
 
     // Find already binded
-    for (int i = 2, j = (int)BindedFunctions.size(); i < j; i++)
+    for (int i = 2, j = (int)bindedFunctions.size(); i < j; i++)
     {
-        BindFunction& bf = BindedFunctions[i];
+        BindFunction& bf = bindedFunctions[i];
         if (bf.ScriptFunc == func)
             return i;
     }
 
     // Create new bind
-    BindedFunctions.push_back(BindFunction(func));
-    return (uint)BindedFunctions.size() - 1;
+    bindedFunctions.push_back(BindFunction(func));
+    return (uint)bindedFunctions.size() - 1;
 }
 
-uint Script::BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log /* = false */)
+uint ScriptSystem::BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log /* = false */)
 {
     // Save to temporary bind
     if (is_temp)
     {
-        BindedFunctions[1].ScriptFunc = func;
+        bindedFunctions[1].ScriptFunc = func;
         return 1;
     }
 
     // Find already binded
-    for (int i = 2, j = (int)BindedFunctions.size(); i < j; i++)
+    for (int i = 2, j = (int)bindedFunctions.size(); i < j; i++)
     {
-        if (BindedFunctions[i].ScriptFunc == func)
+        if (bindedFunctions[i].ScriptFunc == func)
             return i;
     }
 
     // Create new bind
-    BindedFunctions.push_back(BindFunction(func));
-    return (uint)BindedFunctions.size() - 1;
+    bindedFunctions.push_back(BindFunction(func));
+    return (uint)bindedFunctions.size() - 1;
 }
 
-uint Script::BindByFuncNum(hash func_num, bool is_temp, bool disable_log /* = false */)
+uint ScriptSystem::BindByFuncNum(hash func_num, bool is_temp, bool disable_log /* = false */)
 {
     asIScriptFunction* func = FindFunc(func_num);
     if (!func)
@@ -1427,30 +889,26 @@ uint Script::BindByFuncNum(hash func_num, bool is_temp, bool disable_log /* = fa
     return BindByFunc(func, is_temp, disable_log);
 }
 
-asIScriptFunction* Script::GetBindFunc(uint bind_id)
+asIScriptFunction* ScriptSystem::GetBindFunc(uint bind_id)
 {
     RUNTIME_ASSERT(bind_id);
-    RUNTIME_ASSERT(bind_id < BindedFunctions.size());
+    RUNTIME_ASSERT(bind_id < bindedFunctions.size());
 
-    return BindedFunctions[bind_id].ScriptFunc;
+    return bindedFunctions[bind_id].ScriptFunc;
 }
 
-string Script::GetBindFuncName(uint bind_id)
+string ScriptSystem::GetBindFuncName(uint bind_id)
 {
-    if (!bind_id || bind_id >= (uint)BindedFunctions.size())
+    if (!bind_id || bind_id >= (uint)bindedFunctions.size())
     {
-        WriteLog("Wrong bind id {}, bind buffer size {}.\n", bind_id, BindedFunctions.size());
+        WriteLog("Wrong bind id {}, bind buffer size {}.\n", bind_id, bindedFunctions.size());
         return "";
     }
 
-    return BindedFunctions[bind_id].FuncName;
+    return bindedFunctions[bind_id].FuncName;
 }
 
-/************************************************************************/
-/* Functions association                                                */
-/************************************************************************/
-
-hash Script::GetFuncNum(asIScriptFunction* func)
+hash ScriptSystem::GetFuncNum(asIScriptFunction* func)
 {
     hash* func_num_ptr = (hash*)func->GetUserData();
     if (!func_num_ptr)
@@ -1462,11 +920,11 @@ hash Script::GetFuncNum(asIScriptFunction* func)
     return *func_num_ptr;
 }
 
-asIScriptFunction* Script::FindFunc(hash func_num)
+asIScriptFunction* ScriptSystem::FindFunc(hash func_num)
 {
-    for (asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++)
+    for (asUINT i = 0, j = asEngine->GetModuleCount(); i < j; i++)
     {
-        asIScriptModule* module = Engine->GetModuleByIndex(i);
+        asIScriptModule* module = asEngine->GetModuleByIndex(i);
         for (asUINT n = 0, m = module->GetFunctionCount(); n < m; n++)
         {
             asIScriptFunction* func = module->GetFunctionByIndex(n);
@@ -1477,15 +935,15 @@ asIScriptFunction* Script::FindFunc(hash func_num)
     return nullptr;
 }
 
-hash Script::BindScriptFuncNumByFuncName(const string& func_name, const string& decl)
+hash ScriptSystem::BindScriptFuncNumByFuncName(const string& func_name, const string& decl)
 {
     // Bind function
-    int bind_id = Script::BindByFuncName(func_name, decl, false);
+    int bind_id = ScriptSystem::BindByFuncName(func_name, decl, false);
     if (bind_id <= 0)
         return 0;
 
     // Native and broken binds not allowed
-    BindFunction& bf = BindedFunctions[bind_id];
+    BindFunction& bf = bindedFunctions[bind_id];
     if (!bf.ScriptFunc)
         return 0;
 
@@ -1493,21 +951,21 @@ hash Script::BindScriptFuncNumByFuncName(const string& func_name, const string& 
     hash func_num = GetFuncNum(bf.ScriptFunc);
 
     // Duplicate checking
-    auto it = ScriptFuncBinds.find(func_num);
-    if (it != ScriptFuncBinds.end() && it->second != bind_id)
+    auto it = scriptFuncBinds.find(func_num);
+    if (it != scriptFuncBinds.end() && it->second != bind_id)
         return 0;
 
     // Store
-    if (it == ScriptFuncBinds.end())
-        ScriptFuncBinds.insert(std::make_pair(func_num, bind_id));
+    if (it == scriptFuncBinds.end())
+        scriptFuncBinds.insert(std::make_pair(func_num, bind_id));
 
     return func_num;
 }
 
-hash Script::BindScriptFuncNumByFunc(asIScriptFunction* func)
+hash ScriptSystem::BindScriptFuncNumByFunc(asIScriptFunction* func)
 {
     // Bind function
-    int bind_id = Script::BindByFunc(func, false);
+    int bind_id = ScriptSystem::BindByFunc(func, false);
     if (bind_id <= 0)
         return 0;
 
@@ -1515,25 +973,25 @@ hash Script::BindScriptFuncNumByFunc(asIScriptFunction* func)
     hash func_num = GetFuncNum(func);
 
     // Duplicate checking
-    auto it = ScriptFuncBinds.find(func_num);
-    if (it != ScriptFuncBinds.end() && it->second != bind_id)
+    auto it = scriptFuncBinds.find(func_num);
+    if (it != scriptFuncBinds.end() && it->second != bind_id)
         return 0;
 
     // Store
-    if (it == ScriptFuncBinds.end())
-        ScriptFuncBinds.insert(std::make_pair(func_num, bind_id));
+    if (it == scriptFuncBinds.end())
+        scriptFuncBinds.insert(std::make_pair(func_num, bind_id));
 
     return func_num;
 }
 
-uint Script::GetScriptFuncBindId(hash func_num)
+uint ScriptSystem::GetScriptFuncBindId(hash func_num)
 {
     if (!func_num)
         return 0;
 
     // Indexing by hash
-    auto it = ScriptFuncBinds.find(func_num);
-    if (it != ScriptFuncBinds.end())
+    auto it = scriptFuncBinds.find(func_num);
+    if (it != scriptFuncBinds.end())
         return it->second;
 
     // Function not binded, try find and bind it
@@ -1542,49 +1000,45 @@ uint Script::GetScriptFuncBindId(hash func_num)
         return 0;
 
     // Bind
-    func_num = Script::BindScriptFuncNumByFunc(func);
+    func_num = ScriptSystem::BindScriptFuncNumByFunc(func);
     if (func_num)
-        return ScriptFuncBinds[func_num];
+        return scriptFuncBinds[func_num];
 
     return 0;
 }
 
-void Script::PrepareScriptFuncContext(hash func_num, const string& ctx_info)
+void ScriptSystem::PrepareScriptFuncContext(hash func_num, const string& ctx_info)
 {
     uint bind_id = GetScriptFuncBindId(func_num);
     PrepareContext(bind_id, ctx_info);
 }
 
-void Script::CacheEnumValues()
+void ScriptSystem::CacheEnumValues()
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    auto& cached_enums = edata->CachedEnums;
-    auto& cached_enum_names = edata->CachedEnumNames;
-
     // Engine enums
-    cached_enums.clear();
-    cached_enum_names.clear();
-    for (asUINT i = 0, j = Engine->GetEnumCount(); i < j; i++)
+    cachedEnums.clear();
+    cachedEnumNames.clear();
+    for (asUINT i = 0, j = asEngine->GetEnumCount(); i < j; i++)
     {
-        asITypeInfo* enum_type = Engine->GetEnumByIndex(i);
+        asITypeInfo* enum_type = asEngine->GetEnumByIndex(i);
         const char* enum_ns = enum_type->GetNamespace();
         enum_ns = (enum_ns && enum_ns[0] ? enum_ns : nullptr);
         const char* enum_name = enum_type->GetName();
         string name = _str("{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name);
-        IntStrMap& value_names = cached_enum_names.insert(std::make_pair(name, IntStrMap())).first->second;
+        IntStrMap& value_names = cachedEnumNames.insert(std::make_pair(name, IntStrMap())).first->second;
         for (asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++)
         {
             int value;
             string value_name = enum_type->GetEnumValueByIndex(k, &value);
             name = _str("{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name);
-            cached_enums.insert(std::make_pair(name, value));
+            cachedEnums.insert(std::make_pair(name, value));
             value_names.insert(std::make_pair(value, value_name));
         }
     }
 
     // Script enums
-    RUNTIME_ASSERT(Engine->GetModuleCount() == 1);
-    asIScriptModule* module = Engine->GetModuleByIndex(0);
+    RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
+    asIScriptModule* module = asEngine->GetModuleByIndex(0);
     for (asUINT i = 0; i < module->GetEnumCount(); i++)
     {
         asITypeInfo* enum_type = module->GetEnumByIndex(i);
@@ -1592,39 +1046,37 @@ void Script::CacheEnumValues()
         enum_ns = (enum_ns && enum_ns[0] ? enum_ns : nullptr);
         const char* enum_name = enum_type->GetName();
         string name = _str("{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name);
-        IntStrMap& value_names = cached_enum_names.insert(std::make_pair(name, IntStrMap())).first->second;
+        IntStrMap& value_names = cachedEnumNames.insert(std::make_pair(name, IntStrMap())).first->second;
         for (asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++)
         {
             int value;
             string value_name = enum_type->GetEnumValueByIndex(k, &value);
             name = _str("{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name);
-            cached_enums.insert(std::make_pair(name, value));
+            cachedEnums.insert(std::make_pair(name, value));
             value_names.insert(std::make_pair(value, value_name));
         }
     }
 
     // Content
-    for (asUINT i = 0, j = Engine->GetGlobalPropertyCount(); i < j; i++)
+    for (asUINT i = 0, j = asEngine->GetGlobalPropertyCount(); i < j; i++)
     {
         const char* name;
         const char* ns;
         int type_id;
         hash* value;
-        Engine->GetGlobalPropertyByIndex(i, &name, &ns, &type_id, nullptr, nullptr, (void**)&value);
+        asEngine->GetGlobalPropertyByIndex(i, &name, &ns, &type_id, nullptr, nullptr, (void**)&value);
         if (_str(ns).startsWith("Content"))
         {
             RUNTIME_ASSERT(type_id == asTYPEID_UINT32); // hash
-            cached_enums.insert(std::make_pair(_str("{}::{}", ns, name), (int)*value));
+            cachedEnums.insert(std::make_pair(_str("{}::{}", ns, name), (int)*value));
         }
     }
 }
 
-int Script::GetEnumValue(const string& enum_value_name, bool& fail)
+int ScriptSystem::GetEnumValue(const string& enum_value_name, bool& fail)
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    const auto& cached_enums = edata->CachedEnums;
-    auto it = cached_enums.find(enum_value_name);
-    if (it == cached_enums.end())
+    auto it = cachedEnums.find(enum_value_name);
+    if (it == cachedEnums.end())
     {
         WriteLog("Enum value '{}' not found.\n", enum_value_name);
         fail = true;
@@ -1633,37 +1085,27 @@ int Script::GetEnumValue(const string& enum_value_name, bool& fail)
     return it->second;
 }
 
-int Script::GetEnumValue(const string& enum_name, const string& value_name, bool& fail)
+int ScriptSystem::GetEnumValue(const string& enum_name, const string& value_name, bool& fail)
 {
     if (_str(value_name).isNumber())
         return _str(value_name).toInt();
     return GetEnumValue(_str("{}::{}", enum_name, value_name), fail);
 }
 
-string Script::GetEnumValueName(const string& enum_name, int value)
+string ScriptSystem::GetEnumValueName(const string& enum_name, int value)
 {
-    EngineData* edata = (EngineData*)Engine->GetUserData();
-    const auto& cached_enum_names = edata->CachedEnumNames;
-    auto it = cached_enum_names.find(enum_name);
-    RUNTIME_ASSERT(it != cached_enum_names.end());
+    auto it = cachedEnumNames.find(enum_name);
+    RUNTIME_ASSERT(it != cachedEnumNames.end());
     auto it_value = it->second.find(value);
     return it_value != it->second.end() ? it_value->second : _str("{}", value).str();
 }
 
-/************************************************************************/
-/* Contexts                                                             */
-/************************************************************************/
-
-static asIScriptContext* CurrentCtx = nullptr;
-static size_t CurrentArg = 0;
-static void* RetValue;
-
-void Script::PrepareContext(uint bind_id, const string& ctx_info)
+void ScriptSystem::PrepareContext(uint bind_id, const string& ctx_info)
 {
     RUNTIME_ASSERT(bind_id > 0);
-    RUNTIME_ASSERT(bind_id < (uint)BindedFunctions.size());
+    RUNTIME_ASSERT(bind_id < (uint)bindedFunctions.size());
 
-    BindFunction& bf = BindedFunctions[bind_id];
+    BindFunction& bf = bindedFunctions[bind_id];
     asIScriptFunction* script_func = bf.ScriptFunc;
 
     RUNTIME_ASSERT(script_func);
@@ -1677,67 +1119,67 @@ void Script::PrepareContext(uint bind_id, const string& ctx_info)
     int result = ctx->Prepare(script_func);
     RUNTIME_ASSERT(result >= 0);
 
-    RUNTIME_ASSERT(!CurrentCtx);
-    CurrentCtx = ctx;
+    RUNTIME_ASSERT(!currentCtx);
+    currentCtx = ctx;
 
-    CurrentArg = 0;
+    currentArg = 0;
 }
 
-void Script::SetArgUChar(uchar value)
+void ScriptSystem::SetArgUChar(uchar value)
 {
-    CurrentCtx->SetArgByte((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgByte((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgUShort(ushort value)
+void ScriptSystem::SetArgUShort(ushort value)
 {
-    CurrentCtx->SetArgWord((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgWord((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgUInt(uint value)
+void ScriptSystem::SetArgUInt(uint value)
 {
-    CurrentCtx->SetArgDWord((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgDWord((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgUInt64(uint64 value)
+void ScriptSystem::SetArgUInt64(uint64 value)
 {
-    CurrentCtx->SetArgQWord((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgQWord((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgBool(bool value)
+void ScriptSystem::SetArgBool(bool value)
 {
-    CurrentCtx->SetArgByte((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgByte((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgFloat(float value)
+void ScriptSystem::SetArgFloat(float value)
 {
-    CurrentCtx->SetArgFloat((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgFloat((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgDouble(double value)
+void ScriptSystem::SetArgDouble(double value)
 {
-    CurrentCtx->SetArgDouble((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgDouble((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgObject(void* value)
+void ScriptSystem::SetArgObject(void* value)
 {
-    CurrentCtx->SetArgObject((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgObject((asUINT)currentArg, value);
+    currentArg++;
 }
 
-void Script::SetArgEntity(Entity* value)
+void ScriptSystem::SetArgEntity(Entity* value)
 {
     RUNTIME_ASSERT((!value || !value->IsDestroyed));
 
     if (value)
     {
-        ContextData* ctx_data = (ContextData*)CurrentCtx->GetUserData();
+        ContextData* ctx_data = (ContextData*)currentCtx->GetUserData();
         value->AddRef();
         RUNTIME_ASSERT(ctx_data->EntityArgsCount < 20);
         ctx_data->EntityArgs[ctx_data->EntityArgsCount] = value;
@@ -1747,19 +1189,19 @@ void Script::SetArgEntity(Entity* value)
     SetArgObject(value);
 }
 
-void Script::SetArgAddress(void* value)
+void ScriptSystem::SetArgAddress(void* value)
 {
-    CurrentCtx->SetArgAddress((asUINT)CurrentArg, value);
-    CurrentArg++;
+    currentCtx->SetArgAddress((asUINT)currentArg, value);
+    currentArg++;
 }
 
-bool Script::RunPrepared()
+bool ScriptSystem::RunPrepared()
 {
-    RUNTIME_ASSERT(CurrentCtx);
-    asIScriptContext* ctx = CurrentCtx;
+    RUNTIME_ASSERT(currentCtx);
+    asIScriptContext* ctx = currentCtx;
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
     uint tick = Timer::FastTick();
-    CurrentCtx = nullptr;
+    currentCtx = nullptr;
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
 
@@ -1772,7 +1214,7 @@ bool Script::RunPrepared()
     asEContextState state = ctx->GetState();
     if (state == asEXECUTION_SUSPENDED)
     {
-        RetValue = 0;
+        retValue = 0;
         return true;
     }
     else if (state != asEXECUTION_FINISHED)
@@ -1789,7 +1231,7 @@ bool Script::RunPrepared()
         return false;
     }
 #ifdef SCRIPT_WATCHER
-    else if (RunTimeoutMessage && delta >= RunTimeoutMessage)
+    else if (settings.ScriptRunMessageTimeout && delta >= settings.ScriptRunMessageTimeout)
     {
         WriteLog("Script work time {} in context '{}'.\n", delta, ctx_data->Info);
     }
@@ -1803,32 +1245,32 @@ bool Script::RunPrepared()
         return false;
     }
 
-    RetValue = ctx->GetAddressOfReturnValue();
+    retValue = ctx->GetAddressOfReturnValue();
 
     ReturnContext(ctx);
 
     return true;
 }
 
-void Script::RunPreparedSuspend()
+void ScriptSystem::RunPreparedSuspend()
 {
-    RUNTIME_ASSERT(CurrentCtx);
+    RUNTIME_ASSERT(currentCtx);
 
-    asIScriptContext* ctx = CurrentCtx;
+    asIScriptContext* ctx = currentCtx;
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
     uint tick = Timer::FastTick();
-    CurrentCtx = nullptr;
+    currentCtx = nullptr;
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
-    RetValue = 0;
+    retValue = 0;
 }
 
-asIScriptContext* Script::SuspendCurrentContext(uint time)
+asIScriptContext* ScriptSystem::SuspendCurrentContext(uint time)
 {
     asIScriptContext* ctx = asGetActiveContext();
-    RUNTIME_ASSERT(std::find(BusyContexts.begin(), BusyContexts.end(), ctx) != BusyContexts.end());
+    RUNTIME_ASSERT(std::find(busyContexts.begin(), busyContexts.end(), ctx) != busyContexts.end());
     if (ctx->GetFunction(ctx->GetCallstackSize() - 1)->GetReturnTypeId() != asTYPEID_VOID)
-        SCRIPT_ERROR_R0("Can't yield context which must return value.");
+        throw ScriptSystemException("Can't yield context which must return value");
 
     ctx->Suspend();
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
@@ -1836,7 +1278,7 @@ asIScriptContext* Script::SuspendCurrentContext(uint time)
     return ctx;
 }
 
-void Script::ResumeContext(asIScriptContext* ctx)
+void ScriptSystem::ResumeContext(asIScriptContext* ctx)
 {
     RUNTIME_ASSERT(ctx->GetState() == asEXECUTION_SUSPENDED);
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
@@ -1844,15 +1286,15 @@ void Script::ResumeContext(asIScriptContext* ctx)
     ctx_data->SuspendEndTick = Timer::FastTick();
 }
 
-void Script::RunSuspended()
+void ScriptSystem::RunSuspended()
 {
-    if (BusyContexts.empty())
+    if (busyContexts.empty())
         return;
 
     // Collect contexts to resume
     ContextVec resume_contexts;
     uint tick = Timer::FastTick();
-    for (auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it)
+    for (auto it = busyContexts.begin(), end = busyContexts.end(); it != end; ++it)
     {
         asIScriptContext* ctx = *it;
         ContextData* ctx_data = (ContextData*)ctx->GetUserData();
@@ -1875,22 +1317,22 @@ void Script::RunSuspended()
             continue;
         }
 
-        CurrentCtx = ctx;
+        currentCtx = ctx;
         RunPrepared();
     }
 }
 
-void Script::RunMandatorySuspended()
+void ScriptSystem::RunMandatorySuspended()
 {
     uint i = 0;
     while (true)
     {
-        if (BusyContexts.empty())
+        if (busyContexts.empty())
             break;
 
         // Collect contexts to resume
         ContextVec resume_contexts;
-        for (auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it)
+        for (auto it = busyContexts.begin(), end = busyContexts.end(); it != end; ++it)
         {
             asIScriptContext* ctx = *it;
             ContextData* ctx_data = (ContextData*)ctx->GetUserData();
@@ -1911,7 +1353,7 @@ void Script::RunMandatorySuspended()
                 continue;
             }
 
-            CurrentCtx = ctx;
+            currentCtx = ctx;
             RunPrepared();
         }
 
@@ -1921,7 +1363,7 @@ void Script::RunMandatorySuspended()
     }
 }
 
-bool Script::CheckContextEntities(asIScriptContext* ctx)
+bool ScriptSystem::CheckContextEntities(asIScriptContext* ctx)
 {
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
     for (uint i = 0; i < ctx_data->EntityArgsCount; i++)
@@ -1930,41 +1372,37 @@ bool Script::CheckContextEntities(asIScriptContext* ctx)
     return true;
 }
 
-uint Script::GetReturnedUInt()
+uint ScriptSystem::GetReturnedUInt()
 {
-    return *(uint*)RetValue;
+    return *(uint*)retValue;
 }
 
-bool Script::GetReturnedBool()
+bool ScriptSystem::GetReturnedBool()
 {
-    return *(bool*)RetValue;
+    return *(bool*)retValue;
 }
 
-void* Script::GetReturnedObject()
+void* ScriptSystem::GetReturnedObject()
 {
-    return *(void**)RetValue;
+    return *(void**)retValue;
 }
 
-float Script::GetReturnedFloat()
+float ScriptSystem::GetReturnedFloat()
 {
-    return *(float*)RetValue;
+    return *(float*)retValue;
 }
 
-double Script::GetReturnedDouble()
+double ScriptSystem::GetReturnedDouble()
 {
-    return *(double*)RetValue;
+    return *(double*)retValue;
 }
 
-void* Script::GetReturnedRawAddress()
+void* ScriptSystem::GetReturnedRawAddress()
 {
-    return RetValue;
+    return retValue;
 }
 
-/************************************************************************/
-/* Logging                                                              */
-/************************************************************************/
-
-void Script::Log(const string& str)
+void ScriptSystem::Log(const string& str)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx)
@@ -1984,7 +1422,7 @@ void Script::Log(const string& str)
     WriteLog("{} : {}\n", Preprocessor::ResolveOriginalFile(line, lnt), str);
 }
 
-void Script::CallbackMessage(const asSMessageInfo* msg, void* param)
+void ScriptSystem::CallbackMessage(const asSMessageInfo* msg, void* param)
 {
     const char* type = "Error";
     if (msg->type == asMSGTYPE_WARNING)
@@ -1996,22 +1434,14 @@ void Script::CallbackMessage(const asSMessageInfo* msg, void* param)
         Preprocessor::ResolveOriginalLine(msg->row));
 }
 
-void Script::CallbackException(asIScriptContext* ctx, void* param)
+void ScriptSystem::CallbackException(asIScriptContext* ctx, void* param)
 {
     string str = ctx->GetExceptionString();
     if (str != "Pass")
         HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
 }
 
-/************************************************************************/
-/* Array                                                                */
-/************************************************************************/
-
-CScriptArray* Script::CreateArray(const string& type)
+CScriptArray* ScriptSystem::CreateArray(const string& type)
 {
-    return CScriptArray::Create(Engine->GetTypeInfoById(Engine->GetTypeIdByDecl(type.c_str())));
+    return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
 }
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/

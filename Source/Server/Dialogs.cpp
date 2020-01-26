@@ -39,7 +39,6 @@
 #include "Location.h"
 #include "Log.h"
 #include "Map.h"
-#include "Script.h"
 #include "StringUtils.h"
 
 static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash)
@@ -107,13 +106,18 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
     return prop->GetRegIndex();
 }
 
-bool DialogManager::LoadDialogs(FileManager& file_mngr)
+DialogManager::DialogManager(FileManager& file_mngr, ScriptSystem& script_sys) :
+    fileMngr {file_mngr}, scriptSys {script_sys}
+{
+}
+
+bool DialogManager::LoadDialogs()
 {
     WriteLog("Load dialogs...\n");
 
     dialogPacks.clear();
 
-    FileCollection files = file_mngr.FilterFiles("fodlg");
+    FileCollection files = fileMngr.FilterFiles("fodlg");
     uint files_loaded = 0;
     while (files.MoveNext())
     {
@@ -521,15 +525,15 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
 #define BIND_D_FUNC(params) \
     do \
     { \
-        id = Script::BindByFuncName(name, "bool %s(Critter, Critter" params, false); \
+        id = scriptSys.BindByFuncName(name, "bool %s(Critter, Critter" params, false); \
     } while (0)
 #define BIND_R_FUNC(params) \
     do \
     { \
-        if ((id = Script::BindByFuncName(name, "uint %s(Critter, Critter" params, false, true)) > 0) \
+        if ((id = scriptSys.BindByFuncName(name, "uint %s(Critter, Critter" params, false, true)) > 0) \
             ret_value = true; \
         else \
-            id = Script::BindByFuncName(name, "void %s(Critter, Critter" params, false); \
+            id = scriptSys.BindByFuncName(name, "void %s(Critter, Critter" params, false); \
     } while (0)
         switch (values_count)
         {
@@ -617,14 +621,14 @@ uint DialogManager::GetNotAnswerAction(const string& str, bool& ret_val)
     if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None")
         return 0;
 
-    uint id = Script::BindByFuncName(str, "uint %s(Critter, Critter, string)", false, true);
+    uint id = scriptSys.BindByFuncName(str, "uint %s(Critter, Critter, string)", false, true);
     if (id)
     {
         ret_val = true;
         return id;
     }
 
-    return Script::BindByFuncName(str, "void %s(Critter, Critter, string)", false);
+    return scriptSys.BindByFuncName(str, "void %s(Critter, Critter, string)", false);
 }
 
 char DialogManager::GetDRType(const string& str)

@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// Todo: improve YAML supporting to config file
+// Todo: improve YAML supporting to config file?
 
 #include "ConfigFile.h"
 #include "StringUtils.h"

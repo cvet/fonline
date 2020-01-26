@@ -42,6 +42,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
+#include "Script.h"
 #include "Settings.h"
 
 class ProtoManager;
@@ -53,7 +54,7 @@ class CritterManager
 {
 public:
     CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
-        ItemManager& item_mngr);
+        ItemManager& item_mngr, ScriptSystem& script_sys);
 
     Npc* CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy);
     bool RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc);
@@ -88,4 +89,5 @@ private:
     EntityManager& entityMngr;
     MapManager& mapMngr;
     ItemManager& itemMngr;
+    ScriptSystem& scriptSys;
 };

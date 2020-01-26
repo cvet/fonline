@@ -38,6 +38,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "MapLoader.h"
+#include "Script.h"
 #include "Settings.h"
 
 class Item;
@@ -79,7 +80,8 @@ class Map : public Entity
     friend class MapManager;
 
 public:
-    Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett);
+    Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
+        ScriptSystem& script_sys);
     ~Map();
     StaticMap* GetStaticMap() { return staticMap; }
 
@@ -189,6 +191,7 @@ public:
 private:
     MapSettings& settings;
     GeometryHelper geomHelper;
+    ScriptSystem& scriptSys;
     StaticMap* staticMap {};
     uchar* hexFlags {};
     int hexFlagsSize {};

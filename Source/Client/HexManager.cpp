@@ -38,7 +38,6 @@
 #include "Log.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "Script.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -285,8 +284,8 @@ void Field::UnvalidateSpriteChain()
     }
 }
 
-HexManager::HexManager(
-    bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr, ResourceManager& res_mngr) :
+HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
+    ResourceManager& res_mngr, ScriptSystem& script_sys) :
     settings {sett},
     geomHelper(settings),
     protoMngr(proto_mngr),
@@ -295,7 +294,8 @@ HexManager::HexManager(
     mainTree(settings, spr_mngr),
     tilesTree(settings, spr_mngr),
     roofTree(settings, spr_mngr),
-    roofRainTree(settings, spr_mngr)
+    roofRainTree(settings, spr_mngr),
+    scriptSys {script_sys}
 {
     mapperMode = mapper_mode;
 
@@ -538,7 +538,7 @@ void HexManager::DeleteItem(
     if (destroy_item)
     {
         item->IsDestroyed = true;
-        Script::RemoveEventsEntity(item);
+        scriptSys.RemoveEventsEntity(item);
         item->Release();
     }
 }
@@ -1119,7 +1119,7 @@ void HexManager::RebuildMap(int rx, int ry)
     screenHexX = rx;
     screenHexY = ry;
 
-    Script::RaiseInternalEvent(ClientFunctions.RenderMap);
+    scriptSys.RaiseInternalEvent(ClientFunctions.RenderMap);
 }
 
 void HexManager::RebuildMapOffset(int ox, int oy)
@@ -1447,7 +1447,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
     requestRebuildLight = false;
     requestRenderLight = true;
 
-    Script::RaiseInternalEvent(ClientFunctions.RenderMap);
+    scriptSys.RaiseInternalEvent(ClientFunctions.RenderMap);
 }
 
 /************************************************************************/
@@ -2694,7 +2694,7 @@ bool HexManager::Scroll()
         int final_scr_ox = settings.ScrOx - prev_scr_ox + xmod * settings.MapHexWidth;
         int final_scr_oy = settings.ScrOy - prev_scr_oy + (-ymod / 2) * (settings.MapHexLineHeight * 2);
         if (final_scr_ox || final_scr_oy)
-            Script::RaiseInternalEvent(ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy);
+            scriptSys.RaiseInternalEvent(ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy);
     }
 
     return xmod || ymod;
@@ -2943,7 +2943,7 @@ void HexManager::DeleteCritter(uint crid)
     RemoveCritter(cr);
     cr->DeleteAllItems();
     cr->IsDestroyed = true;
-    Script::RemoveEventsEntity(cr);
+    scriptSys.RemoveEventsEntity(cr);
     cr->Release();
     allCritters.erase(it);
 }
@@ -2956,7 +2956,7 @@ void HexManager::DeleteCritters()
         RemoveCritter(cr);
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
-        Script::RemoveEventsEntity(cr);
+        scriptSys.RemoveEventsEntity(cr);
         cr->Release();
     }
     allCritters.clear();
@@ -4131,7 +4131,7 @@ bool HexManager::LoadMap(CacheStorage& cache, hash map_pid)
     AutoScroll.Active = false;
     WriteLog("Load map success.\n");
 
-    Script::RaiseInternalEvent(ClientFunctions.MapLoad);
+    scriptSys.RaiseInternalEvent(ClientFunctions.MapLoad);
 
     return true;
 }
@@ -4143,7 +4143,7 @@ void HexManager::UnloadMap()
 
     WriteLog("Unload map.\n");
 
-    Script::RaiseInternalEvent(ClientFunctions.MapUnload);
+    scriptSys.RaiseInternalEvent(ClientFunctions.MapUnload);
 
     curPidMap = 0;
     curMapTime = -1;

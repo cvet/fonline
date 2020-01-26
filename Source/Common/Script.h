@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: rework Script singleton
-
 #pragma once
 
 #include "Common.h"
@@ -52,6 +50,12 @@
 #include "autowrapper/aswrappedcall.h"
 #endif
 
+DECLARE_EXCEPTION(ScriptSystemException);
+
+#if 1
+#define SCRIPT_WATCHER
+#endif
+
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
@@ -68,30 +72,11 @@
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
 #endif
 
-#define SCRIPT_ERROR_R(error, ...) \
-    do \
-    { \
-        Script::RaiseException(_str(error, ##__VA_ARGS__)); \
-        return; \
-    } while (0)
-#define SCRIPT_ERROR_R0(error, ...) \
-    do \
-    { \
-        Script::RaiseException(_str(error, ##__VA_ARGS__)); \
-        return 0; \
-    } while (0)
+struct EventData;
 
-typedef void (*EndExecutionCallback)();
-typedef vector<asIScriptContext*> ContextVec;
-typedef std::function<void(const string&)> ExceptionCallback;
-
-struct EngineData
-{
-    ScriptPragmaCallback* PragmaCB;
-    ScriptInvoker* Invoker;
-    StrIntMap CachedEnums;
-    map<string, IntStrMap> CachedEnumNames;
-};
+using EndExecutionCallback = void();
+using ContextVec = vector<asIScriptContext*>;
+using ExceptionCallback = std::function<void(const string&)>;
 
 struct ScriptEntry
 {
@@ -103,130 +88,153 @@ struct ScriptEntry
 };
 using ScriptEntryVec = vector<ScriptEntry>;
 
-struct EventData;
-
-class Script
+class BindFunction
 {
 public:
-    static bool Init(
-        ScriptSettings& sett, FileManager& file_mngr, ScriptPragmaCallback* pragma_callback, const string& target);
-    static bool InitMono(const string& target, map<string, UCharVec>* assemblies_data);
-    static bool GetMonoAssemblies(const string& target, map<string, UCharVec>& assemblies_data);
-    static uint CreateMonoObject(const string& type_name);
-    static void CallMonoObjectMethod(const string& type_name, const string& method_name, uint obj, void* arg);
-    static void DestroyMonoObject(uint obj);
-    static void Finish();
+    asIScriptFunction* ScriptFunc;
+    string FuncName;
 
-    static void UnloadScripts();
-    static bool ReloadScripts(const string& target);
-    static bool PostInitScriptSystem();
-    static bool RunModuleInitFunctions();
+    BindFunction() { ScriptFunc = nullptr; }
 
-    static asIScriptEngine* GetEngine();
-    static void SetEngine(asIScriptEngine* engine);
-    static asIScriptEngine* CreateEngine(ScriptPragmaCallback* pragma_callback, const string& target);
-    static void RegisterScriptArrayExtensions(asIScriptEngine* engine);
-    static void RegisterScriptDictExtensions(asIScriptEngine* engine);
-    static void RegisterScriptStdStringExtensions(asIScriptEngine* engine);
-    static void FinishEngine(asIScriptEngine*& engine);
+    BindFunction(asIScriptFunction* func)
+    {
+        ScriptFunc = func;
+        FuncName = func->GetDeclaration();
+        func->AddRef();
+    }
 
-    static void CreateContext();
-    static void FinishContext(asIScriptContext* ctx);
-    static asIScriptContext* RequestContext();
-    static void ReturnContext(asIScriptContext* ctx);
+    void Clear()
+    {
+        if (ScriptFunc)
+            ScriptFunc->Release();
+        memzero(this, sizeof(BindFunction));
+    }
+};
+using BindFunctionVec = vector<BindFunction>;
 
-    static void SetExceptionCallback(ExceptionCallback callback);
-    static void RaiseException(const string& message);
-    static void PassException();
-    static void HandleException(asIScriptContext* ctx, const string& message);
-    static string GetTraceback();
-    static string MakeContextTraceback(asIScriptContext* ctx);
+struct ContextData
+{
+    char Info[1024];
+    uint StartTick;
+    uint SuspendEndTick;
+    Entity* EntityArgs[20];
+    uint EntityArgsCount;
+    asIScriptContext* Parent;
+};
 
-    static ScriptInvoker* GetInvoker();
-    static string GetDeferredCallsStatistics();
-    static void ProcessDeferredCalls();
+class NameResolver
+{
+public:
+    virtual int GetEnumValue(const string& enum_value_name, bool& fail) = 0;
+    virtual int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) = 0;
+    virtual string GetEnumValueName(const string& enum_name, int value) = 0;
+};
+
+// Todo: separate interface for calling script events
+// class ScriptEvents
+
+class ScriptSystem : public NameResolver, public NonCopyable
+{
+public:
+    ScriptSystem(ScriptSettings& sett, FileManager& file_mngr);
+    ~ScriptSystem();
+
+    bool Init(ScriptPragmaCallback* pragma_callback, const string& target);
+    void UnloadScripts();
+    bool ReloadScripts(const string& target);
+    bool PostInitScriptSystem();
+    bool RunModuleInitFunctions();
+
+    void SetExceptionCallback(ExceptionCallback callback);
+    void RaiseException(const string& message);
+    void PassException();
+    void HandleException(asIScriptContext* ctx, const string& message);
+    string GetTraceback();
+    string MakeContextTraceback(asIScriptContext* ctx);
+
+    asIScriptEngine* GetEngine();
+    const Pragmas& GetProcessedPragmas();
+    ScriptInvoker* GetInvoker();
+    string GetDeferredCallsStatistics();
+    void ProcessDeferredCalls();
     // Todo: rework FONLINE_
     /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        static bool LoadDeferredCalls();
+        bool LoadDeferredCalls();
     #endif*/
 
-    static StrVec GetCustomEntityTypes();
+    StrVec GetCustomEntityTypes();
     /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        static bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
+        bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
     #endif*/
 
-    static EventData* FindInternalEvent(const string& event_name);
-    static bool RaiseInternalEvent(EventData* event_ptr, ...);
-    static void RemoveEventsEntity(Entity* entity);
+    EventData* FindInternalEvent(const string& event_name);
+    bool RaiseInternalEvent(EventData* event_ptr, ...);
+    void RemoveEventsEntity(Entity* entity);
 
-    static void HandleRpc(void* context);
+    void HandleRpc(void* context);
 
-    static string GetActiveFuncName();
+    string GetActiveFuncName();
 
-    static void Watcher(void*);
-    static void SetRunTimeout(uint abort_timeout, uint message_timeout);
+    void Define(const string& define);
+    void Undef(const string& define);
+    void CallPragmas(const Pragmas& pragmas);
+    bool LoadRootModule(const ScriptEntryVec& scripts, string& result_code);
+    bool RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_data);
 
-    static void Define(const string& define);
-    static void Undef(const string& define);
-    static void CallPragmas(const Pragmas& pragmas);
-    static bool LoadRootModule(const ScriptEntryVec& scripts, string& result_code);
-    static bool RestoreRootModule(const UCharVec& bytecode, const UCharVec& lnt_data);
+    uint BindByFuncName(const string& func_name, const string& decl, bool is_temp, bool disable_log = false);
+    uint BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log = false);
+    uint BindByFuncNum(hash func_num, bool is_temp, bool disable_log = false);
+    asIScriptFunction* GetBindFunc(uint bind_id);
+    string GetBindFuncName(uint bind_id);
 
-    static uint BindByFuncName(const string& func_name, const string& decl, bool is_temp, bool disable_log = false);
-    static uint BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log = false);
-    static uint BindByFuncNum(hash func_num, bool is_temp, bool disable_log = false);
-    static asIScriptFunction* GetBindFunc(uint bind_id);
-    static string GetBindFuncName(uint bind_id);
+    hash GetFuncNum(asIScriptFunction* func);
+    asIScriptFunction* FindFunc(hash func_num);
+    hash BindScriptFuncNumByFuncName(const string& func_name, const string& decl);
+    hash BindScriptFuncNumByFunc(asIScriptFunction* func);
+    uint GetScriptFuncBindId(hash func_num);
+    void PrepareScriptFuncContext(hash func_num, const string& ctx_info);
 
-    static hash GetFuncNum(asIScriptFunction* func);
-    static asIScriptFunction* FindFunc(hash func_num);
-    static hash BindScriptFuncNumByFuncName(const string& func_name, const string& decl);
-    static hash BindScriptFuncNumByFunc(asIScriptFunction* func);
-    static uint GetScriptFuncBindId(hash func_num);
-    static void PrepareScriptFuncContext(hash func_num, const string& ctx_info);
+    void CacheEnumValues();
+    int GetEnumValue(const string& enum_value_name, bool& fail);
+    int GetEnumValue(const string& enum_name, const string& value_name, bool& fail);
+    string GetEnumValueName(const string& enum_name, int value);
 
-    static void CacheEnumValues();
-    static int GetEnumValue(const string& enum_value_name, bool& fail);
-    static int GetEnumValue(const string& enum_name, const string& value_name, bool& fail);
-    static string GetEnumValueName(const string& enum_name, int value);
-
-    // Script execution
-    static void PrepareContext(uint bind_id, const string& ctx_info);
-    static void SetArgUChar(uchar value);
-    static void SetArgUShort(ushort value);
-    static void SetArgUInt(uint value);
-    static void SetArgUInt64(uint64 value);
-    static void SetArgBool(bool value);
-    static void SetArgFloat(float value);
-    static void SetArgDouble(double value);
-    static void SetArgObject(void* value);
-    static void SetArgEntity(Entity* value);
-    static void SetArgAddress(void* value);
-    static bool RunPrepared();
-    static void RunPreparedSuspend();
-    static asIScriptContext* SuspendCurrentContext(uint time);
-    static void ResumeContext(asIScriptContext* ctx);
-    static void RunSuspended();
-    static void RunMandatorySuspended();
-    static bool CheckContextEntities(asIScriptContext* ctx);
-    static uint GetReturnedUInt();
-    static bool GetReturnedBool();
-    static void* GetReturnedObject();
-    static float GetReturnedFloat();
-    static double GetReturnedDouble();
-    static void* GetReturnedRawAddress();
+    void PrepareContext(uint bind_id, const string& ctx_info);
+    void SetArgUChar(uchar value);
+    void SetArgUShort(ushort value);
+    void SetArgUInt(uint value);
+    void SetArgUInt64(uint64 value);
+    void SetArgBool(bool value);
+    void SetArgFloat(float value);
+    void SetArgDouble(double value);
+    void SetArgObject(void* value);
+    void SetArgEntity(Entity* value);
+    void SetArgAddress(void* value);
+    bool RunPrepared();
+    void RunPreparedSuspend();
+    asIScriptContext* SuspendCurrentContext(uint time);
+    void ResumeContext(asIScriptContext* ctx);
+    void RunSuspended();
+    void RunMandatorySuspended();
+    bool CheckContextEntities(asIScriptContext* ctx);
+    uint GetReturnedUInt();
+    bool GetReturnedBool();
+    void* GetReturnedObject();
+    float GetReturnedFloat();
+    double GetReturnedDouble();
+    void* GetReturnedRawAddress();
 
     // Logging
-    static void Log(const string& str);
+    void Log(const string& str);
 
-    static void CallbackMessage(const asSMessageInfo* msg, void* param);
-    static void CallbackException(asIScriptContext* ctx, void* param);
+    void CallbackMessage(const asSMessageInfo* msg, void* param);
+    void CallbackException(asIScriptContext* ctx, void* param);
 
     // Arrays stuff
-    static CScriptArray* CreateArray(const string& type);
+    CScriptArray* CreateArray(const string& type);
 
     template<typename Type>
-    static CScriptArray* CreateArrayRef(const string& type, const vector<Type*>& vec)
+    CScriptArray* CreateArrayRef(const string& type, const vector<Type*>& vec)
     {
         CScriptArray* arr = CreateArray(type);
         AppendVectorToArrayRef(vec, arr);
@@ -234,7 +242,7 @@ public:
     }
 
     template<typename Type>
-    static void AppendVectorToArray(const vector<Type>& vec, CScriptArray* arr)
+    void AppendVectorToArray(const vector<Type>& vec, CScriptArray* arr)
     {
         if (!vec.empty() && arr)
         {
@@ -248,7 +256,7 @@ public:
         }
     }
     template<typename Type>
-    static void AppendVectorToArrayRef(const vector<Type>& vec, CScriptArray* arr)
+    void AppendVectorToArrayRef(const vector<Type>& vec, CScriptArray* arr)
     {
         if (!vec.empty() && arr)
         {
@@ -263,7 +271,7 @@ public:
         }
     }
     template<typename Type>
-    static void AssignScriptArrayInVector(vector<Type>& vec, const CScriptArray* arr)
+    void AssignScriptArrayInVector(vector<Type>& vec, const CScriptArray* arr)
     {
         if (arr)
         {
@@ -279,6 +287,33 @@ public:
             }
         }
     }
+
+private:
+    void CreateContext();
+    void FinishContext(asIScriptContext* ctx);
+    asIScriptContext* RequestContext();
+    void ReturnContext(asIScriptContext* ctx);
+    void Watcher();
+
+    ScriptSettings& settings;
+    FileManager& fileMngr;
+    asIScriptEngine* asEngine {};
+    BindFunctionVec bindedFunctions {};
+    HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
+    ExceptionCallback onException {};
+    ScriptPragmaCallback* pragmaCB {};
+    ScriptInvoker* invoker {};
+    StrIntMap cachedEnums {};
+    map<string, IntStrMap> cachedEnumNames {};
+    asIScriptContext* currentCtx {};
+    size_t currentArg {};
+    void* retValue {};
+    ContextVec freeContexts {};
+    ContextVec busyContexts {};
+#ifdef SCRIPT_WATCHER
+    std::thread scriptWatcherThread {};
+    std::atomic_bool scriptWatcherFinish {};
+#endif
 };
 
 class CBytecodeStream : public asIBinaryStream

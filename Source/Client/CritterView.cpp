@@ -38,7 +38,6 @@
 #include "ItemView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "Script.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
@@ -84,12 +83,13 @@ CLASS_PROPERTY_IMPL(CritterView, IsHide);
 CLASS_PROPERTY_IMPL(CritterView, IsNoFlatten);
 
 CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-    ResourceManager& res_mngr, bool mapper_mode) :
+    ResourceManager& res_mngr, ScriptSystem& script_sys, bool mapper_mode) :
     Entity(id, EntityType::CritterView, PropertiesRegistrator, proto),
     settings {sett},
     geomHelper(settings),
     sprMngr {spr_mngr},
     resMngr {res_mngr},
+    scriptSys {script_sys},
     mapperMode {mapper_mode}
 {
     SprId = 0;
@@ -130,7 +130,7 @@ CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett
     memzero(anim3dLayers, sizeof(anim3dLayers));
     textOnHeadColor = COLOR_CRITTER_NAME;
 
-    CScriptArray* arr = Script::CreateArray("int[]");
+    CScriptArray* arr = scriptSys.CreateArray("int[]");
     arr->Resize(LAYERS3D_COUNT);
     SetAnim3dLayer(arr);
     arr->Release();
@@ -217,7 +217,7 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     InvItems.erase(it);
 
     item->IsDestroyed = true;
-    Script::RemoveEventsEntity(item);
+    scriptSys.RemoveEventsEntity(item);
     item->Release();
 
     if (animate && !IsAnim())
@@ -300,7 +300,7 @@ bool CritterView::CheckFind(int find_type)
 uint CritterView::GetAttackDist()
 {
     uint dist = 0;
-    Script::RaiseInternalEvent(ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist);
+    scriptSys.RaiseInternalEvent(ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist);
     return dist;
 }
 
@@ -512,7 +512,7 @@ void CritterView::Move(int dir)
 
 void CritterView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
 {
-    Script::RaiseInternalEvent(ClientFunctions.CritterAction, local_call, this, action, action_ext, item);
+    scriptSys.RaiseInternalEvent(ClientFunctions.CritterAction, local_call, this, action, action_ext, item);
 
     switch (action)
     {
@@ -791,7 +791,7 @@ uint CritterView::GetAnim2()
 
 void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
 {
-    Script::RaiseInternalEvent(is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess,
+    scriptSys.RaiseInternalEvent(is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess,
         animate_stay, this, anim1, anim2, item);
 }
 

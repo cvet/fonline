@@ -41,19 +41,19 @@
 #include "MapLoader.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
-#include "Script.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
 MapManager::MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    CritterManager& cr_mngr, ItemManager& item_mngr) :
+    CritterManager& cr_mngr, ItemManager& item_mngr, ScriptSystem& script_sys) :
     settings {sett},
     geomHelper(settings),
-    protoMngr(proto_mngr),
-    entityMngr(entity_mngr),
-    crMngr(cr_mngr),
-    itemMngr(item_mngr)
+    protoMngr {proto_mngr},
+    entityMngr {entity_mngr},
+    crMngr {cr_mngr},
+    itemMngr {item_mngr},
+    scriptSys {script_sys}
 {
     for (int i = 1; i < FPATH_DATA_SIZE; i++)
         pathesPool[i].reserve(100);
@@ -72,7 +72,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     MapLoader::Load(
         pmap->GetName(), file_mngr, protoMngr,
         [&static_map, this](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
-            Npc* npc = new Npc(id, proto, settings);
+            Npc* npc = new Npc(id, proto, settings, scriptSys);
             if (!npc->Props.LoadFromText(kv))
             {
                 delete npc;
@@ -82,8 +82,8 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             static_map.CrittersVec.push_back(npc);
             return true;
         },
-        [&static_map](uint id, ProtoItem* proto, const StrMap& kv) -> bool {
-            Item* item = new Item(id, proto);
+        [&static_map, this](uint id, ProtoItem* proto, const StrMap& kv) -> bool {
+            Item* item = new Item(id, proto, scriptSys);
             if (!item->Props.LoadFromText(kv))
             {
                 delete item;
@@ -101,7 +101,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     if (pmap->GetScriptId())
     {
         hash func_num =
-            Script::BindScriptFuncNumByFuncName(_str().parseHash(pmap->GetScriptId()), "void %s(Map, bool)");
+            scriptSys.BindScriptFuncNumByFuncName(_str().parseHash(pmap->GetScriptId()), "void %s(Map, bool)");
         if (!func_num)
         {
             WriteLog(
@@ -115,7 +115,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         if (cr->GetScriptId())
         {
             string func_name = _str().parseHash(cr->GetScriptId());
-            hash func_num = Script::BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
+            hash func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
             if (!func_num)
             {
                 WriteLog("Map '{}', can't bind critter function '{}'.\n", pmap->GetName(), func_name);
@@ -129,7 +129,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         if (!item->IsStatic() && item->GetScriptId())
         {
             string func_name = _str().parseHash(item->GetScriptId());
-            hash func_num = Script::BindScriptFuncNumByFuncName(func_name, "void %s(Item, bool)");
+            hash func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Item, bool)");
             if (!func_num)
             {
                 WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
@@ -141,9 +141,9 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             string func_name = _str().parseHash(item->GetScriptId());
             uint bind_id = 0;
             if (item->GetIsTrigger() || item->GetIsTrap())
-                bind_id = Script::BindByFuncName(func_name, "void %s(Critter, const Item, bool, uint8)", false);
+                bind_id = scriptSys.BindByFuncName(func_name, "void %s(Critter, const Item, bool, uint8)", false);
             else
-                bind_id = Script::BindByFuncName(func_name, "bool %s(Critter, const Item, Item, int)", false);
+                bind_id = scriptSys.BindByFuncName(func_name, "bool %s(Critter, const Item, Item, int)", false);
 
             if (!bind_id)
             {
@@ -425,8 +425,8 @@ bool MapManager::RestoreLocation(uint id, hash proto_id, const DataBase::Documen
         return false;
     }
 
-    Location* loc = new Location(id, proto);
-    if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc))
+    Location* loc = new Location(id, proto, scriptSys);
+    if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for location '{}' ({}).\n", _str().parseHash(proto_id), id);
         loc->Release();
@@ -486,7 +486,7 @@ Location* MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy)
         return nullptr;
     }
 
-    Location* loc = new Location(0, proto);
+    Location* loc = new Location(0, proto, scriptSys);
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
     CScriptArray* pids = loc->GetMapProtos();
@@ -522,10 +522,10 @@ Location* MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy)
     for (Map* map : maps)
     {
         for (Item* item : map->GetItems())
-            Script::RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
-        Script::RaiseInternalEvent(ServerFunctions.MapInit, map, true);
+            scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
+        scriptSys.RaiseInternalEvent(ServerFunctions.MapInit, map, true);
     }
-    Script::RaiseInternalEvent(ServerFunctions.LocationInit, loc, true);
+    scriptSys.RaiseInternalEvent(ServerFunctions.LocationInit, loc, true);
 
     return loc;
 }
@@ -543,7 +543,7 @@ Map* MapManager::CreateMap(hash proto_id, Location* loc)
     if (it == staticMaps.end())
         throw MapManagerException("Static map not found", proto_id);
 
-    Map* map = new Map(0, proto_map, loc, &it->second, settings);
+    Map* map = new Map(0, proto_map, loc, &it->second, settings, scriptSys);
     MapVec& maps = loc->GetMapsRaw();
     map->SetLocId(loc->GetId());
     map->SetLocMapIndex((uint)maps.size());
@@ -566,8 +566,8 @@ bool MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& do
     if (it == staticMaps.end())
         throw MapManagerException("Static map not found", proto_id);
 
-    Map* map = new Map(id, proto_map, nullptr, &it->second, settings);
-    if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc))
+    Map* map = new Map(id, proto_map, nullptr, &it->second, settings, scriptSys);
+    if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for map '{}' ({}).\n", _str().parseHash(proto_id), id);
         map->Release();
@@ -580,12 +580,12 @@ bool MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& do
 
 void MapManager::RegenerateMap(Map* map)
 {
-    Script::RaiseInternalEvent(ServerFunctions.MapFinish, map);
+    scriptSys.RaiseInternalEvent(ServerFunctions.MapFinish, map);
     DeleteMapContent(map);
     GenerateMapContent(map);
     for (auto item : map->GetItems())
-        Script::RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
-    Script::RaiseInternalEvent(ServerFunctions.MapInit, map, true);
+        scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
+    scriptSys.RaiseInternalEvent(ServerFunctions.MapInit, map, true);
 }
 
 Map* MapManager::GetMap(uint map_id)
@@ -715,9 +715,9 @@ void MapManager::DeleteLocation(Location* loc, ClientVec* gmap_players)
         (*it)->IsDestroying = true;
 
     // Finish events
-    Script::RaiseInternalEvent(ServerFunctions.LocationFinish, loc);
+    scriptSys.RaiseInternalEvent(ServerFunctions.LocationFinish, loc);
     for (auto it = maps.begin(); it != maps.end(); ++it)
-        Script::RaiseInternalEvent(ServerFunctions.MapFinish, *it);
+        scriptSys.RaiseInternalEvent(ServerFunctions.MapFinish, *it);
 
     // Send players on global map about this
     ClientVec players;
@@ -1756,7 +1756,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
 
         map->AddCritter(cr);
 
-        Script::RaiseInternalEvent(ServerFunctions.MapCritterIn, map, cr);
+        scriptSys.RaiseInternalEvent(ServerFunctions.MapCritterIn, map, cr);
     }
     else
     {
@@ -1791,7 +1791,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->GlobalMapGroup->push_back(cr);
         }
 
-        Script::RaiseInternalEvent(ServerFunctions.GlobalMapCritterIn, cr);
+        scriptSys.RaiseInternalEvent(ServerFunctions.GlobalMapCritterIn, cr);
     }
 
     cr->LockMapTransfers--;
@@ -1803,11 +1803,11 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
     if (map)
     {
-        Script::RaiseInternalEvent(ServerFunctions.MapCritterOut, map, cr);
+        scriptSys.RaiseInternalEvent(ServerFunctions.MapCritterOut, map, cr);
 
         CritterVec critters = cr->VisCr;
         for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
-            Script::RaiseInternalEvent(ServerFunctions.CritterHide, *it, cr);
+            scriptSys.RaiseInternalEvent(ServerFunctions.CritterHide, *it, cr);
 
         cr->ClearVisible();
         map->EraseCritter(cr);
@@ -1821,7 +1821,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     {
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        Script::RaiseInternalEvent(ServerFunctions.GlobalMapCritterOut, cr);
+        scriptSys.RaiseInternalEvent(ServerFunctions.GlobalMapCritterOut, cr);
 
         auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
         cr->GlobalMapGroup->erase(it);
@@ -1909,15 +1909,15 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
         if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
         {
-            bool allow_self = Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr);
-            bool allow_opp = Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, cr, view_cr);
+            bool allow_self = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr);
+            bool allow_opp = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckLook, map, cr, view_cr);
 
             if (allow_self)
             {
                 if (cr->AddCrIntoVisVec(view_cr))
                 {
                     view_cr->Send_AddCritter(cr);
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShow, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShow, view_cr, cr);
                 }
             }
             else
@@ -1925,7 +1925,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if (cr->DelCrFromVisVec(view_cr))
                 {
                     view_cr->Send_RemoveCritter(cr);
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHide, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHide, view_cr, cr);
                 }
             }
 
@@ -1934,7 +1934,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if (view_cr->AddCrIntoVisVec(cr))
                 {
                     cr->Send_AddCritter(view_cr);
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShow, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShow, cr, view_cr);
                 }
             }
             else
@@ -1942,7 +1942,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if (view_cr->DelCrFromVisVec(cr))
                 {
                     cr->Send_RemoveCritter(view_cr);
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHide, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHide, cr, view_cr);
                 }
             }
 
@@ -1953,12 +1953,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                     if ((int)show_cr_dist1 >= dist)
                     {
                         if (view_cr->AddCrIntoVisSet1(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterShowDist1, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist1, view_cr, cr);
                     }
                     else
                     {
                         if (view_cr->DelCrFromVisSet1(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterHideDist1, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist1, view_cr, cr);
                     }
                 }
                 if (show_cr2)
@@ -1966,12 +1966,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                     if ((int)show_cr_dist2 >= dist)
                     {
                         if (view_cr->AddCrIntoVisSet2(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterShowDist2, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist2, view_cr, cr);
                     }
                     else
                     {
                         if (view_cr->DelCrFromVisSet2(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterHideDist2, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist2, view_cr, cr);
                     }
                 }
                 if (show_cr3)
@@ -1979,12 +1979,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                     if ((int)show_cr_dist3 >= dist)
                     {
                         if (view_cr->AddCrIntoVisSet3(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterShowDist3, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist3, view_cr, cr);
                     }
                     else
                     {
                         if (view_cr->DelCrFromVisSet3(cr->GetId()))
-                            Script::RaiseInternalEvent(ServerFunctions.CritterHideDist3, view_cr, cr);
+                            scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist3, view_cr, cr);
                     }
                 }
             }
@@ -1995,12 +1995,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if ((int)cr_dist >= dist)
                 {
                     if (cr->AddCrIntoVisSet1(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
                 }
                 else
                 {
                     if (cr->DelCrFromVisSet1(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterHideDist1, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist1, cr, view_cr);
                 }
             }
             cr_dist = cr->GetShowCritterDist2();
@@ -2009,12 +2009,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if ((int)cr_dist >= dist)
                 {
                     if (cr->AddCrIntoVisSet2(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterShowDist2, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist2, cr, view_cr);
                 }
                 else
                 {
                     if (cr->DelCrFromVisSet2(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterHideDist2, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist2, cr, view_cr);
                 }
             }
             cr_dist = cr->GetShowCritterDist3();
@@ -2023,12 +2023,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if ((int)cr_dist >= dist)
                 {
                     if (cr->AddCrIntoVisSet3(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
                 }
                 else
                 {
                     if (cr->DelCrFromVisSet3(view_cr->GetId()))
-                        Script::RaiseInternalEvent(ServerFunctions.CritterHideDist3, cr, view_cr);
+                        scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist3, cr, view_cr);
                 }
             }
             continue;
@@ -2102,7 +2102,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (cr->AddCrIntoVisVec(view_cr))
             {
                 view_cr->Send_AddCritter(cr);
-                Script::RaiseInternalEvent(ServerFunctions.CritterShow, view_cr, cr);
+                scriptSys.RaiseInternalEvent(ServerFunctions.CritterShow, view_cr, cr);
             }
         }
         else
@@ -2110,7 +2110,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (cr->DelCrFromVisVec(view_cr))
             {
                 view_cr->Send_RemoveCritter(cr);
-                Script::RaiseInternalEvent(ServerFunctions.CritterHide, view_cr, cr);
+                scriptSys.RaiseInternalEvent(ServerFunctions.CritterHide, view_cr, cr);
             }
         }
 
@@ -2119,12 +2119,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)show_cr_dist1 >= dist)
             {
                 if (view_cr->AddCrIntoVisSet1(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist1, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist1, view_cr, cr);
             }
             else
             {
                 if (view_cr->DelCrFromVisSet1(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist1, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist1, view_cr, cr);
             }
         }
         if (show_cr2)
@@ -2132,12 +2132,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)show_cr_dist2 >= dist)
             {
                 if (view_cr->AddCrIntoVisSet2(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist2, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist2, view_cr, cr);
             }
             else
             {
                 if (view_cr->DelCrFromVisSet2(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist2, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist2, view_cr, cr);
             }
         }
         if (show_cr3)
@@ -2145,12 +2145,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)show_cr_dist3 >= dist)
             {
                 if (view_cr->AddCrIntoVisSet3(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist3, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist3, view_cr, cr);
             }
             else
             {
                 if (view_cr->DelCrFromVisSet3(cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist3, view_cr, cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist3, view_cr, cr);
             }
         }
 
@@ -2185,7 +2185,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (view_cr->AddCrIntoVisVec(cr))
             {
                 cr->Send_AddCritter(view_cr);
-                Script::RaiseInternalEvent(ServerFunctions.CritterShow, cr, view_cr);
+                scriptSys.RaiseInternalEvent(ServerFunctions.CritterShow, cr, view_cr);
             }
         }
         else
@@ -2193,7 +2193,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (view_cr->DelCrFromVisVec(cr))
             {
                 cr->Send_RemoveCritter(view_cr);
-                Script::RaiseInternalEvent(ServerFunctions.CritterHide, cr, view_cr);
+                scriptSys.RaiseInternalEvent(ServerFunctions.CritterHide, cr, view_cr);
             }
         }
 
@@ -2203,12 +2203,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)cr_dist >= dist)
             {
                 if (cr->AddCrIntoVisSet1(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist1, cr, view_cr);
             }
             else
             {
                 if (cr->DelCrFromVisSet1(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist1, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist1, cr, view_cr);
             }
         }
         cr_dist = cr->GetShowCritterDist2();
@@ -2217,12 +2217,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)cr_dist >= dist)
             {
                 if (cr->AddCrIntoVisSet2(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist2, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist2, cr, view_cr);
             }
             else
             {
                 if (cr->DelCrFromVisSet2(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist2, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist2, cr, view_cr);
             }
         }
         cr_dist = cr->GetShowCritterDist3();
@@ -2231,12 +2231,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if ((int)cr_dist >= dist)
             {
                 if (cr->AddCrIntoVisSet3(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterShowDist3, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowDist3, cr, view_cr);
             }
             else
             {
                 if (cr->DelCrFromVisSet3(view_cr->GetId()))
-                    Script::RaiseInternalEvent(ServerFunctions.CritterHideDist3, cr, view_cr);
+                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideDist3, cr, view_cr);
             }
         }
     }
@@ -2266,7 +2266,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             if (view_cr->AddIdVisItem(item->GetId()))
             {
                 view_cr->Send_AddItemOnMap(item);
-                Script::RaiseInternalEvent(
+                scriptSys.RaiseInternalEvent(
                     ServerFunctions.CritterShowItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
             }
         }
@@ -2275,7 +2275,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             bool allowed = false;
             if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
             {
-                allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
+                allowed = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
             }
             else
             {
@@ -2291,7 +2291,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
                 if (view_cr->AddIdVisItem(item->GetId()))
                 {
                     view_cr->Send_AddItemOnMap(item);
-                    Script::RaiseInternalEvent(
+                    scriptSys.RaiseInternalEvent(
                         ServerFunctions.CritterShowItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
@@ -2300,7 +2300,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
                 if (view_cr->DelIdVisItem(item->GetId()))
                 {
                     view_cr->Send_EraseItemFromMap(item);
-                    Script::RaiseInternalEvent(
+                    scriptSys.RaiseInternalEvent(
                         ServerFunctions.CritterHideItemOnMap, view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
@@ -2325,7 +2325,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
 
         if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
         {
-            if (Script::RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr))
+            if (scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckLook, map, view_cr, cr))
                 view_cr->Send_AddCritter(cr);
             continue;
         }
@@ -2403,7 +2403,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
             bool allowed = false;
             if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
             {
-                allowed = Script::RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
+                allowed = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, map, view_cr, item);
             }
             else
             {

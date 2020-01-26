@@ -40,6 +40,8 @@ doubtLine = 'Doubt todo:'
 tailLine = '  '
 githubUrl = 'https://github.com/cvet/fonline/blob/master/'
 priorityFiles = 'Common.h;Common.cpp'
+capitalizeFirstLetter = False
+uncapitalizeFirstLetter = False
 
 def decideNewLine(fileLines):
     crCount = 0
@@ -129,8 +131,13 @@ def generateTodoDesc(todoInfo):
     tdIndex = 0
     for td in todoInfo:
         tdIndex = tdIndex + 1
-        print str(tdIndex) + ': ' + td[0] + ' (' + str(len(td[1])) + ')'
-        desc = '* ' + td[0] + ' ('
+        entryName = td[0]
+        if capitalizeFirstLetter:
+            entryName = entryName[:1].upper() + entryName[1:]
+        if uncapitalizeFirstLetter:
+            entryName = entryName[:1].lower() + entryName[1:]
+        print str(tdIndex) + ': ' + entryName + ' (' + str(len(td[1])) + ')'
+        desc = '* ' + entryName + ' ('
         placeIndex = 0
         for place in td[1]:
             placeIndex = placeIndex + 1

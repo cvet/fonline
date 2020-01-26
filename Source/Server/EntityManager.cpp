@@ -38,12 +38,12 @@
 #include "Log.h"
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
-#include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
-EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr) :
-    mapMngr(map_mngr), crMngr(cr_mngr), itemMngr(item_mngr)
+EntityManager::EntityManager(
+    MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ScriptSystem& script_sys) :
+    mapMngr {map_mngr}, crMngr {cr_mngr}, itemMngr {item_mngr}, scriptSys {script_sys}
 {
 }
 
@@ -88,8 +88,8 @@ void EntityManager::RegisterEntity(Entity* entity)
 
         entity->SetId(id);
 
-        DataBase::Document doc =
-            PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto ? &entity->Proto->Props : nullptr);
+        DataBase::Document doc = PropertiesSerializator::SaveToDbDocument(
+            &entity->Props, entity->Proto ? &entity->Proto->Props : nullptr, scriptSys);
         doc["_Proto"] = entity->Proto ? entity->Proto->GetName() : "";
 
         if (entity->Type == EntityType::Location)
@@ -108,26 +108,15 @@ void EntityManager::RegisterEntity(Entity* entity)
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));
     RUNTIME_ASSERT(it.second);
-
-    entity->MonoHandle = Script::CreateMonoObject(GetEntityTypeMonoName(entity->Type));
-    RUNTIME_ASSERT(entity->MonoHandle);
-
-    long long_id = entity->Id;
-    Script::CallMonoObjectMethod("Entity", "Init(long)", entity->MonoHandle, &long_id);
 }
 
 void EntityManager::UnregisterEntity(Entity* entity)
 {
-    Script::CallMonoObjectMethod("Entity", "Destroy()", entity->MonoHandle, nullptr);
-    Script::DestroyMonoObject(entity->MonoHandle);
-
-    entity->MonoHandle = 0;
-
     auto it = allEntities.find(entity->Id);
     RUNTIME_ASSERT(it != allEntities.end());
     allEntities.erase(it);
 
-    Script::RemoveEventsEntity(entity);
+    scriptSys.RemoveEventsEntity(entity);
 
     if (entity->Type == EntityType::Location)
         DbStorage->Delete("Locations", entity->Id);
@@ -277,7 +266,7 @@ bool EntityManager::LoadEntities()
         EntityType::Custom,
     };
 
-    StrVec custom_types = Script::GetCustomEntityTypes();
+    StrVec custom_types = scriptSys.GetCustomEntityTypes();
     int custom_index = -1;
 
     for (int q = 0; q < 5; q++)
@@ -350,7 +339,7 @@ bool EntityManager::LoadEntities()
             }
             else if (type == EntityType::Custom)
             {
-                /*if (!Script::RestoreCustomEntity(custom_types[custom_index], id, doc))
+                /*if (!scriptSys.RestoreCustomEntity(custom_types[custom_index], id, doc))
                 {
                     WriteLog("Fail to restore entity {} of type {}.\n", id, custom_types[custom_index]);
                     continue;
@@ -593,19 +582,19 @@ void EntityManager::InitAfterLoad()
         if (entity->Type == EntityType::Location)
         {
             Location* loc = (Location*)entity;
-            Script::RaiseInternalEvent(ServerFunctions.LocationInit, loc, false);
+            scriptSys.RaiseInternalEvent(ServerFunctions.LocationInit, loc, false);
         }
         else if (entity->Type == EntityType::Map)
         {
             Map* map = (Map*)entity;
-            Script::RaiseInternalEvent(ServerFunctions.MapInit, map, false);
+            scriptSys.RaiseInternalEvent(ServerFunctions.MapInit, map, false);
             if (!map->IsDestroyed && map->GetScriptId())
                 map->SetScript(nullptr, false);
         }
         else if (entity->Type == EntityType::Npc)
         {
             Npc* npc = (Npc*)entity;
-            Script::RaiseInternalEvent(ServerFunctions.CritterInit, npc, false);
+            scriptSys.RaiseInternalEvent(ServerFunctions.CritterInit, npc, false);
             if (!npc->IsDestroyed && npc->GetScriptId())
                 npc->SetScript(nullptr, false);
         }
@@ -615,7 +604,7 @@ void EntityManager::InitAfterLoad()
             if (item->GetIsRadio())
                 itemMngr.RadioRegister(item, true);
             if (!item->IsDestroyed)
-                Script::RaiseInternalEvent(ServerFunctions.ItemInit, item, false);
+                scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, false);
             if (!item->IsDestroyed && item->GetScriptId())
                 item->SetScript(nullptr, false);
         }
@@ -631,7 +620,7 @@ void EntityManager::ClearEntities()
     for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
     {
         it->second->IsDestroyed = true;
-        Script::RemoveEventsEntity(it->second);
+        scriptSys.RemoveEventsEntity(it->second);
         entitiesCount[(int)it->second->Type]--;
         SAFEREL(it->second);
     }

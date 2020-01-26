@@ -40,7 +40,6 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
-#include "Script.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -116,8 +115,8 @@ CLASS_PROPERTY_IMPL(Critter, ShowCritterDist2);
 CLASS_PROPERTY_IMPL(Critter, ShowCritterDist3);
 CLASS_PROPERTY_IMPL(Critter, ScriptId);
 
-Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett) :
-    Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings)
+Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+    Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings), scriptSys {script_sys}
 {
     CritterIsNpc = false;
     GlobalMapGroup = nullptr;
@@ -165,7 +164,7 @@ void Critter::SetBreakTimeDelta(uint ms)
 uint Critter::GetAttackDist(Item* weap, int use)
 {
     uint dist = 1;
-    Script::RaiseInternalEvent(ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist);
+    scriptSys.RaiseInternalEvent(ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist);
     return dist;
 }
 
@@ -457,7 +456,7 @@ bool Critter::SetScript(asIScriptFunction* func, bool first_time)
     hash func_num = 0;
     if (func)
     {
-        func_num = Script::BindScriptFuncNumByFunc(func);
+        func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
         {
             WriteLog("Script bind fail, critter '{}'.\n", GetName());
@@ -472,10 +471,10 @@ bool Critter::SetScript(asIScriptFunction* func, bool first_time)
 
     if (func_num)
     {
-        Script::PrepareScriptFuncContext(func_num, GetName());
-        Script::SetArgEntity(this);
-        Script::SetArgBool(first_time);
-        Script::RunPrepared();
+        scriptSys.PrepareScriptFuncContext(func_num, GetName());
+        scriptSys.SetArgEntity(this);
+        scriptSys.SetArgBool(first_time);
+        scriptSys.RunPrepared();
     }
     return true;
 }
@@ -933,7 +932,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
         for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
         {
             Critter* cr = *it;
-            Script::RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
+            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
         }
     }
     break;
@@ -942,7 +941,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
         for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
         {
             Critter* cr = *it;
-            Script::RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
+            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
         }
     }
     break;
@@ -952,7 +951,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
             break;
 
         for (Critter* cr : map->GetCritters())
-            Script::RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
+            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
     }
     break;
     default:
@@ -1053,8 +1052,8 @@ void Critter::ContinueTimeEvents(int offs_time)
     te_next_time->Release();
 }
 
-Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett) :
-    Critter(0, EntityType::Client, proto, sett)
+Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+    Critter(0, EntityType::Client, proto, sett, script_sys)
 {
     Connection = conn;
     Access = ACCESS_DEFAULT;
@@ -1578,7 +1577,7 @@ void Client::Send_SomeItems(CScriptArray* items_arr, int param)
 
     ItemVec items;
     if (items_arr)
-        Script::AssignScriptArrayInVector(items, items_arr);
+        scriptSys.AssignScriptArrayInVector(items, items_arr);
     vector<PUCharVec*> items_data(items.size());
     vector<UIntVec*> items_data_sizes(items.size());
     for (size_t i = 0, j = items.size(); i < j; i++)
@@ -2259,14 +2258,11 @@ bool Client::IsTalking()
     return Talk.TalkType != TALK_NONE;
 }
 
-Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett) : Critter(id, EntityType::Npc, proto, sett)
+Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+    Critter(id, EntityType::Npc, proto, sett, script_sys)
 {
     CritterIsNpc = true;
     SETFLAG(Flags, FCRIT_NPC);
-}
-
-Npc::~Npc()
-{
 }
 
 uint Npc::GetTalkedPlayers()

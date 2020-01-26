@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "Script.h"
 
 class Item;
 using ItemVec = vector<Item*>;
@@ -50,7 +51,7 @@ class Item : public Entity
     friend class ItemManager;
 
 public:
-    Item(uint id, ProtoItem* proto);
+    Item(uint id, ProtoItem* proto, ScriptSystem& script_sys);
 
     ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
     void SetProto(ProtoItem* proto);
@@ -148,5 +149,6 @@ public:
     Critter* ViewByCritter {};
 
 private:
+    ScriptSystem& scriptSys;
     ItemVec* childItems {};
 };

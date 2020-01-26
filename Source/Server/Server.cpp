@@ -48,17 +48,33 @@
 #include "sha1.h"
 #include "sha2.h"
 
+#define SCRIPT_ERROR_R(error, ...) \
+    do \
+    { \
+        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        return; \
+    } while (0)
+#define SCRIPT_ERROR_R0(error, ...) \
+    do \
+    { \
+        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        return 0; \
+    } while (0)
+
 FOServer* FOServer::Self;
 
 FOServer::FOServer(ServerSettings& sett) :
     Settings {sett},
     GeomHelper(Settings),
+    FileMngr(),
+    ScriptSys(Settings, FileMngr),
     GameTime(Settings, Globals),
     ProtoMngr(),
-    EntityMngr(MapMngr, CrMngr, ItemMngr),
-    MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr),
-    CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr),
-    ItemMngr(ProtoMngr, EntityMngr, MapMngr, CrMngr)
+    EntityMngr(MapMngr, CrMngr, ItemMngr, ScriptSys),
+    MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr, ScriptSys),
+    CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr, ScriptSys),
+    ItemMngr(ProtoMngr, EntityMngr, MapMngr, CrMngr, ScriptSys),
+    DlgMngr(FileMngr, ScriptSys)
 {
     Self = this;
     Active = true;
@@ -104,7 +120,7 @@ void FOServer::Finish()
     if (DbHistory)
         DbHistory->StartChanges();
 
-    Script::RaiseInternalEvent(ServerFunctions.Finish);
+    ScriptSys.RaiseInternalEvent(ServerFunctions.Finish);
     ItemMngr.RadioClear();
     EntityMngr.ClearEntities();
 
@@ -132,9 +148,6 @@ void FOServer::Finish()
     // Shutdown servers
     SAFEDEL(TcpServer);
     SAFEDEL(WebSocketsServer);
-
-    // Managers
-    FinishScriptSystem();
 
     // Statistics
     WriteLog("Server stopped.\n");
@@ -221,9 +234,9 @@ void FOServer::RemoveClient(Client* cl)
     Client* cl_ = (id ? CrMngr.GetPlayer(id) : nullptr);
     if (cl_ && cl_ == cl)
     {
-        Script::RaiseInternalEvent(ServerFunctions.PlayerLogout, cl);
+        ScriptSys.RaiseInternalEvent(ServerFunctions.PlayerLogout, cl);
         if (cl->GetClientToDelete())
-            Script::RaiseInternalEvent(ServerFunctions.CritterFinish, cl);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.CritterFinish, cl);
 
         Map* map = MapMngr.GetMap(cl->GetMapId());
         MapMngr.EraseCrFromMap(cl, map);
@@ -254,7 +267,7 @@ void FOServer::RemoveClient(Client* cl)
     else
     {
         cl->IsDestroyed = true;
-        Script::RemoveEventsEntity(cl);
+        ScriptSys.RemoveEventsEntity(cl);
     }
 }
 
@@ -345,13 +358,13 @@ void FOServer::LogicTick()
     ProcessBans();
 
     // Process pending invocations
-    Script::ProcessDeferredCalls();
+    ScriptSys.ProcessDeferredCalls();
 
     // Script game loop
-    Script::RaiseInternalEvent(ServerFunctions.Loop);
+    ScriptSys.RaiseInternalEvent(ServerFunctions.Loop);
 
     // Suspended contexts
-    Script::RunSuspended();
+    ScriptSys.RunSuspended();
 
     // Commit changed to data base
     DbStorage->CommitChanges();
@@ -442,7 +455,7 @@ void FOServer::DrawGui()
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        Gui.Stats = "WIP..........................."; // Script::GetProfilerStatistics();
+        Gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
         ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
     }
     ImGui::End();
@@ -527,7 +540,7 @@ void FOServer::OnNewConnection(NetConnection* connection)
     // Allocate client
     ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter(_str("Player").toHash());
     RUNTIME_ASSERT(cl_proto);
-    Client* cl = new Client(connection, cl_proto, Settings);
+    Client* cl = new Client(connection, cl_proto, Settings, ScriptSys);
 
     // Add to connected collection
     {
@@ -607,7 +620,7 @@ void FOServer::Process(Client* cl)
                 Process_UpdateFileData(cl);
                 break;
             case NETMSG_RPC:
-                Script::HandleRpc(cl);
+                ScriptSys.HandleRpc(cl);
                 break;
             default:
                 cl->Connection->Bin.SkipMsg(msg);
@@ -728,7 +741,7 @@ void FOServer::Process(Client* cl)
                 continue;
             case NETMSG_RPC:
                 CHECK_BUSY;
-                Script::HandleRpc(cl);
+                ScriptSys.HandleRpc(cl);
                 continue;
             case NETMSG_SEND_POD_PROPERTY(1, 0):
             case NETMSG_SEND_POD_PROPERTY(1, 1):
@@ -914,10 +927,10 @@ void FOServer::Process_Text(Client* cl)
 
     for (int i = 0; i < listen_count; i++)
     {
-        Script::PrepareContext(listen_func_id[i], cl->GetName());
-        Script::SetArgEntity(cl);
-        Script::SetArgObject(&listen_str[i]);
-        Script::RunPrepared();
+        ScriptSys.PrepareContext(listen_func_id[i], cl->GetName());
+        ScriptSys.SetArgEntity(cl);
+        ScriptSys.SetArgObject(&listen_str[i]);
+        ScriptSys.RunPrepared();
     }
 }
 
@@ -937,7 +950,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
     buf >> cmd;
 
     string sstr = (cl_ ? "" : admin_panel);
-    bool allow_command = Script::RaiseInternalEvent(ServerFunctions.PlayerAllowCommand, cl_, &sstr, cmd);
+    bool allow_command = ScriptSys.RaiseInternalEvent(ServerFunctions.PlayerAllowCommand, cl_, &sstr, cmd);
 
     if (!allow_command && !cl_)
     {
@@ -1006,7 +1019,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
             result = MapMngr.GetLocationsMapsStatistics();
             break;
         case 3:
-            result = Script::GetDeferredCallsStatistics();
+            result = ScriptSys.GetDeferredCallsStatistics();
             break;
         case 4:
             result = "WIP";
@@ -1197,7 +1210,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         if (wanted_access != -1)
         {
             string pass = pasw_access;
-            allow = Script::RaiseInternalEvent(ServerFunctions.PlayerGetAccess, cl_, wanted_access, &pass);
+            allow = ScriptSys.RaiseInternalEvent(ServerFunctions.PlayerGetAccess, cl_, wanted_access, &pass);
         }
 
         if (!allow)
@@ -1296,10 +1309,10 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
     case CMD_RELOADSCRIPTS: {
         CHECK_ALLOW_COMMAND;
 
-        Script::Undef("");
-        Script::Define("__SERVER");
-        Script::Define(_str("__VERSION {}", FO_VERSION));
-        if (Script::ReloadScripts("Server"))
+        ScriptSys.Undef("");
+        ScriptSys.Define("__SERVER");
+        ScriptSys.Define(_str("__VERSION {}", FO_VERSION));
+        if (ScriptSys.ReloadScripts("Server"))
             logcb("Success.");
         else
             logcb("Fail.");
@@ -1330,20 +1343,20 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
             break;
         }
 
-        uint bind_id = Script::BindByFuncName(func_name, "void %s(Critter, int, int, int)", true);
+        uint bind_id = ScriptSys.BindByFuncName(func_name, "void %s(Critter, int, int, int)", true);
         if (!bind_id)
         {
             logcb("Fail, function not found.");
             break;
         }
 
-        Script::PrepareContext(bind_id, cl_ ? cl_->GetName() : "AdminPanel");
-        Script::SetArgObject(cl_);
-        Script::SetArgUInt(param0);
-        Script::SetArgUInt(param1);
-        Script::SetArgUInt(param2);
+        ScriptSys.PrepareContext(bind_id, cl_ ? cl_->GetName() : "AdminPanel");
+        ScriptSys.SetArgObject(cl_);
+        ScriptSys.SetArgUInt(param0);
+        ScriptSys.SetArgUInt(param1);
+        ScriptSys.SetArgUInt(param2);
 
-        if (Script::RunPrepared())
+        if (ScriptSys.RunPrepared())
             logcb("Run script success.");
         else
             logcb("Run script fail.");
@@ -1393,7 +1406,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
     case CMD_RELOADDIALOGS: {
         CHECK_ALLOW_COMMAND;
 
-        bool error = DlgMngr.LoadDialogs(FileMngr);
+        bool error = DlgMngr.LoadDialogs();
         InitLangPacksDialogs(LangPacks);
         GenerateUpdateFiles();
         logcb(_str("Dialogs reload done{}.", error ? ", with errors." : ""));
@@ -1708,7 +1721,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         string console_name = _str("DevConsole ({})", cl_ ? cl_->GetName() : admin_panel);
 
         // Get module
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = ScriptSys.GetEngine();
         asIScriptModule* mod = engine->GetModule(console_name.c_str());
         if (!mod)
         {
@@ -1878,7 +1891,7 @@ bool FOServer::InitReal()
     LoadBans();
 
     // Managers
-    if (!DlgMngr.LoadDialogs(FileMngr))
+    if (!DlgMngr.LoadDialogs())
         return false; // Dialog manager
     if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
         return false;
@@ -1892,7 +1905,7 @@ bool FOServer::InitReal()
         return false; // Create FOITEM.MSG, need call after InitLangPacks and ItemMngr.LoadProtos
 
     // Scripts post check
-    if (!Script::PostInitScriptSystem())
+    if (!ScriptSys.PostInitScriptSystem())
         return false;
 
     // Load globals
@@ -1904,7 +1917,7 @@ bool FOServer::InitReal()
     }
     else
     {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc))
+        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, ScriptSys))
         {
             WriteLog("Failed to load globals document.\n");
             return false;
@@ -1917,12 +1930,12 @@ bool FOServer::InitReal()
     // _str::loadHashes();
 
     // Deferred calls
-    // if (!Script::LoadDeferredCalls())
+    // if (!ScriptSys.LoadDeferredCalls())
     //    return false;
 
     // Modules initialization
     Timer::UpdateTick();
-    if (!Script::RunModuleInitFunctions())
+    if (!ScriptSys.RunModuleInitFunctions())
         return false;
 
     // Update files
@@ -1935,7 +1948,7 @@ bool FOServer::InitReal()
 
     // Initialization script
     Timer::UpdateTick();
-    if (!Script::RaiseInternalEvent(ServerFunctions.Init))
+    if (!ScriptSys.RaiseInternalEvent(ServerFunctions.Init))
     {
         WriteLog("Initialization script return false.\n");
         return false;
@@ -1945,7 +1958,7 @@ bool FOServer::InitReal()
     if (globals_doc.empty())
     {
         // Generate world
-        if (!Script::RaiseInternalEvent(ServerFunctions.GenerateWorld))
+        if (!ScriptSys.RaiseInternalEvent(ServerFunctions.GenerateWorld))
         {
             WriteLog("Generate world script failed.\n");
             return false;
@@ -1959,7 +1972,7 @@ bool FOServer::InitReal()
     }
 
     // Start script
-    if (!Script::RaiseInternalEvent(ServerFunctions.Start))
+    if (!ScriptSys.RaiseInternalEvent(ServerFunctions.Start))
     {
         WriteLog("Start script fail.\n");
         return false;
@@ -1985,9 +1998,6 @@ bool FOServer::InitReal()
     if (!(WebSocketsServer = NetServerBase::StartWebSocketsServer(
               Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
         return false;
-
-    // Script timeouts
-    Script::SetRunTimeout(Settings.ScriptRunSuspendTimeout, Settings.ScriptRunMessageTimeout);
 
     Active = true;
     return true;
@@ -2386,7 +2396,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
 
     // Callback after generation
     if (first_generation)
-        Script::RaiseInternalEvent(ServerFunctions.ResourcesGenerated);
+        ScriptSys.RaiseInternalEvent(ServerFunctions.ResourcesGenerated);
 
     // Append binaries
     FileCollection binaries = FileMngr.FilterFiles("", "Binaries/");
@@ -2415,7 +2425,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
     if (!entity->Id || prop->IsTemporary())
         return;
 
-    DataBase::Value value = PropertiesSerializator::SavePropertyToDbValue(&entity->Props, prop);
+    DataBase::Value value = PropertiesSerializator::SavePropertyToDbValue(&entity->Props, prop, Self->ScriptSys);
 
     if (entity->Type == EntityType::Location)
         DbStorage->Update("Locations", entity->Id, prop->GetName(), value);
@@ -2478,9 +2488,9 @@ void FOServer::ProcessCritter(Critter* cr)
     ProcessMove(cr);
 
     // Idle functions
-    Script::RaiseInternalEvent(ServerFunctions.CritterIdle, cr);
+    ScriptSys.RaiseInternalEvent(ServerFunctions.CritterIdle, cr);
     if (!cr->GetMapId())
-        Script::RaiseInternalEvent(ServerFunctions.CritterGlobalMapIdle, cr);
+        ScriptSys.RaiseInternalEvent(ServerFunctions.CritterGlobalMapIdle, cr);
 
     // Internal misc/drugs time events
     // One event per cycle
@@ -2506,12 +2516,12 @@ void FOServer::ProcessCritter(Critter* cr)
             cr->EraseCrTimeEvent(0);
 
             uint time = Globals->GetTimeMultiplier() * 1800; // 30 minutes on error
-            Script::PrepareScriptFuncContext(func_num, cr->GetName());
-            Script::SetArgEntity(cr);
-            Script::SetArgUInt(identifier);
-            Script::SetArgAddress(&rate);
-            if (Script::RunPrepared())
-                time = Script::GetReturnedUInt();
+            ScriptSys.PrepareScriptFuncContext(func_num, cr->GetName());
+            ScriptSys.SetArgEntity(cr);
+            ScriptSys.SetArgUInt(identifier);
+            ScriptSys.SetArgAddress(&rate);
+            if (ScriptSys.RunPrepared())
+                time = ScriptSys.GetReturnedUInt();
             if (time)
                 cr->AddCrTimeEvent(func_num, rate, time, identifier);
         }
@@ -2634,15 +2644,15 @@ void FOServer::VerifyTrigger(
         {
             if (item->SceneryScriptBindId)
             {
-                Script::PrepareContext(item->SceneryScriptBindId, cr->GetName());
-                Script::SetArgEntity(cr);
-                Script::SetArgEntity(item);
-                Script::SetArgBool(false);
-                Script::SetArgUChar(dir);
-                Script::RunPreparedSuspend();
+                ScriptSys.PrepareContext(item->SceneryScriptBindId, cr->GetName());
+                ScriptSys.SetArgEntity(cr);
+                ScriptSys.SetArgEntity(item);
+                ScriptSys.SetArgBool(false);
+                ScriptSys.SetArgUChar(dir);
+                ScriptSys.RunPreparedSuspend();
             }
 
-            Script::RaiseInternalEvent(ServerFunctions.StaticItemWalk, item, cr, false, dir);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.StaticItemWalk, item, cr, false, dir);
         }
     }
 
@@ -2654,15 +2664,15 @@ void FOServer::VerifyTrigger(
         {
             if (item->SceneryScriptBindId)
             {
-                Script::PrepareContext(item->SceneryScriptBindId, cr->GetName());
-                Script::SetArgEntity(cr);
-                Script::SetArgEntity(item);
-                Script::SetArgBool(true);
-                Script::SetArgUChar(dir);
-                Script::RunPreparedSuspend();
+                ScriptSys.PrepareContext(item->SceneryScriptBindId, cr->GetName());
+                ScriptSys.SetArgEntity(cr);
+                ScriptSys.SetArgEntity(item);
+                ScriptSys.SetArgBool(true);
+                ScriptSys.SetArgUChar(dir);
+                ScriptSys.RunPreparedSuspend();
             }
 
-            Script::RaiseInternalEvent(ServerFunctions.StaticItemWalk, item, cr, true, dir);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.StaticItemWalk, item, cr, true, dir);
         }
     }
 
@@ -2671,7 +2681,7 @@ void FOServer::VerifyTrigger(
         ItemVec triggers;
         map->GetItemsTrigger(from_hx, from_hy, triggers);
         for (Item* item : triggers)
-            Script::RaiseInternalEvent(ServerFunctions.ItemWalk, item, cr, false, dir);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.ItemWalk, item, cr, false, dir);
     }
 
     if (map->IsHexTrigger(to_hx, to_hy))
@@ -2679,7 +2689,7 @@ void FOServer::VerifyTrigger(
         ItemVec triggers;
         map->GetItemsTrigger(to_hx, to_hy, triggers);
         for (Item* item : triggers)
-            Script::RaiseInternalEvent(ServerFunctions.ItemWalk, item, cr, true, dir);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.ItemWalk, item, cr, true, dir);
     }
 }
 
@@ -2883,7 +2893,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
     uint disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
-    bool allow = Script::RaiseInternalEvent(
+    bool allow = ScriptSys.RaiseInternalEvent(
         ServerFunctions.PlayerRegistration, cl->GetIp(), &cl->Name, &disallow_msg_num, &disallow_str_num, &lexems);
     if (!allow)
     {
@@ -2903,12 +2913,12 @@ void FOServer::Process_CreateClient(Client* cl)
     cl->SetWorldY((Settings.GlobalMapHeight * Settings.GlobalMapZoneLength) / 2);
     cl->SetCond(COND_LIFE);
 
-    CScriptArray* arr_reg_ip = Script::CreateArray("uint[]");
+    CScriptArray* arr_reg_ip = ScriptSys.CreateArray("uint[]");
     uint reg_ip = cl->GetIp();
     arr_reg_ip->InsertLast(&reg_ip);
     cl->SetConnectionIp(arr_reg_ip);
     SAFEREL(arr_reg_ip);
-    CScriptArray* arr_reg_port = Script::CreateArray("uint16[]");
+    CScriptArray* arr_reg_port = ScriptSys.CreateArray("uint16[]");
     ushort reg_port = cl->GetPort();
     arr_reg_port->InsertLast(&reg_port);
     cl->SetConnectionPort(arr_reg_port);
@@ -2932,7 +2942,7 @@ void FOServer::Process_CreateClient(Client* cl)
     RUNTIME_ASSERT(can);
     MapMngr.AddCrToMap(cl, nullptr, 0, 0, 0, 0);
 
-    if (!Script::RaiseInternalEvent(ServerFunctions.CritterInit, cl, true))
+    if (!ScriptSys.RaiseInternalEvent(ServerFunctions.CritterInit, cl, true))
     {
         // Todo: remove from game
     }
@@ -3049,7 +3059,7 @@ void FOServer::Process_LogIn(Client*& cl)
     // Request script
     uint disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
-    bool allow = Script::RaiseInternalEvent(
+    bool allow = ScriptSys.RaiseInternalEvent(
         ServerFunctions.PlayerLogin, cl->GetIp(), &cl->Name, id, &disallow_msg_num, &disallow_str_num, &lexems);
     if (!allow)
     {
@@ -3084,7 +3094,7 @@ void FOServer::Process_LogIn(Client*& cl)
             SETFLAG(cl->Flags, FCRIT_DISCONNECT);
             cl->IsDestroyed = true;
             cl_old->IsDestroyed = false;
-            Script::RemoveEventsEntity(cl);
+            ScriptSys.RemoveEventsEntity(cl);
 
             // Change in list
             cl_old->AddRef();
@@ -3103,7 +3113,7 @@ void FOServer::Process_LogIn(Client*& cl)
         cl->SetId(id);
 
         // Data
-        if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc))
+        if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc, ScriptSys))
         {
             WriteLog("Player '{}' data truncated.\n", cl->Name);
             cl->Send_TextMsg(cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME);
@@ -3132,7 +3142,7 @@ void FOServer::Process_LogIn(Client*& cl)
         cl->SetRefGlobalMapLeaderId(ref_gm_trip_id);
 
         // Initial scripts
-        if (!Script::RaiseInternalEvent(ServerFunctions.CritterInit, cl, false))
+        if (!ScriptSys.RaiseInternalEvent(ServerFunctions.CritterInit, cl, false))
         {
             // Todo: remove from game
         }
@@ -4444,7 +4454,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        Script::RaiseInternalEvent(ServerFunctions.CritterTalk, cl, npc, true, npc->GetTalkedPlayers() + 1);
+        ScriptSys.RaiseInternalEvent(ServerFunctions.CritterTalk, cl, npc, true, npc->GetTalkedPlayers() + 1);
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack ? &dialog_pack->Dialogs : nullptr);
@@ -4549,12 +4559,12 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
     if (cl->Talk.CurDialog.DlgScript)
     {
         string lexems;
-        Script::PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-        Script::SetArgEntity(cl);
-        Script::SetArgEntity(npc);
-        Script::SetArgObject(&lexems);
+        ScriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
+        ScriptSys.SetArgEntity(cl);
+        ScriptSys.SetArgEntity(npc);
+        ScriptSys.SetArgObject(&lexems);
         cl->Talk.Locked = true;
-        if (Script::RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
+        if (ScriptSys.RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
             cl->Talk.Lexems = lexems;
         else
             cl->Talk.Lexems = "";
@@ -4698,7 +4708,7 @@ void FOServer::Process_Dialog(Client* cl)
                 return;
             }
 
-            if (Script::RaiseInternalEvent(ServerFunctions.CritterBarter, cl, npc, true, npc->GetBarterPlayers() + 1))
+            if (ScriptSys.RaiseInternalEvent(ServerFunctions.CritterBarter, cl, npc, true, npc->GetBarterPlayers() + 1))
             {
                 cl->Talk.Barter = true;
                 cl->Talk.StartTick = Timer::GameTick();
@@ -4725,7 +4735,7 @@ void FOServer::Process_Dialog(Client* cl)
         cl->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if (npc)
-            Script::RaiseInternalEvent(ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers() + 1);
+            ScriptSys.RaiseInternalEvent(ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers() + 1);
     }
 
     // Find dialog
@@ -4756,12 +4766,12 @@ void FOServer::Process_Dialog(Client* cl)
     if (cl->Talk.CurDialog.DlgScript)
     {
         string lexems;
-        Script::PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-        Script::SetArgEntity(cl);
-        Script::SetArgEntity(npc);
-        Script::SetArgObject(&lexems);
+        ScriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
+        ScriptSys.SetArgEntity(cl);
+        ScriptSys.SetArgEntity(npc);
+        ScriptSys.SetArgObject(&lexems);
         cl->Talk.Locked = true;
-        if (Script::RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
+        if (ScriptSys.RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
             cl->Talk.Lexems = lexems;
         else
             cl->Talk.Lexems = "";
@@ -5019,44 +5029,32 @@ bool FOServer::InitScriptSystem()
 {
     WriteLog("Script system initialization...\n");
 
-    // Mono
-    if (!Script::InitMono("Server", nullptr))
-    {
-        WriteLog("Can't initialize Mono script subsystem.\n");
-        return false;
-    }
-
-    asThreadCleanup();
-
-    // Init
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_SERVER, &ProtoMngr, &EntityMngr);
-    if (!Script::Init(Settings, FileMngr, pragma_callback, "SERVER"))
+    if (!ScriptSys.Init(pragma_callback, "SERVER"))
     {
         WriteLog("Script system initialization failed.\n");
         return false;
     }
 
     // Bind vars and functions, look bind.h
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = ScriptSys.GetEngine();
     PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
     if (ServerBind::Bind(engine, registrators))
         return false;
 
     // Load script modules
-    Script::Undef("");
-    Script::Define("__SERVER");
-    Script::Define(_str("__VERSION {}", FO_VERSION));
-    if (!Script::ReloadScripts("Server"))
+    ScriptSys.Undef("");
+    ScriptSys.Define("__SERVER");
+    ScriptSys.Define(_str("__VERSION {}", FO_VERSION));
+    if (!ScriptSys.ReloadScripts("Server"))
     {
-        Script::Finish();
         WriteLog("Reload scripts fail.\n");
         return false;
     }
 
     // Store property pragmas to synchronize with client
     ServerPropertyPragmas.clear();
-    EngineData* ed = (EngineData*)engine->GetUserData();
-    const Pragmas& pragmas = ed->PragmaCB->GetProcessedPragmas();
+    const Pragmas& pragmas = ScriptSys.GetProcessedPragmas();
     for (auto it = pragmas.begin(); it != pragmas.end(); ++it)
     {
         const Preprocessor::PragmaInstance& pragma = *it;
@@ -5065,7 +5063,7 @@ bool FOServer::InitScriptSystem()
     }
 
 // Bind game functions
-#define BIND_INTERNAL_EVENT(name) ServerFunctions.name = Script::FindInternalEvent("Event" #name)
+#define BIND_INTERNAL_EVENT(name) ServerFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
     BIND_INTERNAL_EVENT(ResourcesGenerated);
     BIND_INTERNAL_EVENT(Init);
     BIND_INTERNAL_EVENT(GenerateWorld);
@@ -5149,43 +5147,32 @@ bool FOServer::InitScriptSystem()
     return true;
 }
 
-void FOServer::FinishScriptSystem()
-{
-    WriteLog("Script system finish...\n");
-    Script::Finish();
-    WriteLog("Script system finish complete.\n");
-}
-
 bool FOServer::DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave)
 {
     int bind_id = (int)demand.ParamId;
-    Script::PrepareContext(bind_id, master->GetName());
-    Script::SetArgEntity(master);
-    Script::SetArgEntity(slave);
+    ScriptSys.PrepareContext(bind_id, master->GetName());
+    ScriptSys.SetArgEntity(master);
+    ScriptSys.SetArgEntity(slave);
     for (int i = 0; i < demand.ValuesCount; i++)
-        Script::SetArgUInt(demand.ValueExt[i]);
-    if (Script::RunPrepared())
-        return Script::GetReturnedBool();
+        ScriptSys.SetArgUInt(demand.ValueExt[i]);
+    if (ScriptSys.RunPrepared())
+        return ScriptSys.GetReturnedBool();
     return false;
 }
 
 uint FOServer::DialogScriptResult(DemandResult& result, Critter* master, Critter* slave)
 {
     int bind_id = (int)result.ParamId;
-    Script::PrepareContext(
-        bind_id, _str("Critter '{}', func '{}'", master->GetName(), Script::GetBindFuncName(bind_id)));
-    Script::SetArgEntity(master);
-    Script::SetArgEntity(slave);
+    ScriptSys.PrepareContext(
+        bind_id, _str("Critter '{}', func '{}'", master->GetName(), ScriptSys.GetBindFuncName(bind_id)));
+    ScriptSys.SetArgEntity(master);
+    ScriptSys.SetArgEntity(slave);
     for (int i = 0; i < result.ValuesCount; i++)
-        Script::SetArgUInt(result.ValueExt[i]);
-    if (Script::RunPrepared() && result.RetValue)
-        return Script::GetReturnedUInt();
+        ScriptSys.SetArgUInt(result.ValueExt[i]);
+    if (ScriptSys.RunPrepared() && result.RetValue)
+        return ScriptSys.GetReturnedUInt();
     return 0;
 }
-
-/************************************************************************/
-/* Client script processing                                             */
-/************************************************************************/
 
 namespace ClientBind
 {
@@ -5205,26 +5192,18 @@ namespace ClientBind
     }
 #define BIND_DUMMY_DATA
 #include "ScriptBind_Include.h"
-} // namespace ClientBind
+}
 
 bool FOServer::ReloadClientScripts()
 {
     WriteLog("Reload client scripts...\n");
 
-    // Swap engine
-    asIScriptEngine* old_engine = Script::GetEngine();
+    ScriptSystem client_script_sys(Settings, FileMngr);
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_CLIENT, &ProtoMngr, nullptr);
-    asIScriptEngine* engine = Script::CreateEngine(pragma_callback, "CLIENT");
-    if (engine)
-        Script::SetEngine(engine);
-
-    // Properties
+    client_script_sys.Init(pragma_callback, "CLIENT");
+    asIScriptEngine* engine = client_script_sys.GetEngine();
     PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-
-    // Bind vars and functions
-    int bind_errors = 0;
-    if (engine)
-        bind_errors = ClientBind::Bind(engine, registrators);
+    int bind_errors = ClientBind::Bind(engine, registrators);
 
     // Check errors
     if (!engine || bind_errors)
@@ -5233,19 +5212,16 @@ bool FOServer::ReloadClientScripts()
             WriteLog("asCreateScriptEngine fail.\n");
         else
             WriteLog("Bind fail, errors {}.\n", bind_errors);
-
-        Script::FinishEngine(engine);
         return false;
     }
 
     // Load script modules
-    Script::Undef("__SERVER");
-    Script::Define("__CLIENT");
-    Script::Define(_str("__VERSION {}", FO_VERSION));
+    client_script_sys.Define("__CLIENT");
+    client_script_sys.Define(_str("__VERSION {}", FO_VERSION));
 
     FOMsg msg_script;
     int errors = 0;
-    if (Script::ReloadScripts("Client"))
+    if (client_script_sys.ReloadScripts("Client"))
     {
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         asIScriptModule* module = engine->GetModuleByIndex(0);
@@ -5273,17 +5249,8 @@ bool FOServer::ReloadClientScripts()
         errors++;
     }
 
-    // Finish
-    EngineData* ed = (EngineData*)engine->GetUserData();
-    Pragmas pragmas = ed->PragmaCB->GetProcessedPragmas();
-    Script::FinishEngine(engine);
-    Script::Undef("__CLIENT");
-    Script::Define("__SERVER");
-
-    asThreadCleanup();
-    Script::SetEngine(old_engine);
-
     // Add config text and pragmas
+    const Pragmas& pragmas = client_script_sys.GetProcessedPragmas();
     uint pragma_index = 0;
     for (size_t i = 0; i < pragmas.size(); i++)
     {
@@ -5327,21 +5294,6 @@ bool FOServer::ReloadClientScripts()
     if (errors)
         return false;
 
-    // Mono assemblies
-    std::map<string, UCharVec> assemblies_data;
-    if (!Script::GetMonoAssemblies("Client", assemblies_data))
-    {
-        WriteLog("Can't compile client scripts.\n");
-        return false;
-    }
-
-    uint mono_assembly_index = STR_INTERNAL_SCRIPT_MONO_DLLS;
-    for (auto& kv : assemblies_data)
-    {
-        msg_script.AddStr(mono_assembly_index++, kv.first);
-        msg_script.AddBinary(mono_assembly_index++, &kv.second[0], (uint)kv.second.size());
-    }
-
     // Copy generated MSG to language packs
     for (auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it)
     {
@@ -5379,7 +5331,7 @@ CScriptArray* FOServer::ScriptFunc::Item_GetItems(Item* cont, uint stack_id)
 
     ItemVec items;
     cont->ContGetItems(items, stack_id);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 bool FOServer::ScriptFunc::Item_SetScript(Item* item, asIScriptFunction* func)
@@ -5515,12 +5467,12 @@ bool FOServer::ScriptFunc::Item_CallStaticItemFunction(Item* static_item, Critte
     if (!static_item->SceneryScriptBindId)
         return false;
 
-    Script::PrepareContext(static_item->SceneryScriptBindId, cr->GetName());
-    Script::SetArgEntity(cr);
-    Script::SetArgEntity(static_item);
-    Script::SetArgEntity(item);
-    Script::SetArgUInt(param);
-    return Script::RunPrepared() && Script::GetReturnedBool();
+    Self->ScriptSys.PrepareContext(static_item->SceneryScriptBindId, cr->GetName());
+    Self->ScriptSys.SetArgEntity(cr);
+    Self->ScriptSys.SetArgEntity(static_item);
+    Self->ScriptSys.SetArgEntity(item);
+    Self->ScriptSys.SetArgUInt(param);
+    return Self->ScriptSys.RunPrepared() && Self->ScriptSys.GetReturnedBool();
 }
 
 bool FOServer::ScriptFunc::Crit_IsPlayer(Critter* cr)
@@ -5562,7 +5514,7 @@ bool FOServer::ScriptFunc::Cl_SetAccess(Critter* cl, int access)
         return true;
 
     string pass;
-    bool allow = Script::RaiseInternalEvent(ServerFunctions.PlayerGetAccess, cl, access, &pass);
+    bool allow = Self->ScriptSys.RaiseInternalEvent(ServerFunctions.PlayerGetAccess, cl, access, &pass);
 
     if (allow)
         ((Client*)cl)->Access = access;
@@ -5882,7 +5834,7 @@ CScriptArray* FOServer::ScriptFunc::Crit_GetCritters(Critter* cr, bool look_on_m
         return self->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
             self->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Npc_GetTalkedPlayers(Critter* cr)
@@ -5910,7 +5862,7 @@ CScriptArray* FOServer::ScriptFunc::Npc_GetTalkedPlayers(Critter* cr)
         return self->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
             self->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
-    return Script::CreateArrayRef("Critter[]", players);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", players);
 }
 
 bool FOServer::ScriptFunc::Crit_IsSeeCr(Critter* cr, Critter* cr_)
@@ -6004,7 +5956,7 @@ Item* FOServer::ScriptFunc::Crit_GetItemPredicate(Critter* cr, asIScriptFunction
     if (cr->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec inv_items = cr->GetInventory();
@@ -6013,15 +5965,15 @@ Item* FOServer::ScriptFunc::Crit_GetItemPredicate(Critter* cr, asIScriptFunction
         if (item->IsDestroyed)
             continue;
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool() && !item->IsDestroyed)
+        if (Self->ScriptSys.GetReturnedBool() && !item->IsDestroyed)
             return item;
     }
     return nullptr;
@@ -6048,7 +6000,7 @@ CScriptArray* FOServer::ScriptFunc::Crit_GetItems(Critter* cr)
     if (cr->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    return Script::CreateArrayRef("Item[]", cr->GetInventory());
+    return Self->ScriptSys.CreateArrayRef("Item[]", cr->GetInventory());
 }
 
 CScriptArray* FOServer::ScriptFunc::Crit_GetItemsBySlot(Critter* cr, int slot)
@@ -6058,7 +6010,7 @@ CScriptArray* FOServer::ScriptFunc::Crit_GetItemsBySlot(Critter* cr, int slot)
 
     ItemVec items;
     cr->GetItemsSlot(slot, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Crit_GetItemsPredicate(Critter* cr, asIScriptFunction* predicate)
@@ -6066,7 +6018,7 @@ CScriptArray* FOServer::ScriptFunc::Crit_GetItemsPredicate(Critter* cr, asIScrip
     if (cr->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec inv_items = cr->GetInventory();
@@ -6077,18 +6029,18 @@ CScriptArray* FOServer::ScriptFunc::Crit_GetItemsPredicate(Critter* cr, asIScrip
         if (item->IsDestroyed)
             continue;
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool() && !item->IsDestroyed)
+        if (Self->ScriptSys.GetReturnedBool() && !item->IsDestroyed)
             items.push_back(item);
     }
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 void FOServer::ScriptFunc::Crit_ChangeItemSlot(Critter* cr, uint item_id, uchar slot)
@@ -6108,7 +6060,7 @@ void FOServer::ScriptFunc::Crit_ChangeItemSlot(Critter* cr, uint item_id, uchar 
     if (!Critter::SlotEnabled[slot])
         SCRIPT_ERROR_R("Slot is not allowed.");
 
-    if (!Script::RaiseInternalEvent(ServerFunctions.CritterCheckMoveItem, cr, item, slot))
+    if (!Self->ScriptSys.RaiseInternalEvent(ServerFunctions.CritterCheckMoveItem, cr, item, slot))
         SCRIPT_ERROR_R("Can't move item");
 
     Item* item_swap = (slot ? cr->GetItemSlot(slot) : nullptr);
@@ -6121,8 +6073,8 @@ void FOServer::ScriptFunc::Crit_ChangeItemSlot(Critter* cr, uint item_id, uchar 
     cr->SendAA_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
 
     if (item_swap)
-        Script::RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item_swap, slot);
-    Script::RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, from_slot);
+        Self->ScriptSys.RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item_swap, slot);
+    Self->ScriptSys.RaiseInternalEvent(ServerFunctions.CritterMoveItem, cr, item, from_slot);
 }
 
 void FOServer::ScriptFunc::Crit_SetCond(Critter* cr, int cond)
@@ -6385,7 +6337,7 @@ bool FOServer::ScriptFunc::Crit_AddTimeEvent(Critter* cr, asIScriptFunction* fun
     if (!func)
         SCRIPT_ERROR_R0("Func is null.");
 
-    hash func_num = Script::BindScriptFuncNumByFunc(func);
+    hash func_num = Self->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
         SCRIPT_ERROR_R0("Function not found.");
 
@@ -6401,7 +6353,7 @@ bool FOServer::ScriptFunc::Crit_AddTimeEventRate(
     if (!func)
         SCRIPT_ERROR_R0("Func is null.");
 
-    hash func_num = Script::BindScriptFuncNumByFunc(func);
+    hash func_num = Self->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
         SCRIPT_ERROR_R0("Function not found.");
 
@@ -6485,7 +6437,7 @@ uint FOServer::ScriptFunc::Crit_GetTimeEventsArr(Critter* cr, CScriptArray* find
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
     IntVec find_vec;
-    Script::AssignScriptArrayInVector(find_vec, find_identifiers);
+    Self->ScriptSys.AssignScriptArrayInVector(find_vec, find_identifiers);
 
     CScriptArray* te_identifier = cr->GetTE_Identifier();
     UIntVec te_vec;
@@ -6649,7 +6601,7 @@ uint FOServer::ScriptFunc::Crit_EraseTimeEventsArr(Critter* cr, CScriptArray* id
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
     IntVec identifiers_;
-    Script::AssignScriptArrayInVector(identifiers_, identifiers);
+    Self->ScriptSys.AssignScriptArrayInVector(identifiers_, identifiers);
 
     CScriptArray* te_next_time = cr->GetTE_NextTime();
     CScriptArray* te_func_num = cr->GetTE_FuncNum();
@@ -6795,7 +6747,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItems(Map* map)
 
     ItemVec items;
     map->GetItemsPid(0, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsHex(Map* map, ushort hx, ushort hy)
@@ -6807,7 +6759,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHex(Map* map, ushort hx, ushort 
 
     ItemVec items;
     map->GetItemsHex(hx, hy, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexEx(Map* map, ushort hx, ushort hy, uint radius, hash pid)
@@ -6819,7 +6771,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexEx(Map* map, ushort hx, ushor
 
     ItemVec items;
     map->GetItemsHexEx(hx, hy, radius, pid, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsByPid(Map* map, hash pid)
@@ -6829,7 +6781,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsByPid(Map* map, hash pid)
 
     ItemVec items;
     map->GetItemsPid(pid, items);
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsPredicate(Map* map, asIScriptFunction* predicate)
@@ -6837,7 +6789,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsPredicate(Map* map, asIScriptFun
     if (map->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec map_items = map->GetItems();
@@ -6848,18 +6800,18 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsPredicate(Map* map, asIScriptFun
         if (item->IsDestroyed)
             continue;
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool() && !item->IsDestroyed)
+        if (Self->ScriptSys.GetReturnedBool() && !item->IsDestroyed)
             items.push_back(item);
     }
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexPredicate(
@@ -6870,7 +6822,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexPredicate(
     if (hx >= map->GetWidth() || hy >= map->GetHeight())
         SCRIPT_ERROR_R0("Invalid hexes args.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec map_items;
@@ -6883,18 +6835,18 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexPredicate(
         if (item->IsDestroyed)
             continue;
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool() && !item->IsDestroyed)
+        if (Self->ScriptSys.GetReturnedBool() && !item->IsDestroyed)
             items.push_back(item);
     }
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexRadiusPredicate(
@@ -6905,7 +6857,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexRadiusPredicate(
     if (hx >= map->GetWidth() || hy >= map->GetHeight())
         SCRIPT_ERROR_R0("Invalid hexes args.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec map_items;
@@ -6918,18 +6870,18 @@ CScriptArray* FOServer::ScriptFunc::Map_GetItemsHexRadiusPredicate(
         if (item->IsDestroyed)
             continue;
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool() && !item->IsDestroyed)
+        if (Self->ScriptSys.GetReturnedBool() && !item->IsDestroyed)
             items.push_back(item);
     }
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 Item* FOServer::ScriptFunc::Map_GetItem(Map* map, uint item_id)
@@ -6985,7 +6937,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHex(Map* map, ushort hx, u
     ItemVec static_items;
     map->GetStaticItemsHex(hx, hy, static_items);
 
-    return Script::CreateArrayRef("array<const Item>", static_items);
+    return Self->ScriptSys.CreateArrayRef("array<const Item>", static_items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHexEx(Map* map, ushort hx, ushort hy, uint radius, hash pid)
@@ -6997,7 +6949,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsHexEx(Map* map, ushort hx,
 
     ItemVec static_items;
     map->GetStaticItemsHexEx(hx, hy, radius, pid, static_items);
-    return Script::CreateArrayRef("array<const Item>", static_items);
+    return Self->ScriptSys.CreateArrayRef("array<const Item>", static_items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsByPid(Map* map, hash pid)
@@ -7007,7 +6959,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsByPid(Map* map, hash pid)
 
     ItemVec static_items;
     map->GetStaticItemsByPid(pid, static_items);
-    return Script::CreateArrayRef("array<const Item>", static_items);
+    return Self->ScriptSys.CreateArrayRef("array<const Item>", static_items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsPredicate(Map* map, asIScriptFunction* predicate)
@@ -7015,7 +6967,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsPredicate(Map* map, asIScr
     if (map->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    uint bind_id = Script::BindByFunc(predicate, true);
+    uint bind_id = Self->ScriptSys.BindByFunc(predicate, true);
     RUNTIME_ASSERT(bind_id);
 
     ItemVec& map_static_items = map->GetStaticMap()->StaticItemsVec;
@@ -7025,18 +6977,18 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsPredicate(Map* map, asIScr
     {
         RUNTIME_ASSERT(!item->IsDestroyed);
 
-        Script::PrepareContext(bind_id, "Predicate");
-        Script::SetArgObject(item);
-        if (!Script::RunPrepared())
+        Self->ScriptSys.PrepareContext(bind_id, "Predicate");
+        Self->ScriptSys.SetArgObject(item);
+        if (!Self->ScriptSys.RunPrepared())
         {
-            Script::PassException();
+            Self->ScriptSys.PassException();
             return nullptr;
         }
 
-        if (Script::GetReturnedBool())
+        if (Self->ScriptSys.GetReturnedBool())
             items.push_back(item);
     }
-    return Script::CreateArrayRef("array<const Item>", items);
+    return Self->ScriptSys.CreateArrayRef("array<const Item>", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsAll(Map* map)
@@ -7044,7 +6996,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetStaticItemsAll(Map* map)
     if (map->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    return Script::CreateArrayRef("array<const Item>", map->GetStaticMap()->StaticItemsVec);
+    return Self->ScriptSys.CreateArrayRef("array<const Item>", map->GetStaticMap()->StaticItemsVec);
 }
 
 Critter* FOServer::ScriptFunc::Map_GetCritterById(Map* map, uint crid)
@@ -7069,7 +7021,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCritters(Map* map, ushort hx, ushort 
         return self->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
             self->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetCrittersByPids(Map* map, hash pid, int find_type)
@@ -7095,7 +7047,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersByPids(Map* map, hash pid, in
                 critters.push_back(npc);
     }
 
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPath(
@@ -7117,7 +7069,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPath(
     trace.FindType = find_type;
     Self->MapMngr.TraceBullet(trace);
 
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPathBlock(Map* map, ushort from_hx, ushort from_hy, ushort to_hx,
@@ -7147,7 +7099,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersInPathBlock(Map* map, ushort 
     pre_block_hy = pre_block.second;
     block_hx = block.first;
     block_hy = block.second;
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetCrittersWhoViewPath(
@@ -7165,7 +7117,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersWhoViewPath(
             critters.push_back(cr);
     }
 
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 CScriptArray* FOServer::ScriptFunc::Map_GetCrittersSeeing(
@@ -7183,7 +7135,7 @@ CScriptArray* FOServer::ScriptFunc::Map_GetCrittersSeeing(
         cr->GetCrFromVisCr(result_critters, find_type, !look_on_them);
     }
 
-    return Script::CreateArrayRef("Critter[]", result_critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", result_critters);
 }
 
 void FOServer::ScriptFunc::Map_GetHexInPath(
@@ -7568,7 +7520,7 @@ CScriptArray* FOServer::ScriptFunc::Location_GetMaps(Location* loc)
     if (loc->IsDestroyed)
         SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
 
-    return Script::CreateArrayRef("Map[]", loc->GetMaps());
+    return Self->ScriptSys.CreateArrayRef("Map[]", loc->GetMaps());
 }
 
 bool FOServer::ScriptFunc::Location_GetEntrance(Location* loc, uint entrance, uint& map_index, hash& entire)
@@ -7970,10 +7922,10 @@ Critter* FOServer::ScriptFunc::Global_GetPlayer(string name)
     // Load from db
     ProtoCritter* cl_proto = Self->ProtoMngr.GetProtoCritter(_str("Player").toHash());
     RUNTIME_ASSERT(cl_proto);
-    cl = new Client(nullptr, cl_proto, Self->Settings);
+    cl = new Client(nullptr, cl_proto, Self->Settings, Self->ScriptSys);
     cl->SetId(id);
     cl->Name = name;
-    if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc))
+    if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc, Self->ScriptSys))
         SCRIPT_ERROR_R0("Client data db read failed.");
     return cl;
 }
@@ -7982,7 +7934,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetGlobalMapCritters(ushort wx, ushor
 {
     CritterVec critters;
     Self->CrMngr.GetGlobalMapCritters(wx, wy, radius, find_type, critters);
-    return Script::CreateArrayRef("Critter[]", critters);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", critters);
 }
 
 Map* FOServer::ScriptFunc::Global_GetMap(uint map_id)
@@ -8029,7 +7981,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetLocations(ushort wx, ushort wy, ui
             locations.push_back(loc);
     }
 
-    return Script::CreateArrayRef("Location[]", locations);
+    return Self->ScriptSys.CreateArrayRef("Location[]", locations);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetVisibleLocations(ushort wx, ushort wy, uint radius, Critter* cr)
@@ -8045,7 +7997,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetVisibleLocations(ushort wx, ushort
             locations.push_back(loc);
     }
 
-    return Script::CreateArrayRef("Location[]", locations);
+    return Self->ScriptSys.CreateArrayRef("Location[]", locations);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetZoneLocationIds(ushort zx, ushort zy, uint zone_radius)
@@ -8053,8 +8005,8 @@ CScriptArray* FOServer::ScriptFunc::Global_GetZoneLocationIds(ushort zx, ushort 
     UIntVec loc_ids;
     Self->MapMngr.GetZoneLocations(zx, zy, zone_radius, loc_ids);
 
-    CScriptArray* ids = Script::CreateArray("uint[]");
-    Script::AppendVectorToArray<uint>(loc_ids, ids);
+    CScriptArray* ids = Self->ScriptSys.CreateArray("uint[]");
+    Self->ScriptSys.AppendVectorToArray<uint>(loc_ids, ids);
     return ids;
 }
 
@@ -8136,7 +8088,7 @@ bool FOServer::ScriptFunc::Global_AddTextListener(
     if (first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
         SCRIPT_ERROR_R0("First string arg length greater than maximum.");
 
-    uint func_id = Script::BindByFunc(func, false);
+    uint func_id = Self->ScriptSys.BindByFunc(func, false);
     if (!func_id)
         SCRIPT_ERROR_R0("Unable to bind script function.");
 
@@ -8318,7 +8270,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllItems(hash pid)
             items.push_back(item);
     }
 
-    return Script::CreateArrayRef("Item[]", items);
+    return Self->ScriptSys.CreateArrayRef("Item[]", items);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetOnlinePlayers()
@@ -8333,14 +8285,14 @@ CScriptArray* FOServer::ScriptFunc::Global_GetOnlinePlayers()
             players.push_back(player_);
     }
 
-    return Script::CreateArrayRef("Critter[]", players);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", players);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetRegisteredPlayerIds()
 {
     UIntVec ids = DbStorage->GetAllIds("Players");
-    CScriptArray* result = Script::CreateArray("uint[]");
-    Script::AppendVectorToArray<uint>(ids, result);
+    CScriptArray* result = Self->ScriptSys.CreateArray("uint[]");
+    Self->ScriptSys.AppendVectorToArray<uint>(ids, result);
     return result;
 }
 
@@ -8356,7 +8308,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllNpc(hash pid)
             npcs.push_back(npc_);
     }
 
-    return Script::CreateArrayRef("Critter[]", npcs);
+    return Self->ScriptSys.CreateArrayRef("Critter[]", npcs);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetAllMaps(hash pid)
@@ -8371,7 +8323,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllMaps(hash pid)
             maps.push_back(map);
     }
 
-    return Script::CreateArrayRef("Map[]", maps);
+    return Self->ScriptSys.CreateArrayRef("Map[]", maps);
 }
 
 CScriptArray* FOServer::ScriptFunc::Global_GetAllLocations(hash pid)
@@ -8386,7 +8338,7 @@ CScriptArray* FOServer::ScriptFunc::Global_GetAllLocations(hash pid)
             locations.push_back(loc);
     }
 
-    return Script::CreateArrayRef("Location[]", locations);
+    return Self->ScriptSys.CreateArrayRef("Location[]", locations);
 }
 
 void FOServer::ScriptFunc::Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour,
@@ -8662,7 +8614,7 @@ static void YieldWebRequest(
     success = false;
     result = "";
 
-    asIScriptContext* ctx = Script::SuspendCurrentContext(uint(-1));
+    asIScriptContext* ctx = FOServer::Self->ScriptSys.SuspendCurrentContext(uint(-1));
     if (!ctx)
         return;
 
@@ -8766,7 +8718,7 @@ static void YieldWebRequest(
 
         *request_data->Success = success;
         *request_data->Result = result;
-        Script::ResumeContext(request_data->Context);
+        FOServer::Self->ScriptSys.ResumeContext(request_data->Context);
         if (request_data->Headers)
             request_data->Headers->Release();
         if (request_data->Post1)

@@ -696,9 +696,10 @@ void CreateDump(const string& appendix, const string& message)
 
 static void DumpAngelScript(DiskFile& file)
 {
-    string tb = Script::GetTraceback();
-    if (!tb.empty())
-        file.Write(_str("AngelScript\n{}", tb));
+    // Todo: fix script system
+    // string tb = Script::GetTraceback();
+    // if (!tb.empty())
+    //    file.Write(_str("AngelScript\n{}", tb));
 }
 
 bool RaiseAssert(const string& message, const string& file, int line)

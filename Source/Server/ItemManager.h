@@ -41,6 +41,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
+#include "Script.h"
 
 class ProtoManager;
 class EntityManager;
@@ -50,7 +51,8 @@ class CritterManager;
 class ItemManager
 {
 public:
-    ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr);
+    ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr,
+        ScriptSystem& script_sys);
 
     void GetGameItems(ItemVec& items);
     uint GetItemsCount();
@@ -100,5 +102,6 @@ private:
     EntityManager& entityMngr;
     MapManager& mapMngr;
     CritterManager& crMngr;
+    ScriptSystem& scriptSys;
     ItemVec radioItems;
 };

@@ -37,6 +37,10 @@
 #include "Script.h"
 #include "StringUtils.h"
 
+// Todo: fix script system
+#define SCRIPT_ERROR_R(error, ...) (void)0
+#define SCRIPT_ERROR_R0(error, ...) (void)0
+
 NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
 
 Property::Property()
@@ -412,7 +416,7 @@ void Property::GenericGet(Entity* entity, void* ret_value)
 
         properties->getCallbackLocked[getIndex] = true;
 
-        Script::PrepareContext(getCallback, GetName());
+        /*Script::PrepareContext(getCallback, GetName());
         if (getCallbackArgs > 0)
             Script::SetArgEntity(entity);
         if (getCallbackArgs > 1)
@@ -451,12 +455,12 @@ void Property::GenericGet(Entity* entity, void* ret_value)
             }
 
             return;
-        }
+        }*/
 
         properties->getCallbackLocked[getIndex] = false;
 
         // Error
-        Script::PassException();
+        // Script::PassException();
         return;
     }
 
@@ -511,7 +515,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
                 properties->registrator->scriptClassName, propName);
         }
 
-        for (size_t i = 0; i < setCallbacks.size(); i++)
+        /*for (size_t i = 0; i < setCallbacks.size(); i++)
         {
             Script::PrepareContext(setCallbacks[i], GetName());
             Script::SetArgObject(entity);
@@ -536,7 +540,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
             RUNTIME_ASSERT(!entity->IsDestroyed);
             if (!run_ok)
                 break;
-        }
+        }*/
 
         return;
     }
@@ -595,7 +599,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
     // Script callbacks
     if (!setCallbacks.empty())
     {
-        for (size_t i = 0; i < setCallbacks.size(); i++)
+        /*for (size_t i = 0; i < setCallbacks.size(); i++)
         {
             Script::PrepareContext(setCallbacks[i], GetName());
             Script::SetArgObject(entity);
@@ -620,7 +624,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
             RUNTIME_ASSERT(!entity->IsDestroyed);
             if (!run_ok)
                 break;
-        }
+        }*/
     }
 
     // Check min/max for POD value and store
@@ -1025,12 +1029,12 @@ string Property::SetGetCallback(asIScriptFunction* func)
 {
     // Todo: check can get in SetGetCallback
 
-    uint bind_id = Script::BindByFunc(func, false);
+    /*uint bind_id = Script::BindByFunc(func, false);
     if (!bind_id)
         return "Unable to bind function '" + string(func->GetName()) + "'.";
 
     getCallback = bind_id;
-    getCallbackArgs = func->GetParamCount();
+    getCallbackArgs = func->GetParamCount();*/
 
     return "";
 
@@ -1060,7 +1064,7 @@ string Property::SetGetCallback(asIScriptFunction* func)
 
 string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
 {
-    uint bind_id = Script::BindByFunc(func, false);
+    /*uint bind_id = Script::BindByFunc(func, false);
     if (!bind_id)
         return "Unable to bind function '" + string(func->GetName()) + "'.";
 
@@ -1072,7 +1076,7 @@ string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
         setCallbacksAnyNewValue = true;
 
     setCallbacks.push_back(bind_id);
-    setCallbacksDeferred.push_back(deferred);
+    setCallbacksDeferred.push_back(deferred);*/
 
     return "";
 
@@ -1532,7 +1536,8 @@ string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_has
         CHECK_PRIMITIVE(asTYPEID_UINT64, uint64);
         CHECK_PRIMITIVE(asTYPEID_DOUBLE, double);
         CHECK_PRIMITIVE(asTYPEID_FLOAT, float);
-        return Script::GetEnumValueName(Script::GetEngine()->GetTypeDeclaration(type_id), VALUE_AS(int));
+        // return Script::GetEnumValueName(Script::GetEngine()->GetTypeDeclaration(type_id), VALUE_AS(int));
+        return "";
 
 #undef VALUE_AS
 #undef CHECK_PRIMITIVE
@@ -1626,17 +1631,19 @@ void* ReadValue(
         CHECK_PRIMITIVE(asTYPEID_DOUBLE, double, toDouble);
         CHECK_PRIMITIVE(asTYPEID_FLOAT, float, toFloat);
 
-        int v = Script::GetEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
-        memcpy(pod_buf, &v, sizeof(v));
-        return pod_buf;
+        // int v = Script::GetEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
+        // memcpy(pod_buf, &v, sizeof(v));
+        // return pod_buf;
+        return 0;
 
 #undef CHECK_PRIMITIVE
     }
     else if (Str::Compare(as_obj_type->GetName(), "string"))
     {
-        string* str = (string*)Script::GetEngine()->CreateScriptObject(as_obj_type);
-        *str = DecodeString(value);
-        return str;
+        // string* str = (string*)Script::GetEngine()->CreateScriptObject(as_obj_type);
+        //*str = DecodeString(value);
+        // return str;
+        return 0;
     }
     else if (Str::Compare(as_obj_type->GetName(), "array"))
     {
@@ -1649,8 +1656,8 @@ void* ReadValue(
         {
             void* v = ReadValue(str.c_str(), value_type_id, value_type, is_hashes, deep + 1, arr_pod_buf, is_error);
             arr->InsertLast(value_type_id & asTYPEID_OBJHANDLE ? &v : v);
-            if (v != arr_pod_buf)
-                Script::GetEngine()->ReleaseScriptObject(v, value_type);
+            // if (v != arr_pod_buf)
+            //    Script::GetEngine()->ReleaseScriptObject(v, value_type);
         }
         return arr;
     }
@@ -1669,10 +1676,10 @@ void* ReadValue(
             void* v1 = ReadValue(str1.c_str(), key_type_id, key_type, is_hashes, deep + 1, dict_pod_buf1, is_error);
             void* v2 = ReadValue(str2.c_str(), value_type_id, value_type, is_hashes, deep + 2, dict_pod_buf2, is_error);
             dict->Set(key_type_id & asTYPEID_OBJHANDLE ? &v1 : v1, value_type_id & asTYPEID_OBJHANDLE ? &v2 : v2);
-            if (v1 != dict_pod_buf1)
-                Script::GetEngine()->ReleaseScriptObject(v1, key_type);
-            if (v2 != dict_pod_buf2)
-                Script::GetEngine()->ReleaseScriptObject(v2, value_type);
+            // if (v1 != dict_pod_buf1)
+            //    Script::GetEngine()->ReleaseScriptObject(v1, key_type);
+            // if (v2 != dict_pod_buf2)
+            //    Script::GetEngine()->ReleaseScriptObject(v2, value_type);
         }
         return dict;
     }
@@ -1792,7 +1799,7 @@ bool Properties::LoadPropertyFromText(Property* prop, const string& text)
         prop->SetPropRawData(this, data, data_size);
         if (need_delete)
             SAFEDELA(data);
-        Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
+        // Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
     }
 
     return !is_error;
@@ -1984,7 +1991,7 @@ bool PropertyRegistrator::Init()
     enumTypeName = enum_type;
     RUNTIME_ASSERT(enumTypeName.length() > 0);
 
-    asIScriptEngine* engine = Script::GetEngine();
+    /*asIScriptEngine* engine = Script::GetEngine();
     RUNTIME_ASSERT(engine);
 
     int result = engine->RegisterEnum(enum_type.c_str());
@@ -2017,7 +2024,7 @@ bool PropertyRegistrator::Init()
     {
         WriteLog("Register entity method '{}' fail, error {}.\n", decl, result);
         return false;
-    }
+    }*/
 
     return true;
 }
@@ -2051,7 +2058,7 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     max_value = (max_value ? max_value : defaultMaxValue);
 
     // Get engine
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = 0; // Script::GetEngine();
     RUNTIME_ASSERT(engine);
 
     // Extract type
@@ -2511,7 +2518,7 @@ static void GetEntityComponent(asIScriptGeneric* gen)
 
 bool PropertyRegistrator::RegisterComponent(const string& name)
 {
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = 0; // Script::GetEngine();
     RUNTIME_ASSERT(engine);
 
     string class_name = scriptClassName + name;

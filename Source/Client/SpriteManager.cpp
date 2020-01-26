@@ -59,7 +59,8 @@
 SDL_Window* SprMngr_MainWindow;
 #endif
 
-SpriteManager::SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr) :
+SpriteManager::SpriteManager(
+    RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys) :
     settings {sett}, fileMngr {file_mngr}, effectMngr {effect_mngr}
 {
     baseColor = COLOR_RGBA(255, 128, 128, 128);
@@ -307,7 +308,7 @@ SpriteManager::SpriteManager(RenderSettings& sett, FileManager& file_mngr, Effec
     // 3d initialization
     if (settings.Enable3dRendering)
     {
-        anim3dMngr = new Animation3dManager(settings, fileMngr, effectMngr, [this](MeshTexture* mesh_tex) {
+        anim3dMngr = new Animation3dManager(settings, fileMngr, effectMngr, script_sys, [this](MeshTexture* mesh_tex) {
             PushAtlasType(AtlasType::MeshTextures);
             AnyFrames* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name);
             PopAtlasType();

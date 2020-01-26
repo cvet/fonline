@@ -43,6 +43,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
+#include "Script.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(MapManagerException);
@@ -127,7 +128,7 @@ class MapManager
 {
 public:
     MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr,
-        ItemManager& item_mngr);
+        ItemManager& item_mngr, ScriptSystem& script_sys);
 
     void LoadStaticMaps(FileManager& file_mngr);
     StaticMap* FindStaticMap(ProtoMap* pmap);
@@ -190,6 +191,7 @@ private:
     EntityManager& entityMngr;
     CritterManager& crMngr;
     ItemManager& itemMngr;
+    ScriptSystem& scriptSys;
     bool runGarbager {true};
     PathStepVec pathesPool[FPATH_DATA_SIZE] {};
     uint pathNumCur {};

@@ -73,13 +73,15 @@ static T* EntityUpCast(Entity* a)
 
 static void Global_Assert(bool condition)
 {
-    if (!condition)
-        Script::RaiseException("Assertion failed");
+    // Todo: fix script system
+    // if (!condition)
+    //    Script::RaiseException("Assertion failed");
 }
 
 static void Global_ThrowException(string message)
 {
-    Script::RaiseException(message);
+    // Todo: fix script system
+    // Script::RaiseException(message);
 }
 
 static int Global_Random(int min, int max)
@@ -89,7 +91,8 @@ static int Global_Random(int min, int max)
 
 static void Global_Log(string text)
 {
-    Script::Log(text);
+    // Todo: fix script system
+    // Script::Log(text);
 }
 
 static bool Global_StrToInt(string text, int& result)
@@ -170,7 +173,8 @@ static string Global_EncodeUTF8(uint ucs)
 
 static void Global_Yield(uint time)
 {
-    Script::SuspendCurrentContext(time);
+    // Todo: fix script system
+    // Script::SuspendCurrentContext(time);
 }
 
 static string Global_SHA1(string text)

@@ -86,7 +86,7 @@ private:
 public:
     bool Call(const string& text)
     {
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         string type, decl, value;
         char ch = 0;
         istringstream str(text);
@@ -293,7 +293,7 @@ public:
         str >> class_name;
 
         // Check already registered classes
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         if (engine->GetTypeInfoByName(class_name.c_str()))
         {
             WriteLog("Error in 'entity' pragma '{}', class already registered.\n", text);
@@ -655,7 +655,7 @@ public:
         }
 
         // Verify file
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         int group_index;
         const char* ns;
         if (group == "Dialog")
@@ -773,7 +773,7 @@ public:
         string other;
         std::getline(str, other, '\n');
 
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         int result = engine->RegisterEnum(enum_name.c_str());
         if (result < 0 && result != asALREADY_REGISTERED)
         {
@@ -1071,7 +1071,8 @@ class EventPragma
                     }
                 }
 
-                uint bind_id = Script::BindByFunc(callback, true);
+                // Todo: fix script system
+                /*uint bind_id = Script::BindByFunc(callback, true);
                 Script::PrepareContext(bind_id, "Event");
 
                 for (size_t i = 0; i < ArgInfos.size(); i++)
@@ -1111,7 +1112,7 @@ class EventPragma
                 else
                 {
                     Script::RunPreparedSuspend();
-                }
+                }*/
             }
 #undef GET_ARG
             return true;
@@ -1152,7 +1153,7 @@ public:
         }
 
         string args = _str(text.substr(args_begin + 1, args_end - args_begin - 1)).trim();
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         int func_def_id;
         as_builder_ForceAutoHandles = true;
         if ((func_def_id = engine->RegisterFuncdef(_str("void {}Func({})", event_name, args).c_str())) < 0 ||
@@ -1321,7 +1322,7 @@ public:
 
     void Init()
     {
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         int r = engine->RegisterObjectType("RpcCaller", 1, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);
         RUNTIME_ASSERT(r >= 0);
 
@@ -1365,7 +1366,7 @@ public:
         string args = _str(text.substr(args_begin + 1, args_end - args_begin - 1)).trim();
 
         // Verify args
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
 
         int func_def_id = engine->RegisterFuncdef(_str("void {}RpcFunc({})", name, args).c_str());
         if (func_def_id < 0)
@@ -1452,7 +1453,8 @@ public:
 
         for (auto& func_desc : inFuncDesc)
         {
-            string decl = _str("void {}({}{}{})", "%s", pragmaType == PRAGMA_SERVER ? "Critter" : "",
+            // Todo: fix script system
+            /*string decl = _str("void {}({}{}{})", "%s", pragmaType == PRAGMA_SERVER ? "Critter" : "",
                 pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second);
             uint bind_id = Script::BindByFuncName(func_desc.first, decl, false, false);
             if (bind_id)
@@ -1464,7 +1466,7 @@ public:
             {
                 WriteLog("Can't bind Rpc function '{}'.\n", func_desc.first);
                 errors++;
-            }
+            }*/
         }
 
         return errors == 0;
@@ -1476,7 +1478,7 @@ public:
         uint func_index = *(uint*)gen->GetAuxiliary();
         uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(func_index);
 
-        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptEngine* engine = asGetActiveContext()->GetEngine();
         StrVec args(gen->GetArgCount());
         for (int i = 0; i < gen->GetArgCount(); i++)
         {
@@ -1551,7 +1553,7 @@ public:
                 uchar pod_buf[8];
                 bool is_error = false;
 
-                asIScriptEngine* engine = Script::GetEngine();
+                asIScriptEngine* engine = asGetActiveContext()->GetEngine();
                 asIScriptFunction* func = inFunc[func_index];
                 for (asUINT i = 0; i < func->GetParamCount(); i++)
                 {
@@ -1600,7 +1602,7 @@ public:
                     else
                     {
                         Script::SetArgObject(value);
-                        Script::GetEngine()->ReleaseScriptObject(value, obj_type);
+                        asGetActiveContext()->GetEngine()->ReleaseScriptObject(value, obj_type);
                     }
                 }
 

@@ -44,6 +44,7 @@
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "MapLoader.h"
+#include "Script.h"
 #include "Settings.h"
 #include "Sprites.h"
 
@@ -146,7 +147,7 @@ class HexManager
 {
 public:
     HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr);
+        ResourceManager& res_mngr, ScriptSystem& script_sys);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);
@@ -176,6 +177,7 @@ private:
     ProtoManager& protoMngr;
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
+    ScriptSystem& scriptSys;
 
     ushort maxHexX {};
     ushort maxHexY {};

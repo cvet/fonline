@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
-#include "Script.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
@@ -113,7 +112,8 @@ CLASS_PROPERTY_IMPL(Item, RadioBroadcastSend);
 CLASS_PROPERTY_IMPL(Item, RadioBroadcastRecv);
 CLASS_PROPERTY_IMPL(Item, FlyEffectSpeed);
 
-Item::Item(uint id, ProtoItem* proto) : Entity(id, EntityType::Item, PropertiesRegistrator, proto)
+Item::Item(uint id, ProtoItem* proto, ScriptSystem& script_sys) :
+    Entity(id, EntityType::Item, PropertiesRegistrator, proto), scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
@@ -132,7 +132,7 @@ bool Item::SetScript(asIScriptFunction* func, bool first_time)
 {
     if (func)
     {
-        hash func_num = Script::BindScriptFuncNumByFunc(func);
+        hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
         {
             WriteLog("Script bind fail, item '{}'.\n", GetName());
@@ -143,10 +143,10 @@ bool Item::SetScript(asIScriptFunction* func, bool first_time)
 
     if (GetScriptId())
     {
-        Script::PrepareScriptFuncContext(GetScriptId(), _str("Item '{}' ({})", GetName(), GetId()));
-        Script::SetArgEntity(this);
-        Script::SetArgBool(first_time);
-        Script::RunPrepared();
+        scriptSys.PrepareScriptFuncContext(GetScriptId(), _str("Item '{}' ({})", GetName(), GetId()));
+        scriptSys.SetArgEntity(this);
+        scriptSys.SetArgBool(first_time);
+        scriptSys.RunPrepared();
     }
     return true;
 }

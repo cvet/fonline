@@ -72,16 +72,17 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-class FOServer
+class FOServer : public NonCopyable // Todo: rename FOServer to just Server
 {
 public:
     FOServer(ServerSettings& sett);
 
-    static FOServer* Self;
+    static FOServer* Self; // Todo: remove server Self singleton
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
+    ScriptSystem ScriptSys;
     ProtoManager ProtoMngr;
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -133,7 +134,6 @@ public:
 
     // Init/Finish system
     bool InitScriptSystem();
-    void FinishScriptSystem();
 
     // Dialogs demand and result
     bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
@@ -240,11 +240,11 @@ public:
 
     void DrawGui();
 
-    // Net
-    NetServerBase* TcpServer = nullptr;
-    NetServerBase* WebSocketsServer = nullptr;
-    ClientVec ConnectedClients;
-    std::mutex ConnectedClientsLocker;
+    // Todo: run network listeners dynamically, without restriction, based on server settings
+    NetServerBase* TcpServer {};
+    NetServerBase* WebSocketsServer {};
+    ClientVec ConnectedClients {};
+    std::mutex ConnectedClientsLocker {};
 
     void OnNewConnection(NetConnection* connection);
 

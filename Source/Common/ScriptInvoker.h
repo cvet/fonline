@@ -57,7 +57,7 @@ typedef list<DeferredCall> DeferredCallList;
 
 class ScriptInvoker
 {
-    friend class Script;
+    friend class ScriptSystem;
 
 private:
     TimerSettings& settings;

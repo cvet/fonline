@@ -34,7 +34,6 @@
 #include "Location.h"
 #include "Critter.h"
 #include "Map.h"
-#include "Script.h"
 #include "StringUtils.h"
 
 PROPERTIES_IMPL(Location);
@@ -52,7 +51,8 @@ CLASS_PROPERTY_IMPL(Location, Hidden);
 CLASS_PROPERTY_IMPL(Location, ToGarbage);
 CLASS_PROPERTY_IMPL(Location, Color);
 
-Location::Location(uint id, ProtoLocation* proto) : Entity(id, EntityType::Location, PropertiesRegistrator, proto)
+Location::Location(uint id, ProtoLocation* proto, ScriptSystem& script_sys) :
+    Entity(id, EntityType::Location, PropertiesRegistrator, proto), scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);
 }
@@ -65,7 +65,7 @@ void Location::BindScript()
     {
         string func_name = _str().parseHash(GetEntranceScript());
         EntranceScriptBindId =
-            Script::BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);
+            scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);
     }
 }
 

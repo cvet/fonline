@@ -37,6 +37,7 @@
 
 #include "FileSystem.h"
 #include "MsgFiles.h"
+#include "Script.h"
 
 #define TALK_NONE (0)
 #define TALK_WITH_NPC (1)
@@ -68,9 +69,8 @@
 #define DR_WHO_PLAYER (1)
 #define DR_WHO_NPC (2)
 
-class DemandResult
+struct DemandResult
 {
-public:
     char Type {DR_NONE};
     char Who {DR_WHO_NONE};
     max_t ParamId {};
@@ -83,9 +83,8 @@ public:
 };
 using DemandResultVec = vector<DemandResult>;
 
-class DialogAnswer
+struct DialogAnswer
 {
-public:
     uint Link {};
     uint TextId {};
     DemandResultVec Demands {};
@@ -139,7 +138,8 @@ struct Talking : public NonCopyable
 class DialogManager : public NonCopyable
 {
 public:
-    bool LoadDialogs(FileManager& file_mngr);
+    DialogManager(FileManager& file_mngr, ScriptSystem& script_sys);
+    bool LoadDialogs();
     DialogPack* ParseDialog(const string& pack_name, const string& data);
     bool AddDialog(DialogPack* pack);
     DialogPack* GetDialog(hash pack_id);
@@ -153,5 +153,7 @@ private:
     char GetWho(char who);
     bool CheckOper(char oper);
 
+    FileManager& fileMngr;
+    ScriptSystem& scriptSys;
     map<hash, unique_ptr<DialogPack>> dialogPacks {};
 };

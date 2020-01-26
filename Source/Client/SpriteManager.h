@@ -42,6 +42,7 @@
 #include "FileSystem.h"
 #include "GraphicApi.h"
 #include "GraphicStructures.h"
+#include "Script.h"
 #include "Settings.h"
 
 // Font flags
@@ -132,7 +133,7 @@ class SpriteManager
 {
 private:
 public:
-    SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr);
+    SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys);
     ~SpriteManager();
 
     void Preload3dModel(const string& model_name);

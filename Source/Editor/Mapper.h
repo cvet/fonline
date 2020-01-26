@@ -76,14 +76,16 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-class FOMapper
+class FOMapper : public NonCopyable // Todo: rename FOMapper to just Mapper
 {
 public:
-    static FOMapper* Self;
+    static FOMapper* Self; // Todo: remove mapper Self singleton
+
     MapperSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
     FileManager ServerFileMngr;
+    ScriptSystem ScriptSys;
     CacheStorage Cache;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
@@ -92,12 +94,11 @@ public:
     HexManager HexMngr;
     ResourceManager ResMngr;
     ConfigFile IfaceIni;
-    static string ServerWritePath;
-    static string ClientWritePath;
+    string ServerWritePath;
+    string ClientWritePath;
     PropertyVec ShowProps;
 
     FOMapper(MapperSettings& sett);
-    ~FOMapper();
     int InitIface();
     bool IfaceLoadRect(Rect& comp, const char* name);
     void MainLoop();
@@ -428,7 +429,6 @@ public:
     // Scripts
     static bool SpritesCanDraw;
     bool InitScriptSystem();
-    void FinishScriptSystem();
     void RunStartScript();
     void RunMapLoadScript(MapView* map);
     void RunMapSaveScript(MapView* map);
