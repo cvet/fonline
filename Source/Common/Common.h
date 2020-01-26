@@ -104,7 +104,7 @@
 #endif
 
 // Rendering
-#if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB)
+#if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB) || (defined(FO_WINDOWS) && defined(WINRT))
 #define FO_OPENGL_ES
 #endif
 #if defined(FO_WINDOWS)
@@ -512,6 +512,19 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 {
     return size;
 }
+
+// Undef some global symbols from implicitly included WinRT API
+#undef CopyFile
+#undef DeleteFile
+#undef PlaySound
+#undef MessageBox
+#undef GetObject
+#undef LoadImage
+#undef FindFirstFile
+#undef FindNextFile
+#undef GetClassName
+#undef min
+#undef max
 
 // Generic helpers
 #define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope

@@ -235,7 +235,7 @@ static void PrintLog(string& log, bool last_call, std::function<void(const strin
 
 static int SystemCall(string command, std::function<void(const string&)> log_callback)
 {
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
     HANDLE out_read = nullptr;
     HANDLE out_write = nullptr;
     SECURITY_ATTRIBUTES sa;
@@ -301,7 +301,7 @@ static int SystemCall(string command, std::function<void(const string&)> log_cal
     CloseHandle(pi.hThread);
     return (int)retval;
 
-#elif !defined(FO_WEB)
+#elif !defined(FO_WINDOWS) && !defined(FO_WEB)
     FILE* in = popen(command.c_str(), "r");
     if (!in)
         return -1;
@@ -340,7 +340,9 @@ static int Global_SystemCallExt(string command, string& output)
 static void Global_OpenLink(string link)
 {
 #if defined(FO_WINDOWS)
-    ShellExecuteW(nullptr, L"open", _str(link).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#ifndef WINRT
+    ::ShellExecuteW(nullptr, L"open", _str(link).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#endif
 #elif !defined(FO_IOS)
     int r = system((string("xdg-open ") + link).c_str());
     UNUSED_VARIABLE(r); // Supress compiler warning

@@ -420,19 +420,19 @@ void Script::UnloadScripts()
 
 static int SystemCall(const string& command, string& output)
 {
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
     HANDLE out_read = nullptr;
     HANDLE out_write = nullptr;
     SECURITY_ATTRIBUTES sa;
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
     sa.bInheritHandle = TRUE;
     sa.lpSecurityDescriptor = nullptr;
-    if (!CreatePipe(&out_read, &out_write, &sa, 0))
+    if (!::CreatePipe(&out_read, &out_write, &sa, 0))
         return -1;
-    if (!SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0))
+    if (!::SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0))
     {
-        CloseHandle(out_read);
-        CloseHandle(out_write);
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
         return -1;
     }
 
@@ -448,12 +448,12 @@ static int SystemCall(const string& command, string& output)
     ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 
     wchar_t* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
-    BOOL result = CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
+    BOOL result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     SAFEDELA(cmd_line);
     if (!result)
     {
-        CloseHandle(out_read);
-        CloseHandle(out_write);
+        ::CloseHandle(out_read);
+        ::CloseHandle(out_write);
         return -1;
     }
 
@@ -463,26 +463,26 @@ static int SystemCall(const string& command, string& output)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         DWORD bytes;
-        while (PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) && bytes > 0)
+        while (::PeekNamedPipe(out_read, nullptr, 0, nullptr, &bytes, nullptr) && bytes > 0)
         {
             char buf[TEMP_BUF_SIZE];
-            if (ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr))
+            if (::ReadFile(out_read, buf, sizeof(buf), &bytes, nullptr))
                 output.append(buf, bytes);
         }
 
-        if (WaitForSingleObject(pi.hProcess, 0) != WAIT_TIMEOUT)
+        if (::WaitForSingleObject(pi.hProcess, 0) != WAIT_TIMEOUT)
             break;
     }
 
     DWORD retval;
-    GetExitCodeProcess(pi.hProcess, &retval);
-    CloseHandle(out_read);
-    CloseHandle(out_write);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+    ::GetExitCodeProcess(pi.hProcess, &retval);
+    ::CloseHandle(out_read);
+    ::CloseHandle(out_write);
+    ::CloseHandle(pi.hProcess);
+    ::CloseHandle(pi.hThread);
     return (int)retval;
 
-#elif !defined(FO_WEB)
+#elif !defined(FO_WINDOWS) && !defined(FO_WEB)
     FILE* in = popen(command.c_str(), "r");
     if (!in)
         return -1;

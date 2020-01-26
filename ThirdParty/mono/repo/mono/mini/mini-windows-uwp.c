@@ -12,6 +12,8 @@
 #if G_HAVE_API_SUPPORT(HAVE_UWP_WINAPI_SUPPORT)
 #include <windows.h>
 
+#include "mini-runtime.h" //!
+
 void
 mono_runtime_setup_stat_profiler (void)
 {

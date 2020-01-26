@@ -334,7 +334,7 @@ static CScriptArray* GetEnumsInternal(bool global, const char* module_name)
     asIScriptEngine* engine = asGetActiveContext()->GetEngine();
     CScriptArray* enums = CScriptArray::Create(engine->GetTypeInfoByDecl("reflection::type[]"));
 
-    asIScriptModule* module;
+    asIScriptModule* module = nullptr;
     if (!global)
     {
         module = GetModule(module_name);

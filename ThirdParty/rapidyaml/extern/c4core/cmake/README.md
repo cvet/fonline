@@ -1,2 +1,0 @@
-# cmake
-Useful cmake scripts

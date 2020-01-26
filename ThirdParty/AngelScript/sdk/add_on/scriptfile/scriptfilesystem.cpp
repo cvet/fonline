@@ -16,6 +16,10 @@
 #endif
 #include <assert.h> // assert
 
+#ifndef CreateFile
+#define CreateFileW CreateFileFromAppW
+#endif
+
 using namespace std;
 
 BEGIN_AS_NAMESPACE
@@ -515,7 +519,8 @@ int CScriptFileSystem::Move(const string &source, const string &target)
 	MultiByteToWideChar(CP_UTF8, 0, search2.c_str(), -1, bufUTF16_2, 10000);
 
 	// Move the file or directory
-	BOOL success = MoveFileW(bufUTF16_1, bufUTF16_2);
+	DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
+	BOOL success = MoveFileExW(bufUTF16_1, bufUTF16_2, flags);
 	return success ? 0 : -1;
 #else
 	// Move the file or directory

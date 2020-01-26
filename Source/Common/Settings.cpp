@@ -319,8 +319,8 @@ void GlobalSettings::ResetStrongConstants()
     const_cast<bool&>(DesktopBuild) = (WindowsBuild || LinuxBuild || MacOsBuild);
     const_cast<bool&>(TabletBuild) = (AndroidBuild || IOsBuild);
 
-#ifdef FO_WINDOWS
-    if (GetSystemMetrics(SM_TABLETPC) != 0)
+#if defined(FO_WINDOWS) && !defined(WINRT)
+    if (::GetSystemMetrics(SM_TABLETPC) != 0)
     {
         const_cast<bool&>(DesktopBuild) = false;
         const_cast<bool&>(TabletBuild) = true;

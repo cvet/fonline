@@ -319,6 +319,9 @@ set( LIBMINI_WIN32_SOURCE
 	"repo/mono/mini/mini-windows.c"
 	"repo/mono/mini/mini-windows.h"
 )
+if( WIN32 AND WINRT )
+    list( APPEND LIBMINI_WIN32_SOURCE "repo/mono/mini/mini-windows-uwp.c" )
+endif()
 
 set( LIBMONORUNTIME_COMMON_SOURCE
 	"repo/mono/metadata/appdomain.c"

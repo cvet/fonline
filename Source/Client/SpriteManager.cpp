@@ -72,7 +72,7 @@ SpriteManager::SpriteManager(RenderSettings& sett, FileManager& file_mngr, Effec
 #if defined(FO_IOS) || defined(FO_ANDROID)
     is_tablet = true;
 #endif
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
     is_tablet = (GetSystemMetrics(SM_TABLETPC) != 0);
 #endif
     if (is_tablet)
@@ -404,11 +404,11 @@ bool SpriteManager::DisableFullscreen()
 
 void SpriteManager::BlinkWindow()
 {
-#ifdef FO_WINDOWS
+#if defined(FO_WINDOWS) && !defined(WINRT)
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     if (SDL_GetWindowWMInfo(mainWindow, &info))
-        FlashWindow(info.info.win.window, true);
+        ::FlashWindow(info.info.win.window, true);
 #endif
 }
 
@@ -471,11 +471,11 @@ void SpriteManager::OnResolutionChanged()
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
-#ifdef FO_WINDOWS
+#if defined(FO_WINDOWS) && !defined(WINRT)
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     if (SDL_GetWindowWMInfo(mainWindow, &info))
-        SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+        ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 #endif
 }
 

@@ -163,13 +163,13 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * recursion guard for EventDispatcher ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L417))
 * improve ptr<> system for leng term pointer observing ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L429))
 * add _hash c-string literal helper ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L510))
-* remove SAFEREL/SAFEDEL/SAFEDELA macro ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L531))
-* move MIN/MAX to std::min/std::max ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L551))
-* eliminate as much defines as possible ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L582))
-* convert all defines to constants and enums ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L583))
-* move WriteData/ReadData to DataWriter/DataReader ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L982))
-* find something from STL instead TwoBitMask ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1019))
-* move NetProperty to more proper place ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1237))
+* remove SAFEREL/SAFEDEL/SAFEDELA macro ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L544))
+* move MIN/MAX to std::min/std::max ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L564))
+* eliminate as much defines as possible ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L595))
+* convert all defines to constants and enums ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L596))
+* move WriteData/ReadData to DataWriter/DataReader ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L995))
+* find something from STL instead TwoBitMask ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1032))
+* move NetProperty to more proper place ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L1250))
 * improve editor Undo/Redo ([1](https://github.com/cvet/fonline/blob/master/Source/Applications/EditorApp.cpp#L34))
 * need attention! ([1](https://github.com/cvet/fonline/blob/master/Source/Applications/EditorApp.cpp#L215), [2](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp#L3909), [3](https://github.com/cvet/fonline/blob/master/Source/Client/Client.cpp#L6101), [4](https://github.com/cvet/fonline/blob/master/Source/Client/HexManager.cpp#L4311), [5](https://github.com/cvet/fonline/blob/master/Source/Client/HexManager.cpp#L4432), [6](https://github.com/cvet/fonline/blob/master/Source/Common/ScriptFunctions_Include.h#L113), [7](https://github.com/cvet/fonline/blob/master/Source/Common/ScriptFunctions_Include.h#L120), [8](https://github.com/cvet/fonline/blob/master/Source/Common/ScriptFunctions_Include.h#L127), [9](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L192), [10](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L856), [11](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L1770), [12](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L2277), [13](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L2311), [14](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L2333), [15](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L2357), [16](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L2662), [17](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3318), [18](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3356), [19](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3365), [20](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3435), [21](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3449), [22](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3464), [23](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3507), [24](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3588), [25](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3601), [26](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3615), [27](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L3980), [28](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4025), [29](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4525), [30](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4811), [31](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4846), [32](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4923), [33](https://github.com/cvet/fonline/blob/master/Source/Editor/Mapper.cpp#L4946), [34](https://github.com/cvet/fonline/blob/master/Source/Editor/ModelBaker.cpp#L318), [35](https://github.com/cvet/fonline/blob/master/Source/Server/MapManager.cpp#L230), [36](https://github.com/cvet/fonline/blob/master/Source/Server/Server.cpp#L5644))
 * add interpolation for tracks more than two ([1](https://github.com/cvet/fonline/blob/master/Source/Client/3dAnimation.cpp#L420))
@@ -188,7 +188,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * improve client rendering brightness ([1](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L63))
 * exclude sprite cut system? ([1](https://github.com/cvet/fonline/blob/master/Source/Client/Sprites.cpp#L34))
 * store Cache.bin in player local dir for Windows users? ([1](https://github.com/cvet/fonline/blob/master/Source/Common/CacheStorage.h#L34))
-* improve YAML supporting to config file ([1](https://github.com/cvet/fonline/blob/master/Source/Common/ConfigFile.cpp#L38))
+* improve YAML supporting to config file ([1](https://github.com/cvet/fonline/blob/master/Source/Common/ConfigFile.cpp#L34))
 * handle apply file writing ([1](https://github.com/cvet/fonline/blob/master/Source/Common/FileSystem.cpp#L597))
 * script handling in ConvertParamValue ([1](https://github.com/cvet/fonline/blob/master/Source/Common/GenericUtils.cpp#L306))
 * server logs append not rewrite (with checking of size) ([1](https://github.com/cvet/fonline/blob/master/Source/Common/Log.cpp#L34))
@@ -268,7 +268,6 @@ All output binaries you can find in Build/Binaries directory.
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
-* [rapidyaml](https://github.com/biojppm/rapidyaml) - YAML parser
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
 * SHA1 by Steve Reid - hash generator
 * SHA2 by Olivier Gay - hash generator

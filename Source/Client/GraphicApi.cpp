@@ -45,7 +45,7 @@ bool OGL_vertex_array_object = false;
 
 bool GraphicApi::Init()
 {
-// Initialize GLEW
+    // Initialize GLEW
 #ifndef FO_OPENGL_ES
     GLenum glew_result = glewInit();
     if (glew_result != GLEW_OK)
@@ -92,14 +92,14 @@ static void MultMatricesf(const float a[16], const float b[16], float r[16]);
 static void MultMatrixVecf(const float matrix[16], const float in[4], float out[4]);
 static bool InvertMatrixf(const float m[16], float inv_out[16]);
 
-void GraphicApi::MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float near, float far)
+void GraphicApi::MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp)
 {
     float r_l = right - left;
     float t_b = top - bottom;
-    float f_n = far - near;
+    float f_n = farp - nearp;
     float tx = -(right + left) / (right - left);
     float ty = -(top + bottom) / (top - bottom);
-    float tz = -(far + near) / (far - near);
+    float tz = -(farp + nearp) / (farp - nearp);
 
     matrix[0] = 2.0f / r_l;
     matrix[1] = 0.0f;

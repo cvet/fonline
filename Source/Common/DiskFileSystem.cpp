@@ -47,6 +47,10 @@
 #include "SDL.h"
 #endif
 
+#if defined(FO_WINDOWS) && defined(WINRT)
+#define CreateFileW CreateFileFromAppW
+#endif
+
 const string DiskFileSystem::InitialDir {};
 struct InitialDirInit
 {
@@ -217,8 +221,11 @@ uint DiskFile::GetSize()
 {
     RUNTIME_ASSERT(pImpl);
 
-    DWORD high;
-    return ::GetFileSize(pImpl->FileHandle, &high);
+    LARGE_INTEGER li;
+    BOOL get_file_size_ok = ::GetFileSizeEx(pImpl->FileHandle, &li);
+    RUNTIME_ASSERT(get_file_size_ok);
+    RUNTIME_ASSERT(li.HighPart == 0);
+    return li.LowPart;
 }
 
 #elif defined(FO_ANDROID)
@@ -494,7 +501,8 @@ bool DiskFileSystem::CopyFile(const string& fname, const string& copy_fname)
 
 bool DiskFileSystem::RenameFile(const string& fname, const string& new_fname)
 {
-    return ::MoveFileW(MBtoWC(fname).c_str(), MBtoWC(new_fname).c_str()) != FALSE;
+    DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
+    return !!::MoveFileExW(MBtoWC(fname).c_str(), MBtoWC(new_fname).c_str(), flags);
 }
 
 struct DiskFind::Impl
@@ -838,7 +846,7 @@ string DiskFileSystem::GetExePath()
 {
 #ifdef FO_WINDOWS
     wchar_t buf[4096] {};
-    DWORD r = GetModuleFileNameW(GetModuleHandle(nullptr), buf, sizeof(buf));
+    DWORD r = ::GetModuleFileNameW(nullptr, buf, sizeof(buf));
     return r ? _str().parseWideChar(buf) : "";
 #else
     return "";

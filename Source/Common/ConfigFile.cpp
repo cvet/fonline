@@ -31,12 +31,11 @@
 // SOFTWARE.
 //
 
+// Todo: improve YAML supporting to config file
+
 #include "ConfigFile.h"
 #include "StringUtils.h"
 #include "Testing.h"
-
-// Todo: improve YAML supporting to config file
-// #include "ryml.hpp"
 
 static bool IsYaml(const string& str)
 {
@@ -190,7 +189,7 @@ void ConfigFile::ParseStr(const string& str)
 string ConfigFile::SerializeData()
 {
     string str;
-    bool to_yaml = true;
+    bool to_yaml = false;
     if (to_yaml)
     {
     }

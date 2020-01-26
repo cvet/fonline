@@ -98,7 +98,7 @@
 #define glTexImage2DMultisample(a, b, c, d, e, f)
 #define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleIMG
 #define glRenderbufferStorageMultisampleEXT glRenderbufferStorageMultisampleIMG
-#elif defined(FO_WEB)
+#elif defined(FO_WEB) || (defined(FO_WINDOWS) && defined(WINRT))
 #define glTexImage2DMultisample(a, b, c, d, e, f)
 #define glRenderbufferStorageMultisample(a, b, c, d, e)
 #define glRenderbufferStorageMultisampleEXT(a, b, c, d, e)
@@ -128,7 +128,7 @@ extern bool OGL_vertex_array_object;
 namespace GraphicApi
 {
     bool Init();
-    void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float near, float far);
+    void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp);
     bool MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16],
         const int viewport[4], float* winx, float* winy, float* winz);
     bool MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16],

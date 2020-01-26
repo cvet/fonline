@@ -47,7 +47,7 @@
 #include "Version_Include.h"
 #include "WinApi_Include.h"
 
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
 #pragma warning(disable : 4091)
 #pragma warning(disable : 4996)
 #include <DbgHelp.h>
@@ -76,7 +76,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 }
 #endif
 
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
 #if UINTPTR_MAX == 0xFFFFFFFF
 #define WIN32BIT
 #pragma warning(disable : 4748)
@@ -521,7 +521,7 @@ void CreateDump(const string& appendix, const string& message)
     TopLevelFilterReadableDump(nullptr);
 }
 
-#elif !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
+#elif !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
 static bool SigactionsSetted = false;
 static struct sigaction OldSIGSEGV;
