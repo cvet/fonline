@@ -31,20 +31,19 @@
 // SOFTWARE.
 //
 
-// Todo: rework commented code
+// Todo: rework all commented code during refactoring
+// Todo: make entities positioning free in space, without hard-linking to hex
+// Todo: add third 'up' coordinate to positioning that allow create multidimensional maps
 // Todo: use Common.h as precompiled header
 // Todo: review push_back -> emplace_back
 // Todo: use smart pointers instead raw
 // Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
 // Todo: add #undef for every local #define
-// Todo: need Linux 32-bit builds?
 // Todo: improve valgrind
 // Todo: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
 // Todo: move defines to const and enums
 // Todo: don't use rtti and remove from compilation options
-// Todo: research mac cross-compile https://github.com/tpoechtrager/osxcross
-// Todo: research windows cross-compile https://arrayfire.com/cross-compile-to-windows-from-linux/
 // Todo: wrap fonline code to namespace
 // Todo: fix LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
 // Todo: fix LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
@@ -54,7 +53,6 @@
 // Todo: research about engine version naming convention (maybe 2019.1/2/3/4?)
 // Todo: id and hash to 8 byte integer
 // Todo: add to copyrigths for https://github.com/taka-no-me/android-cmake
-// Todo: llvm as main compiler?
 // Todo: make all depedencies as git submodules?
 // Todo: research about std::string_view
 // Todo: research about std::filesystem
@@ -72,8 +70,6 @@
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
 // Todo: organize class members as public, protected, private; methods, fields
 // Todo: research c++20 modules
-// Todo: eliminate volatile, replace to atomic if needed
-// Todo: change Visual Studio toolset to clang-cl?
 // Todo: prefer this construction if(auto i = do(); i < 0) i... else i...
 // Todo: improve std::to_string or fmt::format to string conversions
 // Todo: casts between int types via NumericCast<to>()

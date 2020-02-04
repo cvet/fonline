@@ -93,20 +93,19 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 
 #### Todo list *(generated from source code)*
 
-* Common: rework commented code
+* Common: rework all commented code during refactoring
+* Common: make entities positioning free in space, without hard-linking to hex
+* Common: add third 'up' coordinate to positioning that allow create multidimensional maps
 * Common: use Common.h as precompiled header
 * Common: review push_back -> emplace_back
 * Common: use smart pointers instead raw
 * Common: fix all PVS Studio warnings
 * Common: SHA replace to openssl SHA
 * Common: add #undef for every local #define
-* Common: need Linux 32-bit builds?
 * Common: improve valgrind
 * Common: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
 * Common: move defines to const and enums
 * Common: don't use rtti and remove from compilation options
-* Common: research mac cross-compile https://github.com/tpoechtrager/osxcross
-* Common: research windows cross-compile https://arrayfire.com/cross-compile-to-windows-from-linux/
 * Common: wrap fonline code to namespace
 * Common: fix LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
 * Common: fix LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
@@ -116,7 +115,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Common: research about engine version naming convention (maybe 2019.1/2/3/4?)
 * Common: id and hash to 8 byte integer
 * Common: add to copyrigths for https://github.com/taka-no-me/android-cmake
-* Common: llvm as main compiler?
 * Common: make all depedencies as git submodules?
 * Common: research about std::string_view
 * Common: research about std::filesystem
@@ -134,8 +132,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Common: improve BitReader/BitWriter to better network/disk space utilization
 * Common: organize class members as public, protected, private; methods, fields
 * Common: research c++20 modules
-* Common: eliminate volatile, replace to atomic if needed
-* Common: change Visual Studio toolset to clang-cl?
 * Common: prefer this construction if(auto i = do(); i < 0) i... else i...
 * Common: improve std::to_string or fmt::format to string conversions
 * Common: casts between int types via NumericCast<to>()
