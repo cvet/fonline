@@ -41,7 +41,7 @@
 class SoundManager : public NonCopyable
 {
 public:
-    SoundManager(SoundSettings& sett, FileManager& file_mngr);
+    SoundManager(AudioSettings& sett, FileManager& file_mngr);
     ~SoundManager();
     bool PlaySound(const StrMap& sound_names, const string& name);
     bool PlayMusic(const string& fname, uint repeat_time);
@@ -49,7 +49,6 @@ public:
     void StopMusic();
 
 private:
-    struct Impl;
     struct Sound;
     using SoundsFunc = std::function<void(uchar*)>;
     using SoundVec = vector<Sound*>;
@@ -63,11 +62,9 @@ private:
     bool StreamOGG(Sound* sound);
     bool ConvertData(Sound* sound);
 
-    SoundSettings& settings;
+    AudioSettings& settings;
     FileManager& fileMngr;
     bool isActive {};
-    bool isAudioInited {};
-    unique_ptr<Impl> pImpl {};
     uint streamingPortion {};
     SoundVec soundsActive {};
     UCharVec outputBuf {};

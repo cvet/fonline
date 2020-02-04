@@ -109,7 +109,7 @@ uint ScriptInvoker::AddDeferredCall(uint delay, bool saved, asIScriptFunction* f
         Globals->SetLastDeferredCallId(call.Id);
         deferredCalls.push_back(call);
 
-        /* #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+        / * #if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
                 if (call.Saved)
                 {
                     DataBase::Document call_doc;

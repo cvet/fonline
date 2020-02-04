@@ -31,6 +31,7 @@
 // SOFTWARE.
 //
 
+// Todo: rework commented code
 // Todo: use Common.h as precompiled header
 // Todo: review push_back -> emplace_back
 // Todo: use smart pointers instead raw
@@ -80,7 +81,6 @@
 // Todo: build debug sanitiziers
 // Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
-// Todo: reasearch about std::quick_exit
 // Todo: improve particle system based on SPARK engine
 // Todo: research about Steam integration
 // Todo: support of loading r412 content
@@ -88,6 +88,9 @@
 // Todo: temporary entities, disable writing to data base
 
 #pragma once
+
+#ifndef PRECOMPILED_HEADER_GUARD
+#define PRECOMPILED_HEADER_GUARD
 
 // Operating system (passed outside)
 // FO_WINDOWS
@@ -98,18 +101,21 @@
 // FO_WEB
 // Todo: detect OS automatically not from passed constant from build system
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
-#error "Unknown operating system"
+#error "Operating system not specified"
 #endif
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB != 1
 #error "Multiple operating systems not allowed"
 #endif
 
 // Rendering
-#if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB) || (defined(FO_WINDOWS) && defined(WINRT))
+#if !(defined(FO_WINDOWS) && defined(WINRT))
+#define FO_HAVE_OPENGL
+#if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB)
 #define FO_OPENGL_ES
 #endif
+#endif
 #if defined(FO_WINDOWS)
-#define FO_HAVE_DX
+#define FO_HAVE_D3D
 #endif
 
 // Standard API
@@ -209,6 +215,18 @@ using std::unordered_set;
 using std::variant;
 using std::vector;
 
+// Math types
+// Todo: replace depedency from assimp types (matrix/vector/quaternion/color)
+#include "assimp/types.h"
+
+using Vector = aiVector3D;
+using VectorVec = vector<Vector>;
+using Matrix = aiMatrix4x4;
+using MatrixVec = vector<Matrix>;
+using Quaternion = aiQuaternion;
+using QuaternionVec = vector<Quaternion>;
+using Color = aiColor4D;
+
 // Todo: remove map/vector/set/pair bindings
 using StrUCharMap = map<string, uchar>;
 using UCharStrMap = map<uchar, string>;
@@ -279,15 +297,21 @@ using UIntIntPairVecMap = map<uint, IntPairVec>;
 using UIntHashVecMap = map<uint, HashVec>;
 
 // Generic engine exception
-class fo_exception : public std::exception
+// Todo: rename GenericException to GenericException
+class GenericException : public std::exception
 {
 public:
     template<typename... Args>
-    fo_exception(const char* message, Args... args) :
+    GenericException(const char* message, Args... args) :
         exceptionMessage {message}, exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
     {
     }
-    ~fo_exception() noexcept = default;
+    template<typename... Args>
+    GenericException(const string& message, Args... args) :
+        exceptionMessage {message}, exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+    {
+    }
+    ~GenericException() noexcept = default;
     const char* what() const noexcept override { return exceptionMessage.c_str(); }
 
 private:
@@ -297,14 +321,39 @@ private:
 };
 
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public fo_exception \
+    class exception_name : public GenericException \
     { \
     public: \
         template<typename... Args> \
-        exception_name(Args... args) : fo_exception(std::forward<Args>(args)...) \
+        exception_name(Args... args) : GenericException(std::forward<Args>(args)...) \
         { \
         } \
     }
+#define BEGIN_ROOT_EXCEPTION_BLOCK() \
+    try \
+    {
+#define END_ROOT_EXCEPTION_BLOCK() \
+    } \
+    catch (...) { throw; }
+#define BEGIN_EXCEPTION_BLOCK() \
+    try \
+    {
+#define END_EXCEPTION_BLOCK() \
+    } \
+    catch (GenericException & ex) { throw; }
+#define CATCH_EXCEPTION(ex_type) \
+    } \
+    catch (ex_type & ex) \
+    {
+#define RUNTIME_ASSERT(expr) \
+    if (!(expr)) \
+    throw AssertationException(#expr, __FILE__, __LINE__)
+#define RUNTIME_ASSERT_STR(expr, str) \
+    if (!(expr)) \
+    throw AssertationException(str, __FILE__, __LINE__)
+
+DECLARE_EXCEPTION(AssertationException);
+DECLARE_EXCEPTION(UnreachablePlaceException);
 
 // Non copyable (but movable) class decorator
 class NonCopyable // Todo: use NonCopyable as default class specifier
@@ -401,7 +450,7 @@ private:
     void ThrowException()
     {
         if (!std::uncaught_exceptions())
-            throw fo_exception("Some of subscriber still alive", subscriberCallbacks.size());
+            throw GenericException("Some of subscriber still alive", subscriberCallbacks.size());
     }
 
     list<Callback> subscriberCallbacks {};
@@ -444,7 +493,7 @@ private:
     void ThrowException()
     {
         if (!std::uncaught_exceptions())
-            throw fo_exception("Some of pointer still alive", ptrCounter.load());
+            throw GenericException("Some of pointer still alive", ptrCounter.load());
     }
 
     std::atomic_int ptrCounter {};
@@ -528,14 +577,15 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #undef max
 
 // Generic helpers
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+#define LINE_STR STRINGIFY(__LINE__)
 #define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
 #define OFFSETOF(s, m) ((int)(size_t)(&reinterpret_cast<s*>(100000)->m) - 100000)
 #define UNUSED_VARIABLE(x) (void)(x)
 #define memzero(ptr, size) memset(ptr, 0, size)
 #define UNIQUE_FUNCTION_NAME(name, ...) UNIQUE_FUNCTION_NAME2(MERGE_ARGS(name, __COUNTER__), __VA_ARGS__)
 #define UNIQUE_FUNCTION_NAME2(name, ...) name(__VA_ARGS__)
-#define STRINGIZE_INT(x) STRINGIZE_INT2(x)
-#define STRINGIZE_INT2(x) #x
 #define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)
 #define MERGE_ARGS2(a, b) a##b
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
@@ -601,7 +651,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define UTF8_BUF_SIZE(count) ((count)*4)
 #define MAX_FOPATH UTF8_BUF_SIZE(2048)
 #define MAX_HOLO_INFO (250)
-#define EFFECT_SCRIPT_VALUES (10)
 #define IS_DIR_CORNER(dir) (((dir)&1) != 0) // 1, 3, 5, 7
 #define AGGRESSOR_TICK (60000)
 #define MAX_ENEMY_STACK (30)
@@ -1265,3 +1314,5 @@ public:
         Location, // 0
     };
 };
+
+#endif // PRECOMPILED_HEADER_GUARD

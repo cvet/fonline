@@ -101,7 +101,8 @@ VAR_SETTING(uint, Ping, 0);
 VAR_SETTING(bool, DebugNet, false);
 SETTING_GROUP_END();
 
-SETTING_GROUP(SoundSettings, virtual DummySettings);
+SETTING_GROUP(AudioSettings, virtual DummySettings);
+SETTING(bool, DisableAudio, false);
 VAR_SETTING(int, SoundVolume, 100);
 VAR_SETTING(int, MusicVolume, 100);
 SETTING_GROUP_END();
@@ -141,8 +142,12 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual EffectSettings, virtual GeometrySettings);
 SETTING(string, WindowName, "FOnline");
-SETTING(bool, OpenGLRendering, true);
-SETTING(bool, OpenGLDebug, false);
+SETTING(bool, WindowCentered, true);
+SETTING(bool, ForceOpenGL, false);
+SETTING(bool, ForceDirect3D, false);
+SETTING(bool, ForceMetal, false);
+SETTING(bool, ForceVulkan, false);
+SETTING(bool, RenderDebug, false);
 SETTING(uint, Animation3dSmoothTime, 150);
 SETTING(uint, Animation3dFPS, 30);
 SETTING(bool, Enable3dRendering, false);
@@ -234,21 +239,15 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(InputSettings, virtual DummySettings);
 SETTING(uint, DoubleClickTime, 500);
-SETTING(string, KeyboardRemap, "");
 SETTING(uint, ConsoleHistorySize, 100);
 VAR_SETTING(bool, DisableMouseEvents, false);
 VAR_SETTING(bool, DisableKeyboardEvents, false);
 VAR_SETTING(int, MouseX, 0);
 VAR_SETTING(int, MouseY, 0);
-VAR_SETTING(int, LastMouseX, 0);
-VAR_SETTING(int, LastMouseY, 0);
-VAR_SETTING(vector<int>, MainWindowKeyboardEvents);
-VAR_SETTING(vector<string>, MainWindowKeyboardEventsText);
-VAR_SETTING(vector<int>, MainWindowMouseEvents);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings,
-    virtual ScriptSettings, virtual SoundSettings, virtual ViewSettings, virtual RenderSettings,
+    virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings,
     virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings,
     virtual InputSettings, virtual CritterViewSettings);
 SETTING(string, AutoLogin, "");
@@ -269,7 +268,7 @@ SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSettings, virtual ScriptSettings,
-    virtual SoundSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings,
+    virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings,
     virtual TimerSettings, virtual ServerGameplaySettings, virtual MapSettings, virtual CritterSettings);
 SETTING(uint, AdminPanelPort, 0);
 SETTING(bool, AssimpLogging, false);

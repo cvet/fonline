@@ -32,14 +32,41 @@
 //
 
 #include "3dStuff.h"
-#include "3dAnimation.h"
-#include "EffectManager.h"
+#include "Bakering.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
+
+bool Is3dExtensionSupported(const string& ext)
+{
+    static const unordered_set<string> supported_formats = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase",
+        "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh",
+        "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl",
+        "hmp", "ndo", "ac"};
+    return supported_formats.count(ext);
+}
+
+Bone* Bone::Find(hash name_hash)
+{
+    if (NameHash == name_hash)
+        return this;
+
+    for (auto& child : Children)
+    {
+        Bone* bone = child->Find(name_hash);
+        if (bone)
+            return bone;
+    }
+    return nullptr;
+}
+
+hash Bone::GetHash(const string& name)
+{
+    return _str(name).toHash();
+}
 
 Animation3dManager::Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
     ScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator) :
@@ -49,14 +76,10 @@ Animation3dManager::Animation3dManager(RenderSettings& sett, FileManager& file_m
     scriptSys {script_sys},
     meshTexCreator {mesh_tex_creator}
 {
-    if (!settings.Enable3dRendering)
-        return;
-
-    worldMatrices.resize(effectMngr.MaxBones);
+    RUNTIME_ASSERT(settings.Enable3dRendering);
 
     // Check effects
-    bool load_3d_effects_ok = effectMngr.Load3dEffects();
-    RUNTIME_ASSERT(load_3d_effects_ok);
+    effectMngr.Load3dEffects();
 
     // Smoothing
     moveTransitionTime = settings.Animation3dSmoothTime / 1000.0f;
@@ -68,32 +91,18 @@ Animation3dManager::Animation3dManager(RenderSettings& sett, FileManager& file_m
         animDelay = 1000 / settings.Animation3dFPS;
 }
 
-Animation3dManager::~Animation3dManager()
-{
-    for (auto* e : allEntities)
-        delete e;
-    for (auto* xf : xFiles)
-        delete xf;
-    for (auto* model : loadedModels)
-        delete model;
-    for (auto* anim : loadedAnimSets)
-        delete anim;
-    for (auto* tex : loadedMeshTextures)
-        delete tex;
-}
-
 Bone* Animation3dManager::LoadModel(const string& fname)
 {
     // Find already loaded
-    for (size_t i = 0, j = loadedModelNames.size(); i < j; i++)
-        if (_str(loadedModelNames[i]).compareIgnoreCase(fname))
-            return loadedModels[i];
+    hash name_hash = _str(fname).toHash();
+    for (auto& root_bone : loadedModels)
+        if (root_bone->NameHash == name_hash)
+            return root_bone.get();
 
     // Add to already processed
-    for (size_t i = 0, j = processedFiles.size(); i < j; i++)
-        if (_str(processedFiles[i]).compareIgnoreCase(fname))
-            return nullptr;
-    processedFiles.push_back(fname);
+    if (processedFiles.count(name_hash))
+        return nullptr;
+    processedFiles.emplace(name_hash);
 
     // Load file data
     File file = fileMngr.ReadFile(fname);
@@ -104,57 +113,46 @@ Bone* Animation3dManager::LoadModel(const string& fname)
     }
 
     // Load bones
-    Bone* root_bone = new Bone();
+    auto root_bone = std::make_unique<Bone>();
     DataReader reader {file.GetBuf()};
-    root_bone->Load(reader);
-    root_bone->FixAfterLoad(root_bone);
+    Bakering::LoadBone(root_bone.get(), reader);
+    Bakering::FixBoneAfterLoad(root_bone.get(), root_bone.get());
 
     // Load animations
     uint anim_sets_count = file.GetBEUInt();
     for (uint i = 0; i < anim_sets_count; i++)
     {
-        AnimSet* anim_set = new AnimSet();
-        anim_set->Load(reader);
-        loadedAnimSets.push_back(anim_set);
+        auto anim_set = std::make_unique<AnimSet>();
+        Bakering::LoadAnimSet(anim_set.get(), reader);
+        loadedAnimSets.push_back(std::move(anim_set));
     }
 
     // Add to collection
-    loadedModels.push_back(root_bone);
-    loadedModelNames.push_back(fname);
-    return root_bone;
-}
-
-void Animation3dManager::DestroyModel(Bone* root_bone)
-{
-    for (size_t i = 0, j = loadedModels.size(); i < j; i++)
-    {
-        if (loadedModels[i] == root_bone)
-        {
-            processedFiles.erase(std::find(processedFiles.begin(), processedFiles.end(), loadedModelNames[i]));
-            loadedModels.erase(loadedModels.begin() + i);
-            loadedModelNames.erase(loadedModelNames.begin() + i);
-            break;
-        }
-    }
-    delete root_bone;
+    root_bone->NameHash = name_hash;
+    loadedModels.emplace_back(root_bone.release(), [this, &root_bone](Bone*) {
+        processedFiles.erase(root_bone->NameHash);
+        // loadedModels.erase(root_bone);
+    });
+    return loadedModels.back().get();
 }
 
 AnimSet* Animation3dManager::LoadAnimation(const string& anim_fname, const string& anim_name)
 {
     // Find in already loaded
-    bool take_first = anim_name == "Base";
+    bool take_first = (anim_name == "Base");
+    hash name_hash = _str(anim_fname).toHash();
     for (size_t i = 0; i < loadedAnimSets.size(); i++)
     {
-        AnimSet* anim = loadedAnimSets[i];
+        AnimSet* anim = loadedAnimSets[i].get();
         if (_str(anim->GetFileName()).compareIgnoreCase(anim_fname) &&
             (take_first || _str(anim->GetName()).compareIgnoreCase(anim_name)))
             return anim;
     }
 
     // Check maybe file already processed and nothing founded
-    for (size_t i = 0; i < processedFiles.size(); i++)
-        if (_str(processedFiles[i]).compareIgnoreCase(anim_fname))
-            return nullptr;
+    if (processedFiles.count(name_hash))
+        return nullptr;
+    processedFiles.emplace(name_hash);
 
     // File not processed, load and recheck animations
     if (LoadModel(anim_fname))
@@ -170,23 +168,21 @@ MeshTexture* Animation3dManager::LoadTexture(const string& texture_name, const s
         return nullptr;
 
     // Try find already loaded texture
-    for (auto* mesh_tex : loadedMeshTextures)
+    for (auto& mesh_tex : loadedMeshTextures)
         if (_str(mesh_tex->Name).compareIgnoreCase(texture_name))
-            return mesh_tex->Id ? mesh_tex : nullptr;
+            return mesh_tex->MainTex ? mesh_tex.get() : nullptr;
 
     // Create new
     MeshTexture* mesh_tex = new MeshTexture();
     mesh_tex->Name = texture_name;
     mesh_tex->ModelPath = model_path;
     meshTexCreator(mesh_tex);
-    loadedMeshTextures.push_back(mesh_tex);
-    return mesh_tex->Id ? mesh_tex : nullptr;
+    loadedMeshTextures.emplace_back(mesh_tex);
+    return mesh_tex->MainTex ? mesh_tex : nullptr;
 }
 
 void Animation3dManager::DestroyTextures()
 {
-    for (auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it)
-        delete *it;
     loadedMeshTextures.clear();
 }
 
@@ -203,7 +199,7 @@ void Animation3dManager::SetScreenSize(int width, int height)
 
     // Projection
     float k = (float)modeHeight / 768.0f;
-    GraphicApi::MatrixOrtho(
+    MatrixHelper::MatrixOrtho(
         matrixProjRM[0], 0.0f, 18.65f * k * modeWidthF / modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
     matrixProjCM = matrixProjRM;
     matrixProjCM.Transpose();
@@ -212,7 +208,7 @@ void Animation3dManager::SetScreenSize(int width, int height)
     matrixEmptyCM.Transpose();
 
     // View port
-    GL(glViewport(0, 0, modeWidth, modeHeight));
+    // GL(glViewport(0, 0, modeWidth, modeHeight));
 }
 
 Animation3d* Animation3dManager::GetAnimation(const string& name, bool is_child)
@@ -230,21 +226,18 @@ Animation3d* Animation3dManager::GetAnimation(const string& name, bool is_child)
     for (size_t i = 0, j = entity->xFile->allDrawBones.size(); i < j; i++)
     {
         MeshInstance* mesh_instance = anim3d->allMeshes[i];
-        MeshData* mesh = entity->xFile->allDrawBones[i]->Mesh;
+        MeshData* mesh = entity->xFile->allDrawBones[i]->AttachedMesh.get();
         memzero(mesh_instance, sizeof(MeshInstance));
         mesh_instance->Mesh = mesh;
         const char* tex_name = (mesh->DiffuseTexture.length() ? mesh->DiffuseTexture.c_str() : nullptr);
         mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] =
             (tex_name ? entity->xFile->GetTexture(tex_name) : nullptr);
         mesh_instance->CurEffect = mesh_instance->DefaultEffect =
-            (!mesh->DrawEffect.Name.empty() ? entity->xFile->GetEffect(&mesh->DrawEffect) : nullptr);
+            (!mesh->EffectName.empty() ? entity->xFile->GetEffect(mesh->EffectName) : nullptr);
     }
 
     // Set default data
     anim3d->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
-
-    if (!is_child)
-        loadedAnimations.push_back(anim3d);
     return anim3d;
 }
 
@@ -256,38 +249,24 @@ void Animation3dManager::PreloadEntity(const string& name)
 Animation3dEntity* Animation3dManager::GetEntity(const string& name)
 {
     // Try find instance
-    Animation3dEntity* entity = nullptr;
-    for (auto it = allEntities.begin(), end = allEntities.end(); it != end; ++it)
-    {
-        Animation3dEntity* e = *it;
-        if (e->fileName == name)
-        {
-            entity = e;
-            break;
-        }
-    }
+    for (auto& entity : allEntities)
+        if (entity->fileName == name)
+            return entity.get();
 
     // Create new instance
-    if (!entity)
-    {
-        entity = new Animation3dEntity(*this);
-        if (!entity || !entity->Load(name))
-        {
-            SAFEDEL(entity);
-            return nullptr;
-        }
+    auto entity = std::make_unique<Animation3dEntity>(*this);
+    if (!entity->Load(name))
+        return nullptr;
 
-        allEntities.push_back(entity);
-    }
-
-    return entity;
+    allEntities.push_back(std::move(entity));
+    return allEntities.back().get();
 }
 
 Animation3dXFile* Animation3dManager::GetXFile(const string& xname)
 {
-    for (Animation3dXFile* x : xFiles)
+    for (auto& x : xFiles)
         if (x->fileName == xname)
-            return x;
+            return x.get();
 
     // Load
     Bone* root_bone = LoadModel(xname);
@@ -298,17 +277,11 @@ Animation3dXFile* Animation3dManager::GetXFile(const string& xname)
     }
 
     Animation3dXFile* xfile = new Animation3dXFile(*this);
-    if (!xfile)
-    {
-        WriteLog("Allocation fail, x file '{}'.\n", xname);
-        return nullptr;
-    }
-
     xfile->fileName = xname;
-    xfile->rootBone = root_bone;
+    xfile->rootBone = unique_ptr<Bone>(root_bone);
     xfile->SetupBones();
 
-    xFiles.push_back(xfile);
+    xFiles.emplace_back(xfile);
     return xfile;
 }
 
@@ -331,7 +304,7 @@ void Animation3dManager::VecProject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    GraphicApi::MatrixProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    MatrixHelper::MatrixProject(v.x, v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -341,7 +314,7 @@ void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
 {
     int viewport[4] = {0, 0, modeWidth, modeHeight};
     float x = 0.0f, y = 0.0f, z = 0.0f;
-    GraphicApi::MatrixUnproject(v.x, modeHeightF - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
+    MatrixHelper::MatrixUnproject(v.x, modeHeightF - v.y, v.z, matrixEmptyCM[0], matrixProjCM[0], viewport, &x, &y, &z);
     out.x = x;
     out.y = y;
     out.z = z;
@@ -367,10 +340,6 @@ Animation3d::Animation3d(Animation3dManager& anim3d_mngr) : anim3dMngr(anim3d_mn
 
 Animation3d::~Animation3d()
 {
-    auto it = std::find(anim3dMngr.loadedAnimations.begin(), anim3dMngr.loadedAnimations.end(), this);
-    if (it != anim3dMngr.loadedAnimations.end())
-        anim3dMngr.loadedAnimations.erase(it);
-
     delete animController;
 
     for (auto anim : childAnimations)
@@ -458,7 +427,7 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
     if (layer_changed)
     {
         // Store previous cuts
-        CutDataVec old_cuts = allCuts;
+        vector<CutData*> old_cuts = allCuts;
 
         // Store disabled meshes
         for (size_t i = 0, j = allMeshes.size(); i < j; i++)
@@ -486,13 +455,13 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
             for (auto it_ = animEntity->animData.begin(), end_ = animEntity->animData.end(); it_ != end_; ++it_)
             {
                 AnimParams& link = *it_;
-                if (link.Layer == i && link.LayerValue == new_layers[i] && !link.ChildFName)
+                if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty())
                 {
-                    for (uint j = 0; j < link.DisabledLayersCount; j++)
+                    for (size_t j = 0; j < link.DisabledLayer.size(); j++)
                     {
-                        unused_layers[link.DisabledLayers[j]] = true;
+                        unused_layers[link.DisabledLayer[j]] = true;
                     }
-                    for (uint j = 0; j < link.DisabledMeshCount; j++)
+                    for (size_t j = 0; j < link.DisabledMesh.size(); j++)
                     {
                         uint disabled_mesh_name_hash = link.DisabledMesh[j];
                         for (auto* mesh : allMeshes)
@@ -505,11 +474,11 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
 
         if (parentBone)
         {
-            for (uint j = 0; j < animLink.DisabledLayersCount; j++)
+            for (size_t j = 0; j < animLink.DisabledLayer.size(); j++)
             {
-                unused_layers[animLink.DisabledLayers[j]] = true;
+                unused_layers[animLink.DisabledLayer[j]] = true;
             }
-            for (uint j = 0; j < animLink.DisabledMeshCount; j++)
+            for (size_t j = 0; j < animLink.DisabledMesh.size(); j++)
             {
                 uint disabled_mesh_name_hash = animLink.DisabledMesh[j];
                 for (auto* mesh : allMeshes)
@@ -524,12 +493,11 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
             if (unused_layers[i] || new_layers[i] == 0)
                 continue;
 
-            for (auto it = animEntity->animData.begin(), end = animEntity->animData.end(); it != end; ++it)
+            for (AnimParams& link : animEntity->animData)
             {
-                AnimParams& link = *it;
                 if (link.Layer == i && link.LayerValue == new_layers[i])
                 {
-                    if (!link.ChildFName)
+                    if (link.ChildName.empty())
                     {
                         SetAnimData(link, false);
                         continue;
@@ -557,7 +525,7 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
                             Bone* to_bone = animEntity->xFile->rootBone->Find(link.LinkBoneHash);
                             if (to_bone)
                             {
-                                anim3d = anim3dMngr.GetAnimation(link.ChildFName, true);
+                                anim3d = anim3dMngr.GetAnimation(link.ChildName, true);
                                 if (anim3d)
                                 {
                                     mesh_changed = true;
@@ -575,7 +543,7 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
                         // Link all bones
                         else
                         {
-                            anim3d = anim3dMngr.GetAnimation(link.ChildFName, true);
+                            anim3d = anim3dMngr.GetAnimation(link.ChildName, true);
                             if (anim3d)
                             {
                                 for (auto it = anim3d->animEntity->xFile->allBones.begin(),
@@ -593,7 +561,7 @@ bool Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, int flags)
 
                                 mesh_changed = true;
                                 anim3d->parentAnimation = this;
-                                anim3d->parentBone = animEntity->xFile->rootBone;
+                                anim3d->parentBone = animEntity->xFile->rootBone.get();
                                 anim3d->animLink = link;
                                 anim3d->SetAnimData(link, false);
                                 childAnimations.push_back(anim3d);
@@ -850,18 +818,18 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
         }
     }
 
-    if (data.TextureCount)
+    if (!data.TextureInfo.empty())
     {
-        for (uint i = 0; i < data.TextureCount; i++)
+        for (auto& tex_info : data.TextureInfo)
         {
             MeshTexture* texture = nullptr;
 
             // Get texture
-            if (_str(data.TextureName[i]).startsWith("Parent")) // Parent_MeshName
+            if (_str(std::get<0>(tex_info)).startsWith("Parent")) // Parent_MeshName
             {
                 if (parentAnimation)
                 {
-                    const char* mesh_name = data.TextureName[i] + 6;
+                    const char* mesh_name = std::get<0>(tex_info).c_str() + 6;
                     if (*mesh_name && *mesh_name == '_')
                         mesh_name++;
                     uint mesh_name_hash = (*mesh_name ? Bone::GetHash(mesh_name) : 0);
@@ -869,7 +837,7 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
                     {
                         if (!mesh_name_hash || mesh_name_hash == mesh->Mesh->Owner->NameHash)
                         {
-                            texture = mesh->CurTexures[data.TextureNum[i]];
+                            texture = mesh->CurTexures[std::get<2>(tex_info)];
                             break;
                         }
                     }
@@ -877,12 +845,12 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
             }
             else
             {
-                texture = animEntity->xFile->GetTexture(data.TextureName[i]);
+                texture = animEntity->xFile->GetTexture(std::get<0>(tex_info));
             }
 
             // Assign it
-            int texture_num = data.TextureNum[i];
-            uint mesh_name_hash = data.TextureMesh[i];
+            int texture_num = std::get<2>(tex_info);
+            uint mesh_name_hash = std::get<1>(tex_info);
             for (auto* mesh : parentAnimation->allMeshes)
                 if (!mesh_name_hash || mesh_name_hash == mesh->Mesh->Owner->NameHash)
                     mesh->CurTexures[texture_num] = texture;
@@ -899,18 +867,18 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
         }
     }
 
-    if (data.EffectCount)
+    if (!data.EffectInfo.empty())
     {
-        for (uint i = 0; i < data.EffectCount; i++)
+        for (auto& eff_info : data.EffectInfo)
         {
-            Effect* effect = nullptr;
+            RenderEffect* effect = nullptr;
 
             // Get effect
-            if (_str(data.EffectInst[i].Name).startsWith("Parent")) // Parent_MeshName
+            if (_str(std::get<0>(eff_info)).startsWith("Parent")) // Parent_MeshName
             {
                 if (parentAnimation)
                 {
-                    const char* mesh_name = data.EffectInst[i].Name.c_str() + 6;
+                    const char* mesh_name = std::get<0>(eff_info).c_str() + 6;
                     if (*mesh_name && *mesh_name == '_')
                         mesh_name++;
                     uint mesh_name_hash = (*mesh_name ? Bone::GetHash(mesh_name) : 0);
@@ -926,11 +894,11 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
             }
             else
             {
-                effect = animEntity->xFile->GetEffect(&data.EffectInst[i]);
+                effect = animEntity->xFile->GetEffect(std::get<0>(eff_info));
             }
 
             // Assign it
-            uint mesh_name_hash = data.EffectMesh[i];
+            uint mesh_name_hash = std::get<1>(eff_info);
             for (auto* mesh : allMeshes)
                 if (!mesh_name_hash || mesh_name_hash == mesh->Mesh->Owner->NameHash)
                     mesh->CurEffect = effect;
@@ -940,8 +908,8 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
     // Cut
     if (clear)
         allCuts.clear();
-    for (uint i = 0; i < data.CutCount; i++)
-        allCuts.push_back(data.Cut[i]);
+    for (auto& cut_info : data.CutInfo)
+        allCuts.push_back(cut_info);
 }
 
 void Animation3d::SetDir(int dir)
@@ -990,7 +958,7 @@ void Animation3d::GenerateCombinedMeshes()
 
     // Clean up buffers
     for (size_t i = 0, j = combinedMeshesSize; i < j; i++)
-        combinedMeshes[i]->Clear();
+        ClearCombinedMesh(combinedMeshes[i]);
     combinedMeshesSize = 0;
 
     // Combine meshes recursively
@@ -1002,7 +970,7 @@ void Animation3d::GenerateCombinedMeshes()
 
     // Finalize meshes
     for (size_t i = 0, j = combinedMeshesSize; i < j; i++)
-        combinedMeshes[i]->Finalize();
+        combinedMeshes[i]->DrawMesh->DataChanged = true;
 }
 
 void Animation3d::FillCombinedMeshes(Animation3d* base, Animation3d* cur)
@@ -1025,18 +993,122 @@ void Animation3d::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
     // Try encapsulate mesh instance to current combined mesh
     for (size_t i = 0, j = combinedMeshesSize; i < j; i++)
     {
-        if (combinedMeshes[i]->CanEncapsulate(mesh_instance))
+        if (CanBatchCombinedMesh(combinedMeshes[i], mesh_instance))
         {
-            combinedMeshes[i]->Encapsulate(mesh_instance, anim_layer);
+            BatchCombinedMesh(combinedMeshes[i], mesh_instance, anim_layer);
             return;
         }
     }
 
     // Create new combined mesh
     if (combinedMeshesSize >= combinedMeshes.size())
-        combinedMeshes.push_back(new CombinedMesh(anim3dMngr.effectMngr.MaxBones));
-    combinedMeshes[combinedMeshesSize]->Encapsulate(mesh_instance, anim_layer);
+    {
+        CombinedMesh* combined_mesh = new CombinedMesh();
+        combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
+        combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
+    }
+    BatchCombinedMesh(combinedMeshes[combinedMeshesSize], mesh_instance, anim_layer);
     combinedMeshesSize++;
+}
+
+void Animation3d::ClearCombinedMesh(CombinedMesh* combined_mesh)
+{
+    combined_mesh->EncapsulatedMeshCount = 0;
+    combined_mesh->CurBoneMatrix = 0;
+    combined_mesh->Meshes.clear();
+    combined_mesh->MeshIndices.clear();
+    combined_mesh->MeshVertices.clear();
+    combined_mesh->MeshAnimLayers.clear();
+    combined_mesh->DrawMesh->Vertices.clear();
+    combined_mesh->DrawMesh->Indices.clear();
+}
+
+bool Animation3d::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance)
+{
+    if (combined_mesh->EncapsulatedMeshCount == 0)
+        return true;
+    if (combined_mesh->DrawEffect != mesh_instance->CurEffect)
+        return false;
+    for (int i = 0; i < EFFECT_TEXTURES; i++)
+        if (combined_mesh->Textures[i] && mesh_instance->CurTexures[i] &&
+            combined_mesh->Textures[i]->MainTex != mesh_instance->CurTexures[i]->MainTex)
+            return false;
+    if (combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() > combined_mesh->SkinBones.size())
+        return false;
+    return true;
+}
+
+void Animation3d::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
+{
+    MeshData* mesh = mesh_instance->Mesh;
+    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& indices = combined_mesh->DrawMesh->Indices;
+    size_t vertices_old_size = vertices.size();
+    size_t indices_old_size = indices.size();
+
+    // Set or add data
+    if (!combined_mesh->EncapsulatedMeshCount)
+    {
+        vertices = mesh->Vertices;
+        indices = mesh->Indices;
+        combined_mesh->DrawEffect = mesh_instance->CurEffect;
+        memzero(&combined_mesh->SkinBones[0], combined_mesh->SkinBones.size() * sizeof(combined_mesh->SkinBones[0]));
+        memzero(combined_mesh->Textures, sizeof(combined_mesh->Textures));
+        combined_mesh->CurBoneMatrix = 0;
+    }
+    else
+    {
+        vertices.insert(vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
+        indices.insert(indices.end(), mesh->Indices.begin(), mesh->Indices.end());
+
+        // Add indices offset
+        ushort index_offset = (ushort)(vertices.size() - mesh->Vertices.size());
+        size_t start_index = indices.size() - mesh->Indices.size();
+        for (size_t i = start_index, j = indices.size(); i < j; i++)
+            indices[i] += index_offset;
+
+        // Add bones matrices offset
+        float bone_index_offset = (float)combined_mesh->CurBoneMatrix;
+        size_t start_vertex = vertices.size() - mesh->Vertices.size();
+        for (size_t i = start_vertex, j = vertices.size(); i < j; i++)
+            for (size_t b = 0; b < BONES_PER_VERTEX; b++)
+                vertices[i].BlendIndices[b] += bone_index_offset;
+    }
+
+    // Set mesh transform and anim layer
+    combined_mesh->Meshes.push_back(mesh);
+    combined_mesh->MeshVertices.push_back((uint)(vertices.size() - vertices_old_size));
+    combined_mesh->MeshIndices.push_back((uint)(indices.size() - indices_old_size));
+    combined_mesh->MeshAnimLayers.push_back(anim_layer);
+
+    // Add bones matrices
+    for (size_t i = 0, j = mesh->SkinBones.size(); i < j; i++)
+    {
+        combined_mesh->SkinBones[combined_mesh->CurBoneMatrix + i] = mesh->SkinBones[i];
+        combined_mesh->SkinBoneOffsets[combined_mesh->CurBoneMatrix + i] = mesh->SkinBoneOffsets[i];
+    }
+    combined_mesh->CurBoneMatrix += mesh->SkinBones.size();
+
+    // Add textures
+    for (int i = 0; i < EFFECT_TEXTURES; i++)
+        if (!combined_mesh->Textures[i] && mesh_instance->CurTexures[i])
+            combined_mesh->Textures[i] = mesh_instance->CurTexures[i];
+
+    // Fix texture coords
+    if (mesh_instance->CurTexures[0])
+    {
+        MeshTexture* mesh_tex = mesh_instance->CurTexures[0];
+        for (size_t i = vertices_old_size, j = vertices.size(); i < j; i++)
+        {
+            vertices[i].TexCoord[0] =
+                (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData[2]) + mesh_tex->AtlasOffsetData[0];
+            vertices[i].TexCoord[1] =
+                (vertices[i].TexCoord[1] * mesh_tex->AtlasOffsetData[3]) + mesh_tex->AtlasOffsetData[1];
+        }
+    }
+
+    // Increment mesh count
+    combined_mesh->EncapsulatedMeshCount++;
 }
 
 void Animation3d::CutCombinedMeshes(Animation3d* base, Animation3d* cur)
@@ -1059,21 +1131,17 @@ void Animation3d::CutCombinedMeshes(Animation3d* base, Animation3d* cur)
 // -1 - inside
 // 0 - outside
 // 1 - one point
-inline float Square(float f)
+static int SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const Vector& sp, float r, Vertex3D& in)
 {
-    return f * f;
-}
-int SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const Vector& sp, float r, Vertex3D& in)
-{
-    float a = Square(p2.Position.x - p1.Position.x) + Square(p2.Position.y - p1.Position.y) +
-        Square(p2.Position.z - p1.Position.z);
+    auto sq = [](float f) -> float { return f * f; };
+    float a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
     float b = 2 *
         ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) +
             (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) +
             (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
-    float c = Square(sp.x) + Square(sp.y) + Square(sp.z) + Square(p1.Position.x) + Square(p1.Position.y) +
-        Square(p1.Position.z) - 2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - Square(r);
-    float i = Square(b) - 4 * a * c;
+    float c = sq(sp.x) + sq(sp.y) + sq(sp.z) + sq(p1.Position.x) + sq(p1.Position.y) + sq(p1.Position.z) -
+        2 * (sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z) - sq(r);
+    float i = sq(b) - 4 * a * c;
 
     if (i > 0.0)
     {
@@ -1124,7 +1192,8 @@ int SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const Vector&
 
 void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
 {
-    // Process
+    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& indices = combined_mesh->DrawMesh->Indices;
     IntVec& cut_layers = cut->Layers;
     for (size_t i = 0, j = cut->Shapes.size(); i < j; i++)
     {
@@ -1132,8 +1201,8 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
         UShortVec result_indices;
         UIntVec result_mesh_vertices;
         UIntVec result_mesh_indices;
-        result_vertices.reserve(combined_mesh->Vertices.size());
-        result_indices.reserve(combined_mesh->Indices.size());
+        result_vertices.reserve(vertices.size());
+        result_indices.reserve(indices.size());
         result_mesh_vertices.reserve(combined_mesh->MeshVertices.size());
         result_mesh_indices.reserve(combined_mesh->MeshIndices.size());
         uint i_pos = 0, i_count = 0;
@@ -1157,9 +1226,9 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
             for (; i_pos < i_count; i_pos += 3)
             {
                 // Face points
-                const Vertex3D& v1 = combined_mesh->Vertices[combined_mesh->Indices[i_pos + 0]];
-                const Vertex3D& v2 = combined_mesh->Vertices[combined_mesh->Indices[i_pos + 1]];
-                const Vertex3D& v3 = combined_mesh->Vertices[combined_mesh->Indices[i_pos + 2]];
+                const Vertex3D& v1 = vertices[indices[i_pos + 0]];
+                const Vertex3D& v2 = vertices[indices[i_pos + 1]];
+                const Vertex3D& v3 = vertices[indices[i_pos + 2]];
 
                 // Skip mesh
                 if (skip)
@@ -1237,8 +1306,8 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
             result_mesh_vertices.push_back((uint)(result_vertices.size() - vertices_old_size));
             result_mesh_indices.push_back((uint)(result_indices.size() - indices_old_size));
         }
-        combined_mesh->Vertices = result_vertices;
-        combined_mesh->Indices = result_indices;
+        vertices = result_vertices;
+        indices = result_indices;
         combined_mesh->MeshVertices = result_mesh_vertices;
         combined_mesh->MeshIndices = result_mesh_indices;
     }
@@ -1286,7 +1355,7 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
                 v_count += combined_mesh->MeshVertices[i];
                 for (; v_pos < v_count; v_pos++)
                 {
-                    Vertex3D& v = combined_mesh->Vertices[v_pos];
+                    Vertex3D& v = vertices[v_pos];
 
                     // Get vertex side
                     bool v_side = ((v.Position - sp).SquareLength() <= sphere_square_radius);
@@ -1386,7 +1455,7 @@ void Animation3d::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Update matrices
-    UpdateBoneMatrices(animEntity->xFile->rootBone, &parentMatrix);
+    UpdateBoneMatrices(animEntity->xFile->rootBone.get(), &parentMatrix);
 
     // Update linked matrices
     if (parentBone && linkBones.size())
@@ -1436,111 +1505,57 @@ void Animation3d::UpdateBoneMatrices(Bone* bone, const Matrix* parent_matrix)
 
     // Update child
     for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it)
-        UpdateBoneMatrices(*it, &bone->CombinedTransformationMatrix);
+        UpdateBoneMatrices(it->get(), &bone->CombinedTransformationMatrix);
 }
 
 void Animation3d::DrawCombinedMeshes()
 {
-    if (!disableCulling)
-        GL(glEnable(GL_CULL_FACE));
-    GL(glEnable(GL_DEPTH_TEST));
-
     for (size_t i = 0; i < combinedMeshesSize; i++)
         DrawCombinedMesh(combinedMeshes[i], shadowDisabled || animEntity->shadowDisabled);
-
-    if (!disableCulling)
-        GL(glDisable(GL_CULL_FACE));
-    GL(glDisable(GL_DEPTH_TEST));
 }
 
 void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled)
 {
-    if (combined_mesh->VAO)
+    RenderEffect* effect = combined_mesh->DrawEffect;
+
+    memcpy(effect->ProjBuf.ProjMatrix, anim3dMngr.matrixProjCM[0], 16 * sizeof(float));
+
+    effect->MainTex = combined_mesh->Textures[0]->MainTex;
+    memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
+    effect->MainTexBuf->MainTexSamples = effect->MainTex->Samples;
+    effect->MainTexBuf->MainTexSamplesInt = (int)effect->MainTexBuf->MainTexSamples;
+
+    float* wm = effect->ModelBuf->WorldMatrices;
+    for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++)
     {
-        GL(glBindVertexArray(combined_mesh->VAO));
-        GL(glBindBuffer(GL_ARRAY_BUFFER, combined_mesh->VBO));
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, combined_mesh->IBO));
-    }
-    else
-    {
-        GL(glBindBuffer(GL_ARRAY_BUFFER, combined_mesh->VBO));
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, combined_mesh->IBO));
-        GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, Position)));
-        GL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, Normal)));
-        GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, TexCoord)));
-        GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, TexCoordBase)));
-        GL(glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, Tangent)));
-        GL(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, Bitangent)));
-        GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, BlendWeights)));
-        GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), ATTRIB_OFFSET(Vertex3D, BlendIndices)));
-        for (uint i = 0; i <= 7; i++)
-            GL(glEnableVertexAttribArray(i));
+        Matrix m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
+        m.Transpose(); // Convert to column major order
+        memcpy(wm, m[0], 16 * sizeof(float));
+        wm += 16;
     }
 
-    Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : anim3dMngr.effectMngr.Effects.Skinned3d);
-    MeshTexture** textures = combined_mesh->Textures;
+    memcpy(effect->ModelBuf->GroundPosition, &groundPos[0], 3 * sizeof(float));
+    effect->ModelBuf->GroundPosition[3] = 0.0f;
 
-    bool matrices_combined = false;
-    for (size_t pass = 0; pass < effect->Passes.size(); pass++)
+    if (effect->CustomTexBuf)
     {
-        EffectPass& effect_pass = effect->Passes[pass];
-
-        if (shadow_disabled && effect_pass.IsShadow)
-            continue;
-
-        GL(glUseProgram(effect_pass.Program));
-
-        if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
-            GL(glUniform1f(effect_pass.ZoomFactor, anim3dMngr.settings.SpritesZoom));
-        if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-            GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, anim3dMngr.matrixProjCM[0]));
-        if (IS_EFFECT_VALUE(effect_pass.ColorMap) && textures[0])
+        for (int i = 0; i < EFFECT_TEXTURES; i++)
         {
-            GL(glBindTexture(GL_TEXTURE_2D, textures[0]->Id));
-            GL(glUniform1i(effect_pass.ColorMap, 0));
-            if (IS_EFFECT_VALUE(effect_pass.ColorMapSize))
-                GL(glUniform4fv(effect_pass.ColorMapSize, 1, textures[0]->SizeData));
+            effect->CustomTex[i] = combined_mesh->Textures[i]->MainTex;
+            memcpy(&effect->CustomTexBuf->AtlasOffset[i * 4 * sizeof(float)],
+                combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float));
+            memcpy(&effect->CustomTexBuf->Size[i * 4 * sizeof(float)], combined_mesh->Textures[i]->MainTex->SizeData,
+                4 * sizeof(float));
         }
-        if (IS_EFFECT_VALUE(effect_pass.LightColor))
-            GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&anim3dMngr.lightColor));
-        if (IS_EFFECT_VALUE(effect_pass.WorldMatrices))
-        {
-            if (!matrices_combined)
-            {
-                matrices_combined = true;
-                for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++)
-                {
-                    anim3dMngr.worldMatrices[i] =
-                        combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-                    anim3dMngr.worldMatrices[i].Transpose(); // Convert to column major order
-                }
-            }
-            GL(glUniformMatrix4fv(effect_pass.WorldMatrices, (GLsizei)combined_mesh->CurBoneMatrix, GL_FALSE,
-                (float*)&anim3dMngr.worldMatrices[0]));
-        }
-        if (IS_EFFECT_VALUE(effect_pass.GroundPosition))
-            GL(glUniform3fv(effect_pass.GroundPosition, 1, (float*)&groundPos));
-
-        if (effect_pass.IsNeedProcess)
-            anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
-
-        GL(glDrawElements(GL_TRIANGLES, (uint)combined_mesh->Indices.size(), GL_UNSIGNED_SHORT, (void*)0));
-
-        if (effect_pass.IsNeedProcess)
-            anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
     }
 
-    GL(glUseProgram(0));
-
-    if (combined_mesh->VAO)
+    if (effect->AnimBuf)
     {
-        GL(glBindVertexArray(0));
+        effect->AnimBuf->NormalizedTime = animPosProc;
+        effect->AnimBuf->AbsoluteTime = animPosTime;
     }
-    else
-    {
-        for (uint i = 0; i <= 7; i++)
-            GL(glDisableVertexAttribArray(i));
-    }
+
+    App::Render::DrawMesh(combined_mesh->DrawMesh, effect);
 }
 
 bool Animation3d::GetBonePos(hash name_hash, int& x, int& y)
@@ -1575,37 +1590,6 @@ Animation3dEntity::Animation3dEntity(Animation3dManager& anim3d_mngr) : anim3dMn
     drawHeight = DEFAULT_DRAW_SIZE;
 }
 
-Animation3dEntity::~Animation3dEntity()
-{
-    animData.push_back(animDataDefault);
-    for (auto it = animData.begin(), end = animData.end(); it != end; ++it)
-    {
-        AnimParams& link = *it;
-        SAFEDELA(link.ChildFName);
-        SAFEDELA(link.DisabledLayers);
-        SAFEDELA(link.DisabledMesh);
-        for (uint i = 0; i < link.TextureCount; i++)
-            SAFEDELA(link.TextureName[i]);
-        SAFEDELA(link.TextureName);
-        SAFEDELA(link.TextureMesh);
-        SAFEDELA(link.TextureNum);
-        for (uint i = 0; i < link.EffectCount; i++)
-        {
-            for (uint j = 0; j < link.EffectInst[i].DefaultsCount; j++)
-            {
-                SAFEDELA(link.EffectInst[i].Defaults[j].Name);
-                SAFEDELA(link.EffectInst[i].Defaults[j].Data);
-                SAFEDELA(link.EffectInst[i].Defaults);
-            }
-        }
-        SAFEDELA(link.EffectInst);
-        SAFEDELA(link.EffectMesh);
-        SAFEDELA(link.Cut);
-    }
-    animData.clear();
-    delete animController;
-}
-
 bool Animation3dEntity::Load(const string& name)
 {
     string ext = _str(name).getFileExtension();
@@ -1631,10 +1615,8 @@ bool Animation3dEntity::Load(const string& name)
         uint mesh = 0;
         int layer = -1;
         int layer_val = 0;
-        EffectInstance* cur_effect = nullptr;
 
-        AnimParams dummy_link;
-        memzero(&dummy_link, sizeof(dummy_link));
+        AnimParams dummy_link {};
         AnimParams* link = &animDataDefault;
         static uint link_id = 0;
 
@@ -1784,7 +1766,7 @@ bool Animation3dEntity::Load(const string& name)
                 link->LayerValue = layer_val;
 
                 string fname = _str(name).combinePath(buf);
-                link->ChildFName = Str::Duplicate(fname.c_str());
+                link->ChildName = fname;
 
                 mesh = 0;
             }
@@ -1803,13 +1785,7 @@ bool Animation3dEntity::Load(const string& name)
                 {
                     // Add cut
                     CutData* cut = new CutData();
-                    CutData** tmp = link->Cut;
-                    link->Cut = new CutData*[link->CutCount + 1];
-                    for (uint i = 0; i < link->CutCount; i++)
-                        link->Cut[i] = tmp[i];
-                    SAFEDELA(tmp);
-                    link->Cut[link->CutCount] = cut;
-                    link->CutCount++;
+                    link->CutInfo.push_back(cut);
 
                     // Layers
                     (*istr) >> buf;
@@ -1850,7 +1826,7 @@ bool Animation3dEntity::Load(const string& name)
                         for (size_t k = 0, l = area->allDrawBones.size(); k < l; k++)
                         {
                             if (unskin_shape_name == area->allDrawBones[k]->NameHash)
-                                cut->UnskinShape = CutShape(area->allDrawBones[k]->Mesh);
+                                cut->UnskinShape = CreateCutShape(area->allDrawBones[k]->AttachedMesh.get());
                         }
                     }
 
@@ -1865,7 +1841,7 @@ bool Animation3dEntity::Load(const string& name)
                             if ((!shape_name || shape_name == area->allDrawBones[k]->NameHash) &&
                                 area->allDrawBones[k]->NameHash != unskin_shape_name)
                             {
-                                cut->Shapes.push_back(CutShape(area->allDrawBones[k]->Mesh));
+                                cut->Shapes.push_back(CreateCutShape(area->allDrawBones[k]->AttachedMesh.get()));
                             }
                         }
                     }
@@ -2026,15 +2002,7 @@ bool Animation3dEntity::Load(const string& name)
                 {
                     int layer = GenericUtils::ConvertParamValue(layers[m], convert_value_fail);
                     if (layer >= 0 && layer < LAYERS3D_COUNT)
-                    {
-                        int* tmp = link->DisabledLayers;
-                        link->DisabledLayers = new int[link->DisabledLayersCount + 1];
-                        for (uint h = 0; h < link->DisabledLayersCount; h++)
-                            link->DisabledLayers[h] = tmp[h];
-                        SAFEDELA(tmp);
-                        link->DisabledLayers[link->DisabledLayersCount] = layer;
-                        link->DisabledLayersCount++;
-                    }
+                        link->DisabledLayer.push_back(layer);
                 }
             }
             else if (token == "DisableSubset")
@@ -2051,13 +2019,8 @@ bool Animation3dEntity::Load(const string& name)
                     uint mesh_name_hash = 0;
                     if (meshes[m] != "All")
                         mesh_name_hash = Bone::GetHash(meshes[m]);
-                    uint* tmp = link->DisabledMesh;
-                    link->DisabledMesh = new uint[link->DisabledMeshCount + 1];
-                    for (uint h = 0; h < link->DisabledMeshCount; h++)
-                        link->DisabledMesh[h] = tmp[h];
-                    SAFEDELA(tmp);
-                    link->DisabledMesh[link->DisabledMeshCount] = mesh_name_hash;
-                    link->DisabledMeshCount++;
+
+                    link->DisabledMesh.push_back(mesh_name_hash);
                 }
             }
             else if (token == "Texture")
@@ -2066,111 +2029,13 @@ bool Animation3dEntity::Load(const string& name)
                 int index = GenericUtils::ConvertParamValue(buf, convert_value_fail);
                 (*istr) >> buf;
                 if (index >= 0 && index < EFFECT_TEXTURES)
-                {
-                    char** tmp1 = link->TextureName;
-                    uint* tmp2 = link->TextureMesh;
-                    int* tmp3 = link->TextureNum;
-                    link->TextureName = new char*[link->TextureCount + 1];
-                    link->TextureMesh = new uint[link->TextureCount + 1];
-                    link->TextureNum = new int[link->TextureCount + 1];
-                    for (uint h = 0; h < link->TextureCount; h++)
-                    {
-                        link->TextureName[h] = tmp1[h];
-                        link->TextureMesh[h] = tmp2[h];
-                        link->TextureNum[h] = tmp3[h];
-                    }
-                    SAFEDELA(tmp1);
-                    SAFEDELA(tmp2);
-                    SAFEDELA(tmp3);
-                    link->TextureName[link->TextureCount] = Str::Duplicate(buf);
-                    link->TextureMesh[link->TextureCount] = mesh;
-                    link->TextureNum[link->TextureCount] = index;
-                    link->TextureCount++;
-                }
+                    link->TextureInfo.emplace_back(buf, mesh, index);
             }
             else if (token == "Effect")
             {
                 (*istr) >> buf;
-                EffectInstance effect_inst {};
-                effect_inst.Name = buf;
 
-                EffectInstance* tmp1 = link->EffectInst;
-                uint* tmp2 = link->EffectMesh;
-                link->EffectInst = new EffectInstance[link->EffectCount + 1];
-                link->EffectMesh = new uint[link->EffectCount + 1];
-                for (uint h = 0; h < link->EffectCount; h++)
-                {
-                    link->EffectInst[h] = std::move(tmp1[h]);
-                    link->EffectMesh[h] = tmp2[h];
-                }
-                SAFEDELA(tmp1);
-                SAFEDELA(tmp2);
-                link->EffectInst[link->EffectCount] = std::move(effect_inst);
-                link->EffectMesh[link->EffectCount] = mesh;
-                link->EffectCount++;
-
-                cur_effect = &link->EffectInst[link->EffectCount - 1];
-            }
-            else if (token == "EffDef")
-            {
-                string def_name;
-                string def_value;
-                (*istr) >> buf;
-                (*istr) >> def_name;
-                (*istr) >> def_value;
-
-                if (!cur_effect)
-                    continue;
-
-                EffectDefault::EType type;
-                uchar* data = nullptr;
-                uint data_len = 0;
-                if (buf == "String")
-                {
-                    type = EffectDefault::String;
-                    data = (uchar*)Str::Duplicate(def_value);
-                    data_len = (uint)def_value.length();
-                }
-                else if (buf == "Float" || buf == "Floats")
-                {
-                    type = EffectDefault::Float;
-                    StrVec floats = _str(def_value).split('-');
-                    if (floats.empty())
-                        continue;
-
-                    data_len = (uint)floats.size() * sizeof(float);
-                    data = new uchar[data_len];
-                    for (uint i = 0, j = (uint)floats.size(); i < j; i++)
-                        ((float*)data)[i] = _str("{}", floats[i]).toFloat();
-                }
-                else if (buf == "Int" || buf == "Dword")
-                {
-                    type = EffectDefault::Int;
-                    StrVec ints = _str(def_value).split('-');
-                    if (ints.empty())
-                        continue;
-
-                    data_len = (uint)ints.size() * sizeof(int);
-                    data = new uchar[data_len];
-                    for (uint i = 0, j = (uint)ints.size(); i < j; i++)
-                        ((int*)data)[i] = GenericUtils::ConvertParamValue(ints[i], convert_value_fail);
-                }
-                else
-                {
-                    continue;
-                }
-
-                EffectDefault* tmp = cur_effect->Defaults;
-                cur_effect->Defaults = new EffectDefault[cur_effect->DefaultsCount + 1];
-                for (uint h = 0; h < cur_effect->DefaultsCount; h++)
-                    cur_effect->Defaults[h] = std::move(tmp[h]);
-                if (tmp)
-                    delete[] tmp;
-                cur_effect->Defaults[cur_effect->DefaultsCount].Type = type;
-                cur_effect->Defaults[cur_effect->DefaultsCount].Name = Str::Duplicate(def_name);
-                cur_effect->Defaults[cur_effect->DefaultsCount].Size = data_len;
-                cur_effect->Defaults[cur_effect->DefaultsCount].Data = data;
-                cur_effect->DefaultsCount++;
+                link->EffectInfo.emplace_back(buf, mesh);
             }
             else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt" || token == "AnimSpeedExt")
             {
@@ -2323,7 +2188,7 @@ bool Animation3dEntity::Load(const string& name)
 
         // Create animation controller
         if (!anims.empty())
-            animController = new AnimController(2);
+            animController = std::make_unique<AnimController>(2);
 
         // Parse animations
         if (animController)
@@ -2361,7 +2226,7 @@ bool Animation3dEntity::Load(const string& name)
                     for (size_t j = 0; j < bones_hierarchy.size(); j++)
                     {
                         UIntVec& bone_hierarchy = bones_hierarchy[j];
-                        Bone* bone = xFile->rootBone;
+                        Bone* bone = xFile->rootBone.get();
                         for (size_t b = 1; b < bone_hierarchy.size(); b++)
                         {
                             Bone* child = bone->Find(bone_hierarchy[b]);
@@ -2369,8 +2234,7 @@ bool Animation3dEntity::Load(const string& name)
                             {
                                 child = new Bone();
                                 child->NameHash = bone_hierarchy[b];
-                                child->Mesh = nullptr;
-                                bone->Children.push_back(child);
+                                bone->Children.push_back(unique_ptr<Bone>(child));
                             }
                             bone = child;
                         }
@@ -2378,11 +2242,11 @@ bool Animation3dEntity::Load(const string& name)
                 }
 
                 animController->SetInterpolation(!disable_animation_interpolation);
-                xFile->SetupAnimationOutput(animController);
+                xFile->SetupAnimationOutput(animController.get());
             }
             else
             {
-                SAFEDEL(animController);
+                animController = nullptr;
             }
         }
     }
@@ -2474,33 +2338,47 @@ Animation3d* Animation3dEntity::CloneAnimation()
     return a3d;
 }
 
-Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : anim3dMngr {anim3d_mngr}
+CutData::Shape Animation3dEntity::CreateCutShape(MeshData* mesh)
 {
+    CutData::Shape shape;
+    shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
+
+    // Calculate sphere radius
+    float vmin, vmax;
+    for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++)
+    {
+        Vertex3D v = mesh->Vertices[i];
+        if (!i || v.Position.x < vmin)
+            vmin = v.Position.x;
+        if (!i || v.Position.x > vmax)
+            vmax = v.Position.x;
+    }
+
+    shape.SphereRadius = (vmax - vmin) / 2.0f;
+    return shape;
 }
 
-Animation3dXFile::~Animation3dXFile()
+Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : anim3dMngr {anim3d_mngr}
 {
-    anim3dMngr.DestroyModel(rootBone);
-    rootBone = nullptr;
 }
 
 void SetupBonesExt(multimap<uint, Bone*>& bones, Bone* bone, uint depth)
 {
     bones.insert(std::make_pair(depth, bone));
     for (size_t i = 0, j = bone->Children.size(); i < j; i++)
-        SetupBonesExt(bones, bone->Children[i], depth + 1);
+        SetupBonesExt(bones, bone->Children[i].get(), depth + 1);
 }
 
 void Animation3dXFile::SetupBones()
 {
     multimap<uint, Bone*> bones;
-    SetupBonesExt(bones, rootBone, 0);
+    SetupBonesExt(bones, rootBone.get(), 0);
 
     for (auto it = bones.begin(), end = bones.end(); it != end; ++it)
     {
         Bone* bone = it->second;
         allBones.push_back(bone);
-        if (bone->Mesh)
+        if (bone->AttachedMesh)
             allDrawBones.push_back(bone);
     }
 }
@@ -2510,12 +2388,12 @@ void SetupAnimationOutputExt(AnimController* anim_controller, Bone* bone)
     anim_controller->RegisterAnimationOutput(bone->NameHash, bone->TransformationMatrix);
 
     for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it)
-        SetupAnimationOutputExt(anim_controller, *it);
+        SetupAnimationOutputExt(anim_controller, it->get());
 }
 
 void Animation3dXFile::SetupAnimationOutput(AnimController* anim_controller)
 {
-    SetupAnimationOutputExt(anim_controller, rootBone);
+    SetupAnimationOutputExt(anim_controller, rootBone.get());
 }
 
 MeshTexture* Animation3dXFile::GetTexture(const string& tex_name)
@@ -2526,11 +2404,10 @@ MeshTexture* Animation3dXFile::GetTexture(const string& tex_name)
     return texture;
 }
 
-Effect* Animation3dXFile::GetEffect(EffectInstance* effect_inst)
+RenderEffect* Animation3dXFile::GetEffect(const string& name)
 {
-    Effect* effect = anim3dMngr.effectMngr.LoadEffect(
-        effect_inst->Name, false, "", fileName, effect_inst->Defaults, effect_inst->DefaultsCount);
+    RenderEffect* effect = anim3dMngr.effectMngr.LoadEffect(name, "", fileName);
     if (!effect)
-        WriteLog("Can't load effect '{}'.\n", effect_inst->Name);
+        WriteLog("Can't load effect '{}'.\n", name);
     return effect;
 }

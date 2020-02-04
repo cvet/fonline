@@ -36,32 +36,15 @@
 #include "Common.h"
 
 #include "NetProtocol_Include.h"
-#include "Testing.h"
 
-class NetBuffer
+class NetBuffer : public NonCopyable
 {
 public:
-    static const uint DefaultBufSize = 4096;
-    static const int CryptKeysCount = 50;
-    static const int StringLenSize = sizeof(ushort);
+    static constexpr uint DefaultBufSize = 4096;
+    static constexpr int CryptKeysCount = 50;
+    static constexpr int StringLenSize = sizeof(ushort);
 
-private:
-    bool isError;
-    uchar* bufData;
-    uint bufLen;
-    uint bufEndPos;
-    uint bufReadPos;
-    bool encryptActive;
-    int encryptKeyPos;
-    uchar encryptKeys[CryptKeysCount];
-
-    uchar EncryptKey(int move);
-    void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
-
-public:
     NetBuffer();
-    ~NetBuffer();
-
     void SetEncryptKey(uint seed);
     void Refresh();
     void Reset();
@@ -69,8 +52,8 @@ public:
     void Pop(void* buf, uint len);
     void Cut(uint len);
     void GrowBuf(uint len);
-    uchar* GetData() { return bufData; }
-    uchar* GetCurData() { return bufData + bufReadPos; }
+    uchar* GetData() { return bufData.get(); }
+    uchar* GetCurData() { return bufData.get() + bufReadPos; }
     uint GetLen() { return bufLen; }
     uint GetCurPos() { return bufReadPos; }
     void SetEndPos(uint pos) { bufEndPos = pos; }
@@ -117,15 +100,25 @@ public:
         return *this;
     }
 
-    // Disable copying
-    NetBuffer(const NetBuffer& other) = delete;
-    NetBuffer& operator=(const NetBuffer& other) = delete;
-
     // Disable transferring of some types
+    // Todo: allow transferring of any type and add safe transferring of floats
     NetBuffer& operator<<(const uint64& i) = delete;
     NetBuffer& operator>>(uint64& i) = delete;
     NetBuffer& operator<<(const float& i) = delete;
     NetBuffer& operator>>(float& i) = delete;
     NetBuffer& operator<<(const double& i) = delete;
     NetBuffer& operator>>(double& i) = delete;
+
+private:
+    uchar EncryptKey(int move);
+    void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
+
+    bool isError {};
+    unique_ptr<uchar[]> bufData {};
+    uint bufLen {};
+    uint bufEndPos {};
+    uint bufReadPos {};
+    bool encryptActive {};
+    int encryptKeyPos {};
+    uchar encryptKeys[CryptKeysCount] {};
 };

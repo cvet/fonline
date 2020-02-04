@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// Todo: review RUNTIME_ASSERT( (
+// Todo: review RUNTIME_ASSERT(( <- double braces
 // Todo: send client dumps to server
 
 #pragma once
@@ -44,18 +44,16 @@
 #endif
 
 #ifdef FO_TESTING
+#undef RUNTIME_ASSERT
+#undef RUNTIME_ASSERT_STR
 #define RUNTIME_ASSERT(expr) CATCH_REQUIRE(expr)
 #define RUNTIME_ASSERT_STR(expr, str) CATCH_REQUIRE(expr)
 #define TEST_CASE() CATCH_ANON_TEST_CASE()
-#define TEST_SECTION() CATCH_SECTION(STRINGIZE_INT(__LINE__))
+#define TEST_SECTION() CATCH_SECTION(LINE_STR)
 #else
-#define RUNTIME_ASSERT(expr) (!!(expr) || RaiseAssert(#expr, __FILE__, __LINE__))
-#define RUNTIME_ASSERT_STR(expr, str) (!!(expr) || RaiseAssert(str, __FILE__, __LINE__))
 #define TEST_CASE() [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
 #define TEST_SECTION() if (!!(__LINE__))
 #endif
-
-DECLARE_EXCEPTION(UnreachablePlaceException);
 
 extern void CatchExceptions(const string& app_name, int app_ver);
 extern void CreateDump(const string& appendix, const string& message);

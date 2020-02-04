@@ -46,7 +46,7 @@ public:
     static void EndFrame();
 
 private:
-#ifdef FO_HAVE_DX
+#ifdef FO_HAVE_D3D
     static bool InitDX(const string& app_name, bool docking, bool maximized);
     static bool BeginFrameDX();
     static void EndFrameDX();

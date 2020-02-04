@@ -32,13 +32,9 @@
 //
 
 #include "HexManager.h"
-#include "EffectManager.h"
 #include "GenericUtils.h"
 #include "LineTracer.h"
 #include "Log.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -285,12 +281,13 @@ void Field::UnvalidateSpriteChain()
 }
 
 HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-    ResourceManager& res_mngr, ScriptSystem& script_sys) :
+    EffectManager& effect_mngr, ResourceManager& res_mngr, ScriptSystem& script_sys) :
     settings {sett},
     geomHelper(settings),
-    protoMngr(proto_mngr),
-    sprMngr(spr_mngr),
-    resMngr(res_mngr),
+    protoMngr {proto_mngr},
+    sprMngr {spr_mngr},
+    effectMngr {effect_mngr},
+    resMngr {res_mngr},
     mainTree(settings, spr_mngr),
     tilesTree(settings, spr_mngr),
     roofTree(settings, spr_mngr),
@@ -299,24 +296,20 @@ HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_
 {
     mapperMode = mapper_mode;
 
-    rtMap = sprMngr.CreateRenderTarget(false, false, true, 0, 0, false, sprMngr.GetEffectManager().Effects.FlushMap);
-    RUNTIME_ASSERT(rtMap);
-
     rtScreenOX = (uint)ceilf((float)settings.MapHexWidth / MIN_ZOOM);
     rtScreenOY = (uint)ceilf((float)(settings.MapHexLineHeight * 2) / MIN_ZOOM);
 
-    rtLight = sprMngr.CreateRenderTarget(
-        false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, sprMngr.GetEffectManager().Effects.FlushLight);
-    RUNTIME_ASSERT(rtLight);
+    rtMap = sprMngr.CreateRenderTarget(false, false, true, 0, 0, false);
+    rtMap->DrawEffect = effectMngr.Effects.FlushMap;
+
+    rtLight = sprMngr.CreateRenderTarget(false, false, true, rtScreenOX * 2, rtScreenOY * 2, false);
+    rtLight->DrawEffect = effectMngr.Effects.FlushLight;
 
     if (!mapperMode)
     {
-        rtFog = sprMngr.CreateRenderTarget(
-            false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, sprMngr.GetEffectManager().Effects.FlushFog);
-        RUNTIME_ASSERT(rtFog);
+        rtFog = sprMngr.CreateRenderTarget(false, false, true, rtScreenOX * 2, rtScreenOY * 2, false);
+        rtFog->DrawEffect = effectMngr.Effects.FlushFog;
     }
-
-    memzero((void*)&AutoScroll, sizeof(AutoScroll));
 
     dayTime[0] = 300;
     dayTime[1] = 600;
@@ -464,7 +457,7 @@ uint HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
 
     // Parse
     Field& f = GetField(hx, hy);
-    ItemHexView* item = new ItemHexView(id, proto, data, hx, hy, &f.ScrX, &f.ScrY, resMngr);
+    ItemHexView* item = new ItemHexView(id, proto, data, hx, hy, &f.ScrX, &f.ScrY, resMngr, effectMngr);
     if (is_added)
         item->SetShowAnim();
     PushItem(item);
@@ -729,7 +722,7 @@ bool HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
     }
 
     Field& f = GetField(from_hx, from_hy);
-    ItemHexView* item = new ItemHexView(0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY, resMngr);
+    ItemHexView* item = new ItemHexView(0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY, resMngr, effectMngr);
 
     float sx = 0;
     float sy = 0;
@@ -795,7 +788,7 @@ void HexManager::ProcessRain()
         else
         {
             cur_drop->DropCnt++;
-            if ((uint)cur_drop->DropCnt >= picRainDrop->GetCnt())
+            if ((uint)cur_drop->DropCnt >= picRainDrop->CntFrm)
             {
                 cur_drop->CurSprId = picRainFall->GetCurSprId();
                 cur_drop->DropCnt = -1;
@@ -1005,7 +998,7 @@ void HexManager::RebuildMap(int rx, int ry)
 
                 Sprite& spr = mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
                     (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
-                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                    &new_drop->OffsY, nullptr, &effectMngr.Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1017,7 +1010,7 @@ void HexManager::RebuildMap(int rx, int ry)
 
                 Sprite& spr = roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
                     (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
-                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                    &new_drop->OffsY, nullptr, &effectMngr.Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1251,7 +1244,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
                 Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
                     (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
-                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                    &new_drop->OffsY, nullptr, &effectMngr.Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1263,7 +1256,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
 
                 Sprite& spr = roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
                     (settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX,
-                    &new_drop->OffsY, nullptr, &sprMngr.GetEffectManager().Effects.Rain, nullptr);
+                    &new_drop->OffsY, nullptr, &effectMngr.Effects.Rain, nullptr);
                 spr.SetLight(CORNER_EAST_WEST, hexLight, maxHexX, maxHexY);
                 f.AddSpriteToChain(&spr);
             }
@@ -1375,14 +1368,14 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                     Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
                         tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
                         spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
-                        &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                        &effectMngr.Effects.Tile, nullptr);
                     f.AddSpriteToChain(&spr);
                 }
                 else
                 {
                     Sprite& spr = tilesTree.InsertSprite(DRAW_ORDER_TILE + tile.Layer, nx, ny, 0,
                         tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
-                        spr_id, nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &effectMngr.Effects.Tile, nullptr);
                     f.AddSpriteToChain(&spr);
                 }
             }
@@ -1403,7 +1396,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                     Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
                         roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
                         spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
-                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                        &effectMngr.Effects.Roof, nullptr);
                     spr.SetEgg(EGG_ALWAYS);
                     f.AddSpriteToChain(&spr);
                 }
@@ -1411,8 +1404,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 {
                     Sprite& spr = roofTree.InsertSprite(DRAW_ORDER_TILE + roof.Layer, nx, ny, 0,
                         roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
-                        spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha,
-                        &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                        spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha, &effectMngr.Effects.Roof, nullptr);
                     spr.SetEgg(EGG_ALWAYS);
                     f.AddSpriteToChain(&spr);
                 }
@@ -1489,10 +1481,10 @@ void HexManager::PrepareLightToDraw()
         sprMngr.ClearCurrentRenderTarget(0);
         PointF offset((float)rtScreenOX, (float)rtScreenOY);
         for (uint i = 0; i < lightPointsCount; i++)
-            sprMngr.DrawPoints(lightPoints[i], PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset,
-                sprMngr.GetEffectManager().Effects.Light);
-        sprMngr.DrawPoints(lightSoftPoints, PRIMITIVE_TRIANGLELIST, &settings.SpritesZoom, &offset,
-            sprMngr.GetEffectManager().Effects.Light);
+            sprMngr.DrawPoints(lightPoints[i], RenderPrimitiveType::TriangleFan, &settings.SpritesZoom, &offset,
+                effectMngr.Effects.Light);
+        sprMngr.DrawPoints(lightSoftPoints, RenderPrimitiveType::TriangleList, &settings.SpritesZoom, &offset,
+            effectMngr.Effects.Light);
         sprMngr.PopRenderTarget();
     }
 }
@@ -1981,17 +1973,17 @@ void HexManager::RebuildTiles()
                 if (mapperMode)
                 {
                     MapTileVec& tiles = GetTiles(hx, hy, false);
-                    Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
-                        tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
-                        spr_id, nullptr, nullptr, nullptr, tiles[i].IsSelected ? &SelectAlpha : nullptr,
-                        &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                    Sprite& spr =
+                        tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, tile.OffsX + settings.MapTileOffsX,
+                            tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
+                            tiles[i].IsSelected ? &SelectAlpha : nullptr, &effectMngr.Effects.Tile, nullptr);
                     f.AddSpriteToChain(&spr);
                 }
                 else
                 {
                     Sprite& spr = tilesTree.AddSprite(DRAW_ORDER_TILE + tile.Layer, hx, hy, 0,
                         tile.OffsX + settings.MapTileOffsX, tile.OffsY + settings.MapTileOffsY, &f.ScrX, &f.ScrY,
-                        spr_id, nullptr, nullptr, nullptr, nullptr, &sprMngr.GetEffectManager().Effects.Tile, nullptr);
+                        spr_id, nullptr, nullptr, nullptr, nullptr, &effectMngr.Effects.Tile, nullptr);
                     f.AddSpriteToChain(&spr);
                 }
             }
@@ -2041,7 +2033,7 @@ void HexManager::RebuildRoof()
                         Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
                             roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
                             spr_id, nullptr, nullptr, nullptr, roofs[i].IsSelected ? &SelectAlpha : &settings.RoofAlpha,
-                            &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                            &effectMngr.Effects.Roof, nullptr);
                         spr.SetEgg(EGG_ALWAYS);
                         f.AddSpriteToChain(&spr);
                     }
@@ -2049,8 +2041,7 @@ void HexManager::RebuildRoof()
                     {
                         Sprite& spr = roofTree.AddSprite(DRAW_ORDER_TILE + roof.Layer, hx, hy, 0,
                             roof.OffsX + settings.MapRoofOffsX, roof.OffsY + settings.MapRoofOffsY, &f.ScrX, &f.ScrY,
-                            spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha,
-                            &sprMngr.GetEffectManager().Effects.Roof, nullptr);
+                            spr_id, nullptr, nullptr, nullptr, &settings.RoofAlpha, &effectMngr.Effects.Roof, nullptr);
                         spr.SetEgg(EGG_ALWAYS);
                         f.AddSpriteToChain(&spr);
                     }
@@ -2489,9 +2480,9 @@ void HexManager::PrepareFogToDraw()
     sprMngr.PushRenderTarget(rtFog);
     sprMngr.ClearCurrentRenderTarget(0);
     sprMngr.DrawPoints(
-        fogLookPoints, PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
+        fogLookPoints, RenderPrimitiveType::TriangleFan, &settings.SpritesZoom, &offset, effectMngr.Effects.Fog);
     sprMngr.DrawPoints(
-        fogShootPoints, PRIMITIVE_TRIANGLEFAN, &settings.SpritesZoom, &offset, sprMngr.GetEffectManager().Effects.Fog);
+        fogShootPoints, RenderPrimitiveType::TriangleFan, &settings.SpritesZoom, &offset, effectMngr.Effects.Fog);
     sprMngr.PopRenderTarget();
 }
 
@@ -4260,7 +4251,7 @@ void HexManager::GenerateItem(uint id, hash proto_id, Properties& props)
     ProtoItem* proto = protoMngr.GetProtoItem(proto_id);
     RUNTIME_ASSERT(proto);
 
-    ItemHexView* scenery = new ItemHexView(id, proto, props, resMngr);
+    ItemHexView* scenery = new ItemHexView(id, proto, props, resMngr, effectMngr);
     Field& f = GetField(scenery->GetHexX(), scenery->GetHexY());
     scenery->HexScrX = &f.ScrX;
     scenery->HexScrY = &f.ScrY;
@@ -4401,7 +4392,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
             }
             else
             {
-                throw UnreachablePlaceException("Unreachable place");
+                throw UnreachablePlaceException(LINE_STR);
             }
         }
         else if (entity->Type == EntityType::CritterView)
@@ -4415,7 +4406,7 @@ bool HexManager::SetProtoMap(ProtoMap& pmap)
         }
         else
         {
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
         }
     }
 
@@ -4450,7 +4441,7 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
         else if (entity->Type == EntityType::CritterView)
             store_entity = new CritterView(entity->Id, (ProtoCritter*)entity->Proto, *sett, *spr_mngr, *res_mngr);
         else
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
 
         store_entity->Props = entity->Props;
         pmap.AllEntities.push_back(store_entity);
@@ -4484,6 +4475,11 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
                 pmap.Tiles.push_back(roofs[i]);
         }
     }*/
+}
+
+MapTileVec& HexManager::GetTiles(ushort hx, ushort hy, bool is_roof)
+{
+    return is_roof ? RoofsField[hy * GetWidth() + hx] : TilesField[hy * GetWidth() + hx];
 }
 
 void HexManager::ClearSelTiles()

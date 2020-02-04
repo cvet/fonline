@@ -66,3 +66,13 @@ public:
     static void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
     static void ChangeStepsXY(float& sx, float& sy, float deq);
 };
+
+class MatrixHelper : public StaticClass
+{
+public:
+    static void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp);
+    static bool MatrixProject(float objx, float objy, float objz, const float model_matrix[16],
+        const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz);
+    static bool MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16],
+        const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz);
+};

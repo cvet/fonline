@@ -35,18 +35,19 @@
 
 #include "Common.h"
 
+#include "3dStuff.h"
+#include "Application.h"
+#include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
+#include "ProtoManager.h"
+#include "ResourceManager.h"
 #include "Script.h"
 #include "Settings.h"
+#include "SoundManager.h"
+#include "SpriteManager.h"
 
-class ResourceManager;
-class SpriteManager;
-class Sprite;
-struct Effect;
-class Animation3d;
-struct AnyFrames;
 class ItemView;
 using ItemViewVec = vector<ItemView*>;
 class CritterView;
@@ -56,7 +57,39 @@ using CritterViewVec = vector<CritterView*>;
 class CritterView : public Entity
 {
 public:
-    // Properties
+    CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
+        ResourceManager& res_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys, bool mapper_mode);
+    ~CritterView();
+    void Init();
+    void Finish();
+
+    bool IsLastHexes();
+    void FixLastHexes();
+    ushort PopLastHexX();
+    ushort PopLastHexY();
+    void RefreshAnim();
+    void ChangeDir(uchar dir, bool animate = true);
+
+    void Animate(uint anim1, uint anim2, ItemView* item);
+    void AnimateStay();
+    void Action(int action, int action_ext, ItemView* item, bool local_call = true);
+    void Process();
+    void DrawStay(Rect r);
+
+    string GetName() { return Name; }
+    bool IsNpc() { return FLAG(Flags, FCRIT_NPC); }
+    bool IsPlayer() { return FLAG(Flags, FCRIT_PLAYER); }
+    bool IsChosen() { return FLAG(Flags, FCRIT_CHOSEN); }
+    bool IsOnline() { return !FLAG(Flags, FCRIT_DISCONNECT); }
+    bool IsOffline() { return FLAG(Flags, FCRIT_DISCONNECT); }
+    bool IsLife() { return GetCond() == COND_LIFE; }
+    bool IsKnockout() { return GetCond() == COND_KNOCKOUT; }
+    bool IsDead() { return GetCond() == COND_DEAD; }
+    bool IsCombatMode();
+    bool CheckFind(int find_type);
+
+    uint GetAttackDist();
+
     PROPERTIES_HEADER();
     // Non sync
     CLASS_PROPERTY(ushort, HexX);
@@ -96,59 +129,27 @@ public:
     CLASS_PROPERTY(char, Gender); // GUI
     CLASS_PROPERTY(bool, IsNoFlatten); // Draw order (migrate to proto? to critter type option?)
 
-    uint NameColor;
-    uint ContourColor;
-    UShortVec LastHexX, LastHexY;
-    uint Flags;
-    Effect* DrawEffect;
-    string Name;
-    string NameOnHead;
-    string Avatar;
-    ItemViewVec InvItems;
+    static bool SlotEnabled[0x100];
+
+    uint NameColor {};
+    uint ContourColor {};
+    UShortVec LastHexX {};
+    UShortVec LastHexY {};
+    uint Flags {};
+    RenderEffect* DrawEffect {};
+    string Name {};
+    string NameOnHead {};
+    string Avatar {};
+    ItemViewVec InvItems {};
 
 private:
     CritterViewSettings& settings;
     GeometryHelper geomHelper;
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
+    EffectManager& effectMngr;
     ScriptSystem& scriptSys;
-    bool mapperMode;
-
-public:
-    static bool SlotEnabled[0x100];
-
-    CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, ScriptSystem& script_sys, bool mapper_mode);
-    ~CritterView();
-    void Init();
-    void Finish();
-
-    bool IsLastHexes();
-    void FixLastHexes();
-    ushort PopLastHexX();
-    ushort PopLastHexY();
-    void RefreshAnim();
-    void ChangeDir(uchar dir, bool animate = true);
-
-    void Animate(uint anim1, uint anim2, ItemView* item);
-    void AnimateStay();
-    void Action(int action, int action_ext, ItemView* item, bool local_call = true);
-    void Process();
-    void DrawStay(Rect r);
-
-    string GetName() { return Name; }
-    bool IsNpc() { return FLAG(Flags, FCRIT_NPC); }
-    bool IsPlayer() { return FLAG(Flags, FCRIT_PLAYER); }
-    bool IsChosen() { return FLAG(Flags, FCRIT_CHOSEN); }
-    bool IsOnline() { return !FLAG(Flags, FCRIT_DISCONNECT); }
-    bool IsOffline() { return FLAG(Flags, FCRIT_DISCONNECT); }
-    bool IsLife() { return GetCond() == COND_LIFE; }
-    bool IsKnockout() { return GetCond() == COND_KNOCKOUT; }
-    bool IsDead() { return GetCond() == COND_DEAD; }
-    bool IsCombatMode();
-    bool CheckFind(int find_type);
-
-    uint GetAttackDist();
+    bool mapperMode {};
 
     // Items
 public:
@@ -164,16 +165,17 @@ public:
 
     // Moving
 public:
-    bool IsRunning;
-    UShortPairVec MoveSteps;
-    int CurMoveStep;
+    bool IsRunning {};
+    UShortPairVec MoveSteps {};
+    int CurMoveStep {};
+
     bool IsNeedMove() { return MoveSteps.size() && !IsWalkAnim(); }
     void Move(int dir);
 
     // ReSet
 private:
-    bool needReSet;
-    uint reSetTick;
+    bool needReSet {};
+    uint reSetTick {};
 
 public:
     bool IsNeedReSet();
@@ -181,8 +183,8 @@ public:
 
     // Time
 public:
-    uint TickCount;
-    uint StartTick;
+    uint TickCount {};
+    uint StartTick {};
 
     void TickStart(uint ms);
     void TickNull();
@@ -197,59 +199,48 @@ public:
     bool IsAnimAviable(uint anim1, uint anim2);
 
 private:
-    uint curSpr, lastEndSpr;
-    uint animStartTick;
-    int anim3dLayers[LAYERS3D_COUNT];
+    uint curSpr {};
+    uint lastEndSpr {};
+    uint animStartTick {};
+    int anim3dLayers[LAYERS3D_COUNT] {};
 
     struct CritterAnim
     {
-        AnyFrames* Anim;
-        uint AnimTick;
-        int BeginFrm;
-        int EndFrm;
-        bool MoveText;
-        int DirOffs;
-        uint IndAnim1;
-        uint IndAnim2;
-        ItemView* ActiveItem;
-        CritterAnim() {}
-        CritterAnim(AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1,
-            uint ind_anim2, ItemView* item) :
-            Anim(anim),
-            AnimTick(tick),
-            BeginFrm(beg_frm),
-            EndFrm(end_frm),
-            MoveText(move_text),
-            DirOffs(dir_offs),
-            IndAnim1(ind_anim1),
-            IndAnim2(ind_anim2),
-            ActiveItem(item)
-        {
-        }
+        AnyFrames* Anim {};
+        uint AnimTick {};
+        uint BeginFrm {};
+        uint EndFrm {};
+        bool MoveText {};
+        int DirOffs {};
+        uint IndAnim1 {};
+        uint IndAnim2 {};
+        ItemView* ActiveItem {};
     };
-    typedef vector<CritterAnim> CritterAnimVec;
 
-    CritterAnimVec animSequence;
-    CritterAnim stayAnim;
+    CritterAnim stayAnim {};
+    vector<CritterAnim> animSequence {};
 
     CritterAnim* GetCurAnim() { return IsAnim() ? &animSequence[0] : nullptr; }
     void NextAnim(bool erase_front);
 
 public:
-    Animation3d* Anim3d;
-    Animation3d* Anim3dStay;
-    bool Visible;
-    uchar Alpha;
-    Rect DRect;
-    bool SprDrawValid;
-    Sprite* SprDraw;
-    uint SprId;
-    short SprOx, SprOy;
-    // Extra offsets
-    short OxExtI, OyExtI;
-    float OxExtF, OyExtF;
-    float OxExtSpeed, OyExtSpeed;
-    uint OffsExtNextTick;
+    Animation3d* Anim3d {};
+    Animation3d* Anim3dStay {};
+    bool Visible {true};
+    uchar Alpha {};
+    Rect DRect {};
+    bool SprDrawValid {};
+    Sprite* SprDraw {};
+    uint SprId {};
+    short SprOx {};
+    short SprOy {};
+    short OxExtI {};
+    short OyExtI {};
+    float OxExtF {};
+    float OyExtF {};
+    float OxExtSpeed {};
+    float OyExtSpeed {};
+    uint OffsExtNextTick {};
 
     void SetSprRect();
     bool Is3dAnim() { return Anim3d != nullptr; }
@@ -265,12 +256,12 @@ public:
 
     // Stay sprite
 private:
-    int staySprDir;
-    uint staySprTick;
+    int staySprDir {};
+    uint staySprTick {};
 
     // Finish
 private:
-    uint finishingTime;
+    uint finishingTime {};
 
 public:
     bool IsFinishing();
@@ -278,14 +269,14 @@ public:
 
     // Fade
 private:
-    bool fadingEnable;
-    bool fadeUp;
+    bool fadingEnable {};
+    bool fadeUp {};
 
     void SetFade(bool fade_up);
     uchar GetFadeAlpha();
 
 public:
-    uint FadingTick;
+    uint FadingTick {};
 
     // Text
 public:
@@ -295,10 +286,10 @@ public:
     void GetNameTextInfo(bool& nameVisible, int& x, int& y, int& w, int& h, int& lines);
 
 private:
-    Rect textRect;
-    uint tickFidget;
-    string strTextOnHead;
-    uint tickStartText;
-    uint tickTextDelay;
-    uint textOnHeadColor;
+    Rect textRect {};
+    uint tickFidget {};
+    string strTextOnHead {};
+    uint tickStartText {};
+    uint tickTextDelay {};
+    uint textOnHeadColor {COLOR_CRITTER_NAME};
 };

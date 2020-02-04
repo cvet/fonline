@@ -104,7 +104,7 @@ void EffectBaker::BakeShaderProgram(const string& fname, const string& content)
     program.addShader(&vert);
     program.addShader(&frag);
     if (!program.link(EShMsgDefault))
-        throw fo_exception("Can't link shader program", fname, program.getInfoLog());
+        throw GenericException("Can't link shader program", fname, program.getInfoLog());
 
     BakeShaderStage(fname_wo_ext + ".vert", program.getIntermediate(EShLangVertex));
     BakeShaderStage(fname_wo_ext + ".frag", program.getIntermediate(EShLangFragment));

@@ -81,94 +81,12 @@ HashVecVec& AnimSet::GetBonesHierarchy()
     return bonesHierarchy;
 }
 
-void AnimSet::Save(DataWriter& writer)
-{
-    uint len = (uint)animFileName.length();
-    writer.WritePtr(&len, sizeof(len));
-    writer.WritePtr(&animFileName[0], len);
-    len = (uint)animName.length();
-    writer.WritePtr(&len, sizeof(len));
-    writer.WritePtr(&animName[0], len);
-    writer.WritePtr(&durationTicks, sizeof(durationTicks));
-    writer.WritePtr(&ticksPerSecond, sizeof(ticksPerSecond));
-    len = (uint)bonesHierarchy.size();
-    writer.WritePtr(&len, sizeof(len));
-    for (uint i = 0, j = (uint)bonesHierarchy.size(); i < j; i++)
-    {
-        len = (uint)bonesHierarchy[i].size();
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
-    }
-    len = (uint)boneOutputs.size();
-    writer.WritePtr(&len, sizeof(len));
-    for (auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it)
-    {
-        BoneOutput& o = *it;
-        writer.WritePtr(&o.nameHash, sizeof(o.nameHash));
-        len = (uint)o.scaleTime.size();
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
-        writer.WritePtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
-        len = (uint)o.rotationTime.size();
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
-        writer.WritePtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
-        len = (uint)o.translationTime.size();
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
-        writer.WritePtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
-    }
-}
-
-void AnimSet::Load(DataReader& reader)
-{
-    uint len = 0;
-    reader.ReadPtr(&len, sizeof(len));
-    animFileName.resize(len);
-    reader.ReadPtr(&animFileName[0], len);
-    reader.ReadPtr(&len, sizeof(len));
-    animName.resize(len);
-    reader.ReadPtr(&animName[0], len);
-    reader.ReadPtr(&durationTicks, sizeof(durationTicks));
-    reader.ReadPtr(&ticksPerSecond, sizeof(ticksPerSecond));
-    reader.ReadPtr(&len, sizeof(len));
-    bonesHierarchy.resize(len);
-    for (uint i = 0, j = len; i < j; i++)
-    {
-        reader.ReadPtr(&len, sizeof(len));
-        bonesHierarchy[i].resize(len);
-        reader.ReadPtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
-    }
-    reader.ReadPtr(&len, sizeof(len));
-    boneOutputs.resize(len);
-    for (uint i = 0, j = len; i < j; i++)
-    {
-        BoneOutput& o = boneOutputs[i];
-        reader.ReadPtr(&o.nameHash, sizeof(o.nameHash));
-        reader.ReadPtr(&len, sizeof(len));
-        o.scaleTime.resize(len);
-        o.scaleValue.resize(len);
-        reader.ReadPtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
-        reader.ReadPtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
-        reader.ReadPtr(&len, sizeof(len));
-        o.rotationTime.resize(len);
-        o.rotationValue.resize(len);
-        reader.ReadPtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
-        reader.ReadPtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
-        reader.ReadPtr(&len, sizeof(len));
-        o.translationTime.resize(len);
-        o.translationValue.resize(len);
-        reader.ReadPtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
-        reader.ReadPtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
-    }
-}
-
 AnimController::AnimController(uint track_count)
 {
     if (track_count)
     {
-        sets = new AnimSetVec();
-        outputs = new OutputVec();
+        sets = new vector<AnimSet*>();
+        outputs = new vector<Output>();
         tracks.resize(track_count);
     }
 }

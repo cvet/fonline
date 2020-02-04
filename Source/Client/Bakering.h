@@ -31,34 +31,21 @@
 // SOFTWARE.
 //
 
-#include "AppGui.h"
+#pragma once
 
-bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximized)
-{
-    return true;
-}
+#include "Common.h"
 
-bool AppGui::BeginFrame()
-{
-    return true;
-}
+#include "3dAnimation.h"
+#include "3dStuff.h"
 
-void AppGui::EndFrame()
+class Bakering : public StaticClass
 {
-}
-
-#ifdef FO_HAVE_D3D
-bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
-{
-    return true;
-}
-
-bool AppGui::BeginFrameDX()
-{
-    return true;
-}
-
-void AppGui::EndFrameDX()
-{
-}
-#endif
+public:
+    static void SaveBone(Bone* bone, DataWriter& writer);
+    static void LoadBone(Bone* bone, DataReader& reader);
+    static void FixBoneAfterLoad(Bone* bone, Bone* root_bone);
+    static void SaveMeshData(MeshData* mesh, DataWriter& writer);
+    static void LoadMeshData(MeshData* mesh, DataReader& reader);
+    static void SaveAnimSet(AnimSet* anim_set, DataWriter& writer);
+    static void LoadAnimSet(AnimSet* anim_set, DataReader& reader);
+};

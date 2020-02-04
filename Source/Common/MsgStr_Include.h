@@ -369,42 +369,6 @@
 // Damage
 #define STR_DMG_LIFE (4250)
 
-// Karma, reputation
-#define STR_KARMA_GEN_GEN_NAME (6000)
-#define STR_KARMA_GEN_GEN_NAME2 (6001)
-#define STR_KARMA_GEN_GEN_DESC (6002)
-#define STR_KARMA_GEN_COUNT (6099)
-#define STR_KARMA_GEN_VAL(num) (6100 + (num)*3)
-#define STR_KARMA_GEN_NAME(num) (6100 + (num)*3 + 1)
-#define STR_KARMA_GEN_SKILLDEX(num) (6100 + (num)*3 + 2)
-#define STR_TOWNREP_TITLE_NAME (6405)
-#define STR_TOWNREP_TITLE_DESC (6406)
-#define STR_TOWNREP_RATIO_NAME(val) \
-    (6500 + \
-        ((val) >= GameOpt.ReputationLoved ? \
-                0 : \
-                ((val) >= GameOpt.ReputationLiked ? \
-                        1 : \
-                        ((val) >= GameOpt.ReputationAccepted ? \
-                                2 : \
-                                ((val) >= GameOpt.ReputationNeutral ? \
-                                        3 : \
-                                        ((val) >= GameOpt.ReputationAntipathy ? \
-                                                4 : \
-                                                ((val) >= GameOpt.ReputationHated ? 5 : 6)))))))
-#define STR_TOWNREP_RATIO_DESC(val) \
-    (6550 + \
-        ((val) >= GameOpt.ReputationLoved ? \
-                0 : \
-                ((val) >= GameOpt.ReputationLiked ? \
-                        1 : \
-                        ((val) >= GameOpt.ReputationAccepted ? \
-                                2 : \
-                                ((val) >= GameOpt.ReputationNeutral ? \
-                                        3 : \
-                                        ((val) >= GameOpt.ReputationAntipathy ? \
-                                                4 : \
-                                                ((val) >= GameOpt.ReputationHated ? 5 : 6)))))))
 #define STR_ADDICT_TITLE_NAME (6900)
 #define STR_ADDICT_TITLE_DESC (6901)
 

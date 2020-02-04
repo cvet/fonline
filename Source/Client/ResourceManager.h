@@ -35,11 +35,9 @@
 
 #include "Common.h"
 
-#include "GraphicStructures.h"
+#include "3dStuff.h"
 #include "Script.h"
 #include "SpriteManager.h"
-
-class Animation3d;
 
 struct LoadedAnim
 {
@@ -64,7 +62,6 @@ public:
     uint GetCritSprId(hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr);
     AnyFrames* GetRandomSplash();
     StrMap& GetSoundNames() { return soundNames; }
-    SpriteManager& GetSpriteManager() { return sprMngr; }
 
     AnyFrames* ItemHexDefaultAnim {};
     AnyFrames* CritterDefaultAnim {};

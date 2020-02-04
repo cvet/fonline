@@ -36,11 +36,11 @@
 #include "Common.h"
 
 #include "FileSystem.h"
-#include "GraphicStructures.h"
 
 class AnimSet : public NonCopyable
 {
     friend class AnimController;
+    friend class Bakering;
 
 public:
     void SetData(const string& fname, const string& name, float ticks, float tps);
@@ -51,8 +51,6 @@ public:
     uint GetBoneOutputCount();
     float GetDuration();
     HashVecVec& GetBonesHierarchy();
-    void Save(DataWriter& writer);
-    void Load(DataReader& reader);
 
 private:
     struct BoneOutput
@@ -65,16 +63,14 @@ private:
         FloatVec translationTime {};
         VectorVec translationValue {};
     };
-    using BoneOutputVec = vector<BoneOutput>;
 
     string animFileName {};
     string animName {};
     float durationTicks {};
     float ticksPerSecond {};
-    BoneOutputVec boneOutputs {};
+    vector<BoneOutput> boneOutputs {};
     HashVecVec bonesHierarchy {};
 };
-using AnimSetVec = vector<AnimSet*>;
 
 class AnimController : public NonCopyable
 {
@@ -111,8 +107,6 @@ private:
         QuaternionVec rotation {};
         VectorVec translation {};
     };
-    using OutputVec = vector<Output>;
-    using OutputPtrVec = vector<Output*>;
 
     struct Track
     {
@@ -131,17 +125,15 @@ private:
             float smoothTime {};
             float valueFrom {-1.0f};
         };
-        using EventVec = vector<Event>;
 
         bool enabled {};
         float speed {};
         float weight {};
         float position {};
         AnimSet* anim {};
-        OutputPtrVec animOutput {};
-        EventVec events {};
+        vector<Output*> animOutput {};
+        vector<Event> events {};
     };
-    using TrackVec = vector<Track>;
 
     void Interpolate(Quaternion& q1, const Quaternion& q2, float factor);
     void Interpolate(Vector& v1, const Vector& v2, float factor);
@@ -170,9 +162,9 @@ private:
     }
 
     bool cloned {};
-    AnimSetVec* sets {};
-    OutputVec* outputs {};
-    TrackVec tracks {};
+    vector<AnimSet*>* sets {};
+    vector<Output>* outputs {};
+    vector<Track> tracks {};
     float curTime {};
     bool interpolationDisabled {};
 };

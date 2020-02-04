@@ -307,7 +307,7 @@ Sprite* Sprites::RootSprite()
 }
 
 Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy,
-    uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback)
+    uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
 {
     spriteCount++;
 
@@ -487,13 +487,13 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
 }
 
 Sprite& Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
-    uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback)
+    uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
 {
     return PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
 Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
-    uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback)
+    uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
 {
     // For cutted sprites need resort all tree
     if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL)
@@ -549,7 +549,7 @@ void Sprites::SortByMapPos()
     std::sort(sprites.begin(), sprites.end(), [&spr_infos](Sprite* spr1, Sprite* spr2) {
         SpriteInfo* si1 = spr_infos[spr1->PSprId ? *spr1->PSprId : spr1->SprId];
         SpriteInfo* si2 = spr_infos[spr2->PSprId ? *spr2->PSprId : spr2->SprId];
-        return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->TextureOwner < si2->Atlas->TextureOwner;
+        return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->MainTex < si2->Atlas->MainTex;
     });
 
     std::sort(sprites.begin(), sprites.end(), [](Sprite* spr1, Sprite* spr2) {

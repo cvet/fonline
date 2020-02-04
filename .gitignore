@@ -3,6 +3,7 @@ FOnlineSDK*
 
 # MSVC files
 .vs
+.vscode
 /InterfaceEditor/obj/
 SdkPlaceholder/Modules/*/bin
 SdkPlaceholder/Modules/*/obj

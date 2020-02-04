@@ -41,20 +41,20 @@
 class NetConnection
 {
 public:
-    uint Ip;
-    string Host;
-    ushort Port;
-    NetBuffer Bin;
-    std::mutex BinLocker;
-    NetBuffer Bout;
-    std::mutex BoutLocker;
-    bool IsDisconnected;
-    uint DisconnectTick;
-
     virtual ~NetConnection() = default;
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;
     virtual void Disconnect() = 0;
+
+    uint Ip {};
+    string Host {};
+    ushort Port {};
+    NetBuffer Bin {};
+    std::mutex BinLocker {};
+    NetBuffer Bout {};
+    std::mutex BoutLocker {};
+    bool IsDisconnected {};
+    uint DisconnectTick {};
 };
 
 class NetServerBase

@@ -32,14 +32,8 @@
 //
 
 #include "CritterView.h"
-#include "3dStuff.h"
-#include "EffectManager.h"
 #include "GenericUtils.h"
 #include "ItemView.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "SoundManager.h"
-#include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -83,52 +77,18 @@ CLASS_PROPERTY_IMPL(CritterView, IsHide);
 CLASS_PROPERTY_IMPL(CritterView, IsNoFlatten);
 
 CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-    ResourceManager& res_mngr, ScriptSystem& script_sys, bool mapper_mode) :
+    ResourceManager& res_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys, bool mapper_mode) :
     Entity(id, EntityType::CritterView, PropertiesRegistrator, proto),
     settings {sett},
     geomHelper(settings),
     sprMngr {spr_mngr},
     resMngr {res_mngr},
+    effectMngr {effect_mngr},
     scriptSys {script_sys},
     mapperMode {mapper_mode}
 {
-    SprId = 0;
-    NameColor = 0;
-    ContourColor = 0;
-    Flags = 0;
-    curSpr = 0;
-    lastEndSpr = 0;
-    animStartTick = 0;
-    SprOx = SprOy = 0;
-    StartTick = 0;
-    TickCount = 0;
-    tickTextDelay = 0;
-    textOnHeadColor = COLOR_TEXT;
-    Alpha = 0;
-    fadingEnable = false;
-    FadingTick = 0;
-    fadeUp = false;
-    finishingTime = 0;
-    staySprDir = 0;
-    staySprTick = 0;
-    needReSet = false;
-    reSetTick = 0;
-    CurMoveStep = 0;
-    Visible = true;
-    SprDrawValid = false;
-    OxExtI = OyExtI = 0;
-    OxExtF = OyExtF = 0.0f;
-    OxExtSpeed = OyExtSpeed = 0;
-    OffsExtNextTick = 0;
-    Anim3d = Anim3dStay = nullptr;
-    Name = "";
-    NameOnHead = "";
-    Avatar = "";
     tickFidget = Timer::GameTick() + GenericUtils::Random(settings.CritterFidgetTime, settings.CritterFidgetTime * 2);
-    memzero(&stayAnim, sizeof(stayAnim));
-    DrawEffect = resMngr.GetSpriteManager().GetEffectManager().Effects.Critter;
-    memzero(anim3dLayers, sizeof(anim3dLayers));
-    textOnHeadColor = COLOR_CRITTER_NAME;
+    DrawEffect = effectMngr.Effects.Critter;
 
     CScriptArray* arr = scriptSys.CreateArray("int[]");
     arr->Resize(LAYERS3D_COUNT);
@@ -138,8 +98,10 @@ CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett
 
 CritterView::~CritterView()
 {
-    sprMngr.FreePure3dAnimation(Anim3d);
-    sprMngr.FreePure3dAnimation(Anim3dStay);
+    if (Anim3d)
+        sprMngr.FreePure3dAnimation(Anim3d);
+    if (Anim3dStay)
+        sprMngr.FreePure3dAnimation(Anim3dStay);
 }
 
 void CritterView::Init()
@@ -385,15 +347,17 @@ void CritterView::Move(int dir)
             if (!anim)
                 anim = resMngr.CritterDefaultAnim;
 
-            int step, beg_spr, end_spr;
+            uint step;
+            uint beg_spr;
+            uint end_spr;
             curSpr = lastEndSpr;
 
             if (!IsRunning)
             {
-                int s0 = 4;
-                int s1 = 8;
-                int s2 = 0;
-                int s3 = 0;
+                uint s0 = 4;
+                uint s1 = 8;
+                uint s2 = 0;
+                uint s3 = 0;
 
                 if ((int)curSpr == s0 - 1 && s1)
                 {
@@ -449,10 +413,10 @@ void CritterView::Move(int dir)
             }
 
             ClearAnim();
-            animSequence.push_back(CritterAnim(anim, time_move, beg_spr, end_spr, true, 0, anim1, anim2, nullptr));
+            animSequence.push_back({anim, time_move, beg_spr, end_spr, true, 0, anim1, anim2, nullptr});
             NextAnim(false);
 
-            for (int i = 0; i < step; i++)
+            for (uint i = 0; i < step; i++)
             {
                 int ox, oy;
                 GetWalkHexOffsets(dir, ox, oy);
@@ -477,12 +441,11 @@ void CritterView::Move(int dir)
             if (m2 <= 0)
                 m2 = 2;
 
-            int beg_spr = lastEndSpr + 1;
-            int end_spr = beg_spr + (IsRunning ? m2 : m1);
+            uint beg_spr = lastEndSpr + 1;
+            uint end_spr = beg_spr + (IsRunning ? m2 : m1);
 
             ClearAnim();
-            animSequence.push_back(
-                CritterAnim(anim, time_move, beg_spr, end_spr, true, dir + 1, anim1, anim2, nullptr));
+            animSequence.push_back({anim, time_move, beg_spr, end_spr, true, dir + 1, anim1, anim2, nullptr});
             NextAnim(false);
 
             int ox, oy;
@@ -501,7 +464,7 @@ void CritterView::Move(int dir)
         Anim3d->SetDir(dir);
 
         ClearAnim();
-        animSequence.push_back(CritterAnim(nullptr, time_move, 0, 0, true, dir + 1, anim1, anim2, nullptr));
+        animSequence.push_back({nullptr, time_move, 0, 0, true, dir + 1, anim1, anim2, nullptr});
         NextAnim(false);
 
         int ox, oy;
@@ -581,7 +544,7 @@ void CritterView::NextAnim(bool erase_front)
         SprId = cr_anim.Anim->GetSprId(curSpr);
 
         short ox = 0, oy = 0;
-        for (int i = 0, j = curSpr % cr_anim.Anim->GetCnt(); i <= j; i++)
+        for (int i = 0, j = curSpr % cr_anim.Anim->CntFrm; i <= j; i++)
         {
             ox += cr_anim.Anim->NextX[i];
             oy += cr_anim.Anim->NextY[i];
@@ -624,8 +587,7 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
         // anim2!=ANIM2_PICKUP && 			anim2!=ANIM2_DAMAGE_FRONT && anim2!=ANIM2_DAMAGE_BACK && anim2!=ANIM2_IDLE
         // && anim2!=ANIM2_IDLE_COMBAT));
 
-        animSequence.push_back(
-            CritterAnim(anim, anim->Ticks, 0, anim->GetCnt() - 1, move_text, 0, anim->Anim1, anim->Anim2, item));
+        animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, move_text, 0, anim->Anim1, anim->Anim2, item});
     }
     else
     {
@@ -636,7 +598,7 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
             return;
         }
 
-        animSequence.push_back(CritterAnim(nullptr, 0, 0, 0, true, 0, anim1, anim2, item));
+        animSequence.push_back({nullptr, 0, 0, 0, true, 0, anim1, anim2, item});
     }
 
     if (animSequence.size() == 1)
@@ -661,7 +623,7 @@ void CritterView::AnimateStay()
             stayAnim.Anim = anim;
             stayAnim.AnimTick = anim->Ticks;
             stayAnim.BeginFrm = 0;
-            stayAnim.EndFrm = anim->GetCnt() - 1;
+            stayAnim.EndFrm = anim->CntFrm - 1;
             if (GetCond() == COND_DEAD)
                 stayAnim.BeginFrm = stayAnim.EndFrm;
             curSpr = stayAnim.BeginFrm;
@@ -671,7 +633,7 @@ void CritterView::AnimateStay()
 
         SetOffs(0, 0, true);
         short ox = 0, oy = 0;
-        for (uint i = 0, j = curSpr % anim->GetCnt(); i <= j; i++)
+        for (uint i = 0, j = curSpr % anim->CntFrm; i <= j; i++)
         {
             ox += anim->NextX[i];
             oy += anim->NextY[i];
@@ -820,9 +782,11 @@ bool CritterView::IsAnimAviable(uint anim1, uint anim2)
 void CritterView::RefreshAnim()
 {
     // Release previous
-    sprMngr.FreePure3dAnimation(Anim3d);
-    sprMngr.FreePure3dAnimation(Anim3dStay);
+    if (Anim3d)
+        sprMngr.FreePure3dAnimation(Anim3d);
     Anim3d = nullptr;
+    if (Anim3dStay)
+        sprMngr.FreePure3dAnimation(Anim3dStay);
     Anim3dStay = nullptr;
 
     // Check 3d availability
@@ -920,12 +884,12 @@ void CritterView::Process()
 
             // Change offsets
             short ox = 0, oy = 0;
-            for (uint i = 0, j = old_spr % cr_anim.Anim->GetCnt(); i <= j; i++)
+            for (uint i = 0, j = old_spr % cr_anim.Anim->CntFrm; i <= j; i++)
             {
                 ox -= cr_anim.Anim->NextX[i];
                 oy -= cr_anim.Anim->NextY[i];
             }
-            for (uint i = 0, j = cur_spr % cr_anim.Anim->GetCnt(); i <= j; i++)
+            for (uint i = 0, j = cur_spr % cr_anim.Anim->CntFrm; i <= j; i++)
             {
                 ox += cr_anim.Anim->NextX[i];
                 oy += cr_anim.Anim->NextY[i];

@@ -6,8 +6,8 @@
 export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
 
 if [ ! -f "$FO_BUILD_DEST/FOnlineVersion.txt" ]; then
-	echo "File '$FO_BUILD_DEST/FOnlineVersion.txt' not exists"
-	exit 0
+    echo "File '$FO_BUILD_DEST/FOnlineVersion.txt' not exists"
+    exit 0
 fi
 FO_VERSION=`cat $FO_BUILD_DEST/FOnlineVersion.txt`
 

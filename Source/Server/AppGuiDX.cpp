@@ -33,7 +33,7 @@
 
 #include "AppGui.h"
 
-#ifdef FO_HAVE_DX
+#ifdef FO_HAVE_D3D
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -55,33 +55,16 @@ struct CustomVertex
 
 struct ImGuiViewportDataWin32
 {
-    HWND Hwnd;
-    bool HwndOwned;
-    DWORD DwStyle;
-    DWORD DwExStyle;
-
-    ImGuiViewportDataWin32()
-    {
-        Hwnd = nullptr;
-        HwndOwned = false;
-        DwStyle = DwExStyle = 0;
-    }
-
-    ~ImGuiViewportDataWin32() { RUNTIME_ASSERT(Hwnd == nullptr); }
+    HWND Hwnd {};
+    bool HwndOwned {};
+    DWORD DwStyle {};
+    DWORD DwExStyle {};
 };
 
 struct ImGuiViewportDataDx9
 {
-    IDirect3DSwapChain9* SwapChain;
-    D3DPRESENT_PARAMETERS D3dPP;
-
-    ImGuiViewportDataDx9()
-    {
-        SwapChain = nullptr;
-        ZeroMemory(&D3dPP, sizeof(D3DPRESENT_PARAMETERS));
-    }
-
-    ~ImGuiViewportDataDx9() { RUNTIME_ASSERT(SwapChain == nullptr); }
+    IDirect3DSwapChain9* SwapChain {};
+    D3DPRESENT_PARAMETERS D3dPP {};
 };
 
 static HWND WndHandle = nullptr;

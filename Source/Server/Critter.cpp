@@ -138,11 +138,6 @@ Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings&
     Moving.State = 1;
 }
 
-Critter::~Critter()
-{
-    RUNTIME_ASSERT(!GlobalMapGroup);
-}
-
 void Critter::SetBreakTime(uint ms)
 {
     breakTime = ms;

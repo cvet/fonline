@@ -313,7 +313,6 @@ public:
 
 protected:
     Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
-    ~Critter();
 
     CritterSettings& settings;
     GeometryHelper geomHelper;

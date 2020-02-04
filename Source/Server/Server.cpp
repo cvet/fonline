@@ -34,7 +34,6 @@
 #include "Server.h"
 #include "AdminPanel.h"
 #include "GenericUtils.h"
-#include "GraphicStructures.h"
 #include "PropertiesSerializator.h"
 #include "Testing.h"
 #include "Version_Include.h"
@@ -60,6 +59,41 @@
         Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
         return 0; \
     } while (0)
+
+class MapSprite : public NonCopyable
+{
+public:
+    void AddRef() const { ++RefCount; }
+    void Release() const
+    {
+        if (--RefCount == 0)
+            delete this;
+    }
+    MapSprite* Factory() { return new MapSprite(); }
+
+    mutable int RefCount {1};
+    bool Valid {};
+    uint SprId {};
+    ushort HexX {};
+    ushort HexY {};
+    hash ProtoId {};
+    int FrameIndex {};
+    int OffsX {};
+    int OffsY {};
+    bool IsFlat {};
+    bool NoLight {};
+    int DrawOrder {};
+    int DrawOrderHyOffset {};
+    int Corner {};
+    bool DisableEgg {};
+    uint Color {};
+    uint ContourColor {};
+    bool IsTweakOffs {};
+    short TweakOffsX {};
+    short TweakOffsY {};
+    bool IsTweakAlpha {};
+    uchar TweakAlpha {};
+};
 
 FOServer* FOServer::Self;
 
@@ -2442,7 +2476,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
     else if (entity->Type == EntityType::Global)
         DbStorage->Update("Globals", entity->Id, prop->GetName(), value);
     else
-        throw UnreachablePlaceException("Unreachable place");
+        throw UnreachablePlaceException(LINE_STR);
 
     if (DbHistory && !prop->IsNoHistory())
     {
@@ -2473,7 +2507,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* cur_value, v
         else if (entity->Type == EntityType::Global)
             DbHistory->Insert("GlobalsHistory", id, doc);
         else
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
     }
 }
 

@@ -56,7 +56,7 @@ bool BuildSystem::BuildAll()
     {
         return true;
     }
-    catch (const fo_exception&)
+    catch (const GenericException&)
     {
         return false;
     }
@@ -173,13 +173,13 @@ bool BuildSystem::GenerateResources(StrVec* resource_names)
                                         Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK)
                                 {
                                     if (zipWriteInFileInZip(zip, &kv.second[0], static_cast<uint>(kv.second.size())))
-                                        throw fo_exception("Can't write file in zip file", kv.first, zip_path);
+                                        throw GenericException("Can't write file in zip file", kv.first, zip_path);
 
                                     zipCloseFileInZip(zip);
                                 }
                                 else
                                 {
-                                    throw fo_exception("Can't open file in zip file", kv.first, zip_path);
+                                    throw GenericException("Can't open file in zip file", kv.first, zip_path);
                                 }
                             }
 
@@ -187,7 +187,7 @@ bool BuildSystem::GenerateResources(StrVec* resource_names)
 
                             File::DeleteFile(zip_path);
                             if (!File::RenameFile(zip_path + ".tmp", zip_path))
-                                throw fo_exception("Can't rename file", zip_path + ".tmp", zip_path);
+                                throw GenericException("Can't rename file", zip_path + ".tmp", zip_path);
 
                             something_changed = true;
                         }

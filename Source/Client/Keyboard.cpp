@@ -32,34 +32,9 @@
 //
 
 #include "Keyboard.h"
-#include "SpriteManager.h"
 #include "StringUtils.h"
 
 Keyboard::Keyboard(InputSettings& sett, SpriteManager& spr_mngr) : settings {sett}, sprMngr {spr_mngr}
-{
-#define MAKE_KEY_CODE(name, index, code) \
-    KeysMap[code] = index; \
-    KeysMapRevert[index] = code
-#include "KeyCodes_Include.h"
-
-    // User keys mapping
-    for (uint i = 0; i < 0x100; i++)
-        KeysMapUser[i] = i;
-
-    istringstream str(settings.KeyboardRemap);
-    while (!str.eof())
-    {
-        int from, to;
-        str >> from >> to;
-        if (str.fail())
-            break;
-        from &= 0xFF;
-        to &= 0xFF;
-        KeysMapUser[from] = to;
-    }
-}
-
-Keyboard::~Keyboard()
 {
 }
 
@@ -70,7 +45,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags)
+void Keyboard::GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, int flags)
 {
     if (AltDwn)
         return;
@@ -86,8 +61,7 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
     if (pos > str_len)
         pos = str_len;
 
-    // Controls
-    if (dik == DIK_RIGHT && !ctrl_shift)
+    if (dik == KeyCode::DIK_RIGHT && !ctrl_shift)
     {
         if (pos < str_len)
         {
@@ -96,7 +70,7 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
                 pos++;
         }
     }
-    else if (dik == DIK_LEFT && !ctrl_shift)
+    else if (dik == KeyCode::DIK_LEFT && !ctrl_shift)
     {
         if (pos > 0)
         {
@@ -105,7 +79,7 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
                 pos--;
         }
     }
-    else if (dik == DIK_BACK && !ctrl_shift)
+    else if (dik == KeyCode::DIK_BACK && !ctrl_shift)
     {
         if (pos > 0)
         {
@@ -117,7 +91,7 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == DIK_DELETE && !ctrl_shift)
+    else if (dik == KeyCode::DIK_DELETE && !ctrl_shift)
     {
         if (pos < str_len)
         {
@@ -129,35 +103,30 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == DIK_HOME && !ctrl_shift)
+    else if (dik == KeyCode::DIK_HOME && !ctrl_shift)
     {
         pos = 0;
     }
-    else if (dik == DIK_END && !ctrl_shift)
+    else if (dik == KeyCode::DIK_END && !ctrl_shift)
     {
         pos = str_len;
     }
-    // Clipboard
-    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == DIK_C || dik == DIK_X))
+    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::DIK_C || dik == KeyCode::DIK_X))
     {
-        SDL_SetClipboardText(str.c_str());
-        if (dik == DIK_X)
+        App::Input::SetClipboardText(str);
+        if (dik == KeyCode::DIK_X)
         {
             str.clear();
             pos = 0;
         }
     }
-    else if (CtrlDwn && !ShiftDwn && dik == DIK_V)
+    else if (CtrlDwn && !ShiftDwn && dik == KeyCode::DIK_V)
     {
-        const char* cb_text = SDL_GetClipboardText();
-        settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        settings.MainWindowKeyboardEvents.push_back(511);
-        settings.MainWindowKeyboardEventsText.push_back(cb_text);
-        settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        settings.MainWindowKeyboardEvents.push_back(511);
-        settings.MainWindowKeyboardEventsText.push_back(cb_text);
+        string cb_text = App::Input::GetClipboardText();
+        App::Input::PushEvent({InputEvent::KeyDown({KeyCode::DIK_CLIPBOARD_PASTE, cb_text})});
+        App::Input::PushEvent({InputEvent::KeyUp({KeyCode::DIK_CLIPBOARD_PASTE})});
     }
-    else if (dik == DIK_CLIPBOARD_PASTE)
+    else if (dik == KeyCode::DIK_CLIPBOARD_PASTE)
     {
         string text = dik_text;
         EraseInvalidChars(text, flags);
@@ -182,7 +151,6 @@ void Keyboard::GetChar(uchar dik, const string& dik_text, string& str, uint* pos
             pos += (uint)text.length();
         }
     }
-    // Text input
     else
     {
         if (dik_text_len_utf8 == 0)
@@ -229,6 +197,7 @@ bool Keyboard::IsInvalidChar(const char* str, uint flags, uint& length)
             return true;
         if (flags & KIF_ONLY_NUMBERS && !(*str >= '0' && *str <= '9'))
             return true;
+
         if (flags & KIF_FILE_NAME)
         {
             switch (*str)
@@ -253,14 +222,4 @@ bool Keyboard::IsInvalidChar(const char* str, uint flags, uint& length)
     }
 
     return !sprMngr.HaveLetter(-1, ucs);
-}
-
-uchar Keyboard::MapKey(ushort code)
-{
-    return KeysMapUser[KeysMap[code]];
-}
-
-ushort Keyboard::UnmapKey(uchar key)
-{
-    return KeysMapRevert[key];
 }

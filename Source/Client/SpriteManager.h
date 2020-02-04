@@ -39,11 +39,17 @@
 
 #include "Common.h"
 
+#include "3dStuff.h"
+#include "Application.h"
+#include "EffectManager.h"
 #include "FileSystem.h"
-#include "GraphicApi.h"
-#include "GraphicStructures.h"
 #include "Script.h"
 #include "Settings.h"
+#include "Sprites.h"
+
+#define ANY_FRAMES_POOL_SIZE (2000)
+#define MAX_STORED_PIXEL_PICKS (100)
+#define MAX_FRAMES (50)
 
 // Font flags
 #define FT_NOBREAK (0x0001)
@@ -114,34 +120,122 @@
 #define CONTOUR_YELLOW (2)
 #define CONTOUR_CUSTOM (3)
 
-// Primitives
-#define PRIMITIVE_POINTLIST (1)
-#define PRIMITIVE_LINELIST (2)
-#define PRIMITIVE_LINESTRIP (3)
-#define PRIMITIVE_TRIANGLELIST (4)
-#define PRIMITIVE_TRIANGLESTRIP (5)
-#define PRIMITIVE_TRIANGLEFAN (6)
-
-class EffectManager;
 class Animation3dManager;
 class Animation3d;
 using Animation3dVec = vector<Animation3d*>;
 class Sprites;
 class Sprite;
 
-class SpriteManager
+enum class AtlasType
 {
-private:
+    Static,
+    Dynamic,
+    Splash,
+    MeshTextures,
+};
+
+struct RenderTarget : public NonCopyable
+{
+    unique_ptr<RenderTexture> MainTex {};
+    RenderEffect* DrawEffect {};
+    bool ScreenSized {};
+    vector<tuple<int, int, uint>> LastPixelPicks {};
+};
+
+struct TextureAtlas : public NonCopyable
+{
+    struct SpaceNode : public NonCopyable
+    {
+        SpaceNode(int x, int y, uint w, uint h);
+        bool FindPosition(uint w, uint h, int& x, int& y);
+
+        int PosX {};
+        int PosY {};
+        uint Width {};
+        uint Height {};
+        bool Busy {};
+        unique_ptr<SpaceNode> Child1 {};
+        unique_ptr<SpaceNode> Child2 {};
+    };
+
+    AtlasType Type {};
+    RenderTarget* RT {};
+    RenderTexture* MainTex {};
+    uint Width {};
+    uint Height {};
+    unique_ptr<SpaceNode> RootNode {};
+    uint CurX {};
+    uint CurY {};
+    uint LineMaxH {};
+    uint LineCurH {};
+    uint LineW {};
+};
+
+struct SpriteInfo : public NonCopyable
+{
+    TextureAtlas* Atlas {};
+    RectF SprRect {};
+    short Width {};
+    short Height {};
+    short OffsX {};
+    short OffsY {};
+    RenderEffect* DrawEffect {};
+    bool UsedForAnim3d {};
+    Animation3d* Anim3d {};
+    uchar* Data {};
+    AtlasType DataAtlasType {};
+    bool DataAtlasOneImage {};
+};
+using SprInfoVec = vector<SpriteInfo*>;
+
+struct AnyFrames : public NonCopyable
+{
+    uint GetSprId(uint num_frm);
+    short GetNextX(uint num_frm);
+    short GetNextY(uint num_frm);
+    uint GetCurSprId();
+    uint GetCurSprIndex();
+    AnyFrames* GetDir(int dir);
+
+    uint Ind[MAX_FRAMES] {}; // Sprite Ids
+    short NextX[MAX_FRAMES] {};
+    short NextY[MAX_FRAMES] {};
+    uint CntFrm {};
+    uint Ticks {}; // Time of playing animation
+    uint Anim1 {};
+    uint Anim2 {};
+    hash NameHash {};
+    int DirCount {1};
+    AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
+};
+static_assert(std::is_standard_layout_v<AnyFrames>);
+using AnimMap = map<uint, AnyFrames*>;
+using AnimVec = vector<AnyFrames*>;
+
+struct PrepPoint
+{
+    int PointX {};
+    int PointY {};
+    uint PointColor {};
+    short* PointOffsX {};
+    short* PointOffsY {};
+};
+using PointVec = vector<PrepPoint>;
+
+struct DipData
+{
+    RenderTexture* MainTex {};
+    RenderEffect* SourceEffect {};
+    uint SpritesCount {};
+    RectF SpriteBorder {};
+};
+using DipDataVec = vector<DipData>;
+
+class SpriteManager : public NonMovable
+{
 public:
     SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys);
     ~SpriteManager();
-
-    void Preload3dModel(const string& model_name);
-    void BeginScene(uint clear_color);
-    void EndScene();
-    void OnResolutionChanged();
-    void SetAlwaysOnTop(bool enable);
-    EffectManager& GetEffectManager() { return effectMngr; }
 
     void GetWindowSize(int& w, int& h);
     void SetWindowSize(int w, int h);
@@ -154,23 +248,15 @@ public:
     bool EnableFullscreen();
     bool DisableFullscreen();
     void BlinkWindow();
+    void SetAlwaysOnTop(bool enable);
 
-private:
-    RenderSettings& settings;
-    FileManager& fileMngr;
-    EffectManager& effectMngr;
-    SDL_Window* mainWindow {};
-    Animation3dManager* anim3dMngr {};
-    Matrix projectionMatrixCM {};
-    bool sceneBeginned {};
-    GLint baseFBO {};
+    void Preload3dModel(const string& model_name);
+    void BeginScene(uint clear_color);
+    void EndScene();
+    void OnResolutionChanged();
 
-    // Render targets
-public:
-    RenderTarget* CreateRenderTarget(bool depth, bool multisampling, bool screen_size, uint width, uint height,
-        bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr);
-    void CleanRenderTarget(RenderTarget* rt);
-    void DeleteRenderTarget(RenderTarget*& rt);
+    RenderTarget* CreateRenderTarget(
+        bool with_depth, bool multisampled, bool screen_sized, uint width, uint height, bool linear_filtered);
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
     void DrawRenderTarget(
@@ -178,16 +264,19 @@ public:
     uint GetRenderTargetPixel(RenderTarget* rt, int x, int y);
     void ClearCurrentRenderTarget(uint color);
     void ClearCurrentRenderTargetDepth();
-    void RefreshViewport();
-    RenderTarget* Get3dRenderTarget(uint width, uint height);
 
 private:
+    RenderSettings& settings;
+    FileManager& fileMngr;
+    EffectManager& effectMngr;
+    unique_ptr<Animation3dManager> anim3dMngr {};
+    Matrix projectionMatrixCM {};
     RenderTarget* rtMain {};
     RenderTarget* rtContours {};
     RenderTarget* rtContoursMid {};
-    RenderTargetVec rt3D {};
-    RenderTargetVec rtStack {};
-    RenderTargetVec rtAll {};
+    vector<RenderTarget*> rt3D {};
+    vector<RenderTarget*> rtStack {};
+    vector<unique_ptr<RenderTarget>> rtAll {};
 
     // Texture atlases
 public:
@@ -198,7 +287,6 @@ public:
     bool IsAccumulateAtlasActive();
     void DestroyAtlases(AtlasType atlas_type);
     void DumpAtlases();
-    void SaveTexture(Texture* tex, const string& fname, bool flip); // tex == NULL is back buffer
 
 private:
     TextureAtlas* CreateAtlas(int w, int h);
@@ -206,10 +294,8 @@ private:
     uint RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data);
     void FillAtlas(SpriteInfo* si);
 
-    int atlasWidth {};
-    int atlasHeight {};
     vector<tuple<AtlasType, bool>> atlasStack {};
-    TextureAtlasVec allAtlases {};
+    vector<unique_ptr<TextureAtlas>> allAtlases {};
     bool accumulatorActive {};
     SprInfoVec accumulatorSprInfo {};
 
@@ -261,31 +347,15 @@ public:
     bool DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0);
     bool DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to,
         bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
-    bool DrawPoints(
-        PointVec& points, int prim, float* zoom = nullptr, PointF* offset = nullptr, Effect* effect = nullptr);
+    bool DrawPoints(PointVec& points, RenderPrimitiveType prim, float* zoom = nullptr, PointF* offset = nullptr,
+        RenderEffect* custom_effect = nullptr);
     bool Draw3d(int x, int y, Animation3d* anim3d, uint color);
 
 private:
-    struct VertexArray
-    {
-        GLuint VAO {};
-        GLuint VBO {};
-        GLuint IBO {};
-        uint VCount {};
-        uint ICount {};
-        VertexArray* Next {};
-    };
-
-    void InitVertexArray(VertexArray* va, bool quads, uint count);
-    void BindVertexArray(VertexArray* va);
-    void EnableVertexArray(VertexArray* va, uint vertices_count);
-    void DisableVertexArray(VertexArray*& va);
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
 
-    VertexArray* quadsVertexArray {};
-    VertexArray* pointsVertexArray {};
     UShortVec quadsIndices {};
     UShortVec pointsIndices {};
     Vertex2DVec vBuffer {};
@@ -319,17 +389,17 @@ private:
     int eggX {};
     int eggY {};
     SpriteInfo* sprEgg {};
-    uint* eggData {};
+    vector<uint> eggData {};
     int eggSprWidth {};
     int eggSprHeight {};
     float eggAtlasWidth {};
     float eggAtlasHeight {};
 
-    // Fonts
+    // Todo: move fonts stuff to separate module
 public:
     void ClearFonts();
     void SetDefaultFont(int index, uint color);
-    void SetFontEffect(int index, Effect* effect);
+    void SetFontEffect(int index, RenderEffect* effect);
     bool LoadFontFO(int index, const string& font_name, bool not_bordered, bool skip_if_loaded = true);
     bool LoadFontBMF(int index, const string& font_name);
     void BuildFonts();
@@ -337,10 +407,71 @@ public:
     int GetLinesCount(int width, int height, const string& str, int num_font = -1);
     int GetLinesHeight(int width, int height, const string& str, int num_font = -1);
     int GetLineHeight(int num_font = -1);
-    void GetTextInfo(int width, int height, const string& str, int num_font, int flags, int& tw, int& th, int& lines);
+    void GetTextInfo(int width, int height, const string& str, int num_font, uint flags, int& tw, int& th, int& lines);
     int SplitLines(const Rect& r, const string& cstr, int num_font, StrVec& str_vec);
     bool HaveLetter(int num_font, uint letter);
 
 private:
+    static constexpr int FONT_BUF_LEN = 0x5000;
+    static constexpr int FONT_MAX_LINES = 1000;
+    static constexpr int FORMAT_TYPE_DRAW = 0;
+    static constexpr int FORMAT_TYPE_SPLIT = 1;
+    static constexpr int FORMAT_TYPE_LCOUNT = 2;
+
+    struct FontData
+    {
+        struct Letter
+        {
+            short PosX {};
+            short PosY {};
+            short W {};
+            short H {};
+            short OffsX {};
+            short OffsY {};
+            short XAdvance {};
+            RectF TexUV {};
+            RectF TexBorderedUV {};
+        };
+
+        RenderEffect* DrawEffect {};
+        bool Builded {};
+        RenderTexture* FontTex {};
+        RenderTexture* FontTexBordered {};
+        map<uint, Letter> Letters {};
+        int SpaceWidth {};
+        int LineHeight {};
+        int YAdvance {};
+        AnyFrames* ImageNormal {};
+        AnyFrames* ImageBordered {};
+        bool MakeGray {};
+    };
+
+    struct FontFormatInfo
+    {
+        FontData* CurFont {};
+        uint Flags {};
+        Rect Region {};
+        char Str[FONT_BUF_LEN] {};
+        char* PStr {};
+        uint LinesAll {};
+        uint LinesInRect {};
+        int CurX {};
+        int CurY {};
+        int MaxCurX {};
+        uint ColorDots[FONT_BUF_LEN] {};
+        short LineWidth[FONT_MAX_LINES] {};
+        ushort LineSpaceWidth[FONT_MAX_LINES] {};
+        uint OffsColDots {};
+        uint DefColor {};
+        StrVec* StrLines {};
+        bool IsError {};
+    };
+
+    FontData* GetFont(int num);
     void BuildFont(int index);
+    void FormatText(FontFormatInfo& fi, int fmt_type);
+
+    vector<unique_ptr<FontData>> allFonts {};
+    int defFontIndex {-1};
+    uint defFontColor {};
 };

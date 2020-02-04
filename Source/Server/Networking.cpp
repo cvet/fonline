@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: catch exceptions in network servers
+
 #include "Networking.h"
 #include "Log.h"
 #include "Settings.h"
@@ -493,9 +495,9 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& sett, Conn
     settings {sett}
 {
     if (settings.WssPrivateKey.empty())
-        throw fo_exception("'WssPrivateKey' not provided");
+        throw GenericException("'WssPrivateKey' not provided");
     if (settings.WssCertificate.empty())
-        throw fo_exception("'WssCertificate' not provided");
+        throw GenericException("'WssCertificate' not provided");
 
     connectionCallback = callback;
 

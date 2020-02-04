@@ -70,8 +70,11 @@ static int main_disabled(int argc, char** argv)
     LogToFile("FOnlineServer.log");
     Settings.ParseArgs(argc, argv);
 
-    // Gui
-    bool use_dx = !Settings.OpenGLRendering;
+#ifdef FO_HAVE_D3D
+    bool use_dx = !Settings.ForceOpenGL;
+#else
+    bool use_dx = false;
+#endif
     if (!AppGui::Init("FOnline Server", use_dx, false, false))
         return -1;
 

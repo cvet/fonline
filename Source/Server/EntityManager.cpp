@@ -74,7 +74,7 @@ static const char* GetEntityTypeMonoName(EntityType type)
     else if (type == EntityType::MapView)
         return "Map";
 
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
     return nullptr;
 }
 
@@ -103,7 +103,7 @@ void EntityManager::RegisterEntity(Entity* entity)
         else if (entity->Type == EntityType::Custom)
             DbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
         else
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
     }
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));
@@ -347,7 +347,7 @@ bool EntityManager::LoadEntities()
             }
             else
             {
-                throw UnreachablePlaceException("Unreachable place");
+                throw UnreachablePlaceException(LINE_STR);
             }
         }
     }

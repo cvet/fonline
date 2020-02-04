@@ -295,8 +295,12 @@ static int main_disabled(int argc, char** argv)
     LogToBuffer(true);
     WriteLog("FOnline Editor ({:#x}).\n", FO_VERSION);
 
-    // Initialize Gui
-    bool use_dx = !Settings.OpenGLRendering;
+// Initialize Gui
+#ifdef FO_HAVE_D3D
+    bool use_dx = !Settings.ForceOpenGL;
+#else
+    bool use_dx = false;
+#endif
     if (!AppGui::Init("FOnline Editor", use_dx, true, true))
         return -1;
 
@@ -336,7 +340,6 @@ static int main_disabled(int argc, char** argv)
         while (!CloseWindows.empty())
         {
             auto it = std::find(Windows.begin(), Windows.end(), CloseWindows.back());
-            RUNTIME_ASSERT(it != Windows.end());
             GuiWindow* window = *it;
             Windows.erase(it);
             CloseWindows.pop_back();

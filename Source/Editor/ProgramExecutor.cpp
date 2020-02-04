@@ -65,13 +65,13 @@ string ProgramExecutor::ExecuteAsync()
     sa.bInheritHandle = TRUE;
     sa.lpSecurityDescriptor = nullptr;
     if (!CreatePipe(&out_read, &out_write, &sa, 0))
-        throw fo_exception("Can't create pipe", command);
+        throw GenericException("Can't create pipe", command);
 
     if (!SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0))
     {
         CloseHandle(out_read);
         CloseHandle(out_write);
-        throw fo_exception("Can't set handle information", command);
+        throw GenericException("Can't set handle information", command);
     }
 
     STARTUPINFOW si;
@@ -92,7 +92,7 @@ string ProgramExecutor::ExecuteAsync()
     {
         CloseHandle(out_read);
         CloseHandle(out_write);
-        throw fo_exception("Can't create process", command);
+        throw GenericException("Can't create process", command);
     }
 
     string log;
@@ -125,14 +125,14 @@ string ProgramExecutor::ExecuteAsync()
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     if (exit_code)
-        throw fo_exception("Program execution failed", command, exit_code, log);
+        throw GenericException("Program execution failed", command, exit_code, log);
 
     return log;
 
 #elif !defined(FO_WEB)
     FILE* in = popen(command.c_str(), "r");
     if (!in)
-        throw fo_exception("Failed to call popen", command);
+        throw GenericException("Failed to call popen", command);
 
     string log;
     char buf[2048];
@@ -143,11 +143,11 @@ string ProgramExecutor::ExecuteAsync()
 
     int exit_code = pclose(in);
     if (exit_code)
-        throw fo_exception("Program execution failed", command, exit_code, log);
+        throw GenericException("Program execution failed", command, exit_code, log);
 
     return log;
 
 #else
-    throw fo_exception("Unsupported OS", command);
+    throw GenericException("Unsupported OS", command);
 #endif
 }

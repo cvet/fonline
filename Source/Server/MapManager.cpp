@@ -349,7 +349,7 @@ void MapManager::GenerateMapContent(Map* map)
         else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
             parent_id = base_item->GetContainerId();
         else
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
 
         if (!id_map.count(parent_id))
             continue;
@@ -378,7 +378,7 @@ void MapManager::GenerateMapContent(Map* map)
         }
         else
         {
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
         }
     }
 

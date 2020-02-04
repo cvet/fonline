@@ -64,6 +64,11 @@ FOMapper* FOMapper::Self;
 MapView* FOMapper::SScriptFunc::ClientCurMap;
 LocationView* FOMapper::SScriptFunc::ClientCurLocation;
 
+FOMapper::IfaceAnim::IfaceAnim(AnyFrames* frm, AtlasType res_type) : Frames(frm), ResType(res_type)
+{
+    LastTick = Timer::FastTick();
+}
+
 FOMapper::FOMapper(MapperSettings& sett) :
     Settings {sett},
     GeomHelper(Settings),
@@ -76,7 +81,7 @@ FOMapper::FOMapper(MapperSettings& sett) :
     EffectMngr(Settings, FileMngr),
     SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
     ResMngr(FileMngr, SprMngr, ScriptSys),
-    HexMngr(true, Settings, ProtoMngr, SprMngr, ResMngr, ScriptSys),
+    HexMngr(true, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
     Keyb(Settings, SprMngr)
 {
     Self = this;
@@ -86,15 +91,11 @@ FOMapper::FOMapper(MapperSettings& sett) :
     ConsoleHistoryCur = 0;
     InspectorEntity = nullptr;
 
-    // SDL
-    bool sdl_events_ok = SDL_InitSubSystem(SDL_INIT_EVENTS);
-    RUNTIME_ASSERT(sdl_events_ok);
-
     // Mouse
     int mx = 0, my = 0;
-    SDL_GetMouseState(&mx, &my);
-    Settings.MouseX = Settings.LastMouseX = CLAMP(mx, 0, Settings.ScreenWidth - 1);
-    Settings.MouseY = Settings.LastMouseY = CLAMP(my, 0, Settings.ScreenHeight - 1);
+    App::Window::GetMousePosition(mx, my);
+    Settings.MouseX = CLAMP(mx, 0, Settings.ScreenWidth - 1);
+    Settings.MouseY = CLAMP(my, 0, Settings.ScreenHeight - 1);
 
     // Options
     Settings.ScrollCheck = false;
@@ -110,8 +111,7 @@ FOMapper::FOMapper(MapperSettings& sett) :
     ServerFileMngr.AddDataSource(ServerWritePath, false);
 
     // Default effects
-    bool default_effects_ok = EffectMngr.LoadDefaultEffects();
-    RUNTIME_ASSERT(default_effects_ok);
+    EffectMngr.LoadDefaultEffects();
 
     // Fonts
     SprMngr.PushAtlasType(AtlasType::Static);
@@ -313,67 +313,23 @@ int FOMapper::InitIface()
     IntVisible = true;
     IntFix = true;
     IntMode = INT_MODE_MESS;
-    IntVectX = 0;
-    IntVectY = 0;
     SelectType = SELECT_TYPE_NEW;
-
-    SubTabsActive = false;
-    SubTabsActiveTab = 0;
-    SubTabsPic = nullptr;
-    SubTabsX = 0;
-    SubTabsY = 0;
-
-    ActiveMap = nullptr;
-    CurItemProtos = nullptr;
-    CurTileHashes = nullptr;
-    CurTileNames = nullptr;
-    CurNpcProtos = nullptr;
-    CurProtoScroll = nullptr;
-
     ProtoWidth = ini.GetInt("", "ProtoWidth", 50);
     ProtosOnScreen = (IntWWork[2] - IntWWork[0]) / ProtoWidth;
     memzero(TabIndex, sizeof(TabIndex));
     NpcDir = 3;
-    ListScroll = 0;
-
     CurMode = CUR_MODE_DEFAULT;
-
-    SelectHX1 = 0;
-    SelectHY1 = 0;
-    SelectHX2 = 0;
-    SelectHY2 = 0;
-    SelectX = 0;
-    SelectY = 0;
-
-    InContScroll = 0;
-    InContItem = nullptr;
-
-    DrawRoof = false;
-    TileLayer = 0;
-
     IsSelectItem = true;
     IsSelectScen = true;
     IsSelectWall = true;
     IsSelectCrit = true;
-    IsSelectTile = false;
-    IsSelectRoof = false;
-
-    Settings.ShowRoof = false;
 
     // Object
     IfaceLoadRect(ObjWMain, "ObjMain");
     IfaceLoadRect(ObjWWork, "ObjWork");
     IfaceLoadRect(ObjBToAll, "ObjToAll");
 
-    ObjX = 0;
-    ObjY = 0;
-    ItemVectX = 0;
-    ItemVectY = 0;
-    ObjCurLine = 0;
-    ObjCurLineIsConst = false;
     ObjVisible = true;
-    ObjFix = false;
-    ObjToAll = false;
 
     // Console
     ConsolePicX = ini.GetInt("", "ConsolePicX", 0);
@@ -381,20 +337,9 @@ int FOMapper::InitIface()
     ConsoleTextX = ini.GetInt("", "ConsoleTextX", 0);
     ConsoleTextY = ini.GetInt("", "ConsoleTextY", 0);
 
-    ConsoleEdit = false;
-    ConsoleLastKey = 0;
-    ConsoleLastKeyText = "";
-    ConsoleKeyTick = 0;
-    ConsoleAccelerate = 0;
-    ConsoleStr = "";
-    ConsoleCur = 0;
-
     ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "ItemStub", "art/items/reserved.frm"), true);
     ResMngr.CritterDefaultAnim =
         SprMngr.LoadAnimation(ini.GetStr("", "CritterStub", "art/critters/reservaa.frm"), true);
-
-    // Messbox
-    MessBoxScroll = 0;
 
     // Cursor
     CurPDef = SprMngr.LoadAnimation(ini.GetStr("", "CurDefault", "actarrow.frm"), true);
@@ -599,29 +544,29 @@ void FOMapper::AnimFree(AtlasType res_type)
     }
 }
 
-void FOMapper::ParseKeyboard()
+void FOMapper::ProcessInputEvents()
 {
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        Settings.MainWindowKeyboardEvents.clear();
-        Settings.MainWindowKeyboardEventsText.clear();
+        InputEvent event;
+        while (App::Input::PollEvent(event))
+            continue;
+
         Keyb.Lost();
-        IntHold = INT_NONE;
-        ScriptSys.RaiseInternalEvent(MapperFunctions.InputLost);
+        ScriptSys.RaiseInternalEvent(ClientFunctions.InputLost);
         return;
     }
 
-    // Get buffered data
-    if (Settings.MainWindowKeyboardEvents.empty())
-        return;
-    IntVec events = Settings.MainWindowKeyboardEvents;
-    StrVec events_text = Settings.MainWindowKeyboardEventsText;
-    Settings.MainWindowKeyboardEvents.clear();
-    Settings.MainWindowKeyboardEventsText.clear();
+    InputEvent event;
+    while (App::Input::PollEvent(event))
+        ProcessInputEvent(event);
+}
 
+void FOMapper::ProcessInputEvent(const InputEvent& event)
+{
     // Process events
-    for (uint i = 0; i < events.size(); i += 2)
+    /*for (uint i = 0; i < events.size(); i += 2)
     {
         // Event data
         int event = events[i];
@@ -665,23 +610,23 @@ void FOMapper::ParseKeyboard()
         // Disable keyboard events
         if (!script_result || Settings.DisableKeyboardEvents)
         {
-            if (dikdw == DIK_ESCAPE && Keyb.ShiftDwn)
+            if (dikdw == KeyCode::DIK_ESCAPE && Keyb.ShiftDwn)
                 Settings.Quit = true;
             continue;
         }
 
         // Control keys
-        if (dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL)
+        if (dikdw == KeyCode::DIK_RCONTROL || dikdw == KeyCode::DIK_LCONTROL)
             Keyb.CtrlDwn = true;
-        else if (dikdw == DIK_LMENU || dikdw == DIK_RMENU)
+        else if (dikdw == KeyCode::DIK_LMENU || dikdw == KeyCode::DIK_RMENU)
             Keyb.AltDwn = true;
-        else if (dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT)
+        else if (dikdw == KeyCode::DIK_LSHIFT || dikdw == KeyCode::DIK_RSHIFT)
             Keyb.ShiftDwn = true;
-        if (dikup == DIK_RCONTROL || dikup == DIK_LCONTROL)
+        if (dikup == KeyCode::DIK_RCONTROL || dikup == KeyCode::DIK_LCONTROL)
             Keyb.CtrlDwn = false;
-        else if (dikup == DIK_LMENU || dikup == DIK_RMENU)
+        else if (dikup == KeyCode::DIK_LMENU || dikup == KeyCode::DIK_RMENU)
             Keyb.AltDwn = false;
-        else if (dikup == DIK_LSHIFT || dikup == DIK_RSHIFT)
+        else if (dikup == KeyCode::DIK_LSHIFT || dikup == KeyCode::DIK_RSHIFT)
             Keyb.ShiftDwn = false;
 
         // Hotkeys
@@ -689,45 +634,45 @@ void FOMapper::ParseKeyboard()
         {
             switch (dikdw)
             {
-            case DIK_F1:
+            case KeyCode::DIK_F1:
                 Settings.ShowItem = !Settings.ShowItem;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F2:
+            case KeyCode::DIK_F2:
                 Settings.ShowScen = !Settings.ShowScen;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F3:
+            case KeyCode::DIK_F3:
                 Settings.ShowWall = !Settings.ShowWall;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F4:
+            case KeyCode::DIK_F4:
                 Settings.ShowCrit = !Settings.ShowCrit;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F5:
+            case KeyCode::DIK_F5:
                 Settings.ShowTile = !Settings.ShowTile;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F6:
+            case KeyCode::DIK_F6:
                 Settings.ShowFast = !Settings.ShowFast;
                 HexMngr.RefreshMap();
                 break;
-            case DIK_F7:
+            case KeyCode::DIK_F7:
                 IntVisible = !IntVisible;
                 break;
-            case DIK_F8:
+            case KeyCode::DIK_F8:
                 Settings.MouseScroll = !Settings.MouseScroll;
                 break;
-            case DIK_F9:
+            case KeyCode::DIK_F9:
                 ObjVisible = !ObjVisible;
                 break;
-            case DIK_F10:
+            case KeyCode::DIK_F10:
                 HexMngr.SwitchShowHex();
                 break;
 
             // Fullscreen
-            case DIK_F11:
+            case KeyCode::DIK_F11:
                 if (!Settings.FullScreen)
                 {
                     if (SprMngr.EnableFullscreen())
@@ -741,14 +686,14 @@ void FOMapper::ParseKeyboard()
                 SprMngr.RefreshViewport();
                 continue;
             // Minimize
-            case DIK_F12:
+            case KeyCode::DIK_F12:
                 SprMngr.MinimizeWindow();
                 continue;
 
-            case DIK_DELETE:
+            case KeyCode::DIK_DELETE:
                 SelectDelete();
                 break;
-            case DIK_ADD:
+            case KeyCode::DIK_ADD:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -758,7 +703,7 @@ void FOMapper::ParseKeyboard()
                     ChangeGameTime();
                 }
                 break;
-            case DIK_SUBTRACT:
+            case KeyCode::DIK_SUBTRACT:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -768,7 +713,7 @@ void FOMapper::ParseKeyboard()
                     ChangeGameTime();
                 }
                 break;
-            case DIK_TAB:
+            case KeyCode::DIK_TAB:
                 SelectType = (SelectType == SELECT_TYPE_OLD ? SELECT_TYPE_NEW : SELECT_TYPE_OLD);
                 break;
             default:
@@ -780,22 +725,22 @@ void FOMapper::ParseKeyboard()
         {
             switch (dikdw)
             {
-            case DIK_F7:
+            case KeyCode::DIK_F7:
                 IntFix = !IntFix;
                 break;
-            case DIK_F9:
+            case KeyCode::DIK_F9:
                 ObjFix = !ObjFix;
                 break;
-            case DIK_F10:
+            case KeyCode::DIK_F10:
                 HexMngr.SwitchShowRain();
                 break;
-            case DIK_F11:
+            case KeyCode::DIK_F11:
                 SprMngr.DumpAtlases();
                 break;
-            case DIK_ESCAPE:
+            case KeyCode::DIK_ESCAPE:
                 exit(0);
                 break;
-            case DIK_ADD:
+            case KeyCode::DIK_ADD:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -805,7 +750,7 @@ void FOMapper::ParseKeyboard()
                     ChangeGameTime();
                 }
                 break;
-            case DIK_SUBTRACT:
+            case KeyCode::DIK_SUBTRACT:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -815,24 +760,24 @@ void FOMapper::ParseKeyboard()
                     ChangeGameTime();
                 }
                 break;
-            case DIK_0:
-            case DIK_NUMPAD0:
+            case KeyCode::DIK_0:
+            case KeyCode::DIK_NUMPAD0:
                 TileLayer = 0;
                 break;
-            case DIK_1:
-            case DIK_NUMPAD1:
+            case KeyCode::DIK_1:
+            case KeyCode::DIK_NUMPAD1:
                 TileLayer = 1;
                 break;
-            case DIK_2:
-            case DIK_NUMPAD2:
+            case KeyCode::DIK_2:
+            case KeyCode::DIK_NUMPAD2:
                 TileLayer = 2;
                 break;
-            case DIK_3:
-            case DIK_NUMPAD3:
+            case KeyCode::DIK_3:
+            case KeyCode::DIK_NUMPAD3:
                 TileLayer = 3;
                 break;
-            case DIK_4:
-            case DIK_NUMPAD4:
+            case KeyCode::DIK_4:
+            case KeyCode::DIK_NUMPAD4:
                 TileLayer = 4;
                 break;
             default:
@@ -844,19 +789,19 @@ void FOMapper::ParseKeyboard()
         {
             switch (dikdw)
             {
-            case DIK_X:
+            case KeyCode::DIK_X:
                 BufferCut();
                 break;
-            case DIK_C:
+            case KeyCode::DIK_C:
                 BufferCopy();
                 break;
-            case DIK_V:
+            case KeyCode::DIK_V:
                 BufferPaste(50, 50);
                 break;
-            case DIK_A:
+            case KeyCode::DIK_A:
                 SelectAll();
                 break;
-            case DIK_S:
+            case KeyCode::DIK_S:
                 if (ActiveMap)
                 {
                     HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
@@ -866,27 +811,27 @@ void FOMapper::ParseKeyboard()
                     RunMapSaveScript(ActiveMap);
                 }
                 break;
-            case DIK_D:
+            case KeyCode::DIK_D:
                 Settings.ScrollCheck = !Settings.ScrollCheck;
                 break;
-            case DIK_B:
+            case KeyCode::DIK_B:
                 HexMngr.MarkPassedHexes();
                 break;
-            case DIK_Q:
+            case KeyCode::DIK_Q:
                 Settings.ShowCorners = !Settings.ShowCorners;
                 break;
-            case DIK_W:
+            case KeyCode::DIK_W:
                 Settings.ShowSpriteCuts = !Settings.ShowSpriteCuts;
                 break;
-            case DIK_E:
+            case KeyCode::DIK_E:
                 Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                 break;
-            case DIK_M:
+            case KeyCode::DIK_M:
                 DrawCrExtInfo++;
                 if (DrawCrExtInfo > DRAW_CR_INFO_MAX)
                     DrawCrExtInfo = 0;
                 break;
-            case DIK_L:
+            case KeyCode::DIK_L:
                 SaveLogFile();
                 break;
             default:
@@ -908,16 +853,16 @@ void FOMapper::ParseKeyboard()
                 {
                     switch (dikdw)
                     {
-                    case DIK_LEFT:
+                    case KeyCode::DIK_LEFT:
                         Settings.ScrollKeybLeft = true;
                         break;
-                    case DIK_RIGHT:
+                    case KeyCode::DIK_RIGHT:
                         Settings.ScrollKeybRight = true;
                         break;
-                    case DIK_UP:
+                    case KeyCode::DIK_UP:
                         Settings.ScrollKeybUp = true;
                         break;
-                    case DIK_DOWN:
+                    case KeyCode::DIK_DOWN:
                         Settings.ScrollKeybDown = true;
                         break;
                     default:
@@ -934,16 +879,16 @@ void FOMapper::ParseKeyboard()
 
             switch (dikup)
             {
-            case DIK_LEFT:
+            case KeyCode::DIK_LEFT:
                 Settings.ScrollKeybLeft = false;
                 break;
-            case DIK_RIGHT:
+            case KeyCode::DIK_RIGHT:
                 Settings.ScrollKeybRight = false;
                 break;
-            case DIK_UP:
+            case KeyCode::DIK_UP:
                 Settings.ScrollKeybUp = false;
                 break;
-            case DIK_DOWN:
+            case KeyCode::DIK_DOWN:
                 Settings.ScrollKeybDown = false;
                 break;
             default:
@@ -953,16 +898,6 @@ void FOMapper::ParseKeyboard()
     }
 }
 
-#define MOUSE_BUTTON_LEFT (0)
-#define MOUSE_BUTTON_RIGHT (1)
-#define MOUSE_BUTTON_MIDDLE (2)
-#define MOUSE_BUTTON_WHEEL_UP (3)
-#define MOUSE_BUTTON_WHEEL_DOWN (4)
-#define MOUSE_BUTTON_EXT0 (5)
-#define MOUSE_BUTTON_EXT1 (6)
-#define MOUSE_BUTTON_EXT2 (7)
-#define MOUSE_BUTTON_EXT3 (8)
-#define MOUSE_BUTTON_EXT4 (9)
 void FOMapper::ParseMouse()
 {
     // Mouse position
@@ -1185,7 +1120,7 @@ void FOMapper::ParseMouse()
             CurRMouseUp();
             continue;
         }
-    }
+    }*/
 }
 
 void FOMapper::MainLoop()
@@ -1210,7 +1145,7 @@ void FOMapper::MainLoop()
     }
 
     // Input events
-    SDL_Event event;
+    /*SDL_Event event;
     while (SDL_PollEvent(&event))
     {
         if (event.type == SDL_MOUSEMOTION)
@@ -1262,15 +1197,14 @@ void FOMapper::MainLoop()
         {
             Settings.Quit = true;
         }
-    }
+    }*/
 
     // Script loop
     ScriptSys.RaiseInternalEvent(MapperFunctions.Loop);
 
     // Input
     ConsoleProcess();
-    ParseKeyboard();
-    ParseMouse();
+    ProcessInputEvents();
 
     // Process
     AnimProcess();
@@ -1927,7 +1861,7 @@ void FOMapper::ObjDraw()
     else if (item && item->IsStatic())
         DrawLine("Type", "", "Static Item", true, r);
     else
-        throw UnreachablePlaceException("Unreachable place");
+        throw UnreachablePlaceException(LINE_STR);
 
     for (auto& prop : ShowProps)
     {
@@ -1975,9 +1909,9 @@ void FOMapper::DrawLine(const string& name, const string& type_name, const strin
     r.B += DRAW_NEXT_HEIGHT;
 }
 
-void FOMapper::ObjKeyDown(uchar dik, const char* dik_text)
+void FOMapper::ObjKeyDown(KeyCode dik, const char* dik_text)
 {
-    if (dik == DIK_RETURN || dik == DIK_NUMPADENTER)
+    if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER)
     {
         if (ObjCurLineInitValue != ObjCurLineValue)
         {
@@ -1996,15 +1930,15 @@ void FOMapper::ObjKeyDown(uchar dik, const char* dik_text)
             HexMngr.RebuildLight();
         }
     }
-    else if (dik == DIK_UP)
+    else if (dik == KeyCode::DIK_UP)
     {
         SelectEntityProp(ObjCurLine - 1);
     }
-    else if (dik == DIK_DOWN)
+    else if (dik == KeyCode::DIK_DOWN)
     {
         SelectEntityProp(ObjCurLine + 1);
     }
-    else if (dik == DIK_ESCAPE)
+    else if (dik == KeyCode::DIK_ESCAPE)
     {
         ObjCurLineValue = ObjCurLineInitValue;
     }
@@ -2342,7 +2276,7 @@ void FOMapper::IntLMouseDown()
                     }
                     else
                     {
-                        throw UnreachablePlaceException("Unreachable place");
+                        throw UnreachablePlaceException(LINE_STR);
                     }
                     InContItem = nullptr;
 
@@ -3462,7 +3396,7 @@ Entity* FOMapper::CloneEntity(Entity* entity)
     }
     else
     {
-        throw UnreachablePlaceException("Unreachable place");
+        throw UnreachablePlaceException(LINE_STR);
     }
 
     auto pmap = (ProtoMap*)ActiveMap->Proto;
@@ -3863,9 +3797,9 @@ void FOMapper::ConsoleDraw()
     }
 }
 
-void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
+void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
 {
-    if (dik == DIK_RETURN || dik == DIK_NUMPADENTER)
+    if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER)
     {
         if (ConsoleEdit)
         {
@@ -3919,14 +3853,14 @@ void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
 
     switch (dik)
     {
-    case DIK_UP:
+    case KeyCode::DIK_UP:
         if (ConsoleHistoryCur - 1 < 0)
             return;
         ConsoleHistoryCur--;
         ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
         ConsoleCur = (uint)ConsoleStr.length();
         return;
-    case DIK_DOWN:
+    case KeyCode::DIK_DOWN:
         if (ConsoleHistoryCur + 1 >= (int)ConsoleHistory.size())
         {
             ConsoleHistoryCur = (int)ConsoleHistory.size();
@@ -3948,15 +3882,15 @@ void FOMapper::ConsoleKeyDown(uchar dik, const char* dik_text)
     }
 }
 
-void FOMapper::ConsoleKeyUp(uchar key)
+void FOMapper::ConsoleKeyUp(KeyCode key)
 {
-    ConsoleLastKey = 0;
+    ConsoleLastKey = KeyCode::DIK_NONE;
     ConsoleLastKeyText = "";
 }
 
 void FOMapper::ConsoleProcess()
 {
-    if (!ConsoleLastKey)
+    if (ConsoleLastKey == KeyCode::DIK_NONE)
         return;
 
     if ((int)(Timer::FastTick() - ConsoleKeyTick) >= CONSOLE_KEY_TICK - ConsoleAccelerate)
@@ -5429,7 +5363,7 @@ void FOMapper::SScriptFunc::Global_SetDefaultFont(int font, uint color)
     Self->SprMngr.SetDefaultFont(font, color);
 }
 
-int MouseButtonToSdlButton(int button)
+/*static int MouseButtonToSdlButton(int button)
 {
     if (button == MOUSE_BUTTON_LEFT)
         return SDL_BUTTON_LEFT;
@@ -5448,11 +5382,11 @@ int MouseButtonToSdlButton(int button)
     if (button == MOUSE_BUTTON_EXT4)
         return SDL_BUTTON(8);
     return -1;
-}
+}*/
 
 void FOMapper::SScriptFunc::Global_MouseClick(int x, int y, int button)
 {
-    IntVec prev_events = Self->Settings.MainWindowMouseEvents;
+    /*IntVec prev_events = Self->Settings.MainWindowMouseEvents;
     Self->Settings.MainWindowMouseEvents.clear();
     int prev_x = Self->Settings.MouseX;
     int prev_y = Self->Settings.MouseY;
@@ -5470,7 +5404,7 @@ void FOMapper::SScriptFunc::Global_MouseClick(int x, int y, int button)
     Self->Settings.MouseX = prev_x;
     Self->Settings.MouseY = prev_y;
     Self->Settings.LastMouseX = last_prev_x;
-    Self->Settings.LastMouseY = last_prev_y;
+    Self->Settings.LastMouseY = last_prev_y;*/
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text)
@@ -5478,33 +5412,17 @@ void FOMapper::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string 
     if (!key1 && !key2)
         return;
 
-    IntVec prev_events = Self->Settings.MainWindowKeyboardEvents;
-    StrVec prev_events_text = Self->Settings.MainWindowKeyboardEventsText;
-    Self->Settings.MainWindowKeyboardEvents.clear();
     if (key1)
-    {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        Self->Settings.MainWindowKeyboardEventsText.push_back(key1_text);
-    }
+        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1_text})});
+
     if (key2)
     {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        Self->Settings.MainWindowKeyboardEventsText.push_back(key2_text);
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        Self->Settings.MainWindowKeyboardEventsText.push_back("");
+        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2_text})});
+        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key2})});
     }
+
     if (key1)
-    {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        Self->Settings.MainWindowKeyboardEventsText.push_back("");
-    }
-    Self->ParseKeyboard();
-    Self->Settings.MainWindowKeyboardEvents = prev_events;
-    Self->Settings.MainWindowKeyboardEventsText = prev_events_text;
+        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key1})});
 }
 
 void FOMapper::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, string drop_anim_name)
@@ -5557,7 +5475,7 @@ uint FOMapper::SScriptFunc::Global_LoadSpriteHash(uint name_hash)
 int FOMapper::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int spr_index)
 {
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || spr_index >= (int)anim->GetCnt())
+    if (!anim || spr_index >= (int)anim->CntFrm)
         return 0;
     SpriteInfo* si = Self->SprMngr.GetSpriteInfo(spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId(spr_index));
     if (!si)
@@ -5568,7 +5486,7 @@ int FOMapper::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int spr_index)
 int FOMapper::SScriptFunc::Global_GetSpriteHeight(uint spr_id, int spr_index)
 {
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || spr_index >= (int)anim->GetCnt())
+    if (!anim || spr_index >= (int)anim->CntFrm)
         return 0;
     SpriteInfo* si = Self->SprMngr.GetSpriteInfo(spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId(spr_index));
     if (!si)
@@ -5594,7 +5512,7 @@ uint FOMapper::SScriptFunc::Global_GetPixelColor(uint spr_id, int frame_index, i
         return 0;
 
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return 0;
 
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
@@ -5612,7 +5530,7 @@ void FOMapper::SScriptFunc::Global_DrawSprite(uint spr_id, int frame_index, int 
     if (!SpritesCanDraw || !spr_id)
         return;
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
     if (offs)
@@ -5632,7 +5550,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSize(
     if (!SpritesCanDraw || !spr_id)
         return;
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
     if (offs)
@@ -5652,7 +5570,7 @@ void FOMapper::SScriptFunc::Global_DrawSpritePattern(
     if (!SpritesCanDraw || !spr_id)
         return;
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
     Self->SprMngr.DrawSpritePattern(frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index), x, y, w, h,
         spr_width, spr_height, COLOR_SCRIPT_SPRITE(color));
@@ -5676,26 +5594,26 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArra
     if (!SpritesCanDraw || data->GetSize() == 0)
         return;
 
-    int prim;
+    RenderPrimitiveType prim;
     switch (primitive_type)
     {
     case 0:
-        prim = PRIMITIVE_POINTLIST;
+        prim = RenderPrimitiveType::PointList;
         break;
     case 1:
-        prim = PRIMITIVE_LINELIST;
+        prim = RenderPrimitiveType::LineList;
         break;
     case 2:
-        prim = PRIMITIVE_LINESTRIP;
+        prim = RenderPrimitiveType::LineStrip;
         break;
     case 3:
-        prim = PRIMITIVE_TRIANGLELIST;
+        prim = RenderPrimitiveType::TriangleList;
         break;
     case 4:
-        prim = PRIMITIVE_TRIANGLESTRIP;
+        prim = RenderPrimitiveType::TriangleStrip;
         break;
     case 5:
-        prim = PRIMITIVE_TRIANGLEFAN;
+        prim = RenderPrimitiveType::TriangleFan;
         break;
     default:
         return;
@@ -5731,7 +5649,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite(MapSprite* map_spr)
         return;
 
     AnyFrames* anim = Self->AnimGetFrames(map_spr->SprId);
-    if (!anim || map_spr->FrameIndex >= (int)anim->GetCnt())
+    if (!anim || map_spr->FrameIndex >= (int)anim->CntFrm)
         return;
 
     uint color = map_spr->Color;

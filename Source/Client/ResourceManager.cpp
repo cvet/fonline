@@ -37,7 +37,6 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "SpriteManager.h"
 #include "StringUtils.h"
 
 ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ScriptSystem& script_sys) :
@@ -88,7 +87,6 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
             it = loadedAnims.erase(it);
         }
         else
-
         {
             ++it;
         }

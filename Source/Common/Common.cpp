@@ -38,16 +38,16 @@
 #ifdef FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
 }
 
 void* SDL_LoadFunction(void* handle, const char* name)
 {
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
 }
 
 void SDL_UnloadObject(void* handle)
 {
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
 }
 #endif

@@ -521,7 +521,7 @@ hash _str::toHash()
 _str& _str::parseHash(hash h)
 {
     // Todo: restore hash parsing
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
     return *this;
 }
 

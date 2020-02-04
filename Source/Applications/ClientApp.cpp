@@ -33,18 +33,16 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Client.h"
 #include "Keyboard.h"
 #include "Log.h"
-#include "SDL_main.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
 
-#ifdef FO_IOS
-extern SDL_Window* SprMngr_MainWindow;
-#endif
+#include "SDL_main.h"
 
 static GlobalSettings Settings {};
 
@@ -59,9 +57,22 @@ static void ClientEntry(void*)
             return;
 #endif
 
+        BEGIN_ROOT_EXCEPTION_BLOCK();
         client = new FOClient(Settings);
+        CATCH_EXCEPTION(GenericException);
+        WriteLog("Something going wrong...");
+        exit(1);
+        END_ROOT_EXCEPTION_BLOCK();
     }
+
+    BEGIN_ROOT_EXCEPTION_BLOCK();
+    App::BeginFrame();
     client->MainLoop();
+    App::EndFrame();
+    CATCH_EXCEPTION(GenericException);
+    WriteLog("Something going wrong...");
+    exit(1);
+    END_ROOT_EXCEPTION_BLOCK();
 }
 
 #ifndef FO_TESTING
@@ -74,16 +85,19 @@ static int main_disabled(int argc, char** argv)
     LogToFile("FOnline.log");
     Settings.ParseArgs(argc, argv);
 
-    // Hard restart, need wait before event dissapeared
+    // Hard restart, need wait before lock event dissapeared
 #ifdef FO_WINDOWS
-    if (wcsstr(GetCommandLineW(), L" --restart"))
+    if (wcsstr(::GetCommandLineW(), L"--restart"))
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 #endif
 
     // Start message
     WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
 
-// Loop
+    // Init graphic
+    App::Init(Settings);
+
+    // Loop
 #if defined(FO_IOS)
     ClientEntry(nullptr);
     SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, ClientEntry, nullptr);

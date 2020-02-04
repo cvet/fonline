@@ -40,22 +40,10 @@
 #include "NetCommand.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 #include "Version_Include.h"
 
 #include "sha1.h"
 #include "sha2.h"
-
-#define MOUSE_BUTTON_LEFT (0)
-#define MOUSE_BUTTON_RIGHT (1)
-#define MOUSE_BUTTON_MIDDLE (2)
-#define MOUSE_BUTTON_WHEEL_UP (3)
-#define MOUSE_BUTTON_WHEEL_DOWN (4)
-#define MOUSE_BUTTON_EXT0 (5)
-#define MOUSE_BUTTON_EXT1 (6)
-#define MOUSE_BUTTON_EXT2 (7)
-#define MOUSE_BUTTON_EXT3 (8)
-#define MOUSE_BUTTON_EXT4 (9)
 
 #define SCRIPT_ERROR_R(error, ...) \
     do \
@@ -78,44 +66,6 @@
         return; \
     }
 
-#if defined(FO_ANDROID) || defined(FO_IOS)
-int HandleAppEvents(void* userdata, SDL_Event* event)
-{
-    switch (event->type)
-    {
-    case SDL_APP_TERMINATING:
-        // Terminate the app.
-        // Shut everything down before returning from this function.
-        return 0;
-    case SDL_APP_LOWMEMORY:
-        // You will get this when your app is paused and iOS wants more memory.
-        // Release as much memory as possible.
-        return 0;
-    case SDL_APP_WILLENTERBACKGROUND:
-        // Prepare your app to go into the background.  Stop loops, etc.
-        // This gets called when the user hits the home button, or gets a call.
-        return 0;
-    case SDL_APP_DIDENTERBACKGROUND:
-        // This will get called if the user accepted whatever sent your app to the background.
-        // If the user got a phone call and canceled it, you'll instead get an SDL_APP_DIDENTERFOREGROUND event and
-        // restart your loops. When you get this, you have 5 seconds to save all your state or the app will be
-        // terminated. Your app is NOT active at this point.
-        return 0;
-    case SDL_APP_WILLENTERFOREGROUND:
-        // This call happens when your app is coming back to the foreground.
-        // Restore all your state here.
-        return 0;
-    case SDL_APP_DIDENTERFOREGROUND:
-        // Restart your loops here.
-        // Your app is interactive and getting CPU again.
-        return 0;
-    default:
-        // No special processing, add it to the event queue.
-        return 1;
-    }
-}
-#endif
-
 FOClient* FOClient::Self = nullptr;
 
 FOClient::FOClient(ClientSettings& sett) :
@@ -130,83 +80,38 @@ FOClient::FOClient(ClientSettings& sett) :
     EffectMngr(Settings, FileMngr),
     SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
     ResMngr(FileMngr, SprMngr, ScriptSys),
-    HexMngr(false, Settings, ProtoMngr, SprMngr, ResMngr, ScriptSys),
+    HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
     Cache("Data/Cache.bin"),
     GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
     RUNTIME_ASSERT(!Self);
     Self = this;
 
-    InitCalls = 0;
     ComBuf.resize(NetBuffer::DefaultBufSize);
-    ZStreamOk = false;
     Sock = INVALID_SOCKET;
-    BytesReceive = 0;
-    BytesRealReceive = 0;
-    BytesSend = 0;
-    IsConnecting = false;
-    IsConnected = false;
     InitNetReason = INIT_NET_REASON_NONE;
-    WindowResolutionDiffX = 0;
-    WindowResolutionDiffY = 0;
-
-    UpdateFilesInProgress = false;
-    UpdateFilesClientOutdated = false;
-    UpdateFilesCacheChanged = false;
-    UpdateFilesFilesChanged = false;
-    UpdateFilesConnection = false;
-    UpdateFilesConnectTimeout = 0;
-    UpdateFilesTick = 0;
-    UpdateFilesAborted = false;
-    UpdateFilesFontLoaded = false;
-    UpdateFilesText = "";
-    UpdateFilesProgress = "";
-    UpdateFilesList = nullptr;
-    UpdateFilesWholeSize = 0;
-    UpdateFileDownloading = false;
-    UpdateFileTemp = nullptr;
-
-    Chosen = nullptr;
-    PingTick = 0;
-    PingCallTick = 0;
-    DaySumRGB = 0;
     Animations.resize(10000);
-
-    CurVideo = nullptr;
     MusicVolumeRestore = -1;
+    LmapZoom = 2;
+    ScreenModeMain = SCREEN_WAIT;
+    DrawLookBorders = true;
 
-    CurMapPid = 0;
-    CurMapLocPid = 0;
-    CurMapIndexInLoc = 0;
-
-    SomeItem = nullptr;
-    CanDrawInScripts = false;
-    IsAutoLogin = false;
-
-    // SDL
-    bool sdl_events_ok = SDL_InitSubSystem(SDL_INIT_EVENTS);
-    RUNTIME_ASSERT(sdl_events_ok);
-
-// SDL events
-#if defined(FO_ANDROID) || defined(FO_IOS)
-    SDL_SetEventFilter(HandleAppEvents, nullptr);
-#endif
-
-    // Cursor position
     int sw = 0, sh = 0;
     SprMngr.GetWindowSize(sw, sh);
     int mx = 0, my = 0;
     SprMngr.GetMousePosition(mx, my);
-    Settings.MouseX = Settings.LastMouseX = CLAMP(mx, 0, sw - 1);
-    Settings.MouseY = Settings.LastMouseY = CLAMP(my, 0, sh - 1);
+    Settings.MouseX = CLAMP(mx, 0, sw - 1);
+    Settings.MouseY = CLAMP(my, 0, sh - 1);
+
+    SetGameColor(COLOR_IFACE);
 
     // Data sources
 #if defined(FO_IOS)
     FileMngr.AddDataSource("../../Documents/", true);
 #elif defined(FO_ANDROID)
     FileMngr.AddDataSource("$AndroidAssets", true);
-    FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
-    FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
+    // FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
+    // FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
 #elif defined(FO_WEB)
     FileMngr.AddDataSource("Data/", true);
     FileMngr.AddDataSource("PersistentData/", true);
@@ -214,70 +119,27 @@ FOClient::FOClient(ClientSettings& sett) :
     FileMngr.AddDataSource("Data/", true);
 #endif
 
-    // Basic effects
-    bool basic_effects_ok = EffectMngr.LoadDefaultEffects();
-    RUNTIME_ASSERT(basic_effects_ok);
+    EffectMngr.LoadDefaultEffects();
 
     // Wait screen
-    ScreenModeMain = SCREEN_WAIT;
     WaitPic = ResMngr.GetRandomSplash();
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
     WaitDraw();
     SprMngr.EndScene();
-}
-
-FOClient::~FOClient()
-{
-    SDL_QuitSubSystem(SDL_INIT_EVENTS);
-    NetDisconnect();
-    Self = nullptr;
-}
-
-bool FOClient::Init()
-{
-    // Clean up previous data
-    SAFEREL(SomeItem);
-    SAFEREL(Globals);
-    SAFEREL(ScriptFunc.ClientCurMap);
-    SAFEREL(ScriptFunc.ClientCurLocation);
-    ProtoMngr.ClearProtos();
 
     // Scripts
     bool reload_scripts_ok = ReloadScripts();
     RUNTIME_ASSERT(reload_scripts_ok);
 
     // Recreate static atlas
-    ResMngr.FreeResources(AtlasType::Static);
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
     bool module_init_ok = ScriptSys.RunModuleInitFunctions();
     RUNTIME_ASSERT(module_init_ok);
-
-    // Start script
     bool start_script_ok = ScriptSys.RaiseInternalEvent(ClientFunctions.Start);
     RUNTIME_ASSERT(start_script_ok);
-
-    // Minimap
-    LmapZoom = 2;
-    LmapSwitchHi = false;
-    LmapPrepareNextTick = 0;
-
-    // PickUp
-    PupTransferType = 0;
-    PupContId = 0;
-    PupContPid = 0;
-
-    // Pipboy
-    Automaps.clear();
-
-    // Hex field sprites
-    HexMngr.ReloadSprites();
-
-    // Load fonts
-    bool default_font_ok = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false);
-    RUNTIME_ASSERT(default_font_ok);
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -301,29 +163,14 @@ bool FOClient::Init()
     Cache.GetCache("$protos.cache", protos_data);
     ProtoMngr.LoadProtosFromBinaryData(protos_data);
 
-    // Other
-    SetGameColor(COLOR_IFACE);
-    ScreenOffsX = 0;
-    ScreenOffsY = 0;
-    ScreenOffsXf = 0.0f;
-    ScreenOffsYf = 0.0f;
-    ScreenOffsStep = 0.0f;
-    ScreenOffsNextTick = 0;
-    ScreenMirrorTexture = nullptr;
-    ScreenMirrorEndTick = 0;
-    ScreenMirrorStart = false;
-    RebuildLookBorders = false;
-    DrawLookBorders = true;
-    DrawShootBorders = false;
-
-    LookBorders.clear();
-    ShootBorders.clear();
-
     // Auto login
     ProcessAutoLogin();
+}
 
-    WriteLog("Engine initialization complete.\n");
-    return true;
+FOClient::~FOClient()
+{
+    NetDisconnect();
+    Self = nullptr;
 }
 
 void FOClient::ProcessAutoLogin()
@@ -368,51 +215,6 @@ void FOClient::ProcessAutoLogin()
         LoginPassword = auto_login_args[1];
         InitNetReason = INIT_NET_REASON_LOGIN;
     }
-}
-
-void FOClient::UpdateBinary()
-{
-    /*
-    #ifdef FO_WINDOWS
-        // Copy binaries
-        string exe_path = File::GetExePath();
-        string to_dir = _str(exe_path).extractDir();
-        string base_name = _str(exe_path).extractFileName().eraseFileExtension();
-        string from_dir = File::GetWritePath("");
-        bool copy_to_new = File::CopyFile(from_dir + base_name + ".exe", to_dir + base_name + ".new.exe");
-        RUNTIME_ASSERT(copy_to_new);
-        File::DeleteDir(to_dir + base_name + ".old.exe");
-        bool rename_to_old = File::RenameFile(to_dir + base_name + ".exe", to_dir + base_name + ".old.exe");
-        RUNTIME_ASSERT(rename_to_old);
-        bool rename_to_new = File::RenameFile(to_dir + base_name + ".new.exe", to_dir + base_name + ".exe");
-        RUNTIME_ASSERT(rename_to_new);
-        if (File::CopyFile(from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb"))
-        {
-            File::DeleteFile(to_dir + base_name + ".old.pdb");
-            File::RenameFile(to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb");
-            File::RenameFile(to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb");
-        }
-
-        // Restart client
-        PROCESS_INFORMATION pi;
-        memzero(&pi, sizeof(pi));
-        STARTUPINFOW sui;
-        memzero(&sui, sizeof(sui));
-        sui.cb = sizeof(sui);
-        wchar_t command_line[TEMP_BUF_SIZE];
-        wcscpy(command_line, GetCommandLineW());
-        wcscat(command_line, L" --restart");
-        BOOL create_process = CreateProcessW(_str(exe_path).toWideChar().c_str(), command_line, nullptr, nullptr, FALSE,
-            NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi);
-        RUNTIME_ASSERT(create_process);
-
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        exit(0);
-    #else
-        RUNTIME_ASSERT(!"Invalid platform for binary updating");
-    #endif
-    */
 }
 
 void FOClient::UpdateFilesStart()
@@ -590,7 +392,7 @@ void FOClient::UpdateFilesLoop()
 
                 // Update binaries
                 if (UpdateFilesClientOutdated)
-                    UpdateBinary();
+                    throw GenericException("Client outdated");
 
                 // Reinitialize data
                 if (UpdateFilesCacheChanged)
@@ -808,14 +610,12 @@ void FOClient::MainLoop()
         call_counter++;
     }
 
-    // Check for quit, poll pending events
+    // Poll pending events
     if (InitCalls < 2)
     {
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-            if ((event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) ||
-                event.type == SDL_QUIT)
-                Settings.Quit = true;
+        InputEvent event;
+        while (App::Input::PollEvent(event))
+            continue;
     }
 
     // Game end
@@ -837,97 +637,30 @@ void FOClient::MainLoop()
 
     if (InitCalls < 2)
     {
-        if (InitCalls == 1 && !Init())
-        {
-            WriteLog("FOnline engine initialization failed.\n");
-            Settings.Quit = true;
-            return;
-        }
+        if (InitCalls == 0)
+            InitCalls = 1;
 
         InitCalls++;
         if (InitCalls == 1)
-        {
             UpdateFilesStart();
-        }
-        else if (InitCalls == 2)
-        {
-            if (!IsVideoPlayed())
-                ScreenFadeOut();
-        }
+        else if (InitCalls == 2 && !IsVideoPlayed())
+            ScreenFadeOut();
 
         return;
     }
 
     // Input events
-    SDL_Event event;
-    while (SDL_PollEvent(&event))
+    InputEvent event;
+    while (App::Input::PollEvent(event))
     {
-        if (event.type == SDL_MOUSEMOTION)
+        if (event.Data.index() == InputEvent::MouseMoveEvent)
         {
             int sw = 0, sh = 0;
             SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(event.motion.x / (float)sw * (float)Settings.ScreenWidth);
-            int y = (int)(event.motion.y / (float)sh * (float)Settings.ScreenHeight);
+            int x = (int)(std::get<InputEvent::MouseMove>(event.Data).MouseX / (float)sw * Settings.ScreenWidth);
+            int y = (int)(std::get<InputEvent::MouseMove>(event.Data).MouseY / (float)sh * Settings.ScreenHeight);
             Settings.MouseX = CLAMP(x, 0, Settings.ScreenWidth - 1);
             Settings.MouseY = CLAMP(y, 0, Settings.ScreenHeight - 1);
-        }
-        else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
-        {
-            Settings.MainWindowKeyboardEvents.push_back(event.type);
-            Settings.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
-            Settings.MainWindowKeyboardEventsText.push_back("");
-        }
-        else if (event.type == SDL_TEXTINPUT)
-        {
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back("");
-        }
-        else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
-        {
-            int button = -1;
-            if (event.button.button == SDL_BUTTON_LEFT)
-                button = MOUSE_BUTTON_LEFT;
-            if (event.button.button == SDL_BUTTON_RIGHT)
-                button = MOUSE_BUTTON_RIGHT;
-            if (event.button.button == SDL_BUTTON_MIDDLE)
-                button = MOUSE_BUTTON_MIDDLE;
-            if (event.button.button == SDL_BUTTON(4))
-                button = MOUSE_BUTTON_EXT0;
-            if (event.button.button == SDL_BUTTON(5))
-                button = MOUSE_BUTTON_EXT1;
-            if (event.button.button == SDL_BUTTON(6))
-                button = MOUSE_BUTTON_EXT2;
-            if (event.button.button == SDL_BUTTON(7))
-                button = MOUSE_BUTTON_EXT3;
-            if (event.button.button == SDL_BUTTON(8))
-                button = MOUSE_BUTTON_EXT4;
-            if (button != -1)
-            {
-                Settings.MainWindowMouseEvents.push_back(event.type);
-                Settings.MainWindowMouseEvents.push_back(button);
-            }
-        }
-        else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
-        {
-            Settings.MouseX = (int)(event.tfinger.x * (float)Settings.ScreenWidth);
-            Settings.MouseY = (int)(event.tfinger.y * (float)Settings.ScreenHeight);
-        }
-        else if (event.type == SDL_MOUSEWHEEL)
-        {
-            Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONDOWN);
-            Settings.MainWindowMouseEvents.push_back(
-                event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
-            Settings.MainWindowMouseEvents.push_back(SDL_MOUSEBUTTONUP);
-            Settings.MainWindowMouseEvents.push_back(
-                event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
-        }
-        else if (event.type == SDL_QUIT)
-        {
-            Settings.Quit = true;
         }
     }
 
@@ -957,7 +690,7 @@ void FOClient::MainLoop()
             // else if( reason == INIT_NET_REASON_LOAD )
             //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
             else if (reason != INIT_NET_REASON_CUSTOM)
-                throw UnreachablePlaceException("Unreachable place");
+                throw UnreachablePlaceException(LINE_STR);
         }
     }
 
@@ -970,8 +703,7 @@ void FOClient::MainLoop()
         ShowMainScreen(SCREEN_LOGIN);
 
     // Input
-    ParseKeyboard();
-    ParseMouse();
+    ProcessInputEvents();
 
     // Process
     AnimProcess();
@@ -1106,7 +838,7 @@ void FOClient::ProcessScreenEffectFading()
             for (int i = 0; i < 6; i++)
                 full_screen_quad[i].PointColor = color;
 
-            SprMngr.DrawPoints(full_screen_quad, PRIMITIVE_TRIANGLELIST);
+            SprMngr.DrawPoints(full_screen_quad, RenderPrimitiveType::TriangleList);
         }
         it++;
     }
@@ -1136,133 +868,99 @@ void FOClient::ProcessScreenEffectQuake()
     }
 }
 
-void FOClient::ParseKeyboard()
+void FOClient::ProcessInputEvents()
 {
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        Settings.MainWindowKeyboardEvents.clear();
-        Settings.MainWindowKeyboardEventsText.clear();
+        InputEvent event;
+        while (App::Input::PollEvent(event))
+            continue;
+
         Keyb.Lost();
         ScriptSys.RaiseInternalEvent(ClientFunctions.InputLost);
         return;
     }
 
-    // Get buffered data
-    if (Settings.MainWindowKeyboardEvents.empty())
-        return;
-    IntVec events = Settings.MainWindowKeyboardEvents;
-    StrVec events_text = Settings.MainWindowKeyboardEventsText;
-    Settings.MainWindowKeyboardEvents.clear();
-    Settings.MainWindowKeyboardEventsText.clear();
-
-    // Process events
-    for (uint i = 0; i < events.size(); i += 2)
-    {
-        // Event data
-        int event = events[i];
-        int event_key = events[i + 1];
-        const char* event_text = events_text[i / 2].c_str();
-
-        // Keys codes mapping
-        uchar dikdw = 0;
-        uchar dikup = 0;
-        if (event == SDL_KEYDOWN)
-            dikdw = Keyb.MapKey(event_key);
-        else if (event == SDL_KEYUP)
-            dikup = Keyb.MapKey(event_key);
-        if (!dikdw && !dikup)
-            continue;
-
-        // Video
-        if (IsVideoPlayed())
-        {
-            if (IsCanStopVideo() &&
-                (dikdw == DIK_ESCAPE || dikdw == DIK_SPACE || dikdw == DIK_RETURN || dikdw == DIK_NUMPADENTER))
-            {
-                NextVideo();
-                return;
-            }
-            continue;
-        }
-
-        // Key script event
-        if (dikdw)
-        {
-            string s = event_text;
-            ScriptSys.RaiseInternalEvent(ClientFunctions.KeyDown, dikdw, &s);
-        }
-
-        if (dikup)
-            ScriptSys.RaiseInternalEvent(ClientFunctions.KeyUp, dikup);
-
-        // Control keys
-        if (dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL)
-            Keyb.CtrlDwn = true;
-        else if (dikdw == DIK_LMENU || dikdw == DIK_RMENU)
-            Keyb.AltDwn = true;
-        else if (dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT)
-            Keyb.ShiftDwn = true;
-        if (dikup == DIK_RCONTROL || dikup == DIK_LCONTROL)
-            Keyb.CtrlDwn = false;
-        else if (dikup == DIK_LMENU || dikup == DIK_RMENU)
-            Keyb.AltDwn = false;
-        else if (dikup == DIK_LSHIFT || dikup == DIK_RSHIFT)
-            Keyb.ShiftDwn = false;
-    }
+    InputEvent event;
+    while (App::Input::PollEvent(event))
+        ProcessInputEvent(event);
 }
 
-void FOClient::ParseMouse()
+void FOClient::ProcessInputEvent(const InputEvent& event)
 {
-    // Stop processing if window not active
-    if (!SprMngr.IsWindowFocused())
+    if (event.Data.index() == InputEvent::KeyDownEvent)
     {
-        Settings.MainWindowMouseEvents.clear();
-        ScriptSys.RaiseInternalEvent(ClientFunctions.InputLost);
-        return;
-    }
+        KeyCode key_code = std::get<InputEvent::KeyDown>(event.Data).Code;
+        string key_text = std::get<InputEvent::KeyDown>(event.Data).Text;
 
-    // Mouse move
-    if (Settings.LastMouseX != Settings.MouseX || Settings.LastMouseY != Settings.MouseY)
-    {
-        int ox = Settings.MouseX - Settings.LastMouseX;
-        int oy = Settings.MouseY - Settings.LastMouseY;
-        Settings.LastMouseX = Settings.MouseX;
-        Settings.LastMouseY = Settings.MouseY;
-
-        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseMove, ox, oy);
-    }
-
-    // Get buffered data
-    if (Settings.MainWindowMouseEvents.empty())
-        return;
-    IntVec events = Settings.MainWindowMouseEvents;
-    Settings.MainWindowMouseEvents.clear();
-
-    // Process events
-    for (uint i = 0; i < events.size(); i += 2)
-    {
-        int event = events[i];
-        int event_button = events[i + 1];
-
-        // Stop video
         if (IsVideoPlayed())
         {
             if (IsCanStopVideo() &&
-                (event == SDL_MOUSEBUTTONDOWN &&
-                    (event_button == MOUSE_BUTTON_LEFT || event_button == MOUSE_BUTTON_RIGHT)))
+                (key_code == KeyCode::DIK_ESCAPE || key_code == KeyCode::DIK_SPACE || key_code == KeyCode::DIK_RETURN ||
+                    key_code == KeyCode::DIK_NUMPADENTER))
             {
                 NextVideo();
-                return;
             }
-            continue;
         }
 
-        // Scripts
-        if (event == SDL_MOUSEBUTTONDOWN)
-            ScriptSys.RaiseInternalEvent(ClientFunctions.MouseDown, event_button);
-        else if (event == SDL_MOUSEBUTTONUP)
-            ScriptSys.RaiseInternalEvent(ClientFunctions.MouseUp, event_button);
+        if (key_code == KeyCode::DIK_RCONTROL || key_code == KeyCode::DIK_LCONTROL)
+            Keyb.CtrlDwn = true;
+        else if (key_code == KeyCode::DIK_LMENU || key_code == KeyCode::DIK_RMENU)
+            Keyb.AltDwn = true;
+        else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT)
+            Keyb.ShiftDwn = true;
+
+        ScriptSys.RaiseInternalEvent(ClientFunctions.KeyDown, key_code, &key_text);
+    }
+    else if (event.Data.index() == InputEvent::KeyUpEvent)
+    {
+        KeyCode key_code = std::get<InputEvent::KeyUp>(event.Data).Code;
+
+        if (key_code == KeyCode::DIK_RCONTROL || key_code == KeyCode::DIK_LCONTROL)
+            Keyb.CtrlDwn = false;
+        else if (key_code == KeyCode::DIK_LMENU || key_code == KeyCode::DIK_RMENU)
+            Keyb.AltDwn = false;
+        else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT)
+            Keyb.ShiftDwn = false;
+
+        ScriptSys.RaiseInternalEvent(ClientFunctions.KeyUp, key_code);
+    }
+    else if (event.Data.index() == InputEvent::MouseMoveEvent)
+    {
+        int mouse_x = std::get<InputEvent::MouseMove>(event.Data).MouseX;
+        int mouse_y = std::get<InputEvent::MouseMove>(event.Data).MouseY;
+        int delta_x = std::get<InputEvent::MouseMove>(event.Data).DeltaX;
+        int delta_y = std::get<InputEvent::MouseMove>(event.Data).DeltaY;
+
+        Settings.MouseX = mouse_x;
+        Settings.MouseY = mouse_y;
+
+        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseMove, delta_x, delta_y);
+    }
+    else if (event.Data.index() == InputEvent::MouseDownEvent)
+    {
+        MouseButton mouse_button = std::get<InputEvent::MouseDown>(event.Data).Button;
+
+        if (IsVideoPlayed())
+        {
+            if (IsCanStopVideo() && (mouse_button == MouseButton::Left || mouse_button == MouseButton::Right))
+                NextVideo();
+        }
+
+        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseDown, mouse_button);
+    }
+    else if (event.Data.index() == InputEvent::MouseUpEvent)
+    {
+        MouseButton mouse_button = std::get<InputEvent::MouseUp>(event.Data).Button;
+
+        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseUp, mouse_button);
+    }
+    else if (event.Data.index() == InputEvent::MouseWheelEvent)
+    {
+        int wheel_delta = std::get<InputEvent::MouseWheel>(event.Data).Delta;
+
+        // Todo: handle mouse wheel
     }
 }
 
@@ -1615,7 +1313,7 @@ bool FOClient::NetConnect(const string& host, ushort port)
         IsConnected = true;
 
 #else
-        throw fo_exception("Proxy connection is not supported on this platform");
+        throw GenericException("Proxy connection is not supported on this platform");
 #endif
     }
 
@@ -2374,7 +2072,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
         RUNTIME_ASSERT(proto);
-        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr, ScriptSys, false);
+        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr, EffectMngr, ScriptSys, false);
         cr->Props.RestoreData(TempPropertiesData);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -4558,10 +4256,10 @@ void FOClient::PlayVideo()
         NextVideo();
         return;
     }
-    CurVideo->TextureData = new uchar[CurVideo->RT->TargetTexture->Width * CurVideo->RT->TargetTexture->Height * 4];
+    CurVideo->TextureData = new uint[CurVideo->RT->MainTex->Width * CurVideo->RT->MainTex->Height];
 
     // Start sound
-    if (video.SoundName != "")
+    if (!video.SoundName.empty())
     {
         MusicVolumeRestore = Settings.MusicVolume;
         Settings.MusicVolume = 100;
@@ -4712,9 +4410,7 @@ void FOClient::RenderVideo()
         dj = 1;
         break;
     default:
-        WriteLog("Wrong pixel format.\n");
-        NextVideo();
-        return;
+        throw GenericException("Wrong pixel format", CurVideo->VideoInfo.pixel_fmt);
     }
 
     // Fill render texture
@@ -4736,7 +4432,7 @@ void FOClient::RenderVideo()
             float cb = cy + 1.722f * (cu - 127);
 
             // Set on texture
-            uchar* data = CurVideo->TextureData + ((h - y - 1) * w * 4 + x * 4);
+            uchar* data = (uchar*)(CurVideo->TextureData + ((h - y - 1) * w + x));
             data[0] = (uchar)cr;
             data[1] = (uchar)cg;
             data[2] = (uchar)cb;
@@ -4745,9 +4441,8 @@ void FOClient::RenderVideo()
     }
 
     // Update texture and draw it
-    CurVideo->RT->TargetTexture->UpdateRegion(
-        Rect(0, 0, CurVideo->RT->TargetTexture->Width - 1, CurVideo->RT->TargetTexture->Height - 1),
-        CurVideo->TextureData);
+    Rect update_r = Rect(0, 0, CurVideo->RT->MainTex->Width - 1, CurVideo->RT->MainTex->Height - 1);
+    App::Render::UpdateTextureRegion(CurVideo->RT->MainTex.get(), update_r, CurVideo->TextureData);
     SprMngr.DrawRenderTarget(CurVideo->RT, false);
 
     // Render to window
@@ -4804,7 +4499,7 @@ void FOClient::StopVideo()
         th_info_clear(&CurVideo->VideoInfo);
         th_setup_free(CurVideo->SetupInfo);
         th_decode_free(CurVideo->Context);
-        SprMngr.DeleteRenderTarget(CurVideo->RT);
+        SAFEDEL(CurVideo->RT);
         SAFEDELA(CurVideo->TextureData);
         SAFEDEL(CurVideo);
     }
@@ -4905,7 +4600,6 @@ void FOClient::AnimRun(uint anim_id, uint flags)
             cur_frm = anim->Frames->CntFrm - 1;
         anim->CurSpr = cur_frm;
     }
-    // flags>>=8;
 }
 
 void FOClient::AnimProcess()
@@ -6178,7 +5872,6 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
                 }
             }
         }
-        Self->SprMngr.RefreshViewport();
     }
     else if (cmd == "MinimizeWindow")
     {
@@ -6210,7 +5903,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     else if (cmd == "SetMousePos" && args.size() == 4)
     {
 #ifndef FO_WEB
-        int x = _str(args[1]).toInt();
+        /*int x = _str(args[1]).toInt();
         int y = _str(args[2]).toInt();
         bool motion = _str(args[3]).toBool();
         if (motion)
@@ -6224,7 +5917,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
             SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
             Self->Settings.MouseX = Self->Settings.LastMouseX = x;
             Self->Settings.MouseY = Self->Settings.LastMouseY = y;
-        }
+        }*/
 #endif
     }
     else if (cmd == "SetCursorPos")
@@ -6368,7 +6061,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
             Self->LmapPrepareMap();
         }
 
-        Self->SprMngr.DrawPoints(Self->LmapPrepPix, PRIMITIVE_LINELIST);
+        Self->SprMngr.DrawPoints(Self->LmapPrepPix, RenderPrimitiveType::LineList);
     }
     else if (cmd == "RefreshMe")
     {
@@ -6480,7 +6173,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
     }
     else if (cmd == "SetScreenKeyboard" && args.size() == 2)
     {
-        if (SDL_HasScreenKeyboardSupport())
+        /*if (SDL_HasScreenKeyboardSupport())
         {
             bool cur = (SDL_IsTextInputActive() != SDL_FALSE);
             bool next = _str(args[1]).toBool();
@@ -6491,7 +6184,7 @@ string FOClient::SScriptFunc::Global_CustomCall(string command, string separator
                 else
                     SDL_StopTextInput();
             }
-        }
+        }*/
     }
     else
     {
@@ -7117,11 +6810,10 @@ bool FOClient::SScriptFunc::Global_SetEffect(
 #define EFFECT_FLUSH_FOG (0x20000000)
 #define EFFECT_OFFSCREEN (0x40000000)
 
-    Effect* effect = nullptr;
+    RenderEffect* effect = nullptr;
     if (!effect_name.empty())
     {
-        bool use_in_2d = !(effect_type & EFFECT_3D_SKINNED);
-        effect = Self->EffectMngr.LoadEffect(effect_name, use_in_2d, effect_defines);
+        effect = Self->EffectMngr.LoadEffect(effect_name, effect_defines);
         if (!effect)
             SCRIPT_ERROR_R0("Effect not found or have some errors, see log file.");
     }
@@ -7214,6 +6906,8 @@ void FOClient::SScriptFunc::Global_RefreshMap(bool only_tiles, bool only_roof, b
 
 void FOClient::SScriptFunc::Global_MouseClick(int x, int y, int button)
 {
+    /*App::Input::PushEvent({InputEvent::MouseDown({(MouseButton)button})});
+
     IntVec prev_events = Self->Settings.MainWindowMouseEvents;
     Self->Settings.MainWindowMouseEvents.clear();
     int prev_x = Self->Settings.MouseX;
@@ -7231,7 +6925,7 @@ void FOClient::SScriptFunc::Global_MouseClick(int x, int y, int button)
     Self->Settings.MouseX = prev_x;
     Self->Settings.MouseY = prev_y;
     Self->Settings.LastMouseX = last_prev_x;
-    Self->Settings.LastMouseY = last_prev_y;
+    Self->Settings.LastMouseY = last_prev_y;*/
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text)
@@ -7239,33 +6933,17 @@ void FOClient::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string 
     if (!key1 && !key2)
         return;
 
-    IntVec prev_events = Self->Settings.MainWindowKeyboardEvents;
-    StrVec prev_events_text = Self->Settings.MainWindowKeyboardEventsText;
-    Self->Settings.MainWindowKeyboardEvents.clear();
     if (key1)
-    {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        Self->Settings.MainWindowKeyboardEventsText.push_back(key1_text);
-    }
+        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1_text})});
+
     if (key2)
     {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        Self->Settings.MainWindowKeyboardEventsText.push_back(key2_text);
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key2));
-        Self->Settings.MainWindowKeyboardEventsText.push_back("");
+        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2_text})});
+        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key2})});
     }
+
     if (key1)
-    {
-        Self->Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-        Self->Settings.MainWindowKeyboardEvents.push_back(Self->Keyb.UnmapKey(key1));
-        Self->Settings.MainWindowKeyboardEventsText.push_back("");
-    }
-    Self->ParseKeyboard();
-    Self->Settings.MainWindowKeyboardEvents = prev_events;
-    Self->Settings.MainWindowKeyboardEventsText = prev_events_text;
+        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key1})});
 }
 
 void FOClient::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, string drop_anim_name)
@@ -7393,7 +7071,7 @@ uint FOClient::SScriptFunc::Global_LoadSpriteHash(uint name_hash)
 int FOClient::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int frame_index)
 {
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return 0;
     SpriteInfo* si = Self->SprMngr.GetSpriteInfo(frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
     if (!si)
@@ -7404,7 +7082,7 @@ int FOClient::SScriptFunc::Global_GetSpriteWidth(uint spr_id, int frame_index)
 int FOClient::SScriptFunc::Global_GetSpriteHeight(uint spr_id, int frame_index)
 {
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return 0;
     SpriteInfo* si = Self->SprMngr.GetSpriteInfo(frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
     if (!si)
@@ -7430,7 +7108,7 @@ uint FOClient::SScriptFunc::Global_GetPixelColor(uint spr_id, int frame_index, i
         return 0;
 
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return 0;
 
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
@@ -7451,7 +7129,7 @@ void FOClient::SScriptFunc::Global_DrawSprite(uint spr_id, int frame_index, int 
         return;
 
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
 
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
@@ -7476,7 +7154,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize(
         return;
 
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
 
     uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
@@ -7501,7 +7179,7 @@ void FOClient::SScriptFunc::Global_DrawSpritePattern(
         return;
 
     AnyFrames* anim = Self->AnimGetFrames(spr_id);
-    if (!anim || frame_index >= (int)anim->GetCnt())
+    if (!anim || frame_index >= (int)anim->CntFrm)
         return;
 
     Self->SprMngr.DrawSpritePattern(frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index), x, y, w, h,
@@ -7531,32 +7209,32 @@ void FOClient::SScriptFunc::Global_DrawPrimitive(int primitive_type, CScriptArra
     if (data->GetSize() == 0)
         return;
 
-    int prim;
+    RenderPrimitiveType prim;
     switch (primitive_type)
     {
     case 0:
-        prim = PRIMITIVE_POINTLIST;
+        prim = RenderPrimitiveType::PointList;
         break;
     case 1:
-        prim = PRIMITIVE_LINELIST;
+        prim = RenderPrimitiveType::LineList;
         break;
     case 2:
-        prim = PRIMITIVE_LINESTRIP;
+        prim = RenderPrimitiveType::LineStrip;
         break;
     case 3:
-        prim = PRIMITIVE_TRIANGLELIST;
+        prim = RenderPrimitiveType::TriangleList;
         break;
     case 4:
-        prim = PRIMITIVE_TRIANGLESTRIP;
+        prim = RenderPrimitiveType::TriangleStrip;
         break;
     case 5:
-        prim = PRIMITIVE_TRIANGLEFAN;
+        prim = RenderPrimitiveType::TriangleFan;
         break;
     default:
         return;
     }
 
-    static PointVec points;
+    PointVec points;
     int size = data->GetSize() / 3;
     points.resize(size);
 
@@ -7586,7 +7264,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite(MapSprite* map_spr)
         return;
 
     AnyFrames* anim = Self->AnimGetFrames(map_spr->SprId);
-    if (!anim || map_spr->FrameIndex >= (int)anim->GetCnt())
+    if (!anim || map_spr->FrameIndex >= (int)anim->CntFrm)
         return;
 
     uint color = map_spr->Color;
@@ -7969,10 +7647,9 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked(ushort hx, ushort hy)
     return !Self->HexMngr.GetField(hx, hy).Flags.IsNotRaked;
 }
 
-bool FOClient::SScriptFunc::Global_SaveScreenshot(string file_path)
+void FOClient::SScriptFunc::Global_SaveScreenshot(string file_path)
 {
-    Self->SprMngr.SaveTexture(nullptr, _str(file_path).formatPath(), true);
-    return true;
+    // Self->SprMngr.SaveTexture(nullptr, _str(file_path).formatPath(), true);
 }
 
 bool FOClient::SScriptFunc::Global_SaveText(string file_path, string text)

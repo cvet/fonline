@@ -911,7 +911,7 @@ static int Bind(asIScriptEngine* engine, PropertyRegistrator** registrators)
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "void ChangeZoom(float targetZoom)", SCRIPT_FUNC(BIND_CLASS Global_ChangeZoom), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction(
-        "bool SaveScreenshot(string filePath)", SCRIPT_FUNC(BIND_CLASS Global_SaveScreenshot), SCRIPT_FUNC_CONV));
+        "void SaveScreenshot(string filePath)", SCRIPT_FUNC(BIND_CLASS Global_SaveScreenshot), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction(
         "bool SaveText(string filePath, string text)", SCRIPT_FUNC(BIND_CLASS Global_SaveText), SCRIPT_FUNC_CONV));
     BIND_ASSERT(engine->RegisterGlobalFunction("void SetCacheData(string name, const array<uint8>@+ data)",

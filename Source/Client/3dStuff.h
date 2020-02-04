@@ -35,10 +35,11 @@
 
 #include "Common.h"
 
+#include "3dAnimation.h"
+#include "Application.h"
+#include "EffectManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "GraphicApi.h"
-#include "GraphicStructures.h"
 #include "Script.h"
 #include "Settings.h"
 
@@ -49,16 +50,71 @@
 #define ANIMATION_INIT (0x10)
 #define ANIMATION_COMBAT (0x20)
 
-class AnimController;
-class AnimSet;
-using AnimSetVec = vector<AnimSet*>;
+struct Bone;
 class Animation3d;
-using Animation3dVec = vector<Animation3d*>;
 class Animation3dEntity;
-using Animation3dEntityVec = vector<Animation3dEntity*>;
 class Animation3dXFile;
-using Animation3dXFileVec = vector<Animation3dXFile*>;
-class EffectManager;
+
+struct MeshTexture : public NonCopyable
+{
+    string Name {};
+    string ModelPath {};
+    RenderTexture* MainTex {};
+    float AtlasOffsetData[4] {};
+};
+
+struct MeshData : public NonCopyable
+{
+    Bone* Owner {};
+    Vertex3DVec Vertices {};
+    UShortVec Indices {};
+    string DiffuseTexture {};
+    UIntVec SkinBoneNameHashes {};
+    MatrixVec SkinBoneOffsets {};
+    vector<Bone*> SkinBones {};
+    string EffectName {};
+};
+
+struct MeshInstance : public NonCopyable
+{
+    MeshData* Mesh {};
+    bool Disabled {};
+    MeshTexture* CurTexures[EFFECT_TEXTURES] {};
+    MeshTexture* DefaultTexures[EFFECT_TEXTURES] {};
+    MeshTexture* LastTexures[EFFECT_TEXTURES] {};
+    RenderEffect* CurEffect {};
+    RenderEffect* DefaultEffect {};
+    RenderEffect* LastEffect {};
+};
+static_assert(std::is_standard_layout_v<MeshInstance>);
+
+struct Bone : public NonCopyable
+{
+    Bone* Find(hash name_hash);
+    static hash GetHash(const string& name);
+
+    hash NameHash {};
+    Matrix TransformationMatrix {};
+    Matrix GlobalTransformationMatrix {};
+    unique_ptr<MeshData> AttachedMesh {};
+    vector<unique_ptr<Bone>> Children {};
+    Matrix CombinedTransformationMatrix {};
+};
+
+struct CutData : public NonCopyable
+{
+    struct Shape
+    {
+        Matrix GlobalTransformationMatrix {};
+        float SphereRadius {};
+    };
+
+    vector<Shape> Shapes {};
+    IntVec Layers {};
+    uint UnskinBone {};
+    Shape UnskinShape {};
+    bool RevertUnskinShape {};
+};
 
 struct AnimParams
 {
@@ -66,7 +122,7 @@ struct AnimParams
     int Layer {};
     int LayerValue {};
     uint LinkBoneHash {};
-    char* ChildFName {};
+    string ChildName {};
     float RotX {};
     float RotY {};
     float RotZ {};
@@ -77,26 +133,12 @@ struct AnimParams
     float ScaleY {};
     float ScaleZ {};
     float SpeedAjust {};
-
-    int* DisabledLayers {};
-    uint DisabledLayersCount {};
-
-    uint* DisabledMesh {};
-    uint DisabledMeshCount {};
-
-    char** TextureName {};
-    uint* TextureMesh {};
-    int* TextureNum {};
-    uint TextureCount {};
-
-    EffectInstance* EffectInst {};
-    uint* EffectMesh {};
-    uint EffectCount {};
-
-    CutData** Cut {};
-    uint CutCount {};
+    vector<int> DisabledLayer {};
+    vector<uint> DisabledMesh {};
+    vector<tuple<string, uint, int>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, uint>> EffectInfo {}; // Name, mesh
+    vector<CutData*> CutInfo {};
 };
-using AnimParamsVec = vector<AnimParams>;
 
 struct AnimationCallback
 {
@@ -105,9 +147,10 @@ struct AnimationCallback
     float NormalizedTime {};
     std::function<void()> Callback {};
 };
-using AnimationCallbackVec = vector<AnimationCallback>;
 
-class Animation3dManager : public NonCopyable
+extern bool Is3dExtensionSupported(const string& ext);
+
+class Animation3dManager : public NonMovable
 {
     friend class Animation3d;
     friend class Animation3dEntity;
@@ -118,10 +161,6 @@ public:
 
     Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
         ScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator);
-    ~Animation3dManager();
-
-    Bone* LoadModel(const string& fname);
-    void DestroyModel(Bone* root_bone);
     AnimSet* LoadAnimation(const string& anim_fname, const string& anim_name);
     MeshTexture* LoadTexture(const string& texture_name, const string& model_path);
     void DestroyTextures();
@@ -132,6 +171,7 @@ public:
     Point Convert3dTo2d(Vector pos);
 
 private:
+    Bone* LoadModel(const string& fname);
     Animation3dEntity* GetEntity(const string& name);
     Animation3dXFile* GetXFile(const string& xname);
     void VecProject(const Vector& v, Vector& out);
@@ -143,14 +183,12 @@ private:
     EffectManager& effectMngr;
     ScriptSystem& scriptSys;
     MeshTextureCreator meshTexCreator {};
-    StrVec processedFiles {};
-    BoneVec loadedModels {};
-    StrVec loadedModelNames {};
-    AnimSetVec loadedAnimSets {};
-    MeshTextureVec loadedMeshTextures {};
-    Animation3dVec loadedAnimations {};
-    Animation3dEntityVec allEntities {};
-    Animation3dXFileVec xFiles {};
+    set<hash> processedFiles {};
+    vector<unique_ptr<Bone, std::function<void(Bone*)>>> loadedModels {};
+    vector<unique_ptr<AnimSet>> loadedAnimSets {};
+    vector<unique_ptr<MeshTexture>> loadedMeshTextures {};
+    vector<unique_ptr<Animation3dEntity>> allEntities {};
+    vector<unique_ptr<Animation3dXFile>> xFiles {};
     int modeWidth {};
     int modeHeight {};
     float modeWidthF {};
@@ -163,7 +201,6 @@ private:
     float globalSpeedAdjust {1.0f};
     uint animDelay {};
     Color lightColor {};
-    MatrixVec worldMatrices {};
 };
 
 class Animation3d : public NonCopyable
@@ -196,13 +233,32 @@ public:
     bool GetBonePos(hash name_hash, int& x, int& y);
 
     uint SprId {};
-    AtlasType SprAtlasType {};
-    AnimationCallbackVec AnimationCallbacks {};
+    int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
+    vector<AnimationCallback> AnimationCallbacks {};
 
 private:
+    struct CombinedMesh : public NonCopyable
+    {
+        RenderEffect* DrawEffect {};
+        RenderMesh* DrawMesh {};
+        int EncapsulatedMeshCount {};
+        vector<MeshData*> Meshes {};
+        UIntVec MeshVertices {};
+        UIntVec MeshIndices {};
+        IntVec MeshAnimLayers {};
+        size_t CurBoneMatrix {};
+        vector<Bone*> SkinBones {};
+        MatrixVec SkinBoneOffsets {};
+        MeshTexture* Textures[EFFECT_TEXTURES] {};
+    };
+    using CombinedMeshVec = vector<CombinedMesh*>;
+
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(Animation3d* base, Animation3d* cur);
     void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
+    void ClearCombinedMesh(CombinedMesh* combined_mesh);
+    bool CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance);
+    void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(Animation3d* base, Animation3d* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);
@@ -219,7 +275,7 @@ private:
     CombinedMeshVec combinedMeshes {};
     size_t combinedMeshesSize {};
     bool disableCulling {};
-    MeshInstanceVec allMeshes {};
+    vector<MeshInstance*> allMeshes {};
     BoolVec allMeshesDisabled {};
     Animation3dEntity* animEntity {};
     AnimController* animController {};
@@ -243,14 +299,14 @@ private:
     float animPosTime {};
     float animPosPeriod {};
     bool allowMeshGeneration {};
-    CutDataVec allCuts {};
+    vector<CutData*> allCuts {};
 
     // Derived animations
-    Animation3dVec childAnimations {};
+    vector<Animation3d*> childAnimations {};
     Animation3d* parentAnimation {};
     Bone* parentBone {};
     Matrix parentMatrix {};
-    BoneVec linkBones {};
+    vector<Bone*> linkBones {};
     MatrixVec linkMatricles {};
     AnimParams animLink {};
     bool childChecker {};
@@ -264,19 +320,19 @@ class Animation3dEntity : public NonCopyable
 
 public:
     Animation3dEntity(Animation3dManager& anim3d_mngr);
-    ~Animation3dEntity();
 
 private:
     int GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first);
     int GetAnimationIndexEx(uint anim1, uint anim2, float* speed);
     bool Load(const string& name);
     Animation3d* CloneAnimation();
+    CutData::Shape CreateCutShape(MeshData* mesh);
 
     Animation3dManager& anim3dMngr;
     string fileName {};
     string pathName {};
     Animation3dXFile* xFile {};
-    AnimController* animController {};
+    unique_ptr<AnimController> animController {};
     uint numAnimationSets {};
     IntMap anim1Equals {};
     IntMap anim2Equals {};
@@ -285,7 +341,7 @@ private:
     UIntIntPairVecMap animLayerValues {};
     HashSet fastTransitionBones {};
     AnimParams animDataDefault {};
-    AnimParamsVec animData {};
+    vector<AnimParams> animData {};
     int renderAnim {};
     int renderAnimProcFrom {};
     int renderAnimProcTo {100};
@@ -304,17 +360,16 @@ class Animation3dXFile : public NonCopyable
 
 public:
     Animation3dXFile(Animation3dManager& anim3d_mngr);
-    ~Animation3dXFile();
 
 private:
     void SetupBones();
     void SetupAnimationOutput(AnimController* anim_controller);
     MeshTexture* GetTexture(const string& tex_name);
-    Effect* GetEffect(EffectInstance* effect_inst);
+    RenderEffect* GetEffect(const string& name);
 
     Animation3dManager& anim3dMngr;
     string fileName {};
-    Bone* rootBone {};
-    BoneVec allBones {};
-    BoneVec allDrawBones {};
+    unique_ptr<Bone> rootBone {};
+    vector<Bone*> allBones {};
+    vector<Bone*> allDrawBones {};
 };

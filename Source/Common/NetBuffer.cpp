@@ -35,20 +35,8 @@
 
 NetBuffer::NetBuffer()
 {
-    isError = false;
     bufLen = DefaultBufSize;
-    bufEndPos = 0;
-    bufReadPos = 0;
-    bufData = new uchar[bufLen];
-    memzero(bufData, bufLen);
-    encryptActive = false;
-    encryptKeyPos = 0;
-    memzero(encryptKeys, sizeof(encryptKeys));
-}
-
-NetBuffer::~NetBuffer()
-{
-    SAFEDELA(bufData);
+    bufData = std::make_unique<uchar[]>(bufLen);
 }
 
 void NetBuffer::SetEncryptKey(uint seed)
@@ -109,9 +97,7 @@ void NetBuffer::Reset()
     if (bufLen > DefaultBufSize)
     {
         bufLen = DefaultBufSize;
-        SAFEDELA(bufData);
-        bufData = new uchar[bufLen];
-        memzero(bufData, bufLen);
+        bufData = std::make_unique<uchar[]>(bufLen);
     }
 }
 
@@ -119,13 +105,13 @@ void NetBuffer::GrowBuf(uint len)
 {
     if (bufEndPos + len < bufLen)
         return;
+
     while (bufEndPos + len >= bufLen)
         bufLen <<= 1;
+
     uchar* new_buf = new uchar[bufLen];
-    memzero(new_buf, bufLen);
-    memcpy(new_buf, bufData, bufEndPos);
-    SAFEDELA(bufData);
-    bufData = new_buf;
+    memcpy(new_buf, bufData.get(), bufEndPos);
+    bufData.reset(new_buf);
 }
 
 void NetBuffer::MoveReadPos(int val)
@@ -138,9 +124,11 @@ void NetBuffer::Push(const void* buf, uint len, bool no_crypt /* = false */)
 {
     if (isError || !len)
         return;
+
     if (bufEndPos + len >= bufLen)
         GrowBuf(len);
-    CopyBuf(buf, bufData + bufEndPos, no_crypt ? 0 : EncryptKey(len), len);
+
+    CopyBuf(buf, bufData.get() + bufEndPos, no_crypt ? 0 : EncryptKey(len), len);
     bufEndPos += len;
 }
 
@@ -148,12 +136,14 @@ void NetBuffer::Pop(void* buf, uint len)
 {
     if (isError || !len)
         return;
+
     if (bufReadPos + len > bufEndPos)
     {
         isError = true;
         return;
     }
-    CopyBuf(bufData + bufReadPos, buf, EncryptKey(len), len);
+
+    CopyBuf(bufData.get() + bufReadPos, buf, EncryptKey(len), len);
     bufReadPos += len;
 }
 
@@ -161,12 +151,14 @@ void NetBuffer::Cut(uint len)
 {
     if (isError || !len)
         return;
+
     if (bufReadPos + len > bufEndPos)
     {
         isError = true;
         return;
     }
-    uchar* buf = bufData + bufReadPos;
+
+    uchar* buf = bufData.get() + bufReadPos;
     for (uint i = 0; i + bufReadPos + len < bufEndPos; i++)
         buf[i] = buf[i + len];
     bufEndPos -= len;
@@ -186,7 +178,7 @@ bool NetBuffer::NeedProcess()
     if (bufReadPos + sizeof(msg) > bufEndPos)
         return false;
 
-    CopyBuf(bufData + bufReadPos, &msg, EncryptKey(0), sizeof(msg));
+    CopyBuf(bufData.get() + bufReadPos, &msg, EncryptKey(0), sizeof(msg));
 
     // Known size
     switch (msg)
@@ -325,7 +317,7 @@ bool NetBuffer::NeedProcess()
         return false;
 
     EncryptKey(sizeof(msg));
-    CopyBuf(bufData + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
+    CopyBuf(bufData.get() + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
 
     switch (msg)
     {
@@ -593,7 +585,7 @@ void NetBuffer::SkipMsg(uint msg)
         // Changeable size
         uint msg_len = 0;
         EncryptKey(sizeof(msg));
-        CopyBuf(bufData + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
+        CopyBuf(bufData.get() + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
         size = msg_len;
     }
     break;

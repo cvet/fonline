@@ -66,20 +66,10 @@
 
 struct ImGuiViewportDataSDL2
 {
-    SDL_Window* Window;
-    Uint32 WindowID;
-    bool WindowOwned;
-    SDL_GLContext GLContext;
-
-    ImGuiViewportDataSDL2()
-    {
-        Window = nullptr;
-        WindowID = 0;
-        WindowOwned = false;
-        GLContext = nullptr;
-    }
-
-    ~ImGuiViewportDataSDL2() { RUNTIME_ASSERT((Window == nullptr && GLContext == nullptr)); }
+    SDL_Window* Window {};
+    Uint32 WindowID {};
+    bool WindowOwned {};
+    SDL_GLContext GLContext {};
 };
 
 static bool InitCalled = false;
@@ -134,7 +124,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     // DirectX backend
     if (use_dx)
     {
-#ifdef FO_HAVE_DX
+#ifdef FO_HAVE_D3D
         if (!InitDX(app_name, docking, maximized))
             return false;
 
@@ -430,7 +420,7 @@ bool AppGui::BeginFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_DX
+#ifdef FO_HAVE_D3D
     if (UseDirectX)
         return BeginFrameDX();
 #endif
@@ -591,7 +581,7 @@ void AppGui::EndFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_DX
+#ifdef FO_HAVE_D3D
     if (UseDirectX)
     {
         EndFrameDX();

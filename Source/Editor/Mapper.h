@@ -105,8 +105,8 @@ public:
     void RefreshTiles(int tab);
     uint GetProtoItemCurSprId(ProtoItem* proto_item);
 
-    void ParseKeyboard();
-    void ParseMouse();
+    void ProcessInputEvents();
+    void ProcessInputEvent(const InputEvent& event);
 
 #define DRAW_CR_INFO_MAX (2)
     int DrawCrExtInfo;
@@ -135,18 +135,15 @@ public:
     // Animations
     struct IfaceAnim
     {
-        AnyFrames* Frames;
-        ushort Flags;
-        uint CurSpr;
-        uint LastTick;
-        AtlasType ResType;
+        IfaceAnim(AnyFrames* frm, AtlasType res_type);
 
-        IfaceAnim(AnyFrames* frm, AtlasType res_type) :
-            Frames(frm), Flags(0), CurSpr(0), LastTick(Timer::FastTick()), ResType(res_type)
-        {
-        }
+        AnyFrames* Frames {};
+        ushort Flags {};
+        uint CurSpr {};
+        uint LastTick {};
+        AtlasType ResType {};
     };
-    typedef vector<IfaceAnim*> IfaceAnimVec;
+    using IfaceAnimVec = vector<IfaceAnim*>;
 
 #define ANIMRUN_TO_END (0x0001)
 #define ANIMRUN_FROM_END (0x0002)
@@ -378,7 +375,7 @@ public:
 
     void ObjDraw();
     void DrawLine(const string& name, const string& type_name, const string& text, bool is_const, Rect& r);
-    void ObjKeyDown(uchar dik, const char* dik_text);
+    void ObjKeyDown(KeyCode dik, const char* dik_text);
     void ObjKeyDownApply(Entity* entity);
     void SelectEntityProp(int line);
     Entity* GetInspectorEntity();
@@ -395,14 +392,14 @@ public:
 
 #define CONSOLE_KEY_TICK (500)
 #define CONSOLE_MAX_ACCELERATE (460)
-    int ConsoleLastKey;
+    KeyCode ConsoleLastKey;
     string ConsoleLastKeyText;
     uint ConsoleKeyTick;
     int ConsoleAccelerate;
 
     void ConsoleDraw();
-    void ConsoleKeyDown(uchar dik, const char* dik_text);
-    void ConsoleKeyUp(uchar dik);
+    void ConsoleKeyDown(KeyCode dik, const char* dik_text);
+    void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
     void ParseCommand(const string& command);
 

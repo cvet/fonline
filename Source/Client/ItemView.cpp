@@ -32,9 +32,6 @@
 //
 
 #include "ItemView.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "SpriteManager.h"
 #include "Testing.h"
 #include "Timer.h"
 

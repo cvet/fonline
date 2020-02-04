@@ -179,7 +179,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
         else if (prop->asObjTypeId == asTYPEID_BOOL) \
             *(bool*)pod_data = std::get<t>(value) != 0; \
         else \
-            throw UnreachablePlaceException("Unreachable place"); \
+            throw UnreachablePlaceException(LINE_STR); \
     } while (false)
 
             uchar pod_data[8];
@@ -192,7 +192,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
             else if (value.index() == DataBase::BoolValue)
                 PARSE_VALUE(bool);
             else
-                throw UnreachablePlaceException("Unreachable place");
+                throw UnreachablePlaceException(LINE_STR);
 
 #undef PARSE_VALUE
 
@@ -303,7 +303,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
             else if (arr_element_index == DataBase::BoolValue) \
                 *(t*)(data + i * element_size) = (t)std::get<bool>(arr[i]); \
             else \
-                throw UnreachablePlaceException("Unreachable place"); \
+                throw UnreachablePlaceException(LINE_STR); \
         } \
     } while (false)
 
@@ -330,7 +330,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
                 else if (element_type_id == asTYPEID_BOOL)
                     PARSE_VALUE(bool);
                 else
-                    throw UnreachablePlaceException("Unreachable place");
+                    throw UnreachablePlaceException(LINE_STR);
 
 #undef PARSE_VALUE
 
@@ -572,7 +572,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
                 else if (!(key_element_type_id & asTYPEID_MASK_OBJECT) && key_element_type_id > asTYPEID_DOUBLE)
                     *(int*)(data + data_pos) = name_resolver.GetEnumValue(key_element_type_name, kv.first, is_error);
                 else
-                    throw UnreachablePlaceException("Unreachable place");
+                    throw UnreachablePlaceException(LINE_STR);
 
                 data_pos += key_element_size;
 
@@ -635,7 +635,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
         else if (e.index() == DataBase::BoolValue) \
             *(t*)(data + data_pos) = (t)std::get<bool>(e); \
         else \
-            throw UnreachablePlaceException("Unreachable place"); \
+            throw UnreachablePlaceException(LINE_STR); \
     } while (false)
 
                             if (arr_element_type_id == asTYPEID_INT8)
@@ -661,7 +661,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
                             else if (arr_element_type_id == asTYPEID_BOOL)
                                 PARSE_VALUE(bool);
                             else
-                                throw UnreachablePlaceException("Unreachable place");
+                                throw UnreachablePlaceException(LINE_STR);
 
 #undef PARSE_VALUE
 
@@ -699,7 +699,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
         else if (kv.second.index() == DataBase::BoolValue) \
             *(t*)(data + data_pos) = (t)std::get<bool>(kv.second); \
         else \
-            throw UnreachablePlaceException("Unreachable place"); \
+            throw UnreachablePlaceException(LINE_STR); \
     } while (false)
 
                     if (prop->isHashSubType1)
@@ -745,7 +745,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
         }
         else
         {
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
         }
     }
     return !is_error;
@@ -861,7 +861,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                 else if (!(element_type_id & asTYPEID_MASK_OBJECT) && element_type_id > asTYPEID_DOUBLE)
                     arr.push_back(name_resolver.GetEnumValueName(element_type_name, *(int*)(data + i * element_size)));
                 else
-                    throw UnreachablePlaceException("Unreachable place");
+                    throw UnreachablePlaceException(LINE_STR);
             }
             return arr;
         }
@@ -899,7 +899,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                 else if (!(type_id & asTYPEID_MASK_OBJECT) && type_id > asTYPEID_DOUBLE)
                     return name_resolver.GetEnumValueName(type_name, *(int*)p);
                 else
-                    throw UnreachablePlaceException("Unreachable place");
+                    throw UnreachablePlaceException(LINE_STR);
                 return string();
             };
 
@@ -971,7 +971,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                                     arr.push_back(name_resolver.GetEnumValueName(
                                         arr_element_type_name, *(int*)(data + i * arr_element_size)));
                                 else
-                                    throw UnreachablePlaceException("Unreachable place");
+                                    throw UnreachablePlaceException(LINE_STR);
                             }
 
                             data += arr_size * arr_element_size;
@@ -1044,7 +1044,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                         dict.insert(std::make_pair(std::move(key_str),
                             name_resolver.GetEnumValueName(value_element_type_name, *(int*)pvalue)));
                     else
-                        throw UnreachablePlaceException("Unreachable place");
+                        throw UnreachablePlaceException(LINE_STR);
                 }
             }
         }

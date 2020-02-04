@@ -39,22 +39,20 @@
 
 #include "CacheStorage.h"
 #include "CritterView.h"
+#include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "MapLoader.h"
+#include "ProtoManager.h"
+#include "ResourceManager.h"
 #include "Script.h"
 #include "Settings.h"
+#include "SpriteManager.h"
 #include "Sprites.h"
 
-#define MAX_FIND_PATH (600)
-
-class ResourceManager;
-class ProtoManager;
-class SpriteManager;
-struct RenderTarget;
-struct AnyFrames;
+constexpr int MAX_FIND_PATH = 600;
 
 struct ViewField
 {
@@ -79,7 +77,6 @@ struct LightSource
     short LastOffsX {};
     short LastOffsY {};
 };
-using LightSourceVec = vector<LightSource>;
 
 struct Field
 {
@@ -133,21 +130,11 @@ struct Field
     uchar Corner {};
 };
 
-struct Drop
-{
-    uint CurSprId {};
-    short OffsX {};
-    short OffsY {};
-    short GroundOffsY {};
-    short DropCnt {};
-};
-using DropVec = vector<Drop*>;
-
 class HexManager
 {
 public:
     HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, ScriptSystem& script_sys);
+        EffectManager& effect_mngr, ResourceManager& res_mngr, ScriptSystem& script_sys);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);
@@ -168,14 +155,46 @@ public:
         UShortPairVec* steps, bool check_passed);
     void FindSetCenter(int cx, int cy);
 
+    bool IsMapLoaded() { return curPidMap != 0; }
+    bool LoadMap(CacheStorage& cache, hash map_pid);
+    void UnloadMap();
+    void GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen);
+    void GenerateItem(uint id, hash proto_id, Properties& props);
+    int GetDayTime();
+    int GetMapTime();
+    int* GetMapDayTime();
+    uchar* GetMapDayColor();
+    void OnResolutionChanged();
+
+    void ReloadSprites();
+
+    void ChangeZoom(int zoom); // <0 in, >0 out, 0 normalize
+    void GetScreenHexes(int& sx, int& sy);
+    void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y);
+    bool ProcessHexBorders(ItemHexView* item);
+
+    void RebuildMap(int rx, int ry);
+    void RebuildMapOffset(int ox, int oy);
+    void DrawMap();
+    void SetFog(PointVec& look_points, PointVec& shoot_points, short* offs_x, short* offs_y);
+    Sprites& GetDrawTree() { return mainTree; }
+    void RefreshMap() { RebuildMap(screenHexX, screenHexY); }
+
 private:
     int GetViewWidth();
     int GetViewHeight();
+
+    void PrepareFogToDraw();
+    void InitView(int cx, int cy);
+    void ResizeView();
+    bool IsVisible(uint spr_id, int ox, int oy);
+    bool ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map);
 
     HexSettings& settings;
     GeometryHelper geomHelper;
     ProtoManager& protoMngr;
     SpriteManager& sprMngr;
+    EffectManager& effectMngr;
     ResourceManager& resMngr;
     ScriptSystem& scriptSys;
 
@@ -198,89 +217,54 @@ private:
     hash curHashTiles {};
     hash curHashScen {};
 
-public:
-    bool IsMapLoaded() { return curPidMap != 0; }
-    bool LoadMap(CacheStorage& cache, hash map_pid);
-    void UnloadMap();
-    void GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen);
-    void GenerateItem(uint id, hash proto_id, Properties& props);
-    int GetDayTime();
-    int GetMapTime();
-    int* GetMapDayTime();
-    uchar* GetMapDayColor();
-    void OnResolutionChanged();
-
-private:
-    bool mapperMode = false;
-    RenderTarget* rtMap = nullptr;
-    RenderTarget* rtLight = nullptr;
-    RenderTarget* rtFog = nullptr;
-    uint rtScreenOX = 0;
-    uint rtScreenOY = 0;
+    bool mapperMode {};
+    RenderTarget* rtMap {};
+    RenderTarget* rtLight {};
+    RenderTarget* rtFog {};
+    uint rtScreenOX {};
+    uint rtScreenOY {};
     Sprites mainTree;
-    ViewField* viewField = nullptr;
+    ViewField* viewField {};
 
-    int screenHexX = 0;
-    int screenHexY = 0;
-    int hTop = 0;
-    int hBottom = 0;
-    int wLeft = 0;
-    int wRight = 0;
-    int wVisible = 0;
-    int hVisible = 0;
+    int screenHexX {};
+    int screenHexY {};
+    int hTop {};
+    int hBottom {};
+    int wLeft {};
+    int wRight {};
+    int wVisible {};
+    int hVisible {};
 
-    void InitView(int cx, int cy);
-    void ResizeView();
-    bool IsVisible(uint spr_id, int ox, int oy);
-    bool ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map);
-
-    short* fogOffsX = nullptr;
-    short* fogOffsY = nullptr;
-    short fogLastOffsX = 0;
-    short fogLastOffsY = 0;
-    bool fogForceRerender = false;
-    PointVec fogLookPoints;
-    PointVec fogShootPoints;
-
-    void PrepareFogToDraw();
-
-public:
-    void ReloadSprites();
-
-    void ChangeZoom(int zoom); // <0 in, >0 out, 0 normalize
-    void GetScreenHexes(int& sx, int& sy);
-    void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y);
-    bool ProcessHexBorders(ItemHexView* item);
-
-    void RebuildMap(int rx, int ry);
-    void RebuildMapOffset(int ox, int oy);
-    void DrawMap();
-    void SetFog(PointVec& look_points, PointVec& shoot_points, short* offs_x, short* offs_y);
-    Sprites& GetDrawTree() { return mainTree; }
-    void RefreshMap() { RebuildMap(screenHexX, screenHexY); }
+    short* fogOffsX {};
+    short* fogOffsY {};
+    short fogLastOffsX {};
+    short fogLastOffsY {};
+    bool fogForceRerender {};
+    PointVec fogLookPoints {};
+    PointVec fogShootPoints {};
 
     // Scroll
 public:
-    struct AutoScroll_
+    struct AutoScrollInfo
     {
-        bool Active;
-        bool CanStop;
-        float OffsX, OffsY;
-        float OffsXStep, OffsYStep;
-        float Speed;
-        uint HardLockedCritter;
-        uint SoftLockedCritter;
-        ushort CritterLastHexX;
-        ushort CritterLastHexY;
-    } AutoScroll;
+        bool Active {};
+        bool CanStop {};
+        float OffsX {};
+        float OffsY {};
+        float OffsXStep {};
+        float OffsYStep {};
+        float Speed {};
+        uint HardLockedCritter {};
+        uint SoftLockedCritter {};
+        ushort CritterLastHexX {};
+        ushort CritterLastHexY {};
+    };
 
     bool Scroll();
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
     void ScrollOffset(int ox, int oy, float speed, bool can_stop);
 
-private:
-    bool ScrollCheckPos(int (&positions)[4], int dir1, int dir2);
-    bool ScrollCheck(int xmod, int ymod);
+    AutoScrollInfo AutoScroll {};
 
     // Weather
 public:
@@ -288,14 +272,11 @@ public:
     void SwitchShowRain();
     void SetWeather(int time, uchar rain);
 
-    // Critters
 private:
-    CritterViewMap allCritters;
-    uint chosenId = 0;
-    uint critterContourCrId = 0;
-    int critterContour = 0;
-    int crittersContour = 0;
+    bool ScrollCheckPos(int (&positions)[4], int dir1, int dir2);
+    bool ScrollCheck(int xmod, int ymod);
 
+    // Critters
 public:
     void SetCritter(CritterView* cr);
     bool TransitCritter(CritterView* cr, int hx, int hy, bool animate, bool force);
@@ -311,13 +292,14 @@ public:
     void SetCrittersContour(int contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
 
-    // Items
 private:
-    ItemHexViewVec hexItems;
+    CritterViewMap allCritters {};
+    uint chosenId {};
+    uint critterContourCrId {};
+    int critterContour {};
+    int crittersContour {};
 
-    void AddFieldItem(ushort hx, ushort hy, ItemHexView* item);
-    void EraseFieldItem(ushort hx, ushort hy, ItemHexView* item);
-
+    // Items
 public:
     uint AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data);
     void FinishItem(uint id, bool is_deleted);
@@ -332,27 +314,20 @@ public:
     void ProcessItems();
     void SkipItemsFade();
 
-    // Light
 private:
-    bool requestRebuildLight = false;
-    bool requestRenderLight = false;
-    uchar* hexLight = nullptr;
-    uint lightPointsCount = 0;
-    PointVecVec lightPoints;
-    PointVec lightSoftPoints;
-    LightSourceVec lightSources;
-    LightSourceVec lightSourcesScen;
+    void AddFieldItem(ushort hx, ushort hy, ItemHexView* item);
+    void EraseFieldItem(ushort hx, ushort hy, ItemHexView* item);
 
-    // Rebuild data
-    int lightCapacity = 0;
-    int lightMinHx = 0;
-    int lightMaxHx = 0;
-    int lightMinHy = 0;
-    int lightMaxHy = 0;
-    int lightProcentR = 0;
-    int lightProcentG = 0;
-    int lightProcentB = 0;
+    ItemHexViewVec hexItems {};
 
+    // Light
+public:
+    void ClearHexLight() { memzero(hexLight, maxHexX * maxHexY * sizeof(uchar) * 3); }
+    uchar* GetLightHex(ushort hx, ushort hy) { return &hexLight[hy * maxHexX * 3 + hx * 3]; }
+    void RebuildLight() { requestRebuildLight = requestRenderLight = true; }
+    vector<LightSource>& GetLights() { return lightSources; }
+
+private:
     void PrepareLightToDraw();
     void MarkLight(ushort hx, ushort hy, uint inten);
     void MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, uint inten);
@@ -363,91 +338,81 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
-public:
-    void ClearHexLight() { memzero(hexLight, maxHexX * maxHexY * sizeof(uchar) * 3); }
-    uchar* GetLightHex(ushort hx, ushort hy) { return &hexLight[hy * maxHexX * 3 + hx * 3]; }
-    void RebuildLight() { requestRebuildLight = requestRenderLight = true; }
-    LightSourceVec& GetLights() { return lightSources; }
+    bool requestRebuildLight {};
+    bool requestRenderLight {};
+    uchar* hexLight {};
+    uint lightPointsCount {};
+    vector<PointVec> lightPoints {};
+    PointVec lightSoftPoints {};
+    vector<LightSource> lightSources {};
+    vector<LightSource> lightSourcesScen {};
 
-    // Tiles, roof
-private:
-    Sprites tilesTree;
-    Sprites roofTree;
-    int roofSkip = 0;
-
-    bool CheckTilesBorder(Field::Tile& tile, bool is_roof);
+    int lightCapacity {};
+    int lightMinHx {};
+    int lightMaxHx {};
+    int lightMinHy {};
+    int lightMaxHy {};
+    int lightProcentR {};
+    int lightProcentG {};
+    int lightProcentB {};
 
 public:
     void RebuildTiles();
     void RebuildRoof();
     void SetSkipRoof(int hx, int hy);
     void MarkRoofNum(int hx, int hy, int num);
-
-    // Pixel get
     bool GetHexPixel(int x, int y, ushort& hx, ushort& hy);
     ItemHexView* GetItemPixel(int x, int y, bool& item_egg); // With transparent egg
     CritterView* GetCritterPixel(int x, int y, bool ignore_dead_and_chosen);
     void GetSmthPixel(int x, int y, ItemHexView*& item, CritterView*& cr);
-
-    // Effects
     bool RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-
-    // Rain
-private:
-    DropVec rainData;
-    int rainCapacity = 0;
-    string picRainFallName;
-    string picRainDropName;
-    AnyFrames* picRainFall = nullptr;
-    AnyFrames* picRainDrop = nullptr;
-    Sprites roofRainTree;
-
-public:
     void ProcessRain();
     void SetRainAnimation(const char* fall_anim_name, const char* drop_anim_name);
-
-    // Cursor
-private:
-    int drawCursorX = 0;
-    AnyFrames* cursorPrePic = nullptr;
-    AnyFrames* cursorPostPic = nullptr;
-    AnyFrames* cursorXPic = nullptr;
-    int cursorX = 0;
-    int cursorY = 0;
-
-public:
     void SetCursorPos(int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);
     void DrawCursor(const char* text);
 
+private:
+    struct Drop
+    {
+        uint CurSprId {};
+        short OffsX {};
+        short OffsY {};
+        short GroundOffsY {};
+        short DropCnt {};
+    };
+
+    bool CheckTilesBorder(Field::Tile& tile, bool is_roof);
+
+    Sprites tilesTree;
+    Sprites roofTree;
+    int roofSkip {};
+    vector<Drop*> rainData {};
+    int rainCapacity {};
+    string picRainFallName {};
+    string picRainDropName {};
+    AnyFrames* picRainFall {};
+    AnyFrames* picRainDrop {};
+    Sprites roofRainTree;
+
+    int drawCursorX {};
+    AnyFrames* cursorPrePic {};
+    AnyFrames* cursorPostPic {};
+    AnyFrames* cursorXPic {};
+    int cursorX {};
+    int cursorY {};
+
     // Editor stuff
 public:
-    uchar SelectAlpha = 100;
-    ProtoMap* CurProtoMap = nullptr;
+    using TileVecVec = vector<MapTileVec>;
 
     bool SetProtoMap(ProtoMap& pmap);
     void GetProtoMap(ProtoMap& pmap);
-
-    // Selected tile, roof
-    using TileVecVec = vector<MapTileVec>;
-    TileVecVec TilesField;
-    TileVecVec RoofsField;
-    MapTileVec& GetTiles(ushort hx, ushort hy, bool is_roof)
-    {
-        return is_roof ? RoofsField[hy * GetWidth() + hx] : TilesField[hy * GetWidth() + hx];
-    }
-
+    MapTileVec& GetTiles(ushort hx, ushort hy, bool is_roof);
     void ClearSelTiles();
     void ParseSelTiles();
     void SetTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
     void EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index);
-
-    // Ignore pids to draw
-private:
-    HashSet fastPids;
-    HashSet ignorePids;
-
-public:
     void AddFastPid(hash pid);
     bool IsFastPid(hash pid);
     void ClearFastPids();
@@ -455,7 +420,15 @@ public:
     void SwitchIgnorePid(hash pid);
     bool IsIgnorePid(hash pid);
     void ClearIgnorePids();
-
     void GetHexesRect(const Rect& rect, UShortPairVec& hexes);
     void MarkPassedHexes();
+
+    uchar SelectAlpha {100};
+    ProtoMap* CurProtoMap {};
+    TileVecVec TilesField {};
+    TileVecVec RoofsField {};
+
+private:
+    HashSet fastPids {};
+    HashSet ignorePids {};
 };

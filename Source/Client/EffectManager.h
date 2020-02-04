@@ -35,70 +35,68 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "FileSystem.h"
-#include "GraphicStructures.h"
 #include "Settings.h"
+
+DECLARE_EXCEPTION(EffectManagerException);
 
 struct EffectCollection : public NonCopyable
 {
-    Effect* Contour {};
-    Effect* ContourDefault {};
-    Effect* Generic {};
-    Effect* GenericDefault {};
-    Effect* Critter {};
-    Effect* CritterDefault {};
-    Effect* Tile {};
-    Effect* TileDefault {};
-    Effect* Roof {};
-    Effect* RoofDefault {};
-    Effect* Rain {};
-    Effect* RainDefault {};
-    Effect* Iface {};
-    Effect* IfaceDefault {};
-    Effect* Primitive {};
-    Effect* PrimitiveDefault {};
-    Effect* Light {};
-    Effect* LightDefault {};
-    Effect* Fog {};
-    Effect* FogDefault {};
-    Effect* FlushRenderTarget {};
-    Effect* FlushRenderTargetDefault {};
-    Effect* FlushRenderTargetMS {};
-    Effect* FlushRenderTargetMSDefault {};
-    Effect* FlushPrimitive {};
-    Effect* FlushPrimitiveDefault {};
-    Effect* FlushMap {};
-    Effect* FlushMapDefault {};
-    Effect* FlushLight {};
-    Effect* FlushLightDefault {};
-    Effect* FlushFog {};
-    Effect* FlushFogDefault {};
-    Effect* Font {};
-    Effect* FontDefault {};
-    Effect* Skinned3d {};
-    Effect* Skinned3dDefault {};
+    RenderEffect* Contour {};
+    RenderEffect* ContourDefault {};
+    RenderEffect* Generic {};
+    RenderEffect* GenericDefault {};
+    RenderEffect* Critter {};
+    RenderEffect* CritterDefault {};
+    RenderEffect* Tile {};
+    RenderEffect* TileDefault {};
+    RenderEffect* Roof {};
+    RenderEffect* RoofDefault {};
+    RenderEffect* Rain {};
+    RenderEffect* RainDefault {};
+    RenderEffect* Iface {};
+    RenderEffect* IfaceDefault {};
+    RenderEffect* Primitive {};
+    RenderEffect* PrimitiveDefault {};
+    RenderEffect* Light {};
+    RenderEffect* LightDefault {};
+    RenderEffect* Fog {};
+    RenderEffect* FogDefault {};
+    RenderEffect* FlushRenderTarget {};
+    RenderEffect* FlushRenderTargetDefault {};
+    RenderEffect* FlushRenderTargetMS {};
+    RenderEffect* FlushRenderTargetMSDefault {};
+    RenderEffect* FlushPrimitive {};
+    RenderEffect* FlushPrimitiveDefault {};
+    RenderEffect* FlushMap {};
+    RenderEffect* FlushMapDefault {};
+    RenderEffect* FlushLight {};
+    RenderEffect* FlushLightDefault {};
+    RenderEffect* FlushFog {};
+    RenderEffect* FlushFogDefault {};
+    RenderEffect* Font {};
+    RenderEffect* FontDefault {};
+    RenderEffect* Skinned3d {};
+    RenderEffect* Skinned3dDefault {};
 };
 
-class EffectManager : public NonCopyable
+class EffectManager : public Pointable
 {
 public:
     EffectManager(EffectSettings& sett, FileManager& file_mngr);
-    Effect* LoadEffect(const string& effect_name, bool use_in_2d, const string& defines = "",
-        const string& model_path = "", EffectDefault* defaults = nullptr, uint defaults_count = 0);
-    void EffectProcessVariables(EffectPass& effect_pass, bool start, float anim_proc = 0.0f, float anim_time = 0.0f,
-        MeshTexture** textures = nullptr);
-    bool LoadMinimalEffects();
-    bool LoadDefaultEffects();
-    bool Load3dEffects();
+    RenderEffect* LoadEffect(const string& name, const string& defines, const string& base_path = "");
+    void LoadMinimalEffects();
+    void LoadDefaultEffects();
+    void Load3dEffects();
 
     EffectCollection Effects {};
-    uint MaxBones {};
 
 private:
-    bool LoadEffectPass(Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d,
-        const string& defines, EffectDefault* defaults, uint defaults_count);
+    void PerFrameEffectUpdate(RenderEffect* effect);
 
     EffectSettings& settings;
     FileManager& fileMngr;
-    vector<unique_ptr<Effect>> loadedEffects {};
+    vector<unique_ptr<RenderEffect>> loadedEffects {};
+    EventUnsubscriber eventUnsubscriber {};
 };

@@ -35,7 +35,9 @@
 
 #include "ModelBaker.h"
 #include "3dAnimation.h"
-#include "GraphicStructures.h"
+#include "3dStuff.h"
+#include "Application.h"
+#include "Bakering.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -43,6 +45,7 @@
 
 #include "assimp/cimport.h"
 #include "assimp/postprocess.h"
+#include "assimp/scene.h"
 #include "fbxsdk/fbxsdk.h"
 
 ModelBaker::ModelBaker(FileCollection& all_files) : allFiles {all_files}
@@ -164,7 +167,7 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
 {
     // Result bone
     Bone* root_bone = nullptr;
-    AnimSetVec loaded_animations;
+    vector<AnimSet*> loaded_animations;
 
     // FBX loader
     string ext = _str(fname).getFileExtension();
@@ -174,7 +177,7 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
         {
             fbxManager = FbxManager::Create();
             if (!fbxManager)
-                throw fo_exception("Unable to create FBX Manager");
+                throw GenericException("Unable to create FBX Manager");
 
             // Create an IOSettings object. This object holds all import/export settings.
             FbxIOSettings* ios = FbxIOSettings::Create(fbxManager, IOSROOT);
@@ -187,12 +190,12 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
         // Create an FBX scene
         FbxScene* fbx_scene = FbxScene::Create(fbxManager, "Root Scene");
         if (!fbx_scene)
-            throw fo_exception("Unable to create FBX scene");
+            throw GenericException("Unable to create FBX scene");
 
         // Create an importer
         FbxImporter* fbx_importer = FbxImporter::Create(fbxManager, "");
         if (!fbx_importer)
-            throw fo_exception("Unable to create FBX importer");
+            throw GenericException("Unable to create FBX importer");
 
         // Initialize the importer
         FbxStreamImpl fbx_stream;
@@ -209,12 +212,12 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
                     sdk_revision, file_major, file_minor, file_revision);
             }
 
-            throw fo_exception("Call to FbxImporter::Initialize() failed", fname, error_desc);
+            throw GenericException("Call to FbxImporter::Initialize() failed", fname, error_desc);
         }
 
         // Import the scene
         if (!fbx_importer->Import(fbx_scene))
-            throw fo_exception("Can't import scene", fname);
+            throw GenericException("Can't import scene", fname);
 
         // Load hierarchy
         vector<FbxNode*> fbx_all_nodes;
@@ -315,7 +318,7 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
     else
     {
         // Logging
-        // Todo: need attention!
+        // Todo: return AssimpLogging on models bakering
         // if (GameOpt.AssimpLogging)
         // {
         //    aiEnableVerboseLogging(true);
@@ -347,7 +350,7 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
                 aiProcess_LimitBoneWeights | aiProcess_ImproveCacheLocality,
             "", import_props);
         if (!scene)
-            throw fo_exception("Assimp can't load 3d file", fname, aiGetErrorString());
+            throw GenericException("Assimp can't load 3d file", fname, aiGetErrorString());
 
         // Extract bones
         root_bone = ConvertAssimpPass1(scene, scene->mRootNode);
@@ -411,10 +414,10 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
 
     UCharVec data;
     DataWriter writer {data};
-    root_bone->Save(writer);
+    Bakering::SaveBone(root_bone, writer);
     writer.Write((uint)loaded_animations.size());
     for (size_t i = 0; i < loaded_animations.size(); i++)
-        loaded_animations[i]->Save(writer);
+        Bakering::SaveAnimSet(loaded_animations[i], writer);
 
     delete root_bone;
     for (size_t i = 0; i < loaded_animations.size(); i++)
@@ -447,11 +450,11 @@ static Bone* ConvertAssimpPass1(aiScene* ai_scene, aiNode* ai_node)
     bone->TransformationMatrix = ai_node->mTransformation;
     bone->GlobalTransformationMatrix = AssimpGlobalTransform(ai_node);
     bone->CombinedTransformationMatrix = Matrix();
-    bone->Mesh = nullptr;
+    bone->AttachedMesh = nullptr;
     bone->Children.resize(ai_node->mNumChildren);
 
     for (uint i = 0; i < ai_node->mNumChildren; i++)
-        bone->Children[i] = ConvertAssimpPass1(ai_scene, ai_node->mChildren[i]);
+        bone->Children[i] = unique_ptr<Bone>(ConvertAssimpPass1(ai_scene, ai_node->mChildren[i]));
     return bone;
 }
 
@@ -474,19 +477,20 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
             mesh_bone->CombinedTransformationMatrix = Matrix();
             if (parent_bone)
             {
-                parent_bone->Children.push_back(mesh_bone);
+                parent_bone->Children.push_back(unique_ptr<Bone>(mesh_bone));
                 mesh_bone->TransformationMatrix = bone->TransformationMatrix;
                 mesh_bone->GlobalTransformationMatrix = AssimpGlobalTransform(ai_node);
             }
             else
             {
-                bone->Children.push_back(mesh_bone);
+                bone->Children.push_back(unique_ptr<Bone>(mesh_bone));
                 mesh_bone->TransformationMatrix = Matrix();
                 mesh_bone->GlobalTransformationMatrix = AssimpGlobalTransform(ai_node);
             }
         }
 
-        MeshData* mesh = mesh_bone->Mesh = new MeshData();
+        mesh_bone->AttachedMesh = std::make_unique<MeshData>();
+        MeshData* mesh = mesh_bone->AttachedMesh.get();
         mesh->Owner = mesh_bone;
 
         // Vertices
@@ -544,7 +548,7 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
             mesh->SkinBoneNameHashes.resize(ai_mesh->mNumBones);
             mesh->SkinBoneOffsets.resize(ai_mesh->mNumBones);
             mesh->SkinBones.resize(ai_mesh->mNumBones);
-            RUNTIME_ASSERT(ai_mesh->mNumBones <= MAX_BONES_PER_MODEL);
+            RUNTIME_ASSERT(ai_mesh->mNumBones <= MODEL_MAX_BONES);
             for (uint i = 0; i < ai_mesh->mNumBones; i++)
             {
                 aiBone* ai_bone = ai_mesh->mBones[i];
@@ -615,7 +619,7 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
     }
 
     for (uint i = 0; i < ai_node->mNumChildren; i++)
-        ConvertAssimpPass2(root_bone, bone, bone->Children[i], ai_scene, ai_node->mChildren[i]);
+        ConvertAssimpPass2(root_bone, bone, bone->Children[i].get(), ai_scene, ai_node->mChildren[i]);
 }
 
 static Bone* ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes)
@@ -627,11 +631,10 @@ static Bone* ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes)
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateLocalTransform());
     bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateGlobalTransform());
     bone->CombinedTransformationMatrix = Matrix();
-    bone->Mesh = nullptr;
     bone->Children.resize(fbx_node->GetChildCount());
 
     for (int i = 0; i < fbx_node->GetChildCount(); i++)
-        bone->Children[i] = ConvertFbxPass1(fbx_node->GetChild(i), fbx_all_nodes);
+        bone->Children[i] = unique_ptr<Bone>(ConvertFbxPass1(fbx_node->GetChild(i), fbx_all_nodes));
     return bone;
 }
 
@@ -664,9 +667,9 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
     if (fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 &&
         fbx_mesh->GetPolygonCount() > 0)
     {
-        bone->Mesh = new MeshData();
-        bone->Mesh->Owner = bone;
-        MeshData* mesh = bone->Mesh;
+        bone->AttachedMesh = std::make_unique<MeshData>();
+        bone->AttachedMesh->Owner = bone;
+        MeshData* mesh = bone->AttachedMesh.get();
 
         // Generate tangents
         fbx_mesh->GenerateTangentsDataForAllUVSets();
@@ -763,7 +766,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
             mesh->SkinBoneNameHashes.resize(num_bones);
             mesh->SkinBoneOffsets.resize(num_bones);
             mesh->SkinBones.resize(num_bones);
-            RUNTIME_ASSERT(num_bones <= MAX_BONES_PER_MODEL);
+            RUNTIME_ASSERT(num_bones <= MODEL_MAX_BONES);
             for (int i = 0; i < num_bones; i++)
             {
                 FbxCluster* fbx_cluster = fbx_skin->GetCluster(i);
@@ -859,7 +862,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
     }
 
     for (int i = 0; i < fbx_node->GetChildCount(); i++)
-        ConvertFbxPass2(root_bone, bone->Children[i], fbx_node->GetChild(i));
+        ConvertFbxPass2(root_bone, bone->Children[i].get(), fbx_node->GetChild(i));
 }
 
 static Matrix ConvertFbxMatrix(const FbxAMatrix& m)

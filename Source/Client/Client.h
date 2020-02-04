@@ -58,11 +58,13 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Testing.h"
+#include "Timer.h"
 #include "WinApi_Include.h"
 
 #include "theora/theoradec.h"
 #include "zlib.h"
 #ifndef FO_WINDOWS
+// Todo: add working in IPv6 networks
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -115,16 +117,14 @@ class CScriptDict;
 class CScriptArray;
 
 class FOClient :
-    public NonCopyable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
+    public NonMovable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
 {
 public:
     static FOClient* Self; // Todo: remove client Self singleton
 
     FOClient(ClientSettings& sett);
     ~FOClient();
-    bool Init();
     void ProcessAutoLogin();
-    void UpdateBinary();
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -159,11 +159,11 @@ public:
     bool IsAutoLogin;
 
     // Offscreen drawing
-    EffectVec OffscreenEffects;
-    RenderTargetVec OffscreenSurfaces;
-    RenderTargetVec ActiveOffscreenSurfaces;
-    RenderTargetVec PreDirtyOffscreenSurfaces;
-    RenderTargetVec DirtyOffscreenSurfaces;
+    vector<RenderEffect*> OffscreenEffects;
+    vector<RenderTarget*> OffscreenSurfaces;
+    vector<RenderTarget*> ActiveOffscreenSurfaces;
+    vector<RenderTarget*> PreDirtyOffscreenSurfaces;
+    vector<RenderTarget*> DirtyOffscreenSurfaces;
 
     // Screen
     int ScreenModeMain;
@@ -177,8 +177,8 @@ public:
     void RunScreenScript(bool show, int screen, CScriptDictionary* params);
 
     // Input
-    void ParseKeyboard();
-    void ParseMouse();
+    void ProcessInputEvents();
+    void ProcessInputEvent(const InputEvent& event);
 
     // Update files
     struct UpdateFile
@@ -334,39 +334,37 @@ public:
     /************************************************************************/
     struct ShowVideo
     {
-        string FileName;
-        string SoundName;
-        bool CanStop;
+        string FileName {};
+        string SoundName {};
+        bool CanStop {};
     };
-    typedef vector<ShowVideo> ShowVideoVec;
 
     struct VideoContext
     {
-        th_dec_ctx* Context;
-        th_info VideoInfo;
-        th_comment Comment;
-        th_setup_info* SetupInfo;
-        th_ycbcr_buffer ColorBuffer;
-        ogg_sync_state SyncState;
-        ogg_packet Packet;
         struct StreamStates
         {
-            static const uint COUNT = 10;
-            ogg_stream_state Streams[COUNT];
-            bool StreamsState[COUNT];
-            int MainIndex;
-        } SS;
-        File RawData;
-        RenderTarget* RT;
-        uchar* TextureData;
-        uint CurFrame;
-        double StartTime;
-        double AverageRenderTime;
-    };
+            static constexpr uint COUNT = 10;
 
-    ShowVideoVec ShowVideos;
-    int MusicVolumeRestore;
-    VideoContext* CurVideo;
+            ogg_stream_state Streams[COUNT] {};
+            bool StreamsState[COUNT] {};
+            int MainIndex {};
+        };
+
+        th_dec_ctx* Context {};
+        th_info VideoInfo {};
+        th_comment Comment {};
+        th_setup_info* SetupInfo {};
+        th_ycbcr_buffer ColorBuffer {};
+        ogg_sync_state SyncState {};
+        ogg_packet Packet {};
+        StreamStates SS {};
+        File RawData {};
+        RenderTarget* RT {};
+        uint* TextureData {};
+        uint CurFrame {};
+        double StartTime {};
+        double AverageRenderTime {};
+    };
 
     int VideoDecodePacket();
     void RenderVideo();
@@ -376,6 +374,10 @@ public:
     void PlayVideo();
     void NextVideo();
     void StopVideo();
+
+    vector<ShowVideo> ShowVideos {};
+    int MusicVolumeRestore {};
+    VideoContext* CurVideo {};
 
     /************************************************************************/
     /* Animation                                                            */
@@ -430,15 +432,11 @@ public:
 
     // Fading
     ScreenEffectVec ScreenEffects;
+
     // Quake
     int ScreenOffsX, ScreenOffsY;
     float ScreenOffsXf, ScreenOffsYf, ScreenOffsStep;
     uint ScreenOffsNextTick;
-    // Mirror
-    Texture* ScreenMirrorTexture;
-    int ScreenMirrorX, ScreenMirrorY;
-    uint ScreenMirrorEndTick;
-    bool ScreenMirrorStart;
 
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
@@ -607,7 +605,7 @@ public:
         static void Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text);
         static void Global_SetRainAnimation(string fall_anim_name, string drop_anim_name);
         static void Global_ChangeZoom(float target_zoom);
-        static bool Global_SaveScreenshot(string file_path);
+        static void Global_SaveScreenshot(string file_path);
         static bool Global_SaveText(string file_path, string text);
         static void Global_SetCacheData(string name, const CScriptArray* data);
         static void Global_SetCacheDataSize(string name, const CScriptArray* data, uint data_size);

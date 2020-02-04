@@ -983,7 +983,7 @@ int Property::GetPODValueAsInt(Entity* entity)
         if (baseSize == 8)
             return (int)GetValue<uint64>(entity);
     }
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
     return 0;
 }
 
@@ -1590,7 +1590,7 @@ string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_has
             result.append("}");
         return result;
     }
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
     return "";
 }
 
@@ -1683,7 +1683,7 @@ void* ReadValue(
         }
         return dict;
     }
-    throw UnreachablePlaceException("Unreachable place");
+    throw UnreachablePlaceException(LINE_STR);
     return nullptr;
 }
 
@@ -2451,7 +2451,7 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
         }
         else
         {
-            throw UnreachablePlaceException("Unreachable place");
+            throw UnreachablePlaceException(LINE_STR);
         }
     }
 

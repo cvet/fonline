@@ -32,81 +32,30 @@
 //
 
 #include "ItemHexView.h"
-#include "EffectManager.h"
 #include "GenericUtils.h"
-#include "GraphicStructures.h"
 #include "Log.h"
-#include "ResourceManager.h"
-#include "SpriteManager.h"
 #include "Sprites.h"
 #include "Testing.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr) : ItemView(id, proto), resMngr {res_mngr}
+ItemHexView::ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr) :
+    ItemView(id, proto), resMngr {res_mngr}, effectMngr {effect_mngr}
 {
     const_cast<EntityType&>(Type) = EntityType::ItemHexView;
-
-    // Hex
-    HexScrX = nullptr;
-    HexScrY = nullptr;
-
-    // Offsets
-    ScrX = 0;
-    ScrY = 0;
-
-    // Animation
-    SprId = 0;
-    curSpr = 0;
-    begSpr = 0;
-    endSpr = 0;
-    animBegSpr = 0;
-    animEndSpr = 0;
-    isAnimated = false;
-    animTick = 0;
-    animNextTick = 0;
-    SprDraw = nullptr;
-    SprTemp = nullptr;
-    SprDrawValid = false;
-
-    // Alpha
-    Alpha = 0;
-    maxAlpha = 0xFF;
-
-    // Finishing
-    finishing = false;
-    finishingTime = 0;
-
-    // Fading
-    fading = false;
-    fadingTick = 0;
-    fadeUp = false;
-
-    // Effect
-    isEffect = false;
-    effSx = 0;
-    effSy = 0;
-    EffOffsX = 0;
-    EffOffsY = 0;
-    effStartX = 0;
-    effStartY = 0;
-    effDist = 0;
-    effLastTick = 0;
-    effCurX = 0;
-    effCurY = 0;
-
-    // Draw effect
-    DrawEffect = resMngr.GetSpriteManager().GetEffectManager().Effects.Generic;
+    DrawEffect = effectMngr.Effects.Generic;
 }
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr) :
-    ItemHexView(id, proto, res_mngr)
+ItemHexView::ItemHexView(
+    uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr) :
+    ItemHexView(id, proto, res_mngr, effect_mngr)
 {
     Props = props;
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr) :
-    ItemHexView(id, proto, res_mngr)
+ItemHexView::ItemHexView(
+    uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr) :
+    ItemHexView(id, proto, res_mngr, effect_mngr)
 {
     RUNTIME_ASSERT(props_data);
     Props.RestoreData(*props_data);
@@ -114,8 +63,8 @@ ItemHexView::ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, Res
 }
 
 ItemHexView::ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x,
-    int* hex_scr_y, ResourceManager& res_mngr) :
-    ItemHexView(id, proto, res_mngr)
+    int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr) :
+    ItemHexView(id, proto, res_mngr, effect_mngr)
 {
     if (props_data)
         Props.RestoreData(*props_data);
@@ -131,20 +80,24 @@ void ItemHexView::AfterConstruction()
 {
     RUNTIME_ASSERT(GetAccessory() == ITEM_ACCESSORY_HEX);
 
-    // Refresh item
     RefreshAnim();
     RefreshAlpha();
+
     if (GetIsShowAnim())
         isAnimated = true;
+
     animNextTick = Timer::GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+
     SetFade(true);
 }
 
 void ItemHexView::Finish()
 {
     SetFade(false);
+
     finishing = true;
     finishingTime = fadingTick;
+
     if (isEffect)
         finishingTime = Timer::GameTick();
 }
@@ -216,6 +169,7 @@ void ItemHexView::Process()
 
             SetAnimOffs();
             effLastTick = Timer::GameTick();
+
             if (GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY) >= effDist)
                 Finish();
         }
@@ -265,9 +219,11 @@ UShortPair ItemHexView::GetEffectStep()
     uint dist = GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY);
     if (dist > effDist)
         dist = effDist;
+
     int proc = GenericUtils::Procent(effDist, dist);
     if (proc > 99)
         proc = 99;
+
     return EffSteps[EffSteps.size() * proc / 100];
 }
 
@@ -318,6 +274,7 @@ void ItemHexView::SetSprite(Sprite* spr)
 {
     if (spr)
         SprDraw = spr;
+
     if (SprDrawValid)
     {
         SprDraw->SetColor(IsColorize() ? GetColor() : 0);
@@ -385,6 +342,7 @@ void ItemHexView::SetAnim(uint beg, uint end)
         beg = Anim->CntFrm - 1;
     if (end > Anim->CntFrm - 1)
         end = Anim->CntFrm - 1;
+
     begSpr = beg;
     endSpr = end;
     SetSpr(begSpr);
@@ -416,11 +374,13 @@ void ItemHexView::SetAnimOffs()
 {
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
+
     for (int i = 1; i <= curSpr; i++)
     {
         ScrX += Anim->NextX[i];
         ScrY += Anim->NextY[i];
     }
+
     if (IsDynamicEffect())
     {
         ScrX += (int)EffOffsX;
