@@ -1,6 +1,0 @@
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\bin\Client\FOnline.Core.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\bin\Client\FOnline.Core.pdb
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Client\FOnline.Core.csprojAssemblyReference.cache
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Client\FOnline.Core.csproj.CoreCompileInputs.cache
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Client\FOnline.Core.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Client\FOnline.Core.pdb

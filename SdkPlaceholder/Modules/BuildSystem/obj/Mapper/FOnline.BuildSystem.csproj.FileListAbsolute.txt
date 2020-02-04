@@ -1,9 +1,0 @@
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Mapper\FOnline.BuildSystem.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Mapper\FOnline.BuildSystem.pdb
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Mapper\FOnline.Core.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\bin\Mapper\FOnline.Core.pdb
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Mapper\FOnline.BuildSystem.csprojAssemblyReference.cache
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Mapper\FOnline.BuildSystem.csproj.CoreCompileInputs.cache
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Mapper\FOnline.BuildSystem.csproj.CopyComplete
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Mapper\FOnline.BuildSystem.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\BuildSystem\obj\Mapper\FOnline.BuildSystem.pdb

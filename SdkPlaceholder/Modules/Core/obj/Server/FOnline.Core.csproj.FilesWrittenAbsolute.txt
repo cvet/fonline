@@ -1,8 +1,0 @@
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\.NETFramework,Version=v4.5.AssemblyAttribute.cs
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\bin\Server\FOnline.Core.pdb
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\bin\Server\FOnline.Core.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\FOnline.Core.dll
-D:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\FOnline.Core.pdb
-d:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\.NETFramework,Version=v4.5.AssemblyAttribute.cs
-d:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\FOnline.Core.dll
-d:\Repozes\LastFrontier\FOnlineSDK\Modules\Core\obj\Server\FOnline.Core.pdb
