@@ -15,5 +15,6 @@
     "telemetry.enableCrashReporter": false,
     "editor.fontSize": 12,
     "editor.emptySelectionClipboard": false,
-    "editor.fontFamily": "Consolas, 'Courier New', monospace"
+    "editor.fontFamily": "Consolas, 'Courier New', monospace",
+    "window.title": "${rootName}${separator}FOnline Editor"
 }
