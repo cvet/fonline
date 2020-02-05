@@ -1,0 +1,61 @@
+{
+  "_from": "vscode-debugadapter@latest",
+  "_id": "vscode-debugadapter@1.37.1",
+  "_inBundle": false,
+  "_integrity": "sha512-g/xNsUdkrd0DifaoRJ4+wypSMsMbK47fGpetpmIOnOQiDFjtYKvqxsgyUZ4BOj2jKP2Xa40B4YXfUUJpqreWJg==",
+  "_location": "/vscode-debugadapter",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "vscode-debugadapter@latest",
+    "name": "vscode-debugadapter",
+    "escapedName": "vscode-debugadapter",
+    "rawSpec": "latest",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/vscode-debugadapter/-/vscode-debugadapter-1.37.1.tgz",
+  "_shasum": "7d7076e64e9786fe4fcb0c156e1ed24184a9fb2b",
+  "_spec": "vscode-debugadapter@latest",
+  "_where": "/Users/roblou/code/vscode-node-debug2",
+  "author": {
+    "name": "Microsoft Corporation"
+  },
+  "bugs": {
+    "url": "https://github.com/Microsoft/vscode-debugadapter-node/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "mkdirp": "^0.5.1",
+    "vscode-debugprotocol": "1.37.0"
+  },
+  "deprecated": false,
+  "description": "Debug adapter implementation for node",
+  "devDependencies": {
+    "@types/mkdirp": "^0.5.2",
+    "@types/mocha": "5.2.5",
+    "@types/node": "8.9.3",
+    "mocha": "5.2.0",
+    "typescript": "3.5.2"
+  },
+  "homepage": "https://github.com/Microsoft/vscode-debugadapter-node#readme",
+  "license": "MIT",
+  "main": "./lib/main.js",
+  "name": "vscode-debugadapter",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Microsoft/vscode-debugadapter-node.git"
+  },
+  "scripts": {
+    "compile": "tsc -p ./src",
+    "prepublish": "tsc -p ./src",
+    "watch": "tsc -w -p ./src"
+  },
+  "typings": "./lib/main",
+  "version": "1.37.1"
+}

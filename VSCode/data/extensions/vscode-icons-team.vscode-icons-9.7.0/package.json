@@ -1,0 +1,330 @@
+{
+	"name": "vscode-icons",
+	"displayName": "vscode-icons",
+	"description": "Icons for Visual Studio Code",
+	"version": "9.7.0",
+	"publisher": "vscode-icons-team",
+	"license": "MIT",
+	"author": {
+		"email": "roberto.huertas@outlook.com",
+		"name": "Roberto Huertas",
+		"url": "https://robertohuertas.com"
+	},
+	"maintainers": [
+		{
+			"email": "jimikar@gmail.com",
+			"name": "Jimi (Dimitris) Charalampidis"
+		},
+		{
+			"email": "jenshausdorf@gmail.com",
+			"name": "Jens Hausdorf",
+			"url": "https://jens-hausdorf.de"
+		},
+		{
+			"email": "stevenbojato04@gmail.com",
+			"name": "Manuel Bojato",
+			"url": "https://kingdarboja.github.io/"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/vscode-icons/vscode-icons"
+	},
+	"bugs": {
+		"url": "https://github.com/vscode-icons/vscode-icons/issues",
+		"email": "roberto.huertas@outlook.com"
+	},
+	"engines": {
+		"vscode": "^1.26.1",
+		"node": ">=8.9.3"
+	},
+	"categories": [
+		"Themes"
+	],
+	"keywords": [
+		"icons",
+		"theme",
+		"icon-theme",
+		"multi-root ready",
+		"portable mode ready"
+	],
+	"preview": false,
+	"homepage": "https://github.com/vscode-icons/vscode-icons",
+	"icon": "images/logo.png",
+	"galleryBanner": {
+		"color": "#ffdd00"
+	},
+	"extensionKind": "ui",
+	"activationEvents": [
+		"*"
+	],
+	"main": "dist/src/vscode-icons.bundle.js",
+	"contributes": {
+		"iconThemes": [
+			{
+				"id": "vscode-icons",
+				"label": "VSCode Icons",
+				"path": "dist/src/vsicons-icon-theme.json",
+				"_watch": true
+			}
+		],
+		"commands": [
+			{
+				"command": "vscode-icons.activateIcons",
+				"title": "%command.activateIcons.title%",
+				"category": "Icons",
+				"callbackName": "activationCommand"
+			},
+			{
+				"command": "vscode-icons.regenerateIcons",
+				"title": "%command.regenerateIcons.title%",
+				"category": "Icons",
+				"callbackName": "applyCustomizationCommand"
+			},
+			{
+				"command": "vscode-icons.ngPreset",
+				"title": "%command.ngPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleAngularPresetCommand"
+			},
+			{
+				"command": "vscode-icons.nestPreset",
+				"title": "%command.nestPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleNestPresetCommand"
+			},
+			{
+				"command": "vscode-icons.jsPreset",
+				"title": "%command.jsPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleJsPresetCommand"
+			},
+			{
+				"command": "vscode-icons.tsPreset",
+				"title": "%command.tsPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleTsPresetCommand"
+			},
+			{
+				"command": "vscode-icons.jsonPreset",
+				"title": "%command.jsonPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleJsonPresetCommand"
+			},
+			{
+				"command": "vscode-icons.hideFoldersPreset",
+				"title": "%command.hideFoldersPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleHideFoldersPresetCommand"
+			},
+			{
+				"command": "vscode-icons.foldersAllDefaultIconPreset",
+				"title": "%command.foldersAllDefaultIconPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleFoldersAllDefaultIconPresetCommand"
+			},
+			{
+				"command": "vscode-icons.hideExplorerArrowsPreset",
+				"title": "%command.hideExplorerArrowsPreset.title%",
+				"category": "Icons",
+				"callbackName": "toggleHideExplorerArrowsPresetCommand"
+			},
+			{
+				"command": "vscode-icons.restoreIcons",
+				"title": "%command.restoreIcons.title%",
+				"category": "Icons",
+				"callbackName": "restoreDefaultManifestCommand"
+			},
+			{
+				"command": "vscode-icons.resetProjectDetectionDefaults",
+				"title": "%command.resetProjectDetectionDefaults.title%",
+				"category": "Icons",
+				"callbackName": "resetProjectDetectionDefaultsCommand"
+			}
+		],
+		"configuration": {
+			"title": "%configuration.title%",
+			"properties": {
+				"vsicons.dontShowNewVersionMessage": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.dontShowNewVersionMessage.description%"
+				},
+				"vsicons.dontShowConfigManuallyChangedMessage": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.dontShowConfigManuallyChangedMessage.description%"
+				},
+				"vsicons.projectDetection.autoReload": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.projectDetection.autoReload.description%"
+				},
+				"vsicons.projectDetection.disableDetect": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.projectDetection.disableDetect.description%"
+				},
+				"vsicons.presets.angular": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.angular.description%"
+				},
+				"vsicons.presets.nestjs": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.nestjs.description%"
+				},
+				"vsicons.presets.jsOfficial": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.jsOfficial.description%"
+				},
+				"vsicons.presets.tsOfficial": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.tsOfficial.description%"
+				},
+				"vsicons.presets.jsonOfficial": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.jsonOfficial.description%"
+				},
+				"vsicons.presets.hideFolders": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.hideFolders.description%"
+				},
+				"vsicons.presets.foldersAllDefaultIcon": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.foldersAllDefaultIcon.description%"
+				},
+				"vsicons.presets.hideExplorerArrows": {
+					"type": "boolean",
+					"default": false,
+					"description": "%configuration.presets.hideExplorerArrows.description%"
+				},
+				"vsicons.customIconFolderPath": {
+					"type": "string",
+					"default": "",
+					"description": "%configuration.customIconFolderPath.description%"
+				},
+				"vsicons.associations.files": {
+					"type": "array",
+					"default": [],
+					"description": "%configuration.associations.files.description%"
+				},
+				"vsicons.associations.folders": {
+					"type": "array",
+					"default": [],
+					"description": "%configuration.associations.folders.description%"
+				},
+				"vsicons.associations.fileDefault.file": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.fileDefault.file.description%"
+				},
+				"vsicons.associations.fileDefault.file_light": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.fileDefault.file_light.description%"
+				},
+				"vsicons.associations.folderDefault.folder": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.folderDefault.folder.description%"
+				},
+				"vsicons.associations.folderDefault.root_folder": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.folderDefault.root_folder.description%"
+				},
+				"vsicons.associations.folderDefault.folder_light": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.folderDefault.folder_light.description%"
+				},
+				"vsicons.associations.folderDefault.root_folder_light": {
+					"type": "object",
+					"default": null,
+					"description": "%configuration.associations.folderDefault.root_folder_light.description%"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"format": "prettier --loglevel error --write \"{src,test}/**/*.ts\"",
+		"postformat": "npm run lint -- --fix",
+		"preinstall": "git submodule update --init --recursive",
+		"prebundle:dev": "rimraf ./*.nls*.json",
+		"bundle:dev": "node ./out/src/tools/bundle.js",
+		"bundle": "npm run bundle:dev -- --release",
+		"prebuild": "npm run compile",
+		"build": "node ./out/src/tools/build.js \"--release\"",
+		"prebuild:dev": "npm run lint && npm run compile:dev",
+		"build:dev": "node ./out/src/tools/build.js",
+		"pretest": "rimraf ./.nyc_output ./coverage && npm run prebuild:dev",
+		"test": "nyc mocha",
+		"posttest": "nyc report -r lcov",
+		"test:vs": "node ./node_modules/vscode/bin/test",
+		"vscode:prepublish": "npm run dist",
+		"vscode:uninstall": "node ./out/src/uninstall.js",
+		"precompile": "rimraf ./out ./dist",
+		"compile": "tsc -p tsconfig.prod.json",
+		"postcompile": "npm run bundle",
+		"compile:w": "npm run compile:dev -- -w",
+		"precompile:dev": "npm run precompile",
+		"compile:dev": "tsc",
+		"postcompile:dev": "npm run bundle:dev",
+		"lint-staged": "lint-staged",
+		"lint": "tslint -p .",
+		"predist": "npm run build",
+		"dist": "webpack --hide-modules --mode production",
+		"postdist": "nsri create -s .",
+		"example": "example"
+	},
+	"devDependencies": {
+		"@types/chai": "^4.2.2",
+		"@types/glob": "^7.1.1",
+		"@types/lodash": "^4.14.138",
+		"@types/mocha": "^5.2.7",
+		"@types/node": "8",
+		"@types/open": "^6.2.1",
+		"@types/proxyquire": "^1.3.28",
+		"@types/semver": "^6.0.2",
+		"@types/sinon": "^7.0.13",
+		"@types/vscode": "1.26",
+		"@types/webpack": "^4.41.0",
+		"chai": "^4.2.0",
+		"examples-generator": "file:submodules/examples-generator",
+		"glob": "^7.1.4",
+		"husky": "^3.0.5",
+		"lint-staged": "^9.2.5",
+		"mocha": "^6.2.0",
+		"nyc": "^14.1.1",
+		"prettier": "^1.18.2",
+		"proxyquire": "^2.1.3",
+		"rimraf": "^3.0.0",
+		"sinon": "^7.4.2",
+		"ts-node": "^8.5.4",
+		"tslint": "^5.20.0",
+		"tslint-config-prettier": "^1.18.0",
+		"typescript": "^3.6.3",
+		"webpack": "^4.39.3",
+		"webpack-cli": "^3.3.8"
+	},
+	"dependencies": {
+		"inversify": "^5.0.1",
+		"lodash": "^4.17.15",
+		"open": "^6.4.0",
+		"nsri": "^4.5.1",
+		"reflect-metadata": "^0.1.13",
+		"semver": "^6.3.0"
+	},
+	"__metadata": {
+		"id": "9ccc1dd7-7ec4-4a46-bd4f-7d7b8b9d322a",
+		"publisherId": "652ad61d-3a6a-48ca-ab1a-80dc8953b2b6",
+		"publisherDisplayName": "VSCode Icons Team"
+	}
+}

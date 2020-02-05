@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Version Name="Windows.Web.dll" />
+  <Type Name="JsonValueImpl">
+      <DisplayString Condition="valueType == JsonValueType_Number">{doubleValue}</DisplayString>
+      <DisplayString Condition="valueType == JsonValueType_Boolean">{booleanValue != 0}</DisplayString>
+      <DisplayString Condition="valueType == JsonValueType_String">{stringValue}</DisplayString>
+      <DisplayString Condition="valueType == JsonValueType_Null">null</DisplayString>
+      <DisplayString Condition="valueType == JsonValueType_Array">{((JsonArrayImpl*)arrayValue.ptr_)->valueArray}</DisplayString>
+      <DisplayString Condition="valueType == JsonValueType_Object">{((JsonObjectImpl*)objectValue.ptr_)->names}</DisplayString>
+      <StringView Condition="valueType == JsonValueType_String">stringValue</StringView>
+      <Expand>
+        <ExpandedItem>((JsonArrayImpl*)arrayValue.ptr_)->valueArray</ExpandedItem>
+        <ExpandedItem>((JsonObjectImpl*)objectValue.ptr_)->names</ExpandedItem>
+      </Expand>
+  </Type>
+  <Type Name="JsonArrayImpl">
+    <Expand>
+      <ExpandedItem>valueArray</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="JsonObjectImpl">
+    <DisplayString>{namedValues,na}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000">
+        <Variable Name="names" InitialValue="names.ptr_" />
+        <Variable Name="namedValues" InitialValue="&amp;namedValues.ptr_->_hashMap" />
+        <Variable Name="nameIndex" InitialValue="0"/>
+        <Variable Name="curName" InitialValue="(HSTRING__*)nullptr"/>
+        <Variable Name="curNamePtr" InitialValue="(const wchar_t*)nullptr" />
+        <Variable Name="curNameLen" InitialValue="0u" />
+        <Variable Name="nameHash" InitialValue="0u" />
+        <Variable Name="i" InitialValue="0u" />
+        <Variable Name="bucketIndex" InitialValue="0u"/>
+        <Variable Name="pBucket" InitialValue="namedValues->m_ppBins[0]"/>
+        <Variable Name="fFoundMatch" InitialValue="false" />
+        <Variable Name="keyBuf" InitialValue="(const wchar_t*)nullptr" />
+        <Variable Name="keyLen" InitialValue="0u" />
+
+        <Size>names->_uSize</Size>
+        <Skip Value="celt">
+          <Exec>nameIndex += celt</Exec>
+        </Skip>
+
+        <!-- Iterate through each name in the name list-->
+        <Loop Condition="nameIndex &lt; names->_uSize">
+          <Exec>curName = names->_paT[nameIndex]</Exec>
+
+          <!-- Compute the hash code of the key -->
+          <Exec>curNamePtr = const_cast&lt;wchar_t*&gt;(WindowsGetStringRawBuffer(curName, &amp;curNameLen))</Exec>
+          <Exec>i = 0, nameHash = 2166136261u</Exec>
+          <Loop Condition="i &lt; curNameLen * sizeof(wchar_t)">
+            <Exec>nameHash ^= ((char*)curNamePtr)[i]</Exec>
+            <Exec>nameHash = nameHash * 16777619u</Exec>
+            <Exec>i++</Exec>
+          </Loop>
+
+          <!-- Convert the hash code into a bucket index-->
+          <Exec>bucketIndex = nameHash % namedValues->m_nBins</Exec>
+
+          <!-- Traverse each item in the bucket and look for a match-->
+          <Exec>pBucket = namedValues->m_ppBins[bucketIndex]</Exec>
+          <Exec>fFoundMatch = false</Exec>
+
+          <Loop Condition="pBucket != nullptr">
+            <Exec>keyBuf = WindowsGetStringRawBuffer((HSTRING)pBucket->m_key, &amp;keyLen)</Exec>            
+            <If Condition="(keyLen == curNameLen) &amp;&amp; !memcmp(keyBuf, curNamePtr, keyLen * sizeof(wchar_t))">
+              <!-- Found a match-->
+              <Item Name="{pBucket->m_key,shb}">pBucket->m_value</Item>
+              <Exec>fFoundMatch = true</Exec>
+              <Break />
+            </If>
+            <Exec>pBucket = pBucket->m_pNext</Exec>
+          </Loop>
+          <Item Condition="!fFoundMatch" Name="{curName}">"Unable to locate value",sb</Item>
+          <Exec>nameIndex++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>

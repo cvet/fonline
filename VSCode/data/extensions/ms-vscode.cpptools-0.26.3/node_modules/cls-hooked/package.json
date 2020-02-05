@@ -1,0 +1,52 @@
+{
+  "name": "cls-hooked",
+  "version": "4.2.2",
+  "description": "CLS using AsynWrap instead of async-listener - Node >= 4.7.0",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "context.js",
+    "context-legacy.js"
+  ],
+  "scripts": {
+    "test": "mocha test/*.js & tap test/tap/*.tap.js",
+    "test-mocha": "mocha test/*.js",
+    "test-tap": "tap test/tap/*.tap.js",
+    "debug": "node --nolazy --debug-brk=5858 "
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeff-lewis/cls-hooked.git"
+  },
+  "keywords": [
+    "threading",
+    "shared",
+    "context"
+  ],
+  "author": "Forrest L Norvell <ogd@aoaioxxysz.net>",
+  "contributors": [
+    "Tim Caswell <tim@creationix.com>",
+    "Forrest L Norvell <ogd@aoaioxxysz.net>",
+    "Jeff Lewis <jlewis@streetconnect.com>"
+  ],
+  "license": "BSD-2-Clause",
+  "engineStrict": false,
+  "engines": {
+    "node": "^4.7 || >=6.9 || >=7.3 || >=8.2.1"
+  },
+  "dependencies": {
+    "async-hook-jl": "^1.7.6",
+    "emitter-listener": "^1.0.1",
+    "semver": "^5.4.1"
+  },
+  "devDependencies": {
+    "chai": "^4.1.0",
+    "mocha": "^3.4.2",
+    "sinon": "^2.3.8",
+    "sinon-chai": "^2.12.0",
+    "superagent": "^3.5.2",
+    "tap": "^10.7.0",
+    "tap-mocha-reporter": "3.0.6"
+  },
+  "false": {}
+}

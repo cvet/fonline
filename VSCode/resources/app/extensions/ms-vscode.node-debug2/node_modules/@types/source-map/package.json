@@ -1,0 +1,50 @@
+{
+  "_from": "@types/source-map@^0.1.27",
+  "_id": "@types/source-map@0.1.29",
+  "_inBundle": false,
+  "_integrity": "sha1-1wSKYBgLCfiqbVO9oxHGtRy9cBg=",
+  "_location": "/@types/source-map",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "@types/source-map@^0.1.27",
+    "name": "@types/source-map",
+    "escapedName": "@types%2fsource-map",
+    "scope": "@types",
+    "rawSpec": "^0.1.27",
+    "saveSpec": null,
+    "fetchSpec": "^0.1.27"
+  },
+  "_requiredBy": [
+    "/vscode-chrome-debug-core"
+  ],
+  "_resolved": "https://registry.npmjs.org/@types/source-map/-/source-map-0.1.29.tgz",
+  "_shasum": "d7048a60180b09f8aa6d53bda311c6b51cbd7018",
+  "_spec": "@types/source-map@^0.1.27",
+  "_where": "/Users/roblou/code/vscode-node-debug2/node_modules/vscode-chrome-debug-core",
+  "author": {
+    "name": "Morten Houston Ludvigsen",
+    "email": "https://github.com/MortenHoustonLudvigsen"
+  },
+  "bugs": {
+    "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {},
+  "deprecated": false,
+  "description": "TypeScript definitions for source-map v0.1.38",
+  "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped#readme",
+  "license": "MIT",
+  "main": "",
+  "name": "@types/source-map",
+  "peerDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DefinitelyTyped/DefinitelyTyped.git"
+  },
+  "scripts": {},
+  "typesPublisherContentHash": "1a54d4ba10a3288dfdbabd10f9fb6463d11b8f629ea60f571bf12d20c4524a4f",
+  "typings": "index.d.ts",
+  "version": "0.1.29"
+}

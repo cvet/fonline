@@ -1,0 +1,23 @@
+{
+	"messages": [
+		"Architecture {0} is not supported. ",
+		"Alpine containers are not supported.",
+		"The installation of the C/C++ extension failed. Please see the output window for more information.",
+		"Updating C/C++ dependencies...",
+		"ERROR: fs.rename failed with \"{0}\". Delete {1} manually to enable debugging.",
+		"Failed at stage: {0}",
+		"If you work in an offline environment or repeatedly see this error, try downloading a version of the extension with all the dependencies pre-included from https://github.com/Microsoft/vscode-cpptools/releases, then use the \"Install from VSIX\" command in VS Code to install it.",
+		"Finished installing dependencies"
+	],
+	"keys": [
+		"architecture.not.supported",
+		"apline.containers.not.supported",
+		"initialization.failed",
+		"updating.dependencies",
+		"rename.failed.delete.manually",
+		"failed.at.stage",
+		"failed.at.stage2",
+		"finished.installing.dependencies"
+	],
+	"filePath": "src\\main"
+}

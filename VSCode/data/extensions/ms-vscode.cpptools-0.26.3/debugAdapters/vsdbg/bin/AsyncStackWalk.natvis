@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <!--Alternate entry for std::shared_ptr whose expansion just expands the underlying pointer (which in our case, will be visualized by another natvis entry).  
+      For the purposes of async stack walking, this is all we need.  The default entry in STL.natvis contains other stuff we don't want.-->
+  <Type Name="std::shared_ptr&lt;*&gt;">
+    <AlternativeType Name="std::tr1::shared_ptr&lt;*&gt;" />
+    <Expand>
+      <ExpandedItem Condition="_Ptr != 0">_Ptr</ExpandedItem>
+    </Expand>
+  </Type>
+  
+  <!--This visualizes the portion of _Task_impl_base we need for async stackwalking.  We include two versions to maintain compability with multiple versions of ppltasks.h-->
+  <Type Name="Concurrency::details::_Task_impl_base">
+    <Expand>
+      <Item Name="[Task Creation]">_M_pTaskCreationCallstack</Item>
+      <Synthetic Name="[Continuations]" Expression="_M_Continuations">
+        <Expand>
+          <LinkedListItems>
+            <HeadPointer>_M_Continuations</HeadPointer>
+            <NextPointer>_M_next</NextPointer>
+            <ValueNode>*this</ValueNode>
+          </LinkedListItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::details::_TaskCreationCallstack">
+    <Expand>
+      <!-- Single-frame case, used in retail builds-->
+      <Item Condition="_M_frames._Mypair._Myval2._Mylast - _M_frames._Mypair._Myval2._Myfirst &lt;= 1" Name="[0]">_M_SingleFrame</Item>
+
+      <!-- Multi-frame case, used in debug builds -->
+      <ExpandedItem Condition="_M_frames._Mypair._Myval2._Mylast - _M_frames._Mypair._Myval2._Myfirst >= 2">_M_frames</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- Alternate visualization of std::vector that strips out the size, capacity, and display string and just expands the elements.  Used to show _M_frames. -->
+  <Type Name="std::vector&lt;*&gt;">
+    <Expand>
+      <ArrayItems>
+        <Size>_Mypair._Myval2._Mylast - _Mypair._Myval2._Myfirst</Size>
+        <ValuePointer>_Mypair._Myval2._Myfirst</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!-- _ContinuationTaskHandle uses std::function by default, but a #define switch exists to turn this behavior off in performance-critical code.
+       This visualization kicks in if the use of std::function is disabled.
+  -->
+  <Type Name="Concurrency::task&lt;*&gt;::_ContinuationTaskHandle&lt;*&gt;">
+    <AlternativeType Name="Concurrency::task&lt;*&gt;::_InitialTaskHandle&lt;*&gt;"/>
+    <Expand>
+      <Item Name="[Parent Task]">_M_pTask</Item>
+      <Item Name="[Function]">_M_function</Item>
+    </Expand>
+  </Type>
+
+  <!-- This is the normal visualization for _ContinuationTaskHandle.-->
+  <Type Name="Concurrency::task&lt;*&gt;::_ContinuationTaskHandle&lt;*,*,std::function&lt;*&gt;,* &gt;">
+    <AlternativeType Name="Concurrency::task&lt;*&gt;::_InitialTaskHandle&lt;*,*,std::function&lt;*&gt;,* &gt;"/>
+    <Expand>
+      <Item Name="[Parent Task]">_M_pTask</Item>
+      <ExpandedItem>_M_function</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="std::function&lt;*&gt;">
+    <Expand>
+      <ExpandedItem Condition="_Mystorage._Ptrs[_EEN_IMPL] != 0">*_Mystorage._Ptrs[_EEN_IMPL]</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="std::_Func_impl&lt;*&gt;">
+    <Expand>
+      <Item Name="[Function]">_Mypair._Myval2</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="std::_Func_impl_no_alloc&lt;*&gt;">
+    <Expand>
+      <Item Name="[functor]">_Callee</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::details::_Task_impl_base::_AsyncInit::&lt;lambda&gt;">
+    <Expand>
+      <Item Name="[Outer Task]">_OuterTask</Item>
+    </Expand>
+  </Type>
+
+
+  <!-- These two entries are needed only for backcompat if we are debugging against the Dev12 STL. -->
+  <Type Name="std::vector&lt;*&gt;" Priority="Low">
+    <Expand>
+      <ArrayItems>
+        <Size>_Mylast - _Myfirst</Size>
+        <ValuePointer>_Myfirst</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::details::_TaskCreationCallstack" Priority="Low">
+    <Expand>
+      <!-- Single-frame case, used in retail builds-->
+      <Item Condition="_M_SingleFrame != nullptr" Name="[0]">_M_SingleFrame</Item>
+
+      <!-- Multi-frame case, used in debug builds -->
+      <ExpandedItem Condition="_M_SingleFrame == nullptr">_M_frames</ExpandedItem>
+    </Expand>
+  </Type>
+
+
+</AutoVisualizer>

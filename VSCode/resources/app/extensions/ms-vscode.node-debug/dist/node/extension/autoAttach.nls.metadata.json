@@ -1,0 +1,9 @@
+{
+	"messages": [
+		"Auto attached ({0})"
+	],
+	"keys": [
+		"process.with.pid.label"
+	],
+	"filePath": "node/extension/autoAttach"
+}

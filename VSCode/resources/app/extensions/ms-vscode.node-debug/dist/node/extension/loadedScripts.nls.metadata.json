@@ -1,0 +1,11 @@
+{
+	"messages": [
+		"Select a script",
+		"No loaded scripts available"
+	],
+	"keys": [
+		"select.script",
+		"no.loaded.scripts"
+	],
+	"filePath": "node/extension/loadedScripts"
+}

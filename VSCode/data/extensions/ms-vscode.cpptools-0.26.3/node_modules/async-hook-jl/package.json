@@ -1,0 +1,33 @@
+{
+  "name": "async-hook-jl",
+  "description": "Inspect the life of handle objects in node",
+  "version": "1.7.6",
+  "author": "Andreas Madsen <amwebdk@gmail.com>",
+  "main": "./index.js",
+  "scripts": {
+    "test": "node ./test/runner.js && eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jeff-lewis/async-hook-jl.git"
+  },
+  "keywords": [
+    "async",
+    "async hooks",
+    "inspect",
+    "async wrap"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "stack-chain": "^1.3.7"
+  },
+  "devDependencies": {
+    "async": "1.5.x",
+    "cli-color": "1.1.x",
+    "eslint": "^3.4.0",
+    "endpoint": "0.4.x"
+  },
+  "engines": {
+    "node": "^4.7 || >=6.9 || >=7.3"
+  }
+}

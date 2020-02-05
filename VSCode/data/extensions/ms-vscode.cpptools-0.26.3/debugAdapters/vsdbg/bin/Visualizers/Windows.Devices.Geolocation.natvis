@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <LocalizedStrings>
+    <LocalizedString Id="1001">unspecified</LocalizedString>
+  </LocalizedStrings>
+  <Type Name="Windows::Devices::Geolocation::CGeolocatorImpl">
+    <DisplayString Condition="m_reportInterval != 0">{{DesiredAccuracy={m_accuracy} MovementThreshold={m_movementThreshold} ReportInterval={m_reportInterval}}}</DisplayString>
+    <DisplayString>{{DesiredAccuracy={m_accuracy} MovementThreshold={m_movementThreshold} ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Item Name="DesiredAccuracy">m_accuracy</Item>
+      <Item Name="MovementThreshold">m_movementThreshold</Item>
+      <Item Condition="m_reportInterval != 0" Name="ReportInterval">m_reportInterval</Item>
+      <Synthetic Condition="m_reportInterval == 0" Name="ReportInterval">
+        <DisplayString>&lt;@1001;&gt;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="Windows::Devices::Geolocation::CGeopositionImpl">
+    <Expand>
+      <Item Condition="m_fLatitudeNotNULL" Name="Latitude">m_latitude</Item>
+      <Synthetic Condition="!m_fLatitudeNotNULL" Name="Latitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fLongitudeNotNULL" Name="Longitude">m_longitude</Item>
+      <Synthetic Condition="!m_fLongitudeNotNULL" Name="Longitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAccuracyNotNULL" Name="Accuracy">m_accuracy</Item>
+      <Synthetic Condition="!m_fAccuracyNotNULL" Name="Accuracy">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAltitudeNotNULL" Name="Altitude">m_altitude</Item>
+      <Synthetic Condition="!m_fAltitudeNotNULL" Name="Altitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAltitudeAccuracyNotNULL" Name="AltitudeAccuracy">m_altitudeAccuracy</Item>
+      <Synthetic Condition="!m_fAltitudeAccuracyNotNULL" Name="AltitudeAccuracy">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fHeadingNotNULL" Name="Heading">m_heading</Item>
+      <Synthetic Condition="!m_fHeadingNotNULL" Name="Heading">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fSpeedNotNULL" Name="Speed">m_speed</Item>
+      <Synthetic Condition="!m_fSpeedNotNULL" Name="Speed">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fCountryNotNULL" Name="Country">m_country</Item>
+      <Synthetic Condition="!m_fCountryNotNULL" Name="Country">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fStateNotNULL" Name="State">m_state</Item>
+      <Synthetic Condition="!m_fStateNotNULL" Name="State">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fCityNotNULL" Name="City">m_city</Item>
+      <Synthetic Condition="!m_fCityNotNULL" Name="City">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fPostalCodeNotNULL" Name="PostalCode">m_postalCode</Item>
+      <Synthetic Condition="!m_fPostalCodeNotNULL" Name="PostalCode">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="Windows::Devices::Geolocation::CCoordinateImpl">
+    <Expand>
+      <Item Condition="m_fLatitudeNotNULL" Name="Latitude">m_latitude</Item>
+      <Synthetic Condition="!m_fLatitudeNotNULL" Name="Latitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fLongitudeNotNULL" Name="Longitude">m_longitude</Item>
+      <Synthetic Condition="!m_fLongitudeNotNULL" Name="Longitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAccuracyNotNULL" Name="Accuracy">m_accuracy</Item>
+      <Synthetic Condition="!m_fAccuracyNotNULL" Name="Accuracy">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAltitudeNotNULL" Name="Altitude">m_altitude</Item>
+      <Synthetic Condition="!m_fAltitudeNotNULL" Name="Altitude">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fAltitudeAccuracyNotNULL" Name="AltitudeAccuracy">m_altitudeAccuracy</Item>
+      <Synthetic Condition="!m_fAltitudeAccuracyNotNULL" Name="AltitudeAccuracy">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fHeadingNotNULL" Name="Heading">m_heading</Item>
+      <Synthetic Condition="!m_fHeadingNotNULL" Name="Heading">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fSpeedNotNULL" Name="Speed">m_speed</Item>
+      <Synthetic Condition="!m_fSpeedNotNULL" Name="Speed">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="Windows::Devices::Geolocation::CCivicAddressImpl">
+    <Expand>
+      <Item Condition="m_fCountryNotNULL" Name="Country">m_country</Item>
+      <Synthetic Condition="!m_fCountryNotNULL" Name="Country">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fStateNotNULL" Name="State">m_state</Item>
+      <Synthetic Condition="!m_fStateNotNULL" Name="State">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fCityNotNULL" Name="City">m_city</Item>
+      <Synthetic Condition="!m_fCityNotNULL" Name="City">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+      <Item Condition="m_fPostalCodeNotNULL" Name="PostalCode">m_postalCode</Item>
+      <Synthetic Condition="!m_fPostalCodeNotNULL" Name="PostalCode">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+</AutoVisualizer>

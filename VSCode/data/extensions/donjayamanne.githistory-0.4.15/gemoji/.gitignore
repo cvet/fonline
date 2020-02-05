@@ -1,0 +1,9 @@
+/bin/*
+!/bin/gemoji
+.bundle
+.ruby-version
+Gemfile.lock
+db/emoji-test.txt
+db/ucd.nounihan.grouped.xml
+images/unicode/*.png
+vendor/

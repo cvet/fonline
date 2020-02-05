@@ -1,0 +1,54 @@
+{
+  "_from": "vscode-debugprotocol@latest",
+  "_id": "vscode-debugprotocol@1.37.0",
+  "_inBundle": false,
+  "_integrity": "sha512-ppZLEBbFRVNsK0YpfgFi/x2CDyihx0F+UpdKmgeJcvi05UgSXYdO0n9sDVYwoGvvYQPvlpDQeWuY0nloOC4mPA==",
+  "_location": "/vscode-debugprotocol",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "vscode-debugprotocol@latest",
+    "name": "vscode-debugprotocol",
+    "escapedName": "vscode-debugprotocol",
+    "rawSpec": "latest",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#DEV:/",
+    "#USER",
+    "/vscode-debugadapter"
+  ],
+  "_resolved": "https://registry.npmjs.org/vscode-debugprotocol/-/vscode-debugprotocol-1.37.0.tgz",
+  "_shasum": "e8c4694a078d18ea1a639553a7a241b35c1e6f6d",
+  "_spec": "vscode-debugprotocol@latest",
+  "_where": "/Users/roblou/code/vscode-node-debug2",
+  "author": {
+    "name": "Microsoft Corporation"
+  },
+  "bugs": {
+    "url": "https://github.com/Microsoft/vscode-debugadapter-node/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Npm module with declarations for the Visual Studio Code debug protocol",
+  "devDependencies": {
+    "typescript": "3.5.2"
+  },
+  "homepage": "https://github.com/Microsoft/vscode-debugadapter-node#readme",
+  "license": "MIT",
+  "main": "./lib/debugProtocol.js",
+  "name": "vscode-debugprotocol",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Microsoft/vscode-debugadapter-node.git"
+  },
+  "scripts": {
+    "compile": "tsc -p ./src",
+    "prepublish": "tsc -p ./src",
+    "watch": "tsc -w -p ./src"
+  },
+  "typings": "./lib/debugProtocol",
+  "version": "1.37.0"
+}

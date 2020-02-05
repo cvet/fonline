@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <!--from afxwin.h -->
+  <Type Name="CDC">
+    <DisplayString>{{hDC={m_hDC} attrib={m_hAttribDC}}}</DisplayString>
+  </Type>
+  <Type Name="CPaintDC">
+    <AlternativeType Name="CWnd"></AlternativeType>
+    <DisplayString>{{hWnd={m_hWnd}}}</DisplayString>
+  </Type>
+  <Type Name="CSize">
+    <DisplayString>{{cx={cx} cy={cy}}}</DisplayString>
+  </Type>
+  <Type Name="CWinApp">
+    <DisplayString>{{{m_pszAppName,s}}}</DisplayString>
+  </Type>
+  <Type Name="CWinThread">
+    <DisplayString>{{h={m_hThread} proc={m_pfnThreadProc}}}</DisplayString>
+  </Type>
+
+  <!--from afxcoll.h -->
+  <Type Name="CPtrList">
+    <DisplayString>{{cnt={m_nCount}}}</DisplayString>
+  </Type>
+
+  <!--from afx.h -->
+  <Type Name="CArchiveException">
+    <DisplayString>{{cause={m_cause}}}</DisplayString>
+  </Type>
+  <Type Name="CFile">
+    <DisplayString>{{hFile={m_hFile} name={m_strFileName}}}</DisplayString>
+  </Type>
+  <Type Name="CFileException">
+    <DisplayString>{{cause={m_cause} OS Error={m_lOsError}}}</DisplayString>
+  </Type>
+  <Type Name="CMemFile">
+    <DisplayString>{{pos={m_nPosition} size = {m_nFileSize}}}</DisplayString>
+  </Type>
+  <Type Name="CRuntimeClass">
+    <DisplayString>{{{m_lpszClassName,s}}}</DisplayString>
+  </Type>
+  <Type Name="CTimeSpan">
+    <AlternativeType Name="CTime"></AlternativeType>
+    <DisplayString>{{time={m_time}}}</DisplayString>
+  </Type>
+
+  <!--from afxcoll.h -->
+  <Type Name="CByteArray">
+    <DisplayString>{{Count = {m_nSize}}}</DisplayString>    
+  </Type>
+
+  <Type Name="CStringList">
+    <DisplayString>{{Count = {m_nCount}}}</DisplayString>
+  </Type>
+
+  <!--various string classes from MFC & ATL -->
+  <Type Name="_com_error">
+    <DisplayString>{{{m_hresult,hr}}}</DisplayString>
+  </Type>
+  <Type Name="_bstr_t">
+    <DisplayString>{{{m_Data-&gt;m_wstr,su} ({m_Data-&gt;m_RefCount})}}</DisplayString>
+  </Type>
+  <Type Name="_com_ptr_t&lt;*&gt;">
+    <DisplayString>{{{m_pInterface}}}</DisplayString>
+  </Type>
+  <Type Name="_LARGE_INTEGER">
+    <AlternativeType Name="_ULARGE_INTEGER"></AlternativeType>
+    <DisplayString>{{{QuadPart}}}</DisplayString>
+  </Type>
+  
+  <!--This section contains visualizers for STL and ATL containers-->
+  <Type Name="ATL::CComPtr&lt;*&gt;">
+    <!-- CComQIPtr included automatically because it derives from CComPtr -->
+    <SmartPointer Usage="Full">p</SmartPointer>
+  </Type>
+
+  <Type Name="ATL::CAutoPtr&lt;*&gt;">
+    <SmartPointer Usage="Full">m_p</SmartPointer>
+  </Type>
+  <Type Name="ATL::CAutoVectorPtr&lt;*&gt;">
+    <Expand>
+      <ExpandedItem>m_p,hv</ExpandedItem>
+    </Expand>
+  </Type>
+
+
+  <Type Name="ATL::CStringT&lt;char,*&gt;">
+    <AlternativeType Name="CSimpleStringT&lt;char,*&gt;"></AlternativeType>
+    <AlternativeType Name="ATL::CSimpleStringT&lt;char,*&gt;"></AlternativeType>
+    <SmartPointer Usage="Full" DefaultExpansion="false">m_pszData,na</SmartPointer>
+  </Type>
+
+  <Type Name="ATL::CStringT&lt;wchar_t,*&gt;">
+    <AlternativeType Name="CSimpleStringT&lt;wchar_t,*&gt;"></AlternativeType>
+    <AlternativeType Name="ATL::CSimpleStringT&lt;wchar_t,*&gt;"></AlternativeType>
+    <AlternativeType Name="ATL::CStringT&lt;unsigned short,*&gt;"></AlternativeType>
+    <AlternativeType Name="CSimpleStringT&lt;unsigned short,*&gt;"></AlternativeType>
+    <AlternativeType Name="ATL::CSimpleStringT&lt;unsigned short,*&gt;"></AlternativeType>
+    <SmartPointer Usage="Full" DefaultExpansion="false">m_pszData,su</SmartPointer>
+  </Type>
+
+  <Type Name="ATL::CComBSTR">
+    <SmartPointer Usage="Full">m_str,bstr</SmartPointer>
+  </Type>
+  <Type Name="ATL::CAtlArray&lt;*&gt;">
+    <AlternativeType Name="ATL::CInterfaceArray&lt;*&gt;"/>
+    <AlternativeType Name="ATL::CAutoPtrArray&lt;*&gt;"/>
+    <AlternativeType Name="ATL::CHeapPtrArray&lt;*&gt;"/>
+    <DisplayString>{{Count = {m_nSize}}}</DisplayString>
+    <Expand>
+      <Item Name="Count">m_nSize</Item>
+      <ArrayItems>
+        <Size>m_nSize</Size>
+        <ValuePointer>m_pData</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="ATL::CAtlList&lt;*,*&gt;">
+    <AlternativeType Name="ATL::CInterfaceList&lt;*,*&gt;"/>
+    <AlternativeType Name="ATL::CAutoPtrList&lt;*,*&gt;"/>
+    <AlternativeType Name="ATL::CHeapPtrList&lt;*,*&gt;"/>
+    <DisplayString>{{Count = {m_nElements}}}</DisplayString>
+    <Expand>
+      <Item Name="Count">m_nElements</Item>
+      <LinkedListItems>
+        <Size>m_nElements</Size>
+        <HeadPointer>m_pHead</HeadPointer>
+        <NextPointer>m_pNext</NextPointer>
+        <ValueNode>m_element</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+  <Type Name="ATL::CRBTree&lt;*,*,*,*&gt;">
+    <AlternativeType Name="ATL::CRBMap&lt;*,*,*,*&gt;"/>
+    <AlternativeType Name="ATL::CRBMultiMap&lt;*,*,*,*&gt;"/>
+    <DisplayString>{{Count = {m_nCount}}}</DisplayString>
+    <Expand>
+      <Item Name="Count">m_nCount</Item>
+      <TreeItems>
+        <Size>m_nCount</Size>
+        <HeadPointer>m_pRoot</HeadPointer>
+        <LeftPointer>m_pLeft</LeftPointer>
+        <RightPointer>m_pRight</RightPointer>
+        <ValueNode Condition="this != m_pLeft">*(CPair*)this</ValueNode>
+      </TreeItems>
+    </Expand>
+  </Type>
+  <Type Name="ATL::CAtlMap&lt;*,*,*,*&gt;">
+    <AlternativeType Name="ATL::CMapToInterface&lt;*,*,*&gt;"/>
+    <AlternativeType Name="ATL::CMapToAutoPtr&lt;*,*,*&gt;"/>
+    <DisplayString>{{Count = {m_nElements}}}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000" ExcludeView="Test">
+        <Variable Name="iBucket" InitialValue="-1" />
+        <Variable Name="pBucket" InitialValue="m_ppBins == nullptr ? nullptr : *m_ppBins" />
+        <Variable Name="iBucketIncrement" InitialValue="-1" />
+
+        <Size>m_nElements</Size>
+        <Exec>pBucket = nullptr</Exec>
+        <Loop>
+          <If Condition="pBucket == nullptr">
+            <Exec>iBucket++</Exec>
+            <Exec>iBucketIncrement = __findnonnull(m_ppBins + iBucket, m_nBins - iBucket)</Exec>
+            <Break Condition="iBucketIncrement == -1" />
+            <Exec>iBucket += iBucketIncrement</Exec>
+            <Exec>pBucket = m_ppBins[iBucket]</Exec>
+          </If>
+          <Item>pBucket,na</Item>
+          <Exec>pBucket = pBucket->m_pNext</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  <Type Name="ATL::CAtlMap&lt;*,*,*,*&gt;::CNode">
+    <DisplayString>({m_key}, {m_value})</DisplayString>
+    <Expand>
+      <Item Name="[Key]">m_key</Item>
+      <Item Name="[Value]">m_value</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

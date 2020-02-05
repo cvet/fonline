@@ -1,0 +1,49 @@
+{
+	"name": "markdown-preview-github-styles",
+	"version": "0.1.6",
+	"displayName": "Markdown Preview Github Styling",
+	"description": "Changes VS Code's built-in markdown preview to match Github's style",
+	"keywords": [
+		"markdown",
+		"markdown style",
+		"github",
+		"github markdown",
+		"multi-root ready"
+	],
+	"icon": "logo/logox128.png",
+	"publisher": "bierner",
+	"license": "MIT",
+	"repository": {
+		"url": "https://github.com/mjbvz/vscode-github-markdown-preview-style.git"
+	},
+	"bugs": {
+		"url": "https://github.com/mjbvz/vscode-github-markdown-preview-style/issues"
+	},
+	"engines": {
+		"vscode": "^1.15.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"contributes": {
+		"markdown.previewStyles": [
+			"./base.css",
+			"./github-markdown.css",
+			"./node_modules/highlight.js/styles/github.css"
+		]
+	},
+	"dependencies": {
+		"highlight.js": "^9.13.1"
+	},
+	"devDependencies": {
+		"github-markdown-css": "^2.10.0"
+	},
+	"scripts": {
+		"build": "node ./build/update-github-markdown-css.js"
+	},
+	"__metadata": {
+		"id": "5cbdf58a-694a-4aba-af08-61d00842eb03",
+		"publisherId": "f164f116-e2aa-496b-84dc-2451248e8beb",
+		"publisherDisplayName": "Matt Bierner"
+	}
+}

@@ -1,0 +1,86 @@
+{
+  "_from": "noice-json-rpc@^1.2.0",
+  "_id": "noice-json-rpc@1.2.0",
+  "_inBundle": false,
+  "_integrity": "sha512-Wm+otW+drKzdqlSPoSwj34tUEq/Xj1gX6Cr2avrykvTW4IY7d3ngLmP+PErALzS0s9nYRokXvYDM54sbFvLlDA==",
+  "_location": "/noice-json-rpc",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "noice-json-rpc@^1.2.0",
+    "name": "noice-json-rpc",
+    "escapedName": "noice-json-rpc",
+    "rawSpec": "^1.2.0",
+    "saveSpec": null,
+    "fetchSpec": "^1.2.0"
+  },
+  "_requiredBy": [
+    "/vscode-chrome-debug-core"
+  ],
+  "_resolved": "https://registry.npmjs.org/noice-json-rpc/-/noice-json-rpc-1.2.0.tgz",
+  "_shasum": "bbbb789fd6ebe1aa12969211d6910bf8d0e6646b",
+  "_spec": "noice-json-rpc@^1.2.0",
+  "_where": "/Users/roblou/code/vscode-node-debug2/node_modules/vscode-chrome-debug-core",
+  "author": {
+    "name": "nojvek"
+  },
+  "bugs": {
+    "url": "https://github.com/nojvek/noice-json-rpc/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Noice Json RPC exposes a clean ES6 Proxy and Promise based interface for JSON-RPC2 Clients and Servers",
+  "devDependencies": {
+    "@types/chai": "^3.4.34",
+    "@types/mocha": "^2.2.32",
+    "@types/node": "^6.0.43",
+    "@types/sinon": "^1.16.31",
+    "@types/ws": "^3.2.1",
+    "chai": "^3.5.0",
+    "chrome-remote-debug-protocol": "^1.0.1",
+    "coveralls": "^2.11.11",
+    "devtools-protocol": "0.0.555290",
+    "istanbul": "^0.4.5",
+    "mocha": "^2.5.3",
+    "sinon": "^1.17.4",
+    "tslint": "^3.15.1",
+    "typescript": "^2.0.3",
+    "ws": "^3.3.2"
+  },
+  "files": [
+    "lib"
+  ],
+  "homepage": "https://github.com/nojvek/noice-json-rpc#readme",
+  "keywords": [
+    "noice",
+    "json",
+    "rpc",
+    "rpc2",
+    "es6",
+    "proxy",
+    "promises",
+    "api",
+    "server",
+    "client"
+  ],
+  "license": "MIT",
+  "main": "lib/noice-json-rpc.js",
+  "name": "noice-json-rpc",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/nojvek/noice-json-rpc.git"
+  },
+  "scripts": {
+    "build": "tsc -p src",
+    "clean": "rm -rf lib && rm -rf test",
+    "coveralls": "cat coverage/lcov.info | node_modules/.bin/coveralls",
+    "example": "node out/example.js",
+    "mocha-debug": "mocha --debug-brk -R spec out/*.test.js",
+    "pretest": "tsc -p tests",
+    "test": "istanbul cover node_modules/.bin/_mocha -- -R spec out/*.test.js",
+    "tslint": "tslint -c tslint.json src/*.ts tests/*.ts"
+  },
+  "typings": "lib/noice-json-rpc.d.ts",
+  "version": "1.2.0"
+}

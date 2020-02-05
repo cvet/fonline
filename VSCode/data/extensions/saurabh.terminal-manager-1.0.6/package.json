@@ -1,0 +1,92 @@
+{
+	"name": "terminal-manager",
+	"displayName": "Terminal Manager",
+	"description": "Choose which terminal to use in single click and switch between multiple terminals. ",
+	"version": "1.0.6",
+	"publisher": "saurabh",
+	"author": {
+		"name": "saurabhdaware"
+	},
+	"icon": "resources/icon.png",
+	"engines": {
+		"vscode": "^1.34.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/saurabhdaware/vscode-terminal-manager.git"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/saurabhdaware/vscode-terminal-manager/blob/master/README.md",
+	"bugs": {
+		"url": "https://github.com/saurabhdaware/vscode-terminal-manager/issues",
+		"email": "saurabhdaware99@gmail.com"
+	},
+	"keywords": [
+		"Terminal Manager",
+		"Multiple Terminal",
+		"Switch Terminal",
+		"Ubuntu Terminal",
+		"Windows Terminal"
+	],
+	"activationEvents": [
+		"onView:terminal-manager"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "terminal-manager",
+					"title": "Terminal Manager",
+					"icon": "resources/terminal.png"
+				}
+			]
+		},
+		"views": {
+			"terminal-manager": [
+				{
+					"id": "terminal-manager",
+					"name": "Terminals"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "extension.editTerminals",
+				"title": "Edit Terminals",
+				"icon": {
+					"dark": "resources/edit.png",
+					"light": "resources/edit.png"
+				}
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "extension.editTerminals",
+					"when": "view == terminal-manager",
+					"group": "navigation"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"test": "node ./node_modules/vscode/bin/test"
+	},
+	"devDependencies": {
+		"typescript": "^3.3.1",
+		"vscode": "^1.1.28",
+		"eslint": "^5.13.0",
+		"@types/node": "^10.12.21",
+		"@types/mocha": "^2.2.42"
+	},
+	"__metadata": {
+		"id": "e52ea48a-fbda-4272-b7df-4c499723b515",
+		"publisherId": "ea1110db-89eb-4470-9ea9-596ca0c4301b",
+		"publisherDisplayName": "Saurabh Daware"
+	}
+}

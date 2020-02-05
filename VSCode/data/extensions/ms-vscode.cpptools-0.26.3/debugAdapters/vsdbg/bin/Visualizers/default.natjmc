@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NonUserCode xmlns="http://schemas.microsoft.com/vstudio/debugger/jmc/2013">
+  <!-- Windows-->
+  <Module Name="?:\Windows\System32\*" Company="Microsoft Corporation" />
+  <Module Name="?:\Windows\SysWOW64\*" Company="Microsoft Corporation" />
+  <Module Name="?:\Windows\WinSxs\*" Company="Microsoft Corporation" />
+  <Module Name="?:\Windows\AppPatch\*" Company="Microsoft Corporation"/>
+
+  <!-- Drivers-->
+  <Module Name="?:\Windows\System32\*" Company="NVIDIA Corporation" />
+  <Module Name="?:\Windows\SysWOW64\*" Company="NVIDIA Corporation" />
+  <Module Name="?:\Windows\WinSxs\*" Company="NVIDIA Corporation" />
+
+  <Module Name="?:\Windows\System32\*" Company="AMD Corporation" />
+  <Module Name="?:\Windows\SysWOW64\*" Company="AMD Corporation" />
+  <Module Name="?:\Windows\WinSxs\*" Company="AMD Corporation" />
+
+  <Module Name="?:\Windows\System32\*" Company="Intel Corporation" />
+  <Module Name="?:\Windows\SysWOW64\*" Company="Intel Corporation" />
+  <Module Name="?:\Windows\WinSxs\*" Company="Intel Corporation" />
+
+  <!-- For UWPs, these dll's do not have a company attribute, so call them out specifically-->
+  <Module Name="?:\Windows\System32\CoreUIComponents.dll" />
+  <Module Name="?:\Windows\SysWOW64\CoreUIComponents.dll" />
+
+  <!-- On phone, these dll's do not have a company attribute, so call them out specifically-->
+  <Module Name="?:\Windows\System32\CoreMessaging.dll" />
+  <Module Name="?:\Windows\System32\minuser.dll" />
+
+  <!-- CRT-->
+  <Module Name="msvcr*.dll" />
+  <Module Name="msvcp*.dll" />
+  <Module Name="vccorlib*.dll" />
+  <Module Name="vcruntime*.dll" />
+  <Module Name="ucrtbase*.dll" />
+  <Module Name="ConcRT*.dll" />
+  <File Name="*\vctools\crt\* "/>
+
+  <!-- CLR -->
+  <Module Name="?:\Windows\Microsoft.NET\*" Company="Microsoft Corporation" />
+  <Module Name="*\NativeImages*\*" />
+  <Module Name="mrt100*.dll" Company="Microsoft Corporation" />
+
+  <!-- Standard C++ header files-->
+  <File Name="*\VC\include\*" />
+  <File Name="*\VC\Tools\*\include\*" />
+  <File Name="*\VC\atlmfc\*" />
+  <File Name="*\VC\Tools\*\atlmfc\*" />
+
+  <!-- Windows SDK header files-->
+  <File Name="*\Windows Kits\*\include\*" />
+
+  <!-- Generated files-->
+  <File Name="*.g.h" />
+  <File Name="*.g.cpp" />
+  <File Name="*.g.hpp" />
+
+  <!-- CRT Exception implementation-->
+  <Function Name="__abi_ThrowIfFailed" ExceptionImplementation="true" />
+  <Function Name="__abi_WinRTraiseAccessDeniedException" ExceptionImplementation="true" />
+  <Function Name="__abi_WinRTraiseException" ExceptionImplementation="true" />
+  <Function Name="_CxxThrowException" ExceptionImplementation="true" />
+  <Function Name="RaiseException" Module="kernelbase.dll" ExceptionImplementation="true" />
+  <Function Name="RaiseException" Module="kernel32.dll" ExceptionImplementation="true" />
+  <Function Name="_RaiseException@16" Module="kernelbase.dll" ExceptionImplementation="true" />
+  <Function Name="_RaiseException@16" Module="kernel32.dll" ExceptionImplementation="true" />
+</NonUserCode>

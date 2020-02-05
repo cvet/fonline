@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <LocalizedStrings>
+    <LocalizedString Id="1001">unknown</LocalizedString>
+    <LocalizedString Id="1002">Obtained on demand from the sensor</LocalizedString>
+    <LocalizedString Id="1003">Obtained on demand from the reading object</LocalizedString>
+    <LocalizedString Id="1004">not available</LocalizedString>
+  </LocalizedStrings>
+  <Type Name="Windows::Devices::Sensors::AccelerometerServer">
+    <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="MinimumReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="ReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::AccelerometerReadingServer">
+    <DisplayString>{{Timestamp={_timestamp} AccelerationX={_X} AccelerationY={_Y} AccelerationZ={_Z}}}</DisplayString>
+    <Expand>
+      <Item Name="Timestamp">_timestamp</Item>
+      <Item Name="AccelerationX">_X</Item>
+      <Item Name="AccelerationY">_Y</Item>
+      <Item Name="AccelerationZ">_Z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::AccelerometerReadingChangedEventArgsServer">
+    <DisplayString>{{Reading={_spAccelerometerReading.ptr_}}}</DisplayString>
+    <Expand>
+      <Item Name="Reading">_spAccelerometerReading.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::CompassServer">
+    <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="MinimumReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="ReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::CompassReadingServer">
+    <DisplayString Condition="_Capabilities &amp; HasHeadingTrueNorth">{{Timestamp={_timestamp} HeadingMagneticNorth={_HeadingMagneticNorth} HeadingTrueNorth={_HeadingTrueNorth}}}</DisplayString>
+    <DisplayString>{{Timestamp={_timestamp} HeadingMagneticNorth={_HeadingMagneticNorth} HeadingTrueNorth=&lt;null&gt;}}</DisplayString>
+    <Expand>
+      <Item Name="Timestamp">_timestamp</Item>
+      <Item Name="HeadingMagneticNorth">_HeadingMagneticNorth</Item>
+      <Item Condition="_Capabilities &amp; HasHeadingTrueNorth" Name="HeadingTrueNorth">_HeadingTrueNorth</Item>
+      <Synthetic Condition="!(_Capabilities &amp; HasHeadingTrueNorth)" Name="HeadingTrueNorth">
+        <DisplayString>&lt;null&gt;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::CompassReadingChangedEventArgsServer">
+    <DisplayString>{{Reading={_spCompassReading.ptr_}}}</DisplayString>
+    <Expand>
+      <Item Name="Reading">_spCompassReading.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::GyrometerServer">
+    <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="MinimumReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="ReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::GyrometerReadingServer">
+    <DisplayString>{{Timestamp={_timestamp} AngularVelocityX={_X} AngularVelocityY={_Y} AngularVelocityZ={_Z}}}</DisplayString>
+    <Expand>
+      <Item Name="Timestamp">_timestamp</Item>
+      <Item Name="AngularVelocityX">_X</Item>
+      <Item Name="AngularVelocityY">_Y</Item>
+      <Item Name="AngularVelocityZ">_Z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::GyrometerReadingChangedEventArgsServer">
+    <DisplayString>{{Reading={_spGyrometerReading.ptr_}}}</DisplayString>
+    <Expand>
+      <Item Name="Reading">_spGyrometerReading.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::InclinometerServer">
+    <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="MinimumReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="ReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::InclinometerReadingServer">
+    <DisplayString>{{Timestamp={_timestamp} PitchDegrees={_X} RollDegrees={_Y} YawDegrees={_Z}}}</DisplayString>
+    <Expand>
+      <Item Name="Timestamp">_timestamp</Item>
+      <Item Name="PitchDegrees">_X</Item>
+      <Item Name="RollDegrees">_Y</Item>
+      <Item Name="YawDegrees">_Z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::InclinometerReadingChangedEventArgsServer">
+    <DisplayString>{{Reading={_spInclinometerReading.ptr_}}}</DisplayString>
+    <Expand>
+      <Item Name="Reading">_spInclinometerReading.ptr_</Item>
+    </Expand>
+  </Type>
+
+    <Type Name="Windows::Devices::Sensors::LightSensorServer">
+        <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+        <Expand>
+            <Synthetic Name="MinimumReportInterval">
+                <DisplayString>@1002;</DisplayString>
+            </Synthetic>
+            <Synthetic Name="ReportInterval">
+                <DisplayString>@1002;</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+
+    <Type Name="Windows::Devices::Sensors::LightSensorReadingServer">
+        <DisplayString>{{Timestamp={_timestamp} IlluminanceInLux={_LUX}}}</DisplayString>
+        <Expand>
+            <Item Name="Timestamp">_timestamp</Item>
+            <Item Name="IlluminanceInLux">_LUX</Item>
+        </Expand>
+    </Type>
+
+    <Type Name="Windows::Devices::Sensors::LightSensorReadingChangedEventArgsServer">
+        <DisplayString>{{Reading={_spLightSensorReading.ptr_}}}</DisplayString>
+        <Expand>
+            <Item Name="Reading">_spLightSensorReading.ptr_</Item>
+        </Expand>
+    </Type>
+
+    <Type Name="Windows::Devices::Sensors::OrientationSensorServer">
+    <DisplayString>{{MinimumReportInterval=&lt;@1001;&gt; ReportInterval=&lt;@1001;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="MinimumReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="ReportInterval">
+        <DisplayString>@1002;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::OrientationSensorReadingServer">
+    <DisplayString>{{Timestamp=&lt;@1004;&gt; RotationMatrix=&lt;@1004;&gt; Quaternion=&lt;@1004;&gt;}}</DisplayString>
+    <Expand>
+      <Synthetic Name="Timestamp">
+        <DisplayString>@1003;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="RotationMatrix">
+        <DisplayString>@1003;</DisplayString>
+      </Synthetic>
+      <Synthetic Name="Quaternion">
+        <DisplayString>@1003;</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::OrientationSensorReadingChangedEventArgsServer">
+    <DisplayString>{{Reading={_spOrientationSensorReading.ptr_}}}</DisplayString>
+    <Expand>
+      <Item Name="Reading">_spOrientationSensorReading.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::SensorRotationMatrixServer">
+    <DisplayString>{{M11={_M11} M12={_M12} M13={_M13} M21={_M21} M22={_M22} M23={_M23} M31={_M31} M32={_M32} M33={_M33} }}</DisplayString>
+    <Expand>
+      <Item Name="M11">_M11</Item>
+      <Item Name="M12">_M12</Item>
+      <Item Name="M13">_M13</Item>
+      <Item Name="M21">_M21</Item>
+      <Item Name="M22">_M22</Item>
+      <Item Name="M23">_M23</Item>
+      <Item Name="M31">_M31</Item>
+      <Item Name="M32">_M32</Item>
+      <Item Name="M33">_M33</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Devices::Sensors::SensorQuaternionServer">
+    <DisplayString>{{W={_W} X={_X} Y={_Y} Z={_Z}}}</DisplayString>
+    <Expand>
+      <Item Name="W">_W</Item>
+      <Item Name="X">_X</Item>
+      <Item Name="Y">_Y</Item>
+      <Item Name="Z">_Z</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

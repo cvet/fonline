@@ -1,0 +1,96 @@
+{
+	"name": "Terminal-StatusBar",
+	"displayName": "Terminal Status Bar",
+	"description": "Access terminal from status bar and open a terminal in current file path",
+	"publisher": "ThomasKarachristos",
+	"icon": "icon.png",
+	"keywords": [
+		"terminal",
+		"status",
+		"bar",
+		"Shell",
+		"Bash",
+		"CMD",
+		"powershell"
+	],
+	"version": "0.0.5",
+	"engines": {
+		"vscode": "^1.36.0"
+	},
+	"bugs": {
+		"email": "karachristostom@gmail.com"
+	},
+	"categories": [
+		"Other"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "TerminalStatusBar.OpenInTerminal",
+				"title": "Open In Terminal"
+			},
+			{
+				"command": "TerminalStatusBar.ToggleRootTerminal",
+				"title": "Terminal Status Bar: Toggle visibility of root teriminal"
+			},
+			{
+				"command": "TerminalStatusBar.ToggleCurrentTerminal",
+				"title": "Terminal Status Bar: Toggle visibility of current teriminal"
+			},
+			{
+				"command": "TerminalStatusBar.ToggleEditStatusBar",
+				"title": "Terminal Status Bar: Toggle visibility of edit json button"
+			},
+			{
+				"command": "TerminalStatusBar.EditConfigurationFile",
+				"title": "Terminal Status Bar: Edit json"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "TerminalStatusBar.OpenInTerminal",
+					"title": "Open In Terminal"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "TerminalStatusBar.OpenInTerminal",
+				"key": "ctrl+alt+t",
+				"mac": "shift+cmd+t",
+				"when": "editorTextFocus"
+			}
+		]
+	},
+	"activationEvents": [
+		"*"
+	],
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^5.2.6",
+		"@types/node": "^10.14.13",
+		"@types/vscode": "^1.36.0",
+		"glob": "^7.1.4",
+		"mocha": "^6.1.4",
+		"tslint": "^5.12.1",
+		"typescript": "^3.3.1",
+		"vscode-test": "^1.0.0-next.0"
+	},
+	"dependencies": {
+		"async-file": "^2.0.2"
+	},
+	"__metadata": {
+		"id": "9c3b670b-38fa-4254-90b6-69dd9c7d7531",
+		"publisherId": "0a027930-7482-47c0-bdef-28c26cee98fb",
+		"publisherDisplayName": "Thomas Karachristos"
+	}
+}

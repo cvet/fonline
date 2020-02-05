@@ -1,0 +1,630 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <!--Visualizers for data structures in namespace Concurrency-->
+  
+  <!--Concurrency::message from <agents.h>-->
+  <Type Name="Concurrency::message&lt;*&gt;">
+    <DisplayString>{payload}</DisplayString>
+    <Expand>
+      <Item Name="payload">payload</Item>
+      <Item Name="[msg_id]">_M_id</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::multi_link_registry from <agents.h>-->
+  <Type Name="Concurrency::multi_link_registry&lt;*&gt;">
+    <DisplayString>{{size = {_M_vector._M_index}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_M_vector._M_index</Item>
+      <IndexListItems>
+        <Size>_M_vector._M_index</Size>
+        <ValueNode>*(_M_vector._M_array[$i])</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::_Queue from <agents.h>-->
+  <Type Name="Concurrency::details::_Queue&lt;*&gt;">
+    <DisplayString>{{size = {_M_count}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_M_count</Item>
+      <LinkedListItems>
+        <Size>_M_count</Size>
+        <HeadPointer>_M_pHead</HeadPointer>
+        <NextPointer>_M_pNext</NextPointer>
+        <ValueNode>this</ValueNode> <!--empty expression implies this pointer or explicitely call out this-->
+      </LinkedListItems>
+    </Expand>
+  </Type>
+  
+    <!--Concurrency::unbounded_buffer from <agents.h>-->
+  <Type Name="Concurrency::unbounded_buffer&lt;*&gt;">
+    <DisplayString>{_M_messageBuffer}</DisplayString>
+    <Expand>
+      <Item Name="unprocessed_messages">_M_messageProcessor._M_queuedMessages</Item>
+      <Item Name="messages">_M_messageBuffer</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="linked_targets">_M_connectedTargets</Item>
+      <Item Name="reserving_target">*(_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::choice from <agents.h>-->
+  <Type Name="Concurrency::overwrite_buffer&lt;*&gt;">
+    <DisplayString>{_M_pMessage}</DisplayString>
+    <Expand>
+      <Item Name="value">*(_M_pMessage)</Item>
+      <Item Name="unprocessed_messages">_M_messageProcessor._M_queuedMessages</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="linked_targets">_M_connectedTargets</Item>
+      <Item Name="reserving_target">*(_M_pReservedFor)</Item>
+      <Item Name="reserved_message">*(_M_pReservedMessage)</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::single_assignment from <agents.h>-->
+  <Type Name="Concurrency::single_assignment&lt;*&gt;">
+    <DisplayString>{*_M_pMessage}</DisplayString>
+    <Expand>
+      <Item Name="value">*(_M_pMessage)</Item>
+      <Item Name="unprocessed_messages">_M_messageProcessor._M_queuedMessages</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="linked_targets">_M_connectedTargets</Item>
+      <Item Name="reserving_target">*(_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+    </Expand>
+  </Type>
+  
+  <!--Concurrency::call from <agents.h>-->
+  <Type Name="Concurrency::call&lt;*&gt;">
+    <DisplayString>{_M_pFunc}</DisplayString>
+    <Expand>
+      <Item Name="call_method">_M_pFunc</Item>
+      <Item Name="unprocessed_messages">_M_messageProcessor._M_queuedMessages</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::transformer from <agents.h>-->
+  <Type Name="Concurrency::transformer&lt;*&gt;">
+    <DisplayString>{_M_pFunc}</DisplayString>
+    <Expand>
+      <Item Name="transform_method">_M_pFunc</Item>
+      <Item Name="unprocessed_messages">_M_messageProcessor._M_queuedMessages</Item>
+      <Item Name="messages">_M_messageBuffer</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="linked_target">*(_M_connectedTargets._M_connectedLink)</Item>
+      <Item Name="reserving_target">*(_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::choice from <agents.h>-->
+  <Type Name="Concurrency::choice&lt;*&gt;">
+    <DisplayString Condition="_M_pSingleAssignment-&gt;_M_fIsInitialized">[initialized] {_M_sourceTuple}</DisplayString>
+    <DisplayString>[not_initialized] {_M_sourceTuple}</DisplayString>
+    <Expand>
+      <Item Name="[input_count]">_M_pSingleAssignment-&gt;_M_connectedSources._M_links._M_vector._M_index</Item>
+      <Item Name="index">_M_pSingleAssignment-&gt;_M_pMessage-&gt;payload</Item>
+      <Item Name="source_tuple">_M_sourceTuple</Item>
+      <Item Name="linked_sources">_M_pSingleAssignment-&gt;_M_connectedSources._M_links</Item>
+      <Item Name="linked_targets">_M_pSingleAssignment-&gt;_M_connectedTargets</Item>
+      <Item Name="reserving_target">*(_M_pSingleAssignment-&gt;_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_pScheduleGroup)</Item>
+      <Item Name="[raw _M_pSourceChoices]">_M_pSourceChoices</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::join<*,*>::_MessageArray from <agents.h>-->
+  <Type Name="Concurrency::join&lt;*,*&gt;::_MessageArray">
+    <DisplayString>{{size = {_M_count}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_M_count</Item>
+      <IndexListItems>
+        <Size>_M_count</Size>
+        <ValueNode>*(((Concurrency::message&lt;$T1&gt;**)_M_messages)[$i])</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::join<*,*>::_SavedMessageIdArray from <agents.h>-->
+  <Type Name="Concurrency::join&lt;*,*&gt;::_SavedMessageIdArray">
+    <DisplayString>{{size = {_M_count}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_M_count</Item>
+      <ArrayItems>
+        <Size>_M_count</Size>
+        <ValuePointer>((int*)_M_savedIds)</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::join from <agents.h>-->
+  <Type Name="Concurrency::join&lt;*,*&gt;">
+    <DisplayString>[{_M_messageArray._M_count - _M_messagesRemaining}/{_M_messageArray._M_count}]</DisplayString>
+    <Expand>
+      <Item Name="[join_type]">(Concurrency::join_type)$T2</Item>
+      <Item Name="[offer_count]">_M_messageArray._M_count - _M_messagesRemaining</Item>
+      <Item Name="[input_count]">_M_messageArray._M_count</Item>
+      <Item Name="offer_IDs">_M_savedMessageIdArray</Item>
+      <Item Name="input_values">_M_messageArray</Item>
+      <Item Name="messages">_M_messageBuffer</Item>
+      <Item Name="message_filter">*(_M_pFilter)</Item>
+      <Item Name="linked_sources">_M_connectedSources._M_links</Item>
+      <Item Name="linked_target">_M_connectedTargets._M_connectedLink</Item>
+      <Item Name="reserving_target">*(_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_messageProcessor._M_pScheduleGroup)</Item>
+      <IndexListItems>
+        <Size>_M_connectedSources._M_links._M_vector._M_index</Size>
+        <ValueNode>*(_M_connectedSources._M_links._M_vector._M_array[$i])</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::multitype_join from <agents.h>-->
+  <Type Name="Concurrency::multitype_join&lt;*,*&gt;">
+    <DisplayString>[{_M_pJoinNode-&gt;_M_connectedSources._M_links._M_vector._M_index - _M_pJoinNode-&gt;_M_counter}/{_M_pJoinNode-&gt;_M_connectedSources._M_links._M_vector._M_index}]{_M_sourceTuple}</DisplayString>
+    <Expand>
+      <Item Name="[join_type]">(Concurrency::join_type)$T2</Item>
+      <Item Name="[offer_count]">_M_pJoinNode-&gt;_M_connectedSources._M_links._M_vector._M_index - _M_pJoinNode-&gt;_M_counter</Item>
+      <Item Name="[input_count]">_M_pJoinNode-&gt;_M_connectedSources._M_links._M_vector._M_index</Item>
+      <Item Name="source_tuple">_M_sourceTuple</Item>
+      <Item Name="messages">_M_pJoinNode-&gt;_M_messageBuffer</Item>
+      <Item Name="linked_sources">_M_pJoinNode-&gt;_M_connectedSources._M_links</Item>
+      <Item Name="linked_target">_M_pJoinNode-&gt;_M_connectedTargets._M_connectedLink</Item>
+      <Item Name="reserving_target">*(_M_pJoinNode-&gt;_M_pReservedFor)</Item>
+      <Item Name="Scheduler">*(_M_pJoinNode-&gt;_M_messageProcessor._M_pScheduler)</Item>
+      <Item Name="ScheduleGroup">*(_M_pJoinNode-&gt;_M_messageProcessor._M_pScheduleGroup)</Item>
+      <Item Name="[raw _M_pSourceJoins]">_M_pSourceJoins</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::timer from <agents.h>-->
+  <Type Name="Concurrency::timer&lt;*&gt;">
+    <DisplayString>{_M_state}</DisplayString>
+    <Expand>
+      <Item Name="state">_M_state</Item>
+      <Item Name="value">_M_value</Item>
+      <Item Name="repeating">_M_fRepeating</Item>
+      <Item Name="interval_ms">_M_ms</Item>
+      <Item Name="linked_target">*_M_connectedTargets._M_connectedLink</Item>
+      <Item Name="reserving_target">*_M_pReservedFor</Item>
+      <Item Name="Scheduler">*_M_messageProcessor._M_pScheduler</Item>
+      <Item Name="ScheduleGroup">*_M_messageProcessor._M_pScheduleGroup</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::SchedulerBase from <SchedulerBase.h>
+;  Concurrency::details::ThreadScheduler from <ThreadScheduler.h>
+;  Concurrency::details::UMSThreadScheduler from <UMSThreadScheduler.h>-->
+  <Type Name="Concurrency::details::SchedulerBase">
+    <AlternativeType Name="Concurrency::details::ThreadScheduler"></AlternativeType>
+    <AlternativeType Name="Concurrency::details::UMSThreadScheduler"></AlternativeType>
+    <DisplayString Condition="(m_schedulerKind == 0) &amp;&amp; (m_id == s_pDefaultScheduler-&gt;m_id)">ThreadScheduler, default</DisplayString>
+    <DisplayString Condition="(m_schedulerKind == 0)">ThreadScheduler</DisplayString>
+    <DisplayString Condition="(m_schedulerKind != 0) &amp;&amp; (m_id == s_pDefaultScheduler-&gt;m_id)">UmsScheduler, default</DisplayString>
+    <DisplayString Condition="(m_schedulerKind != 0)">UmsScheduler</DisplayString>
+    <Expand>
+      <Item Name="ID">m_id</Item>
+      <Item Name="SchedulerPolicy">m_policy</Item>
+      <Item Name="VirtualProcessorCount">m_virtualProcessorCount</Item>
+      <Item Name="ReferenceCount">m_refCount</Item>
+      <Item Name="[isDefaultScheduler]">m_id == s_pDefaultScheduler-&gt;m_id</Item>
+    </Expand>
+  </Type>
+
+  <!-- Concurrency::details::ScheduleGroupBase from <ScheduleGroupBase.h>
+;  Concurrency::details::CacheLocalScheduleGroup from <CacheLocalScheduleGroup.h>
+;  Concurrency::details::FairScheduleGroup from <FairScheduleGroup.h>-->
+  <Type Name="Concurrency::details::ScheduleGroupBase">
+    <AlternativeType Name="Concurrency::details::CacheLocalScheduleGroup"></AlternativeType>
+    <AlternativeType Name="Concurrency::details::FairScheduleGroup"></AlternativeType>
+    <DisplayString Condition="m_kind &amp; 4">[m_id] AnonymousScheduleGroup</DisplayString>
+    <DisplayString>[m_id]</DisplayString>
+    <Expand>
+      <Item Name="ID">m_id</Item>
+      <Item Name="Scheduler">*m_pScheduler</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::ContextBase from <ContextBase.h>
+;  Concurrency::details::InternalContextBase from <InternalContextBase.h>
+;  Concurrency::details::ThreadInternalContext from <ThreadInternalContext.h>
+;  Concurrency::details::UMSThreadInternalContext from <UMSThreadInternalContext.h>-->
+  <Type Name="Concurrency::details::ContextBase">
+    <AlternativeType Name="Concurrency::details::InternalContextBase"></AlternativeType>
+    <AlternativeType Name="Concurrency::details::ThreadInternalContext"></AlternativeType>
+    <AlternativeType Name="Concurrency::details::UMSThreadInternalContext"></AlternativeType>
+    <DisplayString Condition="m_blockedState == 0">[{m_threadId}] not_concrt_blocked</DisplayString>
+    <DisplayString Condition="m_blockedState == 1">[{m_threadId}] concrt_blocked</DisplayString>
+    <DisplayString Condition="m_blockedState == 2">[{m_threadId}] ums_sync_blocked</DisplayString>
+    <DisplayString Condition="m_blockedState == 4">[{m_threadId}] ums_async_blocked</DisplayString>
+    <DisplayString></DisplayString>
+    <Expand>
+      <Item Name="ID">m_id</Item>
+      <Item Name="ThreadID">m_threadId</Item>
+      <Item Name="Scheduler">*m_pScheduler</Item>
+      <Item Name="ScheduleGroup">*(m_pSegment->m_pOwningGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::ExternalContextBase from <ExternalContextBase.h>-->
+  <Type Name="Concurrency::details::ExternalContextBase">
+    <DisplayString Condition="m_contextSwitchingFence == 1">[{m_threadId}] concrt_blocked</DisplayString>
+    <DisplayString>[{m_threadId}] not_concrt_blocked</DisplayString>
+    <Expand>
+      <Item Name="ID">m_id</Item>
+      <Item Name="ThreadID">m_threadId</Item>
+      <Item Name="Scheduler">*m_pScheduler</Item>
+      <Item Name="ScheduleGroup">*(m_pSegment->m_pOwningGroup)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::event from <concrt.h>-->
+  <Type Name="Concurrency::SchedulerPolicy">
+    <DisplayString>{_M_pPolicyBag-&gt;_M_values._M_specificValues._M_schedulerKind}, Min={_M_pPolicyBag-&gt;_M_values._M_specificValues._M_minConcurrency}, Max={_M_pPolicyBag-&gt;_M_values._M_specificValues._M_maxConcurrency}</DisplayString>
+    <Expand>
+      <Item Name="SchedulerKind">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_schedulerKind</Item>
+      <Item Name="MinConcurrency">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_minConcurrency</Item>
+      <Item Name="MaxConcurrency">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_maxConcurrency</Item>
+      <Item Name="TargetOversubscriptionFactor">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_targetOversubscriptionFactor</Item>
+      <Item Name="LocalContextCacheSize">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_localContextCacheSize</Item>
+      <Item Name="ContextStackSize">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_contextStackSize</Item>
+      <Item Name="ContextPriority">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_contextPriority</Item>
+      <Item Name="SchedulingProtocol">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_schedulingProtocol</Item>
+      <Item Name="DynamicProgressFeedback">_M_pPolicyBag-&gt;_M_values._M_specificValues._M_dynamicProgressFeedback</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::event from <concrt.h>-->
+  <Type Name="Concurrency::event">
+    <DisplayString Condition="_M_pWaitChain == 1">set</DisplayString>
+    <DisplayString>not_set</DisplayString>
+    <Expand>
+      <Item Name="[is_set]">_M_pWaitChain == 1</Item>
+      <Item Name="[has_waiters]">((_M_pWaitChain != 0) &amp;&amp; (_M_pWaitChain != 1))</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::critical_section from <concrt.h>-->
+  <Type Name="Concurrency::critical_section">
+    <DisplayString Condition="_M_pHead != 0">locked</DisplayString>
+    <DisplayString>not locked</DisplayString>
+    <Expand>
+      <Item Name="[is_locked]">_M_pHead != 0</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::critical_section::scoped_lock-->
+  <Type Name="Concurrency::critical_section::scoped_lock">
+    <DisplayString>{_M_critical_section}</DisplayString>
+    <Expand>
+      <Item Name="CriticalSection">_M_critical_section</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::reader_writer_lock from <concrt.h>-->
+  <Type Name="Concurrency::reader_writer_lock">
+    <DisplayString Condition="(_M_lockState &lt; 8) &amp;&amp; (_M_lockState &amp; 2)">held_by_writer</DisplayString>
+    <DisplayString Condition="(_M_lockState &gt;= 8)">held_by_reader(s) [{_M_lockState / 8}] </DisplayString>
+    <DisplayString>not_held</DisplayString>
+    <Expand>
+      <Item Name="[is_reader_lock_held]">_M_lockState &gt;= 8</Item>
+      <Item Name="[num_reader_lock_holders]">_M_lockState / 8</Item>
+      <Item Name="[is_writer_lock_held]">(_M_lockState &lt; 8) &amp;&amp; (_M_lockState &amp; 2)</Item>
+      <Item Name="OwningWriterContext">*((Concurrency::Context*)(_M_activeWriter[0]))</Item>
+    </Expand>
+  </Type>
+  <!--Concurrency::reader_writer_lock::scoped_lock from <concrt.h>
+;  Concurrency::reader_writer_lock::scoped_lock_read from <concrt.h>-->
+  <Type Name="Concurrency::reader_writer_lock::scoped_lock">
+    <AlternativeType Name="Concurrency::reader_writer_lock::scoped_lock_read"></AlternativeType>
+    <DisplayString>{_M_reader_writer_lock}</DisplayString>
+    <Expand>
+      <Item Name="ReaderWriterLock">_M_reader_writer_lock</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::_TaskCollectionBase from <concrt.h>-->
+  <Type Name="Concurrency::details::_TaskCollectionBase">
+    <DisplayString Condition="(((int)_M_pException &amp; ~0x3) != 0) &amp;&amp; (((int)_M_pException &amp; ~0x3) != 0xC)">exception</DisplayString>
+    <DisplayString>no_exception</DisplayString>
+    <Expand>
+      <Item Name="[has_exception]">(((int)_M_pException &amp; ~0x3) != 0) &amp;&amp; (((int)_M_pException &amp; ~0x3) != 0xC)</Item>
+      <Item Name="CreatingContext">*((Concurrency::Context*)_M_pOwningContext)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::task_group from <ppl.h>
+;  Concurrency::structured_task_group from <ppl.h>-->
+  <Type Name="Concurrency::task_group">
+    <AlternativeType Name="Concurrency::structured_task_group"></AlternativeType>
+    <DisplayString Condition="(((int)_M_task_collection._M_pException &amp; ~0x3) != 0) &amp;&amp; (((int)_M_task_collection._M_pException &amp; ~0x3) != 0xC)">exception</DisplayString>
+    <DisplayString>no_exception</DisplayString>
+    <Expand>
+      <Item Name="[has_exception]">(((int)_M_task_collection._M_pException &amp; ~0x3) != 0) &amp;&amp; (((int)_M_task_collection._M_pException &amp; ~0x3) != 0xC)</Item>
+      <Item Name="CreatingContext">*((Concurrency::Context*)_M_task_collection._M_pOwningContext)</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::task_handle from <ppl.h>-->
+  <Type Name="Concurrency::task_handle&lt;*&gt;">
+    <DisplayString>{_M_function}</DisplayString>
+    <Expand>
+      <Item Name="Function">_M_function</Item>
+      <Item Name="RuntimeOwnsLifetime">_M_fRuntimeOwnsLifetime</Item>
+      <Item Name="TaskCollection">_M_pTaskCollection</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::combinable from <ppl.h>-->
+  <Type Name="Concurrency::combinable&lt;*&gt;">
+    <Expand>
+      <Item Name="InitFunction">_M_fnInitialize</Item>
+      <IndexListItems>
+        <Size>_M_size</Size>
+        <ValueNode>*(_M_buckets[$i])</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::combinable&lt;*&gt;::_Node">
+    <Expand>
+      <LinkedListItems>
+        <HeadPointer>this</HeadPointer>
+        <NextPointer>_M_chain</NextPointer>
+        <ValueNode>_M_value</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::task from <ppltasks.h>-->
+  <Type Name="Concurrency::task&lt;*&gt;">
+    <DisplayString Condition="_M_Impl._Ptr == nullptr"></DisplayString>
+    <DisplayString Condition="_M_Impl._Ptr != nullptr">{(*_M_Impl._Ptr)._M_TaskState,en}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_M_Impl._Ptr != nullptr">_M_Impl._Ptr</ExpandedItem>
+      <Item Name="[Result]" Condition="_M_Impl._Ptr != nullptr" Optional="true">(*_M_Impl._Ptr)._M_Result._Result</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::task<void> from <ppltasks.h>-->
+  <Type Name="Concurrency::task&lt;void&gt;">
+    <DisplayString Condition="_M_unitTask._M_Impl._Ptr == nullptr"></DisplayString>
+    <DisplayString Condition="_M_unitTask._M_Impl._Ptr != nullptr">{(*_M_unitTask._M_Impl._Ptr)._M_TaskState,en}</DisplayString>
+    <Expand>
+      <ExpandedItem>_M_unitTask</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::concurrent_vector from <concurrent_vector.h>-->
+  <Type Name="Concurrency::concurrent_vector&lt;*,*&gt;">
+    <DisplayString>{{size = {_My_early_size._M_value}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_My_early_size._M_value</Item>
+      <IndexListItems>
+        <Size>_My_early_size._M_value</Size>
+        <ValueNode Condition="($i &gt;&gt; 1) == 0">(($T1*)_My_segment._M_value[0]._My_array)[$i]</ValueNode>
+        <ValueNode Condition="($i &gt;&gt; 1) != 0">(($T1*)_My_segment._M_value[__log2($i)]._My_array)[$i - (0x1 &lt;&lt; __log2($i))]</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::details::_Vector_iterator from <concurrent_vector.h>-->
+  <Type Name="Concurrency::details::_Vector_iterator&lt;Concurrency::concurrent_vector&lt;*,*&gt;,*&gt;">
+    <DisplayString Condition="(_My_index &gt;&gt; 1) == 0">(($T1*)_My_vector-&gt;_My_segment._M_value[0]._My_array)[_My_index]</DisplayString>
+    <DisplayString>(($T1*)_My_vector-&gt;_My_segment._M_value[__log2(_My_index)]._My_array)[_My_index - (0x1 &lt;&lt; __log2(_My_index))]</DisplayString>
+    <Expand>
+      <Item Name="[ptr]" Condition="(_My_index &gt;&gt; 1) == 0">&amp;((($T1*)_My_vector-&gt;_My_segment._M_value[0]._My_array)[_My_index])</Item>
+      <Item Name="[ptr]" Condition="(_My_index &gt;&gt; 1) != 0">&amp;((($T1*)_My_vector-&gt;_My_segment._M_value[__log2(_My_index)]._My_array)[_My_index - (0x1 &lt;&lt; __log2(_My_index))])</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::concurrent_queue from <concurrent_queue.h> -->
+  <Type Name="Concurrency::concurrent_queue&lt;*,*&gt;">
+    <Expand>
+      <Item Name="[unsafe_size]">_My_rep-&gt;_Tail_counter._M_value-_My_rep-&gt;_Head_counter._M_value</Item>
+      <IndexListItems>
+        <Size Condition="_My_rep-&gt;_Tail_counter._M_value-_My_rep-&gt;_Head_counter._M_value &lt; 20*8*_Items_per_page">_My_rep-&gt;_Tail_counter._M_value-_My_rep-&gt;_Head_counter._M_value</Size>
+        <Size>20*8*_Items_per_page</Size> <!-- Default to this one if previous fails-->
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 0">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 1">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 2">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 3">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 4">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 5">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 6">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 7">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 8">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 9">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 10">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 11">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 12">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 13">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 14">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 15">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 16">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 17">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 18">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <ValueNode Condition="($i+(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)))/(8*_Items_per_page)-(_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;(8*(_Items_per_page-1)))*($i%8+_My_rep-&gt;_Head_counter._M_value%(8*_Items_per_page)&gt;=(8*_Items_per_page)) == 19">(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+        <!-- Default to the following value node when all pevious fails-->
+        <ValueNode>(($T1*)((_My_rep-&gt;_Array[(($i+_My_rep-&gt;_Head_counter._M_value)*3%8)]._Head_page._M_value-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next-&gt;_Next) + 1))[(($i+_My_rep-&gt;_Head_counter._M_value)&amp;-8)/8&amp;_Items_per_page-1]</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::details::_Concurrent_queue_iterator&lt;Concurrency::concurrent_queue&lt;*,*&gt;,*&gt;">
+    <DisplayString Condition="_My_item != nullptr">(($T1*)_My_item)</DisplayString>
+    <DisplayString>end</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">(($T1*)_My_item)</Item>
+    </Expand>
+  </Type>
+	
+  <!--Concurrency::index and Concurrency::extent from <amp.h>-->
+  <Type Name="Concurrency::index&lt;*&gt;">
+    <AlternativeType Name="Concurrency::extent&lt;*&gt;"/>
+    <DisplayString Condition="$T1==1">({_M_base[0]})</DisplayString>
+    <DisplayString Condition="$T1==2">({_M_base[0]}, {_M_base[1]})</DisplayString>
+    <DisplayString Condition="$T1==3">({_M_base[0]}, {_M_base[1]}, {_M_base[2]})</DisplayString>
+    <DisplayString Condition="$T1&gt;3">({_M_base[0]}, {_M_base[1]}, {_M_base[2]}, ...)</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>$T1</Size>
+        <ValuePointer>_M_base</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::tiled_index from <amp.h>-->
+  <Type Name="Concurrency::tiled_index&lt;*,*,*&gt;">
+    <DisplayString>global={global}</DisplayString>
+    <Expand>
+      <Item Name="global">global</Item>
+      <Item Name="local">local</Item>
+      <Item Name="tile">tile</Item>
+      <Item Name="tile_origin">tile_origin</Item>
+    </Expand>
+  </Type>
+
+  <!--Concurrency::array from <amp.h> -->
+  <Type Name="Concurrency::array&lt;*,*&gt;">
+    <DisplayString>extent = {_M_extent}</DisplayString>
+    <Expand>
+      <Item Name="extent">_M_extent</Item>
+      <ArrayItems Condition="_M_buffer_descriptor._M_data_ptr != 0">
+        <Rank>$T2</Rank>
+        <Size>_M_extent._M_base[$i]</Size>
+        <ValuePointer>($T1*) _M_buffer_descriptor._M_data_ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::array_view&lt;*,1&gt;">
+    <DisplayString>extent = {_M_view_extent}</DisplayString>
+    <Expand>
+      <Item Name="extent">_M_view_extent</Item>
+      <ArrayItems Condition="_M_buffer_descriptor._M_data_ptr != 0">
+        <Rank>1</Rank>
+        <Size>_M_view_extent._M_base[0]</Size>
+        <ValuePointer>($T1*) _M_buffer_descriptor._M_data_ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::array_view&lt;*,2&gt;">
+    <DisplayString>extent = {_M_view_extent}</DisplayString>
+    <Expand>
+      <Item Name="extent">_M_view_extent</Item>
+      <IndexListItems Condition="_M_buffer_descriptor._M_data_ptr != 0">
+        <Size>_M_view_extent._M_base[0]</Size>
+        <ValueNode>((($T1*)_M_buffer_descriptor._M_data_ptr) + _M_total_linear_offset + _M_array_multiplier._M_base[0] * $i),[_M_view_extent._M_base[1]]</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::graphics::texture&lt;*&gt;">
+    <AlternativeType Name="Concurrency::graphics::writeonly_texture_view&lt;*&gt;"/>
+    <DisplayString>extent = {_M_extent}</DisplayString>
+    <Expand>
+      <Item Name="extent">_M_extent</Item>
+    </Expand>
+  </Type>
+  
+  <!--Concurrency::concurrent_priority_queue from <concurrent_proirity.h>-->
+  <Type Name="Concurrency::concurrent_priority_queue&lt;*,*,*&gt;">
+    <Expand>
+      <Item Name="[unsafe_size]">_M_size</Item>
+      <Item Name="[heapified_size]">_M_mark</Item>
+      <ArrayItems>
+        <Size>_M_mark</Size>
+        <ValuePointer>_M_data._Myfirst</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  
+  <!--
+      Concurrency::concurrent_unordered_set
+      Concurrency::concurrent_unordered_multiset
+      Concurrency::concurrent_unordered_map
+      Concurrency::concurrent_unordered_multimap
+      from 
+      <concurrent_unordered_set.h>
+      <concurrent_unordered_map.h> 
+  -->
+  <Type Name="Concurrency::concurrent_unordered_set&lt;*&gt;">
+    <AlternativeType Name="Concurrency::concurrent_unordered_multiset&lt;*&gt;" />
+    <AlternativeType Name="Concurrency::concurrent_unordered_map&lt;*,*&gt;" />
+    <AlternativeType Name="Concurrency::concurrent_unordered_multimap&lt;*,*&gt;" />
+    <Expand>
+      <Item Name="[unsafe_size]">_M_split_ordered_list._M_element_count</Item>
+      <LinkedListItems>
+        <HeadPointer>_M_split_ordered_list._Myhead</HeadPointer>
+        <NextPointer>_M_next</NextPointer>
+        <ValueNode>_M_element</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+  
+  <!--
+      Concurrency::details::_solist_const_iterator from <internal_split_ordered_list.h>
+      Serves as the iterator for map, multimap, and multiset
+  -->
+  <Type Name="Concurrency::details::_Solist_const_iterator&lt;Concurrency::details::_Split_order_list_value&lt;*,*&gt; &gt;">
+    <AlternativeType Name="Concurrency::details::_Solist_iterator&lt;Concurrency::details::_Split_order_list_value&lt;*,*&gt; &gt;"/>
+    <DisplayString Condition="_Ptr == 0">end</DisplayString>
+    <DisplayString>{_Ptr-&gt;_M_element}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]" Condition="_Ptr != 0">&amp;_Ptr-&gt;_M_element</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::details::_Task_impl_base">
+    <Expand>
+      <Item Name="[State]">_M_TaskState,en</Item>
+      <Item Name="[Task Creation]">_M_pTaskCreationCallstack</Item>
+      <Synthetic Name="[Continuations]" Expression="_M_Continuations">
+        <Expand>
+          <LinkedListItems>
+            <HeadPointer>_M_Continuations</HeadPointer>
+            <NextPointer>_M_next</NextPointer>
+            <ValueNode>*this</ValueNode>
+          </LinkedListItems>
+        </Expand>
+      </Synthetic>
+      <Item Name="[Exception]" Optional="true">_M_exceptionHolder</Item>
+    </Expand>
+  </Type>
+  <Type Name="Concurrency::details::_TaskCreationCallstack">
+    <Expand>
+      <!-- Single-frame case, used in retail builds-->
+      <Item Condition="_M_frames._Mypair._Myval2._Mylast - _M_frames._Mypair._Myval2._Myfirst &lt;= 1" Name="[0]">_M_SingleFrame</Item>
+
+      <!-- Multi-frame case, used in debug builds -->
+      <ExpandedItem Condition="_M_frames._Mypair._Myval2._Mylast - _M_frames._Mypair._Myval2._Myfirst >= 2">_M_frames</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Concurrency::task&lt;*&gt;::_ContinuationTaskHandle&lt;*&gt;">
+    <Expand>
+      <Item Name="[Function]">_M_function</Item>
+      <Item Name="[Parent Task]">_M_pTask._Ptr</Item>
+      <Item Name="[Ancestor Task]">_M_ancestorTaskImpl._Ptr</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

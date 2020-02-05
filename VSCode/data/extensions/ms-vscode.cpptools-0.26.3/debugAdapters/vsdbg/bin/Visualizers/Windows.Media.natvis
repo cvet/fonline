@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!--
+  Win32 - Media Foundation
+  -->
+  
+  <Type Name="CMF2DMemMediaBuffer">
+    <Version Name="mfplat.dll"/>
+
+    <DisplayString Condition="m_Format == 20">RGB24 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 21">ARGB32 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 22">RGB32 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x32595559">YUY2 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x3231564e">NV12 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x56555949">IYUV {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x32315659">YV12 {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+    <DisplayString>format {m_Format} {m_dwWidth,d}x{m_dwHeight,d} stride {m_lAllocatedPitch,d}</DisplayString>
+
+    <Expand>
+      <Synthetic Name="[type]"><DisplayString>UINT8</DisplayString></Synthetic>
+
+      <!--MFVideoFormat_RGB24-->
+      <Synthetic Name="[channels]" Condition="m_Format == 20"><DisplayString>BGR</DisplayString></Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 20">m_lAllocatedPitch</Item>
+
+      <!--MFVideoFormat_ARGB32-->
+      <Synthetic Name="[channels]" Condition="m_Format == 21"><DisplayString>BGRA</DisplayString></Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 21">m_lAllocatedPitch</Item>
+
+      <!--MFVideoFormat_RGB32-->
+      <Synthetic Name="[channels]" Condition="m_Format == 22"><DisplayString>BGRA</DisplayString>
+      </Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 22">m_lAllocatedPitch</Item>
+
+      <!--MFVideoFormat_YUY2-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x32595559"><DisplayString>YUY2</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x32595559">1</Item>
+      <Item Name="[stride]" Condition="m_Format == 0x32595559">m_lAllocatedPitch</Item>
+
+      <!--MFVideoFormat_NV12-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x3231564e"><DisplayString>NV12</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x3231564e">2</Item>
+      <Item Name="[stride]" Condition="m_Format == 0x3231564e">m_lAllocatedPitch</Item>
+
+      <!--MFVideoFormat_IYUV-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x56555949"><DisplayString>IYUV</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x56555949">3</Item>
+      <Synthetic Name="[stride]" Condition="m_Format == 0x56555949">
+        <DisplayString>
+          {(int)(m_lAllocatedPitch)}; {(int)((m_lAllocatedPitch) / 2)}; {(int)((m_lAllocatedPitch) / 2)}
+        </DisplayString>
+      </Synthetic>
+
+      <!--MFVideoFormat_YV12-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x32315659"><DisplayString>YV12</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x32315659">3</Item>
+      <Synthetic Name="[stride]" Condition="m_Format == 0x32315659">
+        <DisplayString>
+          {(int)(m_lAllocatedPitch)}; {(int)((m_lAllocatedPitch) / 2)}; {(int)((m_lAllocatedPitch) / 2)}
+        </DisplayString>
+      </Synthetic>
+
+      <Item Name="[width]">m_dwWidth</Item>
+      <Item Name="[height]">m_dwHeight</Item>
+      <Item Name="[format]">m_Format</Item>
+      <Item Name="[data]">(*(mfplat.dll!CMFMemoryBuffer*)(m_pMediaBuffer)).m_pbAlignedBuffer</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CMFDX11SurfaceBuffer">
+    <Version Name="mfplat.dll"/>
+
+    <DisplayString Condition="m_Format == 20">RGB24 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 21">ARGB32 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 22">RGB32 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x32595559">YUY2 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x3231564e">NV12 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x56555949">IYUV {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString Condition="m_Format == 0x32315659">YV12 {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+    <DisplayString>format {m_Format} {m_dwWidth,d}x{m_dwHeight,d} stride {m_Lock2D.lPitch,d}</DisplayString>
+
+    <Expand>
+      <Synthetic Name="[type]"><DisplayString>UINT8</DisplayString></Synthetic>
+
+      <!--MFVideoFormat_RGB24-->
+      <Synthetic Name="[channels]" Condition="m_Format == 20"><DisplayString>BGR</DisplayString></Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 20">m_Lock2D.lPitch</Item>
+
+      <!--MFVideoFormat_ARGB32-->
+      <Synthetic Name="[channels]" Condition="m_Format == 21"><DisplayString>BGRA</DisplayString></Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 21">m_Lock2D.lPitch</Item>
+
+      <!--MFVideoFormat_RGB32-->
+      <Synthetic Name="[channels]" Condition="m_Format == 22"><DisplayString>BGRA</DisplayString>
+      </Synthetic>
+      <Item Name="[stride]" Condition="m_Format == 22">m_Lock2D.lPitch</Item>
+
+      <!--MFVideoFormat_YUY2-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x32595559"><DisplayString>YUY2</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x32595559">1</Item>
+      <Item Name="[stride]" Condition="m_Format == 0x32595559">m_Lock2D.lPitch</Item>
+
+      <!--MFVideoFormat_NV12-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x3231564e"><DisplayString>NV12</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x3231564e">2</Item>
+      <Item Name="[stride]" Condition="m_Format == 0x3231564e">m_Lock2D.lPitch</Item>
+
+      <!--MFVideoFormat_IYUV-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x56555949"><DisplayString>IYUV</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x56555949">3</Item>
+      <Synthetic Name="[stride]" Condition="m_Format == 0x56555949">
+        <DisplayString>
+          {(int)(m_Lock2D.lPitch)}; {(int)((m_Lock2D.lPitch) / 2)}; {(int)((m_Lock2D.lPitch) / 2)}
+        </DisplayString>
+      </Synthetic>
+
+      <!--MFVideoFormat_YV12-->
+      <Synthetic Name="[channels]" Condition="m_Format == 0x32315659"><DisplayString>YV12</DisplayString></Synthetic>
+      <Item Name="[planes]" Condition="m_Format == 0x32315659">3</Item>
+      <Synthetic Name="[stride]" Condition="m_Format == 0x32315659">
+        <DisplayString>
+          {(int)(m_Lock2D.lPitch)}; {(int)((m_Lock2D.lPitch) / 2)}; {(int)((m_Lock2D.lPitch) / 2)}
+        </DisplayString>
+      </Synthetic>
+
+      <Item Name="[width]">m_dwWidth</Item>
+      <Item Name="[height]">m_dwHeight</Item>
+      <Item Name="[format]">m_Format</Item>
+      <Item Name="[data]">m_Lock2D.pbScanline0</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CMFAttributesImpl&lt;*&gt;::CPropEntry">
+    <Version Name="mfplat.dll"/>
+    
+    <DisplayString Condition="m_guidKey.Data1 == 0x48eba18e &amp;&amp; m_Value.puuid-&gt;Data1 == 0x73646976">{{MF_MT_MAJOR_TYPE = MFMediaType_Video}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x48eba18e &amp;&amp; m_Value.puuid-&gt;Data1 == 0x73647561">{{MF_MT_MAJOR_TYPE = MFMediaType_Audio}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x48eba18e">{{MF_MT_MAJOR_TYPE = {m_Value}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x1652C33D">{{MF_MT_FRAME_SIZE = {m_Value.uhVal.HighPart,d}x{m_Value.uhVal.LowPart,d}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xc459a2e8">{{MF_MT_FRAME_RATE = {m_Value.uhVal.HighPart,d}/{m_Value.uhVal.LowPart,d} = {m_Value.uhVal.HighPart / (float)m_Value.uhVal.LowPart}fps}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xc6376a1e">{{MF_MT_PIXEL_ASPECT_RATIO = {m_Value.uhVal.HighPart,d}/{m_Value.uhVal.LowPart,d}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xe2724bb8 &amp;&amp; m_Value.uintVal == 2">{{MF_MT_INTERLACE_MODE = MFVideoInterlace_Progressive}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xe2724bb8">{{MF_MT_INTERLACE_MODE = {m_Value.uintVal,d}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xf7e34c9a">{{MF_MT_SUBTYPE = {m_Value} {m_Value.puuid,s}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x20332624">{{MF_MT_AVG_BITRATE = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x0F81DA2C">{{MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xfb394f3d">{{MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xC380465D">{{MF_MT_VIDEO_ROTATION = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x1AAB75C8">{{MF_MT_AUDIO_AVG_BYTES_PER_SECOND = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x322DE230">{{MF_MT_AUDIO_BLOCK_ALIGNMENT = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x37E48BF5">{{MF_MT_AUDIO_NUM_CHANNELS = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x5FAEEAE7">{{MF_MT_AUDIO_SAMPLES_PER_SECOND = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xA901AABA">{{MF_MT_AUDIO_PREFER_WAVEFORMATEX = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xF2DEB57F">{{MF_MT_AUDIO_BITS_PER_SAMPLE = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xB6BC765F">{{MF_MT_USER_DATA = {m_Value.caub.cElems}B}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x9CDF01D8">{{MFSampleExtension_CleanPoint = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0x9CDF01D9">{{MFSampleExtension_Discontinuity = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xB1D5830A">{{MFSampleExtension_Interlaced = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xDAD3AB78">{{MF_MT_SAMPLE_SIZE = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xc9173739">{{MF_MT_ALL_SAMPLES_INDEPENDENT = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString Condition="m_guidKey.Data1 == 0xb8ebefaf">{{MF_MT_FIXED_SIZE_SAMPLES = {m_Value.uintVal}}}</DisplayString>
+    <DisplayString>{{{m_guidKey} {m_Value}}}</DisplayString> <!-- default -->
+    
+    <Expand>
+      <Item Name="[key]">m_guidKey</Item>
+      <Item Name="[value]">m_Value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CMFAttributesImpl&lt;*&gt;">
+    <Version Name="mfplat.dll"/>
+    <DisplayString>{m_cUsedEntries,d} attributes</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>m_cUsedEntries</Size>
+        <ValuePointer>m_pEntries</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="CMFSample">
+    <Version Name="mfplat.dll"/>
+    <DisplayString>time {m_hnsTime / 10000,d}ms duration {m_hnsDuration / 10000,d}ms {m_cUsedEntries,d} attributes</DisplayString>
+    <Expand>
+      <Item Name="[time (ms)]">m_hnsTime / 10000.f</Item>
+      <Item Name="[duration (ms)]">m_hnsDuration / 10000.f</Item>
+      <Item Name="[buffer]" Condition="m_pBufferInfos->pBuffer != nullptr">*(m_pBufferInfos->pBuffer)</Item> <!-- Only display the first buffer (other virtually never used) -->
+      <Synthetic Name="[buffer]" Condition="m_pBufferInfos->pBuffer == nullptr"><DisplayString>none</DisplayString></Synthetic>
+      <Synthetic Name="[attributes]">
+        <DisplayString>{m_cUsedEntries,d} attributes</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>m_cUsedEntries</Size>
+            <ValuePointer>m_pEntries</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+  
+  <!--
+  WinRT - Windows.Media
+  -->
+  
+  <Type Name="Windows::Media::MediaProperties::CEncodingProfile">
+    <Version Name="Windows.Media.dll"/>
+    <DisplayString>{{Audio={_spAudio.ptr_!=nullptr} Video={_spVideo.ptr_!=nullptr} Container={_spContainer.ptr_!=nullptr}}}</DisplayString>
+    <Expand>
+      <Item Name="Audio">_spAudio.ptr_</Item>
+      <Item Name="Video">_spVideo.ptr_</Item>
+      <Item Name="Container">_spContainer.ptr_</Item>
+    </Expand>
+  </Type>
+  
+  <Type Name="Windows::Media::MediaProperties::CContainerProperties">
+    <!-- No Version element: implemented in both Windows.Media.dll and mfplat.dll -->
+    <DisplayString>{_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap.m_nElements} container properties</DisplayString>
+    <Expand>
+      <ExpandedItem>_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Media::MediaProperties::CImageProperties">
+    <!-- No Version element: implemented in both Windows.Media.dll and mfplat.dll -->
+    <DisplayString>{_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap.m_nElements} image properties</DisplayString>
+    <Expand>
+      <ExpandedItem>_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Media::MediaProperties::CVideoProperties">
+    <!-- No Version element: implemented in both Windows.Media.dll and mfplat.dll -->
+    <DisplayString>{_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap.m_nElements} video properties</DisplayString>
+    <Expand>
+      <ExpandedItem>_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Media::MediaProperties::CAudioProperties">
+    <!-- No Version element: implemented in both Windows.Media.dll and mfplat.dll -->
+    <DisplayString>{_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap.m_nElements} audio properties</DisplayString>
+    <Expand>
+      <ExpandedItem>_spProperties.ptr_->_spAgileHashMap.ptr_->_hashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="XWinRT::XHashMap&lt;*&gt;::CNode">
+    <DisplayString Condition="this == nullptr"></DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x48eba18e">{{Major type = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x1652C33D">{{Frame size = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xc459a2e8">{{Framerate = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x644b4e48">{{Default stride = {m_value}B}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xD2E7558C">{{Framerate range min = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xE3371D41">{{Framerate range max = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xc6376a1e">{{Pixel aspect ratio = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xe2724bb8">{{Interlace mode = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xf7e34c9a">{{Subtype = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x20332624">{{Average bitrate = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xC380465D">{{Video rotation = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x1AAB75C8">{{Audio average bytes per second = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x322DE230">{{Audio block alignment = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x37E48BF5">{{Audio number of channels = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x5FAEEAE7">{{Audio samples per second = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xF2DEB57F">{{Audio bits per sample = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xB6BC765F">{{User data = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x9CDF01D8">{{Clean point = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x9CDF01D9">{{Discontinuity = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xB1D5830A">{{Interlaced = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xDAD3AB78">{{Sample size = {m_value}B}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xc9173739">{{All samples independent = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0xb8ebefaf">{{Fixed size samples = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x3E3DF610">{{Transcode topology mode = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x150FF23F">{{Container type = {m_value}}}</DisplayString>
+    <DisplayString Condition="m_key.Data1 == 0x23E5CAD8">{{Auto = {m_value}}}</DisplayString>
+    <DisplayString>{{{m_key} = {m_value}}}</DisplayString> <!-- default -->
+    <Expand>
+      <Item Name="[next]" Condition="(this != nullptr) &amp;&amp; (m_pNext != nullptr)">m_pNext</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CapturedFrameServer">
+    <Version Name="Windows.Media.dll"/>
+    <DisplayString>{_contentType} {_width}x{_height}</DisplayString>
+    <Expand>
+      <Item Name="ContentType">_contentType</Item>
+      <Item Name="Width">_width</Item>
+      <Item Name="Height">_height</Item>
+      <Item Name="[Closed]">_closed</Item>
+      <Item Name="[Stream position]">_pos</Item>
+      <Item Name="[Buffer]">_spBufferManager.ptr_->_spBuffer.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CapturedPhotoServer">
+    <Version Name="Windows.Media.dll"/>
+    <DisplayString Condition="_spThumbnail.ptr_!=nullptr">frame {((CapturedFrameServer*)(_spFrame.ptr_))->_contentType} {((CapturedFrameServer*)(_spFrame.ptr_))->_width}x{((CapturedFrameServer*)(_spFrame.ptr_))->_height} Thumbnail {((CapturedFrameServer*)(_spThumbnail.ptr_))->_contentType} {((CapturedFrameServer*)(_spThumbnail.ptr_))->_width}x{((CapturedFrameServer*)(_spThumbnail.ptr_))->_height}</DisplayString>
+    <DisplayString>frame {((CapturedFrameServer*)(_spFrame.ptr_))->_contentType} {((CapturedFrameServer*)(_spFrame.ptr_))->_width}x{((CapturedFrameServer*)(_spFrame.ptr_))->_height}</DisplayString>
+    <Expand>
+      <Item Name="Frame">_spFrame.ptr_</Item>
+      <Item Name="Thumbnail">_spThumbnail.ptr_</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="PhotoCapturedEventArgsServer">
+    <Version Name="Windows.Media.dll"/>
+    <DisplayString Condition="_spThumbnail.ptr_!=nullptr">frame {((CapturedFrameServer*)(_spFrame.ptr_))->_contentType} {((CapturedFrameServer*)(_spFrame.ptr_))->_width}x{((CapturedFrameServer*)(_spFrame.ptr_))->_height} thumbnail {((CapturedFrameServer*)(_spThumbnail.ptr_))->_contentType} {((CapturedFrameServer*)(_spThumbnail.ptr_))->_width}x{((CapturedFrameServer*)(_spThumbnail.ptr_))->_height} time {(_captureTime.Duration - _startTime.Duration) / 10000,d}ms</DisplayString>
+    <DisplayString>frame {((CapturedFrameServer*)(_spFrame.ptr_))->_contentType} {((CapturedFrameServer*)(_spFrame.ptr_))->_width}x{((CapturedFrameServer*)(_spFrame.ptr_))->_height} time {(_captureTime.Duration - _startTime.Duration) / 10000,d}ms</DisplayString>
+    <Expand>
+      <Item Name="Frame">_spFrame.ptr_</Item>
+      <Item Name="Thumbnail">_spThumbnail.ptr_</Item>
+      <Synthetic Name="[Time]">
+        <DisplayString>{(_captureTime.Duration - _startTime.Duration) / 10000,d}ms</DisplayString>
+        <Expand>
+          <Item Name="Photo-sequence start">_startTime.Duration</Item>
+          <Item Name="Photo capture">_captureTime.Duration</Item>
+          <Item Name="Offset">_captureTime.Duration - _startTime.Duration</Item>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

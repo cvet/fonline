@@ -1,21 +1,7 @@
-Build
-FOnlineSDK*
-
-# MSVC files
-.vs
-.vscode
-/InterfaceEditor/obj/
-SdkPlaceholder/Modules/*/bin
-SdkPlaceholder/Modules/*/obj
-
-# Other
-_Temp
-/SdkPlaceholder/Binaries/VSCode/VSCode-win32-x64
-/SdkPlaceholder/Binaries/VSCode/VSCode-linux-x64
-/SdkPlaceholder/Binaries/Mono
-/SdkPlaceholder/Modules/Core/Resources/Mono
-/SdkPlaceholder/Binaries/Client/*
-/SdkPlaceholder/Binaries/Mapper/*
-/SdkPlaceholder/Binaries/Server/*
-/SdkPlaceholder/Binaries/ASCompiler/*
-/SdkPlaceholder/Modules/BuildSystem/_msicreator/createmsi.pyc
+/VSCode/data/user-data/*
+!/VSCode/data/user-data/.keepalive
+/VSCode/data/tmp/*
+!/VSCode/data/tmp/.keepalive
+/Build
+/Temp
+/.vs

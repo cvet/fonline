@@ -1,0 +1,848 @@
+{
+	"name": "vscode-pull-request-github",
+	"displayName": "GitHub Pull Requests",
+	"description": "Pull Request Provider for GitHub",
+	"icon": "resources/icons/github_logo.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Microsoft/vscode-pull-request-github"
+	},
+	"bugs": {
+		"url": "https://github.com/Microsoft/vscode-pull-request-github/issues"
+	},
+	"enableProposedApi": true,
+	"preview": true,
+	"version": "0.14.0",
+	"publisher": "GitHub",
+	"engines": {
+		"vscode": "^1.40.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"extensionDependencies": [
+		"vscode.git"
+	],
+	"main": "./media/extension",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "GitHub Pull Requests",
+			"properties": {
+				"githubPullRequests.telemetry.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable usage data and errors to be sent to a GitHub online service"
+				},
+				"githubPullRequests.hosts": {
+					"type": "array",
+					"default": [],
+					"markdownDescription": "List of host credentials. For example, \"githubPullRequests.hosts\": [ { \"host\": \"https://github.com\", \"token\": \"GITHUB TOKEN\" } ]",
+					"items": {
+						"type": "object",
+						"properties": {
+							"host": {
+								"type": "string",
+								"description": "The host name of the GitHub server (for eg., 'https://github.com')"
+							},
+							"username": {
+								"type": "string",
+								"description": "The username to access GitHub (optional)"
+							},
+							"token": {
+								"type": "string",
+								"description": "GitHub access token with the following scopes: read:user, user:email, repo, write:discussion"
+							}
+						}
+					}
+				},
+				"githubPullRequests.pullRequestTitle": {
+					"type": "string",
+					"enum": [
+						"commit",
+						"branch",
+						"custom",
+						"ask"
+					],
+					"enumDescriptions": [
+						"Use the latest commit message",
+						"Use the branch name",
+						"Specify a custom title",
+						"Ask which of the above methods to use"
+					],
+					"default": "ask",
+					"description": "The title used when creating pull requests."
+				},
+				"githubPullRequests.logLevel": {
+					"type": "string",
+					"enum": [
+						"info",
+						"debug",
+						"off"
+					],
+					"default": "info",
+					"description": "Logging for GitHub Pull Request extension. The log is emitted to the output channel named as GitHub Pull Request."
+				},
+				"githubPullRequests.remotes": {
+					"type": "array",
+					"default": [
+						"origin",
+						"upstream"
+					],
+					"items": {
+						"type": "string"
+					},
+					"markdownDescription": "List of remotes to fetch pull requests from."
+				},
+				"githubPullRequests.includeRemotes": {
+					"type": "string",
+					"enum": [
+						"default",
+						"all"
+					],
+					"default": "default",
+					"deprecationMessage": "The setting `githubPullRequests.includeRemotes` has been deprecated. Use `githubPullRequests.remotes` to configure what remotes are shown.",
+					"description": "By default we only support remotes created by users. If you want to see pull requests from remotes this extension created for pull requests, change this setting to 'all'."
+				},
+				"githubPullRequests.queries": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"label": {
+								"type": "string",
+								"description": "The label to display for the query in the Pull Requests tree"
+							},
+							"query": {
+								"type": "string",
+								"description": "The query used for searching pull requests."
+							}
+						}
+					},
+					"scope": "resource",
+					"markdownDescription": "Specifies what queries should be used in the GitHub Pull Requests tree. Each query object has a `label` that will be shown in the tree and a search `query` using [GitHub search syntax](https://help.github.com/en/articles/understanding-the-search-syntax). The variable `${user}` can be used to specify the logged in user within a search. By default these queries define the categories \"Waiting For My Review\", \"Assigned To Me\" and \"Created By Me\". If you want to preserve these, make sure they are still in the array when you modify the setting.",
+					"default": [
+						{
+							"label": "Waiting For My Review",
+							"query": "is:open review-requested:${user}"
+						},
+						{
+							"label": "Assigned To Me",
+							"query": "is:open assignee:${user}"
+						},
+						{
+							"label": "Created By Me",
+							"query": "is:open author:${user}"
+						}
+					]
+				},
+				"githubPullRequests.defaultMergeMethod": {
+					"type": "string",
+					"enum": [
+						"merge",
+						"squash",
+						"rebase"
+					],
+					"default": "merge",
+					"description": "The method to use when merging pull requests."
+				},
+				"githubPullRequests.showInSCM": {
+					"type": "boolean",
+					"default": false,
+					"description": "When true, show GitHub Pull Requests within the SCM viewlet. Otherwise show a separate view container for them."
+				},
+				"githubPullRequests.fileListLayout": {
+					"type": "string",
+					"enum": [
+						"flat",
+						"tree"
+					],
+					"default": "tree",
+					"description": "The layout to use when displaying changed files list."
+				},
+				"githubPullRequests.defaultDeletionMethod.selectLocalBranch": {
+					"type": "boolean",
+					"default": true,
+					"description": "When true, the option to delete the local branch will be selected by default when deleting a branch from a pull request."
+				},
+				"githubPullRequests.defaultDeletionMethod.selectRemote": {
+					"type": "boolean",
+					"default": true,
+					"description": "When true, the option to delete the remote will be selected by default when deleting a branch from a pull request."
+				},
+				"telemetry.optout": {
+					"type": "boolean",
+					"default": false,
+					"deprecationMessage": "The setting `telemetry.optout` has been deprecated in favor of `githubPullRequests.telemetry.enabled`.",
+					"description": "Disable usage data and errors to be sent to a GitHub online service"
+				},
+				"github.hosts": {
+					"type": "array",
+					"default": [],
+					"deprecationMessage": "The setting `github.hosts` has been deprecated in favor of `githubPullRequests.hosts`.",
+					"description": "List of host credentials. For example, \"github.hosts\": [ { \"host\": \"https://github.com\", \"token\": \"GITHUB TOKEN\" } ]",
+					"items": {
+						"type": "object",
+						"properties": {
+							"host": {
+								"type": "string",
+								"description": "The host name of the GitHub server (for eg., 'https://github.com')"
+							},
+							"username": {
+								"type": "string",
+								"description": "The username to access GitHub (optional)"
+							},
+							"token": {
+								"type": "string",
+								"description": "GitHub access token with the following scopes: read:user, user:email, repo, write:discussion"
+							}
+						}
+					}
+				}
+			}
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "github-pull-requests",
+					"title": "GitHub Pull Requests",
+					"icon": "resources/icons/light/github.svg"
+				}
+			]
+		},
+		"views": {
+			"github-pull-requests": [
+				{
+					"id": "pr:github",
+					"name": "GitHub Pull Requests",
+					"when": "!config.githubPullRequests.showInSCM && config.git.enabled"
+				},
+				{
+					"id": "prStatus:github",
+					"name": "Changes In Pull Request",
+					"when": "!config.githubPullRequests.showInSCM && config.git.enabled && github:inReviewMode"
+				}
+			],
+			"scm": [
+				{
+					"id": "pr:scm",
+					"name": "GitHub Pull Requests",
+					"when": "config.githubPullRequests.showInSCM && config.git.enabled"
+				},
+				{
+					"id": "prStatus:scm",
+					"name": "Changes In Pull Request",
+					"when": "config.githubPullRequests.showInSCM && config.git.enabled && github:inReviewMode"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "auth.inputTokenCallback",
+				"title": "Manually Provide Authentication Response",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.create",
+				"title": "Create Pull Request",
+				"icon": {
+					"light": "resources/icons/light/stage.svg",
+					"dark": "resources/icons/dark/stage.svg"
+				},
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.createDraft",
+				"title": "Create Draft Pull Request",
+				"icon": {
+					"light": "resources/icons/light/stage.svg",
+					"dark": "resources/icons/dark/stage.svg"
+				},
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "auth.signout",
+				"title": "Sign out of GitHub",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.pick",
+				"title": "Checkout Pull Request",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.merge",
+				"title": "Merge Pull Request",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.readyForReview",
+				"title": "Mark Pull Request Ready For Review",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.close",
+				"title": "Close Pull Request",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openPullRequestInGitHub",
+				"title": "Open Pull Request in GitHub",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.refreshPullRequest",
+				"title": "Refresh Pull Request",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openFileInGitHub",
+				"title": "Open File in GitHub",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.copyCommitHash",
+				"title": "Copy Commit Hash",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openOriginalFile",
+				"title": "Open Original File",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openModifiedFile",
+				"title": "Open Modified File",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openDiffView",
+				"title": "Open Diff View",
+				"category": "GitHub Pull Requests",
+				"icon": {
+					"light": "resources/icons/light/open-change.svg",
+					"dark": "resources/icons/dark/open-change.svg"
+				}
+			},
+			{
+				"command": "pr.openChangedFile",
+				"title": "Open Changed File in PR",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.openDescription",
+				"title": "View Pull Request Description",
+				"category": "GitHub Pull Requests",
+				"when": "github:inReviewMode"
+			},
+			{
+				"command": "pr.openDescriptionToTheSide",
+				"title": "Open Pull Request Description to the Side",
+				"icon": {
+					"light": "resources/icons/light/split-editor-horizontal.svg",
+					"dark": "resources/icons/dark/split-editor-horizontal-inverse.svg"
+				}
+			},
+			{
+				"command": "pr.refreshDescription",
+				"title": "Refresh Pull Request Description",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "review.openFile",
+				"title": "Open File",
+				"icon": {
+					"light": "resources/icons/light/open-file.svg",
+					"dark": "resources/icons/dark/open-file.svg"
+				}
+			},
+			{
+				"command": "review.suggestDiff",
+				"title": "Suggest Edit"
+			},
+			{
+				"command": "pr.refreshList",
+				"title": "Refresh Pull Requests List",
+				"icon": {
+					"dark": "resources/icons/dark/refresh.svg",
+					"light": "resources/icons/light/refresh.svg"
+				},
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.refreshChanges",
+				"title": "Refresh",
+				"icon": {
+					"dark": "resources/icons/dark/refresh.svg",
+					"light": "resources/icons/light/refresh.svg"
+				},
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.configurePRViewlet",
+				"title": "Configure...",
+				"category": "GitHub Pull Requests",
+				"icon": {
+					"light": "resources/icons/light/gear.svg",
+					"dark": "resources/icons/dark/gear.svg"
+				}
+			},
+			{
+				"command": "pr.deleteLocalBranch",
+				"title": "Delete Local Branch",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.signin",
+				"title": "Sign in to GitHub",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.deleteLocalBranchesNRemotes",
+				"title": "Delete local branches and remotes",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.createComment",
+				"title": "Add Comment",
+				"category": "GitHub Pull Requests",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "pr.startReview",
+				"title": "Start Review",
+				"category": "GitHub Pull Requests",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "pr.deleteReview",
+				"title": "Delete Review",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.editComment",
+				"title": "Edit Comment",
+				"category": "GitHub Pull Requests",
+				"icon": {
+					"light": "resources/icons/light/edit.svg",
+					"dark": "resources/icons/dark/edit.svg"
+				}
+			},
+			{
+				"command": "pr.cancelEditComment",
+				"title": "Cancel",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.saveComment",
+				"title": "Save",
+				"category": "GitHub Pull Requests",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "pr.deleteComment",
+				"title": "Delete Comment",
+				"category": "GitHub Pull Requests",
+				"icon": {
+					"light": "resources/icons/light/delete.svg",
+					"dark": "resources/icons/dark/delete.svg"
+				}
+			},
+			{
+				"command": "pr.finishReview",
+				"title": "Finish Review",
+				"category": "GitHub Pull Requests",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "pr.signinAndRefreshList",
+				"title": "Sign in and Refresh",
+				"category": "GitHub Pull Requests"
+			},
+			{
+				"command": "pr.configureRemotes",
+				"title": "Configure Remotes...",
+				"category": "GitHub Pull Requests"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "auth.inputTokenCallback",
+					"when": "gitOpenRepositoryCount != 0"
+				},
+				{
+					"command": "auth.signout",
+					"when": "gitOpenRepositoryCount != 0 && github:authenticated"
+				},
+				{
+					"command": "pr.configureRemotes",
+					"when": "gitOpenRepositoryCount != 0"
+				},
+				{
+					"command": "pr.configurePRViewlet",
+					"when": "gitOpenRepositoryCount != 0"
+				},
+				{
+					"command": "pr.pick",
+					"when": "false"
+				},
+				{
+					"command": "review.openFile",
+					"when": "false"
+				},
+				{
+					"command": "pr.openChangedFile",
+					"when": "false"
+				},
+				{
+					"command": "pr.close",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.create",
+					"when": "gitOpenRepositoryCount != 0 && github:authenticated && !github:inReviewMode"
+				},
+				{
+					"command": "pr.createDraft",
+					"when": "gitOpenRepositoryCount != 0 && github:authenticated && !github:inReviewMode"
+				},
+				{
+					"command": "pr.merge",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.readyForReview",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.openPullRequestInGitHub",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.refreshDescription",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.openFileInGitHub",
+					"when": "false"
+				},
+				{
+					"command": "pr.openOriginalFile",
+					"when": "false"
+				},
+				{
+					"command": "pr.openModifiedFile",
+					"when": "false"
+				},
+				{
+					"command": "pr.refreshPullRequest",
+					"when": "false"
+				},
+				{
+					"command": "pr.deleteLocalBranch",
+					"when": "false"
+				},
+				{
+					"command": "pr.openDiffView",
+					"when": "false"
+				},
+				{
+					"command": "pr.openDescriptionToTheSide",
+					"when": "false"
+				},
+				{
+					"command": "pr.openDescription",
+					"when": "gitOpenRepositoryCount != 0 && github:inReviewMode"
+				},
+				{
+					"command": "pr.refreshList",
+					"when": "gitOpenRepositoryCount != 0 && github:authenticated && github:hasGitHubRemotes"
+				},
+				{
+					"command": "pr.refreshChanges",
+					"when": "false"
+				},
+				{
+					"command": "pr.signin",
+					"when": "gitOpenRepositoryCount != 0 && github:hasGitHubRemotes"
+				},
+				{
+					"command": "pr.signinAndRefreshList",
+					"when": "false"
+				},
+				{
+					"command": "pr.copyCommitHash",
+					"when": "false"
+				},
+				{
+					"command": "pr.createComment",
+					"when": "false"
+				},
+				{
+					"command": "pr.startReview",
+					"when": "false"
+				},
+				{
+					"command": "pr.deleteReview",
+					"when": "false"
+				},
+				{
+					"command": "pr.editComment",
+					"when": "false"
+				},
+				{
+					"command": "pr.cancelEditComment",
+					"when": "false"
+				},
+				{
+					"command": "pr.saveComment",
+					"when": "false"
+				},
+				{
+					"command": "pr.deleteComment",
+					"when": "false"
+				},
+				{
+					"command": "pr.finishReview",
+					"when": "false"
+				}
+			],
+			"view/title": [
+				{
+					"command": "pr.create",
+					"when": "gitOpenRepositoryCount != 0 && view =~ /pr:/",
+					"group": "navigation"
+				},
+				{
+					"command": "pr.configurePRViewlet",
+					"when": "gitOpenRepositoryCount != 0 && view =~ /pr:/",
+					"group": "navigation"
+				},
+				{
+					"command": "pr.refreshList",
+					"when": "gitOpenRepositoryCount != 0 && view =~ /pr:/",
+					"group": "navigation"
+				},
+				{
+					"command": "pr.refreshChanges",
+					"when": "view =~ /prStatus/",
+					"group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "pr.pick",
+					"when": "view =~ /pr:/ && viewItem =~ /pullrequest(:local)?:nonactive|description/",
+					"group": "pullrequest@1"
+				},
+				{
+					"command": "pr.refreshPullRequest",
+					"when": "view =~ /pr:/ && viewItem =~ /pullrequest|description/",
+					"group": "pullrequest@2"
+				},
+				{
+					"command": "pr.openPullRequestInGitHub",
+					"when": "view =~ /pr:/ && viewItem =~ /pullrequest|description/",
+					"group": "pullrequest@3"
+				},
+				{
+					"command": "pr.deleteLocalBranch",
+					"when": "view =~ /pr:/ && viewItem =~ /pullrequest:local:nonactive/",
+					"group": "pullrequest@4"
+				},
+				{
+					"command": "pr.openFileInGitHub",
+					"when": "view =~ /(pr|prStatus)/ && viewItem =~ /filechange/"
+				},
+				{
+					"command": "pr.copyCommitHash",
+					"when": "view =~ /prStatus/ && viewItem =~ /commit/"
+				},
+				{
+					"command": "pr.openDescriptionToTheSide",
+					"group": "inline",
+					"when": "view =~ /(pr|prStatus)/ && viewItem =~ /description/"
+				},
+				{
+					"command": "review.openFile",
+					"group": "inline",
+					"when": "config.git.openDiffOnClick && view =~ /prStatus/ && viewItem =~ /filechange(?!:DELETE)/"
+				},
+				{
+					"command": "pr.openDiffView",
+					"group": "inline",
+					"when": "!config.git.openDiffOnClick && view =~ /prStatus/ && viewItem =~ /filechange(?!:DELETE)/"
+				},
+				{
+					"command": "pr.openOriginalFile",
+					"when": "view =~ /(pr|prStatus)/ && viewItem =~ /filechange:MODIFY/"
+				},
+				{
+					"command": "pr.openModifiedFile",
+					"when": "view =~ /(pr|prStatus)/ && viewItem =~ /filechange:MODIFY/"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "review.openFile",
+					"group": "navigation",
+					"when": "resourceScheme =~ /^review$/"
+				}
+			],
+			"scm/title": [
+				{
+					"command": "review.suggestDiff",
+					"when": "scmProvider == git && github:inReviewMode",
+					"group": "inline"
+				}
+			],
+			"comments/commentThread/context": [
+				{
+					"command": "pr.createComment",
+					"group": "inline",
+					"when": "commentController =~ /^(browse|review)/"
+				},
+				{
+					"command": "pr.startReview",
+					"group": "inline",
+					"when": "commentController =~ /browse/ && !prInDraft"
+				},
+				{
+					"command": "pr.startReview",
+					"group": "inline",
+					"when": "commentController =~ /review/ && !reviewInDraftMode"
+				},
+				{
+					"command": "pr.deleteReview",
+					"group": "inline",
+					"when": "commentController =~ /browse/ && prInDraft"
+				},
+				{
+					"command": "pr.deleteReview",
+					"group": "inline",
+					"when": "commentController =~ /review/ && reviewInDraftMode"
+				},
+				{
+					"command": "pr.finishReview",
+					"group": "inline",
+					"when": "commentController =~ /browse/ && prInDraft"
+				},
+				{
+					"command": "pr.finishReview",
+					"group": "inline",
+					"when": "commentController =~ /review/ && reviewInDraftMode"
+				}
+			],
+			"comments/comment/title": [
+				{
+					"command": "pr.editComment",
+					"group": "inline@1",
+					"when": "commentController =~ /^(browse|review)/ && comment =~ /canEdit/"
+				},
+				{
+					"command": "pr.deleteComment",
+					"group": "inline@2",
+					"when": "commentController =~ /^(browse|review)/ && comment =~ /canDelete/"
+				}
+			],
+			"comments/comment/context": [
+				{
+					"command": "pr.cancelEditComment",
+					"group": "inline@1",
+					"when": "commentController =~ /^(browse|review)/"
+				},
+				{
+					"command": "pr.saveComment",
+					"group": "inline@2",
+					"when": "commentController =~ /^(browse|review)/"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "webpack --env.production",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"compile": "tsc -p ./",
+		"clean": "rm -r out/ media/ preview-src/dist/",
+		"watch": "webpack --watch --env.development",
+		"test": "./test.sh"
+	},
+	"devDependencies": {
+		"@types/chai": "^4.1.4",
+		"@types/debounce": "^3.0.0",
+		"@types/glob": "7.1.1",
+		"@types/graphql": "^14.0.5",
+		"@types/keytar": "^4.0.1",
+		"@types/mocha": "^5.2.2",
+		"@types/node": "*",
+		"@types/node-fetch": "^2.1.4",
+		"@types/query-string": "^6.1.1",
+		"@types/react": "^16.8.4",
+		"@types/react-dom": "^16.8.2",
+		"@types/sinon": "7.0.11",
+		"@types/temp": "0.8.34",
+		"@types/uuid": "^3.4.3",
+		"@types/webpack": "^4.4.10",
+		"css-loader": "^3.0.0",
+		"glob": "7.1.4",
+		"jsdom": "15.1.1",
+		"jsdom-global": "3.0.2",
+		"minimist": "^1.2.0",
+		"mkdirp": "0.5.1",
+		"mocha": "^5.2.0",
+		"mocha-junit-reporter": "1.23.0",
+		"mocha-multi-reporters": "1.1.7",
+		"react": "^16.8.2",
+		"react-dom": "^16.8.2",
+		"react-testing-library": "7.0.1",
+		"sinon": "7.3.2",
+		"source-map-support": "0.5.12",
+		"style-loader": "^0.23.0",
+		"svg-inline-loader": "^0.8.0",
+		"temp": "0.9.0",
+		"ts-loader": "^6.0.4",
+		"tslint": "^5.18.0",
+		"tslint-webpack-plugin": "^2.1.0",
+		"tty": "1.0.1",
+		"typescript": "^3.4.5",
+		"vscode": "^1.1.33",
+		"webpack": "^4.39.0",
+		"webpack-cli": "^3.3.6"
+	},
+	"dependencies": {
+		"@octokit/rest": "^16.21.0",
+		"apollo-boost": "^0.1.22",
+		"apollo-link-context": "^1.0.12",
+		"debounce": "^1.2.0",
+		"es6-promise": "^4.2.5",
+		"events": "^3.0.0",
+		"git-credential-node": "^1.1.0",
+		"graphql": "^14.0.2",
+		"js-base64": "^2.4.9",
+		"moment": "^2.22.1",
+		"node-emoji": "^1.8.1",
+		"node-fetch": "^2.1.1",
+		"query-string": "^6.2.0",
+		"ssh-config": "^2.0.0-alpha.3",
+		"tunnel": "0.0.6",
+		"uuid": "^3.3.3",
+		"vscode-extension-telemetry": "^0.1.2",
+		"vsls": "^0.3.967"
+	},
+	"optionalDependencies": {
+		"spawn-sync": "^2.0.0"
+	},
+	"resolutions": {
+		"webpack/**/tar": "^4.4.2"
+	},
+	"license": "MIT",
+	"__metadata": {
+		"id": "69ddd764-339a-4ecc-97c1-9c4ece58e36d",
+		"publisherId": "7c1c19cd-78eb-4dfb-8999-99caf7679002",
+		"publisherDisplayName": "GitHub"
+	}
+}

@@ -1,0 +1,1234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="Platform::Guid">
+    <DisplayString>{*((GUID*)this)}</DisplayString>
+    <StringView>*((GUID*)this)</StringView>
+  </Type>
+
+  <Type Name="Platform::String">
+    <AlternativeType Name="HSTRING__" />
+    <DisplayString>{this,sh}</DisplayString>
+    <StringView>this,sh</StringView>
+    <Expand>
+      <Item Name="Length">WindowsGetStringLen((HSTRING__*)this)</Item>
+      <Item Name="[Pointer]">WindowsGetStringRawBuffer((HSTRING__*)this, nullptr)</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Platform::WriteOnlyArray&lt;*&gt;">
+    <DisplayString>{{size = {__size}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">__size</Item>
+      <ArrayItems>
+        <Size>__size</Size>
+        <ValuePointer>__data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+
+  <Type Name="Platform::Collections::Vector&lt;*&gt;">
+    <AlternativeType Name="Platform::Collections::VectorView&lt;*&gt;" />
+    <DisplayString>{*m_vec._Ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem>*m_vec._Ptr</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Platform::Collections::Map&lt;*&gt;">
+    <AlternativeType Name="Platform::Collections::MapView&lt;*&gt;" />
+    <DisplayString>{*m_map._Ptr}</DisplayString>
+    <Expand>
+      <ExpandedItem>*m_map._Ptr</ExpandedItem>
+    </Expand>
+  </Type>
+
+
+  <Type Name="Windows::Foundation::Collections::Internal::Vector&lt;*&gt;">
+    <DisplayString>{{size = {_uSize}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_uSize</Item>
+      <Item Name="[capacity]">_uCapacity</Item>
+      <ArrayItems>
+        <Size>_uSize</Size>
+        <ValuePointer>_paT</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <!-- Xaml section -->
+
+  <!-- TODO: Handle string pool case -->
+  <Type Name="XSTRING_BASE">
+    <AlternativeType Name="CXString"/>
+    <DisplayString Condition="this == 0">""</DisplayString>
+    <DisplayString Condition="cString == 0">""</DisplayString>
+    <DisplayString>{(wchar_t *)((size_t)pString &amp; ~1),su}</DisplayString>
+    <StringView>(wchar_t *)((size_t)pString &amp; ~1),su</StringView>
+  </Type>
+
+  <Type Name="DirectUI::PropertyInfo">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>{*(m_spName.m_ptr),sub}</DisplayString>
+  </Type>
+
+  <!-- TODO: Need to handle more types -->
+  <Type Name="CValue">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString Condition="m_type == valueFloat">{m_eValue}</DisplayString>
+    <DisplayString Condition="m_type == valueSigned">{m_iValue}</DisplayString>
+    <DisplayString Condition="m_type == valueBool">{m_nValue}</DisplayString>
+    <DisplayString Condition="m_type == valueEnum">{m_nValue}</DisplayString>
+    <DisplayString Condition="m_type == valueString">{m_pchValue,su}</DisplayString>
+    <DisplayString Condition="m_type == valueObject">{*m_pdoValue}</DisplayString>
+    <DisplayString Condition="m_type == valueSize">{m_peValue[0]},{m_peValue[1]}</DisplayString>
+    <DisplayString Condition="m_type == valueDouble">{m_pdfValue}</DisplayString>
+    <DisplayString Condition="m_type == valueNull">[null]</DisplayString>
+    <Expand>
+      <Item Name="[Value]" Condition="m_type == valueObject">m_pdoValue</Item>
+    </Expand>
+  </Type>
+
+  <!-- TODO: Handle case where collection is not flattened -->
+  <Type Name="CDOCollection">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{size = {m_nObject}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">m_nObject</Item>
+      <ArrayItems>
+        <Size>m_nObject</Size>
+        <ValuePointer>m_pFlattened</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Foundation::ValueScalar&lt;*&gt;">
+    <Version Name="WinTypes.dll"/>
+    <DisplayString>{($T1)_value}</DisplayString>
+  </Type>
+
+  <Type Name="DirectUI::EffectiveValueEntry">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>{m_pValue,na}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_pValue,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::BaseEffectiveValue">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.3"/>
+    <DisplayString>{m_BaseValue}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_BaseValue</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="std::pair&lt;int const , DirectUI::EffectiveValueEntry *&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.3"/>
+    <DisplayString>{{{g_pMetadataStore-&gt;m_mapDPsById[first],na} = {second,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Name">g_pMetadataStore-&gt;m_mapDPsById[first],na</Item>
+      <Item Name="Value">second,na</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::UIElementCollection">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <Expand>
+      <ExpandedItem>*(CUIElementCollection*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ValueTypeViewBase&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.3" />
+    <Expand>
+      <ExpandedItem>m_vector</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ViewBase&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" />
+    <Expand>
+      <ExpandedItem>m_list</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CUIElement">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Name">m_pstrName</Item>
+      <Item Name="IsDoubleTapEnabled">(bool)m_bDoubleTapEnabled</Item>
+      <Item Name="IsRightTapEnabled">(bool)m_bRightTapEnabled</Item>
+      <Item Name="IsTapEnabled">(bool)m_bTapEnabled</Item>
+      <Item Name="ManipulationMode">m_uiManipulationMode</Item>
+      <Item Name="IsHoldingEnabled">(bool)m_bHoldEnabled</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CFrameworkElement">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Width">m_eWidth</Item>
+      <Item Name="Height">m_eHeight</Item>
+      <Item Name="MouseCursor">m_eMouseCursor</Item>
+      <Item Name="Parent" Condition="m_pLogicalParent != 0">m_pLogicalParent</Item>
+      <ExpandedItem>*(CUIElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CControl">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="IsTabStop">(bool)m_fIsTabStop</Item>
+      <Item Name="TabIndex">m_cTabIndex</Item>
+      <Item Name="HorizontalContentAlignment">m_horizontalContentAlignment</Item>
+      <Item Name="VerticalContentAlignment">m_verticalContentAlignment</Item>
+      <Item Name="BorderThickness">m_borderThickness</Item>
+      <Item Name="Padding">m_padding</Item>
+      <Item Name="IsFocused">m_eFocusState != FocusStateUnfocused</Item>
+      <Item Name="Template">m_pTemplate</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Control">
+    <Version Name="Windows.UI.Xaml.dll" Min ="6.3" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Dependency Properties" Condition="m_pMapValueTable-&gt;_Vec._Mylast - m_pMapValueTable-&gt;_Vec._Myfirst &gt; 0">m_pMapValueTable,na</Item>
+      <ExpandedItem>(CDependencyObject*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CContentControl">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na} Content = {m_content}}}</DisplayString>
+    <Expand>
+      <Item Name="Content">&amp;m_content</Item>
+      <ExpandedItem>*(CControl*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ContentControl">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CContentControl*)(((CDependencyObject*)m_pDO))</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Button">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CContentControl*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CTextBoxBase">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <Expand>
+      <Item Name="MaxLength">m_iMaxLength</Item>
+      <Item Name="IsReadOnly">(bool)m_bIsReadOnly</Item>
+      <Item Name="AcceptsReturn">(bool)m_bAcceptsReturn</Item>
+      <Item Name="TextWrapping">m_textWrapping</Item>
+      <Item Name="TextAlignment">m_textAlignment</Item>
+      <ExpandedItem>*(CControl*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CTextBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {*m_pstrName} Text = {*m_pText}}}</DisplayString>
+    <Expand>
+      <Item Name="Text">m_pText</Item>
+      <Item Name="SelectionLength">m_iSelectionLength</Item>
+      <Item Name="SelectionStart">m_iSelectionStart</Item>
+      <Item Name="SelectedText">m_pSelectedText</Item>
+      <Item Name="IsSpellCheckEnabled">(bool)m_isSpellCheckEnabled</Item>
+      <Item Name="IsTextPredictionEnabled">(bool)m_isTextPredictionEnabled</Item>
+      <Item Name="InputScope">m_pInputScope</Item>
+      <ExpandedItem>*(CTextBoxBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TextBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Text = {*(((CTextBox*)m_pDO)-&gt;m_pText)}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CTextBox*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CPasswordBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na} Password = {m_pPassword,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Password">m_pPassword</Item>
+      <Item Name="PasswordChar">m_pPasswordChar</Item>
+      <Item Name="IsPasswordRevealButtonEnabled">m_fRevealButtonEnabled</Item>
+      <ExpandedItem>*(CTextBoxBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::PasswordBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Password = {((CPasswordBox*)m_pDO)-&gt;m_pPassword,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CPasswordBox*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CPanel">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3" />
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Children">m_pChildren</Item>
+      <Item Name="IsItemsHost">(bool)m_bItemsHost</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CStackPanel">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Orientation">m_orientation</Item>
+      <ExpandedItem>*(CPanel*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Panel">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CPanel*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CBorder">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="CornerRadius">m_cornerRadius</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Border">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CBorder*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- Windows.UI.Xaml.dll has a special CString class which
+       is NOT the same as Atl::CStringW, so it needs its own visualizer.
+       -->
+  <Type Name="CString">
+    <Version Name="Windows.UI.Xaml.dll" />
+    <DisplayString Condition="this == 0">""</DisplayString>
+    <DisplayString Condition="this != 0">{m_pstrString}</DisplayString>
+    <StringView Condition="this != 0">m_pstrString</StringView>
+  </Type>
+
+  <Type Name="CTextBlock">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na} Text = {m_pText,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Text">m_pText</Item>
+      <Item Name="Inlines">m_pInlines</Item>
+      <Item Name="TextWrapping">m_textWrapping</Item>
+      <Item Name="TextTrimming">m_textTrimming</Item>
+      <Item Name="TextAlignment">m_textAlignment</Item>
+      <Item Name="Padding">m_padding</Item>
+      <Item Name="IsTextSelectionEnabled">(bool)m_isTextSelectionEnabled</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TextBlock">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Text = {((CTextBlock*)m_pDO)-&gt;m_pText,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CTextBlock*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ToggleButton">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(DirectUI::Control*)this,nd</ExpandedItem>
+      <ExpandedItem>*(CContentControl*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CImageBase">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Source = {m_pImageSource-&gt;m_pstrSource,na} Width = {m_eWidth} Height = {m_eHeight}}}</DisplayString>
+    <Expand>
+      <Item Name="Source">m_pImageSource</Item>
+      <Item Name="Stretch">m_Stretch</Item>
+      <ExpandedItem>*(CMediaBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Image">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Source = {((CImage*)m_pDO)-&gt;m_pImageSource-&gt;m_pstrSource,na} Width = {((CFrameworkElement*)m_pDO)-&gt;m_eWidth} Height = {((CFrameworkElement*)m_pDO)-&gt;m_eHeight}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CImage*)m_pDO,na</ExpandedItem>
+      <Item Name="PlayToSource">m_pPlayToSource</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CRoutedEventArgs">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <Expand>
+      <Item Name="OriginalSource">m_pSource</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::RoutedEventArgs">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <Expand>
+      <ExpandedItem>*(CRoutedEventArgs*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CItemsControl">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Items">m_pItemCollection</Item>
+      <ExpandedItem>(CControl*)this,ndna</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ItemsControl">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Selector">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.3" Max="6.3" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} &lt;{m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items._Mylast - m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items._Myfirst} item(s) selected&gt;}}</DisplayString>
+    <Expand>
+      <Item Name="SelectedItems">m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items,view(simple)</Item>
+      <ExpandedItem>(DirectUI::Control*)this,ndna</ExpandedItem>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TrackerCollection&lt;IInspectable *&gt;">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>{m_vector.m_items}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_vector.m_items</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TrackerPtr&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.3"/>
+    <DisplayString>{m_trackerReference.m_pValue}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_trackerReference.m_pValue</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TrackerPtr&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{m_trackerReference.m_value}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_trackerReference.m_value</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!--End Xaml section -->
+
+  <!-- Windows::Web section-->
+  <Type Name="AutoPtr&lt;*&gt;">
+    <!-- We only want this under Windows.Web.dll as there are other types
+    with the same name and different implementation-->
+    <Version Name="Windows.Web.dll"/>
+    <DisplayString>{obj}</DisplayString>
+    <Expand>
+      <ExpandedItem>obj</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Web::Internal::AutoStringPtr">
+    <Version Name="Windows.Web.dll"/>
+    <DisplayString>{sharedRef.obj-&gt;string._hstring,sh}</DisplayString>
+    <Expand />
+  </Type>
+
+  <Type Name="Windows::Web::Internal::NameValueCollection&lt;*&gt;::Entry">
+    <Version Name="Windows.Web.dll"/>
+    <DisplayString>{key},{value}</DisplayString>
+    <Expand>
+      <Item Name="key">key</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Web::Internal::NameValueCollection&lt;*&gt;">
+    <Version Name="Windows.Web.dll"/>
+    <DisplayString>{{size = {count}}}</DisplayString>
+    <Expand>
+      <Item Name="[size]">count</Item>
+      <LinkedListItems>
+        <Size>count</Size>
+        <HeadPointer>head</HeadPointer>
+        <NextPointer>next</NextPointer>
+        <ValueNode>this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+  <!--End Windows::Web section-->
+
+  <!--
+    The following struct is pointed to just before the Platform::Exception object:
+
+    typedef struct _WinRTExceptionInfo
+    {
+        BSTR description;
+        BSTR restrictedErrorString;
+        BSTR restrictedErrorReference;
+        BSTR capabilitySid;
+        HRESULT hr;
+        ::Microsoft::WRL::ComPtr<IUnknown> restrictedInfo;
+        void* throwInfo;   // Do not need to free - this points to a static part of our binary.
+        unsigned int size; // Size of this structure (used for versioning)
+    } WinRTExceptionInfo;
+    -->
+
+  <Type Name="Platform::Exception">
+    <DisplayString Condition="(((void***)this)[-1])[1] != nullptr">{(((void***)this)[-1])[1],bstr}</DisplayString>  <!-- restrictedErrorString -->
+    <DisplayString Condition="(((void***)this)[-1])[2] != nullptr">{(((void***)this)[-1])[2],restrictedException}</DisplayString> <!-- restrictedErrorReference -->
+    <DisplayString Condition="(((void***)this)[-1])[0] != nullptr">{(((void***)this)[-1])[0],bstr}</DisplayString> <!-- description -->
+    <DisplayString>Exception: {(HRESULT)(((void***)this)[-1])[4]}</DisplayString>
+    <Expand>
+      <Item Name="[Error Message]" Condition="(((void***)this)[-1])[1] != nullptr">(((void***)this)[-1])[1],bstr</Item> <!-- restrictedErrorString -->
+      <Item Name="[Error Message]" Condition="((((void***)this)[-1])[1] == nullptr) &amp;&amp; ((((void***)this)[-1])[2] != nullptr)">(((void***)this)[-1])[2],restrictedException</Item> <!-- restrictedErrorReference -->
+      <Item Name="[Error Description]" Condition="(((void***)this)[-1])[0] != nullptr">(((void***)this)[-1])[0],bstr</Item> <!-- description -->
+      <Item Name="[HRESULT]">(HRESULT)(((void***)this)[-1])[4]</Item> <!-- hr -->
+<!-- restrictedInfo
+      <Item Name="[Stack Trace]" Condition="(((void***)this)[-1])[5] != nullptr">($WinRTStackTraceObject*)(((void***)this)[-1])[5]</Item>
+-->
+    </Expand>
+
+  </Type>
+
+  <!-- Define a view of IUnknown for inspecting an exception stack trace captured within an IErrorInfo object.-->
+<!--
+  <Type Name="$WinRTStackTraceObject">
+    <CustomVisualizer VisualizerId="039ef1a5-17f8-4159-9775-7cbf0cb1268d" />
+  </Type>
+-->
+
+  <Type Name="Microsoft::WRL::ComPtr&lt;*&gt;">
+    <DisplayString>{ptr_}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Microsoft::WRL::Wrappers::HandleT&lt;*&gt;">
+    <DisplayString>{handle_}</DisplayString>
+    <Expand>
+      <ExpandedItem>handle_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Microsoft::WRL::Wrappers::HString">
+    <DisplayString>{hstr_}</DisplayString>
+    <StringView>hstr_</StringView>
+    <Expand>
+      <ExpandedItem>hstr_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Microsoft::WRL::Wrappers::HStringReference">
+    <DisplayString>{hstr_}</DisplayString>
+    <StringView>hstr_</StringView>
+    <Expand>
+      <ExpandedItem>hstr_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Microsoft::WRL::Details::EventTargetArray">
+    <DisplayString>size={end_ - begin_}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>end_ - begin_</Size>
+        <ValuePointer>begin_</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Microsoft::WRL::EventSource&lt;*&gt;">
+    <AlternativeType Name="Microsoft::WRL::AgileEventSource&lt;*&gt;"/>
+    <DisplayString>{targets_}</DisplayString>
+    <Expand>
+      <ExpandedItem>targets_</ExpandedItem>
+    </Expand>
+  </Type>
+
+    <Type Name="Microsoft::WRL::RuntimeClass&lt;*&gt;" Inheritable="false">
+        <DisplayString Optional="true">ref count={refcount_,d}</DisplayString>
+        <DisplayString Optional="true" Condition="refCount_.rawValue &gt; 0">ref count={refCount_.refCount,d}</DisplayString>
+        <DisplayString Optional="true" Condition="refCount_.rawValue &lt; 0">
+            ref count={((Microsoft::WRL::Details::WeakReferenceImpl*)(refCount_.refCount &lt;&lt; 1))-&gt;refcount_,d}, strong ref count={((Microsoft::WRL::Details::WeakReferenceImpl*)(refCount_.refCount &lt;&lt; 1))-&gt;strongRefCount_,d}
+        </DisplayString>
+        <Expand>
+            <Item Name="marshaller_" Optional="true">marshaller_</Item>
+        </Expand>
+    </Type>
+
+    <Type Name="Microsoft::WRL::Details::WeakReferenceImpl">
+        <DisplayString Optional="true">target ref count={refcount_,d}</DisplayString>
+        <Expand>
+            <Item Name="unknown_" Optional="true">unknown_</Item>
+        </Expand>
+    </Type>
+
+  <Type Name="XWinRT::detail::GitStorageType&lt;*&gt;">
+    <DisplayString>{_pObject,na}</DisplayString>
+    <StringView>_pObject</StringView>
+    <Expand>
+      <ExpandedItem>_pObject</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="XWinRT::XHashMap&lt;*&gt;">
+    <DisplayString>{{Count = {m_nElements}}}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000" ExcludeView="Test">
+        <Variable Name="iBucket" InitialValue="-1" />
+        <Variable Name="pBucket" InitialValue="m_ppBins == nullptr ? nullptr : *m_ppBins" />
+        <Variable Name="iBucketIncrement" InitialValue="-1" />
+
+        <Size>m_nElements</Size>
+        <Exec>pBucket = nullptr</Exec>
+        <Loop>
+          <If Condition="pBucket == nullptr">
+            <Exec>iBucket++</Exec>
+            <Exec>iBucketIncrement = __findnonnull(m_ppBins + iBucket, m_nBins - iBucket)</Exec>
+            <Break Condition="iBucketIncrement == -1" />
+            <Exec>iBucket += iBucketIncrement</Exec>
+            <Exec>pBucket = m_ppBins[iBucket]</Exec>
+          </If>
+          <Item>pBucket,na</Item>
+          <Exec>pBucket = pBucket->m_pNext</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Foundation::Collections::Internal::HashMap&lt;*&gt;">
+    <DisplayString>{_hashMap}</DisplayString>
+    <Expand>
+      <ExpandedItem>_hashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="XWinRT::XHashMap&lt;*,*&gt;::CPair">
+    <DisplayString>({m_key}, {m_value})</DisplayString>
+    <Expand>
+      <Item Name="[Key]">m_key,na</Item>
+      <Item Name="[Value]">m_value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Foundation::Collections::Internal::SimpleVectorView&lt;*&gt;">
+    <DisplayString>{_spVector.ptr_->_uSize} elements</DisplayString>
+    <Expand>
+      <ExpandedItem>_spVector.ptr_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Foundation::Value&lt;Windows::Foundation::ValueScalar&lt;*&gt;&gt;">
+    <DisplayString Condition='strcmp("unsigned __int64", "$T1") == 0'>{_value} ({((ULARGE_INTEGER*)&amp;_value)->HighPart}, {((ULARGE_INTEGER*)&amp;_value)->LowPart})</DisplayString>
+    <DisplayString>{_value}</DisplayString>
+    <Expand>
+      <Item Name="[value]">_value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="DeviceInformationServer">
+    <Version Name="Windows.Devices.Enumeration.dll"/>
+    <DisplayString>{_id}</DisplayString>
+    <Expand>
+      <Item Name="[Id]">_id</Item>
+      <Item Name="[Type]">_type</Item>
+      <ArrayItems>
+        <Size>_properties.ptr_->_propertyCount</Size>
+        <ValuePointer>_properties.ptr_->_properties</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="PropertyInfo">
+    <Version Name="Windows.Devices.Enumeration.dll"/>
+    <DisplayString Condition="_type == 0x11">{{{_keyName} = {!!*(unsigned char*)_buffer}}}</DisplayString>
+    <!--DEVPROP_TYPE_BOOLEAN-->
+    <DisplayString Condition="_type == 0x12">{{{_keyName} = {(wchar_t*)_buffer,su}}}</DisplayString>
+    <!--DEVPROP_TYPE_STRING-->
+    <DisplayString>{{{_keyName}}}</DisplayString>
+    <Expand>
+      <Item Name="[KeyName]">_keyName</Item>
+      <Item Name="[Key]">_key</Item>
+      <Item Name="[Value]" Condition="_type == 0x11">!!*(unsigned char*)_buffer</Item>
+      <!--DEVPROP_TYPE_BOOLEAN-->
+      <Item Name="[Value]" Condition="_type == 0x12">(wchar_t*)_buffer</Item>
+      <!--DEVPROP_TYPE_STRING-->
+      <Synthetic Name="[Value]" Condition="_type == 0x0">
+        <DisplayString>Empty</DisplayString>
+      </Synthetic>
+      <!--DEVPROP_TYPE_EMPTY-->
+      <Item Name="[Type]">_type</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::WriteableBitmap">
+    <AlternativeType Name="Windows::UI::Xaml::Media::Imaging::WriteableBitmap"/>
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>Bgra8 {((CWriteableBitmap*)(m_pDO))->m_nWidth}x{((CWriteableBitmap*)(m_pDO))->m_nHeight} stride {4*((CWriteableBitmap*)(m_pDO))->m_nWidth}</DisplayString>
+    <Expand>
+      <Synthetic Name="[type]">
+        <DisplayString>UINT8</DisplayString>
+      </Synthetic>
+      <Synthetic Name="[channels]">
+        <DisplayString>BGRA</DisplayString>
+      </Synthetic>
+      <Item Name="[stride]">4*((CWriteableBitmap*)(m_pDO))->m_nWidth</Item>
+      <Item Name="[width]">((CWriteableBitmap*)(m_pDO))->m_nWidth</Item>
+      <Item Name="[height]">((CWriteableBitmap*)(m_pDO))->m_nHeight</Item>
+      <Item Name="[data]">(void*)((CWriteableBitmap*)(m_pDO))->m_pPixels</Item>
+    </Expand>
+  </Type>
+
+  <!-- These entries exist for backcompat with Windows 8 and do not apply on newer versions of Windows-->
+  <Type Name="DirectUI::Control">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Dependency Properties" Condition="m_mapValueTable._Mysize > 0">m_mapValueTable</Item>
+    </Expand>
+  </Type>
+  <Type Name="DirectUI::BaseEffectiveValue">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2"/>
+    <DisplayString>{m_BaseValue.m_pValue,na}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_BaseValue.m_pValue,na</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="std::pair&lt;DirectUI::DependencyPropertyInfo * const, DirectUI::EffectiveValueEntry *&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2"/>
+    <DisplayString>{{{*first,sub} = {second,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Name">first</Item>
+      <Item Name="Value">second</Item>
+    </Expand>
+  </Type>
+  <Type Name="DirectUI::ValueTypeViewBase&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2" />
+    <Expand>
+      <ExpandedItem>m_list</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="DirectUI::ComboBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Item Count={m_selection.m_pSelectedItems-&gt;m_list._Mysize}}}</DisplayString>
+    <Expand>
+      <Item Name="SelectedItem" Condition="m_selection.m_pSelectedItems-&gt;m_list._Mysize &gt; 0">((CItemsControl*)(m_pDO))->m_pItemCollection->m_pFlattened[m_selection.m_pSelectedItems-&gt;m_indexlist._Myhead-&gt;_Next-&gt;_Myval]</Item>
+      <Item Name="SelectedItem" Condition="m_selection.m_pSelectedItems-&gt;m_list._Mysize == 0">(void*)0</Item>
+      <Item Name="SelectedIndex" Condition="m_selection.m_pSelectedItems-&gt;m_list._Mysize &gt; 0">m_selection.m_pSelectedItems-&gt;m_indexlist._Myhead-&gt;_Next-&gt;_Myval</Item>
+      <Item Name="SelectedIndex" Condition="m_selection.m_pSelectedItems-&gt;m_list._Mysize == 0">-1</Item>
+      <ExpandedItem>(DirectUI::Control*)this,ndna</ExpandedItem>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="DirectUI::ListBox">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.2"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_pstrName,na} Item Count={m_selection.m_pSelectedItems-&gt;m_indexlist._Mysize}}}</DisplayString>
+    <Expand>
+      <Item Name="SelectedIndex" Condition="m_selection.m_pSelectedItems-&gt;m_indexlist._Mysize &gt; 0">m_selection.m_pSelectedItems-&gt;m_indexlist._Myhead-&gt;_Next-&gt;_Myval</Item>
+      <Item Name="SelectedIndex" Condition="m_selection.m_pSelectedItems-&gt;m_indexlist._Mysize == 0">-1</Item>
+      <Item Name="SelectedItem" Condition="m_selection.m_pSelectedItems-&gt;m_indexlist._Mysize &gt; 0">((CItemsControl*)(m_pDO))->m_pItemCollection->m_pFlattened[m_selection.m_pSelectedItems-&gt;m_indexlist._Myhead-&gt;_Next-&gt;_Myval]</Item>
+      <Item Name="SelectedItem" Condition="m_selection.m_pSelectedItems-&gt;m_indexlist._Mysize == 0">(void*)0</Item>
+      <Item Name="SelectedItems">*m_selection.m_pSelectedItems</Item>
+      <ExpandedItem>(DirectUI::Control*)this,ndna</ExpandedItem>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="_STOWED_EXCEPTION_INFORMATION_V1">
+    <DisplayString Condition="Header.Signature == 1397043249">{ResultCode}</DisplayString>
+    <DisplayString Condition="Header.Signature != 1397043249">&lt;Unable to read exception information&gt;</DisplayString>
+    <Expand>
+      <Item Name="ResultCode" Condition="Header.Signature == 1397043249">ResultCode</Item>
+      <Item Name="ThreadId" Condition="Header.Signature == 1397043249">ThreadId</Item>
+      <Item Name="ExceptionAddress" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043249">ExceptionAddress</Item>
+      <Item Name="[Stack Trace]" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043249 &amp;&amp; StackTraceWordSize == 4">(UINT32*)StackTrace,[StackTraceWords]stackTrace</Item>
+      <Item Name="[Stack Trace]" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043249 &amp;&amp; StackTraceWordSize == 8">(UINT64*)StackTrace,[StackTraceWords]stackTrace</Item>
+      <Item Name="ErrorText" Condition="ExceptionForm == 2 &amp;&amp; Header.Signature == 1397043249">ErrorText</Item>
+    </Expand>
+  </Type>
+  <Type Name="_STOWED_EXCEPTION_INFORMATION_V2">
+    <DisplayString Condition="Header.Signature == 1397043250">{ResultCode}</DisplayString>
+    <DisplayString Condition="Header.Signature != 1397043250">&lt;Unable to read exception information&gt;</DisplayString>
+    <Expand>
+      <Item Name="ResultCode" Condition="Header.Signature == 1397043250">ResultCode</Item>
+      <Item Name="ThreadId" Condition="Header.Signature == 1397043250">ThreadId</Item>
+      <Item Name="ExceptionAddress" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043250">ExceptionAddress</Item>
+      <Item Name="[Stack Trace]" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043250 &amp;&amp; StackTraceWordSize == 4">(UINT32*)StackTrace,[StackTraceWords]stackTrace</Item>
+      <Item Name="[Stack Trace]" Condition="ExceptionForm == 1 &amp;&amp; Header.Signature == 1397043250 &amp;&amp; StackTraceWordSize == 8">(UINT64*)StackTrace,[StackTraceWords]stackTrace</Item>
+      <Item Name="ErrorText" Condition="ExceptionForm == 2 &amp;&amp; Header.Signature == 1397043250">ErrorText</Item>
+    </Expand>
+  </Type>
+  <Type Name="Windows::Internal::String">
+    <DisplayString>{_hstring,sh}</DisplayString>
+    <StringView>_hstring,sh</StringView>
+    <Expand>
+      <ExpandedItem>_hstring</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="Microsoft::Internal::StringReference">
+    <DisplayString>{_hstring,sh}</DisplayString>
+    <StringView>_hstring,sh</StringView>
+    <Expand>
+      <ExpandedItem>_hstring</ExpandedItem>
+    </Expand>
+  </Type>
+
+<!-- Types that were added for Windows 8.2 -->
+  <Type Name="CTextBox">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na} Text = {m_strText,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Text">m_strText</Item>
+      <Item Name="SelectionLength">m_iSelectionLength</Item>
+      <Item Name="SelectionStart">m_iSelectionStart</Item>
+      <Item Name="SelectedText">m_strSelectedText</Item>
+      <Item Name="IsSpellCheckEnabled">(bool)m_isSpellCheckEnabled</Item>
+      <Item Name="IsTextPredictionEnabled">(bool)m_isTextPredictionEnabled</Item>
+      <Item Name="InputScope">m_pInputScope</Item>
+      <ExpandedItem>*(CTextBoxBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TextBox">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)->m_strName,na} Text = {static_cast&lt;CTextBox*&gt;(m_pDO)-&gt;m_strText,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CTextBox*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ContentControl">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CContentControl*)(((CDependencyObject*)m_pDO))</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Button">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CContentControl*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CContentControl">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na} Content = {m_content}}}</DisplayString>
+    <Expand>
+      <Item Name="Content">&amp;m_content</Item>
+      <ExpandedItem>*(CControl*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Control">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Dependency Properties" Condition="m_pMapValueTable._Myptr->_Vec._Mylast - m_pMapValueTable._Myptr->_Vec._Myfirst &gt; 0">m_pMapValueTable,na</Item>
+      <ExpandedItem>(CDependencyObject*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CControl">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="IsTabStop">(bool)m_fIsTabStop</Item>
+      <Item Name="TabIndex">m_cTabIndex</Item>
+      <Item Name="HorizontalContentAlignment">m_horizontalContentAlignment</Item>
+      <Item Name="VerticalContentAlignment">m_verticalContentAlignment</Item>
+      <Item Name="BorderThickness">m_borderThickness</Item>
+      <Item Name="Padding">m_padding</Item>
+      <Item Name="IsFocused">m_eFocusState != Unfocused</Item>
+      <Item Name="Template">m_pTemplate</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="xvector&lt;*&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{{size = {m_count}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>m_count</Size>
+        <ValuePointer>($T1*) m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="xencoded_string_ptr">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString Condition="(RuntimeStringHandleMarker &amp; 1) == 0">{Storage->Buffer,su}</DisplayString>
+    <DisplayString>{(HSTRING)(*(INT_PTR*)&amp;(Handle) &amp; ~1)}</DisplayString>
+
+    <StringView Condition="(RuntimeStringHandleMarker &amp; 1) == 0">Storage->Buffer,su</StringView>
+    <StringView>(HSTRING)(*(INT_PTR*)&amp;(Handle) &amp; ~1)</StringView>
+  </Type>
+
+
+  <Type Name="xstring_ptr_view">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString Condition="(m_encodedStorage.RuntimeStringHandleMarker &amp; 1) == 0">{m_encodedStorage.Storage->Buffer,su}</DisplayString>
+    <DisplayString>{(HSTRING)(*(INT_PTR*)&amp;(m_encodedStorage.Handle) &amp; ~1)}</DisplayString>
+
+    <StringView Condition="(m_encodedStorage.RuntimeStringHandleMarker &amp; 1) == 0">m_encodedStorage.Storage->Buffer,su</StringView>
+    <StringView>(HSTRING)(*(INT_PTR*)&amp;(m_encodedStorage.Handle) &amp; ~1)</StringView>
+  </Type>
+
+  <Type Name="xstring_ptr_storage">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString Condition="(IsRuntimeStringHandle &amp; 1) == 0">{Buffer,su}</DisplayString>
+    <DisplayString>{(HSTRING)(*(INT_PTR*)&amp;(Handle) &amp; ~1)}</DisplayString>
+  </Type>
+
+  <Type Name="xshared_ptr&lt;XamlType&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{(KnownTypeIndex)(m_ptr->m_sTypeToken.m_Data &amp; 0x0FFFFFF)}</DisplayString>
+  </Type>
+
+  <Type Name="xshared_ptr&lt;XamlProperty&gt;">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{(KnownPropertyIndex)(m_ptr->m_sPropertyToken.m_Data &amp; 0x0FFFFFF)}</DisplayString>
+  </Type>
+
+  <Type Name="CDependencyProperty">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{m_nIndex} (PropertyType={m_nPropertyTypeIndex})</DisplayString>
+  </Type>
+
+  <Type Name="CClassInfo">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString Condition="(MetaDataTypeInfoFlags::IsCustomType &amp; m_flags) == MetaDataTypeInfoFlags::IsCustomType">Custom type {m_nIndex} ({((CCustomClassInfo*)this)->m_strName})</DisplayString>
+    <DisplayString>{m_nIndex}</DisplayString>
+  </Type>
+
+  <Type Name="CValue">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" Max="10.0.14393.65535"/>
+    <DisplayString Condition="m_type == valueFloat">{m_eValue}</DisplayString>
+    <DisplayString Condition="m_type == valueSigned">{m_iValue}</DisplayString>
+    <DisplayString Condition="m_type == valueBool">{m_nValue}</DisplayString>
+    <DisplayString Condition="m_type == valueEnum">{m_nValue}</DisplayString>
+    <DisplayString Condition="m_type == valueString">{m_estrValue,na}</DisplayString>
+    <DisplayString Condition="m_type == valueObject">{*m_pdoValue}</DisplayString>
+    <DisplayString Condition="m_type == valueSize">{m_peValue[0]},{m_peValue[1]}</DisplayString>
+    <DisplayString Condition="m_type == valueDouble">{m_pdfValue}</DisplayString>
+    <DisplayString Condition="m_type == valueNull">[null]</DisplayString>
+    <Expand>
+      <Item Name="[Value]" Condition="m_type == valueObject">m_pdoValue</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="XPOINT">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({x}, {y})</DisplayString>
+  </Type>
+
+  <Type Name="XSIZE">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({Width}, {Height})</DisplayString>
+  </Type>
+  
+  <Type Name="XRECT">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({X}, {Y}, {Width}, {Height})</DisplayString>
+  </Type>
+  
+  <Type Name="XTHICKNESS">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({left}, {top}, {right}, {bottom})</DisplayString>
+  </Type>
+
+  <Type Name="XGRIDLENGTH">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({(DirectUI::GridUnitType)type}, {value})</DisplayString>
+  </Type>
+
+  <Type Name="XCORNERRADIUS">
+    <Version Name="Windows.UI.Xaml.dll"/>
+    <DisplayString>({topLeft}, {topRight}, {bottomRight}, {bottomLeft})</DisplayString>
+  </Type>
+
+  <Type Name="TextRangeData">
+    <Version Name="Windows.UI.Xaml.dll" Min="10.0.15063.0"/>
+    <DisplayString>({startIndex}, {length})</DisplayString>
+  </Type>
+
+  <Type Name="CValueDetails::Flags">
+    <Version Name="Windows.UI.Xaml.dll" Min="10.0.15063.0"/>
+    <DisplayString>[type = {m_state.m_type}, owns = {(bool)m_state.m_ownsValue}]</DisplayString>
+  </Type>
+
+  <Type Name="CValue">
+    <Version Name="Windows.UI.Xaml.dll" Min="10.0.15063.0"/>
+    <DisplayString Condition="m_flags.m_state.m_type == valueAny">[any]</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueNull">[null]</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueBool">{m_value.m_bool}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueEnum">{m_value.m_enum[0]} [KnownTypeIndex::{(KnownTypeIndex)m_value.m_enum[1]}]</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueSigned">{m_value.m_signed}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueUnsigned">{m_value.m_unsigned}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueInt64">{m_value.m_int64}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueUInt64">{m_value.m_uint64}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueFloat">{m_value.m_float}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueDouble">{*(double*)(&amp;m_value.m_double)}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueString">{*(xstring_ptr*)(&amp;m_value.m_string)}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueColor">{m_value.m_color}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valuePoint">{*(XPOINT*)&amp;m_value.m_point}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueSize">{*(XSIZE*)&amp;m_value.m_size}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueRect">{*(XRECT*)&amp;m_value.m_rect}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueThickness">{*(XTHICKNESS**)&amp;m_value.m_thickness}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueGridLength">{*(XGRIDLENGTH**)&amp;m_value.m_gridLength}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueCornerRadius">{*(XCORNERRADIUS**)&amp;m_value.m_cornerRadius}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueObject">{*(CDependencyObject**)&amp;m_value.m_object}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueInternalHandler">{*(INTERNAL_EVENT_HANDLER**)&amp;m_value.m_internalHandler}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueIUnknown">{*(IUnknown**)&amp;m_value.m_iunknown}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueIInspectable">{*(IInspectable**)&amp;m_value.m_iinspectable}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueTypeHandle">{(KnownTypeIndex)m_value.m_typeHandle}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueThemeResource">{*(CThemeResource**)&amp;m_value.m_themeResource}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valuePointer">{*(void**)&amp;m_value.m_pointer}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueVO">{*(Flyweight::PropertyValueObjectBase**)&amp;m_value.m_valueVO}</DisplayString>
+    <DisplayString Condition="m_flags.m_state.m_type == valueTextRange">{*(TextRangeData**)&amp;m_value.m_textRange}</DisplayString>
+    <Expand>
+      <Item Name="[Flags]">m_flags</Item>
+      <Item Name="[XPOINT]" Condition="m_flags.m_state.m_type == valuePoint">*(XPOINT*)&amp;m_value.m_point</Item>
+      <Item Name="[XSIZE]" Condition="m_flags.m_state.m_type == valueSize">*(XSIZE*)&amp;m_value.m_size</Item>
+      <Item Name="[XRECT]" Condition="m_flags.m_state.m_type == valueRect">*(XRECT*)&amp;m_value.m_rect</Item>
+      <Item Name="[XTHICKNESS]" Condition="m_flags.m_state.m_type == valueThickness">*(XTHICKNESS*)&amp;m_value.m_thickness</Item>
+      <Item Name="[XGRIDLENGTH]" Condition="m_flags.m_state.m_type == valueGridLength">*(XGRIDLENGTH*)&amp;m_value.m_gridLength</Item>
+      <Item Name="[XCORNERRADIUS]" Condition="m_flags.m_state.m_type == valueCornerRadius">*(XCORNERRADIUS*)&amp;m_value.m_cornerRadius</Item>
+      <Item Name="[CDependencyObject]" Condition="m_flags.m_state.m_type == valueObject">*(CDependencyObject**)&amp;m_value.m_object</Item>
+      <Item Name="[IUnknown]" Condition="m_flags.m_state.m_type == valueIUnknown">*(IUnknown**)&amp;m_value.m_iunknown</Item>
+      <Item Name="[IInspectable]" Condition="m_flags.m_state.m_type == valueIInspectable">*(IInspectable**)&amp;m_value.m_iinspectable</Item>
+      <Item Name="[CThemeResource]" Condition="m_flags.m_state.m_type == valueThemeResource">*(CThemeResource**)&amp;m_value.m_themeResource</Item>
+      <Item Name="[Value Object]" Condition="m_flags.m_state.m_type == valueVO">*(Flyweight::PropertyValueObjectBase**)&amp;m_value.m_valueVO</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CFrameworkElement">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Width">m_eWidth</Item>
+      <Item Name="Height">m_eHeight</Item>
+      <Item Name="MouseCursor">m_eMouseCursor</Item>
+      <Item Name="Parent" Condition="m_pLogicalParent != 0">m_pLogicalParent</Item>
+      <ExpandedItem>*(CUIElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CUIElement">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Name">m_strName</Item>
+      <Item Name="IsDoubleTapEnabled">(bool)m_bDoubleTapEnabled</Item>
+      <Item Name="IsRightTapEnabled">(bool)m_bRightTapEnabled</Item>
+      <Item Name="IsTapEnabled">(bool)m_bTapEnabled</Item>
+      <Item Name="IsHoldingEnabled">(bool)m_bHoldEnabled</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Selector">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na} &lt;{m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items._Mylast - m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items._Myfirst} item(s) selected&gt;}}</DisplayString>
+    <Expand>
+      <Item Name="SelectedItems">m_selection.m_spSelectedItems.ptr_-&gt;m_vector.m_items,view(simple)</Item>
+      <ExpandedItem>(DirectUI::Control*)this,ndna</ExpandedItem>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="CItemsControl">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Items">m_pItemCollection</Item>
+      <ExpandedItem>(CControl*)this,ndna</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CDOCollection">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{m_items}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_items</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Panel">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CPanel*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ToggleButton">
+    <Version Name="Windows.UI.Xaml.dll" Max="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na} Content = {((CContentControl*)m_pDO)-&gt;m_content}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(DirectUI::Control*)this,nd</ExpandedItem>
+      <ExpandedItem>*(CContentControl*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::TextBlock">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na} Text = {((CTextBlock*)m_pDO)-&gt;m_strText,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CTextBlock*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CTextBlock">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na} Text = {m_strText,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Text">m_strText</Item>
+      <Item Name="Inlines">m_pInlines</Item>
+      <Item Name="TextWrapping">m_textWrapping</Item>
+      <Item Name="TextTrimming">m_textTrimming</Item>
+      <Item Name="TextAlignment">m_textAlignment</Item>
+      <Item Name="Padding">m_padding</Item>
+      <Item Name="IsTextSelectionEnabled">(bool)m_isTextSelectionEnabled</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::PasswordBox">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{((CPasswordBox*)m_pDO)}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(CPasswordBox*)(m_pDO)</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CPasswordBox">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na} Password = {m_strPassword,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Password">m_strPassword</Item>
+      <Item Name="PasswordChar">m_strPasswordChar</Item>
+      <Item Name="IsPasswordRevealButtonEnabled">m_fRevealButtonEnabled</Item>
+      <ExpandedItem>*(CTextBoxBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+
+  <Type Name="CPanel">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Children">m_pChildren</Item>
+      <Item Name="IsItemsHost">(bool)m_bItemsHost</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CStackPanel">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="Orientation">m_orientation</Item>
+      <ExpandedItem>*(CPanel*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="CBorder">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {m_strName,na}}}</DisplayString>
+    <Expand>
+      <Item Name="CornerRadius">m_cornerRadius</Item>
+      <ExpandedItem>*(CFrameworkElement*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Border">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4" />
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CBorder*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::Image">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Source = {((CImage*)m_pDO)-&gt;m_pImageSource-&gt;m_strSource,na} Width = {((CFrameworkElement*)m_pDO)-&gt;m_eWidth} Height = {((CFrameworkElement*)m_pDO)-&gt;m_eHeight}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CImage*)m_pDO,na</ExpandedItem>
+      <Item Name="PlayToSource">m_pPlayToSource</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="CImageBase">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Source = {m_pImageSource-&gt;m_strSource,na} Width = {m_eWidth} Height = {m_eHeight}}}</DisplayString>
+    <Expand>
+      <Item Name="Source">m_pImageSource</Item>
+      <Item Name="Stretch">m_Stretch</Item>
+      <ExpandedItem>*(CMediaBase*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="DirectUI::ItemsControl">
+    <Version Name="Windows.UI.Xaml.dll" Min="6.4"/>
+    <DisplayString>{{Name = {((CDependencyObject*)m_pDO)-&gt;m_strName,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>(CItemsControl*)m_pDO,na</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Windows::Foundation::Collections::PropertySet">
+    <AlternativeType Name="Windows::Foundation::Collections::ValueSet"/>
+    <AlternativeType Name="Windows::Foundation::Collections::InMemoryPropertyStore" />
+    <DisplayString>{_spHashMap}</DisplayString>
+    <Expand>
+      <ExpandedItem>_spHashMap</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="MarshalByValueValueSet">
+    <DisplayString>{m_valueSet}</DisplayString>
+    <Expand>
+      <ExpandedItem>m_valueSet</ExpandedItem>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  targetNamespace="http://schemas.microsoft.com/vstudio/debugger/natstepfilter/2010"
+  xmlns="http://schemas.microsoft.com/vstudio/debugger/natstepfilter/2010"
+  attributeFormDefault="unqualified" elementFormDefault="qualified"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+
+  <xs:complexType name="FunctionType">
+    <xs:all minOccurs="1">
+      <!-- Name: ECMA-262 formatted regular expression specifying the full function name to match.  
+       For backward compatibility, the expression supports the following special keywords: 
+       \cid:         A C/C++ identifier (same as the Visual Studio Regular Expression ":i")
+       \funct:       A C/C++ function name
+       \scope:       A set of class/namespace specifiers for a function (i.e., ATL::CFoo::CBar::)
+       \anything:    any string
+       \oper:        A C/C++ operator
+      -->
+      <xs:element minOccurs="1" name="Name">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+
+      <!-- Module: ECMA-262 formatted regular expression specifying the full module name to match (e.g. foo.dll). The
+      match is performed without regard to case. -->
+      <xs:element minOccurs="0" name="Module">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+
+      <!-- Step action to be performed for this match -->
+      <xs:element minOccurs="1" name="Action">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <!-- The debugger steps into the matched function as it would normally.  This is used to override later
+            NoStepInto matches -->
+            <xs:enumeration value="StepInto" />
+
+            <!-- The debugger steps out of the matched function and continues stepping into. -->
+            <xs:enumeration value="NoStepInto" />
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="StepFilter">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <!-- Each Function element specifies a match and stepping action. These are processed in order specifed, with
+        the first match found giving the stepping action taken. -->
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="Function" type="FunctionType"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
