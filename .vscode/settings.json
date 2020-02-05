@@ -1,0 +1,19 @@
+{
+    "extensions.ignoreRecommendations": true,
+    "workbench.colorTheme": "Default Light+",
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "files.trimFinalNewlines": true,
+    "explorer.incrementalNaming": "smart",
+    "explorer.sortOrder": "type",
+    "extensions.closeExtensionDetailsOnViewChange": true,
+    "telemetry.enableTelemetry": false,
+    "telemetry.enableCrashReporter": false,
+    "editor.fontSize": 12,
+    "editor.emptySelectionClipboard": false,
+    "editor.fontFamily": "Consolas, 'Courier New', monospace"
+}

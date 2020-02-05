@@ -7,5 +7,5 @@ exclude:
   - Resources/
   - SdkPlaceholder/
   - Source/
-  - SourceTools/
   - ThirdParty/
+  - VSCode/
