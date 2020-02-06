@@ -1,10 +1,8 @@
 'use strict';
 
-/**
- * Module dependencies.
- */
-
 var Test = require('../test');
+var EVENT_FILE_PRE_REQUIRE = require('../suite').constants
+  .EVENT_FILE_PRE_REQUIRE;
 
 /**
  * TDD-style interface:
@@ -31,10 +29,10 @@ var Test = require('../test');
  *
  * @param {Suite} suite Root suite.
  */
-module.exports = function (suite) {
+module.exports = function(suite) {
   var suites = [suite];
 
-  suite.on('pre-require', function (context, file, mocha) {
+  suite.on(EVENT_FILE_PRE_REQUIRE, function(context, file, mocha) {
     var common = require('./common')(suites, context, mocha);
 
     context.setup = common.beforeEach;
@@ -47,7 +45,7 @@ module.exports = function (suite) {
      * Describe a "suite" with the given `title` and callback `fn` containing
      * nested suites and/or tests.
      */
-    context.suite = function (title, fn) {
+    context.suite = function(title, fn) {
       return common.suite.create({
         title: title,
         file: file,
@@ -58,7 +56,7 @@ module.exports = function (suite) {
     /**
      * Pending suite.
      */
-    context.suite.skip = function (title, fn) {
+    context.suite.skip = function(title, fn) {
       return common.suite.skip({
         title: title,
         file: file,
@@ -69,7 +67,7 @@ module.exports = function (suite) {
     /**
      * Exclusive test-case.
      */
-    context.suite.only = function (title, fn) {
+    context.suite.only = function(title, fn) {
       return common.suite.only({
         title: title,
         file: file,
@@ -81,7 +79,7 @@ module.exports = function (suite) {
      * Describe a specification or test-case with the given `title` and
      * callback `fn` acting as a thunk.
      */
-    context.test = function (title, fn) {
+    context.test = function(title, fn) {
       var suite = suites[0];
       if (suite.isPending()) {
         fn = null;
@@ -96,7 +94,7 @@ module.exports = function (suite) {
      * Exclusive test-case.
      */
 
-    context.test.only = function (title, fn) {
+    context.test.only = function(title, fn) {
       return common.test.only(mocha, context.test(title, fn));
     };
 
@@ -104,3 +102,6 @@ module.exports = function (suite) {
     context.test.retries = common.test.retries;
   });
 };
+
+module.exports.description =
+  'traditional "suite"/"test" instead of BDD\'s "describe"/"it"';

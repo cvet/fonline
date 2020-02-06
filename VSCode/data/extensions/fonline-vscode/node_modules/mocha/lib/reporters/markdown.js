@@ -1,11 +1,18 @@
 'use strict';
-
+/**
+ * @module Markdown
+ */
 /**
  * Module dependencies.
  */
 
 var Base = require('./base');
 var utils = require('../utils');
+var constants = require('../runner').constants;
+var EVENT_RUN_END = constants.EVENT_RUN_END;
+var EVENT_SUITE_BEGIN = constants.EVENT_SUITE_BEGIN;
+var EVENT_SUITE_END = constants.EVENT_SUITE_END;
+var EVENT_TEST_PASS = constants.EVENT_TEST_PASS;
 
 /**
  * Constants
@@ -20,34 +27,38 @@ var SUITE_PREFIX = '$';
 exports = module.exports = Markdown;
 
 /**
- * Initialize a new `Markdown` reporter.
+ * Constructs a new `Markdown` reporter instance.
  *
- * @api public
- * @param {Runner} runner
+ * @public
+ * @class
+ * @memberof Mocha.reporters
+ * @extends Mocha.reporters.Base
+ * @param {Runner} runner - Instance triggers reporter actions.
+ * @param {Object} [options] - runner options
  */
-function Markdown (runner) {
-  Base.call(this, runner);
+function Markdown(runner, options) {
+  Base.call(this, runner, options);
 
   var level = 0;
   var buf = '';
 
-  function title (str) {
+  function title(str) {
     return Array(level).join('#') + ' ' + str;
   }
 
-  function mapTOC (suite, obj) {
+  function mapTOC(suite, obj) {
     var ret = obj;
     var key = SUITE_PREFIX + suite.title;
 
-    obj = obj[key] = obj[key] || { suite: suite };
-    suite.suites.forEach(function (suite) {
+    obj = obj[key] = obj[key] || {suite: suite};
+    suite.suites.forEach(function(suite) {
       mapTOC(suite, obj);
     });
 
     return ret;
   }
 
-  function stringifyTOC (obj, level) {
+  function stringifyTOC(obj, level) {
     ++level;
     var buf = '';
     var link;
@@ -65,25 +76,25 @@ function Markdown (runner) {
     return buf;
   }
 
-  function generateTOC (suite) {
+  function generateTOC(suite) {
     var obj = mapTOC(suite, {});
     return stringifyTOC(obj, 0);
   }
 
   generateTOC(runner.suite);
 
-  runner.on('suite', function (suite) {
+  runner.on(EVENT_SUITE_BEGIN, function(suite) {
     ++level;
     var slug = utils.slug(suite.fullTitle());
     buf += '<a name="' + slug + '"></a>' + '\n';
     buf += title(suite.title) + '\n';
   });
 
-  runner.on('suite end', function () {
+  runner.on(EVENT_SUITE_END, function() {
     --level;
   });
 
-  runner.on('pass', function (test) {
+  runner.on(EVENT_TEST_PASS, function(test) {
     var code = utils.clean(test.body);
     buf += test.title + '.\n';
     buf += '\n```js\n';
@@ -91,9 +102,11 @@ function Markdown (runner) {
     buf += '```\n\n';
   });
 
-  runner.on('end', function () {
+  runner.once(EVENT_RUN_END, function() {
     process.stdout.write('# TOC\n');
     process.stdout.write(generateTOC(runner.suite));
     process.stdout.write(buf);
   });
 }
+
+Markdown.description = 'GitHub Flavored Markdown';

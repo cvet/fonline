@@ -16,5 +16,13 @@
     "editor.fontSize": 12,
     "editor.emptySelectionClipboard": false,
     "editor.fontFamily": "Consolas, 'Courier New', monospace",
-    "window.title": "${rootName}${separator}FOnline Editor"
+    "window.title": "${rootName}${separator}FOnline Editor",
+    "workbench.iconTheme": "vscode-great-icons",
+    "editor.rulers": [
+        120
+    ],
+    "editor.wordWrapColumn": 120,
+    "git.ignoreLimitWarning": true,
+    "C_Cpp.configurationWarnings": "Disabled",
+    "C_Cpp.default.cppStandard": "c++17"
 }

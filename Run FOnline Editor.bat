@@ -1,1 +1,1 @@
-start "" "%~dp0VSCode\Code.exe" %* -folder "%~dp0"
+start "" "%~dp0VSCode\Code.exe" %* "%~dp0"

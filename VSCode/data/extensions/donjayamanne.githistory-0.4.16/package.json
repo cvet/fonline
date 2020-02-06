@@ -1,0 +1,473 @@
+{
+	"name": "githistory",
+	"displayName": "Git History",
+	"description": "View git log, file history, compare branches or commits",
+	"version": "0.4.16",
+	"publisher": "donjayamanne",
+	"author": {
+		"name": "Don Jayamanne",
+		"email": "don.jayamanne@yahoo.com"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/DonJayamanne/gitHistoryVSCode/blob/master/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/DonJayamanne/gitHistoryVSCode"
+	},
+	"icon": "images/icon.png",
+	"bugs": {
+		"url": "https://github.com/DonJayamanne/gitHistoryVSCode/issues"
+	},
+	"galleryBanner": {
+		"color": "#0000FF",
+		"theme": "dark"
+	},
+	"engines": {
+		"vscode": "^1.34.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:git.viewFileHistory",
+		"onCommand:git.viewLineHistory",
+		"onCommand:git.viewHistory"
+	],
+	"main": "./out/src/extension",
+	"contributes": {
+		"views": {
+			"explorer": [
+				{
+					"id": "commitViewProvider",
+					"name": "Commits",
+					"when": "!config.gitHistory.hideCommitViewExplorer && git.commit.view.show && git.commit.selected"
+				},
+				{
+					"id": "compareCommitViewProvider",
+					"name": "Compare Commits",
+					"when": "!config.gitHistory.hideCompareCommitViewExplorer && git.commit.compare.view.show && git.commit.compare.compared"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "git.commit.view.hide",
+				"title": "Hide Commit View Explorer",
+				"category": "Git",
+				"icon": {
+					"dark": "resources/icons/misc/close-dark.svg",
+					"light": "resources/icons/misc/close.svg"
+				}
+			},
+			{
+				"command": "git.commit.view.show",
+				"title": "Git: Show Commit View Explorer"
+			},
+			{
+				"command": "git.commit.compare.view.hide",
+				"title": "Hide Commit Comparison View Explorer",
+				"category": "Git",
+				"icon": {
+					"dark": "resources/icons/misc/close-dark.svg",
+					"light": "resources/icons/misc/close.svg"
+				}
+			},
+			{
+				"command": "git.commit.compare.view.show",
+				"title": "Git: Show Commit Comparison View Explorer"
+			},
+			{
+				"command": "git.viewLineHistory",
+				"title": "Git: View Line History"
+			},
+			{
+				"command": "git.viewHistory",
+				"title": "Git: View History (git log)",
+				"icon": {
+					"dark": "./resources/icons/dark/git.svg",
+					"light": "./resources/icons/light/git.svg"
+				}
+			},
+			{
+				"command": "git.viewFileHistory",
+				"title": "Git: View File History",
+				"icon": {
+					"dark": "./resources/icons/dark/git.svg",
+					"light": "./resources/icons/light/git.svg"
+				}
+			},
+			{
+				"command": "git.commit.ViewChangeLog",
+				"title": "View Change log"
+			},
+			{
+				"command": "git.commit.cherryPick",
+				"title": "Cherrypick into current branch"
+			},
+			{
+				"command": "git.commit.createBranch",
+				"title": "Create a branch from this commit"
+			},
+			{
+				"command": "git.commit.FileEntry.ViewFileContents",
+				"title": "View File Contents"
+			},
+			{
+				"command": "git.commit.FileEntry.CompareAgainstWorkspace",
+				"title": "Compare against workspace version"
+			},
+			{
+				"command": "git.commit.FileEntry.CompareAgainstPrevious",
+				"title": "Compare against previous version"
+			},
+			{
+				"command": "git.commit.FileEntry.selectForComparison",
+				"title": "Select for comparison"
+			},
+			{
+				"command": "git.commit.FileEntry.compare",
+				"title": "Compare against previously selected Commit"
+			},
+			{
+				"command": "git.commit.compare.file.compare",
+				"title": "Compare"
+			},
+			{
+				"command": "git.commit.compare.selectForComparison",
+				"title": "Select for comparison"
+			},
+			{
+				"command": "git.commit.compare",
+				"title": "Compare against previously selected Commit"
+			},
+			{
+				"command": "git.commit.compare.view.showFilesOnly",
+				"title": "Show files only"
+			},
+			{
+				"command": "git.commit.compare.view.showFolderView",
+				"title": "Show folder view"
+			},
+			{
+				"command": "git.commit.merge",
+				"title": "Merge with this commit"
+			},
+			{
+				"command": "git.commit.rebase",
+				"title": "Rebase onto this commit"
+			},
+			{
+				"command": "git.commit.view.showFilesOnly",
+				"title": "Show files only"
+			},
+			{
+				"command": "git.commit.view.showFolderView",
+				"title": "Show folder view"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "git.commit.view.hide",
+					"when": "git.commit.view.show"
+				},
+				{
+					"command": "git.commit.view.show",
+					"when": "!git.commit.view.show"
+				},
+				{
+					"command": "git.commit.compare.view.hide",
+					"when": "git.commit.compare.view.show"
+				},
+				{
+					"command": "git.commit.compare.view.show",
+					"when": "!git.commit.compare.view.show"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "git.viewHistory",
+					"group": "navigation",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0 && config.gitHistory.showEditorTitleMenuBarIcons"
+				}
+			],
+			"editor/title/context": [
+				{
+					"command": "git.viewFileHistory",
+					"group": "git",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0 && config.gitHistory.showEditorTitleMenuBarIcons"
+				}
+			],
+			"scm/title": [
+				{
+					"command": "git.viewHistory",
+					"group": "inline",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0"
+				}
+			],
+			"scm/resourceState/context": [
+				{
+					"command": "git.viewFileHistory",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "git.viewFileHistory",
+					"group": "git",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "git.viewFileHistory",
+					"group": "git",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0"
+				},
+				{
+					"command": "git.viewLineHistory",
+					"group": "git",
+					"when": "config.git.enabled && gitOpenRepositoryCount != 0"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "git.viewFileHistory",
+					"when": "view == commitViewProvider && viewItem == file"
+				},
+				{
+					"command": "git.viewFileHistory",
+					"when": "view == compareCommitViewProvider && viewItem == file"
+				},
+				{
+					"command": "git.commit.FileEntry.ViewFileContents",
+					"when": "view == commitViewProvider && viewItem == file"
+				},
+				{
+					"command": "git.commit.FileEntry.CompareAgainstWorkspace",
+					"when": "view == commitViewProvider && viewItem == file"
+				},
+				{
+					"command": "git.commit.FileEntry.CompareAgainstPrevious",
+					"when": "view == commitViewProvider && viewItem == file"
+				},
+				{
+					"command": "git.commit.FileEntry.selectForComparison",
+					"when": "view == commitViewProvider && viewItem == file && false"
+				},
+				{
+					"command": "git.commit.FileEntry.compare",
+					"when": "view == commitViewProvider && viewItem == file && git.commit.FileEntry.selectForComparison && false"
+				}
+			],
+			"view/title": [
+				{
+					"command": "git.commit.compare.view.hide",
+					"when": "view == compareCommitViewProvider",
+					"group": "navigation@1"
+				},
+				{
+					"command": "git.commit.compare.view.hide",
+					"when": "view == compareCommitViewProvider",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.view.hide",
+					"when": "view == commitViewProvider",
+					"group": "navigation@1"
+				},
+				{
+					"command": "git.commit.view.hide",
+					"when": "view == commitViewProvider",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.cherryPick",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.createBranch",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.merge",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.rebase",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.view.showFilesOnly",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.view.showFolderView",
+					"when": "view == commitViewProvider && git.commit.selected",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.compare.view.showFilesOnly",
+					"when": "view == compareCommitViewProvider && git.commit.compare.compared",
+					"group": "zMoreSubMenuItems"
+				},
+				{
+					"command": "git.commit.compare.view.showFolderView",
+					"when": "view == compareCommitViewProvider && git.commit.compare.compared",
+					"group": "zMoreSubMenuItems"
+				}
+			]
+		},
+		"configuration": {
+			"type": "object",
+			"title": "Git History",
+			"properties": {
+				"gitHistory.hideCommitViewExplorer": {
+					"type": "boolean",
+					"default": false,
+					"scope": "window",
+					"description": "Whether to display the commit explorer view"
+				},
+				"gitHistory.showEditorTitleMenuBarIcons": {
+					"type": "boolean",
+					"default": true,
+					"scope": "window",
+					"description": "Whether to display a button in the editor title menu bar"
+				},
+				"gitHistory.pageSize": {
+					"type": "number",
+					"default": 100,
+					"scope": "window",
+					"description": "Default number of items to be displayed in Git History Viewer"
+				},
+				"gitHistory.avatarCacheExpiration": {
+					"type": "integer",
+					"default": 60,
+					"scope": "window",
+					"description": "Avatar image cache expiration (0 = cache disabled)"
+				},
+				"gitHistory.logLevel": {
+					"type": "string",
+					"default": "None",
+					"enum": [
+						"None",
+						"Info",
+						"Debug"
+					],
+					"scope": "window",
+					"description": "Output log information"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run lint && tsc --skipLibCheck -p ./ && webpack -p --progress",
+		"compile": "tsc --skipLibCheck --watch -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"lint": "tslint ./src/**/*.ts -t verbose || tslint ./test/**/*.ts -t verbose",
+		"buildReact": "webpack -p --progress --colors",
+		"watchReact": "webpack --progress --colors --watch",
+		"precommit": "node gulpfile.js",
+		"lint-staged": "node gulpfile.js",
+		"clean": "gulp clean",
+		"cover:enable": "gulp cover:enable",
+		"cover:upload": "gulp cover:upload"
+	},
+	"devDependencies": {
+		"@types/body-parser": "0.0.34",
+		"@types/chai": "^4.0.4",
+		"@types/clipboard": "1.5.29",
+		"@types/cors": "^2.8.1",
+		"@types/express": "^4.0.36",
+		"@types/fs-extra": "^5.0.0",
+		"@types/glob": "^5.0.34",
+		"@types/gravatar": "^1.4.28",
+		"@types/md5": "^2.1.32",
+		"@types/mocha": "^2.2.32",
+		"@types/node": "^6.0.49",
+		"@types/query-string": "^3.0.31",
+		"@types/react": "^16.0.20",
+		"@types/react-dom": "^16.0.2",
+		"@types/react-redux": "^5.0.12",
+		"@types/react-router": "^4.0.16",
+		"@types/react-router-dom": "^4.2.0",
+		"@types/react-router-redux": "^4.0.51",
+		"@types/redux-actions": "^2.2.2",
+		"@types/react-bootstrap": "^0.32.20",
+		"awesome-typescript-loader": "5.2.1",
+		"chai": "^4.1.2",
+		"copy-webpack-plugin": "^4.0.1",
+		"css-loader": "^0.26.1",
+		"debounce": "^1.1.0",
+		"decache": "^4.3.0",
+		"del": "^3.0.0",
+		"extract-loader": "3.1.0",
+		"file-loader": "^2.0.0",
+		"glob": "^7.1.2",
+		"gulp": "^3.9.1",
+		"gulp-codecov": "^3.0.1",
+		"gulp-eslint": "^4.0.0",
+		"gulp-filter": "^5.0.1",
+		"gulp-gitmodified": "^1.1.1",
+		"gulp-json-editor": "^2.2.1",
+		"gulp-tslint": "^8.1.2",
+		"gulp-typescript": "^3.2.3",
+		"husky": "^0.14.3",
+		"mocha": "^2.3.3",
+		"react": "^16.0.0",
+		"react-bootstrap": "^0.31.5",
+		"react-copy-to-clipboard": "^5.0.1",
+		"react-dom": "^16.0.0",
+		"react-hot-loader": "^3.1.1",
+		"react-icons": "^2.2.7",
+		"react-redux": "^5.0.6",
+		"re-resizable": "6.1.1",
+		"react-router": "^4.2.0",
+		"react-router-dom": "^4.2.2",
+		"react-router-redux": "^4.0.8",
+		"redux": "^3.7.2",
+		"redux-actions": "^2.2.1",
+		"redux-thunk": "2.2.0",
+		"relative": "^3.0.2",
+		"remap-istanbul": "^0.9.5",
+		"source-map-support": "^0.5.0",
+		"style-loader": "^0.13.1",
+		"tslint": "^5.7.0",
+		"tslint-eslint-rules": "^4.1.1",
+		"tslint-microsoft-contrib": "^5.0.1",
+		"typemoq": "^2.1.0",
+		"typescript": "^2.6.1",
+		"typescript-formatter": "^6.0.0",
+		"vscode": "^1.1.34",
+		"webpack": "4.41.2",
+		"webpack-cli": "^3.3.10",
+		"hint.css": "^2.4.1",
+		"bootstrap": "^3.4.1"
+	},
+	"dependencies": {
+		"axios": "^0.19.0",
+		"body-parser": "^1.17.2",
+		"cors": "^2.8.4",
+		"ejs": "^2.5.6",
+		"event-stream": "3.3.4",
+		"express": "^4.15.3",
+		"fs-extra": "^4.0.2",
+		"gravatar": "^1.6.0",
+		"iconv-lite": "^0.4.19",
+		"inversify": "^4.3.0",
+		"md5": "^2.2.1",
+		"query-string": "^4.3.2",
+		"reflect-metadata": "^0.1.12",
+		"tmp": "0.1.0"
+	},
+	"__metadata": {
+		"id": "5960f38e-0bbe-4644-8f9c-9c8824e82511",
+		"publisherId": "1ba8bd00-2ad1-4be0-a007-5b4b954c1ee7",
+		"publisherDisplayName": "Don Jayamanne"
+	}
+}

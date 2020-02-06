@@ -1,9 +1,4 @@
 'use strict';
-
-/**
- * Module dependencies.
- */
-
 var Suite = require('../suite');
 var Test = require('../test');
 
@@ -24,12 +19,12 @@ var Test = require('../test');
  *
  * @param {Suite} suite Root suite.
  */
-module.exports = function (suite) {
+module.exports = function(suite) {
   var suites = [suite];
 
-  suite.on('require', visit);
+  suite.on(Suite.constants.EVENT_FILE_REQUIRE, visit);
 
-  function visit (obj, file) {
+  function visit(obj, file) {
     var suite;
     for (var key in obj) {
       if (typeof obj[key] === 'function') {
@@ -61,3 +56,5 @@ module.exports = function (suite) {
     }
   }
 };
+
+module.exports.description = 'Node.js module ("exports") style';

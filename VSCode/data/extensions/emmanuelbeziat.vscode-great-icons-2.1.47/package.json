@@ -1,0 +1,61 @@
+{
+	"name": "vscode-great-icons",
+	"displayName": "VSCode Great Icons",
+	"description": "A big pack of icons (100+) for your files.",
+	"version": "2.1.47",
+	"publisher": "emmanuelbeziat",
+	"engines": {
+		"vscode": "^1.5.0"
+	},
+	"scripts": {
+		"patch": "vsce publish patch",
+		"icons": "imagemin icons/* --out-dir=icons"
+	},
+	"categories": [
+		"Other",
+		"Themes"
+	],
+	"contributes": {
+		"iconThemes": [
+			{
+				"id": "vscode-great-icons",
+				"label": "VSCode Great Icons",
+				"path": "./icons.json"
+			}
+		]
+	},
+	"icon": "images/vscode-great-icons_icon.png",
+	"galleryBanner": {
+		"color": "#e0e0e0",
+		"theme": "light"
+	},
+	"keywords": [
+		"icons",
+		"theme",
+		"icon-theme",
+		"customization"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EmmanuelBeziat/vscode-great-icons.git"
+	},
+	"author": {
+		"email": "contact@emmanuelbeziat.com",
+		"name": "Emmanuel Béziat",
+		"url": "https://www.emmanuelbeziat.com"
+	},
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/EmmanuelBeziat/vscode-great-icons/issues"
+	},
+	"homepage": "https://github.com/EmmanuelBeziat/vscode-great-icons#readme",
+	"devDependencies": {
+		"imagemin-cli": "^4.0.0",
+		"vsce": "^1.53.2"
+	},
+	"__metadata": {
+		"id": "829a192d-496c-44ac-87f3-0a84ce36a853",
+		"publisherId": "c6e135ee-f6a2-45cb-b782-fd4de23acc84",
+		"publisherDisplayName": "Emmanuel Béziat"
+	}
+}

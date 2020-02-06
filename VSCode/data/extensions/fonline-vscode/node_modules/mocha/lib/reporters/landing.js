@@ -1,11 +1,19 @@
 'use strict';
-
+/**
+ * @module Landing
+ */
 /**
  * Module dependencies.
  */
 
 var Base = require('./base');
 var inherits = require('../utils').inherits;
+var constants = require('../runner').constants;
+var EVENT_RUN_BEGIN = constants.EVENT_RUN_BEGIN;
+var EVENT_RUN_END = constants.EVENT_RUN_END;
+var EVENT_TEST_END = constants.EVENT_TEST_END;
+var STATE_FAILED = require('../runnable').constants.STATE_FAILED;
+
 var cursor = Base.cursor;
 var color = Base.color;
 
@@ -34,38 +42,42 @@ Base.colors['plane crash'] = 31;
 Base.colors.runway = 90;
 
 /**
- * Initialize a new `Landing` reporter.
+ * Constructs a new `Landing` reporter instance.
  *
- * @api public
- * @param {Runner} runner
+ * @public
+ * @class
+ * @memberof Mocha.reporters
+ * @extends Mocha.reporters.Base
+ * @param {Runner} runner - Instance triggers reporter actions.
+ * @param {Object} [options] - runner options
  */
-function Landing (runner) {
-  Base.call(this, runner);
+function Landing(runner, options) {
+  Base.call(this, runner, options);
 
   var self = this;
-  var width = Base.window.width * 0.75 | 0;
+  var width = (Base.window.width * 0.75) | 0;
   var total = runner.total;
   var stream = process.stdout;
   var plane = color('plane', '✈');
   var crashed = -1;
   var n = 0;
 
-  function runway () {
+  function runway() {
     var buf = Array(width).join('-');
     return '  ' + color('runway', buf);
   }
 
-  runner.on('start', function () {
+  runner.on(EVENT_RUN_BEGIN, function() {
     stream.write('\n\n\n  ');
     cursor.hide();
   });
 
-  runner.on('test end', function (test) {
+  runner.on(EVENT_TEST_END, function(test) {
     // check if the plane crashed
-    var col = crashed === -1 ? width * ++n / total | 0 : crashed;
+    var col = crashed === -1 ? ((width * ++n) / total) | 0 : crashed;
 
     // show the crash
-    if (test.state === 'failed') {
+    if (test.state === STATE_FAILED) {
       plane = color('plane crash', '✈');
       crashed = col;
     }
@@ -81,9 +93,9 @@ function Landing (runner) {
     stream.write('\u001b[0m');
   });
 
-  runner.on('end', function () {
+  runner.once(EVENT_RUN_END, function() {
     cursor.show();
-    console.log();
+    process.stdout.write('\n');
     self.epilogue();
   });
 }
@@ -92,3 +104,5 @@ function Landing (runner) {
  * Inherit from `Base.prototype`.
  */
 inherits(Landing, Base);
+
+Landing.description = 'Unicode landing strip';
