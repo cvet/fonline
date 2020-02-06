@@ -7,7 +7,7 @@ var outputChannel: vscode.OutputChannel;
 export function foBuild(csprojPath: string, target: string) {
   var buildToolPath = path.resolve('../../Mono/bin/xbuild');
   var buildToolParams =
-      '/property:Configuration=' + target + ' /nologo /verbosity:quiet';
+    '/property:Configuration=' + target + ' /nologo /verbosity:quiet';
   var command = buildToolPath + ' ' + buildToolParams + ' "' + csprojPath + '"';
 
   outputChannel.append('Build ' + target + '...');
@@ -28,7 +28,7 @@ export function foBuild(csprojPath: string, target: string) {
     outputChannel.appendLine(' failed');
     outputChannel.append(output);
     vscode.window.showInformationMessage(
-        'FOnline build "' + target + '" failed');
+      'FOnline build "' + target + '" failed');
     return false;
   }
 }

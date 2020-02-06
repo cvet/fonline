@@ -2,6 +2,12 @@
 	"name": "fonline-vscode",
 	"displayName": "FOnline",
 	"description": "FOnline VSCode Extension",
+	"author": {
+		"name": "cvet",
+		"email": "cvet@tut.by",
+		"url": "https://fonline.ru"
+	},
+	"publisher": "cvet",
 	"version": "1.0.0",
 	"engines": {
 		"vscode": "^1.41.0"
@@ -13,6 +19,7 @@
 		"*"
 	],
 	"main": "./out/extension.js",
+	"enableProposedApi": true,
 	"contributes": {
 		"commands": [
 			{
@@ -38,6 +45,18 @@
 					"light": "./images/build.png",
 					"dark": "./images/build.png"
 				}
+			},
+			{
+				"command": "fileExplorer.refreshFile",
+				"title": "Refresh",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "fileExplorer.openFile",
+				"title": "Open File"
 			}
 		],
 		"keybindings": [
@@ -77,6 +96,10 @@
 				{
 					"id": "componentsView",
 					"name": "Components"
+				},
+				{
+					"id": "fileExplorer",
+					"name": "File Explorer"
 				}
 			]
 		}

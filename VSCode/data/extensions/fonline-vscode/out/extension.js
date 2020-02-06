@@ -2,14 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 // import * as build from './build';
-// import * as components from './components';
+const components = require("./components");
+const fileExplorer = require("./fileExplorer");
 function activate(context) {
-    console.log('Congratulations, your extension "fonline-vscode" is now active!');
     try {
         var outputChannel;
         outputChannel = vscode.window.createOutputChannel('FOnline');
         outputChannel.show(true);
-        // new components.ComponentsView(context);
+        new components.ComponentsView(context);
+        new fileExplorer.FileExplorer(context);
         context.subscriptions.push(vscode.commands.registerCommand('extension.run', function () {
             outputChannel.appendLine('run');
         }));

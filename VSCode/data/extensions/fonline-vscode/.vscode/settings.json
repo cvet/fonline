@@ -10,5 +10,11 @@
     "typescript.tsc.autoDetect": "off",
     "editor.fontSize": 12,
     "workbench.colorTheme": "Default Light+",
-    "extensions.ignoreRecommendations": true
+    "extensions.ignoreRecommendations": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true
 }

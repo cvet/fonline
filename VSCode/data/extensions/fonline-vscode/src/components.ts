@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-/*export class ComponentsView {
+export class ComponentsView {
   constructor(context: vscode.ExtensionContext) {
     const view = vscode.window.createTreeView('componentsView', {
       treeDataProvider: aNodeWithIdTreeDataProvider(),
@@ -8,9 +8,9 @@ import * as vscode from 'vscode';
     });
     vscode.commands.registerCommand('componentsView.reveal', async () => {
       const key = await vscode.window.showInputBox(
-          {placeHolder: 'Type the label of the item to reveal'});
+        { placeHolder: 'Type the label of the item to reveal' });
       if (key) {
-        await view.reveal({key}, {focus: true, select: false, expand: true});
+        await view.reveal({ key }, { focus: true, select: false, expand: true });
       }
     });
     vscode.commands.registerCommand('componentsView.changeTitle', async () => {
@@ -25,7 +25,7 @@ import * as vscode from 'vscode';
   }
 }
 
-const tree = {
+const tree: any = {
   'a': {
     'aa': {
       'aaa': {
@@ -40,29 +40,29 @@ const tree = {
     },
     'ab': {}
   },
-  'b': {'ba': {}, 'bb': {}}
+  'b': { 'ba': {}, 'bb': {} }
 };
-let nodes = {};
+let nodes: any = {};
 
-function aNodeWithIdTreeDataProvider(): vscode.TreeDataProvider<{key: string}> {
+function aNodeWithIdTreeDataProvider(): vscode.TreeDataProvider<{ key: string }> {
   return {
-    getChildren: (element: {key: string}): {key: string}[] => {
+    getChildren: (element: { key: string }): { key: string }[] => {
       return getChildren(element ? element.key : undefined)
-          .map(key => getNode(key));
+        .map(key => getNode(key));
     },
-    getTreeItem: (element: {key: string}): vscode.TreeItem => {
+    getTreeItem: (element: { key: string }): vscode.TreeItem => {
       const treeItem = getTreeItem(element.key);
       treeItem.id = element.key;
       return treeItem;
     },
-    getParent: ({key}: {key: string}): {key: string} => {
+    getParent: ({ key }: { key: string }): { key: string } | undefined => {
       const parentKey = key.substring(0, key.length - 1);
-      return parentKey ? new Key(parentKey) : void 0;
+      return parentKey ? new Key(parentKey) : undefined;
     }
   };
 }
 
-function getChildren(key: string): string[] {
+function getChildren(key?: string): string[] {
   if (!key) {
     return Object.keys(tree);
   }
@@ -82,12 +82,12 @@ function getTreeItem(key: string): vscode.TreeItem2 {
     },
     tooltip: `Tooltip for ${key}`,
     collapsibleState: treeElement && Object.keys(treeElement).length ?
-        vscode.TreeItemCollapsibleState.Collapsed :
-        vscode.TreeItemCollapsibleState.None
+      vscode.TreeItemCollapsibleState.Collapsed :
+      vscode.TreeItemCollapsibleState.None
   };
 }
 
-function getTreeElement(element): any {
+function getTreeElement(element: string): any {
   let parent = tree;
   for (let i = 0; i < element.length; i++) {
     parent = parent[element.substring(0, i + 1)];
@@ -98,7 +98,7 @@ function getTreeElement(element): any {
   return parent;
 }
 
-function getNode(key: string): {key: string} {
+function getNode(key: string): { key: string } {
   if (!nodes[key]) {
     nodes[key] = new Key(key);
   }
@@ -106,5 +106,5 @@ function getNode(key: string): {key: string} {
 }
 
 class Key {
-  constructor(readonly key: string) {}
-}*/
+  constructor(readonly key: string) { }
+}

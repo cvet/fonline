@@ -12,7 +12,9 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"${workspaceFolder}/../../../../",
-				"--extensionDevelopmentPath=${workspaceFolder}"
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--enable-proposed-api",
+				"cvet.fonline-vscode"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
