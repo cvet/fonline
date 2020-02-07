@@ -24,5 +24,7 @@
     "editor.wordWrapColumn": 120,
     "git.ignoreLimitWarning": true,
     "C_Cpp.configurationWarnings": "Disabled",
-    "C_Cpp.default.cppStandard": "c++17"
+    "C_Cpp.default.cppStandard": "c++17",
+    "search.useIgnoreFiles": false,
+    "search.useGlobalIgnoreFiles": true
 }

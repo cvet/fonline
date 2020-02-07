@@ -16,5 +16,7 @@
     "editor.formatOnType": true,
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
-    "files.trimFinalNewlines": true
+    "files.trimFinalNewlines": true,
+    "search.useIgnoreFiles": false,
+    "git.ignoreLimitWarning": true
 }

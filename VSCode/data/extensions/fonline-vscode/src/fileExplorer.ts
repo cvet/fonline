@@ -152,10 +152,9 @@ interface Entry {
 //#endregion
 
 export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscode.FileSystemProvider {
-
     private _onDidChangeFile: vscode.EventEmitter<vscode.FileChangeEvent[]>;
 
-    constructor() {
+    constructor(private pattern: RegExp) {
         this._onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     }
 
@@ -192,15 +191,34 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 
     async _readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         const children = await _.readdir(uri.fsPath);
-
         const result: [string, vscode.FileType][] = [];
         for (let i = 0; i < children.length; i++) {
             const child = children[i];
             const stat = await this._stat(path.join(uri.fsPath, child));
             result.push([child, stat.type]);
         }
-
         return Promise.resolve(result);
+    }
+
+    readDirectoryRecusivly(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
+        return this._readDirectoryRecursively(uri);
+    }
+
+    async _readDirectoryRecursively(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        const result: [string, vscode.FileType][] = [];
+        this._readDirectoryRecursively2(uri.fsPath, result);
+        return Promise.resolve(result);
+    }
+
+    async _readDirectoryRecursively2(fsPath: string, result: [string, vscode.FileType][]) {
+        const children = await _.readdir(fsPath);
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const stat = await this._stat(path.join(fsPath, child));
+            result.push([child, stat.type]);
+            if (stat.type === vscode.FileType.Directory)
+                await this._readDirectoryRecursively2(path.join(fsPath, child), result);
+        }
     }
 
     createDirectory(uri: vscode.Uri): void | Thenable<void> {
@@ -271,17 +289,20 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
         }
 
         if (vscode.workspace.workspaceFolders) {
-            const workspaceFolder = vscode.workspace.workspaceFolders.filter(folder => folder.uri.scheme === 'file')[0];
-            if (workspaceFolder) {
-                const children = await this.readDirectory(workspaceFolder.uri);
+            const workspaceFolders = vscode.workspace.workspaceFolders.filter(folder => folder.uri.scheme === 'file');
+            let entries: Entry[] = [];
+            for (let folder of workspaceFolders) {
+                //const fonlineWorkspace = workspaceFolders.indexOf(folder) == 0;
+                const children = await this.readDirectoryRecusivly(folder.uri);
                 children.sort((a, b) => {
                     if (a[1] === b[1]) {
                         return a[0].localeCompare(b[0]);
                     }
                     return a[1] === vscode.FileType.Directory ? -1 : 1;
                 });
-                return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(workspaceFolder.uri.fsPath, name)), type }));
+                entries.push(...children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(folder.uri.fsPath, name)), type })));
             }
+            return entries;
         }
 
         return [];
@@ -298,11 +319,10 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 }
 
 export class FileExplorer {
-
     private fileExplorer: vscode.TreeView<Entry>;
 
-    constructor(context: vscode.ExtensionContext) {
-        const treeDataProvider = new FileSystemProvider();
+    constructor(context: vscode.ExtensionContext, pattern: RegExp) {
+        const treeDataProvider = new FileSystemProvider(pattern);
         this.fileExplorer = vscode.window.createTreeView('fileExplorer', { treeDataProvider });
         vscode.commands.registerCommand('fileExplorer.openFile', (resource) => this.openResource(resource));
     }

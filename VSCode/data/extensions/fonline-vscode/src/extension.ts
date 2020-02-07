@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 // import * as build from './build';
-import * as components from './components';
 import * as fileExplorer from './fileExplorer';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -10,8 +9,7 @@ export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('FOnline');
     outputChannel.show(true);
 
-    new components.ComponentsView(context);
-    new fileExplorer.FileExplorer(context);
+    new fileExplorer.FileExplorer(context, /CMakeLists\.txt/);
 
     context.subscriptions.push(
       vscode.commands.registerCommand('extension.run', function () {

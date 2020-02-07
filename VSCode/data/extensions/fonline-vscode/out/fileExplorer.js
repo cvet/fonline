@@ -140,7 +140,8 @@ class FileStat {
 exports.FileStat = FileStat;
 //#endregion
 class FileSystemProvider {
-    constructor() {
+    constructor(pattern) {
+        this.pattern = pattern;
         this._onDidChangeFile = new vscode.EventEmitter();
     }
     get onDidChangeFile() {
@@ -178,6 +179,28 @@ class FileSystemProvider {
                 result.push([child, stat.type]);
             }
             return Promise.resolve(result);
+        });
+    }
+    readDirectoryRecusivly(uri) {
+        return this._readDirectoryRecursively(uri);
+    }
+    _readDirectoryRecursively(uri) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = [];
+            this._readDirectoryRecursively2(uri.fsPath, result);
+            return Promise.resolve(result);
+        });
+    }
+    _readDirectoryRecursively2(fsPath, result) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const children = yield _.readdir(fsPath);
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const stat = yield this._stat(path.join(fsPath, child));
+                result.push([child, stat.type]);
+                if (stat.type === vscode.FileType.Directory)
+                    yield this._readDirectoryRecursively2(path.join(fsPath, child), result);
+            }
         });
     }
     createDirectory(uri) {
@@ -241,17 +264,20 @@ class FileSystemProvider {
                 return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
             }
             if (vscode.workspace.workspaceFolders) {
-                const workspaceFolder = vscode.workspace.workspaceFolders.filter(folder => folder.uri.scheme === 'file')[0];
-                if (workspaceFolder) {
-                    const children = yield this.readDirectory(workspaceFolder.uri);
+                const workspaceFolders = vscode.workspace.workspaceFolders.filter(folder => folder.uri.scheme === 'file');
+                let entries = [];
+                for (let folder of workspaceFolders) {
+                    //const fonlineWorkspace = workspaceFolders.indexOf(folder) == 0;
+                    const children = yield this.readDirectoryRecusivly(folder.uri);
                     children.sort((a, b) => {
                         if (a[1] === b[1]) {
                             return a[0].localeCompare(b[0]);
                         }
                         return a[1] === vscode.FileType.Directory ? -1 : 1;
                     });
-                    return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(workspaceFolder.uri.fsPath, name)), type }));
+                    entries.push(...children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(folder.uri.fsPath, name)), type })));
                 }
+                return entries;
             }
             return [];
         });
@@ -267,8 +293,8 @@ class FileSystemProvider {
 }
 exports.FileSystemProvider = FileSystemProvider;
 class FileExplorer {
-    constructor(context) {
-        const treeDataProvider = new FileSystemProvider();
+    constructor(context, pattern) {
+        const treeDataProvider = new FileSystemProvider(pattern);
         this.fileExplorer = vscode.window.createTreeView('fileExplorer', { treeDataProvider });
         vscode.commands.registerCommand('fileExplorer.openFile', (resource) => this.openResource(resource));
     }

@@ -29,7 +29,9 @@
 			"args": [
 				"${workspaceFolder}/../../../../",
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index",
+				"--enable-proposed-api",
+				"cvet.fonline-vscode"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/test/**/*.js"
