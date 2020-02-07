@@ -26,24 +26,24 @@
 				"command": "extension.run",
 				"title": "Run",
 				"icon": {
-					"light": "./images/run.png",
-					"dark": "./images/run.png"
+					"light": "./resources/run.png",
+					"dark": "./resources/run.png"
 				}
 			},
 			{
 				"command": "extension.compile",
 				"title": "Compile",
 				"icon": {
-					"light": "./images/compile.png",
-					"dark": "./images/compile.png"
+					"light": "./resources/compile.png",
+					"dark": "./resources/compile.png"
 				}
 			},
 			{
 				"command": "extension.build",
 				"title": "Build",
 				"icon": {
-					"light": "./images/build.png",
-					"dark": "./images/build.png"
+					"light": "./resources/build.png",
+					"dark": "./resources/build.png"
 				}
 			},
 			{
@@ -92,6 +92,12 @@
 			]
 		},
 		"views": {
+			"terminalManager": [
+				{
+					"id": "terminalManager",
+					"name": "Terminals"
+				}
+			],
 			"explorer": [
 				{
 					"id": "componentsView",
@@ -100,6 +106,15 @@
 				{
 					"id": "fileExplorer",
 					"name": "File Explorer"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "terminalManager",
+					"title": "Terminal Manager",
+					"icon": "resources/terminal.png"
 				}
 			]
 		}
