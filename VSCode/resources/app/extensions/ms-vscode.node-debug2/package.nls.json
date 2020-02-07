@@ -56,5 +56,7 @@
 	"extensionHost.snippet.launch.label": "VS Code Extension Development",
 	"extensionHost.snippet.launch.description": "Launch a VS Code extension in debug mode",
 
-	"extensionHost.launch.config.name": "Launch Extension"
+	"extensionHost.launch.config.name": "Launch Extension",
+
+	"debug.extensionHost.useV3.description": "[Experimental] Controls whether to delegate \"extensionHost\"-type launch configs to the js-debug extension."
 }

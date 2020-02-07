@@ -1,7 +1,7 @@
 {
 	"name": "node-debug",
 	"displayName": "Node Debug (legacy)",
-	"version": "1.41.1",
+	"version": "1.42.0",
 	"publisher": "ms-vscode",
 	"description": "%extension.description%",
 	"icon": "images/node-debug-icon.png",
@@ -82,6 +82,11 @@
 					"type": "boolean",
 					"description": "%debug.node.showUseWslIsDeprecatedWarning.description%",
 					"default": true
+				},
+				"debug.node.useV3": {
+					"type": "boolean",
+					"description": "%debug.node.useV3.description%",
+					"default": false
 				}
 			}
 		},

@@ -436,14 +436,14 @@
 		"editCount": 10,
 		"userProbability": 0.05
 	}],
-	"extensionAllowedProposedApi": ["ms-vscode.references-view", "ms-vsliveshare.vsliveshare", "ms-vsliveshare.cloudenv", "ms-vsliveshare.cloudenv-explorer", "ms-vsonline.vsonline", "GitHub.vscode-pull-request-github", "Microsoft.vscode-nmake-tools", "atlassian.atlascode", "ms-vscode-remote.remote-containers", "ms-vscode-remote.remote-containers-nightly", "ms-vscode-remote.remote-ssh", "ms-vscode-remote.remote-ssh-nightly", "ms-vscode-remote.remote-ssh-edit", "ms-vscode-remote.remote-ssh-edit-nightly", "ms-vscode-remote.remote-wsl", "ms-vscode-remote.remote-wsl-nightly", "ms-vscode-remote.vscode-remote-extensionpack", "ms-vscode-remote.vscode-remote-extensionpack-nightly", "ms-vscode.azure-account", "ms-vscode.js-debug", "ms-vscode.js-debug-nightly"],
+	"extensionAllowedProposedApi": ["ms-vscode.references-view", "ms-vsliveshare.vsliveshare", "ms-vsliveshare.cloudenv", "ms-vsliveshare.cloudenv-explorer", "ms-vsonline.vsonline", "GitHub.vscode-pull-request-github", "GitHub.vscode-pull-request-github-insiders", "Microsoft.vscode-nmake-tools", "atlassian.atlascode", "ms-vscode-remote.remote-containers", "ms-vscode-remote.remote-containers-nightly", "ms-vscode-remote.remote-ssh", "ms-vscode-remote.remote-ssh-nightly", "ms-vscode-remote.remote-ssh-edit", "ms-vscode-remote.remote-ssh-edit-nightly", "ms-vscode-remote.remote-wsl", "ms-vscode-remote.remote-wsl-nightly", "ms-vscode-remote.vscode-remote-extensionpack", "ms-vscode-remote.vscode-remote-extensionpack-nightly", "ms-vscode.azure-account", "ms-vscode.js-debug", "ms-vscode.js-debug-nightly"],
 	"experimentsUrl": "https://az764295.vo.msecnd.net/experiments/vscode-experiments.json",
 	"extensionKind": {
 		"shalldie.background": ["ui"],
 		"techer.open-in-browser": ["ui"],
 		"manasxx.background-cover": ["ui"],
 		"CoenraadS.bracket-pair-colorizer": ["ui", "workspace"],
-		"CoenraadS.bracket-pair-colorizer-2": ["ui", "workspace"],
+		"CoenraadS.bracket-pair-colorizer-2": ["ui"],
 		"formulahendry.auto-close-tag": ["ui", "workspace"],
 		"hiro-sun.vscode-emacs": ["ui", "workspace"],
 		"hnw.vscode-auto-open-markdown-preview": ["ui", "workspace"],
@@ -452,20 +452,20 @@
 		"wayou.vscode-todo-highlight": ["ui", "workspace"],
 		"ms-azuretools.vscode-docker": ["workspace", "ui"]
 	},
-	"linkProtectionTrustedDomains": ["https://*.visualstudio.com", "https://go.microsoft.com", "https://vscode-auth.github.com", "https://*.gallerycdn.vsassets.io", "https://github.com/microsoft/", "https://github.com/MicrosoftDocs/", "https://aka.ms/vso-start", "https://aka.ms/vso-feedback", "https://aka.ms/vso-docs", "https://aka.ms/vso-issues"],
+	"linkProtectionTrustedDomains": ["https://*.visualstudio.com", "https://go.microsoft.com", "https://vscode-auth.github.com", "https://*.gallerycdn.vsassets.io", "https://github.com/microsoft/", "https://github.com/MicrosoftDocs/", "https://aka.ms/vso-start", "https://aka.ms/vso-feedback", "https://aka.ms/vso-docs", "https://aka.ms/vso-issues", "https://*.liveshare.vsengsaas.visualstudio.com/", "https://login.microsoftonline.com"],
 	"auth": {
 		"loginUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
 		"tokenUrl": "https://login.microsoftonline.com/common/oauth2/token",
 		"redirectUrl": "https://vscode-redirect.azurewebsites.net/",
 		"clientId": "aebc6443-996d-45c2-90f0-388ff96faa56"
 	},
-	"commit": "26076a4de974ead31f97692a0d32f90d735645c0",
-	"date": "2019-12-18T14:58:56.166Z",
+	"commit": "ae08d5460b5a45169385ff3fd44208f431992451",
+	"date": "2020-02-06T10:51:34.058Z",
 	"checksums": {
-		"vs/workbench/workbench.desktop.main.js": "Zio2QVmR1tcjB//MXnUqew",
-		"vs/workbench/workbench.desktop.main.css": "Ubov9ne+RE2ThHbnDCVY9Q",
+		"vs/workbench/workbench.desktop.main.js": "8V5pMlOLFlYPkFKh344csQ",
+		"vs/workbench/workbench.desktop.main.css": "lxMgzgrYZqs3Cb+a3MQ46A",
 		"vs/code/electron-browser/workbench/workbench.html": "QebknuoxWdjtUlOo+zwx9A",
-		"vs/code/electron-browser/workbench/workbench.js": "o7zFe0taQpc0T0FS92a37w"
+		"vs/code/electron-browser/workbench/workbench.js": "b2lYeTfnnCQd3AisVUdu0Q"
 	},
-	"settingsSearchBuildId": 1410100594050
+	"settingsSearchBuildId": 1420000614570
 }

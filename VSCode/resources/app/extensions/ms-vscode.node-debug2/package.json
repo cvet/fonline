@@ -1,7 +1,7 @@
 {
   "name": "node-debug2",
   "displayName": "Node Debug",
-  "version": "1.41.3",
+  "version": "1.42.1",
   "publisher": "ms-vscode",
   "description": "%extension.description%",
   "icon": "images/node-debug-icon.png",
@@ -41,7 +41,7 @@
     "vscode-nls-dev": "^3.2.6"
   },
   "main": "./out/src/extension",
-  "activationEvents": ["onCommand:extension.node-debug2.toggleSkippingFile"],
+  "activationEvents": ["onDebug:extensionHost", "onDebugResolve:extensionHost", "onCommand:extension.node-debug2.toggleSkippingFile"],
   "scripts": {
     "postinstall": "node ./node_modules/vscode/bin/install",
     "build": "gulp build",
@@ -71,6 +71,15 @@
     }, {
       "language": "javascriptreact"
     }],
+    "configuration": {
+      "properties": {
+        "debug.extensionHost.useV3": {
+          "type": "boolean",
+          "description": "%debug.extensionHost.useV3.description%",
+          "default": false
+        }
+      }
+    },
     "debuggers": [{
       "type": "extensionHost",
       "label": "VS Code Extension Development",

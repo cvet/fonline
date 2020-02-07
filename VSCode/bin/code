@@ -2,7 +2,7 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License.txt in the project root for license information.
-COMMIT="26076a4de974ead31f97692a0d32f90d735645c0"
+COMMIT="ae08d5460b5a45169385ff3fd44208f431992451"
 APP_NAME="code"
 QUALITY="stable"
 NAME="Code"

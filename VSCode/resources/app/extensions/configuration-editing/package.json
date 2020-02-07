@@ -58,6 +58,9 @@
       "fileMatch": "/.vscode/tasks.json",
       "url": "vscode://schemas/tasks"
     }, {
+      "fileMatch": "%APP_SETTINGS_HOME%/tasks.json",
+      "url": "vscode://schemas/tasks"
+    }, {
       "fileMatch": "%APP_SETTINGS_HOME%/snippets/*.json",
       "url": "vscode://schemas/snippets"
     }, {

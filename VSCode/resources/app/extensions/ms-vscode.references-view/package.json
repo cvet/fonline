@@ -3,7 +3,7 @@
   "displayName": "Reference Search View",
   "icon": "media/icon.png",
   "description": "Reference Search results as separate, stable view in the sidebar",
-  "version": "0.0.42",
+  "version": "0.0.47",
   "publisher": "ms-vscode",
   "engines": {
     "vscode": "^1.40.0"
