@@ -15,7 +15,7 @@ export class TerminalManager {
         let jsonTerminals = JSON.parse(fileContent.toString());
 
         let terminals = jsonTerminals.map((terminal: { command: string; label: string; }) => {
-            terminal.command = 'extension.run_' + terminal.label.toLowerCase().replace(/ /g, '');
+            terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
             return terminal;
         })
 
@@ -33,21 +33,17 @@ export class TerminalManager {
 }
 
 class TerminalTree implements vscode.TreeDataProvider<TerminalEntry> {
-    private i: number = -1;
-
     constructor(private terminals: TerminalEntry[]) {
     }
 
-    getChildren(element: TerminalEntry): TerminalEntry[] {
-        return this.terminals;
+    getChildren(element?: TerminalEntry): TerminalEntry[] {
+        return element ? [] : this.terminals;
     }
 
     getTreeItem(element: TerminalEntry): vscode.TreeItem {
-        this.i++;
-        let terminal = this.terminals[this.i];
         return {
-            label: terminal.label,
-            command: { command: terminal.command, title: terminal.label }
+            label: element.label,
+            command: { command: element.command, title: element.label }
         }
     }
 }

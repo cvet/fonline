@@ -9,7 +9,7 @@ class TerminalManager {
         const fileContent = fs.readFileSync(path.join(this.context.extensionPath, 'resources', 'commands.json'));
         let jsonTerminals = JSON.parse(fileContent.toString());
         let terminals = jsonTerminals.map((terminal) => {
-            terminal.command = 'extension.run_' + terminal.label.toLowerCase().replace(/ /g, '');
+            terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
             return terminal;
         });
         let tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
@@ -27,17 +27,14 @@ exports.TerminalManager = TerminalManager;
 class TerminalTree {
     constructor(terminals) {
         this.terminals = terminals;
-        this.i = -1;
     }
     getChildren(element) {
-        return this.terminals;
+        return element ? [] : this.terminals;
     }
     getTreeItem(element) {
-        this.i++;
-        let terminal = this.terminals[this.i];
         return {
-            label: terminal.label,
-            command: { command: terminal.command, title: terminal.label }
+            label: element.label,
+            command: { command: element.command, title: element.label }
         };
     }
 }

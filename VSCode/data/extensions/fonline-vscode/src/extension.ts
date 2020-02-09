@@ -5,8 +5,7 @@ import * as fileExplorer from './fileExplorer';
 import * as commands from './commands'
 
 export function activate(context: vscode.ExtensionContext) {
-  var outputChannel: vscode.OutputChannel;
-  outputChannel = vscode.window.createOutputChannel('FOnline');
+  const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('FOnline');
 
   try {
     new commands.TerminalManager(context);

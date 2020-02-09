@@ -5,8 +5,7 @@ const vscode = require("vscode");
 const fileExplorer = require("./fileExplorer");
 const commands = require("./commands");
 function activate(context) {
-    var outputChannel;
-    outputChannel = vscode.window.createOutputChannel('FOnline');
+    const outputChannel = vscode.window.createOutputChannel('FOnline');
     try {
         new commands.TerminalManager(context);
         new fileExplorer.FileExplorer(context, /CMakeLists\.txt/);

@@ -1,6 +1,7 @@
 {
-    "extensions.ignoreRecommendations": true,
     "workbench.colorTheme": "Default Light+",
+    "workbench.iconTheme": "vscode-great-icons",
+    "extensions.ignoreRecommendations": true,
     "editor.formatOnPaste": true,
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
@@ -17,7 +18,6 @@
     "editor.emptySelectionClipboard": false,
     "editor.fontFamily": "Consolas, 'Courier New', monospace",
     "window.title": "${rootName}${separator}FOnline Editor",
-    "workbench.iconTheme": "vscode-great-icons",
     "editor.rulers": [
         120
     ],
