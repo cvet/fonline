@@ -1,0 +1,559 @@
+// FOS Common Sort -10
+
+#ifdef __SERVER
+# pragma event "EventResourcesGenerated()"
+# pragma event "EventInit()"
+# pragma event "EventGenerateWorld()"
+# pragma event "EventStart()"
+# pragma event "EventFinish()"
+# pragma event "EventLoop()"
+# pragma event "EventGlobalMapCritterIn( Critter critter )"
+# pragma event "EventGlobalMapCritterOut( const Critter critter )"
+
+# pragma event "EventLocationInit( Location location, bool firstTime )"
+# pragma event "EventLocationFinish( Location location )"
+
+# pragma event "EventMapInit( Map map, bool firstTime )"
+# pragma event "EventMapFinish( Map map )"
+# pragma event "EventMapLoop( Map map, uint loopIndex )"
+# pragma event "EventMapCritterIn( Map map, Critter critter )"
+# pragma event "EventMapCritterOut( const Map map, const Critter critter )"
+# pragma event "EventMapCheckLook( const Map map, const Critter critter, const Critter target )"
+# pragma event "EventMapCheckTrapLook( const Map map, const Critter critter, const Item item )"
+
+# pragma event "EventCritterInit( Critter critter, bool firstTime )"
+# pragma event "EventCritterFinish( Critter critter )"
+# pragma event "EventCritterIdle( Critter critter )"
+# pragma event "EventCritterGlobalMapIdle( Critter critter )"
+# pragma event "EventCritterCheckMoveItem( const Critter critter, const Item item, uint8 toSlot )"
+# pragma event "EventCritterMoveItem( const Critter critter, const Item item, uint8 fromSlot )"
+# pragma event "EventCritterShow( Critter critter, Critter showCritter ) deferred"
+# pragma event "EventCritterShowDist1( Critter critter, Critter showCritter ) deferred"
+# pragma event "EventCritterShowDist2( Critter critter, Critter showCritter ) deferred"
+# pragma event "EventCritterShowDist3( Critter critter, Critter showCritter ) deferred"
+# pragma event "EventCritterHide( Critter critter, Critter hideCritter ) deferred"
+# pragma event "EventCritterHideDist1( Critter critter, Critter hideCritter ) deferred"
+# pragma event "EventCritterHideDist2( Critter critter, Critter hideCritter ) deferred"
+# pragma event "EventCritterHideDist3( Critter critter, Critter hideCritter ) deferred"
+# pragma event "EventCritterShowItemOnMap( Critter critter, Item item, bool added, Critter fromCritter ) deferred"
+# pragma event "EventCritterHideItemOnMap( Critter critter, Item item, bool removed, Critter toCritter ) deferred"
+# pragma event "EventCritterChangeItemOnMap( Critter critter, Item item ) deferred"
+# pragma event "EventCritterMessage( Critter critter, Critter receiver, int num, int value )"
+# pragma event "EventCritterTalk( Critter critter, Critter who, bool begin, uint talkers )"
+# pragma event "EventCritterBarter( Critter cr, Critter trader, bool begin, uint barterCount )"
+# pragma event "EventCritterGetAttackDistantion( const Critter critter, const Item item, uint8 itemMode, uint& dist )"
+# pragma event "EventPlayerRegistration( uint, string, uint&, uint&, string& )"
+# pragma event "EventPlayerLogin( uint, string, uint, uint&, uint&, string& )"
+# pragma event "EventPlayerGetAccess( Critter player, int, string& )"
+# pragma event "EventPlayerAllowCommand( Critter player, string, uint8 )"
+# pragma event "EventPlayerLogout( Critter player )"
+
+# pragma event "EventItemInit( Item item, bool firstTime )"
+# pragma event "EventItemFinish( Item item )"
+# pragma event "EventItemWalk( Item item, Critter critter, bool isIn, uint8 dir ) deferred"
+# pragma event "EventItemCheckMove( const Item item, uint count, const Entity from, const Entity to )"
+
+# pragma event "EventStaticItemWalk( const Item item, Critter critter, bool isIn, uint8 dir ) deferred"
+#endif
+
+#ifdef __CLIENT
+# pragma event "EventStart()"
+# pragma event "EventFinish()"
+# pragma event "EventLoop()"
+# pragma event "EventAutoLogin( string login, string password )"
+# pragma event "EventGetActiveScreens( int[] screens )"
+# pragma event "EventScreenChange( bool show, int screen, dictionary params )"
+# pragma event "EventScreenScroll( int offsetX, int offsetY )"
+# pragma event "EventRenderIface()"
+# pragma event "EventRenderMap()"
+# pragma event "EventMouseDown( int button )"
+# pragma event "EventMouseUp( int button )"
+# pragma event "EventMouseMove( int offsetX, int offsetY )"
+# pragma event "EventKeyDown( uint8 key, string text )"
+# pragma event "EventKeyUp( uint8 key )"
+# pragma event "EventInputLost()"
+# pragma event "EventCritterIn( Critter critter )"
+# pragma event "EventCritterOut( Critter critter )"
+# pragma event "EventItemMapIn( Item item )"
+# pragma event "EventItemMapChanged( Item item, Item oldItem )"
+# pragma event "EventItemMapOut( Item item )"
+# pragma event "EventItemInvAllIn()"
+# pragma event "EventItemInvIn( Item item )"
+# pragma event "EventItemInvChanged( Item item, Item oldItem )"
+# pragma event "EventItemInvOut( Item item )"
+# pragma event "EventMapLoad()"
+# pragma event "EventMapUnload()"
+# pragma event "EventReceiveItems( Item[] items, int param )"
+# pragma event "EventMapMessage( string& text, uint16& hexX, uint16& hexY, uint& color, uint& delay )"
+# pragma event "EventInMessage( string text, int& sayType, uint& critterId, uint& delay )"
+# pragma event "EventOutMessage( string& text, int& sayType )"
+# pragma event "EventMessageBox( string& text, int type, bool scriptCall )"
+# pragma event "EventCombatResult( uint[] result )"
+# pragma event "EventItemCheckMove( const Item item, uint count, const Entity from, const Entity to )"
+# pragma event "EventCritterAction( bool localCall, Critter critter, int action, int actionExt, const Item actionItem )"
+# pragma event "EventAnimation2dProcess( bool, Critter, uint, uint, Item )"
+# pragma event "EventAnimation3dProcess( bool, Critter, uint, uint, Item )"
+# pragma event "EventCritterAnimation( hash, uint, uint, uint&, uint&, int&, int&, string& )"
+# pragma event "EventCritterAnimationSubstitute( hash, uint, uint, hash&, uint&, uint& )"
+# pragma event "EventCritterAnimationFallout( hash, uint&, uint&, uint&, uint&, uint& )"
+# pragma event "EventCritterCheckMoveItem( const Critter critter, const Item item, uint8 toSlot )"
+# pragma event "EventCritterGetAttackDistantion( const Critter critter, const Item item, uint8 itemMode, uint& dist )"
+#endif
+
+#ifdef __MAPPER
+# pragma event "EventStart()"
+# pragma event "EventFinish()"
+# pragma event "EventLoop()"
+# pragma event "EventConsoleMessage( string& text )"
+# pragma event "EventRenderIface( uint layer )"
+# pragma event "EventRenderMap()"
+# pragma event "EventMouseDown( int button )"
+# pragma event "EventMouseUp( int button )"
+# pragma event "EventMouseMove( int offsetX, int offsetY )"
+# pragma event "EventKeyDown( uint8 key, string text )"
+# pragma event "EventKeyUp( uint8 key, string text )"
+# pragma event "EventInputLost()"
+# pragma event "EventCritterAnimation( hash, uint, uint, uint&, uint&, int&, int&, string& )"
+# pragma event "EventCritterAnimationSubstitute( hash, uint, uint, hash&, uint&, uint& )"
+# pragma event "EventCritterAnimationFallout( hash, uint&, uint&, uint&, uint&, uint& )"
+# pragma event "EventMapLoad( Map map )"
+# pragma event "EventMapSave( Map map )"
+# pragma event "EventInspectorProperties( Entity entity, int[] properties )"
+#endif
+
+#define EXPORT
+#define HASH                             # (name) GetStrHash( name )
+
+// Say types
+#define SAY_NORM                         ( 1 )
+#define SAY_NORM_ON_HEAD                 ( 2 )
+#define SAY_SHOUT                        ( 3 )
+#define SAY_SHOUT_ON_HEAD                ( 4 )
+#define SAY_EMOTE                        ( 5 )
+#define SAY_EMOTE_ON_HEAD                ( 6 )
+#define SAY_WHISP                        ( 7 )
+#define SAY_WHISP_ON_HEAD                ( 8 )
+#define SAY_SOCIAL                       ( 9 )
+#define SAY_RADIO                        ( 10 )
+#define SAY_NETMSG                       ( 11 )
+#define SAY_DIALOG                       ( 12 )
+#define SAY_APPEND                       ( 13 )
+#define SAY_FLASH_WINDOW                 ( 41 )   // Only flash window in tray and beep
+
+// Msg nums
+#define TEXTMSG_TEXT                     ( 0 )
+#define TEXTMSG_DLG                      ( 1 )
+#define TEXTMSG_ITEM                     ( 2 )
+#define TEXTMSG_GAME                     ( 3 )
+#define TEXTMSG_GM                       ( 4 )
+#define TEXTMSG_COMBAT                   ( 5 )
+#define TEXTMSG_QUEST                    ( 6 )
+#define TEXTMSG_HOLO                     ( 7 )
+#define TEXTMSG_INTERNAL                 ( 8 )
+#define TEXTMSG_LOCATIONS                ( 9 )
+#define DLGSTR                           # ( dialogId, strNum )( ( ( dialogId ) & 0xFFFFC000 ) | ( ( 12000 + ( strNum ) ) & ~0xFFFFC000 ) )
+#define LOCSTR                           # ( locPid, strNum )( ( ( locPid ) & 0xFFFFF000 ) | ( ( strNum ) & ~0xFFFFF000 ) )
+#define ITEMSTR                          # ( itemPid, strNum )( ( ( itemPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
+#define CRSTR                            # ( crPid, strNum )( ( ( crPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
+
+// Item corner types, for correct light calulations
+#pragma enum CornerType NorthSouth = 0
+#pragma enum CornerType West = 1
+#pragma enum CornerType East = 2
+#pragma enum CornerType South = 3
+#pragma enum CornerType North = 4
+#pragma enum CornerType EastWest = 5
+
+// Moving results
+#pragma enum MovingState InProgress = 0
+#pragma enum MovingState Success = 1
+#pragma enum MovingState TargetNotFound = 2
+#pragma enum MovingState CantMove = 3
+#pragma enum MovingState GagCritter = 4
+#pragma enum MovingState GagItem = 5
+#pragma enum MovingState InternalError = 6
+#pragma enum MovingState HexTooFar = 7
+#pragma enum MovingState HexBusy = 8
+#pragma enum MovingState HexBusyRing = 9
+#pragma enum MovingState Deadlock = 10
+#pragma enum MovingState TraceFail = 11
+
+// Critter conditions
+#pragma enum CritterCondition Unknown = 0
+#pragma enum CritterCondition Alive = 1
+#pragma enum CritterCondition Knockout = 2
+#pragma enum CritterCondition Dead = 3
+
+// Items accessory
+#pragma enum ItemOwnership Nowhere = 0
+#pragma enum ItemOwnership CritterInventory = 1
+#pragma enum ItemOwnership MapHex = 2
+#pragma enum ItemOwnership ItemContainer = 3
+
+// Todo: delete
+#pragma enum Anim1 None = 0
+
+// Critter actions
+// Flags for chosen:
+// l - hardcoded local call
+// s - hardcoded server call
+// for all others critters actions call only server
+// flags actionExt item
+#define ACTION_MOVE                      ( 0 )     // l
+#define ACTION_RUN                       ( 1 )     // l
+#define ACTION_MOVE_ITEM                 ( 2 )     // l s from slot +
+#define ACTION_MOVE_ITEM_SWAP            ( 3 )     // l s from slot +
+#define ACTION_USE_ITEM                  ( 4 )     // l s +
+#define ACTION_DROP_ITEM                 ( 5 )     // l s from slot +
+#define ACTION_USE_WEAPON                ( 6 )     // l fail attack 8 bit, use index (0-2) 4-7 bits, aim 0-3 bits +
+#define ACTION_RELOAD_WEAPON             ( 7 )     // l s +
+#define ACTION_USE_SKILL                 ( 8 )     // l s skill index (see SK_*)
+#define ACTION_PICK_ITEM                 ( 9 )     // l s +
+#define ACTION_PICK_CRITTER              ( 10 )    // l 0 - loot, 1 - steal, 2 - push
+#define ACTION_OPERATE_CONTAINER         ( 11 )    // l s transfer type * 10 + [0 - get, 1 - get all, 2 - put] + (exclude get all)
+#define ACTION_BARTER                    ( 12 )    // s 0 - item taken, 1 - item given +
+#define ACTION_DODGE                     ( 13 )    // 0 - front, 1 - back
+#define ACTION_DAMAGE                    ( 14 )    // 0 - front, 1 - back
+#define ACTION_DAMAGE_FORCE              ( 15 )    // 0 - front, 1 - back
+#define ACTION_KNOCKOUT                  ( 16 )    // s 0 - knockout anim2begin
+#define ACTION_STANDUP                   ( 17 )    // s 0 - knockout anim2end
+#define ACTION_FIDGET                    ( 18 )    // l
+#define ACTION_DEAD                      ( 19 )    // s dead type anim2 (see Anim2 in _animation.fos)
+#define ACTION_CONNECT                   ( 20 )    //
+#define ACTION_DISCONNECT                ( 21 )    //
+#define ACTION_RESPAWN                   ( 22 )    // s
+#define ACTION_REFRESH                   ( 23 )    // s
+
+// Slots
+#define SLOT_INV                         ( 0 )     // Inventory
+#define SLOT_HAND1                       ( 1 )     // Weapon slot
+#define SLOT_HAND2                       ( 2 )     // Extended slot
+#define SLOT_ARMOR                       ( 3 )     // Armor slot
+
+// Timeouts in real seconds, generic values
+#define MAXIMUM_TIMEOUT                  ( Time::RealHour( 5 ) )
+#define IS_TIMEOUT                       # (to) ( ( to ) > __FullSecond )
+
+// Combat modes
+#define COMBAT_MODE_ANY                  ( 0 )
+#define COMBAT_MODE_REAL_TIME            ( 1 )
+#define COMBAT_MODE_TURN_BASED           ( 2 )
+
+// Global map fog
+#define FOG_FULL                         ( 0 )
+#define FOG_HALF                         ( 1 )
+#define FOG_HALF_EX                      ( 2 )
+#define FOG_NONE                         ( 3 )
+
+// Critter find types
+// Combine groups with | operator
+#define FIND_LIFE                        ( 0x01 )   // First group
+#define FIND_KO                          ( 0x02 )
+#define FIND_DEAD                        ( 0x04 )
+#define FIND_LIFE_AND_KO                 ( 0x03 )
+#define FIND_LIFE_AND_DEAD               ( 0x05 )
+#define FIND_KO_AND_DEAD                 ( 0x06 )
+#define FIND_ALL                         ( 0x0F )
+#define FIND_ONLY_PLAYERS                ( 0x10 )   // Second group
+#define FIND_ONLY_NPC                    ( 0x20 )
+
+// Dialog links
+#define DIALOG_END                       uint( -1 )
+#define DIALOG_BACK                      uint( -2 )
+#define DIALOG_BARTER                    uint( -3 )
+#define DIALOG_ATTACK                    uint( -4 )
+
+// Access levels
+#define ACCESS_CLIENT                    ( 0 )
+#define ACCESS_TESTER                    ( 1 )
+#define ACCESS_MODER                     ( 2 )
+#define ACCESS_ADMIN                     ( 3 )
+
+// Look checks
+#define LOOK_CHECK_DIR                   ( 0x01 )   // Nerfe look by directions of look
+#define LOOK_CHECK_SNEAK_DIR             ( 0x02 )   // Nerfe opponent sneak by directions of look
+#define LOOK_CHECK_SNEAK_WEIGHT          ( 0x04 )   // Nerfe sneak by current weight
+#define LOOK_CHECK_TRACE                 ( 0x08 )   // Tracing for wall aviablility
+#define LOOK_CHECK_SCRIPT                ( 0x10 )   // Allow bool check_look(...) in main.fos, all other defines ignored
+#define LOOK_CHECK_ITEM_SCRIPT           ( 0x20 )   // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
+
+// Radio
+// Flags, Item::RadioFlags
+#define RADIO_DISABLE_SEND               ( 0x0001 )   // Hardcoded
+#define RADIO_DISABLE_RECV               ( 0x0002 )   // Hardcoded
+#define RADIO_DISABLE_SHIFT_SEND         ( 0x0100 )
+#define RADIO_DISABLE_SHIFT_RECV         ( 0x0200 )
+#define RADIO_DISABLE_SHIFT_BC_SEND      ( 0x0400 )
+#define RADIO_DISABLE_SHIFT_BC_RECV      ( 0x0800 )
+#define RADIO_DISABLE_SHIFT_CHANNEL      ( 0x1000 )
+// Broadcast, Item::RadioBroadcastSend/RadioBroadcastRecv, Hardcoded
+#define RADIO_BROADCAST_WORLD            ( 0 )                   // Send/recv in all world
+#define RADIO_BROADCAST_MAP              ( 20 )                  // Send/recv only on one map
+#define RADIO_BROADCAST_LOCATION         ( 40 )                  // Send/recv only on one location
+#define RADIO_BROADCAST_ZONE             # (x) ( 100 + ( x ) )   // Send/recv only in x (1..100) zones radius on global map
+#define RADIO_BROADCAST_FORCE_ALL        ( 250 )                 // Force send/recv in any place
+
+// Internal server commands
+#define COMMAND_EXIT                     ( 1 )
+#define COMMAND_MYINFO                   ( 2 )
+#define COMMAND_GAMEINFO                 ( 3 )
+#define COMMAND_CRITID                   ( 4 )
+#define COMMAND_MOVECRIT                 ( 5 )
+#define COMMAND_KILLCRIT                 ( 6 )
+#define COMMAND_DISCONCRIT               ( 7 )
+#define COMMAND_TOGLOBAL                 ( 8 )
+#define COMMAND_RESPAWN                  ( 9 )
+#define COMMAND_PARAM                    ( 10 )
+#define COMMAND_GETACCESS                ( 11 )
+#define COMMAND_ADDITEM                  ( 12 )
+#define COMMAND_CRASH                    ( 13 )
+#define COMMAND_ADDITEM_SELF             ( 14 )
+#define COMMAND_ADDNPC                   ( 15 )
+#define COMMAND_ADDLOCATION              ( 16 )
+#define COMMAND_RELOADSCRIPTS            ( 17 )
+#define COMMAND_RELOAD_CLIENT_SCRIPTS    ( 19 )
+#define COMMAND_RUNSCRIPT                ( 20 )
+#define COMMAND_RELOAD_PROTOS            ( 21 )
+#define COMMAND_REGENMAP                 ( 25 )
+#define COMMAND_RELOADDIALOGS            ( 26 )
+#define COMMAND_LOADDIALOG               ( 27 )
+#define COMMAND_RELOADTEXTS              ( 28 )
+#define COMMAND_RELOADAI                 ( 29 )
+#define COMMAND_CHECKVAR                 ( 30 )
+#define COMMAND_SETVAR                   ( 31 )
+#define COMMAND_SETTIME                  ( 32 )
+#define COMMAND_BAN                      ( 33 )
+#define COMMAND_DELETE_ACCOUNT           ( 34 )
+#define COMMAND_CHANGE_PASSWORD          ( 35 )
+#define COMMAND_DROP_UID                 ( 36 )
+#define COMMAND_LOG                      ( 37 )
+#define COMMAND_DEV_EXEC                 ( 38 )
+#define COMMAND_DEV_FUNC                 ( 39 )
+#define COMMAND_DEV_GVAR                 ( 40 )
+
+// Item uses
+#define USE_PRIMARY                      ( 0 )
+#define USE_SECONDARY                    ( 1 )
+#define USE_THIRD                        ( 2 )
+#define USE_RELOAD                       ( 3 )
+#define USE_USE                          ( 4 )
+#define MAX_USES                         ( 3 )
+
+// Client lighting
+#define MAX_LIGHT_VALUE                  ( 10000 )
+#define MAX_LIGHT_HEX                    ( 200 )
+#define MAX_LIGHT_ALPHA                  ( 255 )
+// Flags
+#define LIGHT_DISABLE_DIR                # (dir) ( 1 << Math::Clamp( dir, 0, 5 ) )
+#define LIGHT_GLOBAL                     ( 0x40 )
+#define LIGHT_INVERSE                    ( 0x80 )
+
+// Global variables
+#pragma property Global PrivateCommon const uint16 YearStart
+#pragma property Global PrivateCommon const uint16 Year
+#pragma property Global PrivateCommon const uint16 Month
+#pragma property Global PrivateCommon const uint16 Day
+#pragma property Global PrivateCommon const uint16 Hour
+#pragma property Global PrivateCommon const uint16 Minute NoHistory
+#pragma property Global PrivateCommon const uint16 Second NoHistory
+#pragma property Global PrivateCommon const uint16 TimeMultiplier
+#pragma property Global PrivateServer const uint LastEntityId NoHistory
+#pragma property Global PrivateCommon const uint LastDeferredCallId NoHistory
+#pragma property Global PrivateCommon const uint HistoryRecordsId NoHistory
+
+// Critter
+#pragma property Critter Public resource ModelName
+#pragma property Critter Protected uint WalkTime
+#pragma property Critter Protected uint RunTime
+#pragma property Critter Protected const uint Multihex
+#pragma property Critter PrivateServer const uint MapId
+#pragma property Critter PrivateServer const uint RefMapId
+#pragma property Critter PrivateServer const hash RefMapPid
+#pragma property Critter PrivateServer const uint RefLocationId
+#pragma property Critter PrivateServer const hash RefLocationPid
+#pragma property Critter PrivateCommon const uint16 HexX NoHistory
+#pragma property Critter PrivateCommon const uint16 HexY NoHistory
+#pragma property Critter PrivateCommon const uint8 Dir NoHistory
+#pragma property Critter PrivateServer const string Password
+#pragma property Critter PrivateCommon const CritterCondition Cond
+#pragma property Critter PrivateServer const bool ClientToDelete
+#pragma property Critter Protected uint16 WorldX NoHistory
+#pragma property Critter Protected uint16 WorldY NoHistory
+#pragma property Critter Protected const uint GlobalMapLeaderId
+#pragma property Critter PrivateServer const uint GlobalMapTripId
+#pragma property Critter PrivateServer const uint RefGlobalMapTripId
+#pragma property Critter PrivateServer const uint RefGlobalMapLeaderId
+#pragma property Critter PrivateServer const uint16 LastMapHexX NoHistory
+#pragma property Critter PrivateServer const uint16 LastMapHexY NoHistory
+#pragma property Critter PrivateCommon const uint Anim1Life NoHistory
+#pragma property Critter PrivateCommon const uint Anim1Knockout NoHistory
+#pragma property Critter PrivateCommon const uint Anim1Dead NoHistory
+#pragma property Critter PrivateCommon const uint Anim2Life NoHistory
+#pragma property Critter PrivateCommon const uint Anim2Knockout NoHistory
+#pragma property Critter PrivateCommon const uint Anim2Dead NoHistory
+#pragma property Critter PrivateServer const uint8[] GlobalMapFog NoHistory
+#pragma property Critter PrivateServer const hash[] TE_FuncNum NoHistory
+#pragma property Critter PrivateServer const uint[] TE_Rate NoHistory
+#pragma property Critter PrivateServer const uint[] TE_NextTime NoHistory
+#pragma property Critter PrivateServer const int[] TE_Identifier NoHistory
+
+#pragma property Critter VirtualPrivateServer int SneakCoefficient
+#pragma property Critter VirtualProtected uint LookDistance
+
+#pragma property Critter Public int8 Gender
+#pragma property Critter Protected hash NpcRole
+#pragma property Critter Protected int ReplicationTime
+#pragma property Critter Public uint TalkDistance
+#pragma property Critter Public int ScaleFactor
+#pragma property Critter Public int CurrentHp
+#pragma property Critter PrivateServer uint MaxTalkers
+#pragma property Critter Public hash DialogId
+#pragma property Critter Public string Lexems
+#pragma property Critter PrivateServer uint HomeMapId
+#pragma property Critter PrivateServer uint16 HomeHexX
+#pragma property Critter PrivateServer uint16 HomeHexY
+#pragma property Critter PrivateServer uint8 HomeDir
+#pragma property Critter PrivateServer uint[] KnownLocations
+#pragma property Critter PrivateServer uint[] ConnectionIp
+#pragma property Critter PrivateServer uint16[] ConnectionPort
+#pragma property Critter PrivateServer uint ShowCritterDist1
+#pragma property Critter PrivateServer uint ShowCritterDist2
+#pragma property Critter PrivateServer uint ShowCritterDist3
+#pragma property Critter PrivateServer hash ScriptId
+#pragma property Critter Protected hash[] KnownLocProtoId
+
+// 3d animation
+#pragma property Critter PrivateClient int[] Anim3dLayer
+
+// Modes
+#pragma property Critter Protected bool IsHide
+#pragma property Critter Protected bool IsNoHome
+#pragma property Critter Protected bool IsGeck
+#pragma property Critter Protected bool IsNoUnarmed
+#pragma property Critter VirtualProtected bool IsNoWalk
+#pragma property Critter VirtualProtected bool IsNoRun
+#pragma property Critter Protected bool IsNoRotate
+#pragma property Critter Public bool IsNoTalk
+#pragma property Critter Public bool IsNoFlatten
+
+// Timeouts
+#pragma property Critter Defaults Group = Timeouts
+#pragma property Critter Public uint TimeoutBattle
+#pragma property Critter Protected uint TimeoutTransfer Temporary
+#pragma property Critter Protected uint TimeoutRemoveFromGame Temporary
+#pragma property Critter Defaults
+
+// Item
+#pragma property Item Public const ItemOwnership Accessory
+#pragma property Item Public const uint MapId
+#pragma property Item Public const uint16 HexX
+#pragma property Item Public const uint16 HexY
+#pragma property Item Public const uint CritId
+#pragma property Item Public const uint8 CritSlot
+#pragma property Item Public const uint ContainerId
+#pragma property Item Public const uint ContainerStack
+
+#pragma property Item Public float FlyEffectSpeed
+#pragma property Item Public resource PicMap
+#pragma property Item Public resource PicInv
+#pragma property Item Public int16 OffsetX
+#pragma property Item Public int16 OffsetY
+#pragma property Item Public const bool Stackable
+#pragma property Item Public bool GroundLevel
+#pragma property Item Public bool Opened
+#pragma property Item Public const CornerType Corner
+#pragma property Item Public const uint8 Slot
+#pragma property Item Public uint Weight
+#pragma property Item Public uint Volume
+#pragma property Item Public const bool DisableEgg
+#pragma property Item Public const uint16 AnimWaitBase
+#pragma property Item Public const uint16 AnimWaitRndMin
+#pragma property Item Public const uint16 AnimWaitRndMax
+#pragma property Item Public const uint8 AnimStay0
+#pragma property Item Public const uint8 AnimStay1
+#pragma property Item Public const uint8 AnimShow0
+#pragma property Item Public const uint8 AnimShow1
+#pragma property Item Public const uint8 AnimHide0
+#pragma property Item Public const uint8 AnimHide1
+#pragma property Item Public const uint8 SpriteCut
+#pragma property Item Public const int8 DrawOrderOffsetHexY
+#pragma property Item Public const uint8[] BlockLines
+
+#pragma property Item Public const bool IsStatic
+#pragma property Item Public bool IsScenery
+#pragma property Item Public bool IsWall
+#pragma property Item Public bool IsCanOpen
+#pragma property Item Public bool IsScrollBlock
+#pragma property Item Public bool IsHidden
+#pragma property Item Public bool IsHiddenPicture
+#pragma property Item Public bool IsHiddenInStatic
+#pragma property Item Public bool IsFlat
+#pragma property Item Public bool IsNoBlock
+#pragma property Item Public bool IsShootThru
+#pragma property Item Public bool IsLightThru
+#pragma property Item Public bool IsAlwaysView
+#pragma property Item Public bool IsBadItem
+#pragma property Item Public bool IsNoHighlight
+#pragma property Item Public bool IsShowAnim
+#pragma property Item Public bool IsShowAnimExt
+#pragma property Item Public bool IsLight
+#pragma property Item Public bool IsGeck
+#pragma property Item Public bool IsTrap
+#pragma property Item Public bool IsTrigger
+#pragma property Item Public bool IsNoLightInfluence
+#pragma property Item Public bool IsGag
+#pragma property Item Public bool IsColorize
+#pragma property Item Public bool IsColorizeInv
+#pragma property Item Public bool IsCanTalk
+#pragma property Item Public bool IsRadio
+#pragma property Item Public string Lexems
+#pragma property Item PublicModifiable int16 SortValue
+#pragma property Item Public uint8 Info
+#pragma property Item PublicModifiable uint8 Mode
+#pragma property Item Public int8 LightIntensity
+#pragma property Item Public uint8 LightDistance
+#pragma property Item Public uint8 LightFlags
+#pragma property Item Public uint LightColor
+#pragma property Item PrivateServer hash ScriptId
+#pragma property Item Public uint Count
+#pragma property Item Protected int16 TrapValue
+#pragma property Item Protected uint16 RadioChannel
+#pragma property Item Protected uint16 RadioFlags
+#pragma property Item Protected uint8 RadioBroadcastSend
+#pragma property Item Protected uint8 RadioBroadcastRecv
+
+// Map
+#pragma property Map PrivateServer uint LoopTime1
+#pragma property Map PrivateServer uint LoopTime2
+#pragma property Map PrivateServer uint LoopTime3
+#pragma property Map PrivateServer uint LoopTime4
+#pragma property Map PrivateServer uint LoopTime5
+#pragma property Map PrivateServer const string FileDir Temporary
+#pragma property Map PrivateServer const uint16 Width
+#pragma property Map PrivateServer const uint16 Height
+#pragma property Map PrivateServer const uint16 WorkHexX
+#pragma property Map PrivateServer const uint16 WorkHexY
+#pragma property Map PrivateServer const uint LocId
+#pragma property Map PrivateServer const uint LocMapIndex
+#pragma property Map PrivateServer uint8 RainCapacity
+#pragma property Map PrivateServer int CurDayTime
+#pragma property Map PrivateServer hash ScriptId
+#pragma property Map PrivateServer int[] DayTime
+#pragma property Map PrivateServer uint8[] DayColor
+#pragma property Map PrivateServer bool IsNoLogOut
+
+// Location
+#pragma property Location PrivateServer const hash[] MapProtos
+#pragma property Location PrivateServer const hash[] MapEntrances
+#pragma property Location PrivateServer const hash[] Automaps
+#pragma property Location PrivateServer uint MaxPlayers
+#pragma property Location PrivateServer bool AutoGarbage
+#pragma property Location PrivateServer bool GeckVisible
+#pragma property Location PrivateServer hash EntranceScript
+#pragma property Location PrivateServer uint16 WorldX
+#pragma property Location PrivateServer uint16 WorldY
+#pragma property Location PrivateServer uint16 Radius
+#pragma property Location PrivateServer bool Hidden
+#pragma property Location PrivateServer bool ToGarbage
+#pragma property Location PrivateServer uint Color
+#pragma property Location PrivateServer bool IsEncounter

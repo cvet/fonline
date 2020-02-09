@@ -1,0 +1,128 @@
+// FOS Client
+
+/*EXPORT*/ funcdef bool KeyDownCallback( uint8 key, string text );
+/*EXPORT*/ funcdef void KeyUpCallback( uint8 key );
+
+bool[] KeyPressed = {};
+bool[] MousePressed = {};
+
+KeyDownCallback[] KeyDownCallbacks = {};
+KeyUpCallback[] KeyUpCallbacks = {};
+
+/*EXPORT*/ void AddKeyDownCallback( KeyDownCallback callback ) { KeyDownCallbacks.insertLast( callback ); }
+/*EXPORT*/ void AddKeyUpCallback( KeyUpCallback callback )     { KeyUpCallbacks.insertLast( callback ); }
+
+// Export
+/*EXPORT*/ bool IsKeyPressed( uint8 key )    { return KeyPressed[ key ]; }
+/*EXPORT*/ bool IsMousePressed( int button ) { return MousePressed[ button ]; }
+/*EXPORT*/ bool IsCtrlDown()                 { return KeyPressed[ DIK_RCONTROL ] || KeyPressed[ DIK_LCONTROL ]; }
+/*EXPORT*/ bool IsAltDown()                  { return KeyPressed[ DIK_LMENU ] || KeyPressed[ DIK_RMENU ]; }
+/*EXPORT*/ bool IsShiftDown()                { return KeyPressed[ DIK_LSHIFT ] || KeyPressed[ DIK_RSHIFT ]; }
+
+/*EXPORT*/ bool[] GetKeyPressed()
+{
+    return KeyPressed;
+}
+/*EXPORT*/ bool[] GetMousePressed()
+{
+    return MousePressed;
+}
+
+void ModuleInit()
+{
+    __EventMouseDown.Subscribe( OnMouseDown );
+    __EventMouseUp.Subscribe( OnMouseUp );
+    __EventMouseMove.Subscribe( OnMouseMove );
+    __EventKeyDown.Subscribe( OnKeyDown );
+    __EventKeyUp.Subscribe( OnKeyUp );
+    __EventInputLost.Subscribe( OnInputLost );
+
+    KeyPressed.resize( 0x100 );
+    MousePressed.resize( MOUSE_BUTTON_EXT4 + 1 );
+}
+
+/*EXPORT*/ void ReleaseKeys()
+{
+    for( uint i = 0; i < KeyPressed.length(); i++ )
+        if( KeyPressed[ i ] )
+            OnKeyUp( i );
+}
+
+/*EXPORT*/ void ReleaseMouse()
+{
+    for( uint i = 0; i < MousePressed.length(); i++ )
+        if( MousePressed[ i ] )
+            OnMouseUp( i );
+}
+
+// //////////////////////////////////////////////////////////////////////////////////////////////////
+// Mouse behaviours. Button states look in ClientCore.fos, Mouse buttons.
+// Return true to disable engine events.
+void OnMouseDown( int button ) // Engine callback
+{
+    if( __WaitPing || __IsConnecting || __IsUpdating )
+        return;
+
+    MousePressed[ button ] = true;
+
+    Gui::EngineCallback_MouseDown( button );
+}
+
+void OnMouseUp( int button ) // Engine callback
+{
+    if( MousePressed[ button ] )
+        Gui::EngineCallback_MouseUp( button );
+
+    MousePressed[ button ] = false;
+}
+
+void OnMouseMove( int offsetX, int offsetY ) // Engine callback
+{
+    Gui::EngineCallback_MouseMove( offsetX, offsetY );
+}
+
+// //////////////////////////////////////////////////////////////////////////////////////////////////
+// Keyboard behaviours. Key codes look in ClientCore.fos, DirectInput keyboard scan codes.
+// Return true to disable engine events.
+void OnKeyDown( uint8 key, string text ) // Engine callback
+{
+    // Avoid repeating
+    if( KeyPressed[ key ] )
+    {
+        if( key != DIK_TEXT && key != DIK_SPACE && key != DIK_BACK && key != DIK_DELETE && key != DIK_LEFT && key != DIK_RIGHT )
+            return;
+    }
+    KeyPressed[ key ] = true;
+
+    // Handlers
+    bool handled = false;
+    for( uint i = 0; !handled && i < KeyDownCallbacks.length(); i++ )
+        handled = KeyDownCallbacks[ i ] ( key, text );
+    if( !handled )
+        Gui::EngineCallback_KeyDown( key, text );
+}
+
+void OnKeyUp( uint8 key ) // Engine callback
+{
+    // Avoid repeating
+    if( !KeyPressed[ key ] )
+        return;
+    KeyPressed[ key ] = false;
+
+    // Handlers
+    for( uint i = 0; i < KeyUpCallbacks.length(); i++ )
+        KeyUpCallbacks[ i ] ( key );
+    Gui::EngineCallback_KeyUp( key );
+}
+
+// //////////////////////////////////////////////////////////////////////////////////////////////////
+// Called on mouse/keyboard input lost (alt-tab, minimize, lost focus).
+void OnInputLost() // Engine callback
+{
+    // Reset states
+    ReleaseKeys();
+    ReleaseMouse();
+
+    // Gui:: handler
+    Gui::EngineCallback_InputLost();
+}
