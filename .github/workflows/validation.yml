@@ -1,4 +1,4 @@
-name: make-sdk
+name: validation
 
 on: [push, pull_request]
 
@@ -132,55 +132,3 @@ jobs:
       with:
         source: ./Source
         clangFormatVersion: 9
-  make:
-    needs: [windows-win32, windows-win64, linux, android-arm32, android-arm64, web-release, web-debug, mac, ios, unit-tests, code-coverage, check-formatting]
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - uses: actions/download-artifact@v1
-      with:
-        name: sdk-version
-    - run: cp -r sdk-version/. Build
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-windows-win32
-    - run: cp -r binaries-windows-win32/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-windows-win64
-    - run: cp -r binaries-windows-win64/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-linux
-    - run: cp -r binaries-linux/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-android-arm32
-    - run: cp -r binaries-android-arm32/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-android-arm64
-    - run: cp -r binaries-android-arm64/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-web-release
-    - run: cp -r binaries-web-release/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-web-debug
-    - run: cp -r binaries-web-debug/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-mac
-    - run: cp -r binaries-mac/. Build/Binaries
-    - uses: actions/download-artifact@v1
-      with:
-        name: binaries-ios
-    - run: cp -r binaries-ios/. Build/Binaries
-    - run: BuildScripts/make-sdk.sh
-    - uses: actions/upload-artifact@master
-      with:
-        name: FOnlineSDK
-        path: FOnlineSDK
