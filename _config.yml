@@ -5,7 +5,6 @@ theme: jekyll-theme-minimal
 exclude:
   - BuildScripts/
   - Resources/
-  - SdkPlaceholder/
   - Source/
   - ThirdParty/
   - VSCode/
