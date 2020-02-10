@@ -15,18 +15,18 @@ else
     CMAKE=/Applications/CMake.app/Contents/bin/cmake
 fi
 
+mkdir -p $FO_BUILD_DEST && cd $FO_BUILD_DEST
+
 # Cross compilation using OSXCross
-# https://github.com/tpoechtrager/osxcross
-# Toolchain must be installed in home dir
-if [ -d "$HOME/osxcross" ]; then
+if [ -d "osxcross" ]; then
     echo "OSXCross cross compilation"
-    export PATH=$PATH:$HOME/osxcross/target/bin
-    CMAKE_GEN="$HOME/osxcross/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$HOME/osxcross/tools/toolchain.cmake\""
+    export OSXCROSS_DIR=$(cd osxcross; pwd)
+    export PATH=$PATH:$OSXCROSS_DIR/target/bin
+    CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
 else
     CMAKE_GEN="$CMAKE -G \"Xcode\""
 fi
 
-mkdir -p $FO_BUILD_DEST && cd $FO_BUILD_DEST
 mkdir -p iOS && cd iOS
 
 echo "Build default binaries"

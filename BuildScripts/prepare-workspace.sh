@@ -74,56 +74,66 @@ sudo apt-get -qq -y install uuid-dev
 
 mkdir $FO_BUILD_DEST && cd $FO_BUILD_DEST
 
-# echo "Setup OSXCross"
-# mkdir macOS && cd macOS
-# git clone https://github.com/tpoechtrager/osxcross
-# cd osxcross
-# rm -rf .git
-# copy MacOSX10.15.sdk.tar.bz2 to tarballs
-# ./build.sh
-# cd ../ # osxcross
-# cd ../ # macOS
-# mkdir iOS && cd iOS
-# copy macOS osxcross to iOS
-# cd ../ # iOS
+mkdir Web
+mkdir Android
 
-echo "Setup Emscripten"
-mkdir Web && cd Web
-mkdir emsdk
-cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
-cd emsdk
-chmod +x ./emsdk
-./emsdk update
-./emsdk list
-./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
-./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
-rm -rf releases/.git
-cd ../ # emsdk
-cd ../ # Web
+setup_osxcross()
+{
+    echo "Setup OSXCross"
+    git clone --depth 1 https://github.com/tpoechtrager/osxcross
+    cd osxcross
+    rm -rf .git
+    cp "$ROOT_FULL_PATH/BuildScripts/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
+    export UNATTENDED=1
+    ./build.sh
+}
 
-echo "Download Android NDK"
-mkdir Android && cd Android
-wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
-echo "Unzip Android NDK"
-unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
+setup_emscripten()
+{
+    echo "Setup Emscripten"
+    cd Web
+    mkdir emsdk
+    cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
+    cd emsdk
+    chmod +x ./emsdk
+    ./emsdk update
+    ./emsdk list
+    ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
+    ./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
+    rm -rf releases/.git
+}
 
-echo "Download Android SDK"
-wget -qq "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
-echo "Unzip Android SDK"
-mkdir sdk
-unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
-echo "Update Android SDK"
-cd sdk && cd tools
-( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
-cd ../ # tools
-cd ../ # sdk
+setup_android_ndk()
+{
+    echo "Download Android NDK"
+    cd Android
+    wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
+    echo "Unzip Android NDK"
+    unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
 
-echo "Generate Android toolchains"
-cd $ANDROID_NDK_VERSION/build/tools
-python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
-python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
-cd ../../../
-cd ../ # Android
+    echo "Generate Android toolchains"
+    cd $ANDROID_NDK_VERSION/build/tools
+    python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
+    python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
+}
+
+setup_android_sdk()
+{
+    echo "Download Android SDK"
+    wget -qq "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
+    echo "Unzip Android SDK"
+    mkdir sdk
+    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
+    echo "Update Android SDK"
+    cd sdk && cd tools
+    ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
+}
+
+setup_osxcross &
+setup_emscripten &
+setup_android_ndk &
+setup_android_sdk &
+wait
 
 echo $FO_ENV_VERSION > _envv
 echo "Workspace is ready"
