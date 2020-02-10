@@ -5,11 +5,8 @@ if [ ! "$1" = "" ]; then
     exit 1
 fi
 
-[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
-[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
-
-echo "Setup environment"
-export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $CUR_DIR/setup-env.sh
 
 echo "Find cmake"
 if [ -x "$(command -v cmake)" ]; then

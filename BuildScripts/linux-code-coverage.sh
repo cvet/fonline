@@ -1,8 +1,7 @@
 #!/bin/bash -e
 
-[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
-
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $CUR_DIR/setup-env.sh
 $CUR_DIR/linux.sh code-coverage
 
 echo "Run code coverage"

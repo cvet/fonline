@@ -5,21 +5,14 @@ if [ ! "$1" = "" ] && [ ! "$1" = "arm32" ] && [ ! "$1" = "arm64" ]; then
     exit 1
 fi
 
-[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
-[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
-[ "$FO_INSTALL_PACKAGES" ] || export FO_INSTALL_PACKAGES=1
-
-echo "Setup environment"
-export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
-export ANDROID_NDK_VERSION="android-ndk-r18b"
-export ANDROID_SDK_VERSION="tools_r25.2.3"
-export ANDROID_NATIVE_API_LEVEL_NUMBER=21
-export ANDROID_HOME="$PWD/Android/sdk"
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $CUR_DIR/setup-env.sh
 
 if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
     echo "Install packages"
     echo "Sudo required"
     sudo apt-get -qq -y update || true
+    sudo apt-get -qq -y upgrade || true
     echo "Install build-essential"
     sudo apt-get -qq -y install build-essential
     echo "Install cmake"

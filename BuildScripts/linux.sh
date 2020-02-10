@@ -5,12 +5,8 @@ if [ ! "$1" = "" ] && [ ! "$1" = "unit-tests" ] && [ ! "$1" = "code-coverage" ];
     exit 1
 fi
 
-[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
-[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
-[ "$FO_INSTALL_PACKAGES" ] || export FO_INSTALL_PACKAGES=1
-
-echo "Setup environment"
-export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $CUR_DIR/setup-env.sh
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
 
@@ -18,6 +14,7 @@ if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
     echo "Install packages"
     echo "Sudo required"
     sudo apt-get -qq -y update || true
+    sudo apt-get -qq -y upgrade || true
     echo "Install clang"
     sudo apt-get -qq -y install clang
     echo "Install build-essential"

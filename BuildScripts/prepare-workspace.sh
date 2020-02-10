@@ -1,18 +1,20 @@
 #!/bin/bash -e
 
-[ "$FO_ROOT" ] || { [[ -e CMakeLists.txt ]] && { export FO_ROOT=. || true ;} ;} || export FO_ROOT=../
-[ "$FO_BUILD_DEST" ] || export FO_BUILD_DEST=Build
+echo "Prepare workspace"
+
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $CUR_DIR/setup-env.sh
+
+if [ -f "$FO_BUILD_DEST/_envv" ]; then
+    VER=`cat $FO_BUILD_DEST/_envv`
+    if [[ "$VER" = "$FO_ENV_VERSION" ]]; then
+        echo "Workspace is actual"
+        exit
+    fi
+fi
 
 echo "Sudo required"
 sudo -v
-
-echo "Setup environment"
-export ROOT_FULL_PATH=$(cd $FO_ROOT; pwd)
-export EMSCRIPTEN_VERSION="1.39.4"
-export ANDROID_NDK_VERSION="android-ndk-r18b"
-export ANDROID_SDK_VERSION="tools_r25.2.3"
-export ANDROID_NATIVE_API_LEVEL_NUMBER=21
-export ANDROID_HOME="$PWD/Android/sdk"
 
 if [ -d "$FO_BUILD_DEST" ]; then
     echo "Remove previous installation"
@@ -111,13 +113,17 @@ echo "Unzip Android SDK"
 mkdir sdk
 unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
 echo "Update Android SDK"
-cd sdk/tools
+cd sdk && cd tools
 ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
+cd ../ # tools
 cd ../ # sdk
-cd ../ # Android
 
 echo "Generate Android toolchains"
 cd $ANDROID_NDK_VERSION/build/tools
 python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
 python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
 cd ../../../
+cd ../ # Android
+
+echo $FO_ENV_VERSION > _envv
+echo "Workspace is ready"
