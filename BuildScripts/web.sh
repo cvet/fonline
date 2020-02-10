@@ -35,8 +35,6 @@ echo "Copy placeholder"
 mkdir -p "./Binaries/Client/Web" && rm -rf "./Binaries/Client/Web/*"
 cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
 
-mkdir -p Web && cd Web
-
 if [ ! -d "emsdk" ]; then
     echo "Setup Emscripten"
     mkdir -p emsdk
@@ -55,6 +53,8 @@ cd emsdk
 source ./emsdk_env.sh
 cd ../
 emcc -v
+
+mkdir -p Web && cd Web
 
 if [ "$1" = "" ] || [ "$1" = "release" ]; then
     echo "Build release binaries"

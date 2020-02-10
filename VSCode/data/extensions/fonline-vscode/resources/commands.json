@@ -172,6 +172,15 @@
         ]
     },
     {
+        "label": "Check Workspace",
+        "shellPath": "C:\\Windows\\System32\\wsl.exe",
+        "shellArgs": [
+            "bash",
+            "-c",
+            "BuildScripts/check-workspace.sh; read -p \"Press enter to continue\""
+        ]
+    },
+    {
         "label": "Prepare Workspace",
         "shellPath": "C:\\Windows\\System32\\wsl.exe",
         "shellArgs": [

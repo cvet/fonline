@@ -12,7 +12,7 @@ export EMSCRIPTEN_VERSION="1.39.4"
 export ANDROID_NDK_VERSION="android-ndk-r18b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 export ANDROID_NATIVE_API_LEVEL_NUMBER=21
-export ANDROID_HOME="$PWD/Android/sdk"
+export ANDROID_HOME="$PWD/$FO_BUILD_DEST/android-sdk"
 
 echo "- FO_ENV_VERSION=$FO_ENV_VERSION"
 echo "- FO_ROOT=$FO_ROOT"

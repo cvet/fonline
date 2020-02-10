@@ -35,23 +35,11 @@ echo "Copy placeholder"
 mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
 cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
 
-mkdir -p Android && cd Android
-
-if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
+if [ ! -d "$ANDROID_NDK_VERSION" ]; then
     echo "Download Android NDK"
     wget -q "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
     echo "Unzip Android NDK"
     unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
-
-    echo "Download Android SDK"
-    wget -q "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
-    echo "Unzip Android SDK"
-    mkdir -p sdk
-    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
-    echo "Update Android SDK"
-    cd sdk/tools
-    ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
-    cd ../../
 
     echo "Generate toolchains"
     cd $ANDROID_NDK_VERSION/build/tools
@@ -59,6 +47,22 @@ if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
     python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
     cd ../../../
 fi
+
+if [ ! -d "android-sdk" ]; then
+    echo "Download Android SDK"
+    wget -q "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
+
+    echo "Unzip Android SDK"
+    mkdir -p android-sdk
+    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./android-sdk"
+
+    echo "Update Android SDK"
+    cd android-sdk/tools
+    ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
+    cd ../../
+fi
+
+mkdir -p Android && cd Android
 
 if [ "$1" = "" ] || [ "$1" = "arm32" ]; then
     echo "Build Arm32 binaries"

@@ -1,20 +1,21 @@
 #!/bin/bash -e
 
+echo "Sudo required"
+sudo -v
+
 echo "Prepare workspace"
 
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $CUR_DIR/setup-env.sh
+source $CUR_DIR/tools.sh
 
-if [ -f "$FO_BUILD_DEST/_envv" ]; then
-    VER=`cat $FO_BUILD_DEST/_envv`
+if [ -f "$FO_BUILD_DEST/EnvVersion.txt" ]; then
+    VER=`cat $FO_BUILD_DEST/EnvVersion.txt`
     if [[ "$VER" = "$FO_ENV_VERSION" ]]; then
         echo "Workspace is actual"
         exit
     fi
 fi
-
-echo "Sudo required"
-sudo -v
 
 if [ -d "$FO_BUILD_DEST" ]; then
     echo "Remove previous installation"
@@ -74,9 +75,6 @@ sudo apt-get -qq -y install uuid-dev
 
 mkdir $FO_BUILD_DEST && cd $FO_BUILD_DEST
 
-mkdir Web
-mkdir Android
-
 setup_osxcross()
 {
     echo "Setup OSXCross"
@@ -91,7 +89,6 @@ setup_osxcross()
 setup_emscripten()
 {
     echo "Setup Emscripten"
-    cd Web
     mkdir emsdk
     cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
     cd emsdk
@@ -106,7 +103,6 @@ setup_emscripten()
 setup_android_ndk()
 {
     echo "Download Android NDK"
-    cd Android
     wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
     echo "Unzip Android NDK"
     unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
@@ -121,19 +117,21 @@ setup_android_sdk()
 {
     echo "Download Android SDK"
     wget -qq "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
+
     echo "Unzip Android SDK"
-    mkdir sdk
-    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
+    mkdir android-sdk
+    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./android-sdk"
+
     echo "Update Android SDK"
-    cd sdk && cd tools
+    cd android-sdk/tools
     ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
 }
 
-setup_osxcross &
-setup_emscripten &
-setup_android_ndk &
-setup_android_sdk &
-wait
+run_job setup_osxcross
+run_job setup_emscripten
+run_job setup_android_ndk
+run_job setup_android_sdk
+wait_jobs
 
-echo $FO_ENV_VERSION > _envv
+echo $FO_ENV_VERSION > "EnvVersion.txt"
 echo "Workspace is ready"
