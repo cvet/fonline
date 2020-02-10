@@ -41,17 +41,22 @@ cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
 
 mkdir -p Web && cd Web
 
-echo "Setup Emscripten"
-mkdir -p emsdk
-cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
+if [ ! -d "emsdk" ]; then
+    echo "Setup Emscripten"
+    mkdir -p emsdk
+    cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
+    cd emsdk
+    chmod +x ./emsdk
+    ./emsdk update
+    ./emsdk list
+    ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
+    ./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
+    rm -rf releases/.git
+    cd ../
+fi
+
 cd emsdk
-chmod +x ./emsdk
-./emsdk update
-./emsdk list
-./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
-./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
 source ./emsdk_env.sh
-rm -rf releases/.git
 cd ../
 emcc -v
 

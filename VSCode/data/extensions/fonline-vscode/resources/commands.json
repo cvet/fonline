@@ -170,5 +170,14 @@
             "-Command",
             "cmake -S . -B Build"
         ]
+    },
+    {
+        "label": "Prepare Workspace",
+        "shellPath": "C:\\Windows\\System32\\wsl.exe",
+        "shellArgs": [
+            "bash",
+            "-c",
+            "BuildScripts/prepare-workspace.sh; read -p \"Press enter to continue\""
+        ]
     }
 ]
