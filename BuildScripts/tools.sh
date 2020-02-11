@@ -21,3 +21,13 @@ function wait_jobs()
     done
     return ${status}
 }
+
+function wsl_path_to_windows()
+{
+    local path="$1"
+    if [ `echo "$path" | cut -c1-5` = "/mnt/" ]; then
+        path="`echo "$path" | cut -c6`:`echo "$path" | cut -c7-`"
+    fi
+    path=${path////\\}
+    echo $path
+}

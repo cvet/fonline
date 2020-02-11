@@ -38,29 +38,29 @@
     },
     {
         "label": "Build for Windows (x64)",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "shellPath": "C:\\Windows\\System32\\wsl.exe",
         "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "set FO_INSTALL_PACKAGES=0; BuildScripts/windows-win64.bat; pause 'Press enter to continue'"
+            "bash",
+            "-c",
+            "export FO_INSTALL_PACKAGES=0 && BuildScripts/windows-win64.sh; read -p \"Press enter to continue\""
         ]
     },
     {
         "label": "Build for Windows (x86)",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "shellPath": "C:\\Windows\\System32\\wsl.exe",
         "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "set FO_INSTALL_PACKAGES=0; BuildScripts/windows-win32.bat; pause 'Press enter to continue'"
+            "bash",
+            "-c",
+            "export FO_INSTALL_PACKAGES=0 && BuildScripts/windows-win32.sh; read -p \"Press enter to continue\""
         ]
     },
     {
         "label": "Build for UWP",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "shellPath": "C:\\Windows\\System32\\wsl.exe",
         "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "set FO_INSTALL_PACKAGES=0; BuildScripts/uwp.bat; pause 'Press enter to continue'"
+            "bash",
+            "-c",
+            "export FO_INSTALL_PACKAGES=0 && BuildScripts/uwp.sh; read -p \"Press enter to continue\""
         ]
     },
     {
@@ -168,7 +168,7 @@
         "shellArgs": [
             "-NoLogo",
             "-Command",
-            "cmake -S . -B Build"
+            "cmake -S . -B Workspace/compilation-test"
         ]
     },
     {
