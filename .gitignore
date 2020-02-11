@@ -2,6 +2,9 @@
 !/VSCode/data/user-data/.keepalive
 /VSCode/data/tmp/*
 !/VSCode/data/tmp/.keepalive
+/Workspace
+/BuildScripts/Workspace
 /Build
+/BuildScripts/Build
 /Temp
 /.vs

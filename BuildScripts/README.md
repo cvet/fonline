@@ -17,32 +17,31 @@ For build just run from repository root one of the following scripts:
 * BuildScripts/android-arm64.sh - build Android binaries (arm64 only) *(run on Unix platforms)*
 * BuildScripts/mac.sh - build macOS binaries *(run on macOS only)*
 * BuildScripts/ios.sh - build iOS binaries (arm64) *(run on macOS only)*
-* BuildScripts/make-sdk.sh - make final sdk from previous builds *(run on Unix platforms)*
 
 ## Build environment variables
 
-Build scripts (sh/bat) may be called both from current directory or repository root (e.g. BuildScripts/linux.sh).  
+Build scripts (sh/bat) may be called both from current directory or repository root (e.g. BuildScripts/linux.sh).
 Following environment variables optionally may be set before starting build scripts:
 
-#### FO_BUILD_DEST *(default: Build)*
+#### FO_WORKSPACE *(default: Workspace)*
 
-Path to build directory, where all required configuration (_.sln_/_Makefile_/etc.) and compiled binaries will be stored.  
-Default behaviour is build in repository in 'Build' directory which is already placed to gitignore and not follow to futher commit.
+Path to build directory, where all required configuration (_.sln_/_Makefile_/etc.) and compiled binaries will be stored.
+Default behaviour is build in repository in 'Workspace' directory which is already placed to gitignore and not follow to futher commit.
 
-Example: `export FO_BUILD_DEST=c:/fonline-build`
+Example: `export FO_WORKSPACE=c:/fonline-workspace`
 
 #### FO_ROOT *(default: . or ../ automatic detection)*
 
-Path to root directory of FOnline repository.  
-If you try run build script from root (e.g. BuildScripts/linux.sh) then current directory taked.  
-If you try run build script from BuildScripts directory (e.g. ./linux.sh) then one level outside directory taked.  
+Path to root directory of FOnline repository.
+If you try run build script from root (e.g. BuildScripts/linux.sh) then current directory taked.
+If you try run build script from BuildScripts directory (e.g. ./linux.sh) then one level outside directory taked.
 This behaviour determined by exition of CMakeLists.txt file in current directory.
 
 Example: `export FO_ROOT=c:/fonline-repo`
 
 #### FO_INSTALL_PACKAGES *(default: 1)*
 
-Automatically install packages needed for build.  
+Automatically install packages needed for build.
 Needed sudo permissions.
- 
+
 Example: `export FO_INSTALL_PACKAGES=0`

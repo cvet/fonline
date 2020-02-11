@@ -39,7 +39,7 @@ if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
     sudo apt-get -qq -y install binutils-dev
 fi
 
-mkdir -p $FO_BUILD_DEST && cd $FO_BUILD_DEST
+mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 mkdir -p Linux && cd Linux
 
 if [ "$1" = "unit-tests" ]; then

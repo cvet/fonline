@@ -21,8 +21,8 @@ if [%FO_ROOT%] == [] (
         set FO_ROOT=..\\
     )
 )
-if [%FO_BUILD_DEST%] == [] (
-    set FO_BUILD_DEST=Build
+if [%FO_WORKSPACE%] == [] (
+    set FO_WORKSPACE=Build
 )
 
 echo Setup environment
@@ -30,8 +30,8 @@ pushd %CD%\%FO_ROOT%
 set ROOT_FULL_PATH=%CD%
 popd
 
-if not exist %FO_BUILD_DEST% mkdir %FO_BUILD_DEST%
-pushd %FO_BUILD_DEST%
+if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
+pushd %FO_WORKSPACE%
 if not exist Windows mkdir Windows
 pushd Windows
 

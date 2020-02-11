@@ -9,21 +9,23 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
-if [ -f "$FO_BUILD_DEST/EnvVersion.txt" ]; then
-    VER=`cat $FO_BUILD_DEST/EnvVersion.txt`
-    if [[ "$VER" = "$FO_ENV_VERSION" ]]; then
+if [ -f "$FO_WORKSPACE/EnvVersion.txt" ]; then
+    local ver=`cat $FO_WORKSPACE/EnvVersion.txt`
+    if [[ "$ver" = "$FO_ENV_VERSION" ]]; then
         echo "Workspace is actual"
         exit
     fi
 fi
 
-if [ -d "$FO_BUILD_DEST" ]; then
+if [ -d "$FO_WORKSPACE" ]; then
     echo "Remove previous installation"
-    rm -rf $FO_BUILD_DEST
+    rm -rf $FO_WORKSPACE
 fi
 
-echo "Install packages"
+echo "Update packages"
 sudo apt-get -qq -y update
+
+echo "Upgrade packages"
 sudo apt-get -qq -y upgrade
 
 echo "Install build-essential"
@@ -73,9 +75,9 @@ sudo apt-get -qq -y install llvm-dev
 echo "Install uuid-dev"
 sudo apt-get -qq -y install uuid-dev
 
-mkdir $FO_BUILD_DEST && cd $FO_BUILD_DEST
+mkdir $FO_WORKSPACE && cd $FO_WORKSPACE
 
-setup_osxcross()
+function setup_osxcross()
 {
     echo "Setup OSXCross"
     git clone --depth 1 https://github.com/tpoechtrager/osxcross
@@ -86,7 +88,7 @@ setup_osxcross()
     ./build.sh
 }
 
-setup_emscripten()
+function setup_emscripten()
 {
     echo "Setup Emscripten"
     mkdir emsdk
@@ -100,7 +102,7 @@ setup_emscripten()
     rm -rf releases/.git
 }
 
-setup_android_ndk()
+function setup_android_ndk()
 {
     echo "Download Android NDK"
     wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
@@ -113,7 +115,7 @@ setup_android_ndk()
     python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
 }
 
-setup_android_sdk()
+function setup_android_sdk()
 {
     echo "Download Android SDK"
     wget -qq "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"

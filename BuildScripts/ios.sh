@@ -15,7 +15,7 @@ else
     CMAKE=/Applications/CMake.app/Contents/bin/cmake
 fi
 
-mkdir -p $FO_BUILD_DEST && cd $FO_BUILD_DEST
+mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 
 # Cross compilation using OSXCross
 if [ -d "osxcross" ]; then

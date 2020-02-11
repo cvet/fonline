@@ -29,7 +29,7 @@ if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
     sudo apt-get -qq -y install python
 fi
 
-mkdir -p $FO_BUILD_DEST && cd $FO_BUILD_DEST
+mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 
 echo "Copy placeholder"
 mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"

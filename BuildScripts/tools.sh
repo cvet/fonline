@@ -2,12 +2,12 @@
 
 declare -A JOBS
 
-run_job()
+function run_job()
 {
     eval $1 & JOBS[$!]="$1"
 }
 
-wait_jobs()
+function wait_jobs()
 {
     local cmd
     local status=0
