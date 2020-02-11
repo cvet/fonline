@@ -13,13 +13,8 @@ if [ -f "$FO_WORKSPACE/workspace-version.txt" ]; then
     fi
 
     echo "Workspace is outdated"
-    exit 12
+    exit 11
 fi
 
-if [ -d "$FO_WORKSPACE" ]; then
-    echo "Workspace is not fully created"
-    exit 11
-else
-    echo "Workspace is not created"
-    exit 10
-fi
+echo "Workspace is not created"
+exit 10

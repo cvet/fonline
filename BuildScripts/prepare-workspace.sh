@@ -87,7 +87,7 @@ function setup_osxcross()
     git clone --depth 1 https://github.com/tpoechtrager/osxcross
     cd osxcross
     rm -rf .git
-    cp "$ROOT_FULL_PATH/BuildScripts/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
+    cp "$FO_ROOT/BuildScripts/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
     export UNATTENDED=1
     ./build.sh
 }
@@ -96,7 +96,7 @@ function setup_emscripten()
 {
     echo "Setup Emscripten"
     mkdir emsdk
-    cp -r "$ROOT_FULL_PATH/BuildScripts/emsdk" "./"
+    cp -r "$FO_ROOT/BuildScripts/emsdk" "./"
     cd emsdk
     chmod +x ./emsdk
     ./emsdk update
@@ -126,9 +126,9 @@ run_job setup_android_ndk
 wait_jobs
 
 echo "Generate compilation environment"
-ROOT_FULL_PATH_WIN=`wsl_path_to_windows "$ROOT_FULL_PATH"`
+FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
 mkdir "compilation-env" && cd "compilation-env"
-cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$ROOT_FULL_PATH_WIN"
+cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT_WIN"
 cmake.exe --build . --config RelWithDebInfo
 
 echo $FO_WORKSPACE_VERSION > "workspace-version.txt"

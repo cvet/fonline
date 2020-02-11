@@ -44,15 +44,15 @@ mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 if [ "$1" = "unit-tests" ]; then
     echo "Build unit tests binaries"
     mkdir -p "build-linux-unit-tests" && cd "build-linux-unit-tests"
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" -DFONLINE_UNIT_TESTS=1 -DFONLINE_BUILD_CLIENT=0 "$ROOT_FULL_PATH"
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" -DFONLINE_UNIT_TESTS=1 -DFONLINE_BUILD_CLIENT=0 "$FO_ROOT"
 elif [ "$1" = "code-coverage" ]; then
     echo "Build code coverage binaries"
     mkdir -p "build-linux-code-coverage" && cd "build-linux-code-coverage"
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" -DFONLINE_CODE_COVERAGE=1 -DFONLINE_BUILD_CLIENT=0 "$ROOT_FULL_PATH"
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" -DFONLINE_CODE_COVERAGE=1 -DFONLINE_BUILD_CLIENT=0 "$FO_ROOT"
 else
     echo "Build default binaries"
     mkdir -p "build-linux" && cd "build-linux"
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$ROOT_FULL_PATH"
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT"
 fi
 
 make -j$(nproc)

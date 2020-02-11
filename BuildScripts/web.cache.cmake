@@ -1,7 +1,7 @@
 # CMake initial cache
 
-if( NOT DEFINED "ENV{ROOT_FULL_PATH}" )
-	message( FATAL_ERROR "Define ROOT_FULL_PATH" )
+if( NOT DEFINED "ENV{FO_ROOT}" )
+	message( FATAL_ERROR "Define FO_ROOT" )
 endif()
 if( NOT DEFINED "ENV{EMSDK}" )
 	message( FATAL_ERROR "Define EMSDK" )

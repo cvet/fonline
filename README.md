@@ -296,8 +296,8 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 
 *Todo: Write about WSL2 requirement and how to install it*  
 *Todo: Write about Visual Studio 2019 requirement and how to install it*  
-*Todo: Write about extended VSCode and to work with it*  
-*Todo: Write about 'Run FOnline Editor.bat' and 'VSCode/extension-dev.bat'*
+*Todo: Write about extended VSCode and how to work with it*  
+*Todo: Write about 'Run FOnline Editor.bat' and 'VSCode/extension-dev.bat'*  
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.6.3.  
 Information about build scripts you can find at BuildScripts/README.md.  

@@ -47,15 +47,15 @@ if [ ! -d "$ANDROID_NDK_VERSION" ]; then
 fi
 
 echo "Copy placeholder"
-mkdir -p "$FO_OUTPUT_PATH/Client/Android" && rm -rf "$FO_OUTPUT_PATH/Client/Android/*"
-cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "$FO_OUTPUT_PATH/Client/Android"
+mkdir -p "$FO_OUTPUT/Client/Android" && rm -rf "$FO_OUTPUT/Client/Android/*"
+cp -r "$FO_ROOT/BuildScripts/android-project/." "$FO_OUTPUT/Client/Android"
 
 if [ "$1" = "" ] || [ "$1" = "arm32" ]; then
     echo "Build Arm32 binaries"
     export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm-toolchain
     export ANDROID_ABI=armeabi-v7a
     mkdir -p "build-android-$ANDROID_ABI" && cd "build-android-$ANDROID_ABI"
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" "$FO_ROOT"
     make -j$(nproc)
     cd ../
 fi
@@ -65,7 +65,7 @@ if [ "$1" = "" ] || [ "$1" = "arm64" ]; then
     export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm64-toolchain
     export ANDROID_ABI=arm64-v8a
     mkdir -p "build-android-$ANDROID_ABI" && cd "build-android-$ANDROID_ABI"
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" "$FO_ROOT"
     make -j$(nproc)
     cd ../
 fi

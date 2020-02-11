@@ -29,5 +29,5 @@ fi
 
 echo "Build default binaries"
 mkdir -p "build-macOS" && cd "build-macOS"
-eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
+eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" "$FO_ROOT"
 $CMAKE --build . --config RelWithDebInfo --target FOnline

@@ -5,7 +5,7 @@ source $CUR_DIR/linux.sh code-coverage
 
 echo "Run code coverage"
 cd $FO_WORKSPACE
-$FO_OUTPUT_PATH/Tests/FOnlineCodeCoverage
+$FO_OUTPUT/Tests/FOnlineCodeCoverage
 
 if [[ ! -z "$CODECOV_TOKEN" ]]; then
     echo "Upload reports to codecov.io"

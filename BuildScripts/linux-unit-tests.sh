@@ -5,4 +5,4 @@ source $CUR_DIR/linux.sh unit-tests
 
 echo "Run unit tests"
 cd $FO_WORKSPACE
-$FO_OUTPUT_PATH/Tests/FOnlineUnitTests
+$FO_OUTPUT/Tests/FOnlineUnitTests
