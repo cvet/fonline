@@ -1,0 +1,35 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorTheme": "Default Light+",
+		"workbench.iconTheme": "vscode-great-icons",
+		"extensions.ignoreRecommendations": true,
+		"editor.formatOnPaste": true,
+		"editor.formatOnSave": true,
+		"editor.formatOnType": true,
+		"diffEditor.ignoreTrimWhitespace": false,
+		"files.insertFinalNewline": true,
+		"files.trimTrailingWhitespace": true,
+		"files.trimFinalNewlines": true,
+		"explorer.incrementalNaming": "smart",
+		"explorer.sortOrder": "type",
+		"extensions.closeExtensionDetailsOnViewChange": true,
+		"telemetry.enableTelemetry": false,
+		"telemetry.enableCrashReporter": false,
+		"editor.fontSize": 12,
+		"editor.emptySelectionClipboard": false,
+		"editor.fontFamily": "Consolas, 'Courier New', monospace",
+		"window.title": "${rootName}${separator}FOnline Editor",
+		"editor.rulers": [
+			120
+		],
+		"editor.wordWrapColumn": 120,
+		"git.ignoreLimitWarning": true,
+		"search.useIgnoreFiles": false,
+		"search.useGlobalIgnoreFiles": true
+	}
+}

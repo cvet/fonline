@@ -11,7 +11,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"${workspaceFolder}/../../../../",
+				"${workspaceFolder}/../../../../fonline.code-workspace",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--enable-proposed-api",
 				"cvet.fonline-vscode"
@@ -27,7 +27,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"${workspaceFolder}/../../../../",
+				"${workspaceFolder}/../../../../fonline.code-workspace",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index",
 				"--enable-proposed-api",
