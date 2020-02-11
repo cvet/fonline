@@ -22,7 +22,7 @@ if [%FO_ROOT%] == [] (
     )
 )
 if [%FO_WORKSPACE%] == [] (
-    set FO_WORKSPACE=Build
+    set FO_WORKSPACE=Workspace
 )
 
 echo Setup environment
@@ -32,26 +32,21 @@ popd
 
 if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 pushd %FO_WORKSPACE%
-if not exist Windows mkdir Windows
-pushd Windows
 
 if [%BUILD32%] == [1] (
     echo Build 32-bit binaries
-    if not exist win32 mkdir win32
-    pushd win32
-    cmake -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
+    if not exist "build-win32" mkdir "build-win32"
+    pushd "build-win32"
+    cmake -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="../output" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "%ROOT_FULL_PATH%"
     cmake --build . --config RelWithDebInfo
     popd
 )
 
 if [%BUILD64%] == [1] (
     echo Build 64-bit binaries
-    if not exist win64 mkdir win64
-    pushd win64
-    cmake -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
+    if not exist "build-win64" mkdir "build-win64"
+    pushd "build-win64"
+    cmake -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="../output" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "%ROOT_FULL_PATH%"
     cmake --build . --config RelWithDebInfo
     popd
 )
-
-popd
-popd

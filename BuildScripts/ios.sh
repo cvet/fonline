@@ -27,9 +27,7 @@ else
     CMAKE_GEN="$CMAKE -G \"Xcode\""
 fi
 
-mkdir -p iOS && cd iOS
-
 echo "Build default binaries"
-mkdir -p default && cd default
-eval $CMAKE_GEN -C "$ROOT_FULL_PATH/BuildScripts/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+mkdir -p "build-iOS" && cd "build-iOS"
+eval $CMAKE_GEN -C "$ROOT_FULL_PATH/BuildScripts/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
 $CMAKE --build . --config Release --target FOnline

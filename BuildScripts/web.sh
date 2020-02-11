@@ -31,10 +31,6 @@ fi
 
 mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 
-echo "Copy placeholder"
-mkdir -p "./Binaries/Client/Web" && rm -rf "./Binaries/Client/Web/*"
-cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "./Binaries/Client/Web"
-
 if [ ! -d "emsdk" ]; then
     echo "Setup Emscripten"
     mkdir -p emsdk
@@ -54,20 +50,22 @@ source ./emsdk_env.sh
 cd ../
 emcc -v
 
-mkdir -p Web && cd Web
+echo "Copy placeholder"
+mkdir -p "$FO_OUTPUT_PATH/Client/Web" && rm -rf "$FO_OUTPUT_PATH/Client/Web/*"
+cp -r "$ROOT_FULL_PATH/BuildScripts/web/." "$FO_OUTPUT_PATH/Client/Web"
 
 if [ "$1" = "" ] || [ "$1" = "release" ]; then
     echo "Build release binaries"
-    mkdir -p release && cd release
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" -DFONLINE_WEB_DEBUG=OFF "$ROOT_FULL_PATH"
+    mkdir -p "build-web-release" && cd "build-web-release"
+    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" -DFONLINE_WEB_DEBUG=OFF "$ROOT_FULL_PATH"
     make -j$(nproc)
     cd ../
 fi
 
 if [ "$1" = "" ] || [ "$1" = "debug" ]; then
     echo "Build debug binaries"
-    mkdir -p debug && cd debug
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" -DFONLINE_WEB_DEBUG=ON "$ROOT_FULL_PATH"
+    mkdir -p "build-web-debug" && cd "build-web-debug"
+    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" -DFONLINE_WEB_DEBUG=ON "$ROOT_FULL_PATH"
     make -j$(nproc)
     cd ../
 fi

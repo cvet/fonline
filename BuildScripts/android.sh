@@ -27,13 +27,11 @@ if [[ "$FO_INSTALL_PACKAGES" = "1" ]]; then
     sudo apt-get -qq -y install openjdk-8-jdk
     echo "Install python"
     sudo apt-get -qq -y install python
+    echo "Install android-sdk"
+    sudo apt-get -qq -y install android-sdk
 fi
 
 mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
-
-echo "Copy placeholder"
-mkdir -p "./Binaries/Client/Android" && rm -rf "./Binaries/Client/Android/*"
-cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "./Binaries/Client/Android"
 
 if [ ! -d "$ANDROID_NDK_VERSION" ]; then
     echo "Download Android NDK"
@@ -48,38 +46,26 @@ if [ ! -d "$ANDROID_NDK_VERSION" ]; then
     cd ../../../
 fi
 
-if [ ! -d "android-sdk" ]; then
-    echo "Download Android SDK"
-    wget -q "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
-
-    echo "Unzip Android SDK"
-    mkdir -p android-sdk
-    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./android-sdk"
-
-    echo "Update Android SDK"
-    cd android-sdk/tools
-    ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
-    cd ../../
-fi
-
-mkdir -p Android && cd Android
+echo "Copy placeholder"
+mkdir -p "$FO_OUTPUT_PATH/Client/Android" && rm -rf "$FO_OUTPUT_PATH/Client/Android/*"
+cp -r "$ROOT_FULL_PATH/BuildScripts/android-project/." "$FO_OUTPUT_PATH/Client/Android"
 
 if [ "$1" = "" ] || [ "$1" = "arm32" ]; then
     echo "Build Arm32 binaries"
-    export ANDROID_STANDALONE_TOOLCHAIN=$PWD/arm-toolchain
+    export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm-toolchain
     export ANDROID_ABI=armeabi-v7a
-    mkdir -p $ANDROID_ABI && cd $ANDROID_ABI
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+    mkdir -p "build-android-$ANDROID_ABI" && cd "build-android-$ANDROID_ABI"
+    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
     make -j$(nproc)
     cd ../
 fi
 
 if [ "$1" = "" ] || [ "$1" = "arm64" ]; then
     echo "Build Arm64 binaries"
-    export ANDROID_STANDALONE_TOOLCHAIN=$PWD/arm64-toolchain
+    export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm64-toolchain
     export ANDROID_ABI=arm64-v8a
-    mkdir -p $ANDROID_ABI && cd $ANDROID_ABI
-    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+    mkdir -p "build-android-$ANDROID_ABI" && cd "build-android-$ANDROID_ABI"
+    cmake -G "Unix Makefiles" -C "$ROOT_FULL_PATH/BuildScripts/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
     make -j$(nproc)
     cd ../
 fi

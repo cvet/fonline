@@ -51,7 +51,7 @@
         "shellArgs": [
             "-NoLogo",
             "-Command",
-            "set FO_INSTALL_PACKAGES=0; BuildScripts/windows-win64.bat; pause 'Press enter to continue'"
+            "set FO_INSTALL_PACKAGES=0; BuildScripts/windows-win32.bat; pause 'Press enter to continue'"
         ]
     },
     {

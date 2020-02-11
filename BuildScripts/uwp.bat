@@ -18,19 +18,12 @@ popd
 
 if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 pushd %FO_WORKSPACE%
-if not exist UWP mkdir UWP
-pushd UWP
 
-echo Build UWP
-if not exist x64 mkdir x64
-pushd x64
-cmake -A x64 -C "%ROOT_FULL_PATH%/BuildScripts/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../../" "%ROOT_FULL_PATH%"
+echo Build UWP-x64
+if not exist "build-uwp-x64" mkdir "build-uwp-x64"
+pushd "build-uwp-x64"
+cmake -A x64 -C "%ROOT_FULL_PATH%/BuildScripts/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="../output" "%ROOT_FULL_PATH%"
 rem cmake --build . --config RelWithDebInfo
-popd
-
 rem win32
 rem arm
 rem arm64
-
-popd
-popd

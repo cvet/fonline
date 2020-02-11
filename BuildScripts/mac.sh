@@ -27,9 +27,7 @@ else
     CMAKE_GEN="$CMAKE -G \"Xcode\""
 fi
 
-mkdir -p macOS && cd macOS
-
 echo "Build default binaries"
-mkdir -p default && cd default
-eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="../../" "$ROOT_FULL_PATH"
+mkdir -p "build-macOS" && cd "build-macOS"
+eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_PATH" "$ROOT_FULL_PATH"
 $CMAKE --build . --config RelWithDebInfo --target FOnline

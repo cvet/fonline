@@ -9,9 +9,9 @@ CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
-if [ -f "$FO_WORKSPACE/EnvVersion.txt" ]; then
-    local ver=`cat $FO_WORKSPACE/EnvVersion.txt`
-    if [[ "$ver" = "$FO_ENV_VERSION" ]]; then
+if [ -f "$FO_WORKSPACE/workspace-version.txt" ]; then
+    VER=`cat $FO_WORKSPACE/workspace-version.txt`
+    if [[ "$VER" = "$FO_WORKSPACE_VERSION" ]]; then
         echo "Workspace is actual"
         exit
     fi
@@ -74,6 +74,8 @@ echo "Install llvm-dev"
 sudo apt-get -qq -y install llvm-dev
 echo "Install uuid-dev"
 sudo apt-get -qq -y install uuid-dev
+echo "Install android-sdk"
+sudo apt-get -qq -y install android-sdk
 
 mkdir $FO_WORKSPACE && cd $FO_WORKSPACE
 
@@ -108,6 +110,7 @@ function setup_android_ndk()
     wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
     echo "Unzip Android NDK"
     unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
+    rm -f "$ANDROID_NDK_VERSION-linux-x86_64.zip"
 
     echo "Generate Android toolchains"
     cd $ANDROID_NDK_VERSION/build/tools
@@ -115,25 +118,10 @@ function setup_android_ndk()
     python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
 }
 
-function setup_android_sdk()
-{
-    echo "Download Android SDK"
-    wget -qq "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip"
-
-    echo "Unzip Android SDK"
-    mkdir android-sdk
-    unzip -qq -o "$ANDROID_SDK_VERSION-linux.zip" -d "./android-sdk"
-
-    echo "Update Android SDK"
-    cd android-sdk/tools
-    ( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
-}
-
 run_job setup_osxcross
 run_job setup_emscripten
 run_job setup_android_ndk
-run_job setup_android_sdk
 wait_jobs
 
-echo $FO_ENV_VERSION > "EnvVersion.txt"
+echo $FO_WORKSPACE_VERSION > "workspace-version.txt"
 echo "Workspace is ready"

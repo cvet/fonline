@@ -5,9 +5,9 @@ echo "Check workspace status"
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $CUR_DIR/setup-env.sh
 
-if [ -f "$FO_WORKSPACE/EnvVersion.txt" ]; then
-    local ver=`cat $FO_WORKSPACE/EnvVersion.txt`
-    if [[ "$ver" = "$FO_ENV_VERSION" ]]; then
+if [ -f "$FO_WORKSPACE/workspace-version.txt" ]; then
+    VER=`cat $FO_WORKSPACE/workspace-version.txt`
+    if [[ "$VER" = "$FO_WORKSPACE_VERSION" ]]; then
         echo "Workspace is actual"
         exit
     fi
