@@ -1,192 +1,69 @@
 [
     {
-        "label": "Windows PowerShell",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo"
-        ]
-    },
-    {
-        "label": "Windows CMD",
-        "shellPath": "C:\\Windows\\System32\\cmd.exe",
-        "shellArgs": [
-            "/K",
-            "cls"
-        ]
-    },
-    {
-        "label": "Ubuntu Shell",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe"
-    },
-    {
-        "label": "Python v2",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "python"
-        ]
-    },
-    {
-        "label": "Python v3",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "python3"
-        ]
-    },
-    {
-        "label": "Build for Windows (x64)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/windows-win64.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Windows (x86)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/windows-win32.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for UWP",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/uwp.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Linux",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/linux.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build unit tests for Linux",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/linux-unit-tests.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build code coverage for Linux",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/linux-code-coverage.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Web (release)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/web-release.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Web (debug)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/web-debug.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Android (arm32)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/android-arm32.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for Android (arm64)",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/android-arm64.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for macOS",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/mac.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Build for iOS [Todo]",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "export FO_INSTALL_PACKAGES=0 && BuildScripts/ios.sh; read -p \"Press enter to continue\""
-        ]
-    },
-    {
-        "label": "Generate Todo",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "cd BuildScripts; python todo-generator.py; pause 'Press enter to continue'"
-        ]
-    },
-    {
-        "label": "Format Code",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "cd Source; clang-format -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*; pause 'Press enter to continue'"
-        ]
-    },
-    {
-        "label": "Generate Project",
-        "shellPath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "shellArgs": [
-            "-NoLogo",
-            "-Command",
-            "cmake -S . -B Workspace/compilation-test"
-        ]
+        "label": "WSL Shell"
     },
     {
         "label": "Check Workspace",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "BuildScripts/check-workspace.sh; read -p \"Press enter to continue\""
-        ]
+        "command": "BuildScripts/check-workspace.sh"
     },
     {
         "label": "Prepare Workspace",
-        "shellPath": "C:\\Windows\\System32\\wsl.exe",
-        "shellArgs": [
-            "bash",
-            "-c",
-            "BuildScripts/prepare-workspace.sh; read -p \"Press enter to continue\""
-        ]
+        "command": "BuildScripts/prepare-workspace.sh"
+    },
+    {
+        "label": "Build for Windows (x64)",
+        "command": "BuildScripts/windows-win64.sh"
+    },
+    {
+        "label": "Build for Windows (x86)",
+        "command": "BuildScripts/windows-win32.sh"
+    },
+    {
+        "label": "Build for UWP",
+        "command": "BuildScripts/uwp.sh"
+    },
+    {
+        "label": "Build for Linux",
+        "command": "BuildScripts/linux.sh"
+    },
+    {
+        "label": "Build unit tests for Linux",
+        "command": "BuildScripts/linux-unit-tests.sh"
+    },
+    {
+        "label": "Build code coverage for Linux",
+        "command": "BuildScripts/linux-code-coverage.sh"
+    },
+    {
+        "label": "Build for Web (release)",
+        "command": "BuildScripts/web-release.sh"
+    },
+    {
+        "label": "Build for Web (debug)",
+        "command": "BuildScripts/web-debug.sh"
+    },
+    {
+        "label": "Build for Android (arm32)",
+        "command": "BuildScripts/android-arm32.sh"
+    },
+    {
+        "label": "Build for Android (arm64)",
+        "command": "BuildScripts/android-arm64.sh"
+    },
+    {
+        "label": "Build for macOS",
+        "command": "BuildScripts/mac.sh"
+    },
+    {
+        "label": "Build for iOS",
+        "command": "BuildScripts/ios.sh"
+    },
+    {
+        "label": "Generate Todo",
+        "command": "cd BuildScripts && python todo-generator.py"
+    },
+    {
+        "label": "Format Code",
+        "command": "cd Source && clang-format -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
     }
 ]

@@ -44,6 +44,8 @@ echo "Install git"
 sudo apt-get -qq -y install git
 echo "Install clang"
 sudo apt-get -qq -y install clang
+echo "Install clang-format"
+sudo apt-get -qq -y install clang-format
 echo "Install libx11-dev"
 sudo apt-get -qq -y install libx11-dev
 echo "Install freeglut3-dev"
@@ -122,6 +124,12 @@ run_job setup_osxcross
 run_job setup_emscripten
 run_job setup_android_ndk
 wait_jobs
+
+echo "Generate compilation environment"
+ROOT_FULL_PATH_WIN=`wsl_path_to_windows "$ROOT_FULL_PATH"`
+mkdir "compilation-env" && cd "compilation-env"
+cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$ROOT_FULL_PATH_WIN"
+cmake.exe --build . --config RelWithDebInfo
 
 echo $FO_WORKSPACE_VERSION > "workspace-version.txt"
 echo "Workspace is ready"
