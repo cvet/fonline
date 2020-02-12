@@ -12,9 +12,9 @@ interface TerminalEntry {
 
 export function init(context: vscode.ExtensionContext) {
     const fileContent = fs.readFileSync(path.join(context.extensionPath, 'resources', 'commands.json'));
-    let jsonTerminals = JSON.parse(fileContent.toString());
+    const jsonTerminals = JSON.parse(fileContent.toString());
 
-    let terminals = jsonTerminals.map((terminal: { label: string, command: string, shellArgs: string }) => {
+    const terminals = jsonTerminals.map((terminal: { label: string, command: string, shellArgs: string }) => {
         if (terminal.command) {
             terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
         }
@@ -22,12 +22,12 @@ export function init(context: vscode.ExtensionContext) {
         return terminal;
     });
 
-    let tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
+    const tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
     context.subscriptions.push(tree);
 
-    for (let terminal of terminals) {
-        let cmd = vscode.commands.registerCommand(terminal.command, function () {
-            let terminalInstance = vscode.window.createTerminal(terminal.label, wslShellPath, terminal.shellArgs);
+    for (const terminal of terminals) {
+        const cmd = vscode.commands.registerCommand(terminal.command, function () {
+            const terminalInstance = vscode.window.createTerminal(terminal.label, wslShellPath, terminal.shellArgs);
             terminalInstance.show();
         });
         context.subscriptions.push(cmd);
@@ -35,10 +35,14 @@ export function init(context: vscode.ExtensionContext) {
 }
 
 export async function execute(label: string, ...shellArgs: string[]): Promise<number> {
-    shellArgs.push('exit');
-    let terminal = vscode.window.createTerminal({ "hideFromUser": true, "name": label, "shellPath": wslShellPath, "shellArgs": shellArgs });
+    const terminal = vscode.window.createTerminal({
+        "hideFromUser": true,
+        "name": label,
+        "shellPath": wslShellPath,
+        "shellArgs": shellArgs.concat('exit')
+    });
 
-    function sleep(ms: number) {
+    function sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     while (terminal.exitStatus === undefined)

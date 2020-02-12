@@ -21,14 +21,19 @@ class HtmlGenerator {
     addSpinner() {
         this._content += `<div uk-spinner="ratio: 3"></div>`;
     }
-    addLeadText(text) {
-        this._content += `<div class="uk-text-lead uk-text-center">${text}<br/></div>`;
+    addLeadText(text, centered = false) {
+        this._content += `<div class="uk-text-lead ${centered ? "uk-text-center" : ""}">${text}</div>`;
     }
-    addText(text) {
-        this._content += `<div class="uk-text-normal uk-text-center">${text}<br/></div>`;
+    addText(text, centered = false) {
+        this._content += `<div class="uk-text-normal ${centered ? "uk-text-center" : ""}">${text}</div>`;
     }
-    addStatusMessage(title, message) {
-        this._content += `<dl class="uk-description-list"><dt>${title}</dt><dd>${message}</dd></dl>`;
+    addList(inner) {
+        this._content += `<dl class="uk-description-list">`;
+        inner();
+        this._content += `</dl>`;
+    }
+    addListEntry(title, message) {
+        this._content += `<dt>${title}</dt><dd>${message}</dd>`;
     }
     finalize() {
         this._content += `</div></body></html>`;

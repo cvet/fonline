@@ -23,16 +23,22 @@ export class HtmlGenerator {
         this._content += `<div uk-spinner="ratio: 3"></div>`;
     }
 
-    addLeadText(text: string) {
-        this._content += `<div class="uk-text-lead uk-text-center">${text}<br/></div>`;
+    addLeadText(text: string, centered: boolean = false) {
+        this._content += `<div class="uk-text-lead ${centered ? "uk-text-center" : ""}">${text}</div>`;
     }
 
-    addText(text: string) {
-        this._content += `<div class="uk-text-normal uk-text-center">${text}<br/></div>`;
+    addText(text: string, centered: boolean = false) {
+        this._content += `<div class="uk-text-normal ${centered ? "uk-text-center" : ""}">${text}</div>`;
     }
 
-    addStatusMessage(title: string, message: string) {
-        this._content += `<dl class="uk-description-list"><dt>${title}</dt><dd>${message}</dd></dl>`;
+    addList(inner: () => void) {
+        this._content += `<dl class="uk-description-list">`;
+        inner();
+        this._content += `</dl>`;
+    }
+
+    addListEntry(title: string, message: string) {
+        this._content += `<dt>${title}</dt><dd>${message}</dd>`;
     }
 
     finalize(): string {

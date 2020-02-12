@@ -3,22 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const htmlGenerator_1 = require("./htmlGenerator");
 class BaseView {
-    constructor(_title) {
+    constructor(_context, _title) {
+        this._context = _context;
         this._title = _title;
-        this.panel = vscode.window.createWebviewPanel(this._title, this._title, vscode.ViewColumn.One, { enableScripts: true });
+        this._panel = vscode.window.createWebviewPanel(this._title, this._title, vscode.ViewColumn.One, { enableScripts: true });
         this.refresh();
     }
     toFront() {
         this.refresh();
-        this.panel.reveal();
+        this._panel.reveal();
     }
     refresh() {
         const wait = new htmlGenerator_1.HtmlGenerator(this._title);
         wait.addSpinner();
-        this.panel.webview.html = wait.finalize();
+        this._panel.webview.html = wait.finalize();
         const page = new htmlGenerator_1.HtmlGenerator(this._title);
         this.evaluate(page).then(() => {
-            this.panel.webview.html = page.finalize();
+            this._panel.webview.html = page.finalize();
         });
     }
 }

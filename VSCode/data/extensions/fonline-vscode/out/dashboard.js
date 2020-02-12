@@ -12,37 +12,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const commands = require("./commands");
 const baseView_1 = require("./baseView");
-var dashboard = undefined;
 function show(context) {
     context.subscriptions.push(vscode.commands.registerCommand('dashboard.show', () => {
-        if (!dashboard) {
-            dashboard = new DashboardView();
-            dashboard.panel.onDidDispose(() => { dashboard = undefined; }, null, context.subscriptions);
+        if (!DashboardView.instance) {
+            new DashboardView(context);
         }
         else {
-            dashboard.toFront();
+            DashboardView.instance.toFront();
         }
     }));
     vscode.commands.executeCommand('dashboard.show');
 }
 exports.show = show;
 class DashboardView extends baseView_1.BaseView {
-    constructor() {
-        super('Dashboard');
+    constructor(_context) {
+        super(_context, 'Dashboard');
+        this._context = _context;
+        DashboardView.instance = this;
+        this._panel.onDidDispose(() => { DashboardView.instance = undefined; }, null, this._context.subscriptions);
         setInterval(() => { this.refresh(); }, 3 * 60000);
     }
     evaluate(html) {
         return __awaiter(this, void 0, void 0, function* () {
+            // Check Windows host
+            // ...
+            // Check Windows version (at least 18917 when WSL2 was improved)
+            // ...
+            // Check WSL in general
+            // ...
+            // Check WSL version (target 2)
+            // ...
+            // Check WSL distro (target Ununtu-18.04)
+            // ...
+            // Check workspace
             const exitCode = yield commands.execute('BuildScripts/check-workspace.sh');
             if (exitCode == 0)
-                html.addLeadText('Workspace is ready');
+                html.addLeadText('Workspace ready');
             else if (exitCode == 10)
-                html.addLeadText('Workspace is not created');
+                html.addLeadText('Workspace not created');
             else if (exitCode == 11)
-                html.addLeadText('Workspace is outdated');
+                html.addLeadText('Workspace outdated');
             else
                 html.addLeadText('Can\'t determine workspace state');
         });
     }
 }
+DashboardView.instance = undefined;
 //# sourceMappingURL=dashboard.js.map
