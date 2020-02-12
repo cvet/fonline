@@ -1,0 +1,881 @@
+{
+    "snippet-uk-accordion": {
+        "prefix": "uk-accordion",
+        "body": ["UIkit.accordion(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes an accordion component with various options",
+            "---",
+            "targets: [CSS Selector]",
+            "active: [Number]",
+            "collapsible: [Boolean]",
+            "multiple: [Boolean]",
+            "transition: [String]",
+            "animation: [String]",
+            "duration: [Number]"
+        ]
+    },
+    "snippet-uk-accordion-events": {
+        "prefix": "uk-accordion-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified accordion event is triggered"
+    },
+    "snippet-uk-accordion-methods": {
+        "prefix": "uk-accordion-methods",
+        "body": [
+            "$LINE_COMMENT Toggles the content pane",
+            "UIkit.accordion(${1:element}).toggle(${2:index}, ${0:animate});"
+        ],
+        "description": "Showcases the methods available to the accordion component"
+    },
+    "snippet-uk-alert": {
+        "prefix": "uk-alert",
+        "body": ["UIkit.alert(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes an alert element with various options",
+            "---",
+            "animation: [Boolean|String]",
+            "duration: [Number]",
+            "selClose: [CSS Selector]"
+        ]
+    },
+    "snippet-uk-alert-methods": {
+        "prefix": "uk-alert-methods",
+        "body": [
+            "$LINE_COMMENT Closes and removes the Alert",
+            "UIkit.alert(${1:element}).close();"
+        ],
+        "description": "Showcases the methods available to the alert component"
+    },
+    "snippet-uk-alert-events": {
+        "prefix": "uk-alert-events",
+        "body": ["$('${1:selector}').on('${2|beforehide,hide|}', function() { $3 });"],
+        "description": "Triggers a function when a specified alert event is triggered"
+    },
+    "snippet-uk-countdown": {
+        "prefix": "uk-countdown",
+        "body": ["UIkit.countdown(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a countdown component with various options",
+            "---",
+            "date: [String]"
+        ]
+    },
+    "snippet-uk-countdown-methods": {
+        "prefix": "uk-countdown-methods",
+        "body": [
+            "$LINE_COMMENT Starts the countdown",
+            "UIkit.countdown(${1:element}).start();",
+            "$LINE_COMMENT Stops the countdown",
+            "UIkit.countdown(${1:element}).stop();"
+        ],
+        "description": "Showcases the methods available to the countdown component"
+    },
+    "snippet-uk-cover": {
+        "prefix": "uk-cover",
+        "body": ["UIkit.cover(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a cover component with various options",
+            "---",
+            "automute: [Boolean]",
+            "width: [Number]",
+            "height: [Number]"
+        ]
+    },
+    "snippet-uk-drop": {
+        "prefix": "uk-drop",
+        "body": ["UIkit.drop(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a drop component with various options",
+            "---",
+            "toggle: [Boolean|String]",
+            "pos: [String]",
+            "mode: [String]",
+            "delay-show: [Number]",
+            "delay-hide: [Number]",
+            "boundary: [String]",
+            "boundary-align: [Boolean]",
+            "flip: [Boolean|String]",
+            "offset: [Number]",
+            "animation: [String]",
+            "duration: [Number]"
+        ]
+    },
+    "snippet-uk-drop-events": {
+        "prefix": "uk-drop-events",
+        "body": [
+            "$('${1:selector}').on('${2|toggle,beforeshow,show,shown,beforehide,hide,hidden,stack|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified drop event is triggered"
+    },
+    "snippet-uk-drop-methods": {
+        "prefix": "uk-drop-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Drop",
+            "UIkit.drop(${1:element}).show();",
+            "$LINE_COMMENT Hides the Drop",
+            "UIkit.drop(${1:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the drop component"
+    },
+    "snippet-uk-dropdown": {
+        "prefix": "uk-dropdown",
+        "body": ["UIkit.dropdown(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a dropdown component with various options",
+            "---",
+            "toggle: [Boolean|String]",
+            "pos: [String]",
+            "mode: [String]",
+            "delay-show: [Number]",
+            "delay-hide: [Number]",
+            "boundary: [String]",
+            "boundary-align: [Boolean]",
+            "flip: [Boolean|String]",
+            "offset: [Number]",
+            "animation: [String]",
+            "duration: [Number]"
+        ]
+    },
+    "snippet-uk-dropdown-events": {
+        "prefix": "uk-dropdown-events",
+        "body": [
+            "$('${1:selector}').on('${2|toggle,beforeshow,show,shown,beforehide,hide,hidden,stack|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified dropdown event is triggered"
+    },
+    "snippet-uk-dropdown-methods": {
+        "prefix": "uk-dropdown-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Dropdown",
+            "UIkit.dropdown(${1:element}).show();",
+            "$LINE_COMMENT Hides the Dropdown",
+            "UIkit.dropdown(${1:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the dropdown component"
+    },
+    "snippet-uk-filter": {
+        "prefix": "uk-filter",
+        "body": ["UIkit.filter(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a filter component with various options",
+            "---",
+            "target: [String]",
+            "selActive: [String|Boolean]"
+        ]
+    },
+    "snippet-uk-filter-events": {
+        "prefix": "uk-filter-events",
+        "body": ["$('${1:selector}').on('${2|beforeFilter,afterFilter|}', function() { $3 });"],
+        "description": "Triggers a function when a specified filter event is triggered"
+    },
+    "snippet-uk-form": {
+        "prefix": "uk-form",
+        "body": ["UIkit.formCustom(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a form component with various options",
+            "---",
+            "target: [CSS Selector|Boolean]"
+        ]
+    },
+    "snippet-uk-grid": {
+        "prefix": "uk-grid",
+        "body": ["UIkit.grid(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a grid component with various options",
+            "---",
+            "margin: [String]",
+            "first-column: [String]",
+            "masonry: [Boolean]",
+            "parallax: [Number]"
+        ]
+    },
+    "snippet-uk-grid-parallax": {
+        "prefix": "uk-grid-parallax",
+        "body": ["UIkit.gridParallax(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a grid parallax component with various options",
+            "---",
+            "target: [String]",
+            "translate: [Number]"
+        ]
+    },
+    "snippet-uk-height-match": {
+        "prefix": "uk-height-match",
+        "body": ["UIkit.heightMatch(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a height match component with various options",
+            "---",
+            "target: [CSS Selector]",
+            "row: [Boolean]"
+        ]
+    },
+    "snippet-uk-icon": {
+        "prefix": "uk-icon",
+        "body": ["UIkit.icon(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes an icon component with various options",
+            "---",
+            "icon: [String]",
+            "ratio: [Number]"
+        ]
+    },
+    "snippet-uk-img": {
+        "prefix": "uk-img",
+        "body": ["UIkit.img(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes an image component with various options",
+            "---",
+            "dataSrc: [String]",
+            "dataSrcset: [String]",
+            "sizes: [String]",
+            "width: [String]",
+            "height: [String]",
+            "offsetTop: [String]",
+            "offsetLeft: [String]",
+            "target: [String]"
+        ]
+    },
+    "snippet-uk-leader": {
+        "prefix": "uk-leader",
+        "body": ["UIkit.leader(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a leader component with various options",
+            "---",
+            "fill: [String]",
+            "media: [Integer|String]"
+        ]
+    },
+    "snippet-uk-lightbox": {
+        "prefix": "uk-lightbox",
+        "body": ["UIkit.lightbox(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a lightbox component with various options",
+            "---",
+            "animation: [String]",
+            "toggle: [CSS Selector]"
+        ]
+    },
+    "snippet-uk-lightbox-events": {
+        "prefix": "uk-lightbox-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden,itemload,itemshow,itemshown,itemhide,itemhidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified lightbox event is triggered"
+    },
+    "snippet-uk-lightbox-methods": {
+        "prefix": "uk-lightbox-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Lightbox's Panel and item",
+            "UIkit.lightbox(${1:element}).show(${2:index});",
+            "$LINE_COMMENT Hides the Lightbox's Panel",
+            "UIkit.lightbox(${0:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the lightbox component"
+    },
+    "snippet-uk-lightbox-panel": {
+        "prefix": "uk-lightbox-panel",
+        "body": ["UIkit.lightboxPanel(${0:panelOptions});"],
+        "description": [
+            "Initializes a lightbox panel component with various options",
+            "---",
+            "autoplay: [Number]",
+            "animation: [String]",
+            "duration: [Number]",
+            "index: [Number]",
+            "preload: [Number]",
+            "items: [Array]",
+            "template: [String]",
+            "delay-controls: [Number]"
+        ]
+    },
+    "snippet-uk-lightbox-panel-methods": {
+        "prefix": "uk-lightbox-panel-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Lightbox Panel's item",
+            "UIkit.lightboxPanel(${1:element}).show(${2:index});",
+            "$LINE_COMMENT Hides the Lightbox Panel",
+            "UIkit.lightboxPanel(${0:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the lightbox panel component"
+    },
+    "snippet-uk-margin": {
+        "prefix": "uk-margin",
+        "body": ["UIkit.margin(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a margin component with various options",
+            "---",
+            "margin: [String]",
+            "first-column: [String]"
+        ]
+    },
+    "snippet-uk-modal": {
+        "prefix": "uk-modal",
+        "body": ["UIkit.modal(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a modal component with various options",
+            "---",
+            "center: [Boolean]",
+            "esc-close: [Boolean]",
+            "bg-close: [Boolean]",
+            "stack: [Boolean]",
+            "container: [String]"
+        ]
+    },
+    "snippet-uk-modal-events": {
+        "prefix": "uk-modal-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified modal event is triggered"
+    },
+    "snippet-uk-modal-methods": {
+        "prefix": "uk-modal-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Modal",
+            "UIkit.modal(${1:element}).show(${2:index});",
+            "$LINE_COMMENT Hides the Modal",
+            "UIkit.modal(${0:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the modal component"
+    },
+    "snippet-uk-modal-alert": {
+        "prefix": "uk-modal-alert",
+        "body": ["UIkit.modal.alert('${0:UIkit alert!}');"],
+        "description": "Creates an alert box with one button"
+    },
+    "snippet-uk-modal-confirm": {
+        "prefix": "uk-modal-confirm",
+        "body": ["UIkit.modal.confirm('${0:UIkit confirm!}');"],
+        "description": "Creates a confirm dialog with your message and two buttons"
+    },
+    "snippet-uk-modal-prompt": {
+        "prefix": "uk-modal-prompt",
+        "body": ["UIkit.modal.prompt('${1:Name:}', '${0:Your name}');"],
+        "description": "Creates a dialog asking for a text input"
+    },
+    "snippet-uk-modal-dialog": {
+        "prefix": "uk-modal-dialog",
+        "body": ["UIkit.modal.dialog('${0:<p>UIkit dialog!</p>}');"],
+        "description": "Creates a dialog with any HTML content"
+    },
+    "snippet-uk-modal-dialog-sample": {
+        "prefix": "uk-modal-dialog-sample",
+        "body": [
+            "UIkit.modal.confirm('UIkit confirm!').then(function() {",
+            "\tconsole.log('Confirmed.')",
+            "}, function () {",
+            "\tconsole.log('Rejected.')",
+            "});"
+        ],
+        "description": "Creates a sample dialog which processes user input"
+    },
+    "snippet-uk-nav": {
+        "prefix": "uk-nav",
+        "body": ["UIkit.nav(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a nav component with various options",
+            "---",
+            "targets: [CSS Selector]",
+            "toggle: [CSS Selector]",
+            "content: [CSS Selector]",
+            "collapsible: [Boolean]",
+            "multiple: [Boolean]",
+            "transition: [String]",
+            "animation: [String]",
+            "duration: [Number]"
+        ]
+    },
+    "snippet-uk-nav-methods": {
+        "prefix": "uk-nav-methods",
+        "body": [
+            "$LINE_COMMENT Toggles the content pane",
+            "UIkit.nav(${1:element}).toggle(${2:index}, ${0:animate});"
+        ],
+        "description": "Showcases the methods available to the nav component"
+    },
+    "snippet-uk-navbar": {
+        "prefix": "uk-navbar",
+        "body": ["UIkit.navbar(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a navbar component with various options",
+            "---",
+            "align: [String]",
+            "mode: [String]",
+            "delay-show: [Number]",
+            "delay-hide: [Number]",
+            "boundary: [CSS Selector]",
+            "boundary-align: [Boolean]",
+            "offset: [Number]",
+            "dropbar: [Boolean]",
+            "dropbar-mode: [String]",
+            "duration: [Number]"
+        ]
+    },
+    "snippet-uk-navbar-events": {
+        "prefix": "uk-navbar-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified navbar event is triggered"
+    },
+    "snippet-uk-notification": {
+        "prefix": "uk-notification",
+        "body": ["UIkit.notification(${0:options});"],
+        "description": [
+            "Creates a notification with various options",
+            "---",
+            "message: [String]",
+            "status: [String]",
+            "timeout: [Integer]",
+            "group: [String]",
+            "pos: [String]"
+        ]
+    },
+    "snippet-uk-notification-events": {
+        "prefix": "uk-notification-events",
+        "body": ["$('${1:selector}').on('${2:close}', function() { $3 });"],
+        "description": "Triggers a function when a specified notification event is triggered"
+    },
+    "snippet-uk-notification-methods": {
+        "prefix": "uk-notification-methods",
+        "body": [
+            "$LINE_COMMENT Toggles the content pane",
+            "UIkit.notification(${1:element}).close(${0:immediate});"
+        ],
+        "description": "Showcases the methods available to the notification component"
+    },
+    "snippet-uk-offcanvas": {
+        "prefix": "uk-offcanvas",
+        "body": ["UIkit.offcanvas(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a offcanvas component with various options",
+            "---",
+            "mode: [String]",
+            "flip: [Boolean]",
+            "overlay: [Boolean]"
+        ]
+    },
+    "snippet-uk-offcanvas-events": {
+        "prefix": "uk-offcanvas-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified offcanvas event is triggered"
+    },
+    "snippet-uk-offcanvas-methods": {
+        "prefix": "uk-offcanvas-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Offcanvas",
+            "UIkit.offcanvas(${1:element}).show();",
+            "$LINE_COMMENT Hides the Offcanvas",
+            "UIkit.offcanvas(${0:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the offcanvas component"
+    },
+    "snippet-uk-parallax": {
+        "prefix": "uk-parallax",
+        "body": ["UIkit.parallax(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a parallax component with various options",
+            "---",
+            "easing: [Number]",
+            "target: [String]",
+            "viewport: [Number]",
+            "media: [Mixed]"
+        ]
+    },
+    "snippet-uk-scroll": {
+        "prefix": "uk-scroll",
+        "body": ["UIkit.scroll(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a scroll component with various options",
+            "---",
+            "duration: [Number]",
+            "transition: [String]",
+            "offset: [Number]"
+        ]
+    },
+    "snippet-uk-scrollspy": {
+        "prefix": "uk-scrollspy",
+        "body": ["UIkit.scrollspy(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a scrollspy component with various options",
+            "---",
+            "cls: [String]",
+            "hidden: [Boolean]",
+            "offset-top: [Number]",
+            "offset-left: [Number]",
+            "repeat: [Boolean]",
+            "delay: [Number]"
+        ]
+    },
+    "snippet-uk-scrollspy-events": {
+        "prefix": "uk-scrollspy-events",
+        "body": ["$('${1:selector}').on('${2|inview,outview|}', function() { $3 });"],
+        "description": "Triggers a function when a specified scrollspy event is triggered"
+    },
+    "snippet-uk-scrollspy-nav": {
+        "prefix": "uk-scrollspy-nav",
+        "body": ["UIkit.scrollspyNav(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a scrollspy nav with various options",
+            "---",
+            "cls: [String]",
+            "closest: [String]",
+            "scroll: [Boolean]",
+            "overflow: [Boolean]",
+            "offset: [Number]"
+        ]
+    },
+    "snippet-uk-scrollspy-nav-events": {
+        "prefix": "uk-scrollspy-nav-events",
+        "body": ["$('${1:selector}').on('${2:active}', function() { $3 });"],
+        "description": "Triggers a function when a specified scrollspy nav event is triggered"
+    },
+    "snippet-uk-slider": {
+        "prefix": "uk-slider",
+        "body": ["UIkit.slider(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a slider component with various options",
+            "---",
+            "autoplay: [Boolean]",
+            "autoplay-interval: [Number]",
+            "center: [Boolean]",
+            "draggable: [Boolean]",
+            "finite: [Boolean]",
+            "index: [Number]",
+            "pause-on-hover: [Boolean]",
+            "sets: [Boolean]",
+            "velocity: [Number]"
+        ]
+    },
+    "snippet-uk-slider-events": {
+        "prefix": "uk-slider-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeitemshow,itemshow,itemshown,beforeitemhide,itemhide,itemhidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified slider event is triggered"
+    },
+    "snippet-uk-slider-methods": {
+        "prefix": "uk-slider-methods",
+        "body": [
+            "$LINE_COMMENT Shows the slider item",
+            "UIkit.slider(${1:element}).show(${2:index});",
+            "$LINE_COMMENT Starts the slider autoplay",
+            "UIkit.slider(${3:element}).startAutoplay();",
+            "$LINE_COMMENT Stops the slider autoplay",
+            "UIkit.slider(${0:element}).stopAutoplay();"
+        ],
+        "description": "Showcases the methods available to the slider component"
+    },
+    "snippet-uk-slideshow": {
+        "prefix": "uk-slideshow",
+        "body": ["UIkit.slideshow(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a slideshow with various options",
+            "---",
+            "animation: [String]",
+            "autoplay: [Boolean]",
+            "autoplay-interval: [Number]",
+            "draggable: [Boolean]",
+            "finite: [Boolean]",
+            "pause-on-hover: [Boolean]",
+            "index: [Number]",
+            "velocity: [Number]",
+            "ratio: [Boolean/String]",
+            "min-height: [Boolean/Number]",
+            "max-height: [Boolean/Number]"
+        ]
+    },
+    "snippet-uk-slideshow-events": {
+        "prefix": "uk-slideshow-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeitemshow,itemshow,itemshown,beforeitemhide,itemhide,itemhidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified slideshow event is triggered"
+    },
+    "snippet-uk-slideshow-methods": {
+        "prefix": "uk-slideshow-methods",
+        "body": [
+            "$LINE_COMMENT Shows the slideshow item",
+            "UIkit.slideshow(${1:element}).show(${2:index});",
+            "$LINE_COMMENT Starts the slideshow autoplay",
+            "UIkit.slideshow(${3:element}).startAutoplay();",
+            "$LINE_COMMENT Stops the slideshow autoplay",
+            "UIkit.slideshow(${0:element}).stopAutoplay();"
+        ],
+        "description": "Showcases the methods available to the slideshow component"
+    },
+    "snippet-uk-sortable": {
+        "prefix": "uk-sortable",
+        "body": ["UIkit.sortable(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a sortable with various options",
+            "---",
+            "group: [String]",
+            "animation: [Number]",
+            "threshold: [Number]",
+            "cls-item: [String]",
+            "cls-placeholder: [String]",
+            "cls-drag: [String]",
+            "clsDrag-state: [String]",
+            "cls-base: [String]",
+            "clsNo-drag: [String]",
+            "cls-empty: [String]",
+            "cls-custom: [String]",
+            "handle: [String]"
+        ]
+    },
+    "snippet-uk-sortable-events": {
+        "prefix": "uk-sortable-events",
+        "body": [
+            "$('${1:selector}').on('${2|start,stop,moved,added,removed|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified sortable event is triggered"
+    },
+    "snippet-uk-sticky": {
+        "prefix": "uk-sticky",
+        "body": ["UIkit.sticky(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a sticky component with various options",
+            "---",
+            "top: [Number|viewport height|CSS selector]",
+            "bottom: [Boolean|CSS selector]",
+            "offset: [Number]",
+            "animation: [String]",
+            "cls-active: [String]",
+            "cls-inactive: [String]",
+            "cls-below: [String]",
+            "width-element: [CSS selector]",
+            "show-on-up: [Boolean]",
+            "media: [Integer|String]",
+            "target-offset: [Boolean|Number]"
+        ]
+    },
+    "snippet-uk-sticky-events": {
+        "prefix": "uk-sticky-events",
+        "body": ["$('${1:selector}').on('${2|active,inactive|}', function() { $3 });"],
+        "description": "Triggers a function when a specified sticky event is triggered"
+    },
+    "snippet-uk-svg": {
+        "prefix": "uk-svg",
+        "body": ["UIkit.svg(${1:element}, ${0:options});"],
+        "description": ["Initializes a svg component with various options", "---", "src: [String]"]
+    },
+    "snippet-uk-svg-properties": {
+        "prefix": "uk-svg-properties",
+        "body": [
+            "UIkit.svg(element).svg.then(function(svg) { ${1:svg.querySelector('path').style.stroke} = 'red'; })"
+        ],
+        "description": "A JavaScript Promise that will resolve with the added SVG Node"
+    },
+    "snippet-uk-switcher": {
+        "prefix": "uk-switcher",
+        "body": ["UIkit.switcher(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a switcher component with various options",
+            "---",
+            "connect: [CSS selector]",
+            "toggle: [CSS selector]",
+            "active: [Number]",
+            "animation: [String]",
+            "duration: [Number]",
+            "swiping: [Boolean]"
+        ]
+    },
+    "snippet-uk-switcher-events": {
+        "prefix": "uk-switcher-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified switcher event is triggered"
+    },
+    "snippet-uk-switcher-methods": {
+        "prefix": "uk-switcher-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Switcher item with given index",
+            "UIkit.switcher(${1:element}).show();"
+        ],
+        "description": "Showcases the methods available to the switcher component"
+    },
+    "snippet-uk-tab": {
+        "prefix": "uk-tab",
+        "body": ["UIkit.tab(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a tab component with various options",
+            "---",
+            "connect: [CSS selector]",
+            "toggle: [CSS selector]",
+            "active: [Number]",
+            "animation: [String]",
+            "duration: [Number]",
+            "swiping: [Boolean]",
+            "media: [Integer|String]"
+        ]
+    },
+    "snippet-uk-tab-events": {
+        "prefix": "uk-tab-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified tab event is triggered"
+    },
+    "snippet-uk-tab-methods": {
+        "prefix": "uk-tab-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Tab item with given index",
+            "UIkit.tab(${1:element}).show(${0:index});"
+        ],
+        "description": "Showcases the methods available to the tab component"
+    },
+    "snippet-uk-toggle": {
+        "prefix": "uk-toggle",
+        "body": ["UIkit.toggle(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a toggle component with various options",
+            "---",
+            "target: [String]",
+            "mode: [String]",
+            "cls: [String]",
+            "animation: [String]",
+            "duration: [Number]",
+            "queued: [Boolean]"
+        ]
+    },
+    "snippet-uk-toggle-events": {
+        "prefix": "uk-toggle-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified toggle event is triggered"
+    },
+    "snippet-uk-toggle-methods": {
+        "prefix": "uk-toggle-methods",
+        "body": [
+            "$LINE_COMMENT Toggles the Toggle's target",
+            "UIkit.toggle(${0:element}).toggle();"
+        ],
+        "description": "Showcases the methods available to the toggle component"
+    },
+    "snippet-uk-tooltip": {
+        "prefix": "uk-tooltip",
+        "body": ["UIkit.tooltip(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a tooltip component with various options",
+            "---",
+            "pos: [String]",
+            "offset: [Number]",
+            "animation: [String]",
+            "duration: [Number]",
+            "delay: [Number]",
+            "cls: [String]"
+        ]
+    },
+    "snippet-uk-tooltip-events": {
+        "prefix": "uk-tooltip-events",
+        "body": [
+            "$('${1:selector}').on('${2|beforeshow,show,shown,beforehide,hide,hidden|}', function() { $3 });"
+        ],
+        "description": "Triggers a function when a specified tooltip event is triggered"
+    },
+    "snippet-uk-tooltip-methods": {
+        "prefix": "uk-tooltip-methods",
+        "body": [
+            "$LINE_COMMENT Shows the Tooltip",
+            "UIkit.tooltip(${1:element}).show();",
+            "$LINE_COMMENT Hides the Tooltip",
+            "UIkit.tooltip(${0:element}).hide();"
+        ],
+        "description": "Showcases the methods available to the tooltip component"
+    },
+    "snippet-uk-upload": {
+        "prefix": "uk-upload",
+        "body": ["UIkit.upload(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes an upload component with various options",
+            "---",
+            "url: [String]",
+            "multiple: [Boolean]",
+            "name: [String]",
+            "type: [String]",
+            "params: [Object]",
+            "allow: [String]",
+            "mime: [String]",
+            "concurrent: [Number]",
+            "data-type: [String]",
+            "msg-invalid-mime: [String]",
+            "msg-invalid-name: [String]",
+            "cls-dragover: [String]",
+            "abort: [Function]",
+            "before-all: [Function]",
+            "before-send: [Function]",
+            "complete: [Function]",
+            "complete-all: [Function]",
+            "error: [Function]",
+            "load: [Function]",
+            "load-end: [Function]",
+            "load-start: [Function]",
+            "progress: [Function]",
+            "fail: [Function]"
+        ]
+    },
+    "snippet-uk-upload-events": {
+        "prefix": "uk-upload-events",
+        "body": ["$('${1:selector}').on('${2:upload}', function() { $3 });"],
+        "description": "Triggers a function when a specified upload event is triggered"
+    },
+    "snippet-uk-upload-sample": {
+        "prefix": "uk-upload-sample",
+        "body": [
+            "(function ($) {",
+            "\tvar bar = $(\"#progressbar\")[0];",
+            "\tUIkit.upload('.test-upload', {",
+            "\r\t\turl: '',",
+            "\t\tmultiple: true,",
+            "\r\t\tbeforeSend: function() { console.log('beforeSend', arguments); },",
+            "\t\tbeforeAll: function() { console.log('beforeAll', arguments); },",
+            "\t\tload: function() { console.log('load', arguments); },",
+            "\t\terror: function() { console.log('error', arguments); },",
+            "\t\tcomplete: function() { console.log('complete', arguments); },",
+            "\r\t\tloadStart: function (e) {",
+            "\t\t\tconsole.log('loadStart', arguments);",
+            "\r\t\t\tbar.removeAttribute('hidden');",
+            "\t\t\tbar.max =  e.total;",
+            "\t\t\tbar.value =  e.loaded;",
+            "\t\t},",
+            "\r\t\tprogress: function (e) {",
+            "\t\t\tconsole.log('progress', arguments);",
+            "\r\t\t\tbar.max =  e.total;",
+            "\t\t\tbar.value =  e.loaded;",
+            "\t\t},",
+            "\r\t\tloadEnd: function (e) {",
+            "\t\t\tconsole.log('loadEnd', arguments);",
+            "\r\t\t\tbar.max =  e.total;",
+            "\t\t\tbar.value =  e.loaded;",
+            "\t\t},",
+            "\r\t\tcompleteAll: function () {",
+            "\t\t\tconsole.log('completeAll', arguments);",
+            "\r\t\t\tsetTimeout(function () {",
+            "\t\t\t\tbar.setAttribute('hidden', 'hidden');",
+            "\t\t\t}, 1000);",
+            "\r\t\t\talert('Upload Completed');",
+            "\t\t}",
+            "\t});",
+
+            "})(jQuery);"
+        ],
+        "description": "Creates a sample upload script based on official docs"
+    },
+    "snippet-uk-video": {
+        "prefix": "uk-video",
+        "body": ["UIkit.video(${1:element}, ${0:options});"],
+        "description": [
+            "Initializes a video component with various options",
+            "---",
+            "autoplay: [Boolean|String]",
+            "automute: [Boolean]"
+        ]
+    }
+}

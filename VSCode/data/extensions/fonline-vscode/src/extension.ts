@@ -3,11 +3,14 @@ import * as vscode from 'vscode';
 // import * as build from './build';
 import * as fileExplorer from './fileExplorer';
 import * as commands from './commands'
+import * as dashboard from './dashboard'
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('FOnline');
 
   try {
+    dashboard.show(context);
+
     new commands.TerminalManager(context);
     new fileExplorer.FileExplorer(context, /CMakeLists\.txt/);
 

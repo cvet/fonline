@@ -16,14 +16,13 @@ export class TerminalManager {
         const fileContent = fs.readFileSync(path.join(this.context.extensionPath, 'resources', 'commands.json'));
         let jsonTerminals = JSON.parse(fileContent.toString());
 
-        let terminals = jsonTerminals.map((terminal: any) => {
-            terminal.shellArgs = undefined;
+        let terminals = jsonTerminals.map((terminal: { label: string, command: string, shellArgs: string }) => {
             if (terminal.command) {
-                terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to continue"`;
+                terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
             }
             terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
             return terminal;
-        })
+        });
 
         let tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
         this.context.subscriptions.push(tree);

@@ -10,9 +10,8 @@ class TerminalManager {
         const fileContent = fs.readFileSync(path.join(this.context.extensionPath, 'resources', 'commands.json'));
         let jsonTerminals = JSON.parse(fileContent.toString());
         let terminals = jsonTerminals.map((terminal) => {
-            terminal.shellArgs = undefined;
             if (terminal.command) {
-                terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to continue"`;
+                terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
             }
             terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
             return terminal;
