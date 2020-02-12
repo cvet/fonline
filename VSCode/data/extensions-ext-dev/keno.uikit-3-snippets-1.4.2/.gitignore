@@ -1,8 +1,0 @@
-# Local Testing Files
-*.html
-*.php
-*.js
-
-# Etc.
-*.log
-/.vscode
