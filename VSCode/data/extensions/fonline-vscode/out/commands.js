@@ -1,33 +1,53 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const wslShellPath = 'C:\\Windows\\System32\\wsl.exe';
-class TerminalManager {
-    constructor(context) {
-        this.context = context;
-        const fileContent = fs.readFileSync(path.join(this.context.extensionPath, 'resources', 'commands.json'));
-        let jsonTerminals = JSON.parse(fileContent.toString());
-        let terminals = jsonTerminals.map((terminal) => {
-            if (terminal.command) {
-                terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
-            }
-            terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
-            return terminal;
-        });
-        let tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
-        this.context.subscriptions.push(tree);
-        for (let terminal of terminals) {
-            let cmd = vscode.commands.registerCommand(terminal.command, function () {
-                let terminalInstance = vscode.window.createTerminal(terminal.label, wslShellPath, terminal.shellArgs);
-                terminalInstance.show();
-            });
-            this.context.subscriptions.push(cmd);
+function init(context) {
+    const fileContent = fs.readFileSync(path.join(context.extensionPath, 'resources', 'commands.json'));
+    let jsonTerminals = JSON.parse(fileContent.toString());
+    let terminals = jsonTerminals.map((terminal) => {
+        if (terminal.command) {
+            terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
         }
+        terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
+        return terminal;
+    });
+    let tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });
+    context.subscriptions.push(tree);
+    for (let terminal of terminals) {
+        let cmd = vscode.commands.registerCommand(terminal.command, function () {
+            let terminalInstance = vscode.window.createTerminal(terminal.label, wslShellPath, terminal.shellArgs);
+            terminalInstance.show();
+        });
+        context.subscriptions.push(cmd);
     }
 }
-exports.TerminalManager = TerminalManager;
+exports.init = init;
+function execute(label, ...shellArgs) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        shellArgs.push('exit');
+        let terminal = vscode.window.createTerminal({ "hideFromUser": true, "name": label, "shellPath": wslShellPath, "shellArgs": shellArgs });
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        while (terminal.exitStatus === undefined)
+            yield sleep(5);
+        return _a = terminal.exitStatus.code, (_a !== null && _a !== void 0 ? _a : -1);
+    });
+}
+exports.execute = execute;
 class TerminalTree {
     constructor(terminals) {
         this.terminals = terminals;

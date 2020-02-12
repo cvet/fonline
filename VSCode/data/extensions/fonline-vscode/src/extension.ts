@@ -10,9 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   try {
     dashboard.show(context);
-
-    new commands.TerminalManager(context);
-    new fileExplorer.FileExplorer(context, /CMakeLists\.txt/);
+    commands.init(context);
 
     context.subscriptions.push(
       vscode.commands.registerCommand('extension.run', function () {
