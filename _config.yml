@@ -3,8 +3,8 @@ description: Work in progress
 email: cvet@tut.by
 theme: jekyll-theme-minimal
 exclude:
-  - BuildScripts/
+  - BuildTools/
   - Resources/
   - Source/
   - ThirdParty/
-  - VSCode/
+  - VSCodeExt/

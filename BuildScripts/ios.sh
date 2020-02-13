@@ -29,5 +29,5 @@ fi
 
 echo "Build default binaries"
 mkdir -p "build-iOS" && cd "build-iOS"
-eval $CMAKE_GEN -C "$FO_ROOT/BuildScripts/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" "$FO_ROOT"
+eval $CMAKE_GEN -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT" "$FO_ROOT"
 $CMAKE --build . --config Release --target FOnline

@@ -286,7 +286,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
   
 ## Repository structure
 
-* *BuildScripts* - scripts for automatical build in command line or any ci/cd system
+* *BuildTools* - scripts for automatical build in command line or any ci/cd system
 * *Resources* - resources for build applications but not related to code
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
@@ -301,7 +301,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 *Todo: Write about NodeJS requirement in VSCode extension development*  
 You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
 In any way first you must install CMake version equal or higher then 3.6.3.  
-Information about build scripts you can find at BuildScripts/README.md.  
+Information about build scripts you can find at BuildTools/README.md.  
 All output binaries you can find in Workspace/output directory.
 
 ## Third-party packages

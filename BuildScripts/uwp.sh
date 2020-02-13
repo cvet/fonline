@@ -16,5 +16,5 @@ mkdir -p $FO_WORKSPACE && cd $FO_WORKSPACE
 
 echo "Build Win64 binaries"
 mkdir -p "build-uwp-x64" && cd "build-uwp-x64"
-cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildScripts/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_WIN" "$FO_ROOT_WIN"
+cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildTools/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$FO_OUTPUT_WIN" "$FO_ROOT_WIN"
 cmake.exe --build . --config RelWithDebInfo

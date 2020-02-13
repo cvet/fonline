@@ -4,63 +4,63 @@
     },
     {
         "label": "Check Workspace",
-        "command": "BuildScripts/check-workspace.sh"
+        "command": "BuildTools/check-workspace.sh"
     },
     {
         "label": "Prepare Workspace",
-        "command": "BuildScripts/prepare-workspace.sh"
+        "command": "BuildTools/prepare-workspace.sh"
     },
     {
         "label": "Build for Windows (x64)",
-        "command": "BuildScripts/windows-win64.sh"
+        "command": "BuildTools/windows-win64.sh"
     },
     {
         "label": "Build for Windows (x86)",
-        "command": "BuildScripts/windows-win32.sh"
+        "command": "BuildTools/windows-win32.sh"
     },
     {
         "label": "Build for UWP",
-        "command": "BuildScripts/uwp.sh"
+        "command": "BuildTools/uwp.sh"
     },
     {
         "label": "Build for Linux",
-        "command": "BuildScripts/linux.sh"
+        "command": "BuildTools/linux.sh"
     },
     {
         "label": "Build unit tests for Linux",
-        "command": "BuildScripts/linux-unit-tests.sh"
+        "command": "BuildTools/linux-unit-tests.sh"
     },
     {
         "label": "Build code coverage for Linux",
-        "command": "BuildScripts/linux-code-coverage.sh"
+        "command": "BuildTools/linux-code-coverage.sh"
     },
     {
         "label": "Build for Web (release)",
-        "command": "BuildScripts/web-release.sh"
+        "command": "BuildTools/web-release.sh"
     },
     {
         "label": "Build for Web (debug)",
-        "command": "BuildScripts/web-debug.sh"
+        "command": "BuildTools/web-debug.sh"
     },
     {
         "label": "Build for Android (arm32)",
-        "command": "BuildScripts/android-arm32.sh"
+        "command": "BuildTools/android-arm32.sh"
     },
     {
         "label": "Build for Android (arm64)",
-        "command": "BuildScripts/android-arm64.sh"
+        "command": "BuildTools/android-arm64.sh"
     },
     {
         "label": "Build for macOS",
-        "command": "BuildScripts/mac.sh"
+        "command": "BuildTools/mac.sh"
     },
     {
         "label": "Build for iOS",
-        "command": "BuildScripts/ios.sh"
+        "command": "BuildTools/ios.sh"
     },
     {
         "label": "Generate Todo",
-        "command": "cd BuildScripts && python todo-generator.py"
+        "command": "cd BuildTools && python todo-generator.py"
     },
     {
         "label": "Format Code",

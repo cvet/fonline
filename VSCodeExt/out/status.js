@@ -25,7 +25,7 @@ function checkReadiness() {
             });
         }
         else {
-            const workspaceStatus = yield commands.execute('BuildScripts/check-workspace.sh');
+            const workspaceStatus = yield commands.execute('BuildTools/check-workspace.sh');
             if (workspaceStatus != 0) {
                 let message;
                 if (workspaceStatus == 10)

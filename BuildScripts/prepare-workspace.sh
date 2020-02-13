@@ -87,7 +87,7 @@ function setup_osxcross()
     git clone --depth 1 https://github.com/tpoechtrager/osxcross
     cd osxcross
     rm -rf .git
-    cp "$FO_ROOT/BuildScripts/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
+    cp "$FO_ROOT/BuildTools/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
     export UNATTENDED=1
     ./build.sh
 }
@@ -96,7 +96,7 @@ function setup_emscripten()
 {
     echo "Setup Emscripten"
     mkdir emsdk
-    cp -r "$FO_ROOT/BuildScripts/emsdk" "./"
+    cp -r "$FO_ROOT/BuildTools/emsdk" "./"
     cd emsdk
     chmod +x ./emsdk
     ./emsdk update

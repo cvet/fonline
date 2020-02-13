@@ -31,7 +31,7 @@ function checkReadiness() {
             html.addLink('Follow this instruction to install all this stuff', 'https://docs.microsoft.com/en-us/windows/wsl/wsl2-install');
         }
         else {
-            const workspaceStatus = yield commands.execute('BuildScripts/check-workspace.sh');
+            const workspaceStatus = yield commands.execute('BuildTools/check-workspace.sh');
             if (workspaceStatus != 0) {
                 if (workspaceStatus == 10)
                     html.addLeadText('Workspace not created');

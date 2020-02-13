@@ -13,7 +13,7 @@ async function checkReadiness(): Promise<void> {
                 vscode.env.openExternal(vscode.Uri.parse('https://docs.microsoft.com/en-us/windows/wsl/wsl2-install'));
         });
     } else {
-        const workspaceStatus = await commands.execute('BuildScripts/check-workspace.sh');
+        const workspaceStatus = await commands.execute('BuildTools/check-workspace.sh');
         if (workspaceStatus != 0) {
             let message: string;
             if (workspaceStatus == 10)

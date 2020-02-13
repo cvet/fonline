@@ -13,7 +13,7 @@ if( NOT DEFINED "ENV{ANDROID_NATIVE_API_LEVEL_NUMBER}" )
 	message( FATAL_ERROR "Define ANDROID_NATIVE_API_LEVEL_NUMBER" )
 endif()
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{FO_ROOT}/BuildScripts/android.toolchain.cmake" CACHE PATH "Forced by FOnline" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{FO_ROOT}/BuildTools/android.toolchain.cmake" CACHE PATH "Forced by FOnline" FORCE )
 set( CMAKE_MAKE_PROGRAM "make" CACHE PATH "Forced by FOnline" FORCE )
 set( ANDROID YES CACHE STRING "Forced by FOnline" FORCE )
 set( ANDROID_STANDALONE_TOOLCHAIN "$ENV{ANDROID_STANDALONE_TOOLCHAIN}" CACHE STRING "Forced by FOnline" FORCE )
