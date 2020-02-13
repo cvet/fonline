@@ -2,6 +2,9 @@
 	"name": "fonline-vscode",
 	"displayName": "FOnline",
 	"description": "FOnline VSCode Extension",
+	"keywords": [
+		"fonline"
+	],
 	"author": {
 		"name": "cvet",
 		"email": "cvet@tut.by",
@@ -13,6 +16,9 @@
 	},
 	"publisher": "cvet",
 	"version": "1.0.0",
+	"license": "MIT",
+	"preview": true,
+	"icon": "resources/radiation.png",
 	"engines": {
 		"vscode": "^1.41.0"
 	},
@@ -151,7 +157,7 @@
 		"jqueryui": "^1.11.1",
 		"uikit": "^3.3.1"
 	},
-	"extensionDependencies": [
+	"extensionPack": [
 		"emmanuelbeziat.vscode-great-icons",
 		"twxs.cmake"
 	]
