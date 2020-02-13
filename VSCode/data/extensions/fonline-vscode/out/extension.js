@@ -11,13 +11,13 @@ function activate(context) {
             vscode.commands.executeCommand('workbench.action.closeActiveEditor');
         commands.init(context);
         status.check(context);
-        context.subscriptions.push(vscode.commands.registerCommand('extension.run', function () {
+        context.subscriptions.push(vscode.commands.registerCommand('extension.run', () => {
             outputChannel.appendLine('run');
         }));
-        context.subscriptions.push(vscode.commands.registerCommand('extension.compile', function () {
+        context.subscriptions.push(vscode.commands.registerCommand('extension.compile', () => {
             outputChannel.appendLine('compile');
         }));
-        context.subscriptions.push(vscode.commands.registerCommand('extension.build', function () {
+        context.subscriptions.push(vscode.commands.registerCommand('extension.build', () => {
             outputChannel.appendLine('build');
         }));
         outputChannel.show(true);

@@ -20,7 +20,7 @@ function init(context) {
         if (terminal.command) {
             terminal.shellArgs = `export FO_INSTALL_PACKAGES=0; ${terminal.command}; read -p "Press enter to close terminal..."`;
         }
-        terminal.command = 'extension.' + terminal.label.toLowerCase().replace(/ /g, '');
+        terminal.command = 'extension.' + terminal.label.substr(0, 1).toLowerCase() + terminal.label.replace(/ /g, '').substr(1);
         return terminal;
     });
     const tree = vscode.window.createTreeView('terminalManager', { treeDataProvider: new TerminalTree(terminals) });

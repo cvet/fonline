@@ -17,17 +17,17 @@ export function activate(context: vscode.ExtensionContext) {
     status.check(context);
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('extension.run', function () {
+      vscode.commands.registerCommand('extension.run', () => {
         outputChannel.appendLine('run');
       }));
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('extension.compile', function () {
+      vscode.commands.registerCommand('extension.compile', () => {
         outputChannel.appendLine('compile');
       }));
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('extension.build', function () {
+      vscode.commands.registerCommand('extension.build', () => {
         outputChannel.appendLine('build');
       }));
 
