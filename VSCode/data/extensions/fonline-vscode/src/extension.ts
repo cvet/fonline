@@ -9,6 +9,10 @@ export function activate(context: vscode.ExtensionContext) {
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('FOnline');
 
   try {
+    // Close Welcome page
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.fileName == 'tasks')
+      vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
     commands.init(context);
     status.check(context);
 

@@ -6,6 +6,9 @@ const status = require("./status");
 function activate(context) {
     const outputChannel = vscode.window.createOutputChannel('FOnline');
     try {
+        // Close Welcome page
+        if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.fileName == 'tasks')
+            vscode.commands.executeCommand('workbench.action.closeActiveEditor');
         commands.init(context);
         status.check(context);
         context.subscriptions.push(vscode.commands.registerCommand('extension.run', function () {
