@@ -3,14 +3,14 @@ import * as vscode from 'vscode';
 // import * as build from './build';
 import * as fileExplorer from './fileExplorer';
 import * as commands from './commands'
-import * as dashboard from './dashboard'
+import * as status from './status'
 
 export function activate(context: vscode.ExtensionContext) {
   const outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel('FOnline');
 
   try {
-    dashboard.show(context);
     commands.init(context);
+    status.check(context);
 
     context.subscriptions.push(
       vscode.commands.registerCommand('extension.run', function () {

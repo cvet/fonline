@@ -20,11 +20,11 @@ export abstract class BaseView {
     protected refresh() {
         const wait = new HtmlGenerator(this._title);
         wait.addSpinner();
-        this._panel.webview.html = wait.finalize();
+        this._panel.webview.html = wait.finalize(this._context, this._panel);
 
         const page = new HtmlGenerator(this._title);
         this.evaluate(page).then(() => {
-            this._panel.webview.html = page.finalize();
+            this._panel.webview.html = page.finalize(this._context, this._panel);
         });
     }
 }

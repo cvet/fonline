@@ -16,7 +16,7 @@ function check(context) {
     checkReadiness().then((html) => {
         if (!html.empty) {
             const panel = vscode.window.createWebviewPanel('Status', 'Status', vscode.ViewColumn.One, { enableScripts: true });
-            panel.webview.html = html.finalize();
+            panel.webview.html = html.finalize(context, panel);
         }
     });
 }
@@ -24,7 +24,7 @@ exports.check = check;
 function checkReadiness() {
     return __awaiter(this, void 0, void 0, function* () {
         const html = new htmlGenerator_1.HtmlGenerator('Status');
-        if ((yield commands.execute('Check WSL')) !== 0) {
+        if ((yield commands.execute('Check WSL')) != 0) {
             html.addLeadText('Windows Subsystem for Linux not installed');
             html.addText('WSL version 2 required');
             html.addText('Ubuntu-18.04 distro required');
@@ -45,4 +45,4 @@ function checkReadiness() {
         return html;
     });
 }
-//# sourceMappingURL=dashboard.js.map
+//# sourceMappingURL=status.js.map

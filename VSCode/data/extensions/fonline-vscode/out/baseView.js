@@ -16,10 +16,10 @@ class BaseView {
     refresh() {
         const wait = new htmlGenerator_1.HtmlGenerator(this._title);
         wait.addSpinner();
-        this._panel.webview.html = wait.finalize();
+        this._panel.webview.html = wait.finalize(this._context, this._panel);
         const page = new htmlGenerator_1.HtmlGenerator(this._title);
         this.evaluate(page).then(() => {
-            this._panel.webview.html = page.finalize();
+            this._panel.webview.html = page.finalize(this._context, this._panel);
         });
     }
 }

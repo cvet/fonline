@@ -57,10 +57,6 @@
 			{
 				"command": "fileExplorer.openFile",
 				"title": "Open File"
-			},
-			{
-				"command": "dashboard.show",
-				"title": "Show project dashboard"
 			}
 		],
 		"keybindings": [

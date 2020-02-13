@@ -2,12 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const commands = require("./commands");
-const dashboard = require("./dashboard");
+const status = require("./status");
 function activate(context) {
     const outputChannel = vscode.window.createOutputChannel('FOnline');
     try {
-        dashboard.show(context);
         commands.init(context);
+        status.check(context);
         context.subscriptions.push(vscode.commands.registerCommand('extension.run', function () {
             outputChannel.appendLine('run');
         }));
