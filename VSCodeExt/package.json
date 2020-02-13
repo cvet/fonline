@@ -1,0 +1,158 @@
+{
+	"name": "fonline-vscode",
+	"displayName": "FOnline",
+	"description": "FOnline VSCode Extension",
+	"author": {
+		"name": "cvet",
+		"email": "cvet@tut.by",
+		"url": "https://fonline.ru"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cvet/fonline.git"
+	},
+	"publisher": "cvet",
+	"version": "1.0.0",
+	"engines": {
+		"vscode": "^1.41.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./out/extension.js",
+	"enableProposedApi": true,
+	"contributes": {
+		"commands": [
+			{
+				"command": "extension.run",
+				"title": "Run",
+				"icon": {
+					"light": "./resources/run.png",
+					"dark": "./resources/run.png"
+				}
+			},
+			{
+				"command": "extension.compile",
+				"title": "Compile",
+				"icon": {
+					"light": "./resources/compile.png",
+					"dark": "./resources/compile.png"
+				}
+			},
+			{
+				"command": "extension.build",
+				"title": "Build",
+				"icon": {
+					"light": "./resources/build.png",
+					"dark": "./resources/build.png"
+				}
+			},
+			{
+				"command": "fileExplorer.refreshFile",
+				"title": "Refresh",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "fileExplorer.openFile",
+				"title": "Open File"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "extension.run",
+				"key": "f5"
+			},
+			{
+				"command": "extension.compile",
+				"key": "f6"
+			},
+			{
+				"command": "extension.build",
+				"key": "f7"
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "extension.run",
+					"group": "navigation@-3"
+				},
+				{
+					"command": "extension.compile",
+					"group": "navigation@-2",
+					"when": "resourceExtname == .cpp"
+				},
+				{
+					"command": "extension.build",
+					"group": "navigation@-1",
+					"when": "resourceExtname == .cpp || resourceExtname == .h"
+				}
+			]
+		},
+		"views": {
+			"terminalManager": [
+				{
+					"id": "terminalManager",
+					"name": "Terminals"
+				}
+			],
+			"explorer": [
+				{
+					"id": "componentsView",
+					"name": "Components"
+				},
+				{
+					"id": "fileExplorer",
+					"name": "File Explorer"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "terminalManager",
+					"title": "Terminal Manager",
+					"icon": "resources/terminal.png"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"package": "vsce package",
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^7.0.1",
+		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.41.0",
+		"eslint": "^6.8.0",
+		"@typescript-eslint/parser": "^2.18.0",
+		"@typescript-eslint/eslint-plugin": "^2.18.0",
+		"glob": "^7.1.6",
+		"mocha": "^7.0.1",
+		"typescript": "^3.7.5",
+		"vscode-test": "^1.3.0"
+	},
+	"dependencies": {
+		"jqpropertygrid": "^1.0.0",
+		"jquery": "^3.4.1",
+		"jqueryui": "^1.11.1",
+		"uikit": "^3.3.1"
+	},
+	"extensionDependencies": [
+		"emmanuelbeziat.vscode-great-icons",
+		"twxs.cmake"
+	]
+}

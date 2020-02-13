@@ -1,7 +1,3 @@
-/VSCode/data/user-data/*
-!/VSCode/data/user-data/.keepalive
-/VSCode/data/tmp/*
-!/VSCode/data/tmp/.keepalive
 Workspace
 Temp
 .vs

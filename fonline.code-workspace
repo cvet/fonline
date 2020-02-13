@@ -28,6 +28,7 @@
 		"extensions.autoUpdate": false,
 		"extensions.ignoreRecommendations": true,
 		"extensions.closeExtensionDetailsOnViewChange": true,
+		"extensions.showRecommendationsOnlyOnDemand": true,
 		"telemetry.enableTelemetry": false,
 		"telemetry.enableCrashReporter": false,
 		"git.ignoreLimitWarning": true,
