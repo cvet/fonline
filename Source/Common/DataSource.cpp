@@ -668,8 +668,8 @@ ZipFile::ZipFile(const string& fname)
             if (Str::Compare(filename, "$Basic"))
             {
                 MemStream* mem_stream = new MemStream();
-                mem_stream->Buf = Resource_Basic_zip;
-                mem_stream->Length = sizeof(Resource_Basic_zip);
+                mem_stream->Buf = Resource_Basic_zipped;
+                mem_stream->Length = sizeof(Resource_Basic_zipped);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }

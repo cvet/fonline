@@ -339,7 +339,7 @@ include_directories( "Source/Editor" )
 function( CreateResources dir output )
 	# Generate file content
 	set( outputString "" )
-	file( GLOB bins ${dir}/*.zip )
+	file( GLOB bins ${dir}/*.zipped )
 	foreach( bin ${bins} )
 		string( REGEX MATCH "([^/]+)$" filename ${bin} )
 		string( REGEX REPLACE "\\.| " "_" filename ${filename} )
