@@ -7,8 +7,8 @@ echo "Setup environment"
 [ "$FO_INSTALL_PACKAGES" ] || export FO_INSTALL_PACKAGES=1
 
 export FO_WORKSPACE_VERSION="11.02.2020"
-export FO_WORKSPACE=$(mkdir -p $FO_WORKSPACE; cd $FO_WORKSPACE; pwd)
 export FO_ROOT=$(cd $FO_ROOT; pwd)
+export FO_WORKSPACE=$(mkdir -p $FO_WORKSPACE; cd $FO_WORKSPACE; pwd)
 export FO_OUTPUT="$FO_WORKSPACE/output"
 export EMSCRIPTEN_VERSION="1.39.4"
 export ANDROID_HOME="/usr/lib/android-sdk"
@@ -18,8 +18,8 @@ export ANDROID_NATIVE_API_LEVEL_NUMBER=21
 
 echo "FOnline related environment variables:"
 echo "- FO_WORKSPACE_VERSION=$FO_WORKSPACE_VERSION"
-echo "- FO_WORKSPACE=$FO_WORKSPACE"
 echo "- FO_ROOT=$FO_ROOT"
+echo "- FO_WORKSPACE=$FO_WORKSPACE"
 echo "- FO_OUTPUT=$FO_OUTPUT"
 echo "- FO_INSTALL_PACKAGES=$FO_INSTALL_PACKAGES"
 echo "- EMSCRIPTEN_VERSION=$EMSCRIPTEN_VERSION"

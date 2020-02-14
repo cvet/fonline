@@ -15,6 +15,7 @@
         "files.trimTrailingWhitespace": true,
         "files.trimFinalNewlines": true,
         "explorer.sortOrder": "type",
-        "extensions.ignoreRecommendations": true
+        "extensions.ignoreRecommendations": true,
+        "fonline.path": "."
     }
 }
