@@ -1,0 +1,106 @@
+{
+    "files": [
+        {
+            "name": "CommonLib",
+            "path": "Source/Common"
+        },
+        {
+            "name": "ClientLib",
+            "path": "Source/Client"
+        },
+        {
+            "name": "ServerLib",
+            "path": "Source/Client"
+        },
+        {
+            "name": "EditorLib",
+            "path": "Source/Editor"
+        }
+    ],
+    "actions": [
+        {
+            "label": "WSL Shell",
+            "group": "Service"
+        },
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/check-workspace.sh"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-workspace.sh"
+        },
+        {
+            "label": "Generate Todo",
+            "group": "Service",
+            "command": "cd BuildTools && python todo-generator.py"
+        },
+        {
+            "label": "Format Code",
+            "group": "Service",
+            "command": "cd Source && clang-format -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
+        },
+        {
+            "label": "Build for Windows (x64)",
+            "group": "Build",
+            "command": "BuildTools/windows-win64.sh"
+        },
+        {
+            "label": "Build for Windows (x86)",
+            "group": "Build",
+            "command": "BuildTools/windows-win32.sh"
+        },
+        {
+            "label": "Build for UWP",
+            "group": "Build",
+            "command": "BuildTools/uwp.sh"
+        },
+        {
+            "label": "Build for Linux",
+            "group": "Build",
+            "command": "BuildTools/linux.sh"
+        },
+        {
+            "label": "Build unit tests for Linux",
+            "group": "Build",
+            "command": "BuildTools/linux-unit-tests.sh"
+        },
+        {
+            "label": "Build code coverage for Linux",
+            "group": "Build",
+            "command": "BuildTools/linux-code-coverage.sh"
+        },
+        {
+            "label": "Build for Web (release)",
+            "group": "Build",
+            "command": "BuildTools/web-release.sh"
+        },
+        {
+            "label": "Build for Web (debug)",
+            "group": "Build",
+            "command": "BuildTools/web-debug.sh"
+        },
+        {
+            "label": "Build for Android (arm32)",
+            "group": "Build",
+            "command": "BuildTools/android-arm32.sh"
+        },
+        {
+            "label": "Build for Android (arm64)",
+            "group": "Build",
+            "command": "BuildTools/android-arm64.sh"
+        },
+        {
+            "label": "Build for macOS",
+            "group": "Build",
+            "command": "BuildTools/mac.sh"
+        },
+        {
+            "label": "Build for iOS",
+            "group": "Build",
+            "command": "BuildTools/ios.sh"
+        }
+    ]
+}
