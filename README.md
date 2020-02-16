@@ -68,6 +68,11 @@ Shell scripts targeted for work in Ubuntu-18.04 but some of scripts (Windows sys
 So main point of all of this that you build your game fully from source, there is no prebuilded binaries, full control over the process.  
 Information about build scripts you can find at BuildTools/README.md.
 
+### Base install
+
+Clone with git this repository or use Chocolatey `choco install fonline`.  
+*Todo: provide BuildTools/generate-project.sh to automatically project generation*
+
 ### Windows Subsystem for Linux (version 2)
 
 *Todo: write more about WSL2*  
@@ -80,14 +85,15 @@ https://docs.microsoft.com/en-us/windows/wsl/wsl2-install
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 You can download editor at https://code.visualstudio.com or using Chocolatey `choco install vscode`.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
-Extension activates automatically when editor finds 'fonline*.json' at workspace root.  
-*Todo: write about extension features and usage*
+Extension activates automatically when editor finds `fonline*.json` at workspace root.  
+*Todo: write about extension features and usage*  
+*Todo: add extension to Chocolatey packages*
 
 ### CMake
 
 Simply said CMake is an utility that helps build program from source on any platform for any platform without much pain.  
 Also it generates project files for your preferred IDE (Visual Studio, VS Code, CLion and etc).  
-You can download latest version from https://cmake.org or using Chocolatey 'choco install cmake'.
+You can download latest version from https://cmake.org or using Chocolatey `choco install cmake`.
 
 ### Other dependencies
 
