@@ -60,11 +60,48 @@ Simplest way is:
 And two videos to who don't like to google:  
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=K_a0g-Lbqm0" target="_blank"><img src="http://img.youtube.com/vi/K_a0g-Lbqm0/0.jpg" alt="FOnline History" width="160" height="120" border="0" /></a> <a href="http://www.youtube.com/watch?feature=player_embedded&v=eY5iqW8ssXg" target="_blank"><img src="http://img.youtube.com/vi/eY5iqW8ssXg/0.jpg" alt="Last Frontier" width="160" height="120" border="0" /></a>
 
+## Usage
+
+Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
+You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
+Shell scripts targeted for work in Ubuntu-18.04 but some of scripts (Windows system related like BuildTools/windows.sh) must be run from WSL2 (read below).  
+So main point of all of this that you build your game fully from source, there is no prebuilded binaries, full control over the process.  
+Information about build scripts you can find at BuildTools/README.md.
+
+### Windows Subsystem for Linux (version 2)
+
+*Todo: write more about WSL2*  
+*Todo: write why WSL2 but not WSL1*  
+Official document about how to install WSL2:  
+https://docs.microsoft.com/en-us/windows/wsl/wsl2-install
+
+### Visual Studio Code
+
+Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
+You can download editor at https://code.visualstudio.com or using Chocolatey `choco install vscode`.  
+In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
+Extension activates automatically when editor finds 'fonline*.json' at workspace root.  
+*Todo: write about extension features and usage*
+
+### CMake
+
+Simply said CMake is an utility that helps build program from source on any platform for any platform without much pain.  
+Also it generates project files for your preferred IDE (Visual Studio, VS Code, CLion and etc).  
+You can download latest version from https://cmake.org or using Chocolatey 'choco install cmake'.
+
+### Other dependencies
+
+Building within Ubuntu scripts automatically install all nessessary stuff but for Windows check following:  
+*Todo: Visual Studio 2019 (or build tools)*  
+*Todo: Python (2/3?)*  
+*Todo: WiX toolset for installers packaging*  
+*Todo: NodeJS requirement in VSCode extension development*
+
 ## Work in progress
 
 Bugs, performance cases and feature requests you can disscuss at [Issues page](https://github.com/cvet/fonline/issues).
 
-#### Roadmap
+### Roadmap
 
 * Code refactoring *(look at separate section below)*
 * Rework scripting system *(add C bindings with optional submodules for C++, AngelScript and C#/Mono)*
@@ -78,7 +115,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Adding supporting of old engine asset formats *(especially r412)*
 * Improve supporting of PlayStation
 
-#### Code refactoring plans
+### Code refactoring plans
 
 * Move errors handling model from error code based to exception based
 * Eliminate singletons, statics, global functions
@@ -91,7 +128,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
 * Add constness as much as nessesary
 
-#### Todo list *(generated from source code)*
+### Todo list *(generated from source code)*
 
 * Common: rework all commented code during refactoring
 * Common: make entities positioning free in space, without hard-linking to hex
@@ -291,18 +328,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
 * *ThirdParty* - external dependencies of engine, included to repository
-
-## Clone / Build / Setup
-
-*Todo: Write about VSCode requirement and how to install it*  
-*Todo: Write about VSCode FOnline extension and how to install it*  
-*Todo: Write about WSL2 requirement and how to install it*  
-*Todo: Write about Visual Studio 2019 (or build tools) requirement and how to install it*  
-*Todo: Write about NodeJS requirement in VSCode extension development*  
-You can build project by sh/bat script or directly use [CMake](https://cmake.org) generator.  
-In any way first you must install CMake version equal or higher then 3.6.3.  
-Information about build scripts you can find at BuildTools/README.md.  
-All output binaries you can find in Workspace/output directory.
 
 ## Third-party packages
 
