@@ -64,7 +64,8 @@ And two videos to who don't like to google:
 
 Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
 You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work in Ubuntu-18.04 but some of scripts (Windows system related like BuildTools/windows.sh) must be run from WSL2 (read below).  
+Shell scripts targeted for work under Windows 10 within WSL2 (with Ubuntu-18.04 other distros not tested).  
+Almost all will be work under native Linuxes but some of scripts (Windows system related like BuildTools/windows.sh) must be run only from WSL2 shell.  
 So main point of all of this that you build your game fully from source, there is no prebuilded binaries, full control over the process.  
 Information about build scripts you can find at BuildTools/README.md.
 
@@ -73,7 +74,7 @@ Information about build scripts you can find at BuildTools/README.md.
 Clone with git this repository or use Chocolatey `choco install fonline`.  
 *Todo: provide BuildTools/generate-project.sh to automatically project generation*
 
-### Windows Subsystem for Linux (version 2)
+### Windows Subsystem for Linux
 
 *Todo: write more about WSL2*  
 *Todo: write why WSL2 but not WSL1*  
