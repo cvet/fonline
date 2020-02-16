@@ -112,7 +112,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 
 * Code refactoring *(look at separate section below)*
 * Rework scripting system *(add C bindings with optional submodules for C++, AngelScript and C#/Mono)*
-* [Multifunctional editor](https://github.com/cvet/fonline/issues/31)
 * [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
 * Improve DirectX/Metal/Vulkan rendering
 * Improve supporting of Universal Windows Platform
