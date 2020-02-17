@@ -75,9 +75,9 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     fi
 
     # Cross compilation using OSXCross
-    if [ -d "osxcross" ]; then
+    if [ -d "../osxcross" ]; then
         echo "OSXCross cross compilation"
-        export OSXCROSS_DIR=$(cd osxcross; pwd)
+        export OSXCROSS_DIR=$(cd ../osxcross; pwd)
         export PATH=$PATH:$OSXCROSS_DIR/target/bin
         CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
     else
