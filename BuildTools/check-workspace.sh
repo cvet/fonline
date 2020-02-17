@@ -2,7 +2,7 @@
 
 echo "Check workspace status"
 
-CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
 if [ -f "$FO_WORKSPACE/workspace-version.txt" ]; then

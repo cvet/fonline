@@ -5,7 +5,7 @@ sudo -v
 
 echo "Prepare workspace"
 
-CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
@@ -21,6 +21,7 @@ if [ -d "$FO_WORKSPACE" ]; then
     echo "Remove previous installation"
     rm -rf $FO_WORKSPACE
 fi
+mkdir $FO_WORKSPACE && cd $FO_WORKSPACE
 
 echo "Update packages"
 sudo apt-get -qq -y update
@@ -78,8 +79,6 @@ echo "Install uuid-dev"
 sudo apt-get -qq -y install uuid-dev
 echo "Install android-sdk"
 sudo apt-get -qq -y install android-sdk
-
-mkdir $FO_WORKSPACE && cd $FO_WORKSPACE
 
 function setup_osxcross()
 {

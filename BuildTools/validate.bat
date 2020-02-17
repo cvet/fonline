@@ -6,9 +6,6 @@ if [%1] == [win32] (
 ) else if [%1] == [win64] (
     set BUILD32=0
     set BUILD64=1
-) else if [%1] == [] (
-    set BUILD32=1
-    set BUILD64=1
 ) else (
     echo Invalid build argument, allowed only win32 or win64
     exit /b 1

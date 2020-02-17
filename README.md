@@ -64,15 +64,16 @@ And two videos to who don't like to google:
 
 Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
 You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 within WSL2 (with Ubuntu-18.04 other distros not tested).  
+Shell scripts targeted for work under Windows 10 within WSL2 (with Ubuntu-18.04, other distros not tested but should work).  
 Almost all will be work under native Linuxes but some of scripts (Windows system related like BuildTools/windows.sh) must be run only from WSL2 shell.  
-So main point of all of this that you build your game fully from source, there is no prebuilded binaries, full control over the process.  
+So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.  
 Information about build scripts you can find at BuildTools/README.md.
 
 ### Base install
 
 Clone with git this repository or use Chocolatey `choco install fonline`.  
-*Todo: provide BuildTools/generate-project.sh to automatically project generation*
+*Todo: provide BuildTools/generate-project.sh to automatically project generation*  
+*Todo: write about versioning SemVer https://semver.org and what public API included to itself*
 
 ### Windows Subsystem for Linux
 
