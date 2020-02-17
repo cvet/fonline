@@ -44,7 +44,7 @@ elif [ "$1" = "linux" ]; then
     cmake --build . --config RelWithDebInfo
 
 elif [ "$1" = "web" ] || [ "$1" = "web-debug" ]; then
-    source ./emsdk/emsdk_env.sh
+    source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
     if [ "$1" = "web" ]; then
         cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
@@ -75,9 +75,9 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     fi
 
     # Cross compilation using OSXCross
-    if [ -d "../osxcross" ]; then
+    if [ -d "$FO_WORKSPACE/osxcross" ]; then
         echo "OSXCross cross compilation"
-        export OSXCROSS_DIR=$(cd ../osxcross; pwd)
+        export OSXCROSS_DIR=$(cd $FO_WORKSPACE/osxcross; pwd)
         export PATH=$PATH:$OSXCROSS_DIR/target/bin
         CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
     else
