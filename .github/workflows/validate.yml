@@ -9,70 +9,70 @@ jobs:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools\windows-win32.bat
+    - run: BuildTools\validate.bat win32
   windows-win64:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools\windows-win64.bat
+    - run: BuildTools\validate.bat win32
   linux:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/linux.sh
+    - run: BuildTools/validate.sh linux
   android-arm32:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/android-arm32.sh
+    - run: BuildTools/validate.sh android
   android-arm64:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/android-arm64.sh
+    - run: BuildTools/validate.sh android-arm64
   web-release:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/web-release.sh
+    - run: BuildTools/validate.sh web
   web-debug:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/web-debug.sh
+    - run: BuildTools/validate.sh web-debug
   mac:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/mac.sh
+    - run: BuildTools/validate.sh mac
   ios:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/ios.sh
+    - run: BuildTools/validate.sh ios
   unit-tests:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/linux-unit-tests.sh
+    - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-18.04
     steps:
@@ -81,7 +81,7 @@ jobs:
         fetch-depth: 1
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: BuildTools/linux-code-coverage.sh
+      run: BuildTools/validate.sh code-coverage
   check-formatting:
     runs-on: ubuntu-18.04
     steps:
