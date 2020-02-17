@@ -3,7 +3,7 @@
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
-if [ "$1" = "linux" ] || [ "$1" = "unit-tests" ] || [ "$1" = "code-coverage" ]; then
+if [ "$1" = "linux" ]; then
     echo "Install packages"
     echo "Sudo required"
     sudo apt-get -qq -y update || true
@@ -101,13 +101,13 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ]; then
     fi
 fi
 
-$CUR_DIR/build.sh $1
+$CUR_DIR/build.sh $1 $2
 
-if [ "$1" = "unit-tests" ]; then
+if [ "$2" = "unit-tests" ]; then
     echo "Run unit tests"
     $OUTPUT_PATH/Tests/FOnlineUnitTests
 
-elif [ "$1" = "code-coverage" ]; then
+elif [ "$2" = "code-coverage" ]; then
     echo "Run code coverage"
     $OUTPUT_PATH/Tests/FOnlineCodeCoverage
 

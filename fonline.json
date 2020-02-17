@@ -45,7 +45,7 @@
         {
             "label": "Build for Windows (x64)",
             "group": "Build",
-            "command": "BuildTools/build.sh win64"
+            "command": "BuildTools/build.sh win64 full"
         },
         {
             "label": "Build for Windows (x86)",
@@ -60,7 +60,7 @@
         {
             "label": "Build for Linux",
             "group": "Build",
-            "command": "BuildTools/build.sh linux"
+            "command": "BuildTools/build.sh linux full"
         },
         {
             "label": "Build for Web (release)",
@@ -95,12 +95,12 @@
         {
             "label": "Run unit tests",
             "group": "Test",
-            "command": "BuildTools/validate.sh unit-tests"
+            "command": "BuildTools/validate.sh linux unit-tests"
         },
         {
             "label": "Run code coverage",
             "group": "Test",
-            "command": "BuildTools/validate.sh code-coverage"
+            "command": "BuildTools/validate.sh linux code-coverage"
         }
     ]
 }
