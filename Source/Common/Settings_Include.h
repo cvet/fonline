@@ -36,7 +36,11 @@
 #include "Common.h"
 #endif
 
-SETTING_GROUP(CommonSettings, virtual DummySettings);
+SETTING_GROUP(UserSettings, virtual DummySettings);
+#include "UserSettings.h"
+SETTING_GROUP_END();
+
+SETTING_GROUP(CommonSettings, virtual UserSettings);
 SETTING(string, WorkDir, "");
 SETTING(string, CommandLine, "");
 SETTING(vector<string>, CommandLineArgs);

@@ -65,6 +65,7 @@ public:
     bool IsCanDelete();
 
     PROPERTIES_HEADER();
+#include "LocationProperties.h"
     CLASS_PROPERTY(CScriptArray*, MapProtos); // hash[]
     CLASS_PROPERTY(CScriptArray*, MapEntrances); // hash[]
     CLASS_PROPERTY(CScriptArray*, Automaps); // hash[]

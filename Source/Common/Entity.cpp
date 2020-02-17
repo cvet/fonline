@@ -114,6 +114,7 @@ GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, 
 }
 
 PROPERTIES_IMPL(GlobalVars);
+#include "GlobalProperties.h"
 CLASS_PROPERTY_IMPL(GlobalVars, YearStart);
 CLASS_PROPERTY_IMPL(GlobalVars, Year);
 CLASS_PROPERTY_IMPL(GlobalVars, Month);
@@ -131,6 +132,7 @@ ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, EntityType::ItemProto, Propert
 }
 
 PROPERTIES_IMPL(ProtoItem);
+#include "ItemProperties.h"
 CLASS_PROPERTY_IMPL(ProtoItem, PicMap);
 CLASS_PROPERTY_IMPL(ProtoItem, PicInv);
 CLASS_PROPERTY_IMPL(ProtoItem, Stackable);
@@ -162,6 +164,7 @@ ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, EntityType::CritterProto
 }
 
 PROPERTIES_IMPL(ProtoCritter);
+#include "CritterProperties.h"
 CLASS_PROPERTY_IMPL(ProtoCritter, Multihex);
 
 ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, PropertiesRegistrator)
@@ -169,6 +172,7 @@ ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, Properties
 }
 
 PROPERTIES_IMPL(ProtoMap);
+#include "MapProperties.h"
 CLASS_PROPERTY_IMPL(ProtoMap, FilePath);
 CLASS_PROPERTY_IMPL(ProtoMap, Width);
 CLASS_PROPERTY_IMPL(ProtoMap, Height);
@@ -185,4 +189,5 @@ ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, EntityType::LocationPr
 }
 
 PROPERTIES_IMPL(ProtoLocation);
+#include "LocationProperties.h"
 CLASS_PROPERTY_IMPL(ProtoLocation, MapProtos);

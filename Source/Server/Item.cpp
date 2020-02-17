@@ -41,6 +41,7 @@
 #include "Testing.h"
 
 PROPERTIES_IMPL(Item);
+#include "ItemProperties.h"
 CLASS_PROPERTY_IMPL(Item, PicMap);
 CLASS_PROPERTY_IMPL(Item, PicInv);
 CLASS_PROPERTY_IMPL(Item, OffsetX);

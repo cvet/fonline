@@ -73,6 +73,7 @@ public:
     bool RadioIsRecvActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_RECV); }
 
     PROPERTIES_HEADER();
+#include "ItemProperties.h"
     CLASS_PROPERTY(bool, Stackable);
     CLASS_PROPERTY(bool, Opened);
     CLASS_PROPERTY(int, Corner);

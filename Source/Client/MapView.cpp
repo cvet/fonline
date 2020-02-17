@@ -34,12 +34,8 @@
 #include "MapView.h"
 #include "Testing.h"
 
-MapView::MapView(uint id, ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
-{
-    RUNTIME_ASSERT(proto);
-}
-
 PROPERTIES_IMPL(MapView);
+#include "MapProperties.h"
 CLASS_PROPERTY_IMPL(MapView, FileDir);
 CLASS_PROPERTY_IMPL(MapView, Width);
 CLASS_PROPERTY_IMPL(MapView, Height);
@@ -53,3 +49,8 @@ CLASS_PROPERTY_IMPL(MapView, ScriptId);
 CLASS_PROPERTY_IMPL(MapView, DayTime);
 CLASS_PROPERTY_IMPL(MapView, DayColor);
 CLASS_PROPERTY_IMPL(MapView, IsNoLogOut);
+
+MapView::MapView(uint id, ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
+{
+    RUNTIME_ASSERT(proto);
+}

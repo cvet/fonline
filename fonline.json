@@ -40,7 +40,7 @@
         {
             "label": "Format Code",
             "group": "Service",
-            "command": "cd Source && clang-format -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
+            "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
         },
         {
             "label": "Build for Windows (x64)",

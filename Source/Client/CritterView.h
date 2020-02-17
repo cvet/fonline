@@ -91,6 +91,7 @@ public:
     uint GetAttackDist();
 
     PROPERTIES_HEADER();
+#include "CritterProperties.h"
     // Non sync
     CLASS_PROPERTY(ushort, HexX);
     CLASS_PROPERTY(ushort, HexY);

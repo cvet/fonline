@@ -156,7 +156,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Common: fix build warnings for all platforms
 * Common: enable threating warnings as errors
 * Common: sound and video preprocessing move to editor
-* Common: research about engine version naming convention (maybe 2019.1/2/3/4?)
 * Common: id and hash to 8 byte integer
 * Common: add to copyrigths for https://github.com/taka-no-me/android-cmake
 * Common: make all depedencies as git submodules?

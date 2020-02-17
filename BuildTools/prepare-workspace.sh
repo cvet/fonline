@@ -45,8 +45,8 @@ echo "Install git"
 sudo apt-get -qq -y install git
 echo "Install clang"
 sudo apt-get -qq -y install clang
-echo "Install clang-format"
-sudo apt-get -qq -y install clang-format
+echo "Install clang-format-9"
+sudo apt-get -qq -y install clang-format-9
 echo "Install libx11-dev"
 sudo apt-get -qq -y install libx11-dev
 echo "Install freeglut3-dev"

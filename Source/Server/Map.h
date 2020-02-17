@@ -169,6 +169,7 @@ public:
     void GetStaticItemsByPid(hash pid, ItemVec& items);
 
     PROPERTIES_HEADER();
+#include "MapProperties.h"
     CLASS_PROPERTY(uint, LoopTime1);
     CLASS_PROPERTY(uint, LoopTime2);
     CLASS_PROPERTY(uint, LoopTime3);

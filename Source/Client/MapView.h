@@ -45,7 +45,10 @@ using MapViewMap = map<uint, MapView*>;
 class MapView : public Entity
 {
 public:
+    MapView(uint id, ProtoMap* proto);
+
     PROPERTIES_HEADER();
+#include "MapProperties.h"
     CLASS_PROPERTY(string, FileDir);
     CLASS_PROPERTY(ushort, Width);
     CLASS_PROPERTY(ushort, Height);
@@ -59,6 +62,4 @@ public:
     CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
     CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
     CLASS_PROPERTY(bool, IsNoLogOut);
-
-    MapView(uint id, ProtoMap* proto);
 };

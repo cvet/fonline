@@ -50,6 +50,7 @@ bool Critter::SlotDataSendEnabled[0x100];
 
 // Properties
 PROPERTIES_IMPL(Critter);
+#include "CritterProperties.h"
 CLASS_PROPERTY_IMPL(Critter, ModelName);
 CLASS_PROPERTY_IMPL(Critter, MapId);
 CLASS_PROPERTY_IMPL(Critter, RefMapId);

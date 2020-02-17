@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-declare -A JOBS
+declare -a JOBS
 
 function run_job()
 {

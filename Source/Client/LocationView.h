@@ -45,7 +45,10 @@ using LocationViewMap = map<uint, LocationView*>;
 class LocationView : public Entity
 {
 public:
+    LocationView(uint id, ProtoLocation* proto);
+
     PROPERTIES_HEADER();
+#include "LocationProperties.h"
     CLASS_PROPERTY(CScriptArray*, MapProtos); // hash[]
     CLASS_PROPERTY(CScriptArray*, MapEntrances); // hash[]
     CLASS_PROPERTY(uint, MaxPlayers);
@@ -58,6 +61,4 @@ public:
     CLASS_PROPERTY(bool, Hidden);
     CLASS_PROPERTY(bool, ToGarbage);
     CLASS_PROPERTY(uint, Color);
-
-    LocationView(uint id, ProtoLocation* proto);
 };

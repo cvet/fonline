@@ -119,6 +119,7 @@ public:
     GlobalVars();
 
     PROPERTIES_HEADER();
+#include "GlobalProperties.h"
     CLASS_PROPERTY(ushort, YearStart);
     CLASS_PROPERTY(ushort, Year);
     CLASS_PROPERTY(ushort, Month);
@@ -145,6 +146,7 @@ public:
     int64 InstanceCount {};
 
     PROPERTIES_HEADER();
+#include "ItemProperties.h"
     CLASS_PROPERTY(hash, PicMap);
     CLASS_PROPERTY(hash, PicInv);
     CLASS_PROPERTY(bool, Stackable);
@@ -180,6 +182,7 @@ public:
     ProtoCritter(hash pid);
 
     PROPERTIES_HEADER();
+#include "CritterProperties.h"
     CLASS_PROPERTY(uint, Multihex);
 };
 using ProtoCritterMap = map<hash, ProtoCritter*>;
@@ -191,6 +194,7 @@ public:
     ProtoMap(hash pid);
 
     PROPERTIES_HEADER();
+#include "MapProperties.h"
     CLASS_PROPERTY(string, FilePath);
     CLASS_PROPERTY(ushort, Width);
     CLASS_PROPERTY(ushort, Height);
@@ -211,6 +215,7 @@ public:
     ProtoLocation(hash pid);
 
     PROPERTIES_HEADER();
+#include "LocationProperties.h"
     CLASS_PROPERTY(CScriptArray*, MapProtos);
 };
 using ProtoLocationVec = vector<ProtoLocation*>;

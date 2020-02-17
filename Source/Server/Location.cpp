@@ -37,6 +37,7 @@
 #include "StringUtils.h"
 
 PROPERTIES_IMPL(Location);
+#include "LocationProperties.h"
 CLASS_PROPERTY_IMPL(Location, MapProtos);
 CLASS_PROPERTY_IMPL(Location, MapEntrances);
 CLASS_PROPERTY_IMPL(Location, Automaps);

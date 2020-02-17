@@ -36,6 +36,7 @@
 #include "Timer.h"
 
 PROPERTIES_IMPL(ItemView);
+#include "ItemProperties.h"
 CLASS_PROPERTY_IMPL(ItemView, PicMap);
 CLASS_PROPERTY_IMPL(ItemView, PicInv);
 CLASS_PROPERTY_IMPL(ItemView, OffsetX);

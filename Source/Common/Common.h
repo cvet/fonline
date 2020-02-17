@@ -50,7 +50,6 @@
 // Todo: fix build warnings for all platforms
 // Todo: enable threating warnings as errors
 // Todo: sound and video preprocessing move to editor
-// Todo: research about engine version naming convention (maybe 2019.1/2/3/4?)
 // Todo: id and hash to 8 byte integer
 // Todo: add to copyrigths for https://github.com/taka-no-me/android-cmake
 // Todo: make all depedencies as git submodules?

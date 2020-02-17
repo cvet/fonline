@@ -130,6 +130,7 @@ public:
     bool CanBeRemoved;
 
     PROPERTIES_HEADER();
+#include "CritterProperties.h"
     CLASS_PROPERTY(hash, ModelName);
     CLASS_PROPERTY(uint, MapId);
     CLASS_PROPERTY(hash, RefMapId);

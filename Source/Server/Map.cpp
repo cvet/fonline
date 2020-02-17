@@ -46,6 +46,7 @@
 #include "Timer.h"
 
 PROPERTIES_IMPL(Map);
+#include "MapProperties.h"
 CLASS_PROPERTY_IMPL(Map, LoopTime1);
 CLASS_PROPERTY_IMPL(Map, LoopTime2);
 CLASS_PROPERTY_IMPL(Map, LoopTime3);

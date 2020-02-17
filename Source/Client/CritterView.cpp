@@ -41,6 +41,7 @@
 bool CritterView::SlotEnabled[0x100];
 
 PROPERTIES_IMPL(CritterView);
+#include "CritterProperties.h"
 CLASS_PROPERTY_IMPL(CritterView, HexX);
 CLASS_PROPERTY_IMPL(CritterView, HexY);
 CLASS_PROPERTY_IMPL(CritterView, Dir);
