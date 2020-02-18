@@ -24,7 +24,7 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux full
-  android-arm32:
+  android-arm:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
@@ -38,6 +38,13 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm64
+  android-x86:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh android-x86
   web-release:
     runs-on: ubuntu-18.04
     steps:
