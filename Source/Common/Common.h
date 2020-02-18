@@ -78,7 +78,6 @@
 // Todo: improve custom exceptions for every subsustem
 // Todo: improve particle system based on SPARK engine
 // Todo: research about Steam integration
-// Todo: support of loading r412 content
 // Todo: speed up content loading from server
 // Todo: temporary entities, disable writing to data base
 

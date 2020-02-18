@@ -21,7 +21,7 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
   * Native C bindings *(that allows add more languages for work with engine)*
   * Native C++
   * C#/Mono
-  * AngelScript *(with supporting of scripts writtlen for old engine versions like r412)*
+  * AngelScript
   * Fallout Star-Trek *(for run original Fallout 1/2 out of the box)*
 * Cross-platform with target platforms:
   * Windows
@@ -145,8 +145,22 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * [Documentation](https://github.com/cvet/fonline/issues/49)
 * API freezing and continuing development with it's backward compatibility
 * Adopt Fallout Star-Trek SL for run Fallout on engine out of the box
-* Adding supporting of old engine asset formats *(especially r412)*
 * Improve supporting of PlayStation
+
+### Roadmap for Visual Studio Code extension
+
+* Integrate mapper (as javascript module) for editing .fomap
+* Integrate dialog editor for editing .fodlg
+* Integrate some property grid for protos editing
+* Integrate server (as separate process but render ui in editor)
+* Integrate client (as javascript module)
+* Improve viewers for supported graphic formats (frm, spr, png, fofrm and etc)
+* Add supporting of AngelScript language (highlight, auto-completion, compilation)
+* Take and tune some of extensions for C# and C++ scripting
+* Improve debugging of code (core and scripting)
+* Improve debugging of game logic (like run game on this map with these scripts)
+* Integrate gui editor for editing .fogui
+* Add snippets for common tasks (like create map, create script, create proto)
 
 ### Code refactoring plans
 
@@ -210,7 +224,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Common: improve custom exceptions for every subsustem
 * Common: improve particle system based on SPARK engine
 * Common: research about Steam integration
-* Common: support of loading r412 content
 * Common: speed up content loading from server
 * Common: temporary entities, disable writing to data base
 * Common: detect OS automatically not from passed constant from build system

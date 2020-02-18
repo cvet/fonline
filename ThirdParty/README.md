@@ -5,7 +5,7 @@
 * Asio - [asio-1.12.2](https://think-async.com/Asio/)
 * Assimp - [assimp-5.0.0-rc2](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
-* backward-cpp - [backward-cpp-master-050919](https://github.com/bombela/backward-cpp)
+* backward-cpp - [backward-cpp-master-180220](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-0919](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)

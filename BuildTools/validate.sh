@@ -30,6 +30,10 @@ if [ "$1" = "linux" ]; then
     sudo apt-get -qq -y install curl
     echo "Install binutils-dev"
     sudo apt-get -qq -y install binutils-dev
+    echo "Install libc++-dev"
+    sudo apt-get -qq -y install libc++-dev
+    echo "Install libc++abi-dev"
+    sudo apt-get -qq -y install libc++abi-dev
 
 elif [ "$1" = "web" ] || [ "$1" = "web-debug" ]; then
     echo "Install packages"
@@ -65,7 +69,7 @@ elif [ "$1" = "web" ] || [ "$1" = "web-debug" ]; then
         cd ../
     fi
 
-elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ]; then
+elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
     echo "Install packages"
     echo "Sudo required"
     sudo apt-get -qq -y update || true
@@ -95,8 +99,9 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ]; then
 
         echo "Generate toolchains"
         cd $ANDROID_NDK_VERSION/build/tools
-        python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
-        python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
+        python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm-toolchain
+        python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm64-toolchain
+        python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-x86-toolchain
         cd ../../../
     fi
 fi

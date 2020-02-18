@@ -79,6 +79,10 @@ echo "Install uuid-dev"
 sudo apt-get -qq -y install uuid-dev
 echo "Install android-sdk"
 sudo apt-get -qq -y install android-sdk
+echo "Install libc++-dev"
+sudo apt-get -qq -y install libc++-dev
+echo "Install libc++abi-dev"
+sudo apt-get -qq -y install libc++abi-dev
 
 function setup_osxcross()
 {
@@ -115,8 +119,9 @@ function setup_android_ndk()
 
     echo "Generate Android toolchains"
     cd $ANDROID_NDK_VERSION/build/tools
-    python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm-toolchain
-    python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../arm64-toolchain
+    python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm-toolchain
+    python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm64-toolchain
+    python make_standalone_toolchain.py --arch x86 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-x86-toolchain
 }
 
 run_job setup_osxcross

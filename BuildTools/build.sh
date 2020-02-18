@@ -41,31 +41,33 @@ elif [ "$1" = "linux" ]; then
     export CXX=/usr/bin/clang++
 
     cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config RelWithDebInfo
+    cmake --build . --config RelWithDebInfo -- -j$(nproc)
 
 elif [ "$1" = "web" ] || [ "$1" = "web-debug" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
     if [ "$1" = "web" ]; then
         cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release
+        cmake --build . --config Release -- -j$(nproc)
     elif [ "$1" = "web-debug" ]; then
         cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_WEB_DEBUG=ON -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Debug
+        cmake --build . --config Debug -- -j$(nproc)
     fi
 
-elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ]; then
-    if [ [ "$1" = "android" ]; then
-        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm-toolchain
+elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
+    if [ "$1" = "android" ]; then
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm-toolchain
         export ANDROID_ABI=armeabi-v7a
-        cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release
     elif [ "$1" = "android-arm64" ]; then
-        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/arm64-toolchain
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm64-toolchain
         export ANDROID_ABI=arm64-v8a
-        cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release
+    elif [ "$1" = "android-x86" ]; then
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-x86-toolchain
+        export ANDROID_ABI=x86
     fi
+
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
+    cmake --build . --config Release -- -j$(nproc)
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     if [ -x "$(command -v cmake)" ]; then
@@ -80,15 +82,17 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
         export OSXCROSS_DIR=$(cd $FO_WORKSPACE/osxcross; pwd)
         export PATH=$PATH:$OSXCROSS_DIR/target/bin
         CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
+        CMAKE_BUILD_ARGS="-- -j$(nproc)"
     else
         CMAKE_GEN="$CMAKE -G \"Xcode\""
+        CMAKE_BUILD_ARGS=""
     fi
 
     if [ "$1" = "mac" ]; then
         eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config RelWithDebInfo --target FOnline
+        $CMAKE --build . --config RelWithDebInfo --target FOnline $CMAKE_BUILD_ARGS
     elif [ "$1" = "ios" ]; then
         eval $CMAKE_GEN -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config Release --target FOnline
+        $CMAKE --build . --config Release --target FOnline $CMAKE_BUILD_ARGS
     fi
 fi
