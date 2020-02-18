@@ -67,18 +67,43 @@ You may work on your game using shell scripts manually but project hosts own ext
 Shell scripts targeted for work under Windows 10 within WSL2 (with Ubuntu-18.04, other distros not tested but should work).  
 Almost all will be work under native Linuxes but some of scripts (Windows system related like BuildTools/windows.sh) must be run only from WSL2 shell.  
 So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.  
-Information about build scripts you can find at BuildTools/README.md.
+
+### Workflow
+
+As described above all what you need to build and package your game in one place for different platforms is WSL2.  
+You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binraies on macOS and rest on native Linux distro) but better do it in one place.
+
+Process of creating your game in two words looks like this:
+* Once prepare workspace where all intermediate build files will be stored
+* Build executables from source to platforms that you needed
+* Bake all resources (shaders, images, scripts and etc) to special formats that will be loaded super fast by server/client
+* Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
+* Enjoy your shipped game and iterate development
+
+There are couple of shell scripts that help us to do it:  
+* `BuildTools/check-workspace.sh` - check our workspace for readiness
+* `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, donwload android ndk and etc)
+* `BuildTools/build.sh` - build executable for specific platform
+* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats and zip their
+* `BuildTools/package-server.sh` - package our server for using on target platform
+* `BuildTools/package-client.sh` - package client for our end-user
+* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actoins
+
+Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in BuildTools/README.md.
+
+### Versioning
+
+*Todo: write about versioning SemVer https://semver.org and what public API included to itself*
 
 ### Base install
 
 Clone with git this repository or use Chocolatey `choco install fonline`.  
-*Todo: provide BuildTools/generate-project.sh to automatically project generation*  
-*Todo: write about versioning SemVer https://semver.org and what public API included to itself*
+*Todo: provide BuildTools/generate-project.sh to automatically project generation*
 
 ### Windows Subsystem for Linux
 
-*Todo: write more about WSL2*  
-*Todo: write why WSL2 but not WSL1*  
+Main point of WSL2 for us that we can run Windows programs from Linux.  
+That feature allows unify all our build scripts into one environment.  
 Official document about how to install WSL2:  
 https://docs.microsoft.com/en-us/windows/wsl/wsl2-install
 
