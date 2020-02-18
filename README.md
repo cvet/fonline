@@ -7,6 +7,28 @@
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
 [![Codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
 
+## Table of Content
+
+* [Goal](#goal)
+* [Features](#features)
+* [Media](#media)
+* [Usage](#usage)
+  + [Workflow](#workflow)
+  + [Public API](#public-api)
+  + [Base install](#base-install)
+  + [Windows Subsystem for Linux](#windows-subsystem-for-linux)
+  + [Visual Studio Code](#visual-studio-code)
+  + [CMake](#cmake)
+  + [Other dependencies](#other-dependencies)
+* [Work in progress](#work-in-progress)
+  + [Roadmap](#roadmap)
+  + [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
+  + [Code refactoring plans](#code-refactoring-plans)
+  + [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
+* [Repository structure](#repository-structure)
+* [Third-party packages](#third-party-packages)
+* [Help and support](#help-and-support)
+
 ## Goal
 
 Friendly engine for fallout-like isometric games for develop/play alone or with friends.
@@ -18,34 +40,34 @@ Friendly engine for fallout-like isometric games for develop/play alone or with 
 * Online mode with authoritative server
 * Singleplayer mode *(with or without back run in online mode)*
 * Flexible scripting system with varies supporting languages:
-  * Native C bindings *(that allows add more languages for work with engine)*
-  * Native C++
-  * C#/Mono
-  * AngelScript
-  * Fallout Star-Trek *(for run original Fallout 1/2 out of the box)*
+  + Native C bindings *(that allows add more languages for work with engine)*
+  + Native C++
+  + C#/Mono
+  + AngelScript
+  + Fallout Star-Trek *(for run original Fallout 1/2 out of the box)*
 * Cross-platform with target platforms:
-  * Windows
-  * Linux
-  * macOS
-  * iOS
-  * Android
-  * Web
-  * PlayStation
-  * UWP *(PC, Mobile, Xbox)*
+  + Windows
+  + Linux
+  + macOS
+  + iOS
+  + Android
+  + Web
+  + PlayStation
+  + UWP *(PC, Mobile, Xbox)*
 * Rendering with:
-  * OpenGL
-  * OpenGLES
-  * WebGL
-  * DirectX
-  * Metal
-  * Vulkan
+  + OpenGL
+  + OpenGLES
+  + WebGL
+  + DirectX
+  + Metal
+  + Vulkan
 * Supporting of following asset formats:
-  * Fallout 1/2
-  * Fallout Tactics
-  * Arcanum
-  * Boldur's Gate
-  * 3d characters in modern graphic formats
-  * and more...
+  + Fallout 1/2
+  + Fallout Tactics
+  + Arcanum
+  + Boldur's Gate
+  + 3D characters in modern graphic formats
+  + and more...
 * Supporting of hexagonal and square map tiling
 
 Important note: *Not all from descripted above features are already implemented, for additional information look at 'Work in progress' section below*.
