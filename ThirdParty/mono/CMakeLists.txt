@@ -129,6 +129,14 @@ elseif( ANDROID )
 			"repo/mono/mini/mini-arm64-gsharedvt.h"
 			"repo/mono/mini/mini-arm64-gsharedvt.c"
 			"repo/mono/mini/tramp-arm64-gsharedvt.c" )
+	elseif( ANDROID_ABI STREQUAL "x86" )
+		set( LIBMINI_ARCH_SOURCE
+			"repo/mono/mini/mini-x86.c"
+			"repo/mono/mini/mini-x86.h"
+			"repo/mono/mini/exceptions-x86.c"
+			"repo/mono/mini/tramp-x86.c"
+			"repo/mono/mini/mini-x86-gsharedvt.c"
+			"repo/mono/mini/tramp-x86-gsharedvt.c" )
 	else()
 		message( FATAL_ERROR "Unknown ANDROID_ABI" )
 	endif()
@@ -627,6 +635,10 @@ elseif( ANDROID )
 		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
 			"repo/mono/utils/mono-hwcap-arm64.c"
 			"repo/mono/utils/mach-support-arm64.c" )
+	elseif( ANDROID_ABI STREQUAL "x86" )
+		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+			"repo/mono/utils/mono-hwcap-x86.c"
+			"repo/mono/utils/mach-support-x86.c" )
 	else()
 		message( FATAL_ERROR "Unknown ANDROID_ABI" )
 	endif()
