@@ -15,7 +15,6 @@ function install_common_packages()
 {
     echo "Install common packages"
     sudo apt-get -qq -y update
-    sudo apt-get -qq -y upgrade
 
     echo "Install git"
     sudo apt-get -qq -y install git
@@ -39,7 +38,6 @@ function install_linux_packages()
 {
     echo "Install Linux packages"
     sudo apt-get -qq -y update
-    sudo apt-get -qq -y upgrade
 
     echo "Install clang"
     sudo apt-get -qq -y install clang
@@ -67,7 +65,6 @@ function install_web_packages()
 {
     echo "Install Web packages"
     sudo apt-get -qq -y update
-    sudo apt-get -qq -y upgrade
 
     echo "Install nodejs"
     sudo apt-get -qq -y install nodejs
@@ -79,7 +76,6 @@ function install_android_packages()
 {
     echo "Install Android packages"
     sudo apt-get -qq -y update
-    sudo apt-get -qq -y upgrade
 
     echo "Install ant"
     sudo apt-get -qq -y install ant
@@ -93,7 +89,6 @@ function install_osxcross_packages()
 {
     echo "Install OSXCross packages"
     sudo apt-get -qq -y update
-    sudo apt-get -qq -y upgrade
 
     echo "Install patch"
     sudo apt-get -qq -y install patch
@@ -166,7 +161,7 @@ function generate_compilation_env()
     mkdir compilation-env
     cd compilation-env
     cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT_WIN"
-    cmake.exe --build . --config RelWithDebInfo --parallel
+    cmake.exe --build . --config RelWithDebInfo
 }
 
 function generate_vscode_js_toolset()
@@ -184,7 +179,7 @@ function build_vscode_js_toolset()
     echo "Build VSCode js toolset"
     cd vscode-js-toolset
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
-    cmake --build . --config Release --parallel
+    cmake --build . --config Release -- -j$(nproc)
 }
 
 function generate_vscode_native_toolset()
@@ -201,7 +196,7 @@ function build_vscode_native_toolset()
 {
     echo "Build VSCode native toolset"
     cd vscode-native-toolset
-    cmake.exe --build . --config RelWithDebInfo --parallel
+    cmake.exe --build . --config RelWithDebInfo
 }
 
 function verify_workspace_part()
