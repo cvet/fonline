@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+if [ "$1" = "" ]; then
+    echo "Provide at least one argument"
+    exit 1
+fi
+
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
@@ -27,13 +32,13 @@ if [ "$1" = "win64" ] || [ "$1" = "win32" ] || [ "$1" = "uwp" ]; then
 
     if [ "$1" = "win64" ]; then
         cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config RelWithDebInfo
+        cmake.exe --build . --config RelWithDebInfo --parallel
     elif [ "$1" = "win32" ]; then
         cmake.exe -G "Visual Studio 16 2019" -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config RelWithDebInfo
+        cmake.exe --build . --config RelWithDebInfo --parallel
     elif [ "$1" = "uwp" ]; then
         cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildTools/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config RelWithDebInfo
+        cmake.exe --build . --config RelWithDebInfo --parallel
     fi
 
 elif [ "$1" = "linux" ]; then
@@ -41,17 +46,17 @@ elif [ "$1" = "linux" ]; then
     export CXX=/usr/bin/clang++
 
     cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config RelWithDebInfo -- -j$(nproc)
+    cmake --build . --config RelWithDebInfo --parallel
 
 elif [ "$1" = "web" ] || [ "$1" = "web-debug" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
     if [ "$1" = "web" ]; then
         cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release -- -j$(nproc)
+        cmake --build . --config Release --parallel
     elif [ "$1" = "web-debug" ]; then
         cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_WEB_DEBUG=ON -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Debug -- -j$(nproc)
+        cmake --build . --config Debug --parallel
     fi
 
 elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
@@ -67,7 +72,7 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
     fi
 
     cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config Release -- -j$(nproc)
+    cmake --build . --config Release --parallel
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     if [ -x "$(command -v cmake)" ]; then
@@ -82,17 +87,15 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
         export OSXCROSS_DIR=$(cd $FO_WORKSPACE/osxcross; pwd)
         export PATH=$PATH:$OSXCROSS_DIR/target/bin
         CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
-        CMAKE_BUILD_ARGS="-- -j$(nproc)"
     else
         CMAKE_GEN="$CMAKE -G \"Xcode\""
-        CMAKE_BUILD_ARGS=""
     fi
 
     if [ "$1" = "mac" ]; then
         eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config RelWithDebInfo --target FOnline $CMAKE_BUILD_ARGS
+        $CMAKE --build . --config RelWithDebInfo --target FOnline --parallel
     elif [ "$1" = "ios" ]; then
         eval $CMAKE_GEN -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config Release --target FOnline $CMAKE_BUILD_ARGS
+        $CMAKE --build . --config Release --target FOnline --parallel
     fi
 fi

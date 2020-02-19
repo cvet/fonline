@@ -25,12 +25,12 @@
         {
             "label": "Check Workspace",
             "group": "Service",
-            "command": "BuildTools/check-workspace.sh"
+            "command": "BuildTools/prepare-workspace.sh all check"
         },
         {
             "label": "Prepare Workspace",
             "group": "Service",
-            "command": "BuildTools/prepare-workspace.sh"
+            "command": "BuildTools/prepare-workspace.sh all"
         },
         {
             "label": "Generate Todo",
@@ -81,6 +81,11 @@
             "label": "Build for Android (arm64)",
             "group": "Build",
             "command": "BuildTools/build.sh android-arm64"
+        },
+        {
+            "label": "Build for Android (x86)",
+            "group": "Build",
+            "command": "BuildTools/build.sh android-x86"
         },
         {
             "label": "Build for macOS",

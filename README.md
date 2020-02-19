@@ -103,7 +103,6 @@ Process of creating your game in two words looks like this:
 * Enjoy your shipped game and iterate development
 
 There are couple of shell scripts that help us to do it:  
-* `BuildTools/check-workspace.sh` - check our workspace for readiness
 * `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/build.sh` - build executable for specific platform
 * `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats and zip their

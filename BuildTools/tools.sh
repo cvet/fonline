@@ -31,3 +31,17 @@ function wsl_path_to_windows()
     path=${path////\\}
     echo $path
 }
+
+PROGRAM_ARGS=$@
+
+function check_arg()
+{
+    for i in $PROGRAM_ARGS; do
+        for j in $@; do
+            if [ "$i" = "$j" ]; then
+                echo "1"
+                return
+            fi
+        done
+    done
+}
