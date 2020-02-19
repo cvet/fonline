@@ -33,6 +33,11 @@
             "command": "BuildTools/prepare-workspace.sh all"
         },
         {
+            "label": "Update Toolset",
+            "group": "Service",
+            "command": "BuildTools/update-vscode-toolset.sh"
+        },
+        {
             "label": "Generate Todo",
             "group": "Service",
             "command": "cd BuildTools && python todo-generator.py"
@@ -106,6 +111,11 @@
             "label": "Run code coverage",
             "group": "Test",
             "command": "BuildTools/validate.sh linux code-coverage"
+        },
+        {
+            "label": "Package server",
+            "group": "Package",
+            "command": "BuildTools/package.sh"
         }
     ]
 }

@@ -172,13 +172,6 @@ function generate_vscode_js_toolset()
     cd vscode-js-toolset
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
     cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" "$FO_ROOT"
-}
-
-function build_vscode_js_toolset()
-{
-    echo "Build VSCode js toolset"
-    cd vscode-js-toolset
-    source $FO_WORKSPACE/emsdk/emsdk_env.sh
     cmake --build . --config Release -- -j$(nproc)
 }
 
@@ -190,12 +183,6 @@ function generate_vscode_native_toolset()
     mkdir vscode-native-toolset
     cd vscode-native-toolset
     cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT_WIN"
-}
-
-function build_vscode_native_toolset()
-{
-    echo "Build VSCode native toolset"
-    cd vscode-native-toolset
     cmake.exe --build . --config RelWithDebInfo
 }
 
@@ -257,10 +244,4 @@ if [ ! -z `check_arg vscode all` ]; then
 fi
 wait_jobs
 
-if [ ! -z `check_arg vscode vscode-build all` ]; then
-    run_job build_vscode_js_toolset
-    run_job build_vscode_native_toolset
-fi
-wait_jobs
-
-echo "Workspace ready!"
+echo "Workspace is ready!"
