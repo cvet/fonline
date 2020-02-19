@@ -1,20 +1,34 @@
 {
     "files": [
         {
-            "name": "CommonLib",
-            "path": "Source/Common"
+            "label": "Common Lib",
+            "path": "Source/Common",
+            "pattern": "(.+\\.cpp)(.+\\.h)"
         },
         {
-            "name": "ClientLib",
-            "path": "Source/Client"
+            "label": "Client Lib",
+            "path": "Source/Client",
+            "pattern": "(.+\\.cpp)(.+\\.h)"
         },
         {
-            "name": "ServerLib",
-            "path": "Source/Client"
+            "label": "Server Lib",
+            "path": "Source/Client",
+            "pattern": "(.+\\.cpp)(.+\\.h)"
         },
         {
-            "name": "EditorLib",
-            "path": "Source/Editor"
+            "label": "Editor Lib",
+            "path": "Source/Editor",
+            "pattern": "(.+\\.cpp)(.+\\.h)"
+        },
+        {
+            "label": "Core Resources",
+            "path": "Resources/Core",
+            "pattern": ".+"
+        },
+        {
+            "label": "Embedded Resources",
+            "path": "Resources/Embedded",
+            "pattern": ".+"
         }
     ],
     "actions": [
