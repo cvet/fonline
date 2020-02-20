@@ -47,7 +47,7 @@
             "command": "BuildTools/prepare-workspace.sh all"
         },
         {
-            "label": "Update Toolset",
+            "label": "Update VSCode Toolset",
             "group": "Service",
             "command": "BuildTools/update-vscode-toolset.sh"
         },

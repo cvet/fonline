@@ -108,10 +108,18 @@ function setup_osxcross()
     rm -rf osxcross
     git clone --depth 1 https://github.com/tpoechtrager/osxcross
     cd osxcross
-    rm -rf .git
     cp "$FO_ROOT/BuildTools/osxcross/MacOSX10.15.sdk.tar.bz2" "./tarballs"
     export UNATTENDED=1
     ./build.sh
+}
+
+function setup_ios_toolchain()
+{
+    echo "Setup iOS toolchain"
+    rm -rf ios-toolchain
+    cd ios-toolchain
+    git clone --depth 1 https://github.com/tpoechtrager/cctools-port
+    # ./cctools-port/usage_examples/ios_toolchain/build.sh "$FO_ROOT/BuildTools/osxcross/iPhone.sdk.tar.bz2"
 }
 
 function setup_emscripten()
@@ -126,7 +134,6 @@ function setup_emscripten()
     ./emsdk list
     ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
     ./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
-    rm -rf releases/.git
 }
 
 function setup_android_ndk()
@@ -224,8 +231,11 @@ if [ ! -z `check_arg mac ios all` ]; then
     wait_jobs
 fi
 
-if [ ! -z `check_arg mac ios all` ]; then
+if [ ! -z `check_arg mac all` ]; then
     verify_workspace_part osxcross 1 setup_osxcross
+fi
+if [ ! -z `check_arg ios all` ]; then
+    verify_workspace_part ios-toolchain 1 setup_ios_toolchain
 fi
 if [ ! -z `check_arg web web-debug all` ]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten

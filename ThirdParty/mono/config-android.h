@@ -219,7 +219,9 @@
 
 /* ARM v7 */
 /* #undef HAVE_ARMV7 */
-#define HAVE_ARMV7
+#ifndef ANDROID_X86
+#define HAVE_ARMV7 1
+#endif
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
@@ -1294,10 +1296,12 @@
 /* #undef HOST_ARM */
 /* ... */
 /* #undef HOST_ARM64 */
+#ifndef ANDROID_X86
 #ifdef __LP64__
 #define HOST_ARM64 1
 #else
 #define HOST_ARM 1
+#endif
 #endif
 
 /* Host Platform is Darwin */
@@ -1332,6 +1336,9 @@
 
 /* ... */
 /* #undef HOST_X86 */
+#ifdef ANDROID_X86
+#define HOST_X86 1	
+#endif
 
 /* inotify_rm_watch with unsigned wd */
 /* #undef INOTIFY_RM_WATCH_WD_UNSIGNED */
@@ -1364,10 +1371,14 @@
 #define MAJOR_IN_SYSMACROS 1
 
 /* The architecture this is running on */
+#ifndef ANDROID_X86
 #ifdef __LP64__
 #define MONO_ARCHITECTURE "arm64"
 #else
 #define MONO_ARCHITECTURE "arm"
+#endif
+#else
+#define MONO_ARCHITECTURE "x86"
 #endif
 
 /* Enable the allocation and indexing of arrays greater than Int32.MaxValue */
@@ -1485,10 +1496,12 @@
 /* #undef TARGET_ARM */
 /* ... */
 /* #undef TARGET_ARM64 */
+#ifndef ANDROID_X86
 #ifdef __LP64__
 #define TARGET_ARM64 1
 #else
 #define TARGET_ARM 1
+#endif
 #endif
 
 /* byte order of target */
@@ -1538,6 +1551,9 @@
 
 /* ... */
 /* #undef TARGET_X86 */
+#ifdef ANDROID_X86
+#define TARGET_X86 1
+#endif
 
 /* ... */
 /* #undef TARGET_XBOX360 */

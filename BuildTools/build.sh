@@ -75,29 +75,29 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
     cmake --build . --config Release -- -j$(nproc)
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
-    if [ -x "$(command -v cmake)" ]; then
-        CMAKE=cmake
-    else
-        CMAKE=/Applications/CMake.app/Contents/bin/cmake
-    fi
-
-    # Cross compilation using OSXCross
-    if [ -d "$FO_WORKSPACE/osxcross" ]; then
+    if [ "$1" = "mac" ] && [ -d "$FO_WORKSPACE/osxcross" ]; then
         echo "OSXCross cross compilation"
-        export OSXCROSS_DIR=$(cd $FO_WORKSPACE/osxcross; pwd)
-        export PATH=$PATH:$OSXCROSS_DIR/target/bin
-        CMAKE_GEN="$OSXCROSS_DIR/target/bin/x86_64-apple-darwin19-cmake -G \"Unix Makefiles\" -DCMAKE_TOOLCHAIN_FILE=\"$OSXCROSS_DIR/tools/toolchain.cmake\""
-        CMAKE_BUILD_ARGS="-- -j$(nproc)"
-    else
-        CMAKE_GEN="$CMAKE -G \"Xcode\""
-        CMAKE_BUILD_ARGS=""
-    fi
+        "$FO_WORKSPACE/osxcross/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
+        cmake --build . --config RelWithDebInfo -- -j$(nproc)
 
-    if [ "$1" = "mac" ]; then
-        eval $CMAKE_GEN -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config RelWithDebInfo --target FOnline $CMAKE_BUILD_ARGS
-    elif [ "$1" = "ios" ]; then
-        eval $CMAKE_GEN -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        $CMAKE --build . --config Release --target FOnline $CMAKE_BUILD_ARGS
+    elif [ "$1" = "ios" ] && [ -d "$FO_WORKSPACE/ios-toolchain" ]; then
+        echo "iOS cross compilation"
+        "$FO_WORKSPACE/ios-toolchain/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
+        cmake --build . --config Release -- -j$(nproc)
+
+    else
+        if [ -x "$(command -v cmake)" ]; then
+            CMAKE=cmake
+        else
+            CMAKE=/Applications/CMake.app/Contents/bin/cmake
+        fi
+
+        if [ "$1" = "mac" ]; then
+            $CMAKE -G "Xcode" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
+            $CMAKE --build . --config RelWithDebInfo --target FOnline
+        else
+            $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
+            $CMAKE --build . --config Release --target FOnline
+        fi
     fi
 fi
