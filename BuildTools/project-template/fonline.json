@@ -1,0 +1,9 @@
+{
+    "actions": [
+        {
+            "label": "Make All",
+            "group": "Root",
+            "command": "BuildTools/check-workspace.sh"
+        }
+    ]
+}
