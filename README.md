@@ -3,13 +3,14 @@
 > Engine currently in unusable state due to heavy refactoring.  
 > Estimated finishing date is middle of this year.
 
+[![License](https://img.shields.io/github/license/cvet/fonline.svg)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
 [![Codacy](https://api.codacy.com/project/badge/Grade/6c9c1cddf6ba4b58bfa94c729a73f315)](https://www.codacy.com/app/cvet/fonline?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
+[![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)
 
 ## Table of Content
 
-* [Goal](#goal)
 * [Features](#features)
 * [Media](#media)
 * [Usage](#usage)
@@ -28,10 +29,6 @@
 * [Repository structure](#repository-structure)
 * [Third-party packages](#third-party-packages)
 * [Help and support](#help-and-support)
-
-## Goal
-
-Friendly engine for fallout-like isometric games for develop/play alone or with friends.
 
 ## Features
 
