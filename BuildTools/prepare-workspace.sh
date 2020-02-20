@@ -117,6 +117,7 @@ function setup_ios_toolchain()
 {
     echo "Setup iOS toolchain"
     rm -rf ios-toolchain
+    mkdir ios-toolchain
     cd ios-toolchain
     git clone --depth 1 https://github.com/tpoechtrager/cctools-port
     # ./cctools-port/usage_examples/ios_toolchain/build.sh "$FO_ROOT/BuildTools/osxcross/iPhone.sdk.tar.bz2"
