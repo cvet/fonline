@@ -162,7 +162,7 @@ And `setup.ps1` might install following Windows packages for you *(some optional
 
 #### Statically linked packages
 
-These packages included to this repository and linked statically to our binaries.  
+These packages included to this repository, will compile and link statically to our binaries.  
 They are located in ThirdParty directory.
 
 * ACM by Abel - sound file format reader

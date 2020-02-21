@@ -17,6 +17,27 @@ Function Test-Admin {
     return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+Function Test-BuildTools {
+    if (!(Get-Module -ListAvailable -Name VSSetup)) {
+        Install-Module VSSetup -Scope CurrentUser
+    }
+
+    $vspath = Get-VSSetupInstance `
+        | Select-VSSetupInstance -Version "[16.0,17.0)" `
+            -Require Microsoft.VisualStudio.Workload.MSBuildTools `
+            -Product Microsoft.VisualStudio.Product.Community, `
+                Microsoft.VisualStudio.Product.Professional, `
+                Microsoft.VisualStudio.Product.Enterprise, `
+                Microsoft.VisualStudio.Product.BuildTools `
+            -Latest `
+        | Select-Object -ExpandProperty InstallationPath
+    if ($vspath) {
+        return $True
+    } else {
+        return $False
+    }
+}
+
 Write-Host "Hello, Developer! Let's see what's going on..."
 
 while ($True) {
@@ -33,11 +54,10 @@ while ($True) {
     # Todo: check WSL vetsion
     # Todo: check WSL active distro
 
-    $msbuild = ./BuildTools/get-msbuild.ps1
-    if (!$msbuild) {
-        Write-Host "MSBuild not found"
+    if (!(Test-BuildTools)) {
+        Write-Host "Build Tools not found"
         Write-Host "If you planning development in Visual Studio 2019 then install it"
-        Write-Host "But if you don't need whole IDE then you can install just Build Tools for Visual Studio 2019"
+        Write-Host "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2019"
         Write-Host "All this stuff you can get here: https://visualstudio.microsoft.com/downloads"
         Write-Host "(chocovs) Or install Visual Studio 2019 Community Edition automatically within Chocolatey"
         Write-Host "(chocobt) Or install Visual Studio Build Tools 2019 automatically within Chocolatey"
@@ -70,7 +90,7 @@ while ($True) {
     while ($True) {
         $answer = Read-Host -Prompt "Type command or leave empty to exit setup"
         if ($answer -Eq "choco") {
-            if (!Test-Admin) {
+            if (!(Test-Admin)) {
                 Write-Host "To install Chocolatey here you must run this setup under administrative privileges"
             } else {
                 if ((Get-ExecutionPolicy) -Eq "Restricted") {
@@ -82,9 +102,11 @@ while ($True) {
                 break
             }
         } elseif (($answer.Length -Gt 5) -And ($answer.Substring(0, 5) -Eq "choco")) {
-            if (!Test-Admin) {
+            if (!(Test-Admin)) {
                 Write-Host "To install Chocolatey packages you must run this setup under administrative privileges"
-            } elseif (Test-Command choco) {
+            } elseif (!(Test-Command choco)) {
+                Write-Host "(choco) Chocolatey not found, please install it first"
+            } else {
                 if ($answer -Eq "chocovs") {
                     choco install -y visualstudio2019community
                 } elseif ($answer -Eq "chocobt") {
@@ -93,8 +115,6 @@ while ($True) {
                     choco install -y cmake
                 }
                 break
-            } else {
-                Write-Host "(choco) Chocolatey not found, please install it first"
             }
         } elseif ($answer -Eq "gen") {
             Write-Host "...Generate new project..."
