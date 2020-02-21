@@ -11,24 +11,23 @@
 
 ## Table of Content
 
-* [Features](#features)
-* [Media](#media)
-* [Usage](#usage)
-  + [Workflow](#workflow)
-  + [Public API](#public-api)
-  + [Setup](#setup)
-    - [Windows Subsystem for Linux](#windows-subsystem-for-linux)
-    - [Visual Studio Code](#visual-studio-code)
-    - [CMake](#cmake)
-    - [Other dependencies](#other-dependencies)
-* [Work in progress](#work-in-progress)
-  + [Roadmap](#roadmap)
-  + [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
-  + [Code refactoring plans](#code-refactoring-plans)
-  + [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
-* [Repository structure](#repository-structure)
-* [Third-party packages](#third-party-packages)
-* [Help and support](#help-and-support)
+- [Features](#features)
+- [Media](#media)
+- [Usage](#usage)
+  * [Workflow](#workflow)
+  * [Public API](#public-api)
+  * [Setup](#setup)
+    + [Windows Subsystem for Linux](#windows-subsystem-for-linux)
+    + [Visual Studio Code](#visual-studio-code)
+    + [Package dependencies](#package-dependencies)
+    + [Statically linked packages](#statically-linked-packages)
+- [Work in progress](#work-in-progress)
+  * [Roadmap](#roadmap)
+  * [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
+  * [Code refactoring plans](#code-refactoring-plans)
+  * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
+- [Repository structure](#repository-structure)
+- [Help and support](#help-and-support)
 
 ## Features
 
@@ -116,39 +115,85 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 ### Setup
 
 Clone with git this repository.  
-Run ./setup.ps1 in the repository root in your PowerShell.  
-This script interactively check your system for all requirements and helps generate new project.  
-*Todo: Provide additional info for not Windows 10 users*
+Run `./setup` in the repository root in your PowerShell.  
+This script interactively check your system for all requirements and helps to generate new project.  
+*Todo: Provide additional info for non Windows 10 users*
 
 #### Windows Subsystem for Linux
 
 Main point of WSL2 for us that we can run Windows programs from Linux.  
-That feature allows unify all our build scripts into one environment.  
-Official document about how to install WSL2:  
-https://docs.microsoft.com/en-us/windows/wsl/wsl2-install  
+That feature allows unify almost all our build scripts into one environment.  
 Currently WSL2 available only on Windows Insider distros but in time when engine became from Unusable to Usable state it will be available for all.
 
 #### Visual Studio Code
 
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
-You can download editor at https://code.visualstudio.com or using Chocolatey `choco install vscode`.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
 Extension activates automatically when editor finds `fonline*.json` at workspace root.  
 *Todo: write about extension features and usage*  
-*Todo: add extension to Chocolatey packages*
 
-#### CMake
+#### Package dependencies
 
-Simply said CMake is an utility that helps build program from source on any platform for any platform without much pain.  
-Also it generates project files for your preferred IDE (Visual Studio, VS Code, CLion and etc).  
-You can download latest version from https://cmake.org or using Chocolatey `choco install cmake`.
+Following Linux packages will help us build our game for target platforms.  
+These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
+* Common:  
+`clang-9` `clang-format-9` `build-essential` `git` `cmake` `python` `wget` `unzip`
+* Building for Linux:  
+`libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
+* Building for Web:  
+`nodejs` `default-jre`
+* Building for Android:  
+`android-sdk` `openjdk-8-jdk` `ant`
+* macOS/iOS cross-compilation within OSXCross:  
+`patch` `lzma-dev` `libxml2-dev` `llvm-dev` `uuid-dev`
 
-#### Other dependencies
+Also our build scripts download and install following packages:
+* [Emscripten](https://emscripten.org) - for building Web apps
+* [OSXCross](https://github.com/tpoechtrager/osxcross) - cross-compilation for macOS/iOS
+* [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
-Building within Ubuntu scripts automatically install all nessessary stuff but for Windows check following:  
-*Todo: Visual Studio 2019 (or build tools); `choco intsall visualstudio2019buildtools`*  
-*Todo: WiX toolset for installers packaging; `choco install wixtoolset`*  
-*Todo: NodeJS requirement in VSCode extension development; `choco install nodejs`*
+And `setup.ps1` might install following Windows packages for you *(some optional)*:
+* [Chocolatey](https://chocolatey.org) - package manager for Windows system (helps to install other packages automatically)
+* [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
+* [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
+* [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
+* [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management
+* [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
+
+#### Statically linked packages
+
+These packages included to this repository and linked statically to our binaries.  
+They are located in ThirdParty directory.
+
+* ACM by Abel - sound file format reader
+* [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
+* [Asio](https://think-async.com/Asio/) - networking library
+* [Assimp](http://www.assimp.org/) - 3d models/animations loading library
+* [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
+* [Catch2](https://github.com/catchorg/Catch2) - test framework
+* [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
+* [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
+* [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
+* [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
+* [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
+* [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
+* SHA1 by Steve Reid - hash generator
+* SHA2 by Olivier Gay - hash generator
+* [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
+* [Theora](https://www.theora.org/downloads/) - video library
+* [Vorbis](https://xiph.org/vorbis/) - audio library
+* [cURL](https://curl.haxx.se/) - transferring data via different network protocols
+* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
+* [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
+* [Dear ImGui](https://github.com/ocornut/imgui) - gui library
+* [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
+* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
+* [Mono](https://www.mono-project.com/) - c# scripting library
+* [libogg](https://xiph.org/ogg/) - audio library
+* [openssl](https://www.openssl.org/) - library for network transport security
+* [unqlite](https://unqlite.org/) - nosql database engine
+* [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
+* [zlib](https://www.zlib.net/) - compression library
 
 ## Work in progress
 
@@ -389,41 +434,8 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 
 * *BuildTools* - scripts for automatical build in command line or any ci/cd system
 * *Resources* - resources for build applications but not related to code
-* *SdkPlaceholder* - all this stuff merged with build output in resulted sdk zip
 * *Source* - fonline engine specific code
 * *ThirdParty* - external dependencies of engine, included to repository
-
-## Third-party packages
-
-* ACM by Abel - sound file format reader
-* [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
-* [Asio](https://think-async.com/Asio/) - networking library
-* [Assimp](http://www.assimp.org/) - 3d models/animations loading library
-* [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
-* [Catch2](https://github.com/catchorg/Catch2) - test framework
-* [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
-* [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
-* [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
-* [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
-* [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
-* SHA1 by Steve Reid - hash generator
-* SHA2 by Olivier Gay - hash generator
-* [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
-* [Theora](https://www.theora.org/downloads/) - video library
-* [Vorbis](https://xiph.org/vorbis/) - audio library
-* [cURL](https://curl.haxx.se/) - transferring data via different network protocols
-* [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
-* [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
-* [Dear ImGui](https://github.com/ocornut/imgui) - gui library
-* [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
-* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
-* [Mono](https://www.mono-project.com/) - c# scripting library
-* [libogg](https://xiph.org/ogg/) - audio library
-* [openssl](https://www.openssl.org/) - library for network transport security
-* [unqlite](https://unqlite.org/) - nosql database engine
-* [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
-* [zlib](https://www.zlib.net/) - compression library
 
 ## Help and support
 

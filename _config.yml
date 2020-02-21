@@ -7,4 +7,3 @@ exclude:
   - Resources/
   - Source/
   - ThirdParty/
-  - VSCodeExt/
