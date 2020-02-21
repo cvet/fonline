@@ -113,13 +113,14 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 
 *Todo: write about versioning SemVer https://semver.org and what public API included to itself*
 
-### Base install
+### Setup
 
-Clone with git this repository or use Chocolatey `choco install fonline`.  
-*Todo: provide BuildTools/generate-project.sh to automatically project generation*  
-*Todo: write about FONLINE_PATH environment variable that globally points to fonline engine*
+Clone with git this repository.  
+Run ./setup.ps1 in the repository root in your PowerShell.  
+This script interactively check your system for all requirements and helps generate new project.  
+*Todo: Provide additional info for not Windows 10 users*
 
-### Windows Subsystem for Linux
+#### Windows Subsystem for Linux
 
 Main point of WSL2 for us that we can run Windows programs from Linux.  
 That feature allows unify all our build scripts into one environment.  
@@ -127,7 +128,7 @@ Official document about how to install WSL2:
 https://docs.microsoft.com/en-us/windows/wsl/wsl2-install  
 Currently WSL2 available only on Windows Insider distros but in time when engine became from Unusable to Usable state it will be available for all.
 
-### Visual Studio Code
+#### Visual Studio Code
 
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 You can download editor at https://code.visualstudio.com or using Chocolatey `choco install vscode`.  
@@ -136,13 +137,13 @@ Extension activates automatically when editor finds `fonline*.json` at workspace
 *Todo: write about extension features and usage*  
 *Todo: add extension to Chocolatey packages*
 
-### CMake
+#### CMake
 
 Simply said CMake is an utility that helps build program from source on any platform for any platform without much pain.  
 Also it generates project files for your preferred IDE (Visual Studio, VS Code, CLion and etc).  
 You can download latest version from https://cmake.org or using Chocolatey `choco install cmake`.
 
-### Other dependencies
+#### Other dependencies
 
 Building within Ubuntu scripts automatically install all nessessary stuff but for Windows check following:  
 *Todo: Visual Studio 2019 (or build tools); `choco intsall visualstudio2019buildtools`*  
