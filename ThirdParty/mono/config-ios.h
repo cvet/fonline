@@ -1295,6 +1295,7 @@
 
 /* Host Platform is Darwin */
 #define HOST_DARWIN 1
+#define HOST_IOS 1
 
 /* ... */
 /* #undef HOST_MIPS */
