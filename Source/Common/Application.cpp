@@ -826,80 +826,80 @@ void App::BeginFrame()
             ev.MouseY = sdl_event.motion.y;
             ev.DeltaX = sdl_event.motion.xrel;
             ev.DeltaY = sdl_event.motion.yrel;
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_MOUSEBUTTONDOWN: {
             InputEvent::MouseDown ev;
             ev.Button = MouseButtonsMap[sdl_event.button.button];
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_MOUSEBUTTONUP: {
             InputEvent::MouseUp ev;
             ev.Button = MouseButtonsMap[sdl_event.button.button];
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_FINGERMOTION: {
             InputEvent::MouseMove ev;
             ev.MouseX = sdl_event.motion.x;
             ev.MouseY = sdl_event.motion.y;
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_FINGERDOWN: {
             InputEvent::MouseMove ev1;
             SDL_GetMouseState(&ev1.MouseX, &ev1.MouseY);
-            EventsQueue.push_back({ev1});
+            EventsQueue.push_back(ev1);
             InputEvent::MouseDown ev2;
             ev2.Button = MouseButton::Left;
-            EventsQueue.push_back({ev2});
+            EventsQueue.push_back(ev2);
         }
         break;
         case SDL_FINGERUP: {
             InputEvent::MouseUp ev;
             ev.Button = MouseButton::Left;
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheel ev;
             ev.Delta = -sdl_event.wheel.y;
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_KEYDOWN: {
             InputEvent::KeyDown ev;
             ev.Code = KeysMap[sdl_event.key.keysym.scancode];
             ev.Text = sdl_event.text.text;
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_KEYUP: {
             InputEvent::KeyUp ev;
             ev.Code = KeysMap[sdl_event.key.keysym.scancode];
-            EventsQueue.push_back({ev});
+            EventsQueue.push_back(ev);
         }
         break;
         case SDL_TEXTINPUT: {
             InputEvent::KeyDown ev1;
             ev1.Code = KeyCode::DIK_TEXT;
             ev1.Text = sdl_event.text.text;
-            EventsQueue.push_back({ev1});
+            EventsQueue.push_back(ev1);
             InputEvent::KeyUp ev2;
             ev2.Code = KeyCode::DIK_TEXT;
-            EventsQueue.push_back({ev2});
+            EventsQueue.push_back(ev2);
         }
         break;
         case SDL_DROPTEXT: {
             InputEvent::KeyDown ev1;
             ev1.Code = KeyCode::DIK_TEXT;
             ev1.Text = sdl_event.drop.file;
-            EventsQueue.push_back({ev1});
+            EventsQueue.push_back(ev1);
             InputEvent::KeyUp ev2;
             ev2.Code = KeyCode::DIK_TEXT;
-            EventsQueue.push_back({ev2});
+            EventsQueue.push_back(ev2);
             SDL_free(sdl_event.drop.file);
         };
         break;
@@ -922,10 +922,10 @@ void App::BeginFrame()
                     InputEvent::KeyDown ev1;
                     ev1.Code = KeyCode::DIK_TEXT;
                     ev1.Text = _str("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
-                    EventsQueue.push_back({ev1});
+                    EventsQueue.push_back(ev1);
                     InputEvent::KeyUp ev2;
                     ev2.Code = KeyCode::DIK_TEXT;
-                    EventsQueue.push_back({ev2});
+                    EventsQueue.push_back(ev2);
                 }
             }
             SDL_free(sdl_event.drop.file);

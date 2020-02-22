@@ -653,12 +653,12 @@ void FOClient::MainLoop()
     InputEvent event;
     while (App::Input::PollEvent(event))
     {
-        if (event.Data.index() == InputEvent::MouseMoveEvent)
+        if (event.Type == InputEvent::EventType::MouseMoveEvent)
         {
             int sw = 0, sh = 0;
             SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(std::get<InputEvent::MouseMove>(event.Data).MouseX / (float)sw * Settings.ScreenWidth);
-            int y = (int)(std::get<InputEvent::MouseMove>(event.Data).MouseY / (float)sh * Settings.ScreenHeight);
+            int x = (int)(event.MM.MouseX / (float)sw * Settings.ScreenWidth);
+            int y = (int)(event.MM.MouseY / (float)sh * Settings.ScreenHeight);
             Settings.MouseX = CLAMP(x, 0, Settings.ScreenWidth - 1);
             Settings.MouseY = CLAMP(y, 0, Settings.ScreenHeight - 1);
         }
@@ -889,10 +889,10 @@ void FOClient::ProcessInputEvents()
 
 void FOClient::ProcessInputEvent(const InputEvent& event)
 {
-    if (event.Data.index() == InputEvent::KeyDownEvent)
+    if (event.Type == InputEvent::EventType::KeyDownEvent)
     {
-        KeyCode key_code = std::get<InputEvent::KeyDown>(event.Data).Code;
-        string key_text = std::get<InputEvent::KeyDown>(event.Data).Text;
+        KeyCode key_code = event.KD.Code;
+        string key_text = event.KD.Text;
 
         if (IsVideoPlayed())
         {
@@ -913,9 +913,9 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         ScriptSys.RaiseInternalEvent(ClientFunctions.KeyDown, key_code, &key_text);
     }
-    else if (event.Data.index() == InputEvent::KeyUpEvent)
+    else if (event.Type == InputEvent::EventType::KeyUpEvent)
     {
-        KeyCode key_code = std::get<InputEvent::KeyUp>(event.Data).Code;
+        KeyCode key_code = event.KU.Code;
 
         if (key_code == KeyCode::DIK_RCONTROL || key_code == KeyCode::DIK_LCONTROL)
             Keyb.CtrlDwn = false;
@@ -926,21 +926,21 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         ScriptSys.RaiseInternalEvent(ClientFunctions.KeyUp, key_code);
     }
-    else if (event.Data.index() == InputEvent::MouseMoveEvent)
+    else if (event.Type == InputEvent::EventType::MouseMoveEvent)
     {
-        int mouse_x = std::get<InputEvent::MouseMove>(event.Data).MouseX;
-        int mouse_y = std::get<InputEvent::MouseMove>(event.Data).MouseY;
-        int delta_x = std::get<InputEvent::MouseMove>(event.Data).DeltaX;
-        int delta_y = std::get<InputEvent::MouseMove>(event.Data).DeltaY;
+        int mouse_x = event.MM.MouseX;
+        int mouse_y = event.MM.MouseY;
+        int delta_x = event.MM.DeltaX;
+        int delta_y = event.MM.DeltaY;
 
         Settings.MouseX = mouse_x;
         Settings.MouseY = mouse_y;
 
         ScriptSys.RaiseInternalEvent(ClientFunctions.MouseMove, delta_x, delta_y);
     }
-    else if (event.Data.index() == InputEvent::MouseDownEvent)
+    else if (event.Type == InputEvent::EventType::MouseDownEvent)
     {
-        MouseButton mouse_button = std::get<InputEvent::MouseDown>(event.Data).Button;
+        MouseButton mouse_button = event.MD.Button;
 
         if (IsVideoPlayed())
         {
@@ -950,15 +950,15 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         ScriptSys.RaiseInternalEvent(ClientFunctions.MouseDown, mouse_button);
     }
-    else if (event.Data.index() == InputEvent::MouseUpEvent)
+    else if (event.Type == InputEvent::EventType::MouseUpEvent)
     {
-        MouseButton mouse_button = std::get<InputEvent::MouseUp>(event.Data).Button;
+        MouseButton mouse_button = event.MU.Button;
 
         ScriptSys.RaiseInternalEvent(ClientFunctions.MouseUp, mouse_button);
     }
-    else if (event.Data.index() == InputEvent::MouseWheelEvent)
+    else if (event.Type == InputEvent::EventType::MouseWheelEvent)
     {
-        int wheel_delta = std::get<InputEvent::MouseWheel>(event.Data).Delta;
+        int wheel_delta = event.MW.Delta;
 
         // Todo: handle mouse wheel
     }
@@ -6934,16 +6934,16 @@ void FOClient::SScriptFunc::Global_KeyboardPress(uchar key1, uchar key2, string 
         return;
 
     if (key1)
-        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1_text})});
+        Self->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key1, key1_text}));
 
     if (key2)
     {
-        Self->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2_text})});
-        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key2})});
+        Self->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key2, key2_text}));
+        Self->ProcessInputEvent(InputEvent::KeyUp({(KeyCode)key2}));
     }
 
     if (key1)
-        Self->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key1})});
+        Self->ProcessInputEvent(InputEvent::KeyUp({(KeyCode)key1}));
 }
 
 void FOClient::SScriptFunc::Global_SetRainAnimation(string fall_anim_name, string drop_anim_name)

@@ -16,22 +16,26 @@ function install_common_packages()
     echo "Install common packages"
     sudo apt-get -qq -y update
 
-    echo "Install git"
-    sudo apt-get -qq -y install git
-    echo "Install build-essential"
-    sudo apt-get -qq -y install build-essential
-    echo "Install cmake"
-    sudo apt-get -qq -y install cmake
-    echo "Install clang"
-    sudo apt-get -qq -y install clang
-    echo "Install unzip"
-    sudo apt-get -qq -y install unzip
-    echo "Install wput"
-    sudo apt-get -qq -y install wput
-    echo "Install python"
-    sudo apt-get -qq -y install python
+    echo "Install clang-9"
+    sudo apt-get -qq -y install clang-9
     echo "Install clang-format-9"
     sudo apt-get -qq -y install clang-format-9
+    echo "Install build-essential"
+    sudo apt-get -qq -y install build-essential
+    echo "Install git"
+    sudo apt-get -qq -y install git
+    echo "Install cmake"
+    sudo apt-get -qq -y install cmake
+    echo "Install python"
+    sudo apt-get -qq -y install python
+    echo "Install wget"
+    sudo apt-get -qq -y install wget
+    echo "Install unzip"
+    sudo apt-get -qq -y install unzip
+
+    echo "Set clang-9 as default clang compiler"
+    sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 100
+    sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9 100
 }
 
 function install_linux_packages()
@@ -39,8 +43,12 @@ function install_linux_packages()
     echo "Install Linux packages"
     sudo apt-get -qq -y update
 
-    echo "Install clang"
-    sudo apt-get -qq -y install clang
+    echo "Install libc++-dev"
+    sudo apt-get -qq -y install libc++-dev
+    echo "Install libc++abi-dev"
+    sudo apt-get -qq -y install libc++abi-dev
+    echo "Install binutils-dev"
+    sudo apt-get -qq -y install binutils-dev
     echo "Install libx11-dev"
     sudo apt-get -qq -y install libx11-dev
     echo "Install freeglut3-dev"
@@ -51,14 +59,6 @@ function install_linux_packages()
     sudo apt-get -qq -y install libevent-dev
     echo "Install libxi-dev"
     sudo apt-get -qq -y install libxi-dev
-    echo "Install curl"
-    sudo apt-get -qq -y install curl
-    echo "Install binutils-dev"
-    sudo apt-get -qq -y install binutils-dev
-    echo "Install libc++-dev"
-    sudo apt-get -qq -y install libc++-dev
-    echo "Install libc++abi-dev"
-    sudo apt-get -qq -y install libc++abi-dev
 }
 
 function install_web_packages()
@@ -77,12 +77,12 @@ function install_android_packages()
     echo "Install Android packages"
     sudo apt-get -qq -y update
 
-    echo "Install ant"
-    sudo apt-get -qq -y install ant
-    echo "Install openjdk-8-jdk"
-    sudo apt-get -qq -y install openjdk-8-jdk
     echo "Install android-sdk"
     sudo apt-get -qq -y install android-sdk
+    echo "Install openjdk-8-jdk"
+    sudo apt-get -qq -y install openjdk-8-jdk
+    echo "Install ant"
+    sudo apt-get -qq -y install ant
 }
 
 function install_osxcross_packages()
@@ -213,7 +213,7 @@ function verify_workspace_part()
     fi
 }
 
-verify_workspace_part common-packages 1 install_common_packages
+verify_workspace_part common-packages 3 install_common_packages
 wait_jobs
 if [ ! -z `check_arg linux all` ]; then
     verify_workspace_part linux-packages 1 install_linux_packages

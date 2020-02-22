@@ -286,41 +286,7 @@ enum class MouseButton
 
 struct InputEvent
 {
-    struct MouseMove
-    {
-        int MouseX {};
-        int MouseY {};
-        int DeltaX {};
-        int DeltaY {};
-    };
-
-    struct MouseDown
-    {
-        MouseButton Button {};
-    };
-
-    struct MouseUp
-    {
-        MouseButton Button {};
-    };
-
-    struct MouseWheel
-    {
-        int Delta {};
-    };
-
-    struct KeyDown
-    {
-        KeyCode Code {};
-        string Text {};
-    };
-
-    struct KeyUp
-    {
-        KeyCode Code {};
-    };
-
-    enum EventType
+    enum class EventType
     {
         NoneEvent,
         MouseMoveEvent,
@@ -329,9 +295,49 @@ struct InputEvent
         MouseWheelEvent,
         KeyDownEvent,
         KeyUpEvent,
-    };
+    } Type {};
 
-    variant<int, MouseMove, MouseDown, MouseUp, MouseWheel, KeyDown, KeyUp> Data {};
+    struct MouseMove
+    {
+        int MouseX {};
+        int MouseY {};
+        int DeltaX {};
+        int DeltaY {};
+    } MM {};
+
+    struct MouseDown
+    {
+        MouseButton Button {};
+    } MD {};
+
+    struct MouseUp
+    {
+        MouseButton Button {};
+    } MU {};
+
+    struct MouseWheel
+    {
+        int Delta {};
+    } MW {};
+
+    struct KeyDown
+    {
+        KeyCode Code {};
+        string Text {};
+    } KD {};
+
+    struct KeyUp
+    {
+        KeyCode Code {};
+    } KU {};
+
+    InputEvent() = default;
+    InputEvent(MouseMove ev) : Type {EventType::MouseMoveEvent}, MM {ev} {}
+    InputEvent(MouseDown ev) : Type {EventType::MouseDownEvent}, MD {ev} {}
+    InputEvent(MouseUp ev) : Type {EventType::MouseUpEvent}, MU {ev} {}
+    InputEvent(MouseWheel ev) : Type {EventType::MouseWheelEvent}, MW {ev} {}
+    InputEvent(KeyDown ev) : Type {EventType::KeyDownEvent}, KD {ev} {}
+    InputEvent(KeyUp ev) : Type {EventType::KeyUpEvent}, KU {ev} {}
 };
 
 class App : public StaticClass

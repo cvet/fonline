@@ -10,10 +10,8 @@ if [ ! -z "$(ls -A)" ]; then
    exit 1
 fi
 
-pushd .
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
-source $CUR_DIR/setup-env.sh
-popd &> /dev/null
+FO_ROOT="$(cd $CUR_DIR/../ && pwd)"
 
 echo "Copy project template"
 cp -r "$FO_ROOT/BuildTools/project-template/." .

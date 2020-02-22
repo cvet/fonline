@@ -443,8 +443,10 @@ public:
 private:
     void ThrowException()
     {
+#if 0
         if (!std::uncaught_exceptions())
             throw GenericException("Some of subscriber still alive", subscriberCallbacks.size());
+#endif
     }
 
     list<Callback> subscriberCallbacks {};
@@ -486,8 +488,10 @@ public:
 private:
     void ThrowException()
     {
+#if 0
         if (!std::uncaught_exceptions())
             throw GenericException("Some of pointer still alive", ptrCounter.load());
+#endif
     }
 
     std::atomic_int ptrCounter {};
