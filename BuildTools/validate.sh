@@ -3,17 +3,42 @@
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
-if [ "$1" != "mac" ] && [ "$1" != "ios" ]; then
-    $CUR_DIR/prepare-workspace.sh $1
+if [ "$1" = "linux" ]; then
+    TARGET=linux
+    TARGET_ARG=full
+elif [ "$1" = "android-arm" ]; then
+    TARGET=android
+elif [ "$1" = "android-arm64" ]; then
+    TARGET=android-arm64
+elif [ "$1" = "android-x86" ]; then
+    TARGET=android-x86
+elif [ "$1" = "web" ]; then
+    TARGET=web
+elif [ "$1" = "mac" ]; then
+    TARGET=mac
+elif [ "$1" = "ios" ]; then
+    TARGET=ios
+elif [ "$1" = "unit-tests" ]; then
+    TARGET=linux
+    TARGET_ARG=unit-tests
+elif [ "$1" = "code-coverage" ]; then
+    TARGET=linux
+    TARGET_ARG=code-coverage
+else
+    echo "Invalid argument"
 fi
 
-$CUR_DIR/build.sh $1 $2
+if [ "$1" = "mac" ] && [ "$1" != "ios" ]; then
+    $CUR_DIR/prepare-workspace.sh $TARGET
+fi
 
-if [ "$2" = "unit-tests" ]; then
+$CUR_DIR/build.sh $TARGET $TARGET_ARG
+
+if [ "$1" = "unit-tests" ]; then
     echo "Run unit tests"
     $OUTPUT_PATH/Tests/FOnlineUnitTests
 
-elif [ "$2" = "code-coverage" ]; then
+elif [ "$1" = "code-coverage" ]; then
     echo "Run code coverage"
     $OUTPUT_PATH/Tests/FOnlineCodeCoverage
 
