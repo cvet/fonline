@@ -3,70 +3,63 @@ name: validate
 on: [push, pull_request]
 
 jobs:
-  windows-win32:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - run: BuildTools\validate.bat win32
-  windows-win64:
+  win64-complete:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64
-  linux:
+  linux-complete:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux full
-  android-arm:
+  win32-client:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win32
+  android-arm-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android
-  android-arm64:
+  android-arm64-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm64
-  android-x86:
+  android-x86-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-x86
-  web-release:
+  web-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh web
-  web-debug:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - run: BuildTools/validate.sh web-debug
-  mac:
+  mac-client:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh mac
-  ios:
+  ios-client:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
