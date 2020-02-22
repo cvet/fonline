@@ -41,7 +41,7 @@
                  multisamples:(int)multisamples
                       context:(EAGLContext *)glcontext;
 
-@property (nonatomic, readonly, weak) EAGLContext *context;
+@property (nonatomic, readonly) EAGLContext *context;
 
 /* The width and height of the drawable in pixels (as opposed to points.) */
 @property (nonatomic, readonly) int backingWidth;
