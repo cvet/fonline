@@ -48,7 +48,7 @@
     BOOL retainedBacking;
 }
 
-@synthesize context;
+//! @synthesize context;
 @synthesize backingWidth;
 @synthesize backingHeight;
 
