@@ -28,7 +28,7 @@ else
     echo "Invalid argument"
 fi
 
-if [ "$1" = "mac" ] && [ "$1" != "ios" ]; then
+if [ "$1" != "mac" ] && [ "$1" != "ios" ]; then
     $CUR_DIR/prepare-workspace.sh $TARGET
 fi
 
