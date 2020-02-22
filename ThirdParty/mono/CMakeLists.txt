@@ -140,7 +140,7 @@ elseif( ANDROID )
 	else()
 		message( FATAL_ERROR "Unknown ANDROID_ABI" )
 	endif()
-elseif( APPLE AND IOS_PLATFORM )
+elseif( APPLE AND PLATFORM )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMINI_ARCH_SOURCE
 			"repo/mono/mini/mini-arm64.c"
@@ -618,7 +618,7 @@ set( LIBMONOUTILS_ARCH_SOURCE
 	#"repo/mono/utils/mach-support-unknown.c"
 	#"repo/mono/utils/mono-hwcap-cross.c"
 )
-if( APPLE AND IOS_PLATFORM )
+if( APPLE AND PLATFORM )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
 			"repo/mono/utils/mono-hwcap-arm64.c"
@@ -973,7 +973,7 @@ else()
 		add_definitions( "-D_REENTRANT" )
 		add_definitions( "-DGC_LINUX_THREADS" )
 	endif()
-	if( APPLE AND IOS_PLATFORM )
+	if( APPLE AND PLATFORM )
 		include_directories( "repo/support/ios" )
 	endif()
 	if( EMSCRIPTEN )
