@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh linux full
+    - run: BuildTools/validate.sh linux
   win32-client:
     runs-on: windows-latest
     steps:
@@ -30,7 +30,7 @@ jobs:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh android
+    - run: BuildTools/validate.sh android-arm
   android-arm64-client:
     runs-on: ubuntu-18.04
     steps:
@@ -72,7 +72,7 @@ jobs:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh linux unit-tests
+    - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-18.04
     steps:
@@ -81,7 +81,7 @@ jobs:
         fetch-depth: 1
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: BuildTools/validate.sh linux code-coverage
+      run: BuildTools/validate.sh code-coverage
   check-formatting:
     runs-on: ubuntu-18.04
     steps:
