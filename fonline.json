@@ -119,12 +119,12 @@
         {
             "label": "Run unit tests",
             "group": "Test",
-            "command": "BuildTools/validate.sh linux unit-tests"
+            "command": "BuildTools/validate.sh unit-tests"
         },
         {
             "label": "Run code coverage",
             "group": "Test",
-            "command": "BuildTools/validate.sh linux code-coverage"
+            "command": "BuildTools/validate.sh code-coverage"
         },
         {
             "label": "Package server",
