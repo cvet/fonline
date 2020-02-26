@@ -29,6 +29,10 @@ ScriptString* Global_GetMsgStr(size_t lang, size_t textMsg, uint strNum)
 
 	LanguagePack& lang_pack = FOServer::LangPacks[lang];
 	FOMsg& msg = lang_pack.Msg[textMsg];
+
+	if( msg.Count(strNum) == 0 )
+		return NULL;
+
 	const char* c_str = msg.GetStr(strNum);
 
 	return new ScriptString(c_str);
