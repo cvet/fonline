@@ -34,9 +34,9 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "Mapper.h"
 #include "Keyboard.h"
 #include "Log.h"
+#include "Mapper.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"

@@ -35,7 +35,6 @@
 
 #include "AppGui.h"
 #include "NetBuffer.h"
-#include "SDL_main.h"
 #include "Server.h"
 #include "Settings.h"
 #include "StringUtils.h"
