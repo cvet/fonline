@@ -51,3 +51,12 @@ void SDL_UnloadObject(void* handle)
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif
+
+bool Is3dExtensionSupported(const string& ext)
+{
+    static const unordered_set<string> supported_formats = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase",
+        "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh",
+        "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl",
+        "hmp", "ndo", "ac"};
+    return supported_formats.count(ext);
+}

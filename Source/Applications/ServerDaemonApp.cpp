@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Server.h"
+#include "Settings.h"
 #include "Testing.h"
 #include "Version_Include.h"
 

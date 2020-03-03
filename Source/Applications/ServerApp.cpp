@@ -43,6 +43,8 @@
 #include "Timer.h"
 #include "Version_Include.h"
 
+#include "SDL_main.h"
+
 static GlobalSettings Settings {};
 static FOServer* Server;
 static std::thread ServerThread;

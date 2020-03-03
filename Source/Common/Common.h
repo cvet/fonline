@@ -1313,4 +1313,6 @@ public:
     };
 };
 
+extern bool Is3dExtensionSupported(const string& ext);
+
 #endif // PRECOMPILED_HEADER_GUARD

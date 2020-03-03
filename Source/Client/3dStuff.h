@@ -65,11 +65,13 @@ struct MeshTexture : public NonCopyable
 
 struct MeshData : public NonCopyable
 {
+    void Load(DataReader& reader);
+
     Bone* Owner {};
     Vertex3DVec Vertices {};
     UShortVec Indices {};
     string DiffuseTexture {};
-    UIntVec SkinBoneNameHashes {};
+    HashVec SkinBoneNameHashes {};
     MatrixVec SkinBoneOffsets {};
     vector<Bone*> SkinBones {};
     string EffectName {};
@@ -90,6 +92,8 @@ static_assert(std::is_standard_layout_v<MeshInstance>);
 
 struct Bone : public NonCopyable
 {
+    void Load(DataReader& reader);
+    void FixAfterLoad(Bone* root_bone);
     Bone* Find(hash name_hash);
     static hash GetHash(const string& name);
 
@@ -147,8 +151,6 @@ struct AnimationCallback
     float NormalizedTime {};
     std::function<void()> Callback {};
 };
-
-extern bool Is3dExtensionSupported(const string& ext);
 
 class Animation3dManager : public NonMovable
 {

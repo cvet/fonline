@@ -40,9 +40,9 @@
 class AnimSet : public NonCopyable
 {
     friend class AnimController;
-    friend class Bakering;
 
 public:
+    void Load(DataReader& reader);
     void SetData(const string& fname, const string& name, float ticks, float tps);
     void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt,
         const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv);

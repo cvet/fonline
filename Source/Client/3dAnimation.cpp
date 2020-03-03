@@ -33,6 +33,49 @@
 
 #include "3dAnimation.h"
 
+void AnimSet::Load(DataReader& reader)
+{
+    uint len = 0;
+    reader.ReadPtr(&len, sizeof(len));
+    animFileName.resize(len);
+    reader.ReadPtr(&animFileName[0], len);
+    reader.ReadPtr(&len, sizeof(len));
+    animName.resize(len);
+    reader.ReadPtr(&animName[0], len);
+    reader.ReadPtr(&durationTicks, sizeof(durationTicks));
+    reader.ReadPtr(&ticksPerSecond, sizeof(ticksPerSecond));
+    reader.ReadPtr(&len, sizeof(len));
+    bonesHierarchy.resize(len);
+    for (uint i = 0, j = len; i < j; i++)
+    {
+        reader.ReadPtr(&len, sizeof(len));
+        bonesHierarchy[i].resize(len);
+        reader.ReadPtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
+    }
+    reader.ReadPtr(&len, sizeof(len));
+    boneOutputs.resize(len);
+    for (uint i = 0, j = len; i < j; i++)
+    {
+        AnimSet::BoneOutput& o = boneOutputs[i];
+        reader.ReadPtr(&o.nameHash, sizeof(o.nameHash));
+        reader.ReadPtr(&len, sizeof(len));
+        o.scaleTime.resize(len);
+        o.scaleValue.resize(len);
+        reader.ReadPtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
+        reader.ReadPtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
+        reader.ReadPtr(&len, sizeof(len));
+        o.rotationTime.resize(len);
+        o.rotationValue.resize(len);
+        reader.ReadPtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
+        reader.ReadPtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
+        reader.ReadPtr(&len, sizeof(len));
+        o.translationTime.resize(len);
+        o.translationValue.resize(len);
+        reader.ReadPtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
+        reader.ReadPtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
+    }
+}
+
 void AnimSet::SetData(const string& fname, const string& name, float ticks, float tps)
 {
     animFileName = fname;

@@ -34,10 +34,7 @@
 // Todo: fix assimp, exclude fbxsdk
 
 #include "ModelBaker.h"
-#include "3dAnimation.h"
-#include "3dStuff.h"
 #include "Application.h"
-#include "Bakering.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -47,6 +44,158 @@
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 #include "fbxsdk/fbxsdk.h"
+
+struct MeshData : public NonCopyable
+{
+    void Save(DataWriter& writer)
+    {
+        uint len = (uint)Vertices.size();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&Vertices[0], len * sizeof(Vertices[0]));
+        len = (uint)Indices.size();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&Indices[0], len * sizeof(Indices[0]));
+        len = (uint)DiffuseTexture.length();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&DiffuseTexture[0], len);
+        len = (uint)SkinBones.size();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&SkinBones[0], len * sizeof(SkinBones[0]));
+        len = (uint)SkinBoneOffsets.size();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+    }
+
+    Vertex3DVec Vertices {};
+    UShortVec Indices {};
+    string DiffuseTexture {};
+    HashVec SkinBones {};
+    MatrixVec SkinBoneOffsets {};
+    string EffectName {};
+};
+
+struct Bone : public NonCopyable
+{
+    static hash GetHash(const string& name) { return _str(name).toHash(); }
+
+    Bone* Find(hash name_hash)
+    {
+        if (NameHash == name_hash)
+            return this;
+
+        for (auto& child : Children)
+        {
+            Bone* bone = child->Find(name_hash);
+            if (bone)
+                return bone;
+        }
+        return nullptr;
+    }
+
+    void Save(DataWriter& writer)
+    {
+        writer.WritePtr(&NameHash, sizeof(NameHash));
+        writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
+        writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+        writer.Write<uchar>(AttachedMesh != nullptr ? 1 : 0);
+        if (AttachedMesh)
+            AttachedMesh->Save(writer);
+        uint len = (uint)Children.size();
+        writer.WritePtr(&len, sizeof(len));
+        for (auto& child : Children)
+            child->Save(writer);
+    }
+
+    hash NameHash {};
+    Matrix TransformationMatrix {};
+    Matrix GlobalTransformationMatrix {};
+    unique_ptr<MeshData> AttachedMesh {};
+    vector<unique_ptr<Bone>> Children {};
+    Matrix CombinedTransformationMatrix {};
+};
+
+struct AnimSet : public NonCopyable
+{
+    struct BoneOutput
+    {
+        hash nameHash {};
+        FloatVec scaleTime {};
+        VectorVec scaleValue {};
+        FloatVec rotationTime {};
+        QuaternionVec rotationValue {};
+        FloatVec translationTime {};
+        VectorVec translationValue {};
+    };
+
+    void SetData(const string& fname, const string& name, float ticks, float tps)
+    {
+        animFileName = fname;
+        animName = name;
+        durationTicks = ticks;
+        ticksPerSecond = tps;
+    }
+
+    void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt,
+        const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv)
+    {
+        boneOutputs.push_back(BoneOutput());
+        BoneOutput& o = boneOutputs.back();
+        o.nameHash = hierarchy.back();
+        o.scaleTime = st;
+        o.scaleValue = sv;
+        o.rotationTime = rt;
+        o.rotationValue = rv;
+        o.translationTime = tt;
+        o.translationValue = tv;
+        bonesHierarchy.push_back(hierarchy);
+    }
+
+    void Save(DataWriter& writer)
+    {
+        uint len = (uint)animFileName.length();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&animFileName[0], len);
+        len = (uint)animName.length();
+        writer.WritePtr(&len, sizeof(len));
+        writer.WritePtr(&animName[0], len);
+        writer.WritePtr(&durationTicks, sizeof(durationTicks));
+        writer.WritePtr(&ticksPerSecond, sizeof(ticksPerSecond));
+        len = (uint)bonesHierarchy.size();
+        writer.WritePtr(&len, sizeof(len));
+        for (uint i = 0, j = (uint)bonesHierarchy.size(); i < j; i++)
+        {
+            len = (uint)bonesHierarchy[i].size();
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
+        }
+        len = (uint)boneOutputs.size();
+        writer.WritePtr(&len, sizeof(len));
+        for (auto it = boneOutputs.begin(); it != boneOutputs.end(); ++it)
+        {
+            AnimSet::BoneOutput& o = *it;
+            writer.WritePtr(&o.nameHash, sizeof(o.nameHash));
+            len = (uint)o.scaleTime.size();
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
+            writer.WritePtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
+            len = (uint)o.rotationTime.size();
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
+            writer.WritePtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
+            len = (uint)o.translationTime.size();
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
+            writer.WritePtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
+        }
+    }
+
+    string animFileName {};
+    string animName {};
+    float durationTicks {};
+    float ticksPerSecond {};
+    vector<BoneOutput> boneOutputs {};
+    HashVecVec bonesHierarchy {};
+};
 
 ModelBaker::ModelBaker(FileCollection& all_files) : allFiles {all_files}
 {
@@ -414,10 +563,10 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
 
     UCharVec data;
     DataWriter writer {data};
-    Bakering::SaveBone(root_bone, writer);
+    root_bone->Save(writer);
     writer.Write((uint)loaded_animations.size());
     for (size_t i = 0; i < loaded_animations.size(); i++)
-        Bakering::SaveAnimSet(loaded_animations[i], writer);
+        loaded_animations[i]->Save(writer);
 
     delete root_bone;
     for (size_t i = 0; i < loaded_animations.size(); i++)
@@ -491,7 +640,6 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
 
         mesh_bone->AttachedMesh = std::make_unique<MeshData>();
         MeshData* mesh = mesh_bone->AttachedMesh.get();
-        mesh->Owner = mesh_bone;
 
         // Vertices
         mesh->Vertices.resize(ai_mesh->mNumVertices);
@@ -545,9 +693,8 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
         // Skinning
         if (ai_mesh->mNumBones > 0)
         {
-            mesh->SkinBoneNameHashes.resize(ai_mesh->mNumBones);
-            mesh->SkinBoneOffsets.resize(ai_mesh->mNumBones);
             mesh->SkinBones.resize(ai_mesh->mNumBones);
+            mesh->SkinBoneOffsets.resize(ai_mesh->mNumBones);
             RUNTIME_ASSERT(ai_mesh->mNumBones <= MODEL_MAX_BONES);
             for (uint i = 0; i < ai_mesh->mNumBones; i++)
             {
@@ -560,9 +707,8 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
                     WriteLog("Skin bone '{}' for mesh '{}' not found.\n", ai_bone->mName.data, ai_node->mName.data);
                     skin_bone = bone;
                 }
-                mesh->SkinBoneNameHashes[i] = skin_bone->NameHash;
+                mesh->SkinBones[i] = skin_bone->NameHash;
                 mesh->SkinBoneOffsets[i] = ai_bone->mOffsetMatrix;
-                mesh->SkinBones[i] = skin_bone;
 
                 // Blend data
                 float bone_index = (float)i;
@@ -586,12 +732,10 @@ static void ConvertAssimpPass2(Bone* root_bone, Bone* parent_bone, Bone* bone, a
         }
         else
         {
-            mesh->SkinBoneNameHashes.resize(1);
-            mesh->SkinBoneOffsets.resize(1);
             mesh->SkinBones.resize(1);
-            mesh->SkinBoneNameHashes[0] = 0;
+            mesh->SkinBoneOffsets.resize(1);
+            mesh->SkinBones[0] = 0;
             mesh->SkinBoneOffsets[0] = Matrix();
-            mesh->SkinBones[0] = mesh_bone;
             for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++)
             {
                 Vertex3D& v = mesh->Vertices[i];
@@ -668,7 +812,6 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         fbx_mesh->GetPolygonCount() > 0)
     {
         bone->AttachedMesh = std::make_unique<MeshData>();
-        bone->AttachedMesh->Owner = bone;
         MeshData* mesh = bone->AttachedMesh.get();
 
         // Generate tangents
@@ -763,9 +906,8 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
             // Process skin bones
             int num_bones = fbx_skin->GetClusterCount();
-            mesh->SkinBoneNameHashes.resize(num_bones);
-            mesh->SkinBoneOffsets.resize(num_bones);
             mesh->SkinBones.resize(num_bones);
+            mesh->SkinBoneOffsets.resize(num_bones);
             RUNTIME_ASSERT(num_bones <= MODEL_MAX_BONES);
             for (int i = 0; i < num_bones; i++)
             {
@@ -783,10 +925,9 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                         fbx_node->GetName());
                     skin_bone = bone;
                 }
-                mesh->SkinBoneNameHashes[i] = skin_bone->NameHash;
+                mesh->SkinBones[i] = skin_bone->NameHash;
                 mesh->SkinBoneOffsets[i] =
                     ConvertFbxMatrix(link_matrix).Inverse() * ConvertFbxMatrix(cur_matrix) * mt * mr * ms;
-                mesh->SkinBones[i] = skin_bone;
 
                 // Blend data
                 float bone_index = (float)i;
@@ -829,12 +970,10 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
             mr.FromEulerAnglesXYZ(Vector((float)gr[0], (float)gr[1], (float)gr[2]));
             Matrix::Scaling(Vector((float)gs[0], (float)gs[1], (float)gs[2]), ms);
 
-            mesh->SkinBoneNameHashes.resize(1);
-            mesh->SkinBoneOffsets.resize(1);
             mesh->SkinBones.resize(1);
-            mesh->SkinBoneNameHashes[0] = 0;
+            mesh->SkinBoneOffsets.resize(1);
+            mesh->SkinBones[0] = 0;
             mesh->SkinBoneOffsets[0] = mt * mr * ms;
-            mesh->SkinBones[0] = bone;
             for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++)
             {
                 Vertex3D& v = mesh->Vertices[i];

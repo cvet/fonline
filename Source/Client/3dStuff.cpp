@@ -32,7 +32,6 @@
 //
 
 #include "3dStuff.h"
-#include "Bakering.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
@@ -40,13 +39,69 @@
 #include "Testing.h"
 #include "Timer.h"
 
-bool Is3dExtensionSupported(const string& ext)
+void MeshData::Load(DataReader& reader)
 {
-    static const unordered_set<string> supported_formats = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase",
-        "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh",
-        "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl",
-        "hmp", "ndo", "ac"};
-    return supported_formats.count(ext);
+    uint len = 0;
+    reader.ReadPtr(&len, sizeof(len));
+    Vertices.resize(len);
+    reader.ReadPtr(&Vertices[0], len * sizeof(Vertices[0]));
+    reader.ReadPtr(&len, sizeof(len));
+    Indices.resize(len);
+    reader.ReadPtr(&Indices[0], len * sizeof(Indices[0]));
+    reader.ReadPtr(&len, sizeof(len));
+    DiffuseTexture.resize(len);
+    reader.ReadPtr(&DiffuseTexture[0], len);
+    reader.ReadPtr(&len, sizeof(len));
+    SkinBones.resize(len);
+    reader.ReadPtr(&SkinBones[0], len * sizeof(SkinBones[0]));
+    reader.ReadPtr(&len, sizeof(len));
+    SkinBoneOffsets.resize(len);
+    reader.ReadPtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+    SkinBones.resize(SkinBoneOffsets.size());
+}
+
+void Bone::Load(DataReader& reader)
+{
+    reader.ReadPtr(&NameHash, sizeof(NameHash));
+    reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
+    reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+    if (reader.Read<uchar>())
+    {
+        AttachedMesh = std::make_unique<MeshData>();
+        AttachedMesh->Load(reader);
+        AttachedMesh->Owner = this;
+    }
+    else
+    {
+        AttachedMesh = nullptr;
+    }
+    uint len = 0;
+    reader.ReadPtr(&len, sizeof(len));
+    for (uint i = 0; i < len; i++)
+    {
+        auto child = std::make_unique<Bone>();
+        child->Load(reader);
+        Children.push_back(std::move(child));
+    }
+    CombinedTransformationMatrix = Matrix();
+}
+
+void Bone::FixAfterLoad(Bone* root_bone)
+{
+    if (AttachedMesh)
+    {
+        MeshData* mesh = AttachedMesh.get();
+        for (size_t i = 0, j = mesh->SkinBoneNameHashes.size(); i < j; i++)
+        {
+            if (mesh->SkinBoneNameHashes[i])
+                mesh->SkinBones[i] = root_bone->Find(mesh->SkinBoneNameHashes[i]);
+            else
+                mesh->SkinBones[i] = mesh->Owner;
+        }
+    }
+
+    for (auto& child : Children)
+        child->FixAfterLoad(root_bone);
 }
 
 Bone* Bone::Find(hash name_hash)
@@ -115,15 +170,15 @@ Bone* Animation3dManager::LoadModel(const string& fname)
     // Load bones
     auto root_bone = std::make_unique<Bone>();
     DataReader reader {file.GetBuf()};
-    Bakering::LoadBone(root_bone.get(), reader);
-    Bakering::FixBoneAfterLoad(root_bone.get(), root_bone.get());
+    root_bone->Load(reader);
+    root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
     uint anim_sets_count = file.GetBEUInt();
     for (uint i = 0; i < anim_sets_count; i++)
     {
         auto anim_set = std::make_unique<AnimSet>();
-        Bakering::LoadAnimSet(anim_set.get(), reader);
+        anim_set->Load(reader);
         loadedAnimSets.push_back(std::move(anim_set));
     }
 
