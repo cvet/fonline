@@ -46,7 +46,7 @@
 
 #include "minizip/zip.h"
 
-static GlobalSettings Settings {};
+static GlobalSettings Settings;
 
 static bool GenerateResources(StrVec* resource_names);
 

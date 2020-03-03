@@ -118,83 +118,60 @@ struct AnimSet : public NonCopyable
 {
     struct BoneOutput
     {
-        hash nameHash {};
-        FloatVec scaleTime {};
-        VectorVec scaleValue {};
-        FloatVec rotationTime {};
-        QuaternionVec rotationValue {};
-        FloatVec translationTime {};
-        VectorVec translationValue {};
+        hash NameHash {};
+        FloatVec ScaleTime {};
+        VectorVec ScaleValue {};
+        FloatVec RotationTime {};
+        QuaternionVec RotationValue {};
+        FloatVec TranslationTime {};
+        VectorVec TranslationValue {};
     };
-
-    void SetData(const string& fname, const string& name, float ticks, float tps)
-    {
-        animFileName = fname;
-        animName = name;
-        durationTicks = ticks;
-        ticksPerSecond = tps;
-    }
-
-    void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt,
-        const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv)
-    {
-        boneOutputs.push_back(BoneOutput());
-        BoneOutput& o = boneOutputs.back();
-        o.nameHash = hierarchy.back();
-        o.scaleTime = st;
-        o.scaleValue = sv;
-        o.rotationTime = rt;
-        o.rotationValue = rv;
-        o.translationTime = tt;
-        o.translationValue = tv;
-        bonesHierarchy.push_back(hierarchy);
-    }
 
     void Save(DataWriter& writer)
     {
-        uint len = (uint)animFileName.length();
+        uint len = (uint)AnimFileName.length();
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&animFileName[0], len);
-        len = (uint)animName.length();
+        writer.WritePtr(&AnimFileName[0], len);
+        len = (uint)AnimName.length();
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&animName[0], len);
-        writer.WritePtr(&durationTicks, sizeof(durationTicks));
-        writer.WritePtr(&ticksPerSecond, sizeof(ticksPerSecond));
-        len = (uint)bonesHierarchy.size();
+        writer.WritePtr(&AnimName[0], len);
+        writer.WritePtr(&DurationTicks, sizeof(DurationTicks));
+        writer.WritePtr(&TicksPerSecond, sizeof(TicksPerSecond));
+        len = (uint)BonesHierarchy.size();
         writer.WritePtr(&len, sizeof(len));
-        for (uint i = 0, j = (uint)bonesHierarchy.size(); i < j; i++)
+        for (uint i = 0, j = (uint)BonesHierarchy.size(); i < j; i++)
         {
-            len = (uint)bonesHierarchy[i].size();
+            len = (uint)BonesHierarchy[i].size();
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&bonesHierarchy[i][0], len * sizeof(bonesHierarchy[0][0]));
+            writer.WritePtr(&BonesHierarchy[i][0], len * sizeof(BonesHierarchy[0][0]));
         }
-        len = (uint)boneOutputs.size();
+        len = (uint)BoneOutputs.size();
         writer.WritePtr(&len, sizeof(len));
-        for (auto it = boneOutputs.begin(); it != boneOutputs.end(); ++it)
+        for (auto it = BoneOutputs.begin(); it != BoneOutputs.end(); ++it)
         {
             AnimSet::BoneOutput& o = *it;
-            writer.WritePtr(&o.nameHash, sizeof(o.nameHash));
-            len = (uint)o.scaleTime.size();
+            writer.WritePtr(&o.NameHash, sizeof(o.NameHash));
+            len = (uint)o.ScaleTime.size();
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.scaleTime[0], len * sizeof(o.scaleTime[0]));
-            writer.WritePtr(&o.scaleValue[0], len * sizeof(o.scaleValue[0]));
-            len = (uint)o.rotationTime.size();
+            writer.WritePtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
+            writer.WritePtr(&o.ScaleValue[0], len * sizeof(o.ScaleValue[0]));
+            len = (uint)o.RotationTime.size();
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.rotationTime[0], len * sizeof(o.rotationTime[0]));
-            writer.WritePtr(&o.rotationValue[0], len * sizeof(o.rotationValue[0]));
-            len = (uint)o.translationTime.size();
+            writer.WritePtr(&o.RotationTime[0], len * sizeof(o.RotationTime[0]));
+            writer.WritePtr(&o.RotationValue[0], len * sizeof(o.RotationValue[0]));
+            len = (uint)o.TranslationTime.size();
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.translationTime[0], len * sizeof(o.translationTime[0]));
-            writer.WritePtr(&o.translationValue[0], len * sizeof(o.translationValue[0]));
+            writer.WritePtr(&o.TranslationTime[0], len * sizeof(o.TranslationTime[0]));
+            writer.WritePtr(&o.TranslationValue[0], len * sizeof(o.TranslationValue[0]));
         }
     }
 
-    string animFileName {};
-    string animName {};
-    float durationTicks {};
-    float ticksPerSecond {};
-    vector<BoneOutput> boneOutputs {};
-    HashVecVec bonesHierarchy {};
+    string AnimFileName {};
+    string AnimName {};
+    float DurationTicks {};
+    float TicksPerSecond {};
+    vector<BoneOutput> BoneOutputs {};
+    HashVecVec BonesHierarchy {};
 };
 
 ModelBaker::ModelBaker(FileCollection& all_files) : allFiles {all_files}
@@ -451,10 +428,23 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
                         fbx_node = fbx_node->GetParent();
                     }
 
-                    anim_set->AddBoneOutput(hierarchy, st, sv, rt, rv, tt, tv);
+                    anim_set->BoneOutputs.push_back(AnimSet::BoneOutput());
+                    AnimSet::BoneOutput& o = anim_set->BoneOutputs.back();
+                    o.NameHash = hierarchy.back();
+                    o.ScaleTime = st;
+                    o.ScaleValue = sv;
+                    o.RotationTime = rt;
+                    o.RotationValue = rv;
+                    o.TranslationTime = tt;
+                    o.TranslationValue = tv;
+                    anim_set->BonesHierarchy.push_back(hierarchy);
                 }
 
-                anim_set->SetData(fname, take_info->mName.Buffer(), (float)frames_count, frame_rate);
+                anim_set->AnimFileName = fname;
+                anim_set->AnimName = take_info->mName.Buffer();
+                anim_set->DurationTicks = (float)frames_count;
+                anim_set->TicksPerSecond = frame_rate;
+
                 loaded_animations.push_back(anim_set);
             }
         }
@@ -551,10 +541,23 @@ UCharVec ModelBaker::BakeFile(const string& fname, File& file)
                     ai_node = ai_node->mParent;
                 }
 
-                anim_set->AddBoneOutput(hierarchy, st, sv, rt, rv, tt, tv);
+                anim_set->BoneOutputs.push_back(AnimSet::BoneOutput());
+                AnimSet::BoneOutput& o = anim_set->BoneOutputs.back();
+                o.NameHash = hierarchy.back();
+                o.ScaleTime = st;
+                o.ScaleValue = sv;
+                o.RotationTime = rt;
+                o.RotationValue = rv;
+                o.TranslationTime = tt;
+                o.TranslationValue = tv;
+                anim_set->BonesHierarchy.push_back(hierarchy);
             }
 
-            anim_set->SetData(fname, anim->mName.data, (float)anim->mDuration, (float)anim->mTicksPerSecond);
+            anim_set->AnimFileName = fname;
+            anim_set->AnimName = anim->mName.data;
+            anim_set->DurationTicks = (float)anim->mDuration;
+            anim_set->TicksPerSecond = (float)anim->mTicksPerSecond;
+
             loaded_animations.push_back(anim_set);
         }
 

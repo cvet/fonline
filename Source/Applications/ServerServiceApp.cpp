@@ -40,7 +40,7 @@
 #include "Version_Include.h"
 #include "WinApi_Include.h"
 
-static GlobalSettings Settings {};
+static GlobalSettings Settings;
 static FOServer* Server;
 static std::thread ServerThread;
 

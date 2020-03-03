@@ -44,7 +44,7 @@
 
 #include "SDL_main.h"
 
-static GlobalSettings Settings {};
+static GlobalSettings Settings;
 
 static void ClientEntry(void*)
 {

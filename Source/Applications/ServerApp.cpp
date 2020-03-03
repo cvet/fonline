@@ -45,7 +45,7 @@
 
 #include "SDL_main.h"
 
-static GlobalSettings Settings {};
+static GlobalSettings Settings;
 static FOServer* Server;
 static std::thread ServerThread;
 static std::atomic_bool StartServer;
