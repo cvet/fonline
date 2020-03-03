@@ -168,7 +168,7 @@ function generate_compilation_env()
     rm -rf compilation-env
     mkdir compilation-env
     cd compilation-env
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT_WIN"
+    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
     cmake.exe --build . --config RelWithDebInfo
 }
 
@@ -179,7 +179,7 @@ function generate_vscode_js_toolset()
     mkdir vscode-js-toolset
     cd vscode-js-toolset
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_BUILD_MAPPER=1 "$FO_ROOT"
     cmake --build . --config Release -- -j$(nproc)
 }
 
@@ -190,7 +190,7 @@ function generate_vscode_native_toolset()
     rm -rf vscode-native-toolset
     mkdir vscode-native-toolset
     cd vscode-native-toolset
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "$FO_ROOT_WIN"
+    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
     cmake.exe --build . --config RelWithDebInfo
 }
 

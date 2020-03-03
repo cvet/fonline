@@ -43,7 +43,7 @@ if [%BUILD64%] == [1] (
     echo Build 64-bit binaries
     if not exist "build-win64" mkdir "build-win64"
     pushd "build-win64"
-    cmake -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="../output" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_EDITOR=1 "%FO_ROOT%"
+    cmake -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="../output" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 "%FO_ROOT%"
     cmake --build . --config RelWithDebInfo
     popd
 )
