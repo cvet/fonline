@@ -177,7 +177,8 @@ elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	list( APPEND FO_RENDER_SYSTEM_LIBS "GL" )
 	list( APPEND FO_BUILD_OPTIONS "-O2" "-g" )
 	list( APPEND FO_BUILD_LINKER_OPTIONS "-no-pie" "-rdynamic" )
-	if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+	# Todo: rework and use only libc++
+	if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLINE_BUILD_BAKER )
 		list( APPEND FO_BUILD_OPTIONS "-stdlib=libstdc++" )
 	else()
 		list( APPEND FO_BUILD_OPTIONS "-stdlib=libc++" )
@@ -564,7 +565,7 @@ endif()
 
 # Assimp
 set( FO_ASSIMP_DIR "ThirdParty/Assimp" )
-if( FONLINE_BUILD_BAKER )
+if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ Assimp" )
 	set( ASSIMP_NO_EXPORT ON CACHE STRING "Forced by FOnline" FORCE )
 	set( ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE STRING "Forced by FOnline" FORCE )
@@ -584,7 +585,7 @@ endif()
 include_directories( "${FO_ASSIMP_DIR}/include" )
 
 # Fbx SDK
-if( FONLINE_BUILD_BAKER )
+if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	if( NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		message( FATAL_ERROR "Using of FBX SDK for non 64 bit builds is not supported" )
 	endif()
@@ -618,7 +619,7 @@ list( APPEND FO_COMMON_LIBS "fmt" )
 DisableLibWarnings( fmt )
 
 # OpenSSL
-if( FONLINE_BUILD_SERVER )
+if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ OpenSSL" )
 	set( FO_OPENSSL_DIR "ThirdParty/openssl" )
 	set( BUILD_OBJECT_LIBRARY_ONLY ON CACHE BOOL "Forced by FOnline" FORCE )
@@ -631,7 +632,7 @@ if( FONLINE_BUILD_SERVER )
 endif()
 
 # Asio & Websockets
-if( FONLINE_BUILD_SERVER )
+if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ Asio" )
 	set( FO_ASIO_DIR "ThirdParty/Asio" )
 	include_directories( "${FO_ASIO_DIR}/include" )
@@ -642,7 +643,7 @@ if( FONLINE_BUILD_SERVER )
 endif()
 
 # MongoDB & Bson
-if( FONLINE_BUILD_SERVER )
+if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ Bson" )
 	set( FO_BSON_DIR "ThirdParty/libbson" )
 	set( ENABLE_STATIC ON CACHE STRING "Forced by FOnline" FORCE )
@@ -682,7 +683,7 @@ if( NOT EMSCRIPTEN )
 endif()
 
 # cURL
-if( FONLINE_BUILD_SERVER )
+if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ cURL" )
 	set( FO_CURL_DIR "ThirdParty/cURL" )
 	set( HAVE_POLL_FINE_EXITCODE 0 CACHE STRING "Forced by FOnline" FORCE )
@@ -743,7 +744,7 @@ list( APPEND FO_CLIENT_LIBS "SPARK_Core" )
 DisableLibWarnings( SPARK_Core )
 
 # glslang & SPIRV-Cross
-if( FONLINE_BUILD_BAKER )
+if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ glslang" )
 	set( FO_GLSLANG_DIR "ThirdParty/glslang" )
 	set( SKIP_GLSLANG_INSTALL "ON" CACHE STRING "Forced by FOnline" FORCE )
