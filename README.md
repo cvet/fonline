@@ -114,7 +114,7 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 ### Setup
 
 Clone with git this repository.  
-Run `./setup` in the repository root in your PowerShell.  
+Run `./fonline-setup` in the repository root in your PowerShell.  
 This script interactively check your system for all requirements and helps to generate new project.  
 *Todo: Provide additional info for non Windows 10 users*
 
@@ -151,7 +151,7 @@ Also our build scripts download and install following packages:
 * [OSXCross](https://github.com/tpoechtrager/osxcross) - cross-compilation for macOS/iOS
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
-And `setup.ps1` might install following Windows packages for you *(some optional)*:
+And `fonline-setup.ps1` might install following Windows packages for you *(some optional)*:
 * [Chocolatey](https://chocolatey.org) - package manager for Windows system (helps to install other packages automatically)
 * [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
 * [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
