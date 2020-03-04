@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     
-    <title>Overview &mdash; fmt 6.0.0 documentation</title>
+    <title>Overview &mdash; fmt 6.1.2 documentation</title>
     
     <link rel="stylesheet" href="_static/basic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '6.0.0',
+        VERSION:     '6.1.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -65,15 +65,15 @@
           <ul class="nav navbar-nav">
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-                 role="button" aria-expanded="false">6.0.0
+                 role="button" aria-expanded="false">6.1.2
                 <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 
-                <li><a href="https://fmt.dev/6.0.0">6.0.0</a></li>
+                <li><a href="https://fmt.dev/6.1.2">6.1.2</a></li>
                 
-                <li><a href="https://fmt.dev/5.3.0">5.3.0</a></li>
+                <li><a href="https://fmt.dev/6.1.1">6.1.1</a></li>
                 
-                <li><a href="https://fmt.dev/5.2.1">5.2.1</a></li>
+                <li><a href="https://fmt.dev/6.1.0">6.1.0</a></li>
                 
               </ul>
             </li>
@@ -118,11 +118,11 @@
 <div class="jumbotron">
   <div class="tb-container">
     <h1>{fmt}</h1>
-    <p class="lead">Small, safe and fast formatting library</p>
+    <p class="lead">A modern formatting library</p>
     <div class="btn-group" role="group">
       
       <a class="btn btn-success"
-         href="https://github.com/fmtlib/fmt/releases/download/6.0.0/fmt-6.0.0.zip">
+         href="https://github.com/fmtlib/fmt/releases/download/6.1.2/fmt-6.1.2.zip">
            <span class="glyphicon glyphicon-download"></span> Download
       </a>
       <button type="button" class="btn btn-success dropdown-toggle"
@@ -130,15 +130,15 @@
       <ul class="dropdown-menu">
       
       
-        <li><a href="https://github.com/fmtlib/fmt/releases/download/6.0.0/fmt-6.0.0.zip">Version 6.0.0
+        <li><a href="https://github.com/fmtlib/fmt/releases/download/6.1.2/fmt-6.1.2.zip">Version 6.1.2
           </a></li>
       
       
-        <li><a href="https://github.com/fmtlib/fmt/releases/download/5.3.0/fmt-5.3.0.zip">Version 5.3.0
+        <li><a href="https://github.com/fmtlib/fmt/releases/download/6.1.1/fmt-6.1.1.zip">Version 6.1.1
           </a></li>
       
       
-        <li><a href="https://github.com/fmtlib/fmt/releases/download/5.2.1/fmt-5.2.1.zip">Version 5.2.1
+        <li><a href="https://github.com/fmtlib/fmt/releases/download/6.1.0/fmt-6.1.0.zip">Version 6.1.0
           </a></li>
       
       </ul>
@@ -156,22 +156,24 @@
       
   <div class="section" id="overview">
 <h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
-<p><strong>fmt</strong> (formerly cppformat) is an open-source formatting library.
-It can be used as a fast and safe alternative to printf and IOStreams.</p>
+<p><strong>{fmt}</strong> is an open-source formatting library providing a fast and safe
+alternative to C stdio and C++ iostreams.</p>
 <div class="panel panel-default">
   <div class="panel-heading">What users say:</div>
   <div class="panel-body">
-    Thanks for creating this library. It’s been a hole in C++ for a long
-    time. I’ve used both boost::format and loki::SPrintf, and neither felt
-    like the right answer. This does.
+    Thanks for creating this library. It’s been a hole in C++ for
+    aa long time. I’ve used both <code>boost::format</code> and
+    <code>loki::SPrintf</code>, and neither felt like the right answer.
+    This does.
   </div>
 </div><div class="section" id="format-api">
 <span id="format-api-intro"></span><h2>Format API<a class="headerlink" href="#format-api" title="Permalink to this headline">¶</a></h2>
-<p>The replacement-based Format API provides a safe alternative to <code class="docutils literal"><span class="pre">printf</span></code>,
-<code class="docutils literal"><span class="pre">sprintf</span></code> and friends with comparable or <a class="reference external" href="http://zverovich.net/2013/09/07/integer-to-string-conversion-in-cplusplus.html">better performance</a>.
+<p>The format API is similar in spirit to the C <code class="docutils literal"><span class="pre">printf</span></code> family of function but
+is safer, simpler and serveral times <a class="reference external" href="http://zverovich.net/2013/09/07/integer-to-string-conversion-in-cplusplus.html">faster</a>
+than common standard library implementations.
 The <a class="reference external" href="syntax.html">format string syntax</a> is similar to the one used by
-<a class="reference external" href="http://docs.python.org/3/library/stdtypes.html#str.format">str.format</a>
-in Python:</p>
+<a class="reference external" href="http://docs.python.org/3/library/stdtypes.html#str.format">str.format</a> in
+Python:</p>
 <div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;The answer is {}.&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -196,26 +198,18 @@ in Python:</p>
 </pre></div>
 </div>
 <p>Named arguments can be created with <code class="docutils literal"><span class="pre">fmt::arg</span></code>. This makes it easier to track
-what goes where when multiple values are being inserted:</p>
+what goes where when multiple arguments are being formatted:</p>
 <div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;Hello, {name}! The answer is {number}. Goodbye, {name}.&quot;</span><span class="p">,</span>
            <span class="n">fmt</span><span class="o">::</span><span class="n">arg</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;World&quot;</span><span class="p">),</span> <span class="n">fmt</span><span class="o">::</span><span class="n">arg</span><span class="p">(</span><span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>If your compiler supports C++11 user-defined literals, the suffix <code class="docutils literal"><span class="pre">_a</span></code> offers
 an alternative, slightly terser syntax for named arguments:</p>
-<div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;Hello, {name}! The answer is {number}. Goodbye, {name}.&quot;</span><span class="p">,</span>
+<div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="k">using</span> <span class="k">namespace</span> <span class="n">fmt</span><span class="o">::</span><span class="n">literals</span><span class="p">;</span>
+<span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;Hello, {name}! The answer is {number}. Goodbye, {name}.&quot;</span><span class="p">,</span>
            <span class="s">&quot;name&quot;</span><span class="n">_a</span><span class="o">=</span><span class="s">&quot;World&quot;</span><span class="p">,</span> <span class="s">&quot;number&quot;</span><span class="n">_a</span><span class="o">=</span><span class="mi">42</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal"><span class="pre">_format</span></code> suffix may be used to format string literals similar to Python:</p>
-<div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">message</span> <span class="o">=</span> <span class="s">&quot;{0}{1}{0}&quot;</span><span class="n">_format</span><span class="p">(</span><span class="s">&quot;abra&quot;</span><span class="p">,</span> <span class="s">&quot;cad&quot;</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Other than the placement of the format string on the left of the operator,
-<code class="docutils literal"><span class="pre">_format</span></code> is functionally identical to <code class="docutils literal"><span class="pre">fmt::format</span></code>. In order to use the
-literal operators, they must be made visible with the directive
-<code class="docutils literal"><span class="pre">using</span> <span class="pre">namespace</span> <span class="pre">fmt::literals;</span></code>. Note that this brings in only <code class="docutils literal"><span class="pre">_a</span></code> and
-<code class="docutils literal"><span class="pre">_format</span></code> but nothing else from the <code class="docutils literal"><span class="pre">fmt</span></code> namespace.</p>
 </div>
 <div class="section" id="safety">
 <span id="id1"></span><h2>Safety<a class="headerlink" href="#safety" title="Permalink to this headline">¶</a></h2>
@@ -228,12 +222,11 @@ time. For example, the code</p>
 <p>throws a <code class="docutils literal"><span class="pre">format_error</span></code> exception with description &#8220;unknown format code &#8216;d&#8217; for
 string&#8221;, because the argument <code class="docutils literal"><span class="pre">&quot;forty-two&quot;</span></code> is a string while the format code
 <code class="docutils literal"><span class="pre">d</span></code> only applies to integers, while</p>
-<div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">format</span><span class="p">(</span><span class="n">fmt</span><span class="p">(</span><span class="s">&quot;The answer is {:d}&quot;</span><span class="p">),</span> <span class="s">&quot;forty-two&quot;</span><span class="p">);</span>
+<div class="code c++ highlight-c++"><div class="highlight"><pre><span></span><span class="n">format</span><span class="p">(</span><span class="n">FMT_STRING</span><span class="p">(</span><span class="s">&quot;The answer is {:d}&quot;</span><span class="p">),</span> <span class="s">&quot;forty-two&quot;</span><span class="p">);</span>
 </pre></div>
 </div>
 <p>reports a compile-time error for the same reason on compilers that support
-relaxed <code class="docutils literal"><span class="pre">constexpr</span></code>. See <a class="reference external" href="api.html#c.fmt">here</a> for how to enable
-compile-time checks.</p>
+relaxed <code class="docutils literal"><span class="pre">constexpr</span></code>. See <a class="reference external" href="api.html#c.fmt">here</a> for details.</p>
 <p>The following code</p>
 <div class="code c++ highlight-c++"><div class="highlight"><pre><span></span>fmt::format(&quot;Cyrillic letter {}&quot;, L&#39;\x42e&#39;);
 </pre></div>
@@ -289,11 +282,11 @@ needed.</p>
 <li>alias templates</li>
 </ul>
 <p>These are available since GCC 4.8, Clang 3.0 and MSVC 19.0 (2015). For older
-compilers use fmt <a class="reference external" href="https://github.com/fmtlib/fmt/releases/tag/4.1.0">version 4.x</a> which continues to be
+compilers use {fmt} <a class="reference external" href="https://github.com/fmtlib/fmt/releases/tag/4.1.0">version 4.x</a> which continues to be
 maintained and only requires C++98.</p>
 <p>The output of all formatting functions is consistent across platforms. In
 particular, formatting a floating-point infinity always gives <code class="docutils literal"><span class="pre">inf</span></code> while the
-output of <code class="docutils literal"><span class="pre">printf</span></code> is platform-dependent in this case. For example,</p>
+output of <code class="docutils literal"><span class="pre">printf</span></code> is platform-dependent. For example,</p>
 <div class="code highlight-c++"><div class="highlight"><pre><span></span><span class="n">fmt</span><span class="o">::</span><span class="n">print</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">infinity</span><span class="p">());</span>
 </pre></div>
 </div>
@@ -301,9 +294,9 @@ output of <code class="docutils literal"><span class="pre">printf</span></code> 
 </div>
 <div class="section" id="ease-of-use">
 <span id="id3"></span><h2>Ease of Use<a class="headerlink" href="#ease-of-use" title="Permalink to this headline">¶</a></h2>
-<p>fmt has a small self-contained code base with the core library consisting of
+<p>{fmt} has a small self-contained code base with the core library consisting of
 just three header files and no external dependencies.
-A permissive BSD <a class="reference external" href="https://github.com/fmtlib/fmt#license">license</a> allows
+A permissive MIT <a class="reference external" href="https://github.com/fmtlib/fmt#license">license</a> allows
 using the library both in open-source and commercial projects.</p>
 <a class="btn btn-success" href="https://github.com/fmtlib/fmt">GitHub Repository</a>
 

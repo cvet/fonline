@@ -1,3 +1,285 @@
+6.1.2 - 2019-12-11
+------------------
+
+* Fixed ABI compatibility with ``libfmt.so.6.0.0``
+  (`#1471 <https://github.com/fmtlib/fmt/issues/1471>`_).
+
+* Fixed handling types convertible to ``std::string_view``
+  (`#1451 <https://github.com/fmtlib/fmt/pull/1451>`_).
+  Thanks `@denizevrenci (Deniz Evrenci) <https://github.com/denizevrenci>`_.
+
+* Made CUDA test an opt-in enabled via the ``FMT_CUDA_TEST`` CMake option.
+
+* Fixed sign conversion warnings
+  (`#1440 <https://github.com/fmtlib/fmt/pull/1440>`_).
+  Thanks `@0x8000-0000 (Florin Iucha) <https://github.com/0x8000-0000>`_.
+
+6.1.1 - 2019-12-04
+------------------
+
+* Fixed shared library build on Windows
+  (`#1443 <https://github.com/fmtlib/fmt/pull/1443>`_,
+  `#1445 <https://github.com/fmtlib/fmt/issues/1445>`_,
+  `#1446 <https://github.com/fmtlib/fmt/pull/1446>`_,
+  `#1450 <https://github.com/fmtlib/fmt/issues/1450>`_).
+  Thanks `@egorpugin (Egor Pugin) <https://github.com/egorpugin>`_,
+  `@bbolli (Beat Bolli) <https://github.com/bbolli>`_.
+
+* Added a missing decimal point in exponent notation with trailing zeros.
+
+* Removed deprecated ``format_arg_store::TYPES``.
+
+6.1.0 - 2019-12-01
+------------------
+
+* {fmt} now formats IEEE 754 ``float`` and ``double`` using the shortest decimal
+  representation with correct rounding by default:
+
+  .. code:: c++
+
+     #include <cmath>
+     #include <fmt/core.h>
+
+     int main() {
+       fmt::print("{}", M_PI);
+     }
+
+  prints ``3.141592653589793``.
+
+* Made the fast binary to decimal floating-point formatter the default,
+  simplified it and improved performance. {fmt} is now 15 times faster than
+  libc++'s ``std::ostringstream``, 11 times faster than ``printf`` and 10%
+  faster than double-conversion on `dtoa-benchmark
+  <https://github.com/fmtlib/dtoa-benchmark>`_:
+
+  ==================  =========  =======
+  Function            Time (ns)  Speedup
+  ==================  =========  =======
+  ostringstream        1,346.30    1.00x
+  ostrstream           1,195.74    1.13x
+  sprintf                995.08    1.35x
+  doubleconv              99.10   13.59x
+  fmt                     88.34   15.24x
+  ==================  =========  =======
+
+  .. image:: https://user-images.githubusercontent.com/576385/
+             69767160-cdaca400-112f-11ea-9fc5-347c9f83caad.png
+
+* {fmt} no longer converts ``float`` arguments to ``double``. In particular this
+  improves the default (shortest) representation of floats and makes
+  ``fmt::format`` consistent with ``std::format`` specs
+  (`#1336 <https://github.com/fmtlib/fmt/issues/1336>`_,
+  `#1353 <https://github.com/fmtlib/fmt/issues/1353>`_,
+  `#1360 <https://github.com/fmtlib/fmt/pull/1360>`_,
+  `#1361 <https://github.com/fmtlib/fmt/pull/1361>`_):
+
+  .. code:: c++
+
+     fmt::print("{}", 0.1f);
+
+  prints ``0.1`` instead of ``0.10000000149011612``.
+
+  Thanks `@orivej (Orivej Desh) <https://github.com/orivej>`_.
+
+* Made floating-point formatting output consistent with ``printf``/iostreams
+  (`#1376 <https://github.com/fmtlib/fmt/issues/1376>`_,
+  `#1417 <https://github.com/fmtlib/fmt/issues/1417>`_).
+
+* Added support for 128-bit integers
+  (`#1287 <https://github.com/fmtlib/fmt/pull/1287>`_):
+
+  .. code:: c++
+
+     fmt::print("{}", std::numeric_limits<__int128_t>::max());
+
+  prints ``170141183460469231731687303715884105727``.
+
+  Thanks `@denizevrenci (Deniz Evrenci) <https://github.com/denizevrenci>`_.
+
+* The overload of ``print`` that takes ``text_style`` is now atomic, i.e. the
+  output from different threads doesn't interleave
+  (`#1351 <https://github.com/fmtlib/fmt/pull/1351>`_).
+  Thanks `@tankiJong (Tanki Zhang) <https://github.com/tankiJong>`_.
+
+* Made compile time in the header-only mode ~20% faster by reducing the number
+  of template instantiations. ``wchar_t`` overload of ``vprint`` was moved from
+  ``fmt/core.h`` to ``fmt/format.h``.
+
+* Added an overload of ``fmt::join`` that works with tuples
+  (`#1322 <https://github.com/fmtlib/fmt/issues/1322>`_,
+  `#1330 <https://github.com/fmtlib/fmt/pull/1330>`_):
+
+  .. code:: c++
+
+     #include <tuple>
+     #include <fmt/ranges.h>
+
+     int main() {
+       std::tuple<char, int, float> t{'a', 1, 2.0f};
+       fmt::print("{}", t);
+     }
+
+  prints ``('a', 1, 2.0)``.
+
+  Thanks `@jeremyong (Jeremy Ong) <https://github.com/jeremyong>`_.
+
+* Changed formatting of octal zero with prefix from "00" to "0":
+
+  .. code:: c++
+
+     fmt::print("{:#o}", 0);
+
+  prints ``0``.
+
+* The locale is now passed to ostream insertion (``<<``) operators
+  (`#1406 <https://github.com/fmtlib/fmt/pull/1406>`_):
+
+  .. code:: c++
+
+     #include <fmt/locale.h>
+     #include <fmt/ostream.h>
+
+     struct S {
+       double value;
+     };
+
+     std::ostream& operator<<(std::ostream& os, S s) {
+       return os << s.value;
+     }
+
+     int main() {
+       auto s = fmt::format(std::locale("fr_FR.UTF-8"), "{}", S{0.42});
+       // s == "0,42"
+     }
+
+  Thanks `@dlaugt (Daniel Laügt) <https://github.com/dlaugt>`_.
+
+* Locale-specific number formatting now uses grouping
+  (`#1393 <https://github.com/fmtlib/fmt/issues/1393>`_
+  `#1394 <https://github.com/fmtlib/fmt/pull/1394>`_).
+  Thanks `@skrdaniel <https://github.com/skrdaniel>`_.
+
+* Fixed handling of types with deleted implicit rvalue conversion to
+  ``const char**`` (`#1421 <https://github.com/fmtlib/fmt/issues/1421>`_):
+
+  .. code:: c++
+
+     struct mystring {
+       operator const char*() const&;
+       operator const char*() &;
+       operator const char*() const&& = delete;
+       operator const char*() && = delete;
+     };
+     mystring str;
+     fmt::print("{}", str); // now compiles
+
+* Enums are now mapped to correct underlying types instead of ``int``
+  (`#1286 <https://github.com/fmtlib/fmt/pull/1286>`_).
+  Thanks `@agmt (Egor Seredin) <https://github.com/agmt>`_.
+
+* Enum classes are no longer implicitly converted to ``int``
+  (`#1424 <https://github.com/fmtlib/fmt/issues/1424>`_).
+
+* Added ``basic_format_parse_context`` for consistency with C++20
+  ``std::format`` and deprecated ``basic_parse_context``.
+
+* Fixed handling of UTF-8 in precision
+  (`#1389 <https://github.com/fmtlib/fmt/issues/1389>`_,
+  `#1390 <https://github.com/fmtlib/fmt/pull/1390>`_).
+  Thanks `@tajtiattila (Attila Tajti) <https://github.com/tajtiattila>`_.
+
+* {fmt} can now be installed on Linux, macOS and Windows with
+  `Conda <https://docs.conda.io/en/latest/>`__ using its
+  `conda-forge <https://conda-forge.org>`__
+  `package <https://github.com/conda-forge/fmt-feedstock>`__
+  (`#1410 <https://github.com/fmtlib/fmt/pull/1410>`_)::
+
+    conda install -c conda-forge fmt
+
+  Thanks `@tdegeus (Tom de Geus) <https://github.com/tdegeus>`_.
+
+* Added a CUDA test (`#1285 <https://github.com/fmtlib/fmt/pull/1285>`_,
+  `#1317 <https://github.com/fmtlib/fmt/pull/1317>`_).
+  Thanks `@luncliff (Park DongHa) <https://github.com/luncliff>`_ and
+  `@risa2000 <https://github.com/risa2000>`_.
+
+* Improved documentation (`#1276 <https://github.com/fmtlib/fmt/pull/1276>`_,
+  `#1291 <https://github.com/fmtlib/fmt/issues/1291>`_,
+  `#1296 <https://github.com/fmtlib/fmt/issues/1296>`_,
+  `#1315 <https://github.com/fmtlib/fmt/pull/1315>`_,
+  `#1332 <https://github.com/fmtlib/fmt/pull/1332>`_,
+  `#1337 <https://github.com/fmtlib/fmt/pull/1337>`_,
+  `#1395 <https://github.com/fmtlib/fmt/issues/1395>`_
+  `#1418 <https://github.com/fmtlib/fmt/pull/1418>`_).
+  Thanks
+  `@waywardmonkeys (Bruce Mitchener) <https://github.com/waywardmonkeys>`_,
+  `@pauldreik (Paul Dreik) <https://github.com/pauldreik>`_,
+  `@jackoalan (Jack Andersen) <https://github.com/jackoalan>`_.
+
+* Various code improvements
+  (`#1358 <https://github.com/fmtlib/fmt/pull/1358>`_,
+  `#1407 <https://github.com/fmtlib/fmt/pull/1407>`_).
+  Thanks `@orivej (Orivej Desh) <https://github.com/orivej>`_,
+  `@dpacbach (David P. Sicilia) <https://github.com/dpacbach>`_,
+
+* Fixed compile-time format string checks for user-defined types
+  (`#1292 <https://github.com/fmtlib/fmt/issues/1292>`_).
+
+* Worked around a false positive in ``unsigned-integer-overflow`` sanitizer
+  (`#1377 <https://github.com/fmtlib/fmt/issues/1377>`_).
+
+* Fixed various warnings and compilation issues
+  (`#1273 <https://github.com/fmtlib/fmt/issues/1273>`_,
+  `#1278 <https://github.com/fmtlib/fmt/pull/1278>`_,
+  `#1280 <https://github.com/fmtlib/fmt/pull/1280>`_,
+  `#1281 <https://github.com/fmtlib/fmt/issues/1281>`_,
+  `#1288 <https://github.com/fmtlib/fmt/issues/1288>`_,
+  `#1290 <https://github.com/fmtlib/fmt/pull/1290>`_,
+  `#1301 <https://github.com/fmtlib/fmt/pull/1301>`_,
+  `#1305 <https://github.com/fmtlib/fmt/issues/1305>`_,
+  `#1306 <https://github.com/fmtlib/fmt/issues/1306>`_,
+  `#1309 <https://github.com/fmtlib/fmt/issues/1309>`_,
+  `#1312 <https://github.com/fmtlib/fmt/pull/1312>`_,
+  `#1313 <https://github.com/fmtlib/fmt/issues/1313>`_,
+  `#1316 <https://github.com/fmtlib/fmt/issues/1316>`_,
+  `#1319 <https://github.com/fmtlib/fmt/issues/1319>`_,
+  `#1320 <https://github.com/fmtlib/fmt/pull/1320>`_,
+  `#1326 <https://github.com/fmtlib/fmt/pull/1326>`_,
+  `#1328 <https://github.com/fmtlib/fmt/pull/1328>`_,
+  `#1344 <https://github.com/fmtlib/fmt/issues/1344>`_,
+  `#1345 <https://github.com/fmtlib/fmt/pull/1345>`_,
+  `#1347 <https://github.com/fmtlib/fmt/pull/1347>`_,
+  `#1349 <https://github.com/fmtlib/fmt/pull/1349>`_,
+  `#1354 <https://github.com/fmtlib/fmt/issues/1354>`_,
+  `#1362 <https://github.com/fmtlib/fmt/issues/1362>`_,
+  `#1366 <https://github.com/fmtlib/fmt/issues/1366>`_,
+  `#1364 <https://github.com/fmtlib/fmt/pull/1364>`_,
+  `#1370 <https://github.com/fmtlib/fmt/pull/1370>`_,
+  `#1371 <https://github.com/fmtlib/fmt/pull/1371>`_,
+  `#1385 <https://github.com/fmtlib/fmt/issues/1385>`_,
+  `#1388 <https://github.com/fmtlib/fmt/issues/1388>`_,
+  `#1397 <https://github.com/fmtlib/fmt/pull/1397>`_,
+  `#1414 <https://github.com/fmtlib/fmt/pull/1414>`_,
+  `#1416 <https://github.com/fmtlib/fmt/pull/1416>`_,
+  `#1422 <https://github.com/fmtlib/fmt/issues/1422>`_
+  `#1427 <https://github.com/fmtlib/fmt/pull/1427>`_,
+  `#1431 <https://github.com/fmtlib/fmt/issues/1431>`_,
+  `#1433 <https://github.com/fmtlib/fmt/pull/1433>`_).
+  Thanks `@hhb <https://github.com/hhb>`_,
+  `@gsjaardema (Greg Sjaardema) <https://github.com/gsjaardema>`_,
+  `@gabime (Gabi Melman) <https://github.com/gabime>`_,
+  `@neheb (Rosen Penev) <https://github.com/neheb>`_,
+  `@vedranmiletic (Vedran Miletić) <https://github.com/vedranmiletic>`_,
+  `@dkavolis (Daumantas Kavolis) <https://github.com/dkavolis>`_,
+  `@mwinterb <https://github.com/mwinterb>`_,
+  `@orivej (Orivej Desh) <https://github.com/orivej>`_,
+  `@denizevrenci (Deniz Evrenci) <https://github.com/denizevrenci>`_
+  `@leonklingele <https://github.com/leonklingele>`_,
+  `@chronoxor (Ivan Shynkarenka) <https://github.com/chronoxor>`_,
+  `@kent-tri <https://github.com/kent-tri>`_,
+  `@0x8000-0000 (Florin Iucha) <https://github.com/0x8000-0000>`_,
+  `@marti4d (Chris Martin) <https://github.com/marti4d>`_.
+
 6.0.0 - 2019-08-26
 ------------------
 
@@ -183,6 +465,7 @@
 * Modernized the codebase using more C++11 features and removing workarounds.
   Most importantly, ``buffer_context`` is now an alias template, so
   use ``buffer_context<T>`` instead of ``buffer_context<T>::type``.
+  These features require GCC 4.8 or later.
 
 * ``formatter`` specializations now always take precedence over implicit
   conversions to ``int`` and the undocumented ``convert_to_int`` trait
@@ -298,7 +581,7 @@
   `#1222 <https://github.com/fmtlib/fmt/issues/1222>`_).
   Thanks `@alabuzhev (Alex Alabuzhev) <https://github.com/alabuzhev>`_.
 
-* Fixed bugs discovered by fuzzing or during fuzzing integation
+* Fixed bugs discovered by fuzzing or during fuzzing integration
   (`#1124 <https://github.com/fmtlib/fmt/issues/1124>`_,
   `#1127 <https://github.com/fmtlib/fmt/issues/1127>`_,
   `#1132 <https://github.com/fmtlib/fmt/issues/1132>`_,

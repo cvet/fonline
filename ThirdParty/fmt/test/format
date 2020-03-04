@@ -8,6 +8,7 @@
 #ifndef FMT_FORMAT_
 #define FMT_FORMAT_
 
+#include <cassert>
 #include <variant>
 #include "fmt/format.h"
 
@@ -666,8 +667,7 @@ struct formatter {
       break;
     case internal::double_type:
     case internal::long_double_type:
-      handle_float_type_spec(type_spec,
-                             internal::float_type_checker<decltype(eh)>(eh));
+      internal::parse_float_type_spec(specs_, eh);
       break;
     case internal::cstring_type:
       internal::handle_cstring_type_spec(
@@ -690,9 +690,9 @@ struct formatter {
   template <typename FormatContext>
   auto format(const T& val, FormatContext& ctx) -> decltype(ctx.out()) {
     fmt::internal::handle_dynamic_spec<fmt::internal::width_checker>(
-        specs_.width, specs_.width_ref, ctx, nullptr);
+        specs_.width, specs_.width_ref, ctx);
     fmt::internal::handle_dynamic_spec<fmt::internal::precision_checker>(
-        specs_.precision, specs_.precision_ref, ctx, nullptr);
+        specs_.precision, specs_.precision_ref, ctx);
     using range_type = fmt::internal::output_range<typename FormatContext::iterator,
                          typename FormatContext::char_type>;
     return visit_format_arg(arg_formatter<range_type>(ctx, nullptr, &specs_),
@@ -718,7 +718,7 @@ template<class... Args>
 string vformat(string_view fmt, format_args args) {
   fmt::memory_buffer mbuf;
   fmt::internal::buffer<char>& buf = mbuf;
-  using range = fmt::internal::buffer_range<char>;
+  using range = fmt::buffer_range<char>;
   detail::format_handler<detail::arg_formatter<range>, char, format_context>
     h(range(std::back_inserter(buf)), fmt, args, {});
   fmt::internal::parse_format_string<false>(fmt::to_string_view(fmt), h);

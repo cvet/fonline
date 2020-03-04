@@ -48,10 +48,28 @@ TEST(GrisuTest, Prettify) {
   EXPECT_EQ("1e-05", fmt::format("{}", 1e-5));
   EXPECT_EQ("9.999e-05", fmt::format("{}", 9.999e-5));
   EXPECT_EQ("10000000000.0", fmt::format("{}", 1e10));
-  EXPECT_EQ("1e+11", fmt::format("{}", 1e11));
+  EXPECT_EQ("100000000000.0", fmt::format("{}", 1e11));
   EXPECT_EQ("12340000000.0", fmt::format("{}", 1234e7));
   EXPECT_EQ("12.34", fmt::format("{}", 1234e-2));
   EXPECT_EQ("0.001234", fmt::format("{}", 1234e-6));
+  EXPECT_EQ("0.1", fmt::format("{}", 0.1f));
+  EXPECT_EQ("0.10000000149011612", fmt::format("{}", double(0.1f)));
 }
 
 TEST(GrisuTest, ZeroPrecision) { EXPECT_EQ("1", fmt::format("{:.0}", 1.0)); }
+
+TEST(GrisuTest, Fallback) {
+  EXPECT_EQ("1e+23", fmt::format("{}", 1e23));
+  EXPECT_EQ("9e-265", fmt::format("{}", 9e-265));
+  EXPECT_EQ("5.423717798060526e+125",
+            fmt::format("{}", 5.423717798060526e+125));
+  EXPECT_EQ("1.372371880954233e-288",
+            fmt::format("{}", 1.372371880954233e-288));
+  EXPECT_EQ("55388492.622190244", fmt::format("{}", 55388492.622190244));
+  EXPECT_EQ("2.2506787569811123e-253",
+            fmt::format("{}", 2.2506787569811123e-253));
+  EXPECT_EQ("1103618912042992.8", fmt::format("{}", 1103618912042992.8));
+  // pow(2, -25) - assymetric boundaries:
+  EXPECT_EQ("2.9802322387695312e-08",
+            fmt::format("{}", 2.9802322387695312e-08));
+}

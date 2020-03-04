@@ -19,6 +19,9 @@
 
 using fmt::buffered_file;
 using fmt::error_code;
+
+#if FMT_USE_FCNTL
+
 using fmt::file;
 
 // Checks if the file is open by reading one character from it.
@@ -368,12 +371,6 @@ TEST(FileTest, Fdopen) {
   EXPECT_EQ(read_fd, FMT_POSIX(fileno(read_end.fdopen("r").get())));
 }
 
-TEST(FileTest, FdopenError) {
-  file f;
-  EXPECT_SYSTEM_ERROR_NOASSERT(f.fdopen("r"), EBADF,
-                               "cannot associate stream with file descriptor");
-}
-
 #ifdef FMT_LOCALE
 TEST(LocaleTest, Strtod) {
   fmt::Locale locale;
@@ -382,3 +379,4 @@ TEST(LocaleTest, Strtod) {
   EXPECT_EQ(start + 3, ptr);
 }
 #endif
+#endif  // FMT_USE_FCNTL

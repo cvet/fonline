@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     
-    <title>Format String Syntax &mdash; fmt 6.0.0 documentation</title>
+    <title>Format String Syntax &mdash; fmt 6.1.2 documentation</title>
     
     <link rel="stylesheet" href="_static/basic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '6.0.0',
+        VERSION:     '6.1.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -66,15 +66,15 @@
           <ul class="nav navbar-nav">
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-                 role="button" aria-expanded="false">6.0.0
+                 role="button" aria-expanded="false">6.1.2
                 <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 
-                <li><a href="https://fmt.dev/6.0.0">6.0.0</a></li>
+                <li><a href="https://fmt.dev/6.1.2">6.1.2</a></li>
                 
-                <li><a href="https://fmt.dev/5.3.0">5.3.0</a></li>
+                <li><a href="https://fmt.dev/6.1.1">6.1.1</a></li>
                 
-                <li><a href="https://fmt.dev/5.2.1">5.2.1</a></li>
+                <li><a href="https://fmt.dev/6.1.0">6.1.0</a></li>
                 
               </ul>
             </li>
@@ -214,13 +214,7 @@ space (this is the default for most objects).</td>
 <td>Forces the field to be right-aligned within the
 available space (this is the default for numbers).</td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal"><span class="pre">'='</span></code></td>
-<td>Forces the padding to be placed after the sign (if any)
-but before the digits.  This is used for printing fields
-in the form &#8216;+000000120&#8217;. This alignment option is only
-valid for numeric types.</td>
-</tr>
-<tr class="row-odd"><td><code class="docutils literal"><span class="pre">'^'</span></code></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">'^'</span></code></td>
 <td>Forces the field to be centered within the available
 space.</td>
 </tr>
@@ -272,9 +266,11 @@ only if a digit follows it. In addition, for <code class="docutils literal"><spa
 conversions, trailing zeros are not removed from the result.</p>
 <p><em>width</em> is a decimal integer defining the minimum field width.  If not
 specified, then the field width will be determined by the content.</p>
-<p>Preceding the <em>width</em> field by a zero (<code class="docutils literal"><span class="pre">'0'</span></code>) character enables
-sign-aware zero-padding for numeric types.  This is equivalent to a <em>fill</em>
-character of <code class="docutils literal"><span class="pre">'0'</span></code> with an <em>alignment</em> type of <code class="docutils literal"><span class="pre">'='</span></code>.</p>
+<p>Preceding the <em>width</em> field by a zero (<code class="docutils literal"><span class="pre">'0'</span></code>) character enables sign-aware
+zero-padding for numeric types. It forces the padding to be placed after the
+sign or base (if any) but before the digits. This is used for printing fields in
+the form &#8216;+000000120&#8217;. This option is only valid for numeric types and it has no
+effect on formatting of infinity and NaN.</p>
 <p>The <em>precision</em> is a decimal number indicating how many digits should be
 displayed after the decimal point for a floating-point value formatted with
 <code class="docutils literal"><span class="pre">'f'</span></code> and <code class="docutils literal"><span class="pre">'F'</span></code>, or before and after the decimal point for a floating-point
@@ -429,10 +425,10 @@ precision of <code class="docutils literal"><span class="pre">1</span></code>.</
 <code class="docutils literal"><span class="pre">'E'</span></code> if the number gets too large. The
 representations of infinity and NaN are uppercased, too.</td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal"><span class="pre">'%'</span></code></td>
-<td>Fixed point as a percentage. This is similar to <code class="docutils literal"><span class="pre">'f'</span></code>,
-but the argument is multiplied by 100 and a percent sign
-<code class="docutils literal"><span class="pre">%</span></code> is appended.</td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">'n'</span></code></td>
+<td>Number. This is the same as <code class="docutils literal"><span class="pre">'g'</span></code>, except that it uses
+the current locale setting to insert the appropriate
+number separator characters.</td>
 </tr>
 <tr class="row-odd"><td>none</td>
 <td>Similar to <code class="docutils literal"><span class="pre">'g'</span></code>, except that fixed-point notation,

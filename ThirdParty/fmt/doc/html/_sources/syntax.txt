@@ -101,11 +101,6 @@ The meaning of the various alignment options is as follows:
 | ``'>'`` | Forces the field to be right-aligned within the          |
 |         | available space (this is the default for numbers).       |
 +---------+----------------------------------------------------------+
-| ``'='`` | Forces the padding to be placed after the sign (if any)  |
-|         | but before the digits.  This is used for printing fields |
-|         | in the form '+000000120'. This alignment option is only  |
-|         | valid for numeric types.                                 |
-+---------+----------------------------------------------------------+
 | ``'^'`` | Forces the field to be centered within the available     |
 |         | space.                                                   |
 +---------+----------------------------------------------------------+
@@ -154,9 +149,11 @@ conversions, trailing zeros are not removed from the result.
 *width* is a decimal integer defining the minimum field width.  If not
 specified, then the field width will be determined by the content.
 
-Preceding the *width* field by a zero (``'0'``) character enables
-sign-aware zero-padding for numeric types.  This is equivalent to a *fill*
-character of ``'0'`` with an *alignment* type of ``'='``.
+Preceding the *width* field by a zero (``'0'``) character enables sign-aware
+zero-padding for numeric types. It forces the padding to be placed after the
+sign or base (if any) but before the digits. This is used for printing fields in
+the form '+000000120'. This option is only valid for numeric types and it has no
+effect on formatting of infinity and NaN.
 
 The *precision* is a decimal number indicating how many digits should be
 displayed after the decimal point for a floating-point value formatted with
@@ -264,9 +261,9 @@ The available presentation types for floating-point values are:
 |         | ``'E'`` if the number gets too large. The                |
 |         | representations of infinity and NaN are uppercased, too. |
 +---------+----------------------------------------------------------+
-| ``'%'`` | Fixed point as a percentage. This is similar to ``'f'``, |
-|         | but the argument is multiplied by 100 and a percent sign |
-|         | ``%`` is appended.                                       |
+| ``'n'`` | Number. This is the same as ``'g'``, except that it uses |
+|         | the current locale setting to insert the appropriate     |
+|         | number separator characters.                             |
 +---------+----------------------------------------------------------+
 | none    | Similar to ``'g'``, except that fixed-point notation,    |
 |         | when used, has at least one digit past the decimal       |

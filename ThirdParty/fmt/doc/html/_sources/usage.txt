@@ -103,7 +103,17 @@ the previous section. Then compile the ``doc`` target/project, for example::
   make doc
 
 This will generate the HTML documentation in ``doc/html``.
-  
+
+Conda
+=====
+
+fmt can be installed on Linux, macOS and Windows with
+`Conda <https://docs.conda.io/en/latest/>`__, using its
+`conda-forge <https://conda-forge.org>`__
+`package <https://github.com/conda-forge/fmt-feedstock>`__, as follows::
+
+  conda install -c conda-forge fmt
+
 Android NDK
 ===========
 

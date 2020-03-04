@@ -18,7 +18,7 @@
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * cURL - [curl-7.61.1](https://curl.haxx.se/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
-* fmt - [fmt-4.0.0](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
+* fmt - [fmt-6.1.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-docking-04.03.20](https://github.com/ocornut/imgui)
 * libbson - [libbson-1.8.2](http://mongoc.org/libbson/current/index.html)
 * mongo-c-driver - [mongo-c-driver-1.8.2](https://github.com/mongodb/mongo-c-driver)

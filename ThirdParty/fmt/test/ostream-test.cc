@@ -64,7 +64,7 @@ TEST(OStreamTest, Enum) {
   EXPECT_EQ(L"0", fmt::format(L"{}", unstreamable_enum()));
 }
 
-using range = fmt::internal::buffer_range<char>;
+using range = fmt::buffer_range<char>;
 
 struct test_arg_formatter : fmt::arg_formatter<range> {
   fmt::format_parse_context parse_ctx;
@@ -95,8 +95,10 @@ TEST(OStreamTest, Format) {
 TEST(OStreamTest, FormatSpecs) {
   EXPECT_EQ("def  ", format("{0:<5}", TestString("def")));
   EXPECT_EQ("  def", format("{0:>5}", TestString("def")));
+#if FMT_NUMERIC_ALIGN
   EXPECT_THROW_MSG(format("{0:=5}", TestString("def")), format_error,
                    "format specifier requires numeric argument");
+#endif
   EXPECT_EQ(" def ", format("{0:^5}", TestString("def")));
   EXPECT_EQ("def**", format("{0:*<5}", TestString("def")));
   EXPECT_THROW_MSG(format("{0:+}", TestString()), format_error,
@@ -143,8 +145,8 @@ TEST(OStreamTest, WriteToOStream) {
 }
 
 TEST(OStreamTest, WriteToOStreamMaxSize) {
-  std::size_t max_size = std::numeric_limits<std::size_t>::max();
-  std::streamsize max_streamsize = std::numeric_limits<std::streamsize>::max();
+  std::size_t max_size = fmt::internal::max_value<std::size_t>();
+  std::streamsize max_streamsize = fmt::internal::max_value<std::streamsize>();
   if (max_size <= fmt::internal::to_unsigned(max_streamsize)) return;
 
   struct test_buffer : fmt::internal::buffer<char> {
@@ -185,8 +187,8 @@ TEST(OStreamTest, Join) {
 
 #if FMT_USE_CONSTEXPR
 TEST(OStreamTest, ConstexprString) {
-  EXPECT_EQ("42", format(fmt("{}"), std::string("42")));
-  EXPECT_EQ("a string", format(fmt("{0}"), TestString("a string")));
+  EXPECT_EQ("42", format(FMT_STRING("{}"), std::string("42")));
+  EXPECT_EQ("a string", format(FMT_STRING("{0}"), TestString("a string")));
 }
 #endif
 
@@ -240,3 +242,59 @@ TEST(FormatTest, UDL) {
   EXPECT_EQ("{}"_format("test"), "test");
 }
 #endif
+
+template <typename T> struct convertible {
+  T value;
+  explicit convertible(const T& val) : value(val) {}
+  operator T() const { return value; }
+};
+
+TEST(OStreamTest, DisableBuiltinOStreamOperators) {
+  EXPECT_EQ("42", fmt::format("{:d}", convertible<unsigned short>(42)));
+  EXPECT_EQ(L"42", fmt::format(L"{:d}", convertible<unsigned short>(42)));
+  EXPECT_EQ("foo", fmt::format("{}", convertible<const char*>("foo")));
+}
+
+struct explicitly_convertible_to_string_like {
+  template <typename String,
+            typename = typename std::enable_if<std::is_constructible<
+                String, const char*, std::size_t>::value>::type>
+  explicit operator String() const {
+    return String("foo", 3u);
+  }
+};
+
+TEST(FormatterTest, FormatExplicitlyConvertibleToStringLike) {
+  EXPECT_EQ("foo", fmt::format("{}", explicitly_convertible_to_string_like()));
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         explicitly_convertible_to_string_like) {
+  return os << "bar";
+}
+
+TEST(FormatterTest, FormatExplicitlyConvertibleToStringLikeIgnoreInserter) {
+  EXPECT_EQ("foo", fmt::format("{}", explicitly_convertible_to_string_like()));
+}
+
+#ifdef FMT_USE_STRING_VIEW
+struct explicitly_convertible_to_std_string_view {
+  explicit operator fmt::internal::std_string_view<char>() const {
+    return {"foo", 3u};
+  }
+};
+
+TEST(FormatterTest, FormatExplicitlyConvertibleToStdStringView) {
+  EXPECT_EQ("foo", fmt::format("{}", explicitly_convertible_to_string_like()));
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         explicitly_convertible_to_std_string_view) {
+  return os << "bar";
+}
+
+TEST(FormatterTest, FormatExplicitlyConvertibleToStdStringViewIgnoreInserter) {
+  EXPECT_EQ("foo",
+            fmt::format("{}", explicitly_convertible_to_std_string_view()));
+}
+#endif  // FMT_USE_STRING_VIEW

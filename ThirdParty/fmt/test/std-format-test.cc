@@ -30,18 +30,14 @@ TEST(StdFormatTest, Alignment) {
   // Error: '=' with charT and no integer presentation type
   EXPECT_THROW(string s5 = format("{:=6}", 'x'), std::format_error);
   string s6 = format("{:6d}", c);       // s6 == "   120"
-  string s7 = format("{:=+06d}", c);    // s7 == "+00120"
-  string s8 = format("{:0=#6x}", 0xa);  // s8 == "0x000a"
-  string s9 = format("{:6}", true);     // s9 == "true  "
+  string s7 = format("{:6}", true);     // s9 == "true  "
   EXPECT_EQ(s0, "    42");
   EXPECT_EQ(s1, "x     ");
   EXPECT_EQ(s2, "x*****");
   EXPECT_EQ(s3, "*****x");
   EXPECT_EQ(s4, "**x***");
   EXPECT_EQ(s6, "   120");
-  EXPECT_EQ(s7, "+00120");
-  EXPECT_EQ(s8, "0x000a");
-  EXPECT_EQ(s9, "true  ");
+  EXPECT_EQ(s7, "true  ");
 }
 
 TEST(StdFormatTest, Float) {
@@ -65,11 +61,11 @@ TEST(StdFormatTest, Int) {
   string s0 = format("{}", 42);                       // s0 == "42"
   string s1 = format("{0:b} {0:d} {0:o} {0:x}", 42);  // s1 == "101010 42 52 2a"
   string s2 = format("{0:#x} {0:#X}", 42);            // s2 == "0x2a 0X2A"
-  string s3 = format("{:n}", 1234);  // s3 == "1,234" (depends on the locale)
+  string s3 = format("{:n}", 1234);  // s3 == "1234" (depends on the locale)
   EXPECT_EQ(s0, "42");
   EXPECT_EQ(s1, "101010 42 52 2a");
   EXPECT_EQ(s2, "0x2a 0X2A");
-  EXPECT_EQ(s3, "1,234");
+  EXPECT_EQ(s3, "1234");
 }
 
 #include <format>

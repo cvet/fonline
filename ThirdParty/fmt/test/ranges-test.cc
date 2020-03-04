@@ -9,12 +9,12 @@
 // All Rights Reserved
 // {fmt} support for ranges, containers and types tuple interface.
 
-/// Check if  'if constexpr' is supported.
+#include "fmt/ranges.h"
+#include "gtest.h"
+
+// Check if  'if constexpr' is supported.
 #if (__cplusplus > 201402L) || \
     (defined(_MSVC_LANG) && _MSVC_LANG > 201402L && _MSC_VER >= 1910)
-
-#  include "fmt/ranges.h"
-#  include "gtest.h"
 
 #  include <array>
 #  include <map>
@@ -47,6 +47,25 @@ TEST(RangesTest, FormatTuple) {
   std::tuple<int64_t, float, std::string, char> tu1{42, 1.5f, "this is tuple",
                                                     'i'};
   EXPECT_EQ("(42, 1.5, \"this is tuple\", 'i')", fmt::format("{}", tu1));
+}
+
+TEST(RangesTest, JoinTuple) {
+  // Value tuple args
+  std::tuple<char, int, float> t1 = std::make_tuple('a', 1, 2.0f);
+  EXPECT_EQ("(a, 1, 2.0)", fmt::format("({})", fmt::join(t1, ", ")));
+
+  // Testing lvalue tuple args
+  int x = 4;
+  std::tuple<char, int&> t2{'b', x};
+  EXPECT_EQ("b + 4", fmt::format("{}", fmt::join(t2, " + ")));
+
+  // Empty tuple
+  std::tuple<> t3;
+  EXPECT_EQ("", fmt::format("{}", fmt::join(t3, "|")));
+
+  // Single element tuple
+  std::tuple<float> t4{4.0f};
+  EXPECT_EQ("4.0", fmt::format("{}", fmt::join(t4, "/")));
 }
 
 struct my_struct {
@@ -100,3 +119,16 @@ TEST(RangesTest, PathLike) {
 
 #endif  // (__cplusplus > 201402L) || (defined(_MSVC_LANG) && _MSVC_LANG >
         // 201402L && _MSC_VER >= 1910)
+
+#ifdef FMT_USE_STRING_VIEW
+struct string_like {
+  const char* begin();
+  const char* end();
+  explicit operator fmt::string_view() const { return "foo"; }
+  explicit operator std::string_view() const { return "foo"; }
+};
+
+TEST(RangesTest, FormatStringLike) {
+  EXPECT_EQ("foo", fmt::format("{}", string_like()));
+}
+#endif  // FMT_USE_STRING_VIEW
