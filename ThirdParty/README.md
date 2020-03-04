@@ -3,7 +3,7 @@
 * Acm - ACM sound format reader
 * AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
 * Asio - [asio-1.12.2](https://think-async.com/Asio/)
-* Assimp - [assimp-5.0.0-rc2](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
+* Assimp - [assimp-5.0.1](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-2.9.2](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-master-180220](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
