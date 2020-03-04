@@ -243,6 +243,7 @@ elseif( EMSCRIPTEN )
 	list( APPEND FO_BUILD_OPTIONS "-s EXPORTED_RUNTIME_METHODS=\"['FS_createPath', 'FS_createDataFile']\"" )
 	list( APPEND FO_BUILD_OPTIONS "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['Pointer_stringify', 'intArrayFromString', 'UTF8ToString', 'addRunDependency', 'removeRunDependency', 'stackTrace', 'getMemory']\"" )
 	list( APPEND FO_BUILD_OPTIONS "--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/mono/repo/sdks/wasm/library_mono.js\"" )
+	list( APPEND FO_BUILD_OPTIONS "-s LLD_REPORT_UNDEFINED=1" )
 	if( FONLINE_WEB_DEBUG )
 		set( FO_BUILD_CONFIGURATION "Debug" )
 		set( FO_CLIENT_POSTFIX "${FO_CLIENT_POSTFIX}_Debug" )
@@ -265,9 +266,12 @@ elseif( EMSCRIPTEN )
 	else()
 		list( APPEND FO_BUILD_OPTIONS "-Oz" )
 		list( APPEND FO_BUILD_OPTIONS "--no-heap-copy" )
-		list( APPEND FO_BUILD_OPTIONS "-s DISABLE_EXCEPTION_CATCHING=0" )
-		# Uncomment these optimizations later, they may give side effects
+		# Todo: need?
+		# list( APPEND FO_BUILD_OPTIONS "-s WASM=2" )
+		# list( APPEND FO_BUILD_OPTIONS "-s DISABLE_EXCEPTION_CATCHING=0" )
+		# Todo: uncomment these optimizations later, they may give side effects
 		# list( APPEND FO_BUILD_OPTIONS "--closure 1" ) - conflicts with NO_DYNAMIC_EXECUTION
+		# list( APPEND FO_BUILD_OPTIONS "-s CLOSURE_WARNINGS=error" )
 		# list( APPEND FO_BUILD_OPTIONS "--llvm-lto 1" )
 		# list( APPEND FO_BUILD_OPTIONS "-s INLINING_LIMIT=1" )
 	endif()
