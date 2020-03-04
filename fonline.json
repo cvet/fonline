@@ -1,34 +1,36 @@
 {
-    "files": [
+    "content": [
         {
-            "label": "Common Lib",
+            "label": "Engine Common Source",
             "path": "Source/Common",
-            "pattern": "(.+\\.cpp)(.+\\.h)"
+            "type": "engine"
         },
         {
-            "label": "Client Lib",
+            "label": "Engine Client Source",
             "path": "Source/Client",
-            "pattern": "(.+\\.cpp)(.+\\.h)"
+            "type": "engine"
         },
         {
-            "label": "Server Lib",
+            "label": "Engine Server Source",
             "path": "Source/Client",
-            "pattern": "(.+\\.cpp)(.+\\.h)"
+            "type": "engine"
         },
         {
-            "label": "Editor Lib",
-            "path": "Source/Editor",
-            "pattern": "(.+\\.cpp)(.+\\.h)"
-        },
+            "label": "Engine Tools Source",
+            "path": "Source/Tools",
+            "type": "engine"
+        }
+    ],
+    "resources": [
         {
-            "label": "Core Resources",
-            "path": "Resources/Core",
-            "pattern": ".+"
-        },
-        {
-            "label": "Embedded Resources",
+            "label": "Embedded",
             "path": "Resources/Embedded",
-            "pattern": ".+"
+            "type": "embedded"
+        },
+        {
+            "label": "Core",
+            "path": "Resources/Core",
+            "type": "zip"
         }
     ],
     "actions": [

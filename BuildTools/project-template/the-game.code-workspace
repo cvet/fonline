@@ -6,6 +6,6 @@
     ],
     "settings": {
         "window.autoDetectColorScheme": true,
-        "fonline.path": "FONLINE_PATH"
+        "fonline.path": "../../"
     }
 }
