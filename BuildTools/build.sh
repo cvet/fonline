@@ -11,7 +11,16 @@ source $CUR_DIR/tools.sh
 
 if [ "$2" = "full" ]; then
     BUILD_TARGETS="-DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1"
-    BUILD_DIR="build-$1"
+    BUILD_DIR="build-$1-full"
+elif [ "$2" = "server" ]; then
+    BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SERVER=1"
+    BUILD_DIR="build-$1-server"
+elif [ "$2" = "mapper" ]; then
+    BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_MAPPER=1"
+    BUILD_DIR="build-$1-mapper"
+elif [ "$2" = "baker" ]; then
+    BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_BAKER=1"
+    BUILD_DIR="build-$1-baker"
 elif [ "$2" = "unit-tests" ]; then
     BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_UNIT_TESTS=1"
     BUILD_DIR="build-$1-unit-tests"

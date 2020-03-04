@@ -62,59 +62,64 @@
             "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
         },
         {
-            "label": "Build for Windows (x64)",
+            "label": "Client for Windows (x64)",
             "group": "Build",
-            "command": "BuildTools/build.sh win64 full"
+            "command": "BuildTools/build.sh win64"
         },
         {
-            "label": "Build for Windows (x86)",
+            "label": "Client for Windows (x86)",
             "group": "Build",
             "command": "BuildTools/build.sh win32"
         },
         {
-            "label": "Build for UWP",
+            "label": "Client for UWP",
             "group": "Build",
             "command": "BuildTools/build.sh uwp"
         },
         {
-            "label": "Build for Linux",
+            "label": "Client for Linux",
             "group": "Build",
-            "command": "BuildTools/build.sh linux full"
+            "command": "BuildTools/build.sh linux"
         },
         {
-            "label": "Build for Web (release)",
+            "label": "Client for Web",
             "group": "Build",
             "command": "BuildTools/build.sh web"
         },
         {
-            "label": "Build for Web (debug)",
-            "group": "Build",
-            "command": "BuildTools/build.sh web-debug"
-        },
-        {
-            "label": "Build for Android (arm)",
+            "label": "Client for Android (arm)",
             "group": "Build",
             "command": "BuildTools/build.sh android"
         },
         {
-            "label": "Build for Android (arm64)",
+            "label": "Client for Android (arm64)",
             "group": "Build",
             "command": "BuildTools/build.sh android-arm64"
         },
         {
-            "label": "Build for Android (x86)",
+            "label": "Client for Android (x86)",
             "group": "Build",
             "command": "BuildTools/build.sh android-x86"
         },
         {
-            "label": "Build for macOS",
+            "label": "Client for macOS",
             "group": "Build",
             "command": "BuildTools/build.sh mac"
         },
         {
-            "label": "Build for iOS",
+            "label": "Client for iOS",
             "group": "Build",
             "command": "BuildTools/build.sh ios"
+        },
+        {
+            "label": "Server for Windows",
+            "group": "Build",
+            "command": "BuildTools/build.sh win64 server"
+        },
+        {
+            "label": "Server for Linux",
+            "group": "Build",
+            "command": "BuildTools/build.sh linux server"
         },
         {
             "label": "Run unit tests",
