@@ -43,7 +43,7 @@
 #include "assimp/cimport.h"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "fbxsdk/fbxsdk.h"
+#include "fbxsdk.h"
 
 struct MeshData : public NonCopyable
 {
