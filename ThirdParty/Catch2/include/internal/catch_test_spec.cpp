@@ -33,7 +33,7 @@ namespace Catch {
     {}
 
     bool TestSpec::NamePattern::matches( TestCaseInfo const& testCase ) const {
-        return m_wildcardPattern.matches( toLower( testCase.name ) );
+        return m_wildcardPattern.matches( testCase.name );
     }
 
 
@@ -90,6 +90,10 @@ namespace Catch {
             return FilterMatch{ filter.name(), currentMatches };
         } );
         return matches;
+    }
+    
+    const TestSpec::vectorStrings& TestSpec::getInvalidArgs() const{
+        return  (m_invalidArgs);
     }
 
 }

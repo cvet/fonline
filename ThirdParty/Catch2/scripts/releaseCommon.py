@@ -127,8 +127,8 @@ def updateVersionDefine(version):
 def updateVersionPlaceholder(filename, version):
     with open(filename, 'rb') as file:
         lines = file.readlines()
-    placeholderRegex = re.compile(b'\) in Catch X.Y.Z')
-    replacement = '\) in Catch {}.{}.{}'.format(version.majorVersion, version.minorVersion, version.patchNumber).encode('ascii')
+    placeholderRegex = re.compile(b' in Catch X.Y.Z')
+    replacement = ' in Catch {}.{}.{}'.format(version.majorVersion, version.minorVersion, version.patchNumber).encode('ascii')
     with open(filename, 'wb') as file:
         for line in lines:
             file.write(placeholderRegex.sub(replacement, line))
@@ -156,7 +156,7 @@ def performUpdates(version):
     # We probably should have some kind of convention to select which reporters need to be copied automagically,
     # but this works for now
     import shutil
-    for rep in ('automake', 'tap', 'teamcity'):
+    for rep in ('automake', 'tap', 'teamcity', 'sonarqube'):
         sourceFile = os.path.join(catchPath, 'include/reporters/catch_reporter_{}.hpp'.format(rep))
         destFile = os.path.join(catchPath, 'single_include', 'catch2', 'catch_reporter_{}.hpp'.format(rep))
         shutil.copyfile(sourceFile, destFile)

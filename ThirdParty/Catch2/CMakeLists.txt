@@ -6,11 +6,15 @@ if(NOT DEFINED PROJECT_NAME)
   set(NOT_SUBPROJECT ON)
 endif()
 
-project(Catch2 LANGUAGES CXX VERSION 2.9.2)
-
-if (CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
+# Catch2's build breaks if done in-tree. You probably should not build
+# things in tree anyway, but we can allow projects that include Catch2
+# as a subproject to build in-tree as long as it is not in our tree.
+if (CMAKE_BINARY_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     message(FATAL_ERROR "Building in-source is not supported! Create a build dir and remove ${CMAKE_SOURCE_DIR}/CMakeCache.txt")
 endif()
+
+
+project(Catch2 LANGUAGES CXX VERSION 2.11.1)
 
 # Provide path for scripts
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
@@ -91,6 +95,10 @@ target_include_directories(Catch2
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/single_include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+if (ANDROID)
+    target_link_libraries(Catch2 INTERFACE log)
+endif()
 
 # provide a namespaced alias for clients to 'link' against if catch is included as a sub-project
 add_library(Catch2::Catch2 ALIAS Catch2)
