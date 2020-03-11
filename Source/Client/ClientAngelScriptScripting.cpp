@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "ClientScriptSystem.h"
 
-void InitClientAngelScriptScripting(ScriptSystem& scriptSys)
+void ClientScriptSystem::InitAngelScriptScripting()
 {
 }

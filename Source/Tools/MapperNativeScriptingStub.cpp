@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "MapperScriptSystem.h"
 
-void InitMapperNativeScripting(ScriptSystem& scriptSys)
+void MapperScriptSystem::InitNativeScripting()
 {
 }

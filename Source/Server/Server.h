@@ -72,12 +72,6 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-#include "ScriptSystem.h"
-
-extern void InitServerNativeScripting(ScriptSystem& scriptSys);
-extern void InitServerAngelScriptScripting(ScriptSystem& scriptSys);
-extern void InitServerMonoScripting(ScriptSystem& scriptSys);
-
 class FOServer : public NonCopyable // Todo: rename FOServer to just Server
 {
 public:

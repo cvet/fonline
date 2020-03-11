@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "MapperScriptSystem.h"
 
-void InitMapperMonoScripting(ScriptSystem& scriptSys)
+void MapperScriptSystem::InitMonoScripting()
 {
 }

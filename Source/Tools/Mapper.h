@@ -76,10 +76,6 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-extern void InitMapperNativeScriptSystem(ScriptSystem& scriptSys);
-extern void InitMapperAngelScriptScriptSystem(ScriptSystem& scriptSys);
-extern void InitMapperMonoScriptSystem(ScriptSystem& scriptSys);
-
 class FOMapper : public NonCopyable // Todo: rename FOMapper to just Mapper
 {
 public:

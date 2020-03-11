@@ -116,10 +116,6 @@ class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
 
-extern void InitClientNativeScripting(ScriptSystem& scriptSys);
-extern void InitClientAngelScriptScripting(ScriptSystem& scriptSys);
-extern void InitClientMonoScripting(ScriptSystem& scriptSys);
-
 class FOClient :
     public NonMovable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
 {

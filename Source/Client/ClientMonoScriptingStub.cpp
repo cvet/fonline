@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "ClientScriptSystem.h"
 
-void InitClientMonoScripting(ScriptSystem& scriptSys)
+void ClientScriptSystem::InitMonoScripting()
 {
 }

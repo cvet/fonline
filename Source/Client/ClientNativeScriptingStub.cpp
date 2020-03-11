@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "ClientScriptSystem.h"
 
-void InitClientNativeScripting(ScriptSystem& scriptSys)
+void ClientScriptSystem::InitNativeScripting()
 {
 }

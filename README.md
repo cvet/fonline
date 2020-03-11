@@ -313,8 +313,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Common: find something from STL instead TwoBitMask
 * Common: move NetProperty to more proper place
 * ClientApp: fix script system
-* EditorApp: improve editor Undo/Redo
-* EditorApp: need attention!
+* MapperApp: fix script system
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
@@ -322,7 +321,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Client: remove all memory allocations from client loop
 * Client: handle mouse wheel
 * Client: synchronize effects showing (for example shot and kill)
-* Client: need attention! (2)
+* Client: need attention!
 * Client: fix soft scroll if critter teleports
 * Client: add working in IPv6 networks
 * Client: rename FOClient to just Client (after reworking server Client to ClientConnection)
@@ -363,25 +362,15 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Properties: rework FONLINE_
 * Properties: don't preserve memory for not allocated components in entity
 * ProtoManager: remove ProtoManager::ClearProtos
-* Script: rework FONLINE_
-* Script: fill settings to scripts
-* Script: separate interface for calling script events
-* Script: rework FONLINE_
-* ScriptBind_Include: register new type with automating string - number convertation, exclude GetStrHash
-* ScriptBind_Include: const Crit_GetCritters
-* ScriptBind_Include: const Npc_GetTalkedPlayers
-* ScriptFunctions_Include: rework FONLINE_
-* ScriptFunctions_Include: fix script system (4)
-* ScriptFunctions_Include: need attention! (3)
 * ScriptInvoker: move script invoker to ScriptSystem
 * ScriptInvoker: rework FONLINE_
 * ScriptInvoker: fix script system (2)
 * ScriptInvoker: take Invoker from func
 * ScriptInvoker: rework FONLINE_
-* ScriptPragmas: rework FONLINE_
-* ScriptPragmas: fix script system (2)
-* ScriptPragmas: fix pragma parsing as tokens not as strings
-* ScriptPragmas: rework FONLINE_
+* ScriptSystem: rework FONLINE_
+* ScriptSystem: fill settings to scripts
+* ScriptSystem: separate interface for calling script events
+* ScriptSystem: rework FONLINE_
 * Settings: exclude server specific settings from client
 * Settings: remove VAR_SETTING must stay only constant values
 * StringUtils: restore hash parsing
@@ -392,13 +381,12 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Testing: send client dumps to server
 * Timer: timers to std::chrono
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
-* ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
-* Mapper: need attention! (25)
-* Mapper: add standalone Mapper application
-* Mapper: rename FOMapper to just Mapper
-* Mapper: remove mapper Self singleton
-* ModelBaker: fix assimp, exclude fbxsdk
-* ModelBaker: return AssimpLogging on models bakering
+* ClientScriptApi: need attention!
+* CommonScriptApi: fix script system (4)
+* CommonScriptApi: need attention! (3)
+* MapperScriptApi: need attention! (5)
+* ScriptApi: remove for better portability (2)
+* ServerScriptApi: need attention!
 * AdminPanel: admin panel network to Asio
 * Critter: remove static SlotEnabled and SlotDataSendEnabled
 * Critter: rework Client class to ClientConnection
@@ -421,11 +409,17 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
-* Server: need attention!
 * Server: rename FOServer to just Server
 * Server: remove server Self singleton
 * Server: synchronize LangPacks
 * Server: run network listeners dynamically, without restriction, based on server settings
+* ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
+* Mapper: need attention! (20)
+* Mapper: add standalone Mapper application
+* Mapper: rename FOMapper to just Mapper
+* Mapper: remove mapper Self singleton
+* ModelBaker: fix assimp, exclude fbxsdk
+* ModelBaker: return AssimpLogging on models bakering
   
 ## Repository structure
 

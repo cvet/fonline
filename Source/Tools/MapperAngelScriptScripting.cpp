@@ -31,8 +31,8 @@
 // SOFTWARE.
 //
 
-#include "ScriptSystem.h"
+#include "MapperScriptSystem.h"
 
-void InitMapperAngelScriptScripting(ScriptSystem& scriptSys)
+void MapperScriptSystem::InitAngelScriptScripting()
 {
 }

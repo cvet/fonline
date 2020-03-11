@@ -31,8 +31,16 @@
 // SOFTWARE.
 //
 
-#include "MapperScriptSystem.h"
+#pragma once
 
-void MapperScriptSystem::InitNativeScripting()
+#include "Common.h"
+
+#include "ScriptSystem.h"
+
+class ClientScriptSystem : public ScriptSystem
 {
-}
+public:
+    void InitNativeScripting();
+    void InitAngelScriptScripting();
+    void InitMonoScripting();
+};
