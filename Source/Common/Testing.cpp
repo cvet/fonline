@@ -40,7 +40,7 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "MessageBox.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"

@@ -38,7 +38,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "MapLoader.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 
 class Item;

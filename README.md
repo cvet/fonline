@@ -35,11 +35,9 @@
 * Online mode with authoritative server
 * Singleplayer mode *(with or without back run in online mode)*
 * Flexible scripting system with varies supporting languages:
-  + Native C bindings *(that allows add more languages for work with engine)*
-  + Native C++
-  + C#/Mono
-  + AngelScript
-  + Fallout Star-Trek *(for run original Fallout 1/2 out of the box)*
+  + Mono C# (modern and safe scripting)
+  + Native C++ (for performance critical places)
+  + AngelScript (engine legacy scripting support)
 * Cross-platform with target platforms:
   + Windows
   + Linux

@@ -53,7 +53,7 @@
 #include "NetBuffer.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -115,6 +115,10 @@ DECLARE_EXCEPTION(ClientRestartException);
 class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
+
+extern void InitClientNativeScripting(ScriptSystem& scriptSys);
+extern void InitClientAngelScriptScripting(ScriptSystem& scriptSys);
+extern void InitClientMonoScripting(ScriptSystem& scriptSys);
 
 class FOClient :
     public NonMovable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
@@ -450,175 +454,6 @@ public:
     /************************************************************************/
     bool ReloadScripts();
     void OnItemInvChanged(ItemView* old_item, ItemView* new_item);
-
-    struct SScriptFunc
-    {
-        static bool Crit_IsChosen(CritterView* cr);
-        static bool Crit_IsPlayer(CritterView* cr);
-        static bool Crit_IsNpc(CritterView* cr);
-        static bool Crit_IsOffline(CritterView* cr);
-        static bool Crit_IsLife(CritterView* cr);
-        static bool Crit_IsKnockout(CritterView* cr);
-        static bool Crit_IsDead(CritterView* cr);
-        static bool Crit_IsFree(CritterView* cr);
-        static bool Crit_IsBusy(CritterView* cr);
-
-        static bool Crit_IsAnim3d(CritterView* cr);
-        static bool Crit_IsAnimAviable(CritterView* cr, uint anim1, uint anim2);
-        static bool Crit_IsAnimPlaying(CritterView* cr);
-        static uint Crit_GetAnim1(CritterView* cr);
-        static void Crit_Animate(CritterView* cr, uint anim1, uint anim2);
-        static void Crit_AnimateEx(CritterView* cr, uint anim1, uint anim2, ItemView* item);
-        static void Crit_ClearAnim(CritterView* cr);
-        static void Crit_Wait(CritterView* cr, uint ms);
-        static uint Crit_CountItem(CritterView* cr, hash proto_id);
-        static ItemView* Crit_GetItem(CritterView* cr, uint item_id);
-        static ItemView* Crit_GetItemPredicate(CritterView* cr, asIScriptFunction* predicate);
-        static ItemView* Crit_GetItemBySlot(CritterView* cr, uchar slot);
-        static ItemView* Crit_GetItemByPid(CritterView* cr, hash proto_id);
-        static CScriptArray* Crit_GetItems(CritterView* cr);
-        static CScriptArray* Crit_GetItemsBySlot(CritterView* cr, uchar slot);
-        static CScriptArray* Crit_GetItemsPredicate(CritterView* cr, asIScriptFunction* predicate);
-        static void Crit_SetVisible(CritterView* cr, bool visible);
-        static bool Crit_GetVisible(CritterView* cr);
-        static void Crit_set_ContourColor(CritterView* cr, uint value);
-        static uint Crit_get_ContourColor(CritterView* cr);
-        static void Crit_GetNameTextInfo(
-            CritterView* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
-        static void Crit_AddAnimationCallback(
-            CritterView* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback);
-        static bool Crit_GetBonePosition(CritterView* cr, hash bone_name, int& bone_x, int& bone_y);
-
-        static ItemView* Item_Clone(ItemView* item, uint count);
-        static bool Item_GetMapPosition(ItemView* item, ushort& hx, ushort& hy);
-        static void Item_Animate(ItemView* item, uint from_frame, uint to_frame);
-        static CScriptArray* Item_GetItems(ItemView* cont, uint stack_id);
-
-        static string Global_CustomCall(string command, string separator);
-        static CritterView* Global_GetChosen();
-        static ItemView* Global_GetItem(uint item_id);
-        static CScriptArray* Global_GetMapAllItems();
-        static CScriptArray* Global_GetMapHexItems(ushort hx, ushort hy);
-        static uint Global_GetCrittersDistantion(CritterView* cr1, CritterView* cr2);
-        static CritterView* Global_GetCritter(uint critter_id);
-        static CScriptArray* Global_GetCritters(ushort hx, ushort hy, uint radius, int find_type);
-        static CScriptArray* Global_GetCrittersByPids(hash pid, int find_type);
-        static CScriptArray* Global_GetCrittersInPath(
-            ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type);
-        static CScriptArray* Global_GetCrittersInPathBlock(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy,
-            float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx,
-            ushort& block_hy);
-        static void Global_GetHexInPath(
-            ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist);
-        static CScriptArray* Global_GetPathHex(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut);
-        static CScriptArray* Global_GetPathCr(CritterView* cr, ushort to_hx, ushort to_hy, uint cut);
-        static uint Global_GetPathLengthHex(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut);
-        static uint Global_GetPathLengthCr(CritterView* cr, ushort to_hx, ushort to_hy, uint cut);
-        static void Global_FlushScreen(uint from_color, uint to_color, uint ms);
-        static void Global_QuakeScreen(uint noise, uint ms);
-        static bool Global_PlaySound(string sound_name);
-        static bool Global_PlayMusic(string music_name, uint repeat_time);
-        static void Global_PlayVideo(string video_name, bool can_stop);
-
-        static hash Global_GetCurrentMapPid();
-        static void Global_Message(string msg);
-        static void Global_MessageType(string msg, int type);
-        static void Global_MessageMsg(int text_msg, uint str_num);
-        static void Global_MessageMsgType(int text_msg, uint str_num, int type);
-        static void Global_MapMessage(
-            string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy);
-        static string Global_GetMsgStr(int text_msg, uint str_num);
-        static string Global_GetMsgStrSkip(int text_msg, uint str_num, uint skip_count);
-        static uint Global_GetMsgStrNumUpper(int text_msg, uint str_num);
-        static uint Global_GetMsgStrNumLower(int text_msg, uint str_num);
-        static uint Global_GetMsgStrCount(int text_msg, uint str_num);
-        static bool Global_IsMsgStr(int text_msg, uint str_num);
-        static string Global_ReplaceTextStr(string text, string replace, string str);
-        static string Global_ReplaceTextInt(string text, string replace, int i);
-        static string Global_FormatTags(string text, string lexems);
-        static void Global_MoveScreenToHex(ushort hx, ushort hy, uint speed, bool can_stop);
-        static void Global_MoveScreenOffset(int ox, int oy, uint speed, bool can_stop);
-        static void Global_LockScreenScroll(CritterView* cr, bool soft_lock, bool unlock_if_same);
-        static int Global_GetFog(ushort zone_x, ushort zone_y);
-        static uint Global_GetDayTime(uint day_part);
-        static void Global_GetDayColor(uint day_part, uchar& r, uchar& g, uchar& b);
-
-        static uint Global_GetFullSecond(
-            ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
-        static void Global_GetGameTime(uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week,
-            ushort& hour, ushort& minute, ushort& second);
-        static void Global_GetTime(ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour,
-            ushort& minute, ushort& second, ushort& milliseconds);
-        static void Global_SetPropertyGetCallback(asIScriptGeneric* gen);
-        static void Global_AddPropertySetCallback(asIScriptGeneric* gen);
-        static void Global_AllowSlot(uchar index, bool enable_send);
-        static void Global_AddDataSource(string dat_name);
-
-        static uint Global_LoadSprite(string spr_name);
-        static uint Global_LoadSpriteHash(uint name_hash);
-        static int Global_GetSpriteWidth(uint spr_id, int frame_index);
-        static int Global_GetSpriteHeight(uint spr_id, int frame_index);
-        static uint Global_GetSpriteCount(uint spr_id);
-        static uint Global_GetSpriteTicks(uint spr_id);
-        static uint Global_GetPixelColor(uint spr_id, int frame_index, int x, int y);
-        static void Global_GetTextInfo(string text, int w, int h, int font, int flags, int& tw, int& th, int& lines);
-        static void Global_DrawSprite(uint spr_id, int frame_index, int x, int y, uint color, bool offs);
-        static void Global_DrawSpriteSize(
-            uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs);
-        static void Global_DrawSpritePattern(
-            uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-        static void Global_DrawText(string text, int x, int y, int w, int h, uint color, int font, int flags);
-        static void Global_DrawPrimitive(int primitive_type, CScriptArray* data);
-        static void Global_DrawMapSprite(MapSprite* map_spr);
-        static void Global_DrawCritter2d(hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b,
-            bool scratch, bool center, uint color);
-        static void Global_DrawCritter3d(uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers,
-            CScriptArray* position, uint color);
-        static void Global_PushDrawScissor(int x, int y, int w, int h);
-        static void Global_PopDrawScissor();
-        static void Global_ActivateOffscreenSurface(bool force_clear);
-        static void Global_PresentOffscreenSurface(int effect_subtype);
-        static void Global_PresentOffscreenSurfaceExt(int effect_subtype, int x, int y, int w, int h);
-        static void Global_PresentOffscreenSurfaceExt2(
-            int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h);
-
-        static void Global_ShowScreen(int screen, CScriptDictionary* params);
-        static void Global_HideScreen(int screen);
-        static bool Global_GetHexPos(ushort hx, ushort hy, int& x, int& y);
-        static bool Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy);
-        static ItemView* Global_GetMonitorItem(int x, int y);
-        static CritterView* Global_GetMonitorCritter(int x, int y);
-        static Entity* Global_GetMonitorEntity(int x, int y);
-        static ushort Global_GetMapWidth();
-        static ushort Global_GetMapHeight();
-        static bool Global_IsMapHexPassed(ushort hx, ushort hy);
-        static bool Global_IsMapHexRaked(ushort hx, ushort hy);
-        static void Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps);
-        static hash Global_GetTileName(ushort hx, ushort hy, bool roof, int layer);
-        static void Global_Preload3dFiles(CScriptArray* fnames);
-        static void Global_WaitPing();
-        static bool Global_LoadFont(int font, string font_fname);
-        static void Global_SetDefaultFont(int font, uint color);
-        static bool Global_SetEffect(int effect_type, int effect_subtype, string effect_name, string effect_defines);
-        static void Global_RefreshMap(bool only_tiles, bool only_roof, bool only_light);
-        static void Global_MouseClick(int x, int y, int button);
-        static void Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text);
-        static void Global_SetRainAnimation(string fall_anim_name, string drop_anim_name);
-        static void Global_ChangeZoom(float target_zoom);
-        static void Global_SaveScreenshot(string file_path);
-        static bool Global_SaveText(string file_path, string text);
-        static void Global_SetCacheData(string name, const CScriptArray* data);
-        static void Global_SetCacheDataSize(string name, const CScriptArray* data, uint data_size);
-        static CScriptArray* Global_GetCacheData(string name);
-        static void Global_SetCacheDataStr(string name, string str);
-        static string Global_GetCacheDataStr(string name);
-        static bool Global_IsCacheData(string name);
-        static void Global_EraseCacheData(string name);
-        static void Global_SetUserConfig(CScriptArray* key_values);
-
-        static MapView* ClientCurMap;
-        static LocationView* ClientCurLocation;
-    } ScriptFunc;
 
     /************************************************************************/
     /* Game                                                                 */

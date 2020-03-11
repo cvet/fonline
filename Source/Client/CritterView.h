@@ -43,7 +43,7 @@
 #include "Properties.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"

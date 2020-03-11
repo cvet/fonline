@@ -12,6 +12,9 @@ set( FONLINE_BUILD_BAKER OFF CACHE BOOL "Build baker binaries" )
 set( FONLINE_UNIT_TESTS OFF CACHE BOOL "Build only binaries for Unit Testing" )
 set( FONLINE_CODE_COVERAGE OFF CACHE BOOL "Build only binaries for Code Coverage reports" )
 set( FONLINE_CUSTOM_VERSION "" CACHE STRING "Custom version for build (integer FO_VERSION in code), use hex digits (0-9, a-f), maximum are 8" )
+set( FONLINE_NATIVE_SCRIPTING ON CACHE BOOL "Supporting of native scripting" )
+set( FONLINE_ANGELSCRIPT_SCRIPTING ON CACHE BOOL "Supporting of AngelScript scripting" )
+set( FONLINE_MONO_SCRIPTING ON CACHE BOOL "Supporting of Mono scripting" )
 
 # Quiet all non-error messages instead ourself
 function( message mode )
@@ -103,23 +106,16 @@ set( FO_BACKWARDCPP_DIR "" )
 set( FO_SPARK_DIR "" )
 set( FO_GLSLANG_DIR "" )
 set( FO_SPIRV_CROSS_DIR "" )
-set( FO_ANGEL_SCRIPT_SCRIPTING_DIR "" )
-set( FO_ANGEL_SCRIPT_DIR "" )
-set( FO_ANGEL_SCRIPT_EXT_DIR "" )
-set( FO_ANGEL_SCRIPT_SDK_DIR "" )
-set( FO_ANGEL_SCRIPT_PREPROCESSOR_DIR "" )
-set( FO_MONO_CSHARP_SCRIPTING_DIR "" )
+set( FO_ANGELSCRIPT_DIR "" )
+set( FO_ANGELSCRIPT_EXT_DIR "" )
+set( FO_ANGELSCRIPT_SDK_DIR "" )
+set( FO_ANGELSCRIPT_PREPROCESSOR_DIR "" )
 set( FO_MONO_DIR "" )
-set( FO_STAR_TREK_SCRIPTING_DIR "" )
 set( FO_OGG_SOURCE "" )
 set( FO_VORBIS_SOURCE "" )
 set( FO_THEORA_SOURCE "" )
 set( FO_GLEW_SOURCE "" )
 set( FO_IMGUI_SOURCE "" )
-set( FO_ANGEL_SCRIPT_SCRIPTING_SOURCE "" )
-set( FO_ANGEL_SCRIPT_EXT_SOURCE "" )
-set( FO_MONO_CSHARP_SCRIPTING_SOURCE "" )
-set( FO_STAR_TREK_SCRIPTING_SOURCE "" )
 set( FO_COMMON_SOURCE "" )
 set( FO_SERVER_SOURCE "" )
 set( FO_CLIENT_SOURCE "" )
@@ -339,10 +335,9 @@ include_directories( "Source/Common" )
 include_directories( "Source/Server" )
 include_directories( "Source/Client" )
 include_directories( "Source/Tools" )
+include_directories( "Source/Scripting" )
 if( $ENV{FO_USER_INCLUDES} )
 	include_directories( $ENV{FO_USER_INCLUDES} )
-else()
-	include_directories( "Source/UserIncludesStub" )
 endif()
 
 # Embedded resources generation
@@ -795,68 +790,53 @@ if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	DisableLibWarnings( spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl )
 endif()
 
-# AngelScript Scripting
-if( YES )
-	# AngelScriptScripting
-	#StatusMessage( "+ AngelScriptScripting" )
-	#set( FO_ANGEL_SCRIPT_SCRIPTING_DIR "Source/Common/AngelScriptScripting" )
-	#file( GLOB FO_ANGEL_SCRIPT_SCRIPTING_SOURCE "${FO_ANGEL_SCRIPT_SCRIPTING_DIR}/*.*" )
-	#add_library( AngelScriptScripting ${FO_ANGEL_SCRIPT_SCRIPTING_SOURCE} )
-	#list( APPEND FO_COMMON_LIBS "AngelScriptScripting" )
-
+# AngelScript scripting
+if( FONLINE_ANGELSCRIPT_SCRIPTING )
 	# AngelScript
 	StatusMessage( "+ AngelScript" )
-	set( FO_ANGEL_SCRIPT_DIR "ThirdParty/AngelScript" )
-	add_subdirectory( "${FO_ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
-	include_directories( "${FO_ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGEL_SCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGEL_SCRIPT_DIR}/sdk/add_on" )
+	set( FO_ANGELSCRIPT_DIR "ThirdParty/AngelScript" )
+	add_subdirectory( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/projects/cmake" )
+	include_directories( "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/include" "${FO_ANGELSCRIPT_DIR}/sdk/angelscript/source" "${FO_ANGELSCRIPT_DIR}/sdk/add_on" )
 	list( APPEND FO_COMMON_LIBS "Angelscript" )
 	DisableLibWarnings( Angelscript )
 
 	# AngelScriptExt
 	StatusMessage( "+ AngelScriptExt" )
-	set( FO_ANGEL_SCRIPT_EXT_DIR "Source/Common/AngelScriptExt" )
-	set( FO_ANGEL_SCRIPT_PREPROCESSOR_DIR "ThirdParty/AngelScript/preprocessor" )
-	set( FO_ANGEL_SCRIPT_SDK_DIR "ThirdParty/AngelScript/sdk" )
-	include_directories( "${FO_ANGEL_SCRIPT_EXT_DIR}" )
-	include_directories( "${FO_ANGEL_SCRIPT_PREPROCESSOR_DIR}" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptstdstring" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptarray" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptdictionary" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptfile" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptany" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/datetime" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptmath" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/weakref" )
-	include_directories( "${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scripthelper" )
-	file( GLOB FO_ANGEL_SCRIPT_EXT_SOURCE
-		"${FO_ANGEL_SCRIPT_EXT_DIR}/*.*"
-		"${FO_ANGEL_SCRIPT_PREPROCESSOR_DIR}/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptstdstring/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptarray/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptdictionary/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptfile/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptany/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/datetime/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scriptmath/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/weakref/*.*"
-		"${FO_ANGEL_SCRIPT_SDK_DIR}/add_on/scripthelper/*.*" )
-	add_library( AngelscriptExt ${FO_ANGEL_SCRIPT_EXT_SOURCE} )
+	set( FO_ANGELSCRIPT_EXT_DIR "Source/Common/AngelScriptExt" )
+	set( FO_ANGELSCRIPT_PREPROCESSOR_DIR "ThirdParty/AngelScript/preprocessor" )
+	set( FO_ANGELSCRIPT_SDK_DIR "ThirdParty/AngelScript/sdk" )
+	include_directories( "${FO_ANGELSCRIPT_EXT_DIR}" )
+	include_directories( "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptany" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref" )
+	include_directories( "${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper" )
+	file( GLOB FO_ANGELSCRIPT_EXT_SOURCE
+		"${FO_ANGELSCRIPT_EXT_DIR}/*.*"
+		"${FO_ANGELSCRIPT_PREPROCESSOR_DIR}/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptstdstring/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptarray/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptdictionary/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptfile/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptany/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/datetime/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scriptmath/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/weakref/*.*"
+		"${FO_ANGELSCRIPT_SDK_DIR}/add_on/scripthelper/*.*" )
+	add_library( AngelscriptExt ${FO_ANGELSCRIPT_EXT_SOURCE} )
 	target_link_libraries( AngelscriptExt Angelscript )
 	list( APPEND FO_COMMON_LIBS "AngelscriptExt" )
 	target_compile_definitions( AngelscriptExt PRIVATE "_CRT_SECURE_NO_WARNINGS" )
 	DisableLibWarnings( AngelscriptExt )
 endif()
 
-# Mono CSharp Scripting
-if( YES )
-	# MonoCSharpScripting
-	#StatusMessage( "+ MonoCSharpScripting" )
-	#set( FO_MONO_CSHARP_SCRIPTING_DIR "Source/Common/MonoCSharpScripting" )
-	#file( GLOB FO_MONO_CSHARP_SCRIPTING_SOURCE "${FO_MONO_CSHARP_SCRIPTING_DIR}/*.*" )
-	#add_library( MonoCSharpScripting ${FO_MONO_CSHARP_SCRIPTING_SOURCE} )
-	#list( APPEND FO_COMMON_LIBS "MonoCSharpScripting" )
-
-	# Mono
+# Mono scripting
+if( FONLINE_MONO_SCRIPTING )
 	StatusMessage( "+ Mono" )
 	set( FO_MONO_DIR "ThirdParty/mono" )
 	add_subdirectory( "${FO_MONO_DIR}" )
@@ -873,16 +853,6 @@ if( YES )
 	DisableLibWarnings( libmono )
 endif()
 
-# StarTrek Scripting
-if( YES )
-	# StarTrekScripting
-	#StatusMessage( "+ StarTrekScripting" )
-	#set( FO_STAR_TREK_SCRIPTING_DIR "Source/Common/StarTrekScripting" )
-	#file( GLOB FO_STAR_TREK_SCRIPTING_SOURCE "${FO_STAR_TREK_SCRIPTING_DIR}/*.*" )
-	#add_library( StarTrekScripting ${FO_STAR_TREK_SCRIPTING_SOURCE} )
-	#list( APPEND FO_COMMON_LIBS "StarTrekScripting" )
-endif()
-
 # Collect sources
 file( GLOB FO_COMMON_SOURCE "Source/Common/*.*" )
 list( REMOVE_ITEM FO_COMMON_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/MessageBox.cpp" )
@@ -893,6 +863,33 @@ list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/Ap
 list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/AppGuiStub.cpp" )
 file( GLOB FO_CLIENT_SOURCE "Source/Client/*.*" )
 file( GLOB FO_TOOLS_SOURCE "Source/Tools/*.*" )
+if( FONLINE_NATIVE_SCRIPTING )
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerNativeScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientNativeScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperNativeScriptingStub.cpp" )
+else()
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerNativeScripting.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientNativeScripting.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Mapper/MapperNativeScripting.cpp" )
+endif()
+if( FONLINE_ANGELSCRIPT_SCRIPTING )
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerAngelScriptScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientAngelScriptScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperAngelScriptScriptingStub.cpp" )
+else()
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerAngelScriptScripting.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientAngelScriptScripting.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Mapper/MapperAngelScriptScripting.cpp" )
+endif()
+if( FONLINE_MONO_SCRIPTING )
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerMonoScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientMonoScriptingStub.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperMonoScriptingStub.cpp" )
+else()
+	list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/ServerMonoScripting.cpp" )
+	list( REMOVE_ITEM FO_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client/ClientMonoScripting.cpp" )
+	list( REMOVE_ITEM FO_TOOLS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Mapper/MapperMonoScripting.cpp" )
+endif()
 
 # Applications
 StatusMessage( "Applications:" )
@@ -977,6 +974,21 @@ if( FONLINE_BUILD_MAPPER )
 	StatusMessage( "+ FOnlineMapper" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineMapper" )
 	add_executable( FOnlineMapper WIN32 "Source/Applications/MapperApp.cpp" "Source/Common/MessageBox.cpp" "Source/Tools/Mapper.h" "Source/Tools/Mapper.cpp" "Resources/Default.rc" )
+	if( FONLINE_NATIVE_SCRIPTING )
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperNativeScripting.cpp" )
+	else()
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperNativeScriptingStub.cpp" )
+	endif()
+	if( FONLINE_ANGELSCRIPT_SCRIPTING )
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperAngelScriptScripting.cpp" )
+	else()
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperAngelScriptScriptingStub.cpp" )
+	endif()
+	if( FONLINE_MONO_SCRIPTING )
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperMonoScripting.cpp" )
+	else()
+		target_sources( FOnlineMapper PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools/MapperMonoScriptingStub.cpp" )
+	endif()
 	set_target_properties( FOnlineMapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT}
 		RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineMapper PROPERTIES OUTPUT_NAME "FOnlineMapper${FO_NON_CLIENT_POSTFIX}" )

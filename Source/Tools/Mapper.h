@@ -53,7 +53,7 @@
 #include "NetBuffer.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -75,6 +75,10 @@
 class CScriptDictionary;
 class CScriptDict;
 class CScriptArray;
+
+extern void InitMapperNativeScriptSystem(ScriptSystem& scriptSys);
+extern void InitMapperAngelScriptScriptSystem(ScriptSystem& scriptSys);
+extern void InitMapperMonoScriptSystem(ScriptSystem& scriptSys);
 
 class FOMapper : public NonCopyable // Todo: rename FOMapper to just Mapper
 {
@@ -436,111 +440,4 @@ public:
     static void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
     static void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
     static void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
-
-    struct SScriptFunc
-    {
-        static ItemView* Item_AddChild(ItemView* item, hash pid);
-        static ItemView* Crit_AddChild(CritterView* cr, hash pid);
-        static CScriptArray* Item_GetChildren(ItemView* item);
-        static CScriptArray* Crit_GetChildren(CritterView* cr);
-
-        static ItemView* Global_AddItem(hash pid, ushort hx, ushort hy);
-        static CritterView* Global_AddCritter(hash pid, ushort hx, ushort hy);
-        static ItemView* Global_GetItemByHex(ushort hx, ushort hy);
-        static CScriptArray* Global_GetItemsByHex(ushort hx, ushort hy);
-        static CritterView* Global_GetCritterByHex(ushort hx, ushort hy, int find_type);
-        static CScriptArray* Global_GetCrittersByHex(ushort hx, ushort hy, int find_type);
-        static void Global_MoveEntity(Entity* entity, ushort hx, ushort hy);
-        static void Global_DeleteEntity(Entity* entity);
-        static void Global_DeleteEntities(CScriptArray* entities);
-        static void Global_SelectEntity(Entity* entity, bool set);
-        static void Global_SelectEntities(CScriptArray* entities, bool set);
-        static Entity* Global_GetSelectedEntity();
-        static CScriptArray* Global_GetSelectedEntities();
-
-        static uint Global_GetTilesCount(ushort hx, ushort hy, bool roof);
-        static void Global_DeleteTile(ushort hx, ushort hy, bool roof, int layer);
-        static hash Global_GetTileHash(ushort hx, ushort hy, bool roof, int layer);
-        static void Global_AddTileHash(ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash);
-        static string Global_GetTileName(ushort hx, ushort hy, bool roof, int layer);
-        static void Global_AddTileName(ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name);
-
-        static void Global_AllowSlot(uchar index, bool enable_send);
-        static void Global_SetPropertyGetCallback(asIScriptGeneric* gen);
-        static MapView* Global_LoadMap(string file_name);
-        static void Global_UnloadMap(MapView* pmap);
-        static bool Global_SaveMap(MapView* pmap, string custom_name);
-        static bool Global_ShowMap(MapView* pmap);
-        static CScriptArray* Global_GetLoadedMaps(int& index);
-        static CScriptArray* Global_GetMapFileNames(string dir);
-        static void Global_ResizeMap(ushort width, ushort height);
-
-        static uint Global_TabGetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs);
-        static uint Global_TabGetItemPids(int tab, string sub_tab, CScriptArray* item_pids);
-        static uint Global_TabGetCritterPids(int tab, string sub_tab, CScriptArray* critter_pids);
-        static void Global_TabSetTileDirs(int tab, CScriptArray* dir_names, CScriptArray* include_subdirs);
-        static void Global_TabSetItemPids(int tab, string sub_tab, CScriptArray* item_pids);
-        static void Global_TabSetCritterPids(int tab, string sub_tab, CScriptArray* critter_pids);
-        static void Global_TabDelete(int tab);
-        static void Global_TabSelect(int tab, string sub_tab, bool show);
-        static void Global_TabSetName(int tab, string tab_name);
-
-        static void Global_MoveScreenToHex(ushort hx, ushort hy, uint speed, bool can_stop);
-        static void Global_MoveScreenOffset(int ox, int oy, uint speed, bool can_stop);
-        static void Global_MoveHexByDir(ushort& hx, ushort& hy, uchar dir, uint steps);
-        static string Global_GetIfaceIniStr(string key);
-        static void Global_AddDataSource(string dat_name);
-        static bool Global_LoadFont(int font, string font_fname);
-        static void Global_SetDefaultFont(int font, uint color);
-        static void Global_MouseClick(int x, int y, int button);
-        static void Global_KeyboardPress(uchar key1, uchar key2, string key1_text, string key2_text);
-        static void Global_SetRainAnimation(string fall_anim_name, string drop_anim_name);
-        static void Global_ChangeZoom(float target_zoom);
-
-        static void Global_Message(string msg);
-        static void Global_MessageMsg(int text_msg, uint str_num);
-        static void Global_MapMessage(
-            string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy);
-        static string Global_GetMsgStr(int text_msg, uint str_num);
-        static string Global_GetMsgStrSkip(int text_msg, uint str_num, uint skip_count);
-        static uint Global_GetMsgStrNumUpper(int text_msg, uint str_num);
-        static uint Global_GetMsgStrNumLower(int text_msg, uint str_num);
-        static uint Global_GetMsgStrCount(int text_msg, uint str_num);
-        static bool Global_IsMsgStr(int text_msg, uint str_num);
-        static string Global_ReplaceTextStr(string text, string replace, string str);
-        static string Global_ReplaceTextInt(string text, string replace, int i);
-
-        static void Global_GetHexInPath(
-            ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist);
-        static uint Global_GetPathLengthHex(ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut);
-        static bool Global_GetHexPos(ushort hx, ushort hy, int& x, int& y);
-        static bool Global_GetMonitorHex(int x, int y, ushort& hx, ushort& hy, bool ignore_interface);
-        static Entity* Global_GetMonitorObject(int x, int y, bool ignore_interface);
-
-        static uint Global_LoadSprite(string spr_name);
-        static uint Global_LoadSpriteHash(uint name_hash);
-        static int Global_GetSpriteWidth(uint spr_id, int spr_index);
-        static int Global_GetSpriteHeight(uint spr_id, int spr_index);
-        static uint Global_GetSpriteCount(uint spr_id);
-        static uint Global_GetSpriteTicks(uint spr_id);
-        static uint Global_GetPixelColor(uint spr_id, int frame_index, int x, int y);
-        static void Global_GetTextInfo(string text, int w, int h, int font, int flags, int& tw, int& th, int& lines);
-        static void Global_DrawSprite(uint spr_id, int frame_index, int x, int y, uint color, bool offs);
-        static void Global_DrawSpriteSize(
-            uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs);
-        static void Global_DrawSpritePattern(
-            uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-        static void Global_DrawText(string text, int x, int y, int w, int h, uint color, int font, int flags);
-        static void Global_DrawPrimitive(int primitive_type, CScriptArray* data);
-        static void Global_DrawMapSprite(MapSprite* map_spr);
-        static void Global_DrawCritter2d(hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b,
-            bool scratch, bool center, uint color);
-        static void Global_DrawCritter3d(uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers,
-            CScriptArray* position, uint color);
-        static void Global_PushDrawScissor(int x, int y, int w, int h);
-        static void Global_PopDrawScissor();
-
-        static MapView* ClientCurMap;
-        static LocationView* ClientCurLocation;
-    };
 };

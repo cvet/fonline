@@ -61,7 +61,7 @@
         {
             "label": "Format Code",
             "group": "Service",
-            "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Server/*.* Editor/*.*"
+            "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.*"
         },
         {
             "label": "Client for Windows (x64)",

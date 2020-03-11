@@ -39,7 +39,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Networking.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "Timer.h"
 

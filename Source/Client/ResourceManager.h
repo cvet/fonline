@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "3dStuff.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "SpriteManager.h"
 
 struct LoadedAnim

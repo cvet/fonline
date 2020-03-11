@@ -34,7 +34,7 @@
 #include "Properties.h"
 #include "Entity.h"
 #include "Log.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "StringUtils.h"
 
 // Todo: fix script system

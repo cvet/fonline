@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 
 class Item;
 using ItemVec = vector<Item*>;

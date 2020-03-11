@@ -37,7 +37,7 @@
 
 #include "DataBase.h"
 #include "Properties.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 
 class PropertiesSerializator : public StaticClass
 {

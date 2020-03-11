@@ -40,7 +40,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 
 class MapManager;
 class CritterManager;

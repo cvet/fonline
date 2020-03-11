@@ -43,7 +43,7 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "Sprites.h"
 

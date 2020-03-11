@@ -37,7 +37,7 @@
 
 #include "FileSystem.h"
 #include "MsgFiles.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 
 #define TALK_NONE (0)
 #define TALK_WITH_NPC (1)

@@ -1,0 +1,331 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+// Possible defines:
+// FO_API_ENUM_GROUP(name)
+// FO_API_ENUM_GROUP_DOC
+// FO_API_ENUM_ENTRY(group, name, value)
+// FO_API_ENUM_ENTRY_DOC
+// FO_API_COMMON_EVENT(name, ret, ...)
+// FO_API_COMMON_EVENT_DOC
+// FO_API_SERVER_EVENT(name, ret, ...)
+// FO_API_SERVER_EVENT_DOC
+// FO_API_CLIENT_EVENT(name, ret, ...)
+// FO_API_CLIENT_EVENT_DOC
+// FO_API_MAPPER_EVENT(name, ret, ...)
+// FO_API_MAPPER_EVENT_DOC
+// FO_API_SETTING(type, name, ...)
+// FO_API_SETTING_DOC
+// FO_API_GLOBAL_COMMON_IMPL
+// FO_API_GLOBAL_SERVER_IMPL
+// FO_API_GLOBAL_CLIENT_IMPL
+// FO_API_GLOBAL_MAPPER_IMPL
+// FO_API_ITEM_HEADER
+// FO_API_ITEM_CLASS
+// FO_API_ITEM_IMPL
+// FO_API_ITEM_VIEW_HEADER
+// FO_API_ITEM_VIEW_CLASS
+// FO_API_ITEM_VIEW_IMPL
+// FO_API_CRITTER_HEADER
+// FO_API_CRITTER_CLASS
+// FO_API_CRITTER_IMPL
+// FO_API_CRITTER_VIEW_HEADER
+// FO_API_CRITTER_VIEW_CLASS
+// FO_API_CRITTER_VIEW_IMPL
+// FO_API_MAP_HEADER
+// FO_API_MAP_CLASS
+// FO_API_MAP_IMPL
+// FO_API_MAP_VIEW_HEADER
+// FO_API_MAP_VIEW_CLASS
+// FO_API_MAP_VIEW_IMPL
+// FO_API_LOCATION_HEADER
+// FO_API_LOCATION_CLASS
+// FO_API_LOCATION_IMPL
+// FO_API_LOCATION_VIEW_HEADER
+// FO_API_LOCATION_VIEW_CLASS
+// FO_API_LOCATION_VIEW_IMPL
+// FO_API_GLOBAL_COMMON_FUNC(name, ret, ...)
+// FO_API_GLOBAL_COMMON_FUNC_DOC
+// FO_API_GLOBAL_COMMON_FUNC_IMPL
+// FO_API_GLOBAL_SERVER_FUNC(name, ret, ...)
+// FO_API_GLOBAL_SERVER_FUNC_DOC
+// FO_API_GLOBAL_SERVER_FUNC_IMPL
+// FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...)
+// FO_API_GLOBAL_CLIENT_FUNC_DOC
+// FO_API_GLOBAL_CLIENT_FUNC_IMPL
+// FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...)
+// FO_API_GLOBAL_MAPPER_FUNC_DOC
+// FO_API_GLOBAL_MAPPER_FUNC_IMPL
+// FO_API_ITEM_METHOD(name, ret, ...)
+// FO_API_ITEM_METHOD_DOC
+// FO_API_ITEM_METHOD_IMPL
+// FO_API_ITEM_VIEW_METHOD(name, ret, ...)
+// FO_API_ITEM_VIEW_METHOD_DOC
+// FO_API_ITEM_VIEW_METHOD_IMPL
+// FO_API_ITEM_PROPERTY(access, type, name)
+// FO_API_ITEM_CONST_PROPERTY(access, type, name)
+// FO_API_ITEM_PROPERTY_DOC
+// FO_API_CRITTER_METHOD(name, ret, ...)
+// FO_API_CRITTER_METHOD_DOC
+// FO_API_CRITTER_METHOD_IMPL
+// FO_API_CRITTER_VIEW_METHOD(name, ret, ...)
+// FO_API_CRITTER_VIEW_METHOD_DOC
+// FO_API_CRITTER_VIEW_METHOD_IMPL
+// FO_API_CRITTER_PROPERTY(access, type, name)
+// FO_API_CRITTER_CONST_PROPERTY(access, type, name)
+// FO_API_CRITTER_PROPERTY_DOC
+// FO_API_MAP_METHOD(name, ret, ...)
+// FO_API_MAP_METHOD_DOC
+// FO_API_MAP_METHOD_IMPL
+// FO_API_MAP_VIEW_METHOD(name, ret, ...)
+// FO_API_MAP_VIEW_METHOD_DOC
+// FO_API_MAP_VIEW_METHOD_IMPL
+// FO_API_MAP_PROPERTY(access, type, name)
+// FO_API_MAP_PROPERTY_CONST(access, type, name)
+// FO_API_MAP_PROPERTY_DOC
+// FO_API_LOCATION_METHOD(name, ret, ...)
+// FO_API_LOCATION_METHOD_DOC
+// FO_API_LOCATION_METHOD_IMPL
+// FO_API_LOCATION_VIEW_METHOD(name, ret, ...)
+// FO_API_LOCATION_VIEW_METHOD_DOC
+// FO_API_LOCATION_VIEW_METHOD_IMPL
+// FO_API_LOCATION_PROPERTY(access, type, name)
+// FO_API_LOCATION_CONST_PROPERTY(access, type, name)
+// FO_API_LOCATION_PROPERTY_DOC
+// FO_API_ARG
+// FO_API_ARG_ARR
+// FO_API_ARG_OBJ
+// FO_API_ARG_OBJ_ARR
+// FO_API_ARG_REF // Todo: remove for better portability
+// FO_API_ARG_ARR_REF // Todo: remove for better portability
+// FO_API_ARG_CALLBACK
+// FO_API_ARG_PREDICATE
+// FO_API_RET
+// FO_API_RET_ARR
+// FO_API_RET_OBJ
+// FO_API_RET_OBJ_ARR
+// FO_API_RET_VOID
+// FO_API_RETURN
+// FO_API_RETURN_VOID
+
+#ifndef FO_API_ENUM_GROUP
+#define FO_API_ENUM_GROUP(...)
+#endif
+#ifndef FO_API_ENUM_ENTRY
+#define FO_API_ENUM_ENTRY(...)
+#endif
+#ifndef FO_API_COMMON_EVENT
+#define FO_API_COMMON_EVENT(...)
+#endif
+#ifndef FO_API_SERVER_EVENT
+#define FO_API_SERVER_EVENT(...)
+#endif
+#ifndef FO_API_CLIENT_EVENT
+#define FO_API_CLIENT_EVENT(...)
+#endif
+#ifndef FO_API_MAPPER_EVENT
+#define FO_API_MAPPER_EVENT(...)
+#endif
+#ifndef FO_API_SETTING
+#define FO_API_SETTING(...)
+#endif
+#ifndef FO_API_GLOBAL_COMMON_FUNC
+#define FO_API_GLOBAL_COMMON_FUNC(...)
+#endif
+#ifndef FO_API_GLOBAL_SERVER_FUNC
+#define FO_API_GLOBAL_SERVER_FUNC(...)
+#endif
+#ifndef FO_API_GLOBAL_CLIENT_FUNC
+#define FO_API_GLOBAL_CLIENT_FUNC(...)
+#endif
+#ifndef FO_API_GLOBAL_MAPPER_FUNC
+#define FO_API_GLOBAL_MAPPER_FUNC(...)
+#endif
+#ifndef FO_API_ITEM_METHOD
+#define FO_API_ITEM_METHOD(...)
+#endif
+#ifndef FO_API_ITEM_VIEW_METHOD
+#define FO_API_ITEM_VIEW_METHOD(...)
+#endif
+#ifndef FO_API_ITEM_HEX_VIEW_METHOD
+#define FO_API_ITEM_HEX_VIEW_METHOD(...)
+#endif
+#ifndef FO_API_ITEM_PROPERTY
+#define FO_API_ITEM_PROPERTY(...)
+#endif
+#ifndef FO_API_CRITTER_METHOD
+#define FO_API_CRITTER_METHOD(...)
+#endif
+#ifndef FO_API_CRITTER_VIEW_METHOD
+#define FO_API_CRITTER_VIEW_METHOD(...)
+#endif
+#ifndef FO_API_CRITTER_PROPERTY
+#define FO_API_CRITTER_PROPERTY(...)
+#endif
+#ifndef FO_API_MAP_METHOD
+#define FO_API_MAP_METHOD(...)
+#endif
+#ifndef FO_API_MAP_VIEW_METHOD
+#define FO_API_MAP_VIEW_METHOD(...)
+#endif
+#ifndef FO_API_MAP_PROPERTY
+#define FO_API_MAP_PROPERTY(...)
+#endif
+#ifndef FO_API_LOCATION_METHOD
+#define FO_API_LOCATION_METHOD(...)
+#endif
+#ifndef FO_API_LOCATION_VIEW_METHOD
+#define FO_API_LOCATION_VIEW_METHOD(...)
+#endif
+#ifndef FO_API_LOCATION_PROPERTY
+#define FO_API_LOCATION_PROPERTY(...)
+#endif
+#ifndef FO_API_PROLOG
+#define FO_API_PROLOG(...)
+#endif
+#ifndef FO_API_EPILOG
+#define FO_API_EPILOG(...)
+#endif
+
+#include "CommonScriptApi.h"
+#include "ServerScriptApi.h"
+#include "ClientScriptApi.h"
+#include "MapperScriptApi.h"
+#if __has_include("CustomScriptApi.h")
+#include "CustomScriptApi.h"
+#endif
+
+#undef FO_API_ENUM_GROUP
+#undef FO_API_ENUM_GROUP_DOC
+#undef FO_API_ENUM_ENTRY
+#undef FO_API_ENUM_ENTRY_DOC
+#undef FO_API_COMMON_EVENT
+#undef FO_API_COMMON_EVENT_DOC
+#undef FO_API_SERVER_EVENT
+#undef FO_API_SERVER_EVENT_DOC
+#undef FO_API_CLIENT_EVENT
+#undef FO_API_MAPPER_EVENT
+#undef FO_API_MAPPER_EVENT_DOC
+#undef FO_API_SETTING
+#undef FO_API_SETTING_DOC
+#undef FO_API_GLOBAL_COMMON_IMPL
+#undef FO_API_GLOBAL_SERVER_IMPL
+#undef FO_API_GLOBAL_CLIENT_IMPL
+#undef FO_API_GLOBAL_MAPPER_IMPL
+#undef FO_API_ITEM_HEADER
+#undef FO_API_ITEM_CLASS
+#undef FO_API_ITEM_IMPL
+#undef FO_API_ITEM_VIEW_HEADER
+#undef FO_API_ITEM_VIEW_CLASS
+#undef FO_API_ITEM_VIEW_IMPL
+#undef FO_API_CRITTER_HEADER
+#undef FO_API_CRITTER_CLASS
+#undef FO_API_CRITTER_IMPL
+#undef FO_API_CRITTER_VIEW_HEADER
+#undef FO_API_CRITTER_VIEW_CLASS
+#undef FO_API_CRITTER_VIEW_IMPL
+#undef FO_API_MAP_HEADER
+#undef FO_API_MAP_CLASS
+#undef FO_API_MAP_IMPL
+#undef FO_API_MAP_VIEW_HEADER
+#undef FO_API_MAP_VIEW_CLASS
+#undef FO_API_MAP_VIEW_IMPL
+#undef FO_API_LOCATION_HEADER
+#undef FO_API_LOCATION_CLASS
+#undef FO_API_LOCATION_IMPL
+#undef FO_API_LOCATION_VIEW_HEADER
+#undef FO_API_LOCATION_VIEW_CLASS
+#undef FO_API_LOCATION_VIEW_IMPL
+#undef FO_API_GLOBAL_COMMON_FUNC
+#undef FO_API_GLOBAL_COMMON_FUNC_DOC
+#undef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#undef FO_API_GLOBAL_SERVER_FUNC
+#undef FO_API_GLOBAL_SERVER_FUNC_DOC
+#undef FO_API_GLOBAL_SERVER_FUNC_IMPL
+#undef FO_API_GLOBAL_CLIENT_FUNC
+#undef FO_API_GLOBAL_CLIENT_FUNC_DOC
+#undef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#undef FO_API_GLOBAL_MAPPER_FUNC
+#undef FO_API_GLOBAL_MAPPER_FUNC_DOC
+#undef FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#undef FO_API_ITEM_METHOD
+#undef FO_API_ITEM_METHOD_DOC
+#undef FO_API_ITEM_METHOD_IMPL
+#undef FO_API_ITEM_VIEW_METHOD
+#undef FO_API_ITEM_VIEW_METHOD_DOC
+#undef FO_API_ITEM_VIEW_METHOD_IMPL
+#undef FO_API_ITEM_PROPERTY
+#undef FO_API_ITEM_CONST_PROPERTY
+#undef FO_API_ITEM_PROPERTY_DOC
+#undef FO_API_CRITTER_METHOD
+#undef FO_API_CRITTER_METHOD_DOC
+#undef FO_API_CRITTER_METHOD_IMPL
+#undef FO_API_CRITTER_VIEW_METHOD
+#undef FO_API_CRITTER_VIEW_METHOD_DOC
+#undef FO_API_CRITTER_VIEW_METHOD_IMPL
+#undef FO_API_CRITTER_PROPERTY
+#undef FO_API_CRITTER_CONST_PROPERTY
+#undef FO_API_CRITTER_PROPERTY_DOC
+#undef FO_API_MAP_METHOD
+#undef FO_API_MAP_METHOD_DOC
+#undef FO_API_MAP_METHOD_IMPL
+#undef FO_API_MAP_VIEW_METHOD
+#undef FO_API_MAP_VIEW_METHOD_DOC
+#undef FO_API_MAP_VIEW_METHOD_IMPL
+#undef FO_API_MAP_PROPERTY
+#undef FO_API_MAP_PROPERTY_CONST
+#undef FO_API_MAP_PROPERTY_DOC
+#undef FO_API_LOCATION_METHOD
+#undef FO_API_LOCATION_METHOD_DOC
+#undef FO_API_LOCATION_METHOD_IMPL
+#undef FO_API_LOCATION_VIEW_METHOD
+#undef FO_API_LOCATION_VIEW_METHOD_DOC
+#undef FO_API_LOCATION_VIEW_METHOD_IMPL
+#undef FO_API_LOCATION_PROPERTY
+#undef FO_API_LOCATION_CONST_PROPERTY
+#undef FO_API_LOCATION_PROPERTY_DOC
+#undef FO_API_ARG
+#undef FO_API_ARG_ARR
+#undef FO_API_ARG_OBJ
+#undef FO_API_ARG_OBJ_ARR
+#undef FO_API_ARG_REF
+#undef FO_API_ARG_ARR_REF
+#undef FO_API_ARG_CALLBACK
+#undef FO_API_ARG_PREDICATE
+#undef FO_API_RET
+#undef FO_API_RET_ARR
+#undef FO_API_RET_OBJ
+#undef FO_API_RET_OBJ_ARR
+#undef FO_API_RET_VOID
+#undef FO_API_RETURN
+#undef FO_API_RETURN_VOID

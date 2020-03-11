@@ -40,7 +40,7 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "Script.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 
 #define ANIMATION_STAY (0x01)
