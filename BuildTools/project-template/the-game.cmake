@@ -7,10 +7,11 @@
 # AddAngelScriptSource pathPattern
 # AddMonoAssembly assembly commonRefs serverRefs clientRefs mapperRefs
 # AddMonoSource assembly pathPattern
-# CreateConfig cfgName inheritenCfgName
-# TweakConfig cfgName option value
-# AddClientPackage platform cfgName packageType
-# AddServerPackage platform cfgName packageType
+# CreateConfig config inheritenConfig
+# TweakConfig config option value
+# CreatePackage package niceName devName author version
+# AddClientToPackage package platform config packType
+# AddServerToPackage package platform config packType
 
 # Content
 AddContent( "Critters/*.focr" )
@@ -19,7 +20,7 @@ AddContent( "Maps/*.fomap" )
 AddContent( "Maps/*.foloc" )
 
 # Resources
-AddResources( "TheGame" "Resources" )
+AddResources( "TheGame" "Resources/**" )
 
 # Scripts
 AddScriptApi( "Scripts/MyScriptApi.h" )
@@ -30,29 +31,34 @@ AddMonoAssembly( "TheGame" "System" "" "" "" )
 AddMonoSource( "TheGame" "Scripts/*.cs" )
 
 # Default config
-CreateConfig( "default" "" )
-TweakConfig( "default" "RemoteHost" "1.2.3.4" )
-TweakConfig( "default" "RemotePort" "4013" )
+CreateConfig( "Default" "" )
+TweakConfig( "Default" "RemoteHost" "1.2.3.4" )
+TweakConfig( "Default" "RemotePort" "4013" )
 
 # Test config
-CreateConfig( "test" "default" )
-TweakConfig( "test" "RemoteHost" "localhost" )
+CreateConfig( "LocalTest" "Default" )
+TweakConfig( "LocalTest" "RemoteHost" "localhost" )
+TweakConfig( "LocalTest" "RemotePort" "4014" )
+CreateConfig( "LocalWebTest" "LocalTest" )
+TweakConfig( "LocalWebTest" "MyOpt" "42" )
 
 # Test builds
-AddClientPackage( "win32" "test" "raw" )
-AddClientPackage( "web" "test" "wasm" )
-AddServerPackage( "win64" "test" "raw" )
+CreatePackage( "Test" "The Game" "TheGame" "MeCoolLtd" "0.0.1" )
+AddClientToPackage( "Test" "Win32" "LocalTest" "raw" )
+AddClientToPackage( "Test" "Web" "LocalWebTest" "wasm" )
+AddServerToPackage( "Test" "Win64" "LocalTest" "raw" )
 
 # Production builds
-AddClientPackage( "win32" "default" "raw" )
-AddClientPackage( "win32" "default" "wix" )
-AddClientPackage( "win32" "default" "zip" )
-AddClientPackage( "android" "default" "arm-arm64-x86" )
-AddClientPackage( "web" "default" "wasm-js" )
-AddClientPackage( "mac" "default" "bundle" )
-AddClientPackage( "ios" "default" "bundle" )
-AddClientPackage( "linux" "default" "zip" )
-AddServerPackage( "win64" "default" "raw" )
-AddServerPackage( "win64" "default" "zip" )
-AddServerPackage( "linux" "default" "raw" )
-AddServerPackage( "linux" "default" "tar" )
+CreatePackage( "Production" "The Game" "TheGame" "MeCoolLtd" "1.0.0" )
+AddClientToPackage( "Production" "Win32" "Default" "raw" )
+AddClientToPackage( "Production" "Win32" "Default" "wix" )
+AddClientToPackage( "Production" "Win32" "Default" "zip" )
+AddClientToPackage( "Production" "Android" "Default" "arm-arm64-x86" )
+AddClientToPackage( "Production" "Web" "Default" "wasm-js" )
+AddClientToPackage( "Production" "Mac" "Default" "bundle" )
+AddClientToPackage( "Production" "iOS" "Default" "bundle" )
+AddClientToPackage( "Production" "Linux" "Default" "zip" )
+AddServerToPackage( "Production" "Win64" "Default" "raw" )
+AddServerToPackage( "Production" "Win64" "Default" "zip" )
+AddServerToPackage( "Production" "Linux" "Default" "raw" )
+AddServerToPackage( "Production" "Linux" "Default" "tar" )
