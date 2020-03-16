@@ -31,7 +31,8 @@
 // SOFTWARE.
 //
 
-#include "scriptdict.h"
+#include "AngelScriptScriptDict.h"
+
 #include "../autowrapper/aswrappedcall.h"
 #include <assert.h>
 #include <new>

@@ -31,10 +31,29 @@
 // SOFTWARE.
 //
 
-#include "ScriptExtensions.h"
-#include "ScriptSystem.h"
+#include "AngelScriptExtensions.h"
+#include "AngelScriptScriptDict.h"
 #include "StringUtils.h"
 #include "Testing.h"
+
+#include "../autowrapper/aswrappedcall.h"
+#include "scriptarray.h"
+
+#ifdef AS_MAX_PORTABILITY
+#define SCRIPT_FUNC(name) WRAP_FN(name)
+#define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
+#define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
+#define SCRIPT_FUNC_CONV asCALL_GENERIC
+#define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
+#define SCRIPT_METHOD_CONV asCALL_GENERIC
+#else
+#define SCRIPT_FUNC(name) asFUNCTION(name)
+#define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
+#define SCRIPT_METHOD(type, name) asMETHOD(type, name)
+#define SCRIPT_FUNC_CONV asCALL_CDECL
+#define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
+#define SCRIPT_METHOD_CONV asCALL_THISCALL
+#endif
 
 static void CScriptArray_InsertFirst(CScriptArray* arr, void* value)
 {

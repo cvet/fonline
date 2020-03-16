@@ -34,20 +34,12 @@
 #include "LocationView.h"
 #include "Testing.h"
 
+#define FO_API_LOCATION_VIEW_IMPL
+#include "ScriptApi.h"
+
 PROPERTIES_IMPL(LocationView);
-#include "LocationProperties.h"
-CLASS_PROPERTY_IMPL(LocationView, MapProtos);
-CLASS_PROPERTY_IMPL(LocationView, MapEntrances);
-CLASS_PROPERTY_IMPL(LocationView, MaxPlayers);
-CLASS_PROPERTY_IMPL(LocationView, AutoGarbage);
-CLASS_PROPERTY_IMPL(LocationView, GeckVisible);
-CLASS_PROPERTY_IMPL(LocationView, EntranceScript);
-CLASS_PROPERTY_IMPL(LocationView, WorldX);
-CLASS_PROPERTY_IMPL(LocationView, WorldY);
-CLASS_PROPERTY_IMPL(LocationView, Radius);
-CLASS_PROPERTY_IMPL(LocationView, Hidden);
-CLASS_PROPERTY_IMPL(LocationView, ToGarbage);
-CLASS_PROPERTY_IMPL(LocationView, Color);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(LocationView, name)
+#include "ScriptApi.h"
 
 LocationView::LocationView(uint id, ProtoLocation* proto) :
     Entity(id, EntityType::LocationView, PropertiesRegistrator, proto)

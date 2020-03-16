@@ -45,19 +45,6 @@
 #include "sha1.h"
 #include "sha2.h"
 
-#define SCRIPT_ERROR_R(error, ...) \
-    do \
-    { \
-        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
-        return; \
-    } while (0)
-#define SCRIPT_ERROR_R0(error, ...) \
-    do \
-    { \
-        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
-        return 0; \
-    } while (0)
-
 #define CHECK_IN_BUFF_ERROR \
     if (Bin.IsError()) \
     { \
@@ -136,10 +123,9 @@ FOClient::FOClient(ClientSettings& sett) :
     SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
-    bool module_init_ok = ScriptSys.RunModuleInitFunctions();
-    RUNTIME_ASSERT(module_init_ok);
-    bool start_script_ok = ScriptSys.RaiseInternalEvent(ClientFunctions.Start);
-    RUNTIME_ASSERT(start_script_ok);
+    ScriptSys.RunModuleInitFunctions();
+    ScriptSys.Events.Start();
+    ScriptSys.Events.Finish();
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -4654,7 +4640,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, Property* prop)
     if (prop->GetAccess() == Property::PublicFullModifiable)
         Self->Net_SendProperty(NetProperty::Global, prop, Globals);
     else
-        SCRIPT_ERROR_R("Unable to send global modifiable property '{}'", prop->GetName());
+        throw GenericException("Unable to send global modifiable property", prop->GetName());
 }
 
 void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
@@ -4665,7 +4651,7 @@ void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
     else if (prop->GetAccess() == Property::PublicFullModifiable)
         Self->Net_SendProperty(NetProperty::Critter, prop, cr);
     else
-        SCRIPT_ERROR_R("Unable to send critter modifiable property '{}'", prop->GetName());
+        throw GenericException("Unable to send critter modifiable property", prop->GetName());
 }
 
 void FOClient::OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value)
@@ -4688,18 +4674,18 @@ void FOClient::OnSendItemValue(Entity* entity, Property* prop)
             else if (cr && prop->GetAccess() == Property::PublicFullModifiable)
                 Self->Net_SendProperty(NetProperty::CritterItem, prop, item);
             else
-                SCRIPT_ERROR_R("Unable to send item (a critter) modifiable property '{}'", prop->GetName());
+                throw GenericException("Unable to send item (a critter) modifiable property", prop->GetName());
         }
         else if (item->GetAccessory() == ITEM_ACCESSORY_HEX)
         {
             if (prop->GetAccess() == Property::PublicFullModifiable)
                 Self->Net_SendProperty(NetProperty::MapItem, prop, item);
             else
-                SCRIPT_ERROR_R("Unable to send item (a map) modifiable property '{}'", prop->GetName());
+                throw GenericException("Unable to send item (a map) modifiable property", prop->GetName());
         }
         else
         {
-            SCRIPT_ERROR_R("Unable to send item (a container) modifiable property '{}'", prop->GetName());
+            throw GenericException("Unable to send item (a container) modifiable property", prop->GetName());
         }
     }
 }
@@ -4782,7 +4768,7 @@ void FOClient::OnSendMapValue(Entity* entity, Property* prop)
     if (prop->GetAccess() == Property::PublicFullModifiable)
         Self->Net_SendProperty(NetProperty::Map, prop, Globals);
     else
-        SCRIPT_ERROR_R("Unable to send map modifiable property '{}'", prop->GetName());
+        throw GenericException("Unable to send map modifiable property", prop->GetName());
 }
 
 void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
@@ -4790,7 +4776,7 @@ void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
     if (prop->GetAccess() == Property::PublicFullModifiable)
         Self->Net_SendProperty(NetProperty::Location, prop, Globals);
     else
-        SCRIPT_ERROR_R("Unable to send location modifiable property '{}'", prop->GetName());
+        throw GenericException("Unable to send location modifiable property", prop->GetName());
 }
 
 void FOClient::GameDraw()

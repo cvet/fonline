@@ -41,6 +41,9 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 
+#define FO_API_MAP_HEADER
+#include "ScriptApi.h"
+
 class Item;
 using ItemVec = vector<Item*>;
 using ItemMap = map<uint, Item*>;
@@ -168,26 +171,12 @@ public:
     void GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items);
     void GetStaticItemsByPid(hash pid, ItemVec& items);
 
+#define FO_API_MAP_CLASS
+#include "ScriptApi.h"
+
     PROPERTIES_HEADER();
-#include "MapProperties.h"
-    CLASS_PROPERTY(uint, LoopTime1);
-    CLASS_PROPERTY(uint, LoopTime2);
-    CLASS_PROPERTY(uint, LoopTime3);
-    CLASS_PROPERTY(uint, LoopTime4);
-    CLASS_PROPERTY(uint, LoopTime5);
-    CLASS_PROPERTY(string, FileDir);
-    CLASS_PROPERTY(ushort, Width);
-    CLASS_PROPERTY(ushort, Height);
-    CLASS_PROPERTY(ushort, WorkHexX);
-    CLASS_PROPERTY(ushort, WorkHexY);
-    CLASS_PROPERTY(uint, LocId);
-    CLASS_PROPERTY(uint, LocMapIndex);
-    CLASS_PROPERTY(uchar, RainCapacity);
-    CLASS_PROPERTY(int, CurDayTime);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
-    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
-    CLASS_PROPERTY(bool, IsNoLogOut);
+#define FO_API_MAP_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 
 private:
     MapSettings& settings;

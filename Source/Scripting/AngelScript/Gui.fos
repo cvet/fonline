@@ -1,10 +1,5 @@
 // FOS Client
 
-#pragma enum CursorType Default = 0
-#pragma globalvar CursorType __Cursor
-#pragma globalvar uint __CursorData
-#pragma globalvar CursorType __DraggableCursor
-
 interface IDropMenu
 {
     void Draw();

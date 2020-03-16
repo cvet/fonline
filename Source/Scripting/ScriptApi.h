@@ -36,13 +36,13 @@
 // FO_API_ENUM_GROUP_DOC
 // FO_API_ENUM_ENTRY(group, name, value)
 // FO_API_ENUM_ENTRY_DOC
-// FO_API_COMMON_EVENT(name, ret, ...)
+// FO_API_COMMON_EVENT(name, ...)
 // FO_API_COMMON_EVENT_DOC
-// FO_API_SERVER_EVENT(name, ret, ...)
+// FO_API_SERVER_EVENT(name, ...)
 // FO_API_SERVER_EVENT_DOC
-// FO_API_CLIENT_EVENT(name, ret, ...)
+// FO_API_CLIENT_EVENT(name, ...)
 // FO_API_CLIENT_EVENT_DOC
-// FO_API_MAPPER_EVENT(name, ret, ...)
+// FO_API_MAPPER_EVENT(name, ...)
 // FO_API_MAPPER_EVENT_DOC
 // FO_API_SETTING(type, name, ...)
 // FO_API_SETTING_DOC
@@ -86,14 +86,17 @@
 // FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...)
 // FO_API_GLOBAL_MAPPER_FUNC_DOC
 // FO_API_GLOBAL_MAPPER_FUNC_IMPL
+// FO_API_GLOBAL_PROPERTY(access, type, name, ...)
+// FO_API_GLOBAL_READONLY_PROPERTY(access, type, name, ...)
+// FO_API_GLOBAL_PROPERTY_DOC
 // FO_API_ITEM_METHOD(name, ret, ...)
 // FO_API_ITEM_METHOD_DOC
 // FO_API_ITEM_METHOD_IMPL
 // FO_API_ITEM_VIEW_METHOD(name, ret, ...)
 // FO_API_ITEM_VIEW_METHOD_DOC
 // FO_API_ITEM_VIEW_METHOD_IMPL
-// FO_API_ITEM_PROPERTY(access, type, name)
-// FO_API_ITEM_CONST_PROPERTY(access, type, name)
+// FO_API_ITEM_PROPERTY(access, type, name, ...)
+// FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...)
 // FO_API_ITEM_PROPERTY_DOC
 // FO_API_CRITTER_METHOD(name, ret, ...)
 // FO_API_CRITTER_METHOD_DOC
@@ -101,8 +104,8 @@
 // FO_API_CRITTER_VIEW_METHOD(name, ret, ...)
 // FO_API_CRITTER_VIEW_METHOD_DOC
 // FO_API_CRITTER_VIEW_METHOD_IMPL
-// FO_API_CRITTER_PROPERTY(access, type, name)
-// FO_API_CRITTER_CONST_PROPERTY(access, type, name)
+// FO_API_CRITTER_PROPERTY(access, type, name, ...)
+// FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...)
 // FO_API_CRITTER_PROPERTY_DOC
 // FO_API_MAP_METHOD(name, ret, ...)
 // FO_API_MAP_METHOD_DOC
@@ -110,8 +113,8 @@
 // FO_API_MAP_VIEW_METHOD(name, ret, ...)
 // FO_API_MAP_VIEW_METHOD_DOC
 // FO_API_MAP_VIEW_METHOD_IMPL
-// FO_API_MAP_PROPERTY(access, type, name)
-// FO_API_MAP_PROPERTY_CONST(access, type, name)
+// FO_API_MAP_PROPERTY(access, type, name, ...)
+// FO_API_MAP_READONLY_PROPERTY(access, type, name, ...)
 // FO_API_MAP_PROPERTY_DOC
 // FO_API_LOCATION_METHOD(name, ret, ...)
 // FO_API_LOCATION_METHOD_DOC
@@ -119,24 +122,32 @@
 // FO_API_LOCATION_VIEW_METHOD(name, ret, ...)
 // FO_API_LOCATION_VIEW_METHOD_DOC
 // FO_API_LOCATION_VIEW_METHOD_IMPL
-// FO_API_LOCATION_PROPERTY(access, type, name)
-// FO_API_LOCATION_CONST_PROPERTY(access, type, name)
+// FO_API_LOCATION_PROPERTY(access, type, name, ...)
+// FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...)
 // FO_API_LOCATION_PROPERTY_DOC
-// FO_API_ARG
-// FO_API_ARG_ARR
-// FO_API_ARG_OBJ
-// FO_API_ARG_OBJ_ARR
-// FO_API_ARG_REF // Todo: remove for better portability
-// FO_API_ARG_ARR_REF // Todo: remove for better portability
-// FO_API_ARG_CALLBACK
-// FO_API_ARG_PREDICATE
-// FO_API_RET
-// FO_API_RET_ARR
-// FO_API_RET_OBJ
-// FO_API_RET_OBJ_ARR
-// FO_API_RET_VOID
-// FO_API_RETURN
-// FO_API_RETURN_VOID
+// FO_API_ARG(type, name)
+// FO_API_ARG_ARR(type, name)
+// FO_API_ARG_OBJ(type, name)
+// FO_API_ARG_OBJ_ARR(type, name)
+// FO_API_ARG_REF(type, name) // Todo: remove for better portability
+// FO_API_ARG_ARR_REF(type, name) // Todo: remove for better portability
+// FO_API_ARG_ENUM(type, name)
+// FO_API_ARG_CALLBACK(name)
+// FO_API_ARG_PREDICATE(type, name)
+// FO_API_ARG_DICT(key, val, name)
+// FO_API_RET(type)
+// FO_API_RET_ARR(type)
+// FO_API_RET_OBJ(type)
+// FO_API_RET_OBJ_ARR(type)
+// FO_API_RET_VOID()
+// FO_API_RETURN(expr)
+// FO_API_RETURN_VOID()
+// FO_API_PROPERTY_TYPE(type)
+// FO_API_PROPERTY_TYPE_ARR(type)
+// FO_API_PROPERTY_TYPE_OBJ(type)
+// FO_API_PROPERTY_TYPE_OBJ_ARR(type)
+// FO_API_PROPERTY_TYPE_ENUM(type)
+// FO_API_PROPERTY_MOD(mod)
 
 #ifndef FO_API_ENUM_GROUP
 #define FO_API_ENUM_GROUP(...)
@@ -171,6 +182,12 @@
 #ifndef FO_API_GLOBAL_MAPPER_FUNC
 #define FO_API_GLOBAL_MAPPER_FUNC(...)
 #endif
+#ifndef FO_API_GLOBAL_PROPERTY
+#define FO_API_GLOBAL_PROPERTY(...)
+#endif
+#ifndef FO_API_GLOBAL_READONLY_PROPERTY
+#define FO_API_GLOBAL_READONLY_PROPERTY FO_API_GLOBAL_PROPERTY
+#endif
 #ifndef FO_API_ITEM_METHOD
 #define FO_API_ITEM_METHOD(...)
 #endif
@@ -183,6 +200,9 @@
 #ifndef FO_API_ITEM_PROPERTY
 #define FO_API_ITEM_PROPERTY(...)
 #endif
+#ifndef FO_API_ITEM_READONLY_PROPERTY
+#define FO_API_ITEM_READONLY_PROPERTY FO_API_ITEM_PROPERTY
+#endif
 #ifndef FO_API_CRITTER_METHOD
 #define FO_API_CRITTER_METHOD(...)
 #endif
@@ -191,6 +211,9 @@
 #endif
 #ifndef FO_API_CRITTER_PROPERTY
 #define FO_API_CRITTER_PROPERTY(...)
+#endif
+#ifndef FO_API_CRITTER_READONLY_PROPERTY
+#define FO_API_CRITTER_READONLY_PROPERTY FO_API_CRITTER_PROPERTY
 #endif
 #ifndef FO_API_MAP_METHOD
 #define FO_API_MAP_METHOD(...)
@@ -201,6 +224,9 @@
 #ifndef FO_API_MAP_PROPERTY
 #define FO_API_MAP_PROPERTY(...)
 #endif
+#ifndef FO_API_MAP_READONLY_PROPERTY
+#define FO_API_MAP_READONLY_PROPERTY FO_API_MAP_PROPERTY
+#endif
 #ifndef FO_API_LOCATION_METHOD
 #define FO_API_LOCATION_METHOD(...)
 #endif
@@ -210,20 +236,40 @@
 #ifndef FO_API_LOCATION_PROPERTY
 #define FO_API_LOCATION_PROPERTY(...)
 #endif
+#ifndef FO_API_LOCATION_READONLY_PROPERTY
+#define FO_API_LOCATION_READONLY_PROPERTY FO_API_LOCATION_PROPERTY
+#endif
 #ifndef FO_API_PROLOG
 #define FO_API_PROLOG(...)
 #endif
 #ifndef FO_API_EPILOG
 #define FO_API_EPILOG(...)
 #endif
-
-#include "CommonScriptApi.h"
-#include "ServerScriptApi.h"
-#include "ClientScriptApi.h"
-#include "MapperScriptApi.h"
-#if __has_include("CustomScriptApi.h")
-#include "CustomScriptApi.h"
+#ifndef FO_API_PROPERTY_TYPE
+#define FO_API_PROPERTY_TYPE(type) type
 #endif
+#ifndef FO_API_PROPERTY_TYPE_ARR
+#define FO_API_PROPERTY_TYPE_ARR(type) vector<type>
+#endif
+#ifndef FO_API_PROPERTY_TYPE_OBJ
+#define FO_API_PROPERTY_TYPE_OBJ(type) type*
+#endif
+#ifndef FO_API_PROPERTY_TYPE_OBJ_ARR
+#define FO_API_PROPERTY_TYPE_OBJ_ARR(type) vector<type*>
+#endif
+#ifndef FO_API_PROPERTY_TYPE_ENUM
+#define FO_API_PROPERTY_TYPE_ENUM(type) int
+#endif
+
+#include "ScriptApi_Client.h"
+#include "ScriptApi_Common.h"
+#include "ScriptApi_Enums.h"
+#include "ScriptApi_Events.h"
+#include "ScriptApi_Mapper.h"
+#include "ScriptApi_Properties.h"
+#include "ScriptApi_Server.h"
+
+#include "CustomScriptApi.h" // Automatically generated include
 
 #undef FO_API_ENUM_GROUP
 #undef FO_API_ENUM_GROUP_DOC
@@ -278,6 +324,9 @@
 #undef FO_API_GLOBAL_MAPPER_FUNC
 #undef FO_API_GLOBAL_MAPPER_FUNC_DOC
 #undef FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#undef FO_API_GLOBAL_PROPERTY
+#undef FO_API_GLOBAL_READONLY_PROPERTY
+#undef FO_API_GLOBAL_PROPERTY_DOC
 #undef FO_API_ITEM_METHOD
 #undef FO_API_ITEM_METHOD_DOC
 #undef FO_API_ITEM_METHOD_IMPL
@@ -285,7 +334,7 @@
 #undef FO_API_ITEM_VIEW_METHOD_DOC
 #undef FO_API_ITEM_VIEW_METHOD_IMPL
 #undef FO_API_ITEM_PROPERTY
-#undef FO_API_ITEM_CONST_PROPERTY
+#undef FO_API_ITEM_READONLY_PROPERTY
 #undef FO_API_ITEM_PROPERTY_DOC
 #undef FO_API_CRITTER_METHOD
 #undef FO_API_CRITTER_METHOD_DOC
@@ -294,7 +343,7 @@
 #undef FO_API_CRITTER_VIEW_METHOD_DOC
 #undef FO_API_CRITTER_VIEW_METHOD_IMPL
 #undef FO_API_CRITTER_PROPERTY
-#undef FO_API_CRITTER_CONST_PROPERTY
+#undef FO_API_CRITTER_READONLY_PROPERTY
 #undef FO_API_CRITTER_PROPERTY_DOC
 #undef FO_API_MAP_METHOD
 #undef FO_API_MAP_METHOD_DOC
@@ -303,7 +352,7 @@
 #undef FO_API_MAP_VIEW_METHOD_DOC
 #undef FO_API_MAP_VIEW_METHOD_IMPL
 #undef FO_API_MAP_PROPERTY
-#undef FO_API_MAP_PROPERTY_CONST
+#undef FO_API_MAP_READONLY_PROPERTY
 #undef FO_API_MAP_PROPERTY_DOC
 #undef FO_API_LOCATION_METHOD
 #undef FO_API_LOCATION_METHOD_DOC
@@ -312,7 +361,7 @@
 #undef FO_API_LOCATION_VIEW_METHOD_DOC
 #undef FO_API_LOCATION_VIEW_METHOD_IMPL
 #undef FO_API_LOCATION_PROPERTY
-#undef FO_API_LOCATION_CONST_PROPERTY
+#undef FO_API_LOCATION_READONLY_PROPERTY
 #undef FO_API_LOCATION_PROPERTY_DOC
 #undef FO_API_ARG
 #undef FO_API_ARG_ARR
@@ -320,8 +369,10 @@
 #undef FO_API_ARG_OBJ_ARR
 #undef FO_API_ARG_REF
 #undef FO_API_ARG_ARR_REF
+#undef FO_API_ARG_ENUM
 #undef FO_API_ARG_CALLBACK
 #undef FO_API_ARG_PREDICATE
+#undef FO_API_ARG_DICT
 #undef FO_API_RET
 #undef FO_API_RET_ARR
 #undef FO_API_RET_OBJ
@@ -329,3 +380,9 @@
 #undef FO_API_RET_VOID
 #undef FO_API_RETURN
 #undef FO_API_RETURN_VOID
+#undef FO_API_PROPERTY_TYPE
+#undef FO_API_PROPERTY_TYPE_ARR
+#undef FO_API_PROPERTY_TYPE_OBJ
+#undef FO_API_PROPERTY_TYPE_OBJ_ARR
+#undef FO_API_PROPERTY_TYPE_ENUM
+#undef FO_API_PROPERTY_MOD

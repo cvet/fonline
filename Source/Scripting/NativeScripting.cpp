@@ -31,8 +31,40 @@
 // SOFTWARE.
 //
 
-#include "MapperScriptSystem.h"
+#ifdef FO_SERVER_SCRIPTING
+#include "ServerScripting.h"
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+#include "ClientScripting.h"
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+#include "MapperScripting.h"
+#endif
 
-void MapperScriptSystem::InitNativeScripting()
+#ifdef FO_NATIVE_SCRIPTING
+
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitNativeScripting(FOServer& server)
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitNativeScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitNativeScripting(FOMapper& mapper)
+#endif
 {
 }
+
+#else
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitNativeScripting()
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitNativeScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitNativeScripting(FOMapper& mapper)
+#endif
+{
+}
+#endif

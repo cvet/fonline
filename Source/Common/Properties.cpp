@@ -37,10 +37,6 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
-// Todo: fix script system
-#define SCRIPT_ERROR_R(error, ...) (void)0
-#define SCRIPT_ERROR_R0(error, ...) (void)0
-
 NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
 
 Property::Property()

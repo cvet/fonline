@@ -39,9 +39,6 @@
 
 #include "Testing.h"
 
-#include "angelscript.h"
-#include "scriptarray/scriptarray.h"
-
 #define PROPERTIES_HEADER() \
     static PropertyRegistrator* PropertiesRegistrator; \
     static vector<pair<const char*, Property**>> PropertiesList; \
@@ -61,7 +58,7 @@
         } \
     }
 
-#define CLASS_PROPERTY(prop_type, prop) \
+#define CLASS_PROPERTY(access_type, prop_type, prop, ...) \
     static Property* Property##prop; \
     inline prop_type Get##prop() { return Property##prop->GetValue<prop_type>(this); } \
     inline void Set##prop(prop_type value) { Property##prop->SetValue<prop_type>(this, value); } \
@@ -80,16 +77,12 @@
         { \
             class_name::PropertiesList.push_back(std::make_pair(#prop, &class_name::Property##prop)); \
         } \
-    } _##class_name##Property##prop##Initializer
+    } _##class_name##Property##prop##Initializer;
 
-class asITypeInfo;
-class CScriptDictionary;
-class CScriptDict;
-class CScriptArray;
-
-extern string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep);
-extern void* ReadValue(
-    const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error);
+// extern string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep);
+// extern void* ReadValue(
+//    const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool&
+//    is_error);
 
 class Entity;
 class Property;
@@ -137,7 +130,6 @@ public:
     int GetEnumValue();
     AccessType GetAccess();
     uint GetBaseSize();
-    asITypeInfo* GetASObjectType();
     bool IsPOD();
     bool IsDict();
     bool IsHash();
@@ -169,8 +161,7 @@ public:
     void SetData(Entity* entity, uchar* data, uint data_size);
     int GetPODValueAsInt(Entity* entity);
     void SetPODValueAsInt(Entity* entity, int value);
-    string SetGetCallback(asIScriptFunction* func);
-    string AddSetCallback(asIScriptFunction* func, bool deferred);
+    // string AddSetCallback(asIScriptFunction* func, bool deferred);
 
 private:
     enum DataType
@@ -195,8 +186,6 @@ private:
     string typeName;
     string componentName;
     DataType dataType;
-    int asObjTypeId;
-    asITypeInfo* asObjType;
     bool isHash;
     bool isHashSubType0;
     bool isHashSubType1;
@@ -373,7 +362,7 @@ private:
     PropertyVec registeredProperties;
     HashSet registeredComponents;
     string enumTypeName;
-    map<string, CScriptArray*> enumGroups;
+    // map<string, CScriptArray*> enumGroups;
     uint getPropertiesCount;
 
     // POD info

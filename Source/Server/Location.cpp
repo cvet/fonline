@@ -36,21 +36,12 @@
 #include "Map.h"
 #include "StringUtils.h"
 
+#define FO_API_LOCATION_IMPL
+#include "ScriptApi.h"
+
 PROPERTIES_IMPL(Location);
-#include "LocationProperties.h"
-CLASS_PROPERTY_IMPL(Location, MapProtos);
-CLASS_PROPERTY_IMPL(Location, MapEntrances);
-CLASS_PROPERTY_IMPL(Location, Automaps);
-CLASS_PROPERTY_IMPL(Location, MaxPlayers);
-CLASS_PROPERTY_IMPL(Location, AutoGarbage);
-CLASS_PROPERTY_IMPL(Location, GeckVisible);
-CLASS_PROPERTY_IMPL(Location, EntranceScript);
-CLASS_PROPERTY_IMPL(Location, WorldX);
-CLASS_PROPERTY_IMPL(Location, WorldY);
-CLASS_PROPERTY_IMPL(Location, Radius);
-CLASS_PROPERTY_IMPL(Location, Hidden);
-CLASS_PROPERTY_IMPL(Location, ToGarbage);
-CLASS_PROPERTY_IMPL(Location, Color);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Location, name)
+#include "ScriptApi.h"
 
 Location::Location(uint id, ProtoLocation* proto, ScriptSystem& script_sys) :
     Entity(id, EntityType::Location, PropertiesRegistrator, proto), scriptSys {script_sys}

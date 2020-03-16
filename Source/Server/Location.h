@@ -38,6 +38,9 @@
 #include "Entity.h"
 #include "ScriptSystem.h"
 
+#define FO_API_LOCATION_HEADER
+#include "ScriptApi.h"
+
 class Map;
 using MapVec = vector<Map*>;
 using MapMap = map<uint, Map*>;
@@ -64,25 +67,16 @@ public:
     bool IsNoNpc();
     bool IsCanDelete();
 
-    PROPERTIES_HEADER();
-#include "LocationProperties.h"
-    CLASS_PROPERTY(CScriptArray*, MapProtos); // hash[]
-    CLASS_PROPERTY(CScriptArray*, MapEntrances); // hash[]
-    CLASS_PROPERTY(CScriptArray*, Automaps); // hash[]
-    CLASS_PROPERTY(uint, MaxPlayers);
-    CLASS_PROPERTY(bool, AutoGarbage);
-    CLASS_PROPERTY(bool, GeckVisible);
-    CLASS_PROPERTY(hash, EntranceScript);
-    CLASS_PROPERTY(ushort, WorldX);
-    CLASS_PROPERTY(ushort, WorldY);
-    CLASS_PROPERTY(ushort, Radius);
-    CLASS_PROPERTY(bool, Hidden);
-    CLASS_PROPERTY(bool, ToGarbage);
-    CLASS_PROPERTY(uint, Color);
-
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
     int GeckCount {};
+
+#define FO_API_LOCATION_CLASS
+#include "ScriptApi.h"
+
+    PROPERTIES_HEADER();
+#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 
 private:
     ScriptSystem& scriptSys;

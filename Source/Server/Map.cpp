@@ -45,26 +45,12 @@
 #include "Testing.h"
 #include "Timer.h"
 
+#define FO_API_MAP_IMPL
+#include "ScriptApi.h"
+
 PROPERTIES_IMPL(Map);
-#include "MapProperties.h"
-CLASS_PROPERTY_IMPL(Map, LoopTime1);
-CLASS_PROPERTY_IMPL(Map, LoopTime2);
-CLASS_PROPERTY_IMPL(Map, LoopTime3);
-CLASS_PROPERTY_IMPL(Map, LoopTime4);
-CLASS_PROPERTY_IMPL(Map, LoopTime5);
-CLASS_PROPERTY_IMPL(Map, FileDir);
-CLASS_PROPERTY_IMPL(Map, Width);
-CLASS_PROPERTY_IMPL(Map, Height);
-CLASS_PROPERTY_IMPL(Map, WorkHexX);
-CLASS_PROPERTY_IMPL(Map, WorkHexY);
-CLASS_PROPERTY_IMPL(Map, LocId);
-CLASS_PROPERTY_IMPL(Map, LocMapIndex);
-CLASS_PROPERTY_IMPL(Map, RainCapacity);
-CLASS_PROPERTY_IMPL(Map, CurDayTime);
-CLASS_PROPERTY_IMPL(Map, ScriptId);
-CLASS_PROPERTY_IMPL(Map, DayTime);
-CLASS_PROPERTY_IMPL(Map, DayColor);
-CLASS_PROPERTY_IMPL(Map, IsNoLogOut);
+#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, name)
+#include "ScriptApi.h"
 
 Map::Map(
     uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett, ScriptSystem& script_sys) :

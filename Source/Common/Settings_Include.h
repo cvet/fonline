@@ -37,7 +37,8 @@
 #endif
 
 SETTING_GROUP(UserSettings, virtual DummySettings);
-#include "UserSettings.h"
+#define FO_API_SETTING SETTING
+#include "ScriptApi.h"
 SETTING_GROUP_END();
 
 SETTING_GROUP(CommonSettings, virtual UserSettings);
@@ -172,9 +173,6 @@ VAR_SETTING(uint, GameTimeTick, 0);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ScriptSettings, virtual TimerSettings);
-SETTING(string, MonoPath, "");
-SETTING(uint, ScriptRunSuspendTimeout, 30000);
-SETTING(uint, ScriptRunMessageTimeout, 10000);
 SETTING_GROUP_END();
 
 SETTING_GROUP(MapSettings, virtual ServerGameplaySettings, virtual GeometrySettings);

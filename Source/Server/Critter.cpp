@@ -44,99 +44,20 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
+#define FO_API_CRITTER_IMPL
+#include "ScriptApi.h"
+
+PROPERTIES_IMPL(Critter);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, name)
+#include "ScriptApi.h"
+
 // Todo: remove static SlotEnabled and SlotDataSendEnabled
 bool Critter::SlotEnabled[0x100];
 bool Critter::SlotDataSendEnabled[0x100];
 
-// Properties
-PROPERTIES_IMPL(Critter);
-#include "CritterProperties.h"
-CLASS_PROPERTY_IMPL(Critter, ModelName);
-CLASS_PROPERTY_IMPL(Critter, MapId);
-CLASS_PROPERTY_IMPL(Critter, RefMapId);
-CLASS_PROPERTY_IMPL(Critter, RefMapPid);
-CLASS_PROPERTY_IMPL(Critter, RefLocationId);
-CLASS_PROPERTY_IMPL(Critter, RefLocationPid);
-CLASS_PROPERTY_IMPL(Critter, HexX);
-CLASS_PROPERTY_IMPL(Critter, HexY);
-CLASS_PROPERTY_IMPL(Critter, Dir);
-CLASS_PROPERTY_IMPL(Critter, Password);
-CLASS_PROPERTY_IMPL(Critter, Cond);
-CLASS_PROPERTY_IMPL(Critter, ClientToDelete);
-CLASS_PROPERTY_IMPL(Critter, Multihex);
-CLASS_PROPERTY_IMPL(Critter, WorldX);
-CLASS_PROPERTY_IMPL(Critter, WorldY);
-CLASS_PROPERTY_IMPL(Critter, GlobalMapLeaderId);
-CLASS_PROPERTY_IMPL(Critter, GlobalMapTripId);
-CLASS_PROPERTY_IMPL(Critter, RefGlobalMapLeaderId);
-CLASS_PROPERTY_IMPL(Critter, RefGlobalMapTripId);
-CLASS_PROPERTY_IMPL(Critter, LastMapHexX);
-CLASS_PROPERTY_IMPL(Critter, LastMapHexY);
-CLASS_PROPERTY_IMPL(Critter, Anim1Life);
-CLASS_PROPERTY_IMPL(Critter, Anim1Knockout);
-CLASS_PROPERTY_IMPL(Critter, Anim1Dead);
-CLASS_PROPERTY_IMPL(Critter, Anim2Life);
-CLASS_PROPERTY_IMPL(Critter, Anim2Knockout);
-CLASS_PROPERTY_IMPL(Critter, Anim2Dead);
-CLASS_PROPERTY_IMPL(Critter, GlobalMapFog);
-CLASS_PROPERTY_IMPL(Critter, TE_FuncNum);
-CLASS_PROPERTY_IMPL(Critter, TE_Rate);
-CLASS_PROPERTY_IMPL(Critter, TE_NextTime);
-CLASS_PROPERTY_IMPL(Critter, TE_Identifier);
-CLASS_PROPERTY_IMPL(Critter, LookDistance);
-CLASS_PROPERTY_IMPL(Critter, DialogId);
-CLASS_PROPERTY_IMPL(Critter, NpcRole);
-CLASS_PROPERTY_IMPL(Critter, MaxTalkers);
-CLASS_PROPERTY_IMPL(Critter, TalkDistance);
-CLASS_PROPERTY_IMPL(Critter, CurrentHp);
-CLASS_PROPERTY_IMPL(Critter, WalkTime);
-CLASS_PROPERTY_IMPL(Critter, RunTime);
-CLASS_PROPERTY_IMPL(Critter, ScaleFactor);
-CLASS_PROPERTY_IMPL(Critter, SneakCoefficient);
-CLASS_PROPERTY_IMPL(Critter, TimeoutBattle);
-CLASS_PROPERTY_IMPL(Critter, TimeoutTransfer);
-CLASS_PROPERTY_IMPL(Critter, TimeoutRemoveFromGame);
-CLASS_PROPERTY_IMPL(Critter, IsNoUnarmed);
-CLASS_PROPERTY_IMPL(Critter, IsGeck);
-CLASS_PROPERTY_IMPL(Critter, IsNoHome);
-CLASS_PROPERTY_IMPL(Critter, IsNoWalk);
-CLASS_PROPERTY_IMPL(Critter, IsNoRun);
-CLASS_PROPERTY_IMPL(Critter, IsNoRotate);
-CLASS_PROPERTY_IMPL(Critter, IsNoTalk);
-CLASS_PROPERTY_IMPL(Critter, IsHide);
-CLASS_PROPERTY_IMPL(Critter, KnownLocations);
-CLASS_PROPERTY_IMPL(Critter, ConnectionIp);
-CLASS_PROPERTY_IMPL(Critter, ConnectionPort);
-CLASS_PROPERTY_IMPL(Critter, HomeMapId);
-CLASS_PROPERTY_IMPL(Critter, HomeHexX);
-CLASS_PROPERTY_IMPL(Critter, HomeHexY);
-CLASS_PROPERTY_IMPL(Critter, HomeDir);
-CLASS_PROPERTY_IMPL(Critter, ShowCritterDist1);
-CLASS_PROPERTY_IMPL(Critter, ShowCritterDist2);
-CLASS_PROPERTY_IMPL(Critter, ShowCritterDist3);
-CLASS_PROPERTY_IMPL(Critter, ScriptId);
-
-Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
     Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings), scriptSys {script_sys}
 {
-    CritterIsNpc = false;
-    GlobalMapGroup = nullptr;
-    startBreakTime = 0;
-    breakTime = 0;
-    waitEndTick = 0;
-    CacheValuesNextTick = 0;
-    Flags = 0;
-    LockMapTransfers = 0;
-    ViewMapId = 0;
-    ViewMapPid = 0;
-    ViewMapLook = 0;
-    ViewMapHx = ViewMapHy = 0;
-    ViewMapDir = 0;
-    DisableSend = 0;
-    CanBeRemoved = false;
-    Name = "";
-    memzero(&Moving, sizeof(Moving));
-    Moving.State = 1;
 }
 
 void Critter::SetBreakTime(uint ms)
@@ -160,6 +81,7 @@ void Critter::SetBreakTimeDelta(uint ms)
 uint Critter::GetAttackDist(Item* weap, int use)
 {
     uint dist = 1;
+    scriptSys.CritterGetAttackDistantion(this, weap, use, dist);
     scriptSys.RaiseInternalEvent(ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist);
     return dist;
 }

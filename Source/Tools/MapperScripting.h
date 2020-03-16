@@ -35,13 +35,25 @@
 
 #include "Common.h"
 
+#include "ClientScripting.h"
 #include "ScriptSystem.h"
-#include "ClientScriptSystem.h"
+
+class FOMapper;
 
 class MapperScriptSystem : public ClientScriptSystem
 {
 public:
-	void InitNativeScripting();
-	void InitAngelScriptScripting();
-	void InitMonoScripting();
+    void InitNativeScripting(FOMapper& mapper);
+    void InitAngelScriptScripting(FOMapper& mapper);
+    void InitMonoScripting(FOMapper& mapper);
+
+#define FO_API_MAPPER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
+#define FO_API_ARG(type, name) type
+#define FO_API_ARG_ARR(type, name) vector<type>
+#define FO_API_ARG_OBJ(type, name) type*
+#define FO_API_ARG_OBJ_ARR(type, name) vector<type*>
+#define FO_API_ARG_REF(type, name) type&
+#define FO_API_ARG_ARR_REF(type, name) vector<type>&
+#define FO_API_ARG_ENUM(type, name) int
+#include "ScriptApi.h"
 };

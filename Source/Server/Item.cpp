@@ -40,78 +40,12 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
+#define FO_API_ITEM_IMPL
+#include "ScriptApi.h"
+
 PROPERTIES_IMPL(Item);
-#include "ItemProperties.h"
-CLASS_PROPERTY_IMPL(Item, PicMap);
-CLASS_PROPERTY_IMPL(Item, PicInv);
-CLASS_PROPERTY_IMPL(Item, OffsetX);
-CLASS_PROPERTY_IMPL(Item, OffsetY);
-CLASS_PROPERTY_IMPL(Item, LightIntensity);
-CLASS_PROPERTY_IMPL(Item, LightDistance);
-CLASS_PROPERTY_IMPL(Item, LightFlags);
-CLASS_PROPERTY_IMPL(Item, LightColor);
-CLASS_PROPERTY_IMPL(Item, Stackable);
-CLASS_PROPERTY_IMPL(Item, Opened);
-CLASS_PROPERTY_IMPL(Item, Corner);
-CLASS_PROPERTY_IMPL(Item, Slot);
-CLASS_PROPERTY_IMPL(Item, DisableEgg);
-CLASS_PROPERTY_IMPL(Item, AnimWaitBase);
-CLASS_PROPERTY_IMPL(Item, AnimWaitRndMin);
-CLASS_PROPERTY_IMPL(Item, AnimWaitRndMax);
-CLASS_PROPERTY_IMPL(Item, AnimStay0);
-CLASS_PROPERTY_IMPL(Item, AnimStay1);
-CLASS_PROPERTY_IMPL(Item, AnimShow0);
-CLASS_PROPERTY_IMPL(Item, AnimShow1);
-CLASS_PROPERTY_IMPL(Item, AnimHide0);
-CLASS_PROPERTY_IMPL(Item, AnimHide1);
-CLASS_PROPERTY_IMPL(Item, SpriteCut);
-CLASS_PROPERTY_IMPL(Item, DrawOrderOffsetHexY);
-CLASS_PROPERTY_IMPL(Item, BlockLines);
-CLASS_PROPERTY_IMPL(Item, ScriptId);
-CLASS_PROPERTY_IMPL(Item, Accessory);
-CLASS_PROPERTY_IMPL(Item, MapId);
-CLASS_PROPERTY_IMPL(Item, HexX);
-CLASS_PROPERTY_IMPL(Item, HexY);
-CLASS_PROPERTY_IMPL(Item, CritId);
-CLASS_PROPERTY_IMPL(Item, CritSlot);
-CLASS_PROPERTY_IMPL(Item, ContainerId);
-CLASS_PROPERTY_IMPL(Item, ContainerStack);
-CLASS_PROPERTY_IMPL(Item, IsStatic);
-CLASS_PROPERTY_IMPL(Item, IsScenery);
-CLASS_PROPERTY_IMPL(Item, IsWall);
-CLASS_PROPERTY_IMPL(Item, IsCanOpen);
-CLASS_PROPERTY_IMPL(Item, IsScrollBlock);
-CLASS_PROPERTY_IMPL(Item, IsHidden);
-CLASS_PROPERTY_IMPL(Item, IsHiddenPicture);
-CLASS_PROPERTY_IMPL(Item, IsHiddenInStatic);
-CLASS_PROPERTY_IMPL(Item, IsFlat);
-CLASS_PROPERTY_IMPL(Item, IsNoBlock);
-CLASS_PROPERTY_IMPL(Item, IsShootThru);
-CLASS_PROPERTY_IMPL(Item, IsLightThru);
-CLASS_PROPERTY_IMPL(Item, IsAlwaysView);
-CLASS_PROPERTY_IMPL(Item, IsBadItem);
-CLASS_PROPERTY_IMPL(Item, IsNoHighlight);
-CLASS_PROPERTY_IMPL(Item, IsShowAnim);
-CLASS_PROPERTY_IMPL(Item, IsShowAnimExt);
-CLASS_PROPERTY_IMPL(Item, IsLight);
-CLASS_PROPERTY_IMPL(Item, IsGeck);
-CLASS_PROPERTY_IMPL(Item, IsTrap);
-CLASS_PROPERTY_IMPL(Item, IsTrigger);
-CLASS_PROPERTY_IMPL(Item, IsNoLightInfluence);
-CLASS_PROPERTY_IMPL(Item, IsGag);
-CLASS_PROPERTY_IMPL(Item, IsColorize);
-CLASS_PROPERTY_IMPL(Item, IsColorizeInv);
-CLASS_PROPERTY_IMPL(Item, IsCanTalk);
-CLASS_PROPERTY_IMPL(Item, IsRadio);
-CLASS_PROPERTY_IMPL(Item, SortValue);
-CLASS_PROPERTY_IMPL(Item, Mode);
-CLASS_PROPERTY_IMPL(Item, Count);
-CLASS_PROPERTY_IMPL(Item, TrapValue);
-CLASS_PROPERTY_IMPL(Item, RadioChannel);
-CLASS_PROPERTY_IMPL(Item, RadioFlags);
-CLASS_PROPERTY_IMPL(Item, RadioBroadcastSend);
-CLASS_PROPERTY_IMPL(Item, RadioBroadcastRecv);
-CLASS_PROPERTY_IMPL(Item, FlyEffectSpeed);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, name)
+#include "ScriptApi.h"
 
 Item::Item(uint id, ProtoItem* proto, ScriptSystem& script_sys) :
     Entity(id, EntityType::Item, PropertiesRegistrator, proto), scriptSys {script_sys}

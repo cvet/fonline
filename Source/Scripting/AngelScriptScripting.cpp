@@ -31,8 +31,53 @@
 // SOFTWARE.
 //
 
-#include "ClientScriptSystem.h"
+#ifdef FO_SERVER_SCRIPTING
+#include "ServerScripting.h"
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+#include "ClientScripting.h"
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+#include "MapperScripting.h"
+#endif
 
-void ClientScriptSystem::InitAngelScriptScripting()
+#ifdef FO_ANGELSCRIPT_SCRIPTING
+#include "AngelScriptReflection.h"
+
+#include "angelscript.h"
+#include "datetime/datetime.h"
+#include "preprocessor.h"
+#include "scriptany/scriptany.h"
+#include "scriptfile/scriptfile.h"
+#include "scriptfile/scriptfilesystem.h"
+#include "scripthelper/scripthelper.h"
+#include "scriptmath/scriptmath.h"
+#include "scriptstdstring/scriptstdstring.h"
+#include "weakref/weakref.h"
+
+
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitAngelScriptScripting(FOServer& server)
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitAngelScriptScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitAngelScriptScripting(FOMapper& mapper)
+#endif
 {
 }
+
+#else
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitAngelSriptScripting(FOServer& server)
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitAngelSriptScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitAngelSriptScripting(FOMapper& mapper)
+#endif
+{
+}
+#endif

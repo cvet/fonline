@@ -31,7 +31,8 @@
 // SOFTWARE.
 //
 
-#include "reflection.h"
+#include "AngelScriptReflection.h"
+
 #include "../autowrapper/aswrappedcall.h"
 #include "as_objecttype.h"
 #include "as_scriptengine.h"

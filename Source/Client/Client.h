@@ -39,6 +39,7 @@
 
 #include "3dStuff.h"
 #include "CacheStorage.h"
+#include "ClientScripting.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
@@ -53,7 +54,6 @@
 #include "NetBuffer.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -136,7 +136,7 @@ public:
     GeometryHelper GeomHelper;
     int InitCalls;
     FileManager FileMngr;
-    ScriptSystem ScriptSys;
+    ClientScriptSystem ScriptSys;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;

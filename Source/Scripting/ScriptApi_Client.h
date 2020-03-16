@@ -271,7 +271,8 @@ FO_API_EPILOG()
  * @param item ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(AnimateEx, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_OBJ(ItemView, item))
+FO_API_CRITTER_VIEW_METHOD(
+    AnimateEx, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_OBJ(ItemView, item))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_OBJ_MARSHAL(ItemView, item))
 {
@@ -598,9 +599,11 @@ FO_API_EPILOG(0)
  * @param lines ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(GetNameTextInfo, FO_API_RET(void), FO_API_ARG_REF(bool, nameVisible), FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y), FO_API_ARG_REF(int, w), FO_API_ARG_REF(int, h), FO_API_ARG_REF(int, lines))
+FO_API_CRITTER_VIEW_METHOD(GetNameTextInfo, FO_API_RET(void), FO_API_ARG_REF(bool, nameVisible), FO_API_ARG_REF(int, x),
+    FO_API_ARG_REF(int, y), FO_API_ARG_REF(int, w), FO_API_ARG_REF(int, h), FO_API_ARG_REF(int, lines))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(bool, nameVisible), FO_API_ARG_REF_MARSHAL(int, x), FO_API_ARG_REF_MARSHAL(int, y), FO_API_ARG_REF_MARSHAL(int, w), FO_API_ARG_REF_MARSHAL(int, h), FO_API_ARG_REF_MARSHAL(int, lines))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(bool, nameVisible), FO_API_ARG_REF_MARSHAL(int, x), FO_API_ARG_REF_MARSHAL(int, y),
+    FO_API_ARG_REF_MARSHAL(int, w), FO_API_ARG_REF_MARSHAL(int, h), FO_API_ARG_REF_MARSHAL(int, lines))
 {
     _this->GetNameTextInfo(nameVisible, x, y, w, h, lines);
 }
@@ -617,9 +620,11 @@ FO_API_EPILOG()
  * @param animationCallback ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(AddAnimationCallback, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(animationCallback))
+FO_API_CRITTER_VIEW_METHOD(AddAnimationCallback, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2),
+    FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(animationCallback))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_MARSHAL(float, normalizedTime), FO_API_ARG_CALLBACK_MARSHAL(animationCallback))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2),
+    FO_API_ARG_MARSHAL(float, normalizedTime), FO_API_ARG_CALLBACK_MARSHAL(animationCallback))
 {
     if (!_this->Anim3d)
         throw ScriptException("Critter is not 3d");
@@ -629,13 +634,13 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), 
     uint bind_id = _client->ScriptSys.BindByFunc(animationCallback, false);
     RUNTIME_ASSERT(bind_id);
     _this->Anim3d->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_this, bind_id] {
-                                                  if (_this->IsDestroyed)
-                                                      FO_API_RETURN_VOID();
+                                                     if (_this->IsDestroyed)
+                                                         FO_API_RETURN_VOID();
 
-                                                  _client->ScriptSys.PrepareContext(bind_id, "AnimationCallback");
-                                                  _client->ScriptSys.SetArgEntity(_this);
-                                                  _client->ScriptSys.RunPrepared();
-                                              }});
+                                                     _client->ScriptSys.PrepareContext(bind_id, "AnimationCallback");
+                                                     _client->ScriptSys.SetArgEntity(_this);
+                                                     _client->ScriptSys.RunPrepared();
+                                                 }});
 }
 FO_API_EPILOG()
 #endif
@@ -650,9 +655,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(GetBonePosition, FO_API_RET(bool), FO_API_ARG(hash, boneName), FO_API_ARG_REF(int, boneX), FO_API_ARG_REF(int, boneY))
+FO_API_CRITTER_VIEW_METHOD(GetBonePosition, FO_API_RET(bool), FO_API_ARG(hash, boneName), FO_API_ARG_REF(int, boneX),
+    FO_API_ARG_REF(int, boneY))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName), FO_API_ARG_REF_MARSHAL(int, boneX), FO_API_ARG_REF_MARSHAL(int, boneY))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(hash, boneName), FO_API_ARG_REF_MARSHAL(int, boneX), FO_API_ARG_REF_MARSHAL(int, boneY))
 {
     if (!_this->Anim3d)
         throw ScriptException("Critter is not 3d");
@@ -864,7 +871,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command), FO_API_ARG_MARSHAL(string, se
                 {
                     int x, y;
                     _client->SprMngr.GetWindowPosition(x, y);
-                    _client->SprMngr.SetWindowPosition(x - _client->WindowResolutionDiffX, y - _client->WindowResolutionDiffY);
+                    _client->SprMngr.SetWindowPosition(
+                        x - _client->WindowResolutionDiffX, y - _client->WindowResolutionDiffY);
                     _client->WindowResolutionDiffX = _client->WindowResolutionDiffY = 0;
                 }
             }
@@ -920,7 +928,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command), FO_API_ARG_MARSHAL(string, se
     else if (cmd == "SetCursorPos")
     {
         if (_client->HexMngr.IsMapLoaded())
-            _client->HexMngr.SetCursorPos(_client->Settings.MouseX, _client->Settings.MouseY, _client->Keyb.CtrlDwn, true);
+            _client->HexMngr.SetCursorPos(
+                _client->Settings.MouseX, _client->Settings.MouseY, _client->Keyb.CtrlDwn, true);
     }
     else if (cmd == "NetDisconnect")
     {
@@ -1043,8 +1052,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command), FO_API_ARG_MARSHAL(string, se
         x2 = x + _str(args[4]).toInt();
         y2 = y + _str(args[5]).toInt();
 
-        if (zoom != _client->LmapZoom || x != _client->LmapWMap[0] || y != _client->LmapWMap[1] || x2 != _client->LmapWMap[2] ||
-            y2 != _client->LmapWMap[3])
+        if (zoom != _client->LmapZoom || x != _client->LmapWMap[0] || y != _client->LmapWMap[1] ||
+            x2 != _client->LmapWMap[2] || y2 != _client->LmapWMap[3])
         {
             _client->LmapZoom = zoom;
             _client->LmapWMap[0] = x;
@@ -1235,7 +1244,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
     // On other critters
     if (!item)
     {
-        for (auto it = _client->HexMngr.GetCritters().begin(); !item && it != _client->HexMngr.GetCritters().end(); ++it)
+        for (auto it = _client->HexMngr.GetCritters().begin(); !item && it != _client->HexMngr.GetCritters().end();
+             ++it)
             if (!it->second->IsChosen())
                 item = it->second->GetItem(itemId);
     }
@@ -1305,7 +1315,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetCrittersDistantion, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr1), FO_API_ARG_OBJ(CritterView, cr2))
+FO_API_GLOBAL_CLIENT_FUNC(
+    GetCrittersDistantion, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr1), FO_API_ARG_OBJ(CritterView, cr2))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr1), FO_API_ARG_OBJ_MARSHAL(CritterView, cr2))
 {
@@ -1355,9 +1366,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetCritters, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
+FO_API_GLOBAL_CLIENT_FUNC(GetCritters, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     if (hx >= _client->HexMngr.GetWidth() || hy >= _client->HexMngr.GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -1391,7 +1404,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetCrittersByPids, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(int, findType))
+FO_API_GLOBAL_CLIENT_FUNC(
+    GetCrittersByPids, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid), FO_API_ARG_MARSHAL(int, findType))
 {
@@ -1434,13 +1448,17 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPath, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
+FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPath, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
+    FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     CritterViewVec critters;
-    _client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType,
-        nullptr, nullptr, nullptr, true);
+    _client->HexMngr.TraceBullet(
+        fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
     FO_API_RETURN(critters);
 }
 FO_API_EPILOG(0)
@@ -1464,9 +1482,16 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPathBlock, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx), FO_API_ARG_REF(ushort, preBlockHy), FO_API_ARG_REF(ushort, blockHx), FO_API_ARG_REF(ushort, blockHy))
+FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPathBlock, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
+    FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx),
+    FO_API_ARG_REF(ushort, preBlockHy), FO_API_ARG_REF(ushort, blockHx), FO_API_ARG_REF(ushort, blockHy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist), FO_API_ARG_MARSHAL(int, findType), FO_API_ARG_REF_MARSHAL(ushort, preBlockHx), FO_API_ARG_REF_MARSHAL(ushort, preBlockHy), FO_API_ARG_REF_MARSHAL(ushort, blockHx), FO_API_ARG_REF_MARSHAL(ushort, blockHy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist),
+    FO_API_ARG_MARSHAL(int, findType), FO_API_ARG_REF_MARSHAL(ushort, preBlockHx),
+    FO_API_ARG_REF_MARSHAL(ushort, preBlockHy), FO_API_ARG_REF_MARSHAL(ushort, blockHx),
+    FO_API_ARG_REF_MARSHAL(ushort, blockHy))
 {
     CritterViewVec critters;
     UShortPair block, pre_block;
@@ -1493,9 +1518,12 @@ FO_API_EPILOG(0)
  * @param dist ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
+FO_API_GLOBAL_CLIENT_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy),
+    FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle),
+    FO_API_ARG_MARSHAL(uint, dist))
 {
     UShortPair pre_block, block;
     _client->HexMngr.TraceBullet(
@@ -1518,9 +1546,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetPathHex, FO_API_RET_ARR(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_GLOBAL_CLIENT_FUNC(GetPathHex, FO_API_RET_ARR(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
 {
     if (fromHx >= _client->HexMngr.GetWidth() || fromHy >= _client->HexMngr.GetHeight())
         throw ScriptException("Invalid from hexes args");
@@ -1550,9 +1580,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetPathCr, FO_API_RET_ARR(uchar), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_GLOBAL_CLIENT_FUNC(GetPathCr, FO_API_RET_ARR(uchar), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx),
+    FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
 {
     if (toHx >= _client->HexMngr.GetWidth() || toHy >= _client->HexMngr.GetHeight())
         throw ScriptException("Invalid to hexes args");
@@ -1581,9 +1613,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
 {
     if (fromHx >= _client->HexMngr.GetWidth() || fromHy >= _client->HexMngr.GetHeight())
         throw ScriptException("Invalid from hexes args");
@@ -1613,9 +1647,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthCr, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthCr, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx),
+    FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
 {
     if (toHx >= _client->HexMngr.GetWidth() || toHy >= _client->HexMngr.GetHeight())
         throw ScriptException("Invalid to hexes args");
@@ -1641,7 +1677,8 @@ FO_API_EPILOG(0)
  * @param ms ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(FlushScreen, FO_API_RET(void), FO_API_ARG(uint, fromColor), FO_API_ARG(uint, toColor), FO_API_ARG(uint, ms))
+FO_API_GLOBAL_CLIENT_FUNC(
+    FlushScreen, FO_API_RET(void), FO_API_ARG(uint, fromColor), FO_API_ARG(uint, toColor), FO_API_ARG(uint, ms))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromColor), FO_API_ARG_MARSHAL(uint, toColor), FO_API_ARG_MARSHAL(uint, ms))
 {
@@ -1806,7 +1843,8 @@ FO_API_EPILOG()
  * @param type ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(MessageMsgType, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(int, type))
+FO_API_GLOBAL_CLIENT_FUNC(
+    MessageMsgType, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(int, type))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg), FO_API_ARG_MARSHAL(uint, strNum), FO_API_ARG_MARSHAL(int, type))
 {
@@ -1832,9 +1870,13 @@ FO_API_EPILOG()
  * @param oy ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox), FO_API_ARG(int, oy))
+FO_API_GLOBAL_CLIENT_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx),
+    FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox),
+    FO_API_ARG(int, oy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, ms), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, fade), FO_API_ARG_MARSHAL(int, ox), FO_API_ARG_MARSHAL(int, oy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uint, ms), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, fade),
+    FO_API_ARG_MARSHAL(int, ox), FO_API_ARG_MARSHAL(int, oy))
 {
     FOClient::MapText t;
     t.HexX = hx;
@@ -1884,7 +1926,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
+FO_API_GLOBAL_CLIENT_FUNC(
+    GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg), FO_API_ARG_MARSHAL(uint, strNum), FO_API_ARG_MARSHAL(uint, skipCount))
 {
@@ -1985,7 +2028,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
+FO_API_GLOBAL_CLIENT_FUNC(
+    ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(string, replace), FO_API_ARG_MARSHAL(string, str))
 {
@@ -2007,7 +2051,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
+FO_API_GLOBAL_CLIENT_FUNC(
+    ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(string, replace), FO_API_ARG_MARSHAL(int, i))
 {
@@ -2048,9 +2093,11 @@ FO_API_EPILOG(0)
  * @param canStop ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
+FO_API_GLOBAL_CLIENT_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, speed), FO_API_ARG_MARSHAL(bool, canStop))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, speed),
+    FO_API_ARG_MARSHAL(bool, canStop))
 {
     if (!_client->HexMngr.IsMapLoaded())
         throw ScriptException("Map is not loaded");
@@ -2075,9 +2122,11 @@ FO_API_EPILOG()
  * @param canStop ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
+FO_API_GLOBAL_CLIENT_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy),
+    FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox), FO_API_ARG_MARSHAL(int, oy), FO_API_ARG_MARSHAL(uint, speed), FO_API_ARG_MARSHAL(bool, canStop))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox), FO_API_ARG_MARSHAL(int, oy), FO_API_ARG_MARSHAL(uint, speed),
+    FO_API_ARG_MARSHAL(bool, canStop))
 {
     if (!_client->HexMngr.IsMapLoaded())
         throw ScriptException("Map is not loaded");
@@ -2096,9 +2145,11 @@ FO_API_EPILOG()
  * @param unlockIfSame ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(LockScreenScroll, FO_API_RET(void), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(bool, softLock), FO_API_ARG(bool, unlockIfSame))
+FO_API_GLOBAL_CLIENT_FUNC(LockScreenScroll, FO_API_RET(void), FO_API_ARG_OBJ(CritterView, cr),
+    FO_API_ARG(bool, softLock), FO_API_ARG(bool, unlockIfSame))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(bool, softLock), FO_API_ARG_MARSHAL(bool, unlockIfSame))
+FO_API_PROLOG(
+    FO_API_ARG_OBJ_MARSHAL(CritterView, cr), FO_API_ARG_MARSHAL(bool, softLock), FO_API_ARG_MARSHAL(bool, unlockIfSame))
 {
     uint id = (cr ? cr->GetId() : 0);
     if (softLock)
@@ -2174,9 +2225,11 @@ FO_API_EPILOG(0)
  * @param b ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetDayColor, FO_API_RET(void), FO_API_ARG(uint, dayPart), FO_API_ARG_REF(uchar, r), FO_API_ARG_REF(uchar, g), FO_API_ARG_REF(uchar, b))
+FO_API_GLOBAL_CLIENT_FUNC(GetDayColor, FO_API_RET(void), FO_API_ARG(uint, dayPart), FO_API_ARG_REF(uchar, r),
+    FO_API_ARG_REF(uchar, g), FO_API_ARG_REF(uchar, b))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart), FO_API_ARG_REF_MARSHAL(uchar, r), FO_API_ARG_REF_MARSHAL(uchar, g), FO_API_ARG_REF_MARSHAL(uchar, b))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart), FO_API_ARG_REF_MARSHAL(uchar, r), FO_API_ARG_REF_MARSHAL(uchar, g),
+    FO_API_ARG_REF_MARSHAL(uchar, b))
 {
     r = g = b = 0;
     if (dayPart >= 4)
@@ -2206,9 +2259,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month), FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
+FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
+    FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year), FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day), FO_API_ARG_MARSHAL(ushort, hour), FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year), FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day),
+    FO_API_ARG_MARSHAL(ushort, hour), FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
 {
     if (!year)
         year = Globals->GetYear();
@@ -2254,9 +2309,14 @@ FO_API_EPILOG(0)
  * @param second ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
+FO_API_GLOBAL_CLIENT_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year),
+    FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek),
+    FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond), FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond), FO_API_ARG_REF_MARSHAL(ushort, year),
+    FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day),
+    FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour),
+    FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second))
 {
     DateTimeStamp dt = _client->GameTime.GetGameTime(fullSecond);
     year = dt.Year;
@@ -2280,9 +2340,11 @@ FO_API_EPILOG()
  * @param steps ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
+FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy),
+    FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx), FO_API_ARG_REF_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(uint, steps))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx), FO_API_ARG_REF_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir),
+    FO_API_ARG_MARSHAL(uint, steps))
 {
     if (!_client->HexMngr.IsMapLoaded())
         throw ScriptException("Map not loaded");
@@ -2315,9 +2377,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetTileName, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
+FO_API_GLOBAL_CLIENT_FUNC(GetTileName, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(bool, roof), FO_API_ARG_MARSHAL(int, layer))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(bool, roof),
+    FO_API_ARG_MARSHAL(int, layer))
 {
     if (!_client->HexMngr.IsMapLoaded())
         throw ScriptException("Map not loaded");
@@ -2439,9 +2503,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(SetEffect, FO_API_RET(bool), FO_API_ARG(int, effectType), FO_API_ARG(int, effectSubtype), FO_API_ARG(string, effectName), FO_API_ARG(string, effectDefines))
+FO_API_GLOBAL_CLIENT_FUNC(SetEffect, FO_API_RET(bool), FO_API_ARG(int, effectType), FO_API_ARG(int, effectSubtype),
+    FO_API_ARG(string, effectName), FO_API_ARG(string, effectDefines))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType), FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(string, effectName), FO_API_ARG_MARSHAL(string, effectDefines))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType), FO_API_ARG_MARSHAL(int, effectSubtype),
+    FO_API_ARG_MARSHAL(string, effectName), FO_API_ARG_MARSHAL(string, effectDefines))
 {
 // Effect types
 #define EFFECT_2D_GENERIC (0x00000001) // Subtype can be item id, zero for all items
@@ -2523,7 +2589,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType), FO_API_ARG_MARSHAL(int, effec
         _client->EffectMngr.Effects.FlushRenderTargetMS =
             (effect ? effect : _client->EffectMngr.Effects.FlushRenderTargetMSDefault);
     if (effectType & EFFECT_FLUSH_PRIMITIVE)
-        _client->EffectMngr.Effects.FlushPrimitive = (effect ? effect : _client->EffectMngr.Effects.FlushPrimitiveDefault);
+        _client->EffectMngr.Effects.FlushPrimitive =
+            (effect ? effect : _client->EffectMngr.Effects.FlushPrimitiveDefault);
     if (effectType & EFFECT_FLUSH_MAP)
         _client->EffectMngr.Effects.FlushMap = (effect ? effect : _client->EffectMngr.Effects.FlushMapDefault);
     if (effectType & EFFECT_FLUSH_LIGHT)
@@ -2554,9 +2621,11 @@ FO_API_EPILOG(0)
  * @param onlyLight ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(RefreshMap, FO_API_RET(void), FO_API_ARG(bool, onlyTiles), FO_API_ARG(bool, onlyRoof), FO_API_ARG(bool, onlyLight))
+FO_API_GLOBAL_CLIENT_FUNC(
+    RefreshMap, FO_API_RET(void), FO_API_ARG(bool, onlyTiles), FO_API_ARG(bool, onlyRoof), FO_API_ARG(bool, onlyLight))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, onlyTiles), FO_API_ARG_MARSHAL(bool, onlyRoof), FO_API_ARG_MARSHAL(bool, onlyLight))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(bool, onlyTiles), FO_API_ARG_MARSHAL(bool, onlyRoof), FO_API_ARG_MARSHAL(bool, onlyLight))
 {
     if (_client->HexMngr.IsMapLoaded())
     {
@@ -2620,9 +2689,11 @@ FO_API_EPILOG()
  * @param key2Text ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2), FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
+FO_API_GLOBAL_CLIENT_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2),
+    FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1), FO_API_ARG_MARSHAL(uchar, key2), FO_API_ARG_MARSHAL(string, key1Text), FO_API_ARG_MARSHAL(string, key2Text))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1), FO_API_ARG_MARSHAL(uchar, key2), FO_API_ARG_MARSHAL(string, key1Text),
+    FO_API_ARG_MARSHAL(string, key2Text))
 {
     if (!key1 && !key2)
         FO_API_RETURN_VOID();
@@ -2650,12 +2721,13 @@ FO_API_EPILOG()
  * @param dropAnimName ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
+FO_API_GLOBAL_CLIENT_FUNC(
+    SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName), FO_API_ARG_MARSHAL(string, dropAnimName))
 {
-    _client->HexMngr.SetRainAnimation(!fallAnimName.empty() ? fallAnimName.c_str() : nullptr,
-        !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
+    _client->HexMngr.SetRainAnimation(
+        !fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
 }
 FO_API_EPILOG()
 #endif
@@ -2720,9 +2792,14 @@ FO_API_EPILOG()
  * @param milliseconds ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
+FO_API_GLOBAL_CLIENT_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month),
+    FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour),
+    FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second), FO_API_ARG_REF_MARSHAL(ushort, milliseconds))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month),
+    FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek),
+    FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute),
+    FO_API_ARG_REF_MARSHAL(ushort, second), FO_API_ARG_REF_MARSHAL(ushort, milliseconds))
 {
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
@@ -2968,9 +3045,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y))
+FO_API_GLOBAL_CLIENT_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
+    FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x),
+    FO_API_ARG_MARSHAL(int, y))
 {
     if (!sprId)
         FO_API_RETURN(0);
@@ -2999,9 +3078,13 @@ FO_API_EPILOG(0)
  * @param lines ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th), FO_API_ARG_REF(int, lines))
+FO_API_GLOBAL_CLIENT_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w),
+    FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th),
+    FO_API_ARG_REF(int, lines))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(int, font), FO_API_ARG_MARSHAL(int, flags), FO_API_ARG_REF_MARSHAL(int, tw), FO_API_ARG_REF_MARSHAL(int, th), FO_API_ARG_REF_MARSHAL(int, lines))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h),
+    FO_API_ARG_MARSHAL(int, font), FO_API_ARG_MARSHAL(int, flags), FO_API_ARG_REF_MARSHAL(int, tw),
+    FO_API_ARG_REF_MARSHAL(int, th), FO_API_ARG_REF_MARSHAL(int, lines))
 {
     _client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines);
 }
@@ -3020,9 +3103,11 @@ FO_API_EPILOG()
  * @param offs ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
+FO_API_GLOBAL_CLIENT_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
+    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, offs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x),
+    FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, offs))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3063,9 +3148,13 @@ FO_API_EPILOG()
  * @param offs ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
+FO_API_GLOBAL_CLIENT_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
+    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom),
+    FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(bool, zoom), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, offs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x),
+    FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(bool, zoom),
+    FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(bool, offs))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3106,9 +3195,13 @@ FO_API_EPILOG()
  * @param color ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth), FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
+FO_API_GLOBAL_CLIENT_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
+    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth),
+    FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(int, sprWidth), FO_API_ARG_MARSHAL(int, sprHeight), FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId), FO_API_ARG_MARSHAL(int, frameIndex), FO_API_ARG_MARSHAL(int, x),
+    FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h),
+    FO_API_ARG_MARSHAL(int, sprWidth), FO_API_ARG_MARSHAL(int, sprHeight), FO_API_ARG_MARSHAL(uint, color))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3139,9 +3232,12 @@ FO_API_EPILOG()
  * @param flags ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
+FO_API_GLOBAL_CLIENT_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y),
+    FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(int, font), FO_API_ARG_MARSHAL(int, flags))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y),
+    FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h), FO_API_ARG_MARSHAL(uint, color),
+    FO_API_ARG_MARSHAL(int, font), FO_API_ARG_MARSHAL(int, flags))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3275,8 +3371,8 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
     Field& f = _client->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
     Sprites& tree = _client->HexMngr.GetDrawTree();
     Sprite& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0,
-        (_client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX,
-        &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(mapSpr->FrameIndex), nullptr,
+        (_client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_client->Settings.MapHexHeight / 2) + mapSpr->OffsY,
+        &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(mapSpr->FrameIndex), nullptr,
         mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr,
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
@@ -3284,7 +3380,8 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
     mapSpr->AddRef();
 
     if (!no_light)
-        spr.SetLight(corner, _client->HexMngr.GetLightHex(0, 0), _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
+        spr.SetLight(
+            corner, _client->HexMngr.GetLightHex(0, 0), _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
 
     if (!is_flat && !disable_egg)
     {
@@ -3337,9 +3434,14 @@ FO_API_EPILOG()
  * @param color ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r), FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
+FO_API_GLOBAL_CLIENT_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1),
+    FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r),
+    FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName), FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(int, l), FO_API_ARG_MARSHAL(int, t), FO_API_ARG_MARSHAL(int, r), FO_API_ARG_MARSHAL(int, b), FO_API_ARG_MARSHAL(bool, scratch), FO_API_ARG_MARSHAL(bool, center), FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName), FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2),
+    FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(int, l), FO_API_ARG_MARSHAL(int, t), FO_API_ARG_MARSHAL(int, r),
+    FO_API_ARG_MARSHAL(int, b), FO_API_ARG_MARSHAL(bool, scratch), FO_API_ARG_MARSHAL(bool, center),
+    FO_API_ARG_MARSHAL(uint, color))
 {
     AnyFrames* anim = _client->ResMngr.GetCrit2dAnim(modelName, anim1, anim2, dir);
     if (anim)
@@ -3367,9 +3469,13 @@ static int DrawCritter3dLayers[LAYERS3D_COUNT];
  * @param color ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position), FO_API_ARG(uint, color))
+FO_API_GLOBAL_CLIENT_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName),
+    FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position),
+    FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance), FO_API_ARG_MARSHAL(hash, modelName), FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_ARR_MARSHAL(int, layers), FO_API_ARG_ARR_MARSHAL(float, position), FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance), FO_API_ARG_MARSHAL(hash, modelName), FO_API_ARG_MARSHAL(uint, anim1),
+    FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_ARR_MARSHAL(int, layers), FO_API_ARG_ARR_MARSHAL(float, position),
+    FO_API_ARG_MARSHAL(uint, color))
 {
     // x y
     // rx ry rz
@@ -3453,9 +3559,11 @@ FO_API_EPILOG()
  * @param h ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
+FO_API_GLOBAL_CLIENT_FUNC(
+    PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h))
 {
     _client->SprMngr.PushScissor(x, y, x + w, y + h);
 }
@@ -3566,9 +3674,11 @@ FO_API_EPILOG()
  * @param h ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt, FO_API_RET(void), FO_API_ARG(int, effectSubtype), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
+FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt, FO_API_RET(void), FO_API_ARG(int, effectSubtype),
+    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y),
+    FO_API_ARG_MARSHAL(int, w), FO_API_ARG_MARSHAL(int, h))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3610,9 +3720,13 @@ FO_API_EPILOG()
  * @param toH ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt2, FO_API_RET(void), FO_API_ARG(int, effectSubtype), FO_API_ARG(int, fromX), FO_API_ARG(int, fromY), FO_API_ARG(int, fromW), FO_API_ARG(int, fromH), FO_API_ARG(int, toX), FO_API_ARG(int, toY), FO_API_ARG(int, toW), FO_API_ARG(int, toH))
+FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt2, FO_API_RET(void), FO_API_ARG(int, effectSubtype),
+    FO_API_ARG(int, fromX), FO_API_ARG(int, fromY), FO_API_ARG(int, fromW), FO_API_ARG(int, fromH),
+    FO_API_ARG(int, toX), FO_API_ARG(int, toY), FO_API_ARG(int, toW), FO_API_ARG(int, toH))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(int, fromX), FO_API_ARG_MARSHAL(int, fromY), FO_API_ARG_MARSHAL(int, fromW), FO_API_ARG_MARSHAL(int, fromH), FO_API_ARG_MARSHAL(int, toX), FO_API_ARG_MARSHAL(int, toY), FO_API_ARG_MARSHAL(int, toW), FO_API_ARG_MARSHAL(int, toH))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(int, fromX), FO_API_ARG_MARSHAL(int, fromY),
+    FO_API_ARG_MARSHAL(int, fromW), FO_API_ARG_MARSHAL(int, fromH), FO_API_ARG_MARSHAL(int, toX),
+    FO_API_ARG_MARSHAL(int, toY), FO_API_ARG_MARSHAL(int, toW), FO_API_ARG_MARSHAL(int, toH))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
@@ -3632,7 +3746,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype), FO_API_ARG_MARSHAL(int, fr
     rt->DrawEffect = _client->OffscreenEffects[effectSubtype];
 
     Rect from(CLAMP(fromX, 0, _client->Settings.ScreenWidth), CLAMP(fromY, 0, _client->Settings.ScreenHeight),
-        CLAMP(fromX + fromW, 0, _client->Settings.ScreenWidth), CLAMP(fromY + fromH, 0, _client->Settings.ScreenHeight));
+        CLAMP(fromX + fromW, 0, _client->Settings.ScreenWidth),
+        CLAMP(fromY + fromH, 0, _client->Settings.ScreenHeight));
     Rect to(CLAMP(toX, 0, _client->Settings.ScreenWidth), CLAMP(toY, 0, _client->Settings.ScreenHeight),
         CLAMP(toX + toW, 0, _client->Settings.ScreenWidth), CLAMP(toY + toH, 0, _client->Settings.ScreenHeight));
     _client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
@@ -3648,9 +3763,9 @@ FO_API_EPILOG()
  * @param params ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG(map<int-int>, params))
+FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG(map<int - int>, params))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen), FO_API_ARG_MARSHAL(map<int-int>, params))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen), FO_API_ARG_MARSHAL(map<int - int>, params))
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT)
         _client->ShowMainScreen(screen, params);
@@ -3689,9 +3804,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
+FO_API_GLOBAL_CLIENT_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_REF_MARSHAL(int, x), FO_API_ARG_REF_MARSHAL(int, y))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_REF_MARSHAL(int, x),
+    FO_API_ARG_REF_MARSHAL(int, y))
 {
     x = y = 0;
     if (_client->HexMngr.IsMapLoaded() && hx < _client->HexMngr.GetWidth() && hy < _client->HexMngr.GetHeight())
@@ -3719,9 +3836,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
+FO_API_GLOBAL_CLIENT_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y),
+    FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_REF_MARSHAL(ushort, hx), FO_API_ARG_REF_MARSHAL(ushort, hy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x), FO_API_ARG_MARSHAL(int, y), FO_API_ARG_REF_MARSHAL(ushort, hx),
+    FO_API_ARG_REF_MARSHAL(ushort, hy))
 {
     int old_x = _client->Settings.MouseX;
     int old_y = _client->Settings.MouseY;
@@ -3952,7 +4071,8 @@ FO_API_EPILOG()
  * @param dataSize ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataSize, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data), FO_API_ARG(uint, dataSize))
+FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataSize, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data),
+    FO_API_ARG(uint, dataSize))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name), FO_API_ARG_ARR_MARSHAL(uchar, data), FO_API_ARG_MARSHAL(uint, dataSize))
 {
@@ -4058,9 +4178,9 @@ FO_API_EPILOG()
  * @param keyValues ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(SetUserConfig, FO_API_RET(void), FO_API_ARG(map<string-string>, keyValues))
+FO_API_GLOBAL_CLIENT_FUNC(SetUserConfig, FO_API_RET(void), FO_API_ARG(map<string - string>, keyValues))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(map<string-string>, keyValues))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(map<string - string>, keyValues))
 {
     OutputFile cfg_user = _client->FileMngr.WriteFile(CONFIG_NAME);
     for (asUINT i = 0; i < keyValues->GetSize() - 1; i += 2)

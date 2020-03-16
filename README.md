@@ -357,19 +357,12 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * NetBuffer: allow transferring of any type and add safe transferring of floats
-* Properties: fix script system
 * Properties: check can get in SetGetCallback
 * Properties: rework FONLINE_
 * Properties: don't preserve memory for not allocated components in entity
 * ProtoManager: remove ProtoManager::ClearProtos
-* ScriptInvoker: move script invoker to ScriptSystem
-* ScriptInvoker: rework FONLINE_
-* ScriptInvoker: fix script system (2)
-* ScriptInvoker: take Invoker from func
-* ScriptInvoker: rework FONLINE_
 * ScriptSystem: rework FONLINE_
 * ScriptSystem: fill settings to scripts
-* ScriptSystem: separate interface for calling script events
 * ScriptSystem: rework FONLINE_
 * Settings: exclude server specific settings from client
 * Settings: remove VAR_SETTING must stay only constant values
@@ -381,12 +374,12 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Testing: send client dumps to server
 * Timer: timers to std::chrono
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
-* ClientScriptApi: need attention!
-* CommonScriptApi: fix script system (4)
-* CommonScriptApi: need attention! (3)
-* MapperScriptApi: need attention! (5)
 * ScriptApi: remove for better portability (2)
-* ServerScriptApi: need attention!
+* ScriptApi_Client: need attention!
+* ScriptApi_Common: fix script system (4)
+* ScriptApi_Common: need attention! (3)
+* ScriptApi_Mapper: need attention! (5)
+* ScriptApi_Server: need attention!
 * AdminPanel: admin panel network to Asio
 * Critter: remove static SlotEnabled and SlotDataSendEnabled
 * Critter: rework Client class to ClientConnection

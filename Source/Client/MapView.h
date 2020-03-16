@@ -38,6 +38,9 @@
 #include "Entity.h"
 #include "Properties.h"
 
+#define FO_API_MAP_VIEW_HEADER
+#include "ScriptApi.h"
+
 class MapView;
 using MapViewVec = vector<MapView*>;
 using MapViewMap = map<uint, MapView*>;
@@ -47,19 +50,10 @@ class MapView : public Entity
 public:
     MapView(uint id, ProtoMap* proto);
 
+#define FO_API_MAP_VIEW_CLASS
+#include "ScriptApi.h"
+
     PROPERTIES_HEADER();
-#include "MapProperties.h"
-    CLASS_PROPERTY(string, FileDir);
-    CLASS_PROPERTY(ushort, Width);
-    CLASS_PROPERTY(ushort, Height);
-    CLASS_PROPERTY(ushort, WorkHexX);
-    CLASS_PROPERTY(ushort, WorkHexY);
-    CLASS_PROPERTY(uint, LocId);
-    CLASS_PROPERTY(uint, LocMapIndex);
-    CLASS_PROPERTY(uchar, RainCapacity);
-    CLASS_PROPERTY(int, CurDayTime);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
-    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
-    CLASS_PROPERTY(bool, IsNoLogOut);
+#define FO_API_MAP_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };

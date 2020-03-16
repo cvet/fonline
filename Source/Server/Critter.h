@@ -39,9 +39,12 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Networking.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
+
+#define FO_API_CRITTER_HEADER
+#include "ScriptApi.h"
 
 #define CLIENT_OUTPUT_BEGIN(cl) \
     { \
@@ -81,122 +84,6 @@ class Critter : public Entity
     friend class CritterManager;
 
 public:
-    static bool SlotEnabled[0x100];
-    static bool SlotDataSendEnabled[0x100];
-
-    bool CritterIsNpc;
-    uint Flags;
-    string Name;
-    bool IsRunning;
-    int LockMapTransfers;
-    uint AllowedToDownloadMap;
-
-    CritterVec VisCr;
-    CritterVec VisCrSelf;
-    CritterMap VisCrMap;
-    CritterMap VisCrSelfMap;
-    UIntSet VisCr1;
-    UIntSet VisCr2;
-    UIntSet VisCr3;
-    UIntSet VisItem;
-    uint ViewMapId;
-    hash ViewMapPid;
-    ushort ViewMapLook;
-    ushort ViewMapHx;
-    ushort ViewMapHy;
-    uchar ViewMapDir;
-    uint ViewMapLocId;
-    uint ViewMapLocEnt;
-
-    struct
-    {
-        int State;
-        uint TargId;
-        ushort HexX;
-        ushort HexY;
-        uint Cut;
-        bool IsRun;
-        uint PathNum;
-        uint Iter;
-        uint Trace;
-        uint GagEntityId;
-    } Moving;
-
-    uint CacheValuesNextTick;
-    uint LookCacheValue;
-
-    int DisableSend;
-    CritterVec* GlobalMapGroup;
-    bool CanBeRemoved;
-
-    PROPERTIES_HEADER();
-#include "CritterProperties.h"
-    CLASS_PROPERTY(hash, ModelName);
-    CLASS_PROPERTY(uint, MapId);
-    CLASS_PROPERTY(hash, RefMapId);
-    CLASS_PROPERTY(hash, RefMapPid);
-    CLASS_PROPERTY(uint, RefLocationId);
-    CLASS_PROPERTY(hash, RefLocationPid);
-    CLASS_PROPERTY(ushort, HexX);
-    CLASS_PROPERTY(ushort, HexY);
-    CLASS_PROPERTY(uchar, Dir);
-    CLASS_PROPERTY(string, Password);
-    CLASS_PROPERTY(int, Cond); // enum CritterCondition
-    CLASS_PROPERTY(bool, ClientToDelete);
-    CLASS_PROPERTY(uint, Multihex);
-    CLASS_PROPERTY(ushort, WorldX);
-    CLASS_PROPERTY(ushort, WorldY);
-    CLASS_PROPERTY(uint, GlobalMapLeaderId);
-    CLASS_PROPERTY(uint, GlobalMapTripId);
-    CLASS_PROPERTY(uint, RefGlobalMapLeaderId);
-    CLASS_PROPERTY(uint, RefGlobalMapTripId);
-    CLASS_PROPERTY(ushort, LastMapHexX);
-    CLASS_PROPERTY(ushort, LastMapHexY);
-    CLASS_PROPERTY(uint, Anim1Life);
-    CLASS_PROPERTY(uint, Anim1Knockout);
-    CLASS_PROPERTY(uint, Anim1Dead);
-    CLASS_PROPERTY(uint, Anim2Life);
-    CLASS_PROPERTY(uint, Anim2Knockout);
-    CLASS_PROPERTY(uint, Anim2Dead);
-    CLASS_PROPERTY(CScriptArray*, GlobalMapFog);
-    CLASS_PROPERTY(CScriptArray*, TE_FuncNum); // hash
-    CLASS_PROPERTY(CScriptArray*, TE_Rate); // uint
-    CLASS_PROPERTY(CScriptArray*, TE_NextTime); // uint
-    CLASS_PROPERTY(CScriptArray*, TE_Identifier); // int
-    CLASS_PROPERTY(uint, LookDistance);
-    CLASS_PROPERTY(hash, DialogId);
-    CLASS_PROPERTY(bool, IsNoTalk);
-    CLASS_PROPERTY(int, MaxTalkers); // Callback on begin dialog?
-    CLASS_PROPERTY(uint, TalkDistance);
-    CLASS_PROPERTY(int, CurrentHp);
-    CLASS_PROPERTY(bool, IsNoWalk);
-    CLASS_PROPERTY(bool, IsNoRun);
-    CLASS_PROPERTY(bool, IsNoRotate);
-    CLASS_PROPERTY(uint, WalkTime);
-    CLASS_PROPERTY(uint, RunTime);
-    CLASS_PROPERTY(int, ScaleFactor);
-    CLASS_PROPERTY(uint, TimeoutBattle);
-    CLASS_PROPERTY(uint, TimeoutTransfer);
-    CLASS_PROPERTY(uint, TimeoutRemoveFromGame);
-    CLASS_PROPERTY(bool, IsGeck); // Rename
-    CLASS_PROPERTY(bool, IsNoHome);
-    CLASS_PROPERTY(uint, HomeMapId);
-    CLASS_PROPERTY(ushort, HomeHexX);
-    CLASS_PROPERTY(ushort, HomeHexY);
-    CLASS_PROPERTY(uchar, HomeDir);
-    CLASS_PROPERTY(bool, IsHide);
-    CLASS_PROPERTY(CScriptArray*, KnownLocations);
-    CLASS_PROPERTY(CScriptArray*, ConnectionIp);
-    CLASS_PROPERTY(CScriptArray*, ConnectionPort);
-    CLASS_PROPERTY(uint, ShowCritterDist1);
-    CLASS_PROPERTY(uint, ShowCritterDist2);
-    CLASS_PROPERTY(uint, ShowCritterDist3);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(int, SneakCoefficient);
-    // Exclude
-    CLASS_PROPERTY(hash, NpcRole); // Find Npc criteria (maybe swap to some universal prop/value array as input)
-    CLASS_PROPERTY(bool, IsNoUnarmed); // AI
-
     void ClearVisible();
 
     Critter* GetCritSelf(uint crid);
@@ -230,7 +117,7 @@ public:
     ItemVec& GetInventory();
     bool IsHaveGeckItem();
 
-    bool SetScript(asIScriptFunction* func, bool first_time);
+    bool SetScript(string func, bool first_time);
 
     bool IsFree() { return Timer::GameTick() - startBreakTime >= breakTime; }
     bool IsBusy() { return !IsFree(); }
@@ -312,12 +199,67 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
+    static bool SlotEnabled[0x100];
+    static bool SlotDataSendEnabled[0x100];
+
+    bool CritterIsNpc {};
+    uint Flags {};
+    string Name {};
+    bool IsRunning {};
+    int LockMapTransfers {};
+    uint AllowedToDownloadMap {};
+
+    CritterVec VisCr {};
+    CritterVec VisCrSelf {};
+    CritterMap VisCrMap {};
+    CritterMap VisCrSelfMap {};
+    UIntSet VisCr1 {};
+    UIntSet VisCr2 {};
+    UIntSet VisCr3 {};
+    UIntSet VisItem {};
+    uint ViewMapId {};
+    hash ViewMapPid {};
+    ushort ViewMapLook {};
+    ushort ViewMapHx {};
+    ushort ViewMapHy {};
+    uchar ViewMapDir {};
+    uint ViewMapLocId {};
+    uint ViewMapLocEnt {};
+
+    struct
+    {
+        int State {1};
+        uint TargId {};
+        ushort HexX {};
+        ushort HexY {};
+        uint Cut {};
+        bool IsRun {};
+        uint PathNum {};
+        uint Iter {};
+        uint Trace {};
+        uint GagEntityId {};
+    } Moving {};
+
+    uint CacheValuesNextTick {};
+    uint LookCacheValue {};
+
+    int DisableSend {};
+    CritterVec* GlobalMapGroup {};
+    bool CanBeRemoved {};
+
+#define FO_API_CRITTER_CLASS
+#include "ScriptApi.h"
+
+    PROPERTIES_HEADER();
+#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
+
 protected:
-    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
+    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
 
     CritterSettings& settings;
     GeometryHelper geomHelper;
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     ItemVec invItems {};
 
 private:
@@ -331,25 +273,8 @@ class Client : public Critter
 {
     friend class CritterManager;
 
-    uint pingNextTick;
-    bool pingOk;
-    uint talkNextTick;
-
 public:
-    NetConnection* Connection;
-    uchar Access;
-    uint LanguageMsg;
-    int GameState;
-    uint LastActivityTime;
-    uint LastSendedMapTick;
-    char LastSay[UTF8_BUF_SIZE(MAX_CHAT_MESSAGE)];
-    uint LastSayEqualCount;
-    uint RadioMessageSended;
-    int UpdateFileIndex;
-    uint UpdateFilePortion;
-    Talking Talk;
-
-    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
+    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
     ~Client();
 
     uint GetIp();
@@ -411,6 +336,24 @@ public:
     void Send_CustomMessage(uint msg, uchar* data, uint data_size);
 
     bool IsTalking();
+
+    NetConnection* Connection {};
+    uchar Access {};
+    uint LanguageMsg {};
+    int GameState {};
+    uint LastActivityTime {};
+    uint LastSendedMapTick {};
+    char LastSay[UTF8_BUF_SIZE(MAX_CHAT_MESSAGE)] {};
+    uint LastSayEqualCount {};
+    uint RadioMessageSended {};
+    int UpdateFileIndex {};
+    uint UpdateFilePortion {};
+    Talking Talk {};
+
+private:
+    uint pingNextTick {};
+    bool pingOk {};
+    uint talkNextTick {};
 };
 
 class Npc : public Critter
@@ -418,7 +361,7 @@ class Npc : public Critter
     friend class CritterManager;
 
 public:
-    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys);
+    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
 
     uint GetTalkedPlayers();
     bool IsTalkedPlayers();

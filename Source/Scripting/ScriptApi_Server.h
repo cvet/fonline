@@ -45,7 +45,8 @@
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_ITEM_METHOD(AddItem, FO_API_RET_OBJ(Item), FO_API_ARG(hash, pid), FO_API_ARG(uint, count), FO_API_ARG(uint, stackId))
+FO_API_ITEM_METHOD(
+    AddItem, FO_API_RET_OBJ(Item), FO_API_ARG(hash, pid), FO_API_ARG(uint, count), FO_API_ARG(uint, stackId))
 #ifdef FO_API_ITEM_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_MARSHAL(uint, stackId))
 {
@@ -254,7 +255,8 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_ITEM_METHOD(CallStaticItemFunction, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Item, item), FO_API_ARG(int, param))
+FO_API_ITEM_METHOD(CallStaticItemFunction, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Item, item),
+    FO_API_ARG(int, param))
 #ifdef FO_API_ITEM_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(int, param))
 {
@@ -408,7 +410,8 @@ FO_API_EPILOG(0)
  * @param dir ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(TransitToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
+FO_API_CRITTER_METHOD(
+    TransitToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir))
 {
@@ -447,9 +450,11 @@ FO_API_EPILOG()
  * @param dir ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(TransitToMapHex, FO_API_RET(void), FO_API_ARG_OBJ(Map, map), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
+FO_API_CRITTER_METHOD(TransitToMapHex, FO_API_RET(void), FO_API_ARG_OBJ(Map, map), FO_API_ARG(ushort, hx),
+    FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Map, map), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Map, map), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uchar, dir))
 {
     if (_this->LockMapTransfers)
         throw ScriptException("Transfers locked");
@@ -465,7 +470,8 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Map, map), FO_API_ARG_MARSHAL(ushort, hx), 
     // Todo: need attention!
     Location* loc = map->GetLocation();
     if (loc &&
-        GenericUtils::DistSqrt(_this->GetWorldX(), _this->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius())
+        GenericUtils::DistSqrt(_this->GetWorldX(), _this->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) >
+            loc->GetRadius())
     {
         _this->SetWorldX(loc->GetWorldX());
         _this->SetWorldY(loc->GetWorldY());
@@ -677,9 +683,11 @@ FO_API_EPILOG()
  * @param dir ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(ViewMap, FO_API_RET(void), FO_API_ARG_OBJ(Map, map), FO_API_ARG(uint, look), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
+FO_API_CRITTER_METHOD(ViewMap, FO_API_RET(void), FO_API_ARG_OBJ(Map, map), FO_API_ARG(uint, look),
+    FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Map, map), FO_API_ARG_MARSHAL(uint, look), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Map, map), FO_API_ARG_MARSHAL(uint, look), FO_API_ARG_MARSHAL(ushort, hx),
+    FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir))
 {
     if (!map)
         throw ScriptException("Map arg is null");
@@ -742,7 +750,8 @@ FO_API_EPILOG()
  * @param numStr ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(SayMsg, FO_API_RET(void), FO_API_ARG(uchar, howSay), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr))
+FO_API_CRITTER_METHOD(
+    SayMsg, FO_API_RET(void), FO_API_ARG(uchar, howSay), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr))
 {
@@ -767,9 +776,11 @@ FO_API_EPILOG()
  * @param lexems ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(SayMsgLex, FO_API_RET(void), FO_API_ARG(uchar, howSay), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr), FO_API_ARG(string, lexems))
+FO_API_CRITTER_METHOD(SayMsgLex, FO_API_RET(void), FO_API_ARG(uchar, howSay), FO_API_ARG(ushort, textMsg),
+    FO_API_ARG(uint, numStr), FO_API_ARG(string, lexems))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr), FO_API_ARG_MARSHAL(string, lexems))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr),
+    FO_API_ARG_MARSHAL(string, lexems))
 {
     // Npc is not life
     if (_this->IsNpc() && !_this->IsLife())
@@ -1299,11 +1310,11 @@ FO_API_EPILOG()
  * @param item ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(Action, FO_API_RET(void), FO_API_ARG(int, action), FO_API_ARG(int, actionExt), FO_API_ARG_OBJ(Item, item))
+FO_API_CRITTER_METHOD(
+    Action, FO_API_RET(void), FO_API_ARG(int, action), FO_API_ARG(int, actionExt), FO_API_ARG_OBJ(Item, item))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, action), FO_API_ARG_MARSHAL(int, actionExt), FO_API_ARG_OBJ_MARSHAL(Item, item))
 {
-
     _this->SendAA_Action(action, actionExt, item);
 }
 FO_API_EPILOG()
@@ -1320,11 +1331,12 @@ FO_API_EPILOG()
  * @param delayPlay ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_OBJ(Item, item), FO_API_ARG(bool, clearSequence), FO_API_ARG(bool, delayPlay))
+FO_API_CRITTER_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2),
+    FO_API_ARG_OBJ(Item, item), FO_API_ARG(bool, clearSequence), FO_API_ARG(bool, delayPlay))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(bool, clearSequence), FO_API_ARG_MARSHAL(bool, delayPlay))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2), FO_API_ARG_OBJ_MARSHAL(Item, item),
+    FO_API_ARG_MARSHAL(bool, clearSequence), FO_API_ARG_MARSHAL(bool, delayPlay))
 {
-
     _this->SendAA_Animate(anim1, anim2, item, clearSequence, delayPlay);
 }
 FO_API_EPILOG()
@@ -1339,7 +1351,8 @@ FO_API_EPILOG()
  * @param anim2 ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(SetAnims, FO_API_RET(void), FO_API_ARG(int, cond), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
+FO_API_CRITTER_METHOD(
+    SetAnims, FO_API_RET(void), FO_API_ARG(int, cond), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, cond), FO_API_ARG_MARSHAL(uint, anim1), FO_API_ARG_MARSHAL(uint, anim2))
 {
@@ -1485,7 +1498,8 @@ FO_API_EPILOG(0)
  * @param fog ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(SetFog, FO_API_RET(void), FO_API_ARG(ushort, zoneX), FO_API_ARG(ushort, zoneY), FO_API_ARG(int, fog))
+FO_API_CRITTER_METHOD(
+    SetFog, FO_API_RET(void), FO_API_ARG(ushort, zoneX), FO_API_ARG(ushort, zoneY), FO_API_ARG(int, fog))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zoneX), FO_API_ARG_MARSHAL(ushort, zoneY), FO_API_ARG_MARSHAL(int, fog))
 {
@@ -1634,9 +1648,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(AddTimeEvent, FO_API_RET(bool), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration), FO_API_ARG(int, identifier))
+FO_API_CRITTER_METHOD(
+    AddTimeEvent, FO_API_RET(bool), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration), FO_API_ARG(int, identifier))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func), FO_API_ARG_MARSHAL(uint, duration), FO_API_ARG_MARSHAL(int, identifier))
+FO_API_PROLOG(
+    FO_API_ARG_CALLBACK_MARSHAL(func), FO_API_ARG_MARSHAL(uint, duration), FO_API_ARG_MARSHAL(int, identifier))
 {
     if (!func)
         throw ScriptException("Func is null");
@@ -1662,9 +1678,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(AddTimeEventRate, FO_API_RET(bool), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration), FO_API_ARG(int, identifier), FO_API_ARG(uint, rate))
+FO_API_CRITTER_METHOD(AddTimeEventRate, FO_API_RET(bool), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration),
+    FO_API_ARG(int, identifier), FO_API_ARG(uint, rate))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func), FO_API_ARG_MARSHAL(uint, duration), FO_API_ARG_MARSHAL(int, identifier), FO_API_ARG_MARSHAL(uint, rate))
+FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func), FO_API_ARG_MARSHAL(uint, duration),
+    FO_API_ARG_MARSHAL(int, identifier), FO_API_ARG_MARSHAL(uint, rate))
 {
     if (!func)
         throw ScriptException("Func is null");
@@ -1690,9 +1708,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(GetTimeEvents, FO_API_RET(uint), FO_API_ARG(int, identifier), FO_API_ARG_ARR(int, indexes), FO_API_ARG_ARR(int, durations), FO_API_ARG_ARR(int, rates))
+FO_API_CRITTER_METHOD(GetTimeEvents, FO_API_RET(uint), FO_API_ARG(int, identifier), FO_API_ARG_ARR(int, indexes),
+    FO_API_ARG_ARR(int, durations), FO_API_ARG_ARR(int, rates))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, identifier), FO_API_ARG_ARR_MARSHAL(int, indexes), FO_API_ARG_ARR_MARSHAL(int, durations), FO_API_ARG_ARR_MARSHAL(int, rates))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, identifier), FO_API_ARG_ARR_MARSHAL(int, indexes),
+    FO_API_ARG_ARR_MARSHAL(int, durations), FO_API_ARG_ARR_MARSHAL(int, rates))
 {
     CScriptArray* te_identifier = _this->GetTE_Identifier();
     UIntVec te_vec;
@@ -1771,9 +1791,12 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(GetTimeEventsArr, FO_API_RET(uint), FO_API_ARG_ARR(int, findIdentifiers), FO_API_ARG_ARR(int, identifiers), FO_API_ARG_ARR(int, indexes), FO_API_ARG_ARR(int, durations), FO_API_ARG_ARR(int, rates))
+FO_API_CRITTER_METHOD(GetTimeEventsArr, FO_API_RET(uint), FO_API_ARG_ARR(int, findIdentifiers),
+    FO_API_ARG_ARR(int, identifiers), FO_API_ARG_ARR(int, indexes), FO_API_ARG_ARR(int, durations),
+    FO_API_ARG_ARR(int, rates))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(int, findIdentifiers), FO_API_ARG_ARR_MARSHAL(int, identifiers), FO_API_ARG_ARR_MARSHAL(int, indexes), FO_API_ARG_ARR_MARSHAL(int, durations), FO_API_ARG_ARR_MARSHAL(int, rates))
+FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(int, findIdentifiers), FO_API_ARG_ARR_MARSHAL(int, identifiers),
+    FO_API_ARG_ARR_MARSHAL(int, indexes), FO_API_ARG_ARR_MARSHAL(int, durations), FO_API_ARG_ARR_MARSHAL(int, rates))
 {
     IntVec find_vec;
     _server->ScriptSys.AssignScriptArrayInVector(find_vec, findIdentifiers);
@@ -1864,7 +1887,8 @@ FO_API_EPILOG(0)
  * @param newRate ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(ChangeTimeEvent, FO_API_RET(void), FO_API_ARG(uint, index), FO_API_ARG(uint, newDuration), FO_API_ARG(uint, newRate))
+FO_API_CRITTER_METHOD(ChangeTimeEvent, FO_API_RET(void), FO_API_ARG(uint, index), FO_API_ARG(uint, newDuration),
+    FO_API_ARG(uint, newRate))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, index), FO_API_ARG_MARSHAL(uint, newDuration), FO_API_ARG_MARSHAL(uint, newRate))
 {
@@ -2027,7 +2051,8 @@ FO_API_EPILOG(0)
  * @param isRun ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(MoveToCritter, FO_API_RET(void), FO_API_ARG_OBJ(Critter, target), FO_API_ARG(uint, cut), FO_API_ARG(bool, isRun))
+FO_API_CRITTER_METHOD(
+    MoveToCritter, FO_API_RET(void), FO_API_ARG_OBJ(Critter, target), FO_API_ARG(uint, cut), FO_API_ARG(bool, isRun))
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, target), FO_API_ARG_MARSHAL(uint, cut), FO_API_ARG_MARSHAL(bool, isRun))
 {
@@ -2054,9 +2079,11 @@ FO_API_EPILOG()
  * @param isRun ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(MoveToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, cut), FO_API_ARG(bool, isRun))
+FO_API_CRITTER_METHOD(MoveToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, cut), FO_API_ARG(bool, isRun))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, cut), FO_API_ARG_MARSHAL(bool, isRun))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, cut),
+    FO_API_ARG_MARSHAL(bool, isRun))
 {
     memzero(&_this->Moving, sizeof(_this->Moving));
     _this->Moving.HexX = hx;
@@ -2155,9 +2182,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(AddItem, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, protoId), FO_API_ARG(uint, count), FO_API_ARG(map<int-int>, props))
+FO_API_MAP_METHOD(AddItem, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(hash, protoId), FO_API_ARG(uint, count), FO_API_ARG(map<int - int>, props))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(hash, protoId), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_MARSHAL(map<int-int>, props))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(hash, protoId),
+    FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_MARSHAL(map<int - int>, props))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2236,9 +2265,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetItemsHexEx, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(hash, pid))
+FO_API_MAP_METHOD(GetItemsHexEx, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius), FO_API_ARG(hash, pid))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_MARSHAL(hash, pid))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_MARSHAL(hash, pid))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2318,9 +2349,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetItemsHexPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG_PREDICATE(Item*, predicate))
+FO_API_MAP_METHOD(GetItemsHexPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG_PREDICATE(Item*, predicate))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_PREDICATE_MARSHAL(Item*, predicate))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_PREDICATE_MARSHAL(Item*, predicate))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2365,9 +2398,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetItemsHexRadiusPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG_PREDICATE(Item*, predicate))
+FO_API_MAP_METHOD(GetItemsHexRadiusPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius), FO_API_ARG_PREDICATE(Item*, predicate))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_PREDICATE_MARSHAL(Item*, predicate))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_PREDICATE_MARSHAL(Item*, predicate))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2431,7 +2466,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetItemHex, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
+FO_API_MAP_METHOD(
+    GetItemHex, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(hash, pid))
 {
@@ -2477,7 +2513,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetStaticItem, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
+FO_API_MAP_METHOD(
+    GetStaticItem, FO_API_RET_OBJ(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(hash, pid))
 {
@@ -2524,9 +2561,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetStaticItemsHexEx, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(hash, pid))
+FO_API_MAP_METHOD(GetStaticItemsHexEx, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius), FO_API_ARG(hash, pid))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_MARSHAL(hash, pid))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_MARSHAL(hash, pid))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2639,9 +2678,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -2708,9 +2749,13 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetCrittersInPath, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetCrittersInPath, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
+    FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     CritterVec critters;
     TraceData trace;
@@ -2748,9 +2793,16 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetCrittersInPathBlock, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx), FO_API_ARG_REF(ushort, preBlockHy), FO_API_ARG_REF(ushort, blockHx), FO_API_ARG_REF(ushort, blockHy))
+FO_API_MAP_METHOD(GetCrittersInPathBlock, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
+    FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx),
+    FO_API_ARG_REF(ushort, preBlockHy), FO_API_ARG_REF(ushort, blockHx), FO_API_ARG_REF(ushort, blockHy))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist), FO_API_ARG_MARSHAL(int, findType), FO_API_ARG_REF_MARSHAL(ushort, preBlockHx), FO_API_ARG_REF_MARSHAL(ushort, preBlockHy), FO_API_ARG_REF_MARSHAL(ushort, blockHx), FO_API_ARG_REF_MARSHAL(ushort, blockHy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist),
+    FO_API_ARG_MARSHAL(int, findType), FO_API_ARG_REF_MARSHAL(ushort, preBlockHx),
+    FO_API_ARG_REF_MARSHAL(ushort, preBlockHy), FO_API_ARG_REF_MARSHAL(ushort, blockHx),
+    FO_API_ARG_REF_MARSHAL(ushort, blockHy))
 {
     CritterVec critters;
     UShortPair block, pre_block;
@@ -2789,9 +2841,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetCrittersWhoViewPath, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetCrittersWhoViewPath, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(int, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(int, findType))
 {
     CritterVec critters;
     for (Critter* cr : _this->GetCritters())
@@ -2817,9 +2871,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetCrittersSeeing, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG_OBJ_ARR(Critter, critters), FO_API_ARG(bool, lookOnThem), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetCrittersSeeing, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG_OBJ_ARR(Critter, critters),
+    FO_API_ARG(bool, lookOnThem), FO_API_ARG(int, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Critter, critters), FO_API_ARG_MARSHAL(bool, lookOnThem), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Critter, critters), FO_API_ARG_MARSHAL(bool, lookOnThem),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     if (!critters)
         throw ScriptException("Critters arg is null");
@@ -2848,9 +2904,12 @@ FO_API_EPILOG(0)
  * @param dist ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
+FO_API_MAP_METHOD(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy),
+    FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle),
+    FO_API_ARG_MARSHAL(uint, dist))
 {
     UShortPair pre_block, block;
     TraceData trace;
@@ -2882,9 +2941,12 @@ FO_API_EPILOG()
  * @param dist ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetHexInPathWall, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
+FO_API_MAP_METHOD(GetHexInPathWall, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle), FO_API_ARG_MARSHAL(uint, dist))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy),
+    FO_API_ARG_REF_MARSHAL(ushort, toHx), FO_API_ARG_REF_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, angle),
+    FO_API_ARG_MARSHAL(uint, dist))
 {
     UShortPair last_passed;
     TraceData trace;
@@ -2923,9 +2985,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_MAP_METHOD(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
 {
     if (fromHx >= _this->GetWidth() || fromHy >= _this->GetHeight())
         throw ScriptException("Invalid from hexes args");
@@ -2959,9 +3023,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetPathLengthCr, FO_API_RET(uint), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_MAP_METHOD(GetPathLengthCr, FO_API_RET(uint), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG(ushort, toHx),
+    FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy),
+    FO_API_ARG_MARSHAL(uint, cut))
 {
     if (!cr)
         throw ScriptException("Critter arg is null");
@@ -2999,9 +3065,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(AddNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(hash, protoId), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(map<int-int>, props))
+FO_API_MAP_METHOD(AddNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(hash, protoId), FO_API_ARG(ushort, hx),
+    FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(map<int - int>, props))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(map<int-int>, props))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(map<int - int>, props))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -3060,7 +3128,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(GetNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(int, npcRole), FO_API_ARG(int, findType), FO_API_ARG(uint, skipCount))
+FO_API_MAP_METHOD(
+    GetNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(int, npcRole), FO_API_ARG(int, findType), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, npcRole), FO_API_ARG_MARSHAL(int, findType), FO_API_ARG_MARSHAL(uint, skipCount))
 {
@@ -3100,7 +3169,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(IsHexesPassed, FO_API_RET(bool), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY), FO_API_ARG(uint, radius))
+FO_API_MAP_METHOD(
+    IsHexesPassed, FO_API_RET(bool), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY), FO_API_ARG(uint, radius))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, radius))
 {
@@ -3143,9 +3213,11 @@ FO_API_EPILOG(0)
  * @param text ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(SetText, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY), FO_API_ARG(uint, color), FO_API_ARG(string, text))
+FO_API_MAP_METHOD(SetText, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY),
+    FO_API_ARG(uint, color), FO_API_ARG(string, text))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(string, text))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color),
+    FO_API_ARG_MARSHAL(string, text))
 {
     if (hexX >= _this->GetWidth() || hexY >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -3165,9 +3237,11 @@ FO_API_EPILOG()
  * @param strNum ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(SetTextMsg, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY), FO_API_ARG(uint, color), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, strNum))
+FO_API_MAP_METHOD(SetTextMsg, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY),
+    FO_API_ARG(uint, color), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, strNum))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color),
+    FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (hexX >= _this->GetWidth() || hexY >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -3189,9 +3263,11 @@ FO_API_EPILOG()
  * @param lexems ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(SetTextMsgLex, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY), FO_API_ARG(uint, color), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(string, lexems))
+FO_API_MAP_METHOD(SetTextMsgLex, FO_API_RET(void), FO_API_ARG(ushort, hexX), FO_API_ARG(ushort, hexY),
+    FO_API_ARG(uint, color), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(string, lexems))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, strNum), FO_API_ARG_MARSHAL(string, lexems))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX), FO_API_ARG_MARSHAL(ushort, hexY), FO_API_ARG_MARSHAL(uint, color),
+    FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, strNum), FO_API_ARG_MARSHAL(string, lexems))
 {
     if (hexX >= _this->GetWidth() || hexY >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -3211,9 +3287,11 @@ FO_API_EPILOG()
  * @param radius ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(RunEffect, FO_API_RET(void), FO_API_ARG(hash, effPid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius))
+FO_API_MAP_METHOD(RunEffect, FO_API_RET(void), FO_API_ARG(hash, effPid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
+    FO_API_ARG(uint, radius))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, effPid), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, effPid), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uint, radius))
 {
     if (!effPid)
         throw ScriptException("Effect pid invalid arg");
@@ -3238,9 +3316,13 @@ FO_API_EPILOG()
  * @param toHy ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(RunFlyEffect, FO_API_RET(void), FO_API_ARG(hash, effPid), FO_API_ARG_OBJ(Critter, fromCr), FO_API_ARG_OBJ(Critter, toCr), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
+FO_API_MAP_METHOD(RunFlyEffect, FO_API_RET(void), FO_API_ARG(hash, effPid), FO_API_ARG_OBJ(Critter, fromCr),
+    FO_API_ARG_OBJ(Critter, toCr), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx),
+    FO_API_ARG(ushort, toHy))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, effPid), FO_API_ARG_OBJ_MARSHAL(Critter, fromCr), FO_API_ARG_OBJ_MARSHAL(Critter, toCr), FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, effPid), FO_API_ARG_OBJ_MARSHAL(Critter, fromCr),
+    FO_API_ARG_OBJ_MARSHAL(Critter, toCr), FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy),
+    FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy))
 {
     if (!effPid)
         throw ScriptException("Effect pid invalid arg");
@@ -3248,7 +3330,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, effPid), FO_API_ARG_OBJ_MARSHAL(Critter, 
         throw ScriptException("Invalid from hexes args");
     if (toHx >= _this->GetWidth() || toHy >= _this->GetHeight())
         throw ScriptException("Invalid to hexes args");
-
 
     uint from_crid = (fromCr ? fromCr->GetId() : 0);
     uint to_crid = (toCr ? toCr->GetId() : 0);
@@ -3267,7 +3348,8 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(CheckPlaceForItem, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
+FO_API_MAP_METHOD(
+    CheckPlaceForItem, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(hash, pid))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(hash, pid))
 {
@@ -3351,15 +3433,18 @@ FO_API_EPILOG()
  * @param radius ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(PlaySoundRadius, FO_API_RET(void), FO_API_ARG(string, soundName), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius))
+FO_API_MAP_METHOD(PlaySoundRadius, FO_API_RET(void), FO_API_ARG(string, soundName), FO_API_ARG(ushort, hx),
+    FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, soundName), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uint, radius))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, soundName), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uint, radius))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
 
     for (Critter* cr : _this->GetPlayers())
-        if (_server->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius))
+        if (_server->GeomHelper.CheckDist(
+                hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius))
             cr->Send_PlaySound(0, soundName);
 }
 FO_API_EPILOG()
@@ -3392,9 +3477,11 @@ FO_API_EPILOG(0)
  * @param steps ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
+FO_API_MAP_METHOD(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy),
+    FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx), FO_API_ARG_REF_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir), FO_API_ARG_MARSHAL(uint, steps))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx), FO_API_ARG_REF_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir),
+    FO_API_ARG_MARSHAL(uint, steps))
 {
     if (dir >= _server->Settings.MapDirCount)
         throw ScriptException("Invalid dir arg");
@@ -3426,9 +3513,11 @@ FO_API_EPILOG()
  * @param dir ...
  ******************************************************************************/
 #endif
-FO_API_MAP_METHOD(VerifyTrigger, FO_API_RET(void), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
+FO_API_MAP_METHOD(VerifyTrigger, FO_API_RET(void), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG(ushort, hx),
+    FO_API_ARG(ushort, hy), FO_API_ARG(uchar, dir))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(uchar, dir))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy),
+    FO_API_ARG_MARSHAL(uchar, dir))
 {
     if (hx >= _this->GetWidth() || hy >= _this->GetHeight())
         throw ScriptException("Invalid hexes args");
@@ -3526,9 +3615,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_LOCATION_METHOD(GetEntrance, FO_API_RET(bool), FO_API_ARG(uint, entrance), FO_API_ARG_REF(uint, mapIndex), FO_API_ARG_REF(hash, entire))
+FO_API_LOCATION_METHOD(GetEntrance, FO_API_RET(bool), FO_API_ARG(uint, entrance), FO_API_ARG_REF(uint, mapIndex),
+    FO_API_ARG_REF(hash, entire))
 #ifdef FO_API_LOCATION_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, entrance), FO_API_ARG_REF_MARSHAL(uint, mapIndex), FO_API_ARG_REF_MARSHAL(hash, entire))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(uint, entrance), FO_API_ARG_REF_MARSHAL(uint, mapIndex), FO_API_ARG_REF_MARSHAL(hash, entire))
 {
     CScriptArray* map_entrances = _this->GetMapEntrances();
     uint count = map_entrances->GetSize() / 2;
@@ -3615,7 +3706,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetCrittersDistantion, FO_API_RET(uint), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2))
+FO_API_GLOBAL_SERVER_FUNC(
+    GetCrittersDistantion, FO_API_RET(uint), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr1), FO_API_ARG_OBJ_MARSHAL(Critter, cr2))
 {
@@ -3666,9 +3758,11 @@ FO_API_EPILOG(0)
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemCr, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Critter, toCr), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemCr, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count),
+    FO_API_ARG_OBJ(Critter, toCr), FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_OBJ_MARSHAL(Critter, toCr), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count),
+    FO_API_ARG_OBJ_MARSHAL(Critter, toCr), FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!item)
         throw ScriptException("Item arg is null");
@@ -3698,9 +3792,11 @@ FO_API_EPILOG()
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemMap, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Map, toMap), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemMap, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count),
+    FO_API_ARG_OBJ(Map, toMap), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_OBJ_MARSHAL(Map, toMap), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_OBJ_MARSHAL(Map, toMap),
+    FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!item)
         throw ScriptException("Item arg is null");
@@ -3732,9 +3828,11 @@ FO_API_EPILOG()
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemCont, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Item, toCont), FO_API_ARG(uint, stackId), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemCont, FO_API_RET(void), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count),
+    FO_API_ARG_OBJ(Item, toCont), FO_API_ARG(uint, stackId), FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_OBJ_MARSHAL(Item, toCont), FO_API_ARG_MARSHAL(uint, stackId), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(uint, count), FO_API_ARG_OBJ_MARSHAL(Item, toCont),
+    FO_API_ARG_MARSHAL(uint, stackId), FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!item)
         throw ScriptException("Item arg is null");
@@ -3761,9 +3859,11 @@ FO_API_EPILOG()
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemsCr, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items), FO_API_ARG_OBJ(Critter, toCr), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemsCr, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items), FO_API_ARG_OBJ(Critter, toCr),
+    FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Critter, toCr), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Critter, toCr),
+    FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!items)
         throw ScriptException("Items arg is null");
@@ -3793,9 +3893,11 @@ FO_API_EPILOG()
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemsMap, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items), FO_API_ARG_OBJ(Map, toMap), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemsMap, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items), FO_API_ARG_OBJ(Map, toMap),
+    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Map, toMap), FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Map, toMap),
+    FO_API_ARG_MARSHAL(ushort, toHx), FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!items)
         throw ScriptException("Items arg is null");
@@ -3827,9 +3929,11 @@ FO_API_EPILOG()
  * @param skipChecks ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(MoveItemsCont, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items), FO_API_ARG_OBJ(Item, toCont), FO_API_ARG(uint, stackId), FO_API_ARG(bool, skipChecks))
+FO_API_GLOBAL_SERVER_FUNC(MoveItemsCont, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items),
+    FO_API_ARG_OBJ(Item, toCont), FO_API_ARG(uint, stackId), FO_API_ARG(bool, skipChecks))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Item, toCont), FO_API_ARG_MARSHAL(uint, stackId), FO_API_ARG_MARSHAL(bool, skipChecks))
+FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items), FO_API_ARG_OBJ_MARSHAL(Item, toCont),
+    FO_API_ARG_MARSHAL(uint, stackId), FO_API_ARG_MARSHAL(bool, skipChecks))
 {
     if (!items)
         throw ScriptException("Items arg is null");
@@ -3995,9 +4099,11 @@ FO_API_EPILOG()
  * @param numStr ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsg, FO_API_RET(void), FO_API_ARG(ushort, channel), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr))
+FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsg, FO_API_RET(void), FO_API_ARG(ushort, channel), FO_API_ARG(ushort, textMsg),
+    FO_API_ARG(uint, numStr))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(ushort, channel), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr))
 {
     _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, nullptr);
 }
@@ -4014,9 +4120,11 @@ FO_API_EPILOG()
  * @param lexems ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsgLex, FO_API_RET(void), FO_API_ARG(ushort, channel), FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr), FO_API_ARG(string, lexems))
+FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsgLex, FO_API_RET(void), FO_API_ARG(ushort, channel),
+    FO_API_ARG(ushort, textMsg), FO_API_ARG(uint, numStr), FO_API_ARG(string, lexems))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel), FO_API_ARG_MARSHAL(ushort, textMsg), FO_API_ARG_MARSHAL(uint, numStr), FO_API_ARG_MARSHAL(string, lexems))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel), FO_API_ARG_MARSHAL(ushort, textMsg),
+    FO_API_ARG_MARSHAL(uint, numStr), FO_API_ARG_MARSHAL(string, lexems))
 {
     _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr,
         !lexems.empty() ? lexems.c_str() : nullptr);
@@ -4037,9 +4145,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month), FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
+FO_API_GLOBAL_SERVER_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
+    FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year), FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day), FO_API_ARG_MARSHAL(ushort, hour), FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year), FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day),
+    FO_API_ARG_MARSHAL(ushort, hour), FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
 {
     if (!year)
         year = Globals->GetYear();
@@ -4083,9 +4193,14 @@ FO_API_EPILOG(0)
  * @param second ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
+FO_API_GLOBAL_SERVER_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year),
+    FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek),
+    FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond), FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond), FO_API_ARG_REF_MARSHAL(ushort, year),
+    FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day),
+    FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour),
+    FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second))
 {
     DateTimeStamp dt = _server->GameTime.GetGameTime(fullSecond);
     year = dt.Year;
@@ -4110,9 +4225,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(CreateLocation, FO_API_RET_OBJ(Location), FO_API_ARG(hash, locPid), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG_OBJ_ARR(Critter, critters))
+FO_API_GLOBAL_SERVER_FUNC(CreateLocation, FO_API_RET_OBJ(Location), FO_API_ARG(hash, locPid), FO_API_ARG(ushort, wx),
+    FO_API_ARG(ushort, wy), FO_API_ARG_OBJ_ARR(Critter, critters))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, locPid), FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_OBJ_ARR_MARSHAL(Critter, critters))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, locPid), FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy),
+    FO_API_ARG_OBJ_ARR_MARSHAL(Critter, critters))
 {
     // Create and generate location
     Location* loc = _server->MapMngr.CreateLocation(locPid, wx, wy);
@@ -4257,9 +4374,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetGlobalMapCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
+FO_API_GLOBAL_SERVER_FUNC(GetGlobalMapCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, wx),
+    FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_MARSHAL(int, findType))
 {
     CritterVec critters;
     _server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType, critters);
@@ -4338,7 +4457,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetLocationByPid, FO_API_RET_OBJ(Location), FO_API_ARG(hash, locPid), FO_API_ARG(uint, skipCount))
+FO_API_GLOBAL_SERVER_FUNC(
+    GetLocationByPid, FO_API_RET_OBJ(Location), FO_API_ARG(hash, locPid), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, locPid), FO_API_ARG_MARSHAL(uint, skipCount))
 {
@@ -4360,7 +4480,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetLocations, FO_API_RET_OBJ_ARR(Location), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius))
+FO_API_GLOBAL_SERVER_FUNC(GetLocations, FO_API_RET_OBJ_ARR(Location), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy),
+    FO_API_ARG(uint, radius))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_MARSHAL(uint, radius))
 {
@@ -4390,9 +4511,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetVisibleLocations, FO_API_RET_OBJ_ARR(Location), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG_OBJ(Critter, cr))
+FO_API_GLOBAL_SERVER_FUNC(GetVisibleLocations, FO_API_RET_OBJ_ARR(Location), FO_API_ARG(ushort, wx),
+    FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG_OBJ(Critter, cr))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_MARSHAL(uint, radius), FO_API_ARG_OBJ_MARSHAL(Critter, cr))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx), FO_API_ARG_MARSHAL(ushort, wy), FO_API_ARG_MARSHAL(uint, radius),
+    FO_API_ARG_OBJ_MARSHAL(Critter, cr))
 {
     LocationVec locations;
     LocationVec all_locations;
@@ -4420,7 +4543,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetZoneLocationIds, FO_API_RET_ARR(uint), FO_API_ARG(ushort, zx), FO_API_ARG(ushort, zy), FO_API_ARG(uint, zoneRadius))
+FO_API_GLOBAL_SERVER_FUNC(GetZoneLocationIds, FO_API_RET_ARR(uint), FO_API_ARG(ushort, zx), FO_API_ARG(ushort, zy),
+    FO_API_ARG(uint, zoneRadius))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zx), FO_API_ARG_MARSHAL(ushort, zy), FO_API_ARG_MARSHAL(uint, zoneRadius))
 {
@@ -4444,9 +4568,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(RunDialogNpc, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunDialogNpc, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG_OBJ(Critter, npc),
+    FO_API_ARG(bool, ignoreDistance))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_OBJ_MARSHAL(Critter, npc), FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_OBJ_MARSHAL(Critter, npc),
+    FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
     if (!player)
         throw ScriptException("Player arg is null");
@@ -4479,9 +4605,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(RunDialogNpcDlgPack, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(uint, dlgPack), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunDialogNpcDlgPack, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player),
+    FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(uint, dlgPack), FO_API_ARG(bool, ignoreDistance))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_OBJ_MARSHAL(Critter, npc), FO_API_ARG_MARSHAL(uint, dlgPack), FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_OBJ_MARSHAL(Critter, npc),
+    FO_API_ARG_MARSHAL(uint, dlgPack), FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
     if (!player)
         throw ScriptException("Player arg is null");
@@ -4515,9 +4643,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(RunDialogHex, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG(uint, dlgPack), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunDialogHex, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG(uint, dlgPack),
+    FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, ignoreDistance))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_MARSHAL(uint, dlgPack), FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player), FO_API_ARG_MARSHAL(uint, dlgPack),
+    FO_API_ARG_MARSHAL(ushort, hx), FO_API_ARG_MARSHAL(ushort, hy), FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
     if (!player)
         throw ScriptException("Player arg is null");
@@ -4567,9 +4697,11 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(AddTextListener, FO_API_RET(bool), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr), FO_API_ARG(uint, parameter), FO_API_ARG_CALLBACK(func))
+FO_API_GLOBAL_SERVER_FUNC(AddTextListener, FO_API_RET(bool), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr),
+    FO_API_ARG(uint, parameter), FO_API_ARG_CALLBACK(func))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType), FO_API_ARG_MARSHAL(string, firstStr), FO_API_ARG_MARSHAL(uint, parameter), FO_API_ARG_CALLBACK_MARSHAL(func))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType), FO_API_ARG_MARSHAL(string, firstStr),
+    FO_API_ARG_MARSHAL(uint, parameter), FO_API_ARG_CALLBACK_MARSHAL(func))
 {
     if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
         throw ScriptException("First string arg length greater than maximum");
@@ -4601,9 +4733,11 @@ FO_API_EPILOG(0)
  * @param parameter ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(EraseTextListener, FO_API_RET(void), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr), FO_API_ARG(uint, parameter))
+FO_API_GLOBAL_SERVER_FUNC(EraseTextListener, FO_API_RET(void), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr),
+    FO_API_ARG(uint, parameter))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType), FO_API_ARG_MARSHAL(string, firstStr), FO_API_ARG_MARSHAL(uint, parameter))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(int, sayType), FO_API_ARG_MARSHAL(string, firstStr), FO_API_ARG_MARSHAL(uint, parameter))
 {
     SCOPE_LOCK(_server->TextListenersLocker);
 
@@ -4637,9 +4771,11 @@ static void SwapCrittersRefreshNpc(Npc* npc)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(SwapCritters, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2), FO_API_ARG(bool, withInventory))
+FO_API_GLOBAL_SERVER_FUNC(SwapCritters, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2),
+    FO_API_ARG(bool, withInventory))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr1), FO_API_ARG_OBJ_MARSHAL(Critter, cr2), FO_API_ARG_MARSHAL(bool, withInventory))
+FO_API_PROLOG(
+    FO_API_ARG_OBJ_MARSHAL(Critter, cr1), FO_API_ARG_OBJ_MARSHAL(Critter, cr2), FO_API_ARG_MARSHAL(bool, withInventory))
 {
     // Check
     if (!cr1)
@@ -4935,9 +5071,14 @@ FO_API_EPILOG(0)
  * @param milliseconds ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
+FO_API_GLOBAL_SERVER_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month),
+    FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour),
+    FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month), FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek), FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute), FO_API_ARG_REF_MARSHAL(ushort, second), FO_API_ARG_REF_MARSHAL(ushort, milliseconds))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year), FO_API_ARG_REF_MARSHAL(ushort, month),
+    FO_API_ARG_REF_MARSHAL(ushort, day), FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek),
+    FO_API_ARG_REF_MARSHAL(ushort, hour), FO_API_ARG_REF_MARSHAL(ushort, minute),
+    FO_API_ARG_REF_MARSHAL(ushort, second), FO_API_ARG_REF_MARSHAL(ushort, milliseconds))
 {
     DateTimeStamp cur_time;
     Timer::GetCurrentDateTime(cur_time);
@@ -4966,9 +5107,13 @@ FO_API_EPILOG()
  * @param second ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(SetTime, FO_API_RET(void), FO_API_ARG(ushort, multiplier), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month), FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
+FO_API_GLOBAL_SERVER_FUNC(SetTime, FO_API_RET(void), FO_API_ARG(ushort, multiplier), FO_API_ARG(ushort, year),
+    FO_API_ARG(ushort, month), FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute),
+    FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, multiplier), FO_API_ARG_MARSHAL(ushort, year), FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day), FO_API_ARG_MARSHAL(ushort, hour), FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, multiplier), FO_API_ARG_MARSHAL(ushort, year),
+    FO_API_ARG_MARSHAL(ushort, month), FO_API_ARG_MARSHAL(ushort, day), FO_API_ARG_MARSHAL(ushort, hour),
+    FO_API_ARG_MARSHAL(ushort, minute), FO_API_ARG_MARSHAL(ushort, second))
 {
     _server->SetGameTime(multiplier, year, month, day, hour, minute, second);
 }
@@ -5097,9 +5242,11 @@ static vector<ServerImage*> ServerImages;
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(LoadImage, FO_API_RET(bool), FO_API_ARG(uint, index), FO_API_ARG(string, imageName), FO_API_ARG(uint, imageDepth))
+FO_API_GLOBAL_SERVER_FUNC(
+    LoadImage, FO_API_RET(bool), FO_API_ARG(uint, index), FO_API_ARG(string, imageName), FO_API_ARG(uint, imageDepth))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, index), FO_API_ARG_MARSHAL(string, imageName), FO_API_ARG_MARSHAL(uint, imageDepth))
+FO_API_PROLOG(
+    FO_API_ARG_MARSHAL(uint, index), FO_API_ARG_MARSHAL(string, imageName), FO_API_ARG_MARSHAL(uint, imageDepth))
 {
     // Delete old
     if (index >= ServerImages.size())
@@ -5252,7 +5399,8 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(GetImageColor, FO_API_RET(uint), FO_API_ARG(uint, index), FO_API_ARG(uint, x), FO_API_ARG(uint, y))
+FO_API_GLOBAL_SERVER_FUNC(
+    GetImageColor, FO_API_RET(uint), FO_API_ARG(uint, index), FO_API_ARG(uint, x), FO_API_ARG(uint, y))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, index), FO_API_ARG_MARSHAL(uint, x), FO_API_ARG_MARSHAL(uint, y))
 {
@@ -5297,7 +5445,7 @@ static size_t WriteMemoryCallback(char* ptr, size_t size, size_t nmemb, void* us
 }
 
 static void YieldWebRequest(
-    string url, vector<string> headers, map<string-string> post1, string post2, bool& success, string& result)
+    string url, vector<string> headers, map<string - string> post1, string post2, bool& success, string& result)
 {
     success = false;
     result = "";
@@ -5426,9 +5574,11 @@ static void YieldWebRequest(
  * @param result ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(YieldWebRequest, FO_API_RET(void), FO_API_ARG(string, url), FO_API_ARG(map<string-string>, post), FO_API_ARG_REF(bool, success), FO_API_ARG_REF(string, result))
+FO_API_GLOBAL_SERVER_FUNC(YieldWebRequest, FO_API_RET(void), FO_API_ARG(string, url),
+    FO_API_ARG(map<string - string>, post), FO_API_ARG_REF(bool, success), FO_API_ARG_REF(string, result))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url), FO_API_ARG_MARSHAL(map<string-string>, post), FO_API_ARG_REF_MARSHAL(bool, success), FO_API_ARG_REF_MARSHAL(string, result))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url), FO_API_ARG_MARSHAL(map<string - string>, post),
+    FO_API_ARG_REF_MARSHAL(bool, success), FO_API_ARG_REF_MARSHAL(string, result))
 {
     YieldWebRequest(url, nullptr, post, "", success, result);
 }
@@ -5446,9 +5596,12 @@ FO_API_EPILOG()
  * @param result ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(YieldWebRequestExt, FO_API_RET(void), FO_API_ARG(string, url), FO_API_ARG_ARR(string, headers), FO_API_ARG(string, post), FO_API_ARG_REF(bool, success), FO_API_ARG_REF(string, result))
+FO_API_GLOBAL_SERVER_FUNC(YieldWebRequestExt, FO_API_RET(void), FO_API_ARG(string, url),
+    FO_API_ARG_ARR(string, headers), FO_API_ARG(string, post), FO_API_ARG_REF(bool, success),
+    FO_API_ARG_REF(string, result))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url), FO_API_ARG_ARR_MARSHAL(string, headers), FO_API_ARG_MARSHAL(string, post), FO_API_ARG_REF_MARSHAL(bool, success), FO_API_ARG_REF_MARSHAL(string, result))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url), FO_API_ARG_ARR_MARSHAL(string, headers),
+    FO_API_ARG_MARSHAL(string, post), FO_API_ARG_REF_MARSHAL(bool, success), FO_API_ARG_REF_MARSHAL(string, result))
 {
     YieldWebRequest(url, headers, nullptr, post, success, result);
 }

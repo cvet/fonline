@@ -37,10 +37,22 @@
 
 #include "ScriptSystem.h"
 
+class FOServer;
+
 class ServerScriptSystem : public ScriptSystem
 {
 public:
-    void InitNativeScripting();
-    void InitAngelScriptScripting();
-    void InitMonoScripting();
+    void InitNativeScripting(FOServer& server);
+    void InitAngelScriptScripting(FOServer& server);
+    void InitMonoScripting(FOServer& server);
+
+#define FO_API_SERVER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
+#define FO_API_ARG(type, name) type
+#define FO_API_ARG_ARR(type, name) vector<type>
+#define FO_API_ARG_OBJ(type, name) type*
+#define FO_API_ARG_OBJ_ARR(type, name) vector<type*>
+#define FO_API_ARG_REF(type, name) type&
+#define FO_API_ARG_ARR_REF(type, name) vector<type>&
+#define FO_API_ARG_ENUM(type, name) int
+#include "ScriptApi.h"
 };

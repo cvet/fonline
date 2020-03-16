@@ -119,20 +119,9 @@ public:
     GlobalVars();
 
     PROPERTIES_HEADER();
-#include "GlobalProperties.h"
-    CLASS_PROPERTY(ushort, YearStart);
-    CLASS_PROPERTY(ushort, Year);
-    CLASS_PROPERTY(ushort, Month);
-    CLASS_PROPERTY(ushort, Day);
-    CLASS_PROPERTY(ushort, Hour);
-    CLASS_PROPERTY(ushort, Minute);
-    CLASS_PROPERTY(ushort, Second);
-    CLASS_PROPERTY(ushort, TimeMultiplier);
-    CLASS_PROPERTY(uint, LastEntityId);
-    CLASS_PROPERTY(uint, LastDeferredCallId);
-    CLASS_PROPERTY(uint, HistoryRecordsId);
+#define FO_API_GLOBAL_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };
-extern GlobalVars* Globals;
 
 class ProtoItem : public ProtoEntity
 {
@@ -146,32 +135,8 @@ public:
     int64 InstanceCount {};
 
     PROPERTIES_HEADER();
-#include "ItemProperties.h"
-    CLASS_PROPERTY(hash, PicMap);
-    CLASS_PROPERTY(hash, PicInv);
-    CLASS_PROPERTY(bool, Stackable);
-    CLASS_PROPERTY(short, OffsetX);
-    CLASS_PROPERTY(short, OffsetY);
-    CLASS_PROPERTY(uchar, Slot);
-    CLASS_PROPERTY(char, LightIntensity);
-    CLASS_PROPERTY(uchar, LightDistance);
-    CLASS_PROPERTY(uchar, LightFlags);
-    CLASS_PROPERTY(uint, LightColor);
-    CLASS_PROPERTY(uint, Count);
-    CLASS_PROPERTY(bool, IsFlat);
-    CLASS_PROPERTY(char, DrawOrderOffsetHexY);
-    CLASS_PROPERTY(int, Corner);
-    CLASS_PROPERTY(bool, DisableEgg);
-    CLASS_PROPERTY(bool, IsStatic);
-    CLASS_PROPERTY(bool, IsScenery);
-    CLASS_PROPERTY(bool, IsWall);
-    CLASS_PROPERTY(bool, IsBadItem);
-    CLASS_PROPERTY(bool, IsColorize);
-    CLASS_PROPERTY(bool, IsShowAnim);
-    CLASS_PROPERTY(bool, IsShowAnimExt);
-    CLASS_PROPERTY(uchar, AnimStay0);
-    CLASS_PROPERTY(uchar, AnimStay1);
-    CLASS_PROPERTY(CScriptArray*, BlockLines);
+#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };
 using ProtoItemVec = vector<ProtoItem*>;
 using ProtoItemMap = map<hash, ProtoItem*>;
@@ -182,8 +147,8 @@ public:
     ProtoCritter(hash pid);
 
     PROPERTIES_HEADER();
-#include "CritterProperties.h"
-    CLASS_PROPERTY(uint, Multihex);
+#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };
 using ProtoCritterMap = map<hash, ProtoCritter*>;
 using ProtoCritterVec = vector<ProtoCritter*>;
@@ -194,17 +159,8 @@ public:
     ProtoMap(hash pid);
 
     PROPERTIES_HEADER();
-#include "MapProperties.h"
-    CLASS_PROPERTY(string, FilePath);
-    CLASS_PROPERTY(ushort, Width);
-    CLASS_PROPERTY(ushort, Height);
-    CLASS_PROPERTY(ushort, WorkHexX);
-    CLASS_PROPERTY(ushort, WorkHexY);
-    CLASS_PROPERTY(int, CurDayTime);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(CScriptArray*, DayTime); // 4 int
-    CLASS_PROPERTY(CScriptArray*, DayColor); // 12 uchar
-    CLASS_PROPERTY(bool, IsNoLogOut);
+#define FO_API_MAP_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };
 using ProtoMapVec = vector<ProtoMap*>;
 using ProtoMapMap = map<hash, ProtoMap*>;
@@ -215,8 +171,8 @@ public:
     ProtoLocation(hash pid);
 
     PROPERTIES_HEADER();
-#include "LocationProperties.h"
-    CLASS_PROPERTY(CScriptArray*, MapProtos);
+#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };
 using ProtoLocationVec = vector<ProtoLocation*>;
 using ProtoLocationMap = map<hash, ProtoLocation*>;

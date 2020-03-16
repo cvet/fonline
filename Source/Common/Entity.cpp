@@ -108,86 +108,42 @@ CustomEntity::CustomEntity(uint id, uint sub_type, PropertyRegistrator* registra
 {
 }
 
-GlobalVars* Globals {};
+PROPERTIES_IMPL(GlobalVars);
+#define FO_API_GLOBAL_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(GlobalVars, name)
+#include "ScriptApi.h"
+
 GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, nullptr)
 {
 }
 
-PROPERTIES_IMPL(GlobalVars);
-#include "GlobalProperties.h"
-CLASS_PROPERTY_IMPL(GlobalVars, YearStart);
-CLASS_PROPERTY_IMPL(GlobalVars, Year);
-CLASS_PROPERTY_IMPL(GlobalVars, Month);
-CLASS_PROPERTY_IMPL(GlobalVars, Day);
-CLASS_PROPERTY_IMPL(GlobalVars, Hour);
-CLASS_PROPERTY_IMPL(GlobalVars, Minute);
-CLASS_PROPERTY_IMPL(GlobalVars, Second);
-CLASS_PROPERTY_IMPL(GlobalVars, TimeMultiplier);
-CLASS_PROPERTY_IMPL(GlobalVars, LastEntityId);
-CLASS_PROPERTY_IMPL(GlobalVars, LastDeferredCallId);
-CLASS_PROPERTY_IMPL(GlobalVars, HistoryRecordsId);
+PROPERTIES_IMPL(ProtoItem);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, name)
+#include "ScriptApi.h"
 
 ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, EntityType::ItemProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoItem);
-#include "ItemProperties.h"
-CLASS_PROPERTY_IMPL(ProtoItem, PicMap);
-CLASS_PROPERTY_IMPL(ProtoItem, PicInv);
-CLASS_PROPERTY_IMPL(ProtoItem, Stackable);
-CLASS_PROPERTY_IMPL(ProtoItem, OffsetX);
-CLASS_PROPERTY_IMPL(ProtoItem, OffsetY);
-CLASS_PROPERTY_IMPL(ProtoItem, Slot);
-CLASS_PROPERTY_IMPL(ProtoItem, LightIntensity);
-CLASS_PROPERTY_IMPL(ProtoItem, LightDistance);
-CLASS_PROPERTY_IMPL(ProtoItem, LightFlags);
-CLASS_PROPERTY_IMPL(ProtoItem, LightColor);
-CLASS_PROPERTY_IMPL(ProtoItem, Count);
-CLASS_PROPERTY_IMPL(ProtoItem, IsFlat);
-CLASS_PROPERTY_IMPL(ProtoItem, DrawOrderOffsetHexY);
-CLASS_PROPERTY_IMPL(ProtoItem, Corner);
-CLASS_PROPERTY_IMPL(ProtoItem, DisableEgg);
-CLASS_PROPERTY_IMPL(ProtoItem, IsStatic);
-CLASS_PROPERTY_IMPL(ProtoItem, IsScenery);
-CLASS_PROPERTY_IMPL(ProtoItem, IsWall);
-CLASS_PROPERTY_IMPL(ProtoItem, IsBadItem);
-CLASS_PROPERTY_IMPL(ProtoItem, IsColorize);
-CLASS_PROPERTY_IMPL(ProtoItem, IsShowAnim);
-CLASS_PROPERTY_IMPL(ProtoItem, IsShowAnimExt);
-CLASS_PROPERTY_IMPL(ProtoItem, AnimStay0);
-CLASS_PROPERTY_IMPL(ProtoItem, AnimStay1);
-CLASS_PROPERTY_IMPL(ProtoItem, BlockLines);
+PROPERTIES_IMPL(ProtoCritter);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoCritter, name)
+#include "ScriptApi.h"
 
 ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, EntityType::CritterProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoCritter);
-#include "CritterProperties.h"
-CLASS_PROPERTY_IMPL(ProtoCritter, Multihex);
+PROPERTIES_IMPL(ProtoMap);
+#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoMap, name)
+#include "ScriptApi.h"
 
 ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoMap);
-#include "MapProperties.h"
-CLASS_PROPERTY_IMPL(ProtoMap, FilePath);
-CLASS_PROPERTY_IMPL(ProtoMap, Width);
-CLASS_PROPERTY_IMPL(ProtoMap, Height);
-CLASS_PROPERTY_IMPL(ProtoMap, WorkHexX);
-CLASS_PROPERTY_IMPL(ProtoMap, WorkHexY);
-CLASS_PROPERTY_IMPL(ProtoMap, CurDayTime);
-CLASS_PROPERTY_IMPL(ProtoMap, ScriptId);
-CLASS_PROPERTY_IMPL(ProtoMap, DayTime); // 4 int
-CLASS_PROPERTY_IMPL(ProtoMap, DayColor); // 12 uchar
-CLASS_PROPERTY_IMPL(ProtoMap, IsNoLogOut);
+PROPERTIES_IMPL(ProtoLocation);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoLocation, name)
+#include "ScriptApi.h"
 
 ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, EntityType::LocationProto, PropertiesRegistrator)
 {
 }
-
-PROPERTIES_IMPL(ProtoLocation);
-#include "LocationProperties.h"
-CLASS_PROPERTY_IMPL(ProtoLocation, MapProtos);

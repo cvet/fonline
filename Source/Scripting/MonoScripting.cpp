@@ -31,8 +31,45 @@
 // SOFTWARE.
 //
 
-#include "MapperScriptSystem.h"
+#ifdef FO_SERVER_SCRIPTING
+#include "ServerScripting.h"
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+#include "ClientScripting.h"
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+#include "MapperScripting.h"
+#endif
 
-void MapperScriptSystem::InitNativeScripting()
+#ifdef FO_MONO_SCRIPTING
+#include <mono/dis/meta.h>
+#include <mono/metadata/assembly.h>
+#include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/mono-config.h>
+#include <mono/mini/jit.h>
+
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitMonoScripting(FOServer& server)
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitMonoScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitMonoScripting(FOMapper& mapper)
+#endif
 {
 }
+
+#else
+#ifdef FO_SERVER_SCRIPTING
+void ServerScriptSystem::InitMonoScripting(FOServer& server)
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+    void ClientScriptSystem::InitMonoScripting(FOClient& client)
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+        void MapperScriptSystem::InitMonoScripting(FOMapper& mapper)
+#endif
+{
+}
+#endif

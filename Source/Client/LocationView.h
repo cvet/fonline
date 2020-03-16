@@ -38,6 +38,9 @@
 #include "Entity.h"
 #include "Properties.h"
 
+#define FO_API_LOCATION_VIEW_HEADER
+#include "ScriptApi.h"
+
 class LocationView;
 using LocationViewVec = vector<LocationView*>;
 using LocationViewMap = map<uint, LocationView*>;
@@ -47,18 +50,10 @@ class LocationView : public Entity
 public:
     LocationView(uint id, ProtoLocation* proto);
 
+#define FO_API_LOCATION_VIEW_CLASS
+#include "ScriptApi.h"
+
     PROPERTIES_HEADER();
-#include "LocationProperties.h"
-    CLASS_PROPERTY(CScriptArray*, MapProtos); // hash[]
-    CLASS_PROPERTY(CScriptArray*, MapEntrances); // hash[]
-    CLASS_PROPERTY(uint, MaxPlayers);
-    CLASS_PROPERTY(bool, AutoGarbage);
-    CLASS_PROPERTY(bool, GeckVisible);
-    CLASS_PROPERTY(hash, EntranceScript);
-    CLASS_PROPERTY(ushort, WorldX);
-    CLASS_PROPERTY(ushort, WorldY);
-    CLASS_PROPERTY(ushort, Radius);
-    CLASS_PROPERTY(bool, Hidden);
-    CLASS_PROPERTY(bool, ToGarbage);
-    CLASS_PROPERTY(uint, Color);
+#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };

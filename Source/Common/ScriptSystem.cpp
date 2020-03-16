@@ -126,20 +126,11 @@ ScriptSystem::ScriptSystem(ScriptSettings& sett, FileManager& file_mngr) : setti
 
     while (freeContexts.size() < 10)
         CreateContext();
-
-#ifdef SCRIPT_WATCHER
-    scriptWatcherThread = std::thread(&ScriptSystem::Watcher, this);
-#endif
 }
 
 ScriptSystem::~ScriptSystem()
 {
     SAFEDEL(invoker);
-
-#ifdef SCRIPT_WATCHER
-    scriptWatcherFinish = true;
-    scriptWatcherThread.join();
-#endif
 
     for (auto it = bindedFunctions.begin(), end = bindedFunctions.end(); it != end; ++it)
         it->Clear();
@@ -267,63 +258,8 @@ bool ScriptSystem::ReloadScripts(const string& target)
     return true;
 }
 
-bool ScriptSystem::PostInitScriptSystem()
+void ScriptSystem::RunModuleInitFunctions()
 {
-    if (pragmaCB->IsError())
-    {
-        WriteLog("Error in pragma(s) during loading.\n");
-        return false;
-    }
-
-    pragmaCB->Finish();
-    if (pragmaCB->IsError())
-    {
-        WriteLog("Error in pragma(s) after finalization.\n");
-        return false;
-    }
-    return true;
-}
-
-bool ScriptSystem::RunModuleInitFunctions()
-{
-    RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
-
-    asIScriptModule* module = asEngine->GetModuleByIndex(0);
-    for (asUINT i = 0; i < module->GetFunctionCount(); i++)
-    {
-        asIScriptFunction* func = module->GetFunctionByIndex(i);
-        if (!Str::Compare(func->GetName(), "ModuleInit"))
-            continue;
-
-        if (func->GetParamCount() != 0)
-        {
-            WriteLog("Init function '{}::{}' can't have arguments.\n", func->GetNamespace(), func->GetName());
-            return false;
-        }
-        if (func->GetReturnTypeId() != asTYPEID_VOID && func->GetReturnTypeId() != asTYPEID_BOOL)
-        {
-            WriteLog(
-                "Init function '{}::{}' must have void or bool return type.\n", func->GetNamespace(), func->GetName());
-            return false;
-        }
-
-        uint bind_id = ScriptSystem::BindByFunc(func, true);
-        ScriptSystem::PrepareContext(bind_id, "Script");
-
-        if (!ScriptSystem::RunPrepared())
-        {
-            WriteLog("Error executing init function '{}::{}'.\n", func->GetNamespace(), func->GetName());
-            return false;
-        }
-
-        if (func->GetReturnTypeId() == asTYPEID_BOOL && !ScriptSystem::GetReturnedBool())
-        {
-            WriteLog("Initialization stopped by init function '{}::{}'.\n", func->GetNamespace(), func->GetName());
-            return false;
-        }
-    }
-
-    return true;
 }
 
 void ScriptSystem::CreateContext()
@@ -567,30 +503,6 @@ string ScriptSystem::GetActiveFuncName()
     if (!func)
         return "";
     return func->GetName();
-}
-
-void ScriptSystem::Watcher()
-{
-#ifdef SCRIPT_WATCHER
-    while (!scriptWatcherFinish)
-    {
-        // Execution timeout
-        if (settings.ScriptRunSuspendTimeout)
-        {
-            uint cur_tick = Timer::FastTick();
-            for (auto it = busyContexts.begin(); it != busyContexts.end(); ++it)
-            {
-                asIScriptContext* ctx = *it;
-                ContextData* ctx_data = (ContextData*)ctx->GetUserData();
-                if (ctx->GetState() == asEXECUTION_ACTIVE && ctx_data->StartTick &&
-                    cur_tick >= ctx_data->StartTick + settings.ScriptRunSuspendTimeout)
-                    ctx->Abort();
-            }
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-#endif
 }
 
 void ScriptSystem::Define(const string& define)
@@ -1230,12 +1142,6 @@ bool ScriptSystem::RunPrepared()
         ReturnContext(ctx);
         return false;
     }
-#ifdef SCRIPT_WATCHER
-    else if (settings.ScriptRunMessageTimeout && delta >= settings.ScriptRunMessageTimeout)
-    {
-        WriteLog("Script work time {} in context '{}'.\n", delta, ctx_data->Info);
-    }
-#endif
 
     if (result < 0)
     {
