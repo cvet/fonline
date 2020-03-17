@@ -37,16 +37,19 @@
 
 #include "3dStuff.h"
 #include "Application.h"
+#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Properties.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
+
+#define FO_API_CRITTER_VIEW_HEADER
+#include "ScriptApi.h"
 
 class ItemView;
 using ItemViewVec = vector<ItemView*>;
@@ -58,7 +61,7 @@ class CritterView : public Entity
 {
 public:
     CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys, bool mapper_mode);
+        ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, bool mapper_mode);
     ~CritterView();
     void Init();
     void Finish();
@@ -90,46 +93,6 @@ public:
 
     uint GetAttackDist();
 
-    PROPERTIES_HEADER();
-#include "CritterProperties.h"
-    // Non sync
-    CLASS_PROPERTY(ushort, HexX);
-    CLASS_PROPERTY(ushort, HexY);
-    CLASS_PROPERTY(uchar, Dir);
-    CLASS_PROPERTY(int, Cond);
-    CLASS_PROPERTY(uint, Multihex);
-    CLASS_PROPERTY(uint, Anim1Life);
-    CLASS_PROPERTY(uint, Anim1Knockout);
-    CLASS_PROPERTY(uint, Anim1Dead);
-    CLASS_PROPERTY(uint, Anim2Life);
-    CLASS_PROPERTY(uint, Anim2Knockout);
-    CLASS_PROPERTY(uint, Anim2Dead);
-    // Core
-    CLASS_PROPERTY(hash, ModelName);
-    CLASS_PROPERTY(hash, ScriptId);
-    CLASS_PROPERTY(uint, LookDistance);
-    CLASS_PROPERTY(CScriptArray*, Anim3dLayer);
-    CLASS_PROPERTY(hash, DialogId);
-    CLASS_PROPERTY(bool, IsNoTalk);
-    CLASS_PROPERTY(uint, TalkDistance);
-    CLASS_PROPERTY(int, CurrentHp);
-    CLASS_PROPERTY(bool, IsNoWalk);
-    CLASS_PROPERTY(bool, IsNoRun);
-    CLASS_PROPERTY(bool, IsNoRotate);
-    CLASS_PROPERTY(uint, WalkTime);
-    CLASS_PROPERTY(uint, RunTime);
-    CLASS_PROPERTY(int, ScaleFactor);
-    CLASS_PROPERTY(uint, TimeoutBattle);
-    CLASS_PROPERTY(uint, TimeoutTransfer);
-    CLASS_PROPERTY(uint, TimeoutRemoveFromGame);
-    CLASS_PROPERTY(bool, IsHide);
-    CLASS_PROPERTY(ushort, WorldX);
-    CLASS_PROPERTY(ushort, WorldY);
-    CLASS_PROPERTY(uint, GlobalMapLeaderId);
-    // Exclude
-    CLASS_PROPERTY(char, Gender); // GUI
-    CLASS_PROPERTY(bool, IsNoFlatten); // Draw order (migrate to proto? to critter type option?)
-
     static bool SlotEnabled[0x100];
 
     uint NameColor {};
@@ -149,7 +112,7 @@ private:
     SpriteManager& sprMngr;
     ResourceManager& resMngr;
     EffectManager& effectMngr;
-    ScriptSystem& scriptSys;
+    ClientScriptSystem& scriptSys;
     bool mapperMode {};
 
     // Items
@@ -293,4 +256,12 @@ private:
     uint tickStartText {};
     uint tickTextDelay {};
     uint textOnHeadColor {COLOR_CRITTER_NAME};
+
+public:
+#define FO_API_CRITTER_VIEW_CLASS
+#include "ScriptApi.h"
+
+    PROPERTIES_HEADER();
+#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };

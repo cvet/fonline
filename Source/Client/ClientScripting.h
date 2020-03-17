@@ -37,7 +37,6 @@
 
 #include "ScriptSystem.h"
 
-class FOClient;
 class Entity;
 class ItemView;
 class CritterView;
@@ -47,9 +46,7 @@ class LocationView;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    void InitNativeScripting(FOClient& client);
-    void InitAngelScriptScripting(FOClient& client);
-    void InitMonoScripting(FOClient& client);
+    ClientScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) : ScriptSystem(obj, sett, file_mngr) {}
 
 #define FO_API_CLIENT_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
 #define FO_API_ARG(type, name) type
@@ -61,4 +58,9 @@ public:
 #define FO_API_ARG_ENUM(type, name) int
 #define FO_API_ARG_DICT(key, val, name) map<key, val>
 #include "ScriptApi.h"
+
+protected:
+    virtual void InitNativeScripting() override;
+    virtual void InitAngelScriptScripting() override;
+    virtual void InitMonoScripting() override;
 };

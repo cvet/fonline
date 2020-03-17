@@ -353,7 +353,7 @@ public:
     uint GetWholeDataSize();
     string GetClassName();
 
-    static NativeCallbackVec GlobalSetCallbacks;
+    NativeCallbackVec GlobalSetCallbacks;
 
 private:
     bool registrationFinished;

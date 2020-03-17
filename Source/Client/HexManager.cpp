@@ -42,10 +42,11 @@
 #define FOREACH_PROTO_ITEM_LINES(lines, hx, hy, maxhx, maxhy, work) \
     int hx__ = hx, hy__ = hy; \
     int maxhx__ = maxhx, maxhy__ = maxhy; \
-    for (uint i__ = 0, j__ = (lines)->GetSize() / 2; i__ < j__; i__++) \
+    UCharVec lines__ = lines; \
+    for (size_t i__ = 0, j__ = lines__.size() / 2; i__ < j__; i__++) \
     { \
-        uchar dir__ = *(uchar*)(lines)->At(i__ * 2); \
-        uchar steps__ = *(uchar*)(lines)->At(i__ * 2 + 1); \
+        uchar dir__ = lines__[i__ * 2]; \
+        uchar steps__ = lines__[i__ * 2 + 1]; \
         if (dir__ >= settings.MapDirCount || !steps__ || steps__ > 9) \
             break; \
         for (uchar k__ = 0; k__ < steps__; k__++) \
@@ -281,7 +282,7 @@ void Field::UnvalidateSpriteChain()
 }
 
 HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-    EffectManager& effect_mngr, ResourceManager& res_mngr, ScriptSystem& script_sys) :
+    EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys) :
     settings {sett},
     geomHelper(settings),
     protoMngr {proto_mngr},
@@ -531,7 +532,7 @@ void HexManager::DeleteItem(
     if (destroy_item)
     {
         item->IsDestroyed = true;
-        scriptSys.RemoveEventsEntity(item);
+        scriptSys.RemoveEntity(item);
         item->Release();
     }
 }
@@ -1112,7 +1113,7 @@ void HexManager::RebuildMap(int rx, int ry)
     screenHexX = rx;
     screenHexY = ry;
 
-    scriptSys.RaiseInternalEvent(ClientFunctions.RenderMap);
+    scriptSys.RenderMapEvent();
 }
 
 void HexManager::RebuildMapOffset(int ox, int oy)
@@ -1439,7 +1440,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
     requestRebuildLight = false;
     requestRenderLight = true;
 
-    scriptSys.RaiseInternalEvent(ClientFunctions.RenderMap);
+    scriptSys.RenderMapEvent();
 }
 
 /************************************************************************/
@@ -2685,7 +2686,7 @@ bool HexManager::Scroll()
         int final_scr_ox = settings.ScrOx - prev_scr_ox + xmod * settings.MapHexWidth;
         int final_scr_oy = settings.ScrOy - prev_scr_oy + (-ymod / 2) * (settings.MapHexLineHeight * 2);
         if (final_scr_ox || final_scr_oy)
-            scriptSys.RaiseInternalEvent(ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy);
+            scriptSys.ScreenScrollEvent(final_scr_ox, final_scr_oy);
     }
 
     return xmod || ymod;
@@ -2934,7 +2935,7 @@ void HexManager::DeleteCritter(uint crid)
     RemoveCritter(cr);
     cr->DeleteAllItems();
     cr->IsDestroyed = true;
-    scriptSys.RemoveEventsEntity(cr);
+    scriptSys.RemoveEntity(cr);
     cr->Release();
     allCritters.erase(it);
 }
@@ -2947,7 +2948,7 @@ void HexManager::DeleteCritters()
         RemoveCritter(cr);
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
-        scriptSys.RemoveEventsEntity(cr);
+        scriptSys.RemoveEntity(cr);
         cr->Release();
     }
     allCritters.clear();
@@ -4122,7 +4123,7 @@ bool HexManager::LoadMap(CacheStorage& cache, hash map_pid)
     AutoScroll.Active = false;
     WriteLog("Load map success.\n");
 
-    scriptSys.RaiseInternalEvent(ClientFunctions.MapLoad);
+    scriptSys.MapLoadEvent();
 
     return true;
 }
@@ -4134,7 +4135,7 @@ void HexManager::UnloadMap()
 
     WriteLog("Unload map.\n");
 
-    scriptSys.RaiseInternalEvent(ClientFunctions.MapUnload);
+    scriptSys.MapUnloadEvent();
 
     curPidMap = 0;
     curMapTime = -1;
@@ -4270,7 +4271,8 @@ void HexManager::GenerateItem(uint id, hash proto_id, Properties& props)
 
 int HexManager::GetDayTime()
 {
-    return Globals->GetHour() * 60 + Globals->GetMinute();
+    // return Globals->GetHour() * 60 + Globals->GetMinute();
+    return 0;
 }
 
 int HexManager::GetMapTime()

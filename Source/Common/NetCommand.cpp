@@ -56,16 +56,9 @@ static const CmdDef CmdList[] = {
     {"ais", CMD_ADDITEM_SELF},
     {"addnpc", CMD_ADDNPC},
     {"addloc", CMD_ADDLOCATION},
-    {"reloadscripts", CMD_RELOADSCRIPTS},
-    {"reloadclientscripts", CMD_RELOAD_CLIENT_SCRIPTS},
-    {"rcs", CMD_RELOAD_CLIENT_SCRIPTS},
     {"runscript", CMD_RUNSCRIPT},
     {"run", CMD_RUNSCRIPT},
-    {"reloadprotos", CMD_RELOAD_PROTOS},
     {"regenmap", CMD_REGENMAP},
-    {"reloaddialogs", CMD_RELOADDIALOGS},
-    {"loaddialog", CMD_LOADDIALOG},
-    {"reloadtexts", CMD_RELOADTEXTS},
     {"settime", CMD_SETTIME},
     {"ban", CMD_BAN},
     {"deleteself", CMD_DELETE_ACCOUNT},
@@ -305,18 +298,6 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << pid;
     }
     break;
-    case CMD_RELOADSCRIPTS: {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
-    case CMD_RELOAD_CLIENT_SCRIPTS: {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
     case CMD_RUNSCRIPT: {
         string func_name;
         uint param0, param1, param2;
@@ -336,40 +317,7 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << param2;
     }
     break;
-    case CMD_RELOAD_PROTOS: {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
     case CMD_REGENMAP: {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
-    case CMD_RELOADDIALOGS: {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
-    case CMD_LOADDIALOG: {
-        string dlg_name;
-        if (!(args_str >> dlg_name))
-        {
-            logcb("Invalid arguments. Example: loaddialog name.");
-            break;
-        }
-        msg_len += NetBuffer::StringLenSize + (uint)dlg_name.length();
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << dlg_name;
-    }
-    break;
-    case CMD_RELOADTEXTS: {
         buf << msg;
         buf << msg_len;
         buf << cmd;

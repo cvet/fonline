@@ -43,7 +43,7 @@ PROPERTIES_IMPL(Location);
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Location, name)
 #include "ScriptApi.h"
 
-Location::Location(uint id, ProtoLocation* proto, ScriptSystem& script_sys) :
+Location::Location(uint id, ProtoLocation* proto, ServerScriptSystem& script_sys) :
     Entity(id, EntityType::Location, PropertiesRegistrator, proto), scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);
@@ -56,8 +56,8 @@ void Location::BindScript()
     if (GetEntranceScript())
     {
         string func_name = _str().parseHash(GetEntranceScript());
-        EntranceScriptBindId =
-            scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);
+        /*EntranceScriptBindId =
+            scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
 }
 

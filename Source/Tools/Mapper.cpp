@@ -49,33 +49,28 @@
 #define SCRIPT_ERROR_R(error, ...) \
     do \
     { \
-        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
         return; \
     } while (0)
 #define SCRIPT_ERROR_R0(error, ...) \
     do \
     { \
-        Self->ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
+        ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
         return 0; \
     } while (0)
-
-bool FOMapper::SpritesCanDraw;
-FOMapper* FOMapper::Self;
-MapView* FOMapper::SScriptFunc::ClientCurMap;
-LocationView* FOMapper::SScriptFunc::ClientCurLocation;
 
 FOMapper::IfaceAnim::IfaceAnim(AnyFrames* frm, AtlasType res_type) : Frames(frm), ResType(res_type)
 {
     LastTick = Timer::FastTick();
 }
 
-FOMapper::FOMapper(MapperSettings& sett) :
+FOMapper::FOMapper(GlobalSettings& sett) :
     Settings {sett},
     GeomHelper(Settings),
     IfaceIni(""),
     FileMngr(),
     ServerFileMngr(),
-    ScriptSys(Settings, FileMngr),
+    ScriptSys(this, sett, FileMngr),
     Cache("Data/Cache.bin"),
     ProtoMngr(),
     EffectMngr(Settings, FileMngr),
@@ -84,21 +79,13 @@ FOMapper::FOMapper(MapperSettings& sett) :
     HexMngr(true, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
     Keyb(Settings, SprMngr)
 {
-    Self = this;
-    DrawCrExtInfo = 0;
     Animations.resize(10000);
-    ConsoleHistory.clear();
-    ConsoleHistoryCur = 0;
-    InspectorEntity = nullptr;
 
     // Mouse
     int mx = 0, my = 0;
     App::Window::GetMousePosition(mx, my);
     Settings.MouseX = CLAMP(mx, 0, Settings.ScreenWidth - 1);
     Settings.MouseY = CLAMP(my, 0, Settings.ScreenHeight - 1);
-
-    // Options
-    Settings.ScrollCheck = false;
 
     // Setup write paths
     ServerWritePath = Settings.ServerDir;
@@ -132,10 +119,6 @@ FOMapper::FOMapper(MapperSettings& sett) :
 
     bool init_face_ok = (InitIface() == 0);
     RUNTIME_ASSERT(init_face_ok);
-
-    // Script system
-    bool init_scripts_ok = InitScriptSystem();
-    RUNTIME_ASSERT(init_scripts_ok);
 
     // Language Packs
     CurLang.LoadFromFiles(FileMngr, Settings.Language);
@@ -554,7 +537,7 @@ void FOMapper::ProcessInputEvents()
             continue;
 
         Keyb.Lost();
-        ScriptSys.RaiseInternalEvent(ClientFunctions.InputLost);
+        ScriptSys.InputLostEvent();
         return;
     }
 
@@ -599,12 +582,12 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         if (dikdw)
         {
             string event_text_script = event_text;
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.KeyDown, dikdw, &event_text_script);
+            script_result = ScriptSys.KeyDownEvent(dikdw, event_text_script);
         }
         if (dikup)
         {
             string event_text_script = event_text;
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.KeyUp, dikup, &event_text_script);
+            script_result = ScriptSys.KeyUpEvent(dikup, event_text_script);
         }
 
         // Disable keyboard events
@@ -911,7 +894,7 @@ void FOMapper::ParseMouse()
     {
         Settings.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        ScriptSys.RaiseInternalEvent(MapperFunctions.InputLost);
+        ScriptSys.InputLostEvent();
         return;
     }
 
@@ -923,7 +906,7 @@ void FOMapper::ParseMouse()
         Settings.LastMouseX = Settings.MouseX;
         Settings.LastMouseY = Settings.MouseY;
 
-        ScriptSys.RaiseInternalEvent(MapperFunctions.MouseMove, ox, oy);
+        ScriptSys.MouseMoveEvent(ox, oy);
 
         IntMouseMove();
     }
@@ -968,40 +951,39 @@ void FOMapper::ParseMouse()
         // Scripts
         bool script_result = true;
         if (event == SDL_MOUSEWHEEL)
-            script_result = ScriptSys.RaiseInternalEvent(
-                MapperFunctions.MouseDown, event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            script_result = ScriptSys.MouseDownEvent(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_LEFT);
+            script_result = ScriptSys.MouseDownEvent(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_LEFT);
+            script_result = ScriptSys.MouseUpEvent(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_RIGHT);
+            script_result = ScriptSys.MouseDownEvent(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_RIGHT);
+            script_result = ScriptSys.MouseUpEvent(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_MIDDLE);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_MIDDLE);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT0);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT0);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT1);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT1);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT2);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT2);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT3);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT3);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4);
+            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = ScriptSys.RaiseInternalEvent(MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4);
+            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT4);
         if (!script_result || Settings.DisableMouseEvents)
             continue;
 
@@ -1200,7 +1182,7 @@ void FOMapper::MainLoop()
     }*/
 
     // Script loop
-    ScriptSys.RaiseInternalEvent(MapperFunctions.Loop);
+    ScriptSys.LoopEvent();
 
     // Input
     ConsoleProcess();
@@ -1237,12 +1219,6 @@ void FOMapper::MainLoop()
 
     // Start render
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
-
-    // Process pending invocations
-    ScriptSys.ProcessDeferredCalls();
-
-    // Suspended contexts
-    ScriptSys.RunSuspended();
 
     DrawIfaceLayer(0);
     if (HexMngr.IsMapLoaded())
@@ -2014,17 +1990,10 @@ Entity* FOMapper::GetInspectorEntity()
 
     if (entity)
     {
-        CScriptArray* arr = ScriptSys.CreateArray("int[]");
-        RUNTIME_ASSERT(arr);
-
-        ScriptSys.RaiseInternalEvent(MapperFunctions.InspectorProperties, entity, arr);
-
         IntVec enum_values;
-        ScriptSys.AssignScriptArrayInVector(enum_values, arr);
+        ScriptSys.InspectorPropertiesEvent(entity, enum_values);
         for (auto enum_value : enum_values)
             ShowProps.push_back(enum_value ? entity->Props.FindByEnum(enum_value) : nullptr);
-
-        arr->Release();
     }
 
     SelectEntityProp(ObjCurLine);
@@ -3291,7 +3260,7 @@ ItemView* FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner)
         SelectClear();
 
     // Create
-    ItemView* item;
+    ItemView* item = nullptr;
     if (owner)
     {
         // Todo: need attention!
@@ -3831,7 +3800,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
 
                 // Process command
                 bool process_command = true;
-                process_command = ScriptSys.RaiseInternalEvent(MapperFunctions.ConsoleMessage, &ConsoleStr);
+                process_command = ScriptSys.ConsoleMessageEvent(ConsoleStr);
 
                 AddMess(ConsoleStr.c_str());
                 if (process_command)
@@ -3981,7 +3950,7 @@ void FOMapper::ParseCommand(const string& command)
         }
 
         // Reparse module
-        uint bind_id = ScriptSys.BindByFuncName(func_name, "string %s(string)", true);
+        /*uint bind_id = ScriptSys.BindByFuncName(func_name, "string %s(string)", true);
         if (bind_id)
         {
             string str = _str(command).substringAfter(' ').trim();
@@ -4001,7 +3970,7 @@ void FOMapper::ParseCommand(const string& command)
         {
             AddMess("Function not found.");
             return;
-        }
+        }*/
     }
     // Critter animations
     else if (command[0] == '@')
@@ -4061,16 +4030,10 @@ void FOMapper::ParseCommand(const string& command)
             // Day		10.00 - 18.59	 600 - 1139
             // Evening	19.00 - 22.59	1140 - 1379
             // Nigh		23.00 -  4.59	1380
-            IntVec vec = {300, 600, 1140, 1380};
-            UCharVec vec2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-            CScriptArray* arr = ScriptSys.CreateArray("int[]");
-            ScriptSys.AppendVectorToArray(vec, arr);
+            IntVec arr = {300, 600, 1140, 1380};
+            UCharVec arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
             pmap->SetDayTime(arr);
-            arr->Release();
-            CScriptArray* arr2 = ScriptSys.CreateArray("uint8[]");
-            ScriptSys.AppendVectorToArray(vec2, arr2);
             pmap->SetDayColor(arr2);
-            arr2->Release();
 
             if (ActiveMap)
                 HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
@@ -4115,12 +4078,6 @@ void FOMapper::ParseCommand(const string& command)
                 return;
             }
         }
-        else if (command_ext == "scripts")
-        {
-            if (InitScriptSystem())
-                RunStartScript();
-            AddMess("Scripts reloaded.");
-        }
         else if (command_ext == "size" && ActiveMap)
         {
             AddMess("Resize map.");
@@ -4132,7 +4089,7 @@ void FOMapper::ParseCommand(const string& command)
                 return;
             }
 
-            FOMapper::SScriptFunc::Global_ResizeMap(maxhx, maxhy);
+            // FOMapper::SScriptFunc::Global_ResizeMap(maxhx, maxhy);
         }
     }
     else
@@ -4220,145 +4177,27 @@ bool FOMapper::SaveLogFile()
     return true;
 }
 
-namespace MapperBind
-{
-#undef BIND_SERVER
-#undef BIND_CLIENT
-#undef BIND_MAPPER
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#undef BIND_DUMMY_DATA
-#define BIND_MAPPER
-#define BIND_CLASS FOMapper::SScriptFunc::
-#define BIND_ASSERT(x) \
-    if ((x) < 0) \
-    { \
-        WriteLog("Bind error, line {}.\n", __LINE__); \
-        errors++; \
-    }
-#include "ScriptBind_Include.h"
-} // namespace MapperBind
-
-bool FOMapper::InitScriptSystem()
-{
-    WriteLog("Script system initialization...\n");
-
-    // Init
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_MAPPER, &ProtoMngr, nullptr);
-    if (!ScriptSys.Init(pragma_callback, "MAPPER"))
-    {
-        WriteLog("Script system initialization fail.\n");
-        return false;
-    }
-    ScriptSys.SetExceptionCallback([](const string& str) {
-        CreateDump("ScriptException", str);
-        MessageBox::ShowErrorMessage(str, "");
-        exit(1);
-    });
-
-    // Bind vars and functions, look bind.h
-    asIScriptEngine* engine = ScriptSys.GetEngine();
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-    int errors = MapperBind::Bind(engine, registrators);
-    if (errors)
-        return false;
-
-    // Load scripts
-    ScriptSys.Undef("");
-    ScriptSys.Define("__MAPPER");
-    ScriptSys.Define(_str("__VERSION {}", FO_VERSION));
-    if (!ScriptSys.ReloadScripts("Mapper"))
-    {
-        WriteLog("Invalid mapper scripts.\n");
-        return false;
-    }
-
-#define BIND_INTERNAL_EVENT(name) MapperFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
-#define BIND_INTERNAL_EVENT_CLIENT(name) ClientFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
-    BIND_INTERNAL_EVENT(Start);
-    BIND_INTERNAL_EVENT(Finish);
-    BIND_INTERNAL_EVENT(Loop);
-    BIND_INTERNAL_EVENT(ConsoleMessage);
-    BIND_INTERNAL_EVENT(RenderIface);
-    BIND_INTERNAL_EVENT_CLIENT(RenderMap);
-    BIND_INTERNAL_EVENT(MouseDown);
-    BIND_INTERNAL_EVENT(MouseUp);
-    BIND_INTERNAL_EVENT(MouseMove);
-    BIND_INTERNAL_EVENT(KeyDown);
-    BIND_INTERNAL_EVENT(KeyUp);
-    BIND_INTERNAL_EVENT(InputLost);
-    BIND_INTERNAL_EVENT_CLIENT(CritterAnimation);
-    BIND_INTERNAL_EVENT_CLIENT(CritterAnimationSubstitute);
-    BIND_INTERNAL_EVENT_CLIENT(CritterAnimationFallout);
-    BIND_INTERNAL_EVENT(MapLoad);
-    BIND_INTERNAL_EVENT(MapSave);
-    BIND_INTERNAL_EVENT(InspectorProperties);
-#undef BIND_INTERNAL_EVENT
-#undef BIND_INTERNAL_EVENT_CLIENT
-
-    GlobalVars::SetPropertyRegistrator(registrators[0]);
-    SAFEDEL(Globals);
-    Globals = new GlobalVars();
-    CritterView::SetPropertyRegistrator(registrators[1]);
-    ProtoCritter::SetPropertyRegistrator(registrators[1]);
-    ItemView::SetPropertyRegistrator(registrators[2]);
-    ProtoItem::SetPropertyRegistrator(registrators[2]);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsColorize", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsBadItem", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsShootThru", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsLightThru", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsNoBlock", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsLight", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightIntensity", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightDistance", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightFlags", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightColor", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("PicMap", OnSetItemPicMap);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("OffsetX", OnSetItemOffsetXY);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("OffsetY", OnSetItemOffsetXY);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("Opened", OnSetItemOpened);
-    MapView::SetPropertyRegistrator(registrators[3]);
-    ProtoMap::SetPropertyRegistrator(registrators[3]);
-    LocationView::SetPropertyRegistrator(registrators[4]);
-    ProtoLocation::SetPropertyRegistrator(registrators[4]);
-
-    if (!ScriptSys.PostInitScriptSystem())
-    {
-        WriteLog("Post init fail.\n");
-        return false;
-    }
-
-    if (!ScriptSys.RunModuleInitFunctions())
-    {
-        WriteLog("Run module init functions fail.\n");
-        return false;
-    }
-
-    WriteLog("Script system initialization complete.\n");
-    return true;
-}
-
 void FOMapper::RunStartScript()
 {
-    ScriptSys.RaiseInternalEvent(MapperFunctions.Start);
+    ScriptSys.StartEvent();
 }
 
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.RaiseInternalEvent(MapperFunctions.MapLoad, map);
+    ScriptSys.MapLoadEvent(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.RaiseInternalEvent(MapperFunctions.MapSave, map);
+    ScriptSys.MapSaveEvent(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint layer)
 {
     SpritesCanDraw = true;
-    ScriptSys.RaiseInternalEvent(MapperFunctions.RenderIface, layer);
+    ScriptSys.RenderIfaceEvent(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
 }
 
@@ -4367,7 +4206,7 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
     ItemView* item = (ItemView*)entity;
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded())
+    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded())
     {
         ItemHexView* hex_item = (ItemHexView*)item;
         bool rebuild_cache = false;
@@ -4378,11 +4217,11 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
         else if (prop == ItemView::PropertyIsShootThru)
             rebuild_cache = true;
         else if (prop == ItemView::PropertyIsLightThru)
-            Self->HexMngr.RebuildLight(), rebuild_cache = true;
+            HexMngr.RebuildLight(), rebuild_cache = true;
         else if (prop == ItemView::PropertyIsNoBlock)
             rebuild_cache = true;
         if (rebuild_cache)
-            Self->HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
+            HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
     }
 }
 
@@ -4390,8 +4229,8 @@ void FOMapper::OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_valu
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
-    if (Self->HexMngr.IsMapLoaded())
-        Self->HexMngr.RebuildLight();
+    if (HexMngr.IsMapLoaded())
+        HexMngr.RebuildLight();
 }
 
 void FOMapper::OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value)
@@ -4411,11 +4250,11 @@ void FOMapper::OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value
 
     ItemView* item = (ItemView*)entity;
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded())
+    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded())
     {
         ItemHexView* hex_item = (ItemHexView*)item;
         hex_item->SetAnimOffs();
-        Self->HexMngr.ProcessHexBorders(hex_item);
+        HexMngr.ProcessHexBorders(hex_item);
     }
 }
 

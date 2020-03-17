@@ -53,7 +53,7 @@ template<typename... Args>
 class ScriptEvent
 {
 public:
-    using Callback = std::function<void(Args...)>;
+    using Callback = std::function<bool(Args...)>;
 
     ScriptEvent() = default;
 
@@ -63,35 +63,60 @@ public:
         return *this;
     }
 
-    ScriptEvent& operator()(Args... args)
+    bool operator()(Args... args)
     {
         for (auto& cb : callbacks)
-            cb(std::forward<Args>(args)...);
-        return *this;
+            if (cb(std::forward<Args>(args)...))
+                return true;
+        return false;
     }
 
 private:
     vector<Callback> callbacks {};
 };
 
-class ScriptSystem : public NameResolver, public NonCopyable
+class ScriptSystem : public NameResolver, public NonMovable
 {
 public:
-    ScriptSystem(ScriptSettings& sett, FileManager& file_mngr);
-    virtual ~ScriptSystem() = 0;
+    ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr);
+    virtual ~ScriptSystem() = default;
+    void Initialize();
+    int GetEnumValue(const string& enum_value_name, bool& fail) { return 0; }
+    int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) { return 0; }
+    string GetEnumValueName(const string& enum_name, int value) { return ""; }
+    void RemoveEntity(Entity* entity) {}
+
+protected:
+    virtual void InitNativeScripting() = 0;
+    virtual void InitAngelScriptScripting() = 0;
+    virtual void InitMonoScripting() = 0;
+
+    void* mainObj;
+    GlobalSettings& settings;
+    FileManager& fileMngr;
+
+    struct NativeImpl;
+    shared_ptr<NativeImpl> pNativeImpl {};
+    struct AngelScriptImpl;
+    shared_ptr<AngelScriptImpl> pAngelScriptImpl {};
+    struct MonoImpl;
+    shared_ptr<MonoImpl> pMonoImpl {};
+
+    /*
+public:
     void RunModuleInitFunctions();
 
     string GetDeferredCallsStatistics();
     void ProcessDeferredCalls();
     // Todo: rework FONLINE_
-    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
         bool LoadDeferredCalls();
-    #endif*/
+    #endif* /
 
     StrVec GetCustomEntityTypes();
-    /*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
         bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
-    #endif*/
+    #endif* /
 
     void RemoveEventsEntity(Entity* entity);
 
@@ -113,9 +138,7 @@ public:
     void PrepareScriptFuncContext(hash func_num, const string& ctx_info);
 
     void CacheEnumValues();
-    int GetEnumValue(const string& enum_value_name, bool& fail);
-    int GetEnumValue(const string& enum_name, const string& value_name, bool& fail);
-    string GetEnumValueName(const string& enum_name, int value);
+
 
     void PrepareContext(uint bind_id, const string& ctx_info);
     void SetArgUChar(uchar value);
@@ -143,9 +166,7 @@ public:
     void* GetReturnedRawAddress();
 
 private:
-    ScriptSettings& settings;
-    FileManager& fileMngr;
     HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
     StrIntMap cachedEnums {};
-    map<string, IntStrMap> cachedEnumNames {};
+    map<string, IntStrMap> cachedEnumNames {};*/
 };

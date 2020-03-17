@@ -124,7 +124,7 @@ hash Bone::GetHash(const string& name)
 }
 
 Animation3dManager::Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
-    ScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator) :
+    ClientScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator) :
     settings {sett},
     fileMngr {file_mngr},
     effectMngr {effect_mngr},
@@ -2342,8 +2342,8 @@ int Animation3dEntity::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
     {
         hash model_name = base_model_name;
         uint anim1_ = anim1, anim2_ = anim2;
-        if (anim3dMngr.scriptSys.RaiseInternalEvent(ClientFunctions.CritterAnimationSubstitute, base_model_name,
-                anim1_base, anim2_base, &model_name, &anim1, &anim2) &&
+        if (anim3dMngr.scriptSys.CritterAnimationSubstituteEvent(
+                base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) &&
             (anim1 != anim1_ || anim2 != anim2_))
             index = GetAnimationIndexEx(anim1, anim2, speed);
         else

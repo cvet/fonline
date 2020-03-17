@@ -41,9 +41,9 @@
 
 #include "3dStuff.h"
 #include "Application.h"
+#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "Sprites.h"
 
@@ -234,7 +234,8 @@ using DipDataVec = vector<DipData>;
 class SpriteManager : public NonMovable
 {
 public:
-    SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys);
+    SpriteManager(
+        RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys);
     ~SpriteManager();
 
     void GetWindowSize(int& w, int& h);

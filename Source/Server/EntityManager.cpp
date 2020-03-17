@@ -42,7 +42,7 @@
 #include "Testing.h"
 
 EntityManager::EntityManager(
-    MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ScriptSystem& script_sys) :
+    MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys) :
     mapMngr {map_mngr}, crMngr {cr_mngr}, itemMngr {item_mngr}, scriptSys {script_sys}
 {
 }
@@ -82,7 +82,7 @@ void EntityManager::RegisterEntity(Entity* entity)
 {
     if (!entity->Id)
     {
-        uint id = Globals->GetLastEntityId() + 1;
+        /*uint id = Globals->GetLastEntityId() + 1;
         id = MAX(id, 2);
         Globals->SetLastEntityId(id);
 
@@ -103,7 +103,7 @@ void EntityManager::RegisterEntity(Entity* entity)
         else if (entity->Type == EntityType::Custom)
             DbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
         else
-            throw UnreachablePlaceException(LINE_STR);
+            throw UnreachablePlaceException(LINE_STR);*/
     }
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));
@@ -116,7 +116,7 @@ void EntityManager::UnregisterEntity(Entity* entity)
     RUNTIME_ASSERT(it != allEntities.end());
     allEntities.erase(it);
 
-    scriptSys.RemoveEventsEntity(entity);
+    scriptSys.RemoveEntity(entity);
 
     if (entity->Type == EntityType::Location)
         DbStorage->Delete("Locations", entity->Id);
@@ -266,7 +266,7 @@ bool EntityManager::LoadEntities()
         EntityType::Custom,
     };
 
-    StrVec custom_types = scriptSys.GetCustomEntityTypes();
+    StrVec custom_types; // = scriptSys.GetCustomEntityTypes();
     int custom_index = -1;
 
     for (int q = 0; q < 5; q++)
@@ -582,19 +582,19 @@ void EntityManager::InitAfterLoad()
         if (entity->Type == EntityType::Location)
         {
             Location* loc = (Location*)entity;
-            scriptSys.RaiseInternalEvent(ServerFunctions.LocationInit, loc, false);
+            scriptSys.LocationInitEvent(loc, false);
         }
         else if (entity->Type == EntityType::Map)
         {
             Map* map = (Map*)entity;
-            scriptSys.RaiseInternalEvent(ServerFunctions.MapInit, map, false);
+            scriptSys.MapInitEvent(map, false);
             if (!map->IsDestroyed && map->GetScriptId())
                 map->SetScript(nullptr, false);
         }
         else if (entity->Type == EntityType::Npc)
         {
             Npc* npc = (Npc*)entity;
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterInit, npc, false);
+            scriptSys.CritterInitEvent(npc, false);
             if (!npc->IsDestroyed && npc->GetScriptId())
                 npc->SetScript(nullptr, false);
         }
@@ -604,7 +604,7 @@ void EntityManager::InitAfterLoad()
             if (item->GetIsRadio())
                 itemMngr.RadioRegister(item, true);
             if (!item->IsDestroyed)
-                scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, false);
+                scriptSys.ItemInitEvent(item, false);
             if (!item->IsDestroyed && item->GetScriptId())
                 item->SetScript(nullptr, false);
         }
@@ -620,7 +620,7 @@ void EntityManager::ClearEntities()
     for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
     {
         it->second->IsDestroyed = true;
-        scriptSys.RemoveEventsEntity(it->second);
+        scriptSys.RemoveEntity(it->second);
         entitiesCount[(int)it->second->Type]--;
         SAFEREL(it->second);
     }

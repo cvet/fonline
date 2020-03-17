@@ -32,129 +32,24 @@
 //
 
 #include "ScriptSystem.h"
-#include "AngelScriptExt/reflection.h"
-#include "FileSystem.h"
 #include "Log.h"
-#include "ScriptExtensions.h"
-#include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
 
-#include "datetime/datetime.h"
-#include "preprocessor.h"
-#include "scriptany/scriptany.h"
-#include "scriptfile/scriptfile.h"
-#include "scriptfile/scriptfilesystem.h"
-#include "scripthelper/scripthelper.h"
-#include "scriptmath/scriptmath.h"
-#include "scriptstdstring/scriptstdstring.h"
-#include "weakref/weakref.h"
-
-static const string ContextStatesStr[] = {
-    "Finished",
-    "Suspended",
-    "Aborted",
-    "Exception",
-    "Prepared",
-    "Uninitialized",
-    "Active",
-    "Error",
-};
-
-struct EventData
+ScriptSystem::ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) :
+    mainObj {obj}, settings {sett}, fileMngr {file_mngr}
 {
-    void* ASEvent;
-};
-
-ServerScriptFunctions ServerFunctions;
-ClientScriptFunctions ClientFunctions;
-MapperScriptFunctions MapperFunctions;
-
-ScriptSystem::ScriptSystem(ScriptSettings& sett, FileManager& file_mngr) : settings {sett}, fileMngr {file_mngr}
-{
-    asEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    if (!asEngine)
-        throw ScriptSystemException("Can't create AS engine");
-
-    asEngine->SetMessageCallback(
-        asMETHODPR(ScriptSystem, CallbackMessage, (const asSMessageInfo*, void*), void), this, asCALL_THISCALL);
-
-    asEngine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
-    asEngine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true);
-    asEngine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true);
-    asEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
-    asEngine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true);
-    asEngine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true);
-    asEngine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true);
-    asEngine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
-    asEngine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
-
-    RegisterScriptArray(asEngine, true);
-    ScriptExtensions::RegisterScriptArrayExtensions(asEngine);
-    RegisterStdString(asEngine);
-    ScriptExtensions::RegisterScriptStdStringExtensions(asEngine);
-    RegisterScriptAny(asEngine);
-    RegisterScriptDictionary(asEngine);
-    RegisterScriptDict(asEngine);
-    ScriptExtensions::RegisterScriptDictExtensions(asEngine);
-    RegisterScriptFile(asEngine);
-    RegisterScriptFileSystem(asEngine);
-    RegisterScriptDateTime(asEngine);
-    RegisterScriptMath(asEngine);
-    RegisterScriptWeakRef(asEngine);
-    RegisterScriptReflection(asEngine);
-
-    invoker = new ScriptInvoker(settings);
-
-    bindedFunctions.reserve(10000);
-    bindedFunctions.push_back(BindFunction()); // None
-    bindedFunctions.push_back(BindFunction()); // Temp
-
-    asEngine->SetModuleUserDataCleanupCallback([](asIScriptModule* module) {
-        Preprocessor::DeleteLineNumberTranslator((Preprocessor::LineNumberTranslator*)module->GetUserData());
-        module->SetUserData(nullptr);
-    });
-    asEngine->SetFunctionUserDataCleanupCallback([](asIScriptFunction* func) {
-        hash* func_num_ptr = (hash*)func->GetUserData();
-        if (func_num_ptr)
-        {
-            delete func_num_ptr;
-            func->SetUserData(nullptr);
-        }
-    });
-
-    while (freeContexts.size() < 10)
-        CreateContext();
 }
 
-ScriptSystem::~ScriptSystem()
+void ScriptSystem::Initialize()
 {
-    SAFEDEL(invoker);
-
-    for (auto it = bindedFunctions.begin(), end = bindedFunctions.end(); it != end; ++it)
-        it->Clear();
-
-    Preprocessor::SetPragmaCallback(nullptr);
-    Preprocessor::UndefAll();
-    UnloadScripts();
-
-    while (!busyContexts.empty())
-        ReturnContext(busyContexts[0]);
-    while (!freeContexts.empty())
-        FinishContext(freeContexts[0]);
-
-    delete pragmaCB;
-    asEngine->ShutDownAndRelease();
+    InitNativeScripting();
+    InitAngelScriptScripting();
+    InitMonoScripting();
 }
 
-bool ScriptSystem::Init(ScriptPragmaCallback* pragma_callback, const string& target)
-{
-    pragmaCB = pragma_callback;
-    return true;
-}
-
-void ScriptSystem::UnloadScripts()
+/*void ScriptSystem::UnloadScripts()
 {
     for (asUINT i = 0, j = asEngine->GetModuleCount(); i < j; i++)
     {
@@ -443,26 +338,26 @@ void ScriptSystem::ProcessDeferredCalls()
 }
 
 // Todo: rework FONLINE_
-/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptSystem::LoadDeferredCalls()
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->Invoker->LoadDeferredCalls();
 }
-#endif*/
+#endif* /
 
 StrVec ScriptSystem::GetCustomEntityTypes()
 {
     return pragmaCB->GetCustomEntityTypes();
 }
 
-/*#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+/ *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptSystem::RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc)
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->PragmaCB->RestoreCustomEntity(type_name, id, doc);
 }
-#endif*/
+#endif* /
 
 EventData* ScriptSystem::FindInternalEvent(const string& event_name)
 {
@@ -726,7 +621,7 @@ bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& l
 }
 
 uint ScriptSystem::BindByFuncName(
-    const string& func_name, const string& decl, bool is_temp, bool disable_log /* = false */)
+    const string& func_name, const string& decl, bool is_temp, bool disable_log)
 {
     // Collect functions in all modules
     RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
@@ -767,7 +662,7 @@ uint ScriptSystem::BindByFuncName(
     return (uint)bindedFunctions.size() - 1;
 }
 
-uint ScriptSystem::BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log /* = false */)
+uint ScriptSystem::BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log)
 {
     // Save to temporary bind
     if (is_temp)
@@ -788,7 +683,7 @@ uint ScriptSystem::BindByFunc(asIScriptFunction* func, bool is_temp, bool disabl
     return (uint)bindedFunctions.size() - 1;
 }
 
-uint ScriptSystem::BindByFuncNum(hash func_num, bool is_temp, bool disable_log /* = false */)
+uint ScriptSystem::BindByFuncNum(hash func_num, bool is_temp, bool disable_log)
 {
     asIScriptFunction* func = FindFunc(func_num);
     if (!func)
@@ -1351,3 +1246,4 @@ CScriptArray* ScriptSystem::CreateArray(const string& type)
 {
     return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
 }
+*/

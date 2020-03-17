@@ -52,8 +52,8 @@ PROPERTIES_IMPL(Map);
 #define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, name)
 #include "ScriptApi.h"
 
-Map::Map(
-    uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett, ScriptSystem& script_sys) :
+Map::Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
+    ServerScriptSystem& script_sys) :
     Entity(id, EntityType::Map, PropertiesRegistrator, proto),
     mapLocation {location},
     staticMap {static_map},
@@ -89,7 +89,7 @@ void Map::ProcessLoop(int index, uint time, uint tick)
     if (time && tick - loopLastTick[index] >= time)
     {
         loopLastTick[index] = tick;
-        scriptSys.RaiseInternalEvent(ServerFunctions.MapLoop, this, index + 1);
+        scriptSys.MapLoopEvent(this, index + 1);
     }
 }
 
@@ -212,7 +212,7 @@ bool Map::AddItem(Item* item, ushort hx, ushort hy)
                 bool allowed = false;
                 if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
-                    allowed = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
+                    allowed = scriptSys.MapCheckTrapLookEvent(this, cr, item);
                 }
                 else
                 {
@@ -227,7 +227,7 @@ bool Map::AddItem(Item* item, ushort hx, ushort hy)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowItemOnMap, cr, item, false, nullptr);
+            scriptSys.CritterShowItemOnMapEvent(cr, item, false, nullptr);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -299,8 +299,7 @@ void Map::EraseItem(uint item_id)
         if (cr->DelIdVisItem(item->GetId()))
         {
             cr->Send_EraseItemFromMap(item);
-            scriptSys.RaiseInternalEvent(
-                ServerFunctions.CritterHideItemOnMap, cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+            scriptSys.CritterHideItemOnMapEvent(cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -316,7 +315,7 @@ void Map::SendProperty(NetProperty::Type type, Property* prop, Entity* entity)
             if (cr->CountIdVisItem(item->GetId()))
             {
                 cr->Send_Property(type, prop, entity);
-                scriptSys.RaiseInternalEvent(ServerFunctions.CritterChangeItemOnMap, cr, item);
+                scriptSys.CritterChangeItemOnMapEvent(cr, item);
             }
         }
     }
@@ -345,14 +344,14 @@ void Map::ChangeViewItem(Item* item)
             {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_EraseItemFromMap(item);
-                scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideItemOnMap, cr, item, false, nullptr);
+                scriptSys.CritterHideItemOnMapEvent(cr, item, false, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed = false;
                 if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
-                    allowed = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
+                    allowed = scriptSys.MapCheckTrapLookEvent(this, cr, item);
                 }
                 else
                 {
@@ -365,7 +364,7 @@ void Map::ChangeViewItem(Item* item)
                 {
                     cr->DelIdVisItem(item->GetId());
                     cr->Send_EraseItemFromMap(item);
-                    scriptSys.RaiseInternalEvent(ServerFunctions.CritterHideItemOnMap, cr, item, false, nullptr);
+                    scriptSys.CritterHideItemOnMapEvent(cr, item, false, nullptr);
                 }
             }
         }
@@ -376,7 +375,7 @@ void Map::ChangeViewItem(Item* item)
                 bool allowed = false;
                 if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
                 {
-                    allowed = scriptSys.RaiseInternalEvent(ServerFunctions.MapCheckTrapLook, this, cr, item);
+                    allowed = scriptSys.MapCheckTrapLookEvent(this, cr, item);
                 }
                 else
                 {
@@ -391,7 +390,7 @@ void Map::ChangeViewItem(Item* item)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterShowItemOnMap, cr, item, false, nullptr);
+            scriptSys.CritterShowItemOnMapEvent(cr, item, false, nullptr);
         }
     }
 }
@@ -893,9 +892,9 @@ void Map::SendFlyEffect(
             cl->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
 }
 
-bool Map::SetScript(asIScriptFunction* func, bool first_time)
+bool Map::SetScript(string func, bool first_time)
 {
-    if (func)
+    /*if (func)
     {
         hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
@@ -912,7 +911,7 @@ bool Map::SetScript(asIScriptFunction* func, bool first_time)
         scriptSys.SetArgEntity(this);
         scriptSys.SetArgBool(first_time);
         scriptSys.RunPrepared();
-    }
+    }*/
     return true;
 }
 

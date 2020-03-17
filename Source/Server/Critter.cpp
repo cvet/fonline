@@ -81,8 +81,7 @@ void Critter::SetBreakTimeDelta(uint ms)
 uint Critter::GetAttackDist(Item* weap, int use)
 {
     uint dist = 1;
-    scriptSys.CritterGetAttackDistantion(this, weap, use, dist);
-    scriptSys.RaiseInternalEvent(ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist);
+    scriptSys.CritterGetAttackDistantionEvent(this, weap, use, dist);
     return dist;
 }
 
@@ -369,9 +368,9 @@ bool Critter::IsHaveGeckItem()
     return false;
 }
 
-bool Critter::SetScript(asIScriptFunction* func, bool first_time)
+bool Critter::SetScript(const string& func, bool first_time)
 {
-    hash func_num = 0;
+    /*hash func_num = 0;
     if (func)
     {
         func_num = scriptSys.BindScriptFuncNumByFunc(func);
@@ -393,7 +392,7 @@ bool Critter::SetScript(asIScriptFunction* func, bool first_time)
         scriptSys.SetArgEntity(this);
         scriptSys.SetArgBool(first_time);
         scriptSys.RunPrepared();
-    }
+    }*/
     return true;
 }
 
@@ -828,15 +827,12 @@ void Critter::Send_AllAutomapsInfo(MapManager& map_mngr)
         return;
 
     LocationVec locs;
-    CScriptArray* known_locs = GetKnownLocations();
-    for (uint i = 0, j = known_locs->GetSize(); i < j; i++)
+    for (uint loc_id : GetKnownLocations())
     {
-        uint loc_id = *(uint*)known_locs->At(i);
         Location* loc = map_mngr.GetLocation(loc_id);
         if (loc && loc->IsNonEmptyAutomaps())
             locs.push_back(loc);
     }
-    SAFEREL(known_locs);
 
     Send_AutomapsInfo(&locs, nullptr);
 }
@@ -848,19 +844,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
     case MESSAGE_TO_VISIBLE_ME: {
         CritterVec critters = VisCr;
         for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
-        {
-            Critter* cr = *it;
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
-        }
+            scriptSys.CritterMessageEvent(*it, this, num, val);
     }
     break;
     case MESSAGE_TO_IAM_VISIBLE: {
         CritterVec critters = VisCrSelf;
         for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
-        {
-            Critter* cr = *it;
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
-        }
+            scriptSys.CritterMessageEvent(*it, this, num, val);
     }
     break;
     case MESSAGE_TO_ALL_ON_MAP: {
@@ -869,7 +859,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
             break;
 
         for (Critter* cr : map->GetCritters())
-            scriptSys.RaiseInternalEvent(ServerFunctions.CritterMessage, cr, this, num, val);
+            scriptSys.CritterMessageEvent(cr, this, num, val);
     }
     break;
     default:
@@ -899,7 +889,7 @@ void Critter::AddCrTimeEvent(hash func_num, uint rate, uint duration, int identi
     if (duration)
         duration += settings.FullSecond;
 
-    CScriptArray* te_next_time = GetTE_NextTime();
+    /*CScriptArray* te_next_time = GetTE_NextTime();
     CScriptArray* te_func_num = GetTE_FuncNum();
     CScriptArray* te_rate = GetTE_Rate();
     CScriptArray* te_identifier = GetTE_Identifier();
@@ -925,12 +915,12 @@ void Critter::AddCrTimeEvent(hash func_num, uint rate, uint duration, int identi
     te_next_time->Release();
     te_func_num->Release();
     te_rate->Release();
-    te_identifier->Release();
+    te_identifier->Release();*/
 }
 
 void Critter::EraseCrTimeEvent(int index)
 {
-    CScriptArray* te_next_time = GetTE_NextTime();
+    /*CScriptArray* te_next_time = GetTE_NextTime();
     CScriptArray* te_func_num = GetTE_FuncNum();
     CScriptArray* te_rate = GetTE_Rate();
     CScriptArray* te_identifier = GetTE_Identifier();
@@ -954,12 +944,12 @@ void Critter::EraseCrTimeEvent(int index)
     te_next_time->Release();
     te_func_num->Release();
     te_rate->Release();
-    te_identifier->Release();
+    te_identifier->Release();*/
 }
 
 void Critter::ContinueTimeEvents(int offs_time)
 {
-    CScriptArray* te_next_time = GetTE_NextTime();
+    /*CScriptArray* te_next_time = GetTE_NextTime();
     if (te_next_time->GetSize() > 0)
     {
         for (uint i = 0, j = te_next_time->GetSize(); i < j; i++)
@@ -967,10 +957,10 @@ void Critter::ContinueTimeEvents(int offs_time)
 
         SetTE_NextTime(te_next_time);
     }
-    te_next_time->Release();
+    te_next_time->Release();*/
 }
 
-Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
     Critter(0, EntityType::Client, proto, sett, script_sys)
 {
     Connection = conn;
@@ -1486,21 +1476,18 @@ void Client::Send_EraseItem(Item* item)
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_SomeItems(CScriptArray* items_arr, int param)
+void Client::Send_SomeItems(ItemVec* items, int param)
 {
     if (IsSendDisabled() || IsOffline())
         return;
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);
 
-    ItemVec items;
-    if (items_arr)
-        scriptSys.AssignScriptArrayInVector(items, items_arr);
-    vector<PUCharVec*> items_data(items.size());
-    vector<UIntVec*> items_data_sizes(items.size());
-    for (size_t i = 0, j = items.size(); i < j; i++)
+    vector<PUCharVec*> items_data(items ? items->size() : 0);
+    vector<UIntVec*> items_data_sizes(items ? items->size() : 0);
+    for (size_t i = 0, j = items_data.size(); i < j; i++)
     {
-        uint whole_data_size = items[i]->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
+        uint whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
         msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
     }
 
@@ -1508,11 +1495,11 @@ void Client::Send_SomeItems(CScriptArray* items_arr, int param)
     Connection->Bout << NETMSG_SOME_ITEMS;
     Connection->Bout << msg_len;
     Connection->Bout << param;
-    Connection->Bout << (items_arr == nullptr);
-    Connection->Bout << (uint)items.size();
-    for (size_t i = 0, j = items.size(); i < j; i++)
+    Connection->Bout << (items == nullptr);
+    Connection->Bout << (uint)(items ? items->size() : 0);
+    for (size_t i = 0, j = items_data.size(); i < j; i++)
     {
-        Item* item = items[i];
+        Item* item = items->at(i);
         Connection->Bout << item->GetId();
         Connection->Bout << item->GetProtoId();
         NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
@@ -1529,12 +1516,12 @@ void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
     if (LockMapTransfers)
         return;
 
-    CScriptArray* known_locs = GetKnownLocations();
+    UIntVec known_locs = GetKnownLocations();
 
     // Calculate length of message
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(info_flags);
 
-    ushort loc_count = (ushort)known_locs->GetSize();
+    ushort loc_count = (ushort)known_locs.size();
     if (FLAG(info_flags, GM_INFO_LOCATIONS))
         msg_len += sizeof(loc_count) + SEND_LOCATION_SIZE * loc_count;
 
@@ -1555,7 +1542,7 @@ void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
         char empty_loc[SEND_LOCATION_SIZE] = {0, 0, 0, 0};
         for (ushort i = 0; i < loc_count;)
         {
-            uint loc_id = *(uint*)known_locs->At(i);
+            uint loc_id = known_locs[i];
             Location* loc = map_mngr.GetLocation(loc_id);
             if (loc && !loc->GetToGarbage())
             {
@@ -1568,11 +1555,7 @@ void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
                 Connection->Bout << loc->GetColor();
                 uchar count = 0;
                 if (loc->IsNonEmptyMapEntrances())
-                {
-                    CScriptArray* map_entrances = loc->GetMapEntrances();
-                    count = (uchar)(map_entrances->GetSize() / 2);
-                    map_entrances->Release();
-                }
+                    count = (uchar)(loc->GetMapEntrances().size() / 2);
                 Connection->Bout << count;
             }
             else
@@ -1583,15 +1566,13 @@ void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
             }
         }
     }
-    SAFEREL(known_locs);
 
     if (FLAG(info_flags, GM_INFO_ZONES_FOG))
     {
-        CScriptArray* gmap_fog = GetGlobalMapFog();
-        if (gmap_fog->GetSize() != GM_ZONES_FOG_SIZE)
-            gmap_fog->Resize(GM_ZONES_FOG_SIZE);
-        Connection->Bout.Push(gmap_fog->At(0), GM_ZONES_FOG_SIZE);
-        gmap_fog->Release();
+        UCharVec gmap_fog = GetGlobalMapFog();
+        if (gmap_fog.size() != GM_ZONES_FOG_SIZE)
+            gmap_fog.resize(GM_ZONES_FOG_SIZE);
+        Connection->Bout.Push(&gmap_fog[0], GM_ZONES_FOG_SIZE);
     }
 
     CLIENT_OUTPUT_END(this);
@@ -1621,11 +1602,7 @@ void Client::Send_GlobalLocation(Location* loc, bool add)
     Connection->Bout << loc->GetColor();
     uchar count = 0;
     if (loc->IsNonEmptyMapEntrances())
-    {
-        CScriptArray* map_entrances = loc->GetMapEntrances();
-        count = (uchar)(map_entrances->GetSize() / 2);
-        map_entrances->Release();
-    }
+        count = (uchar)(loc->GetMapEntrances().size() / 2);
     Connection->Bout << count;
     CLIENT_OUTPUT_END(this);
 }
@@ -1749,7 +1726,7 @@ void Client::Send_GameInfo(Map* map)
     if (IsSendDisabled() || IsOffline())
         return;
 
-    int time = (map ? map->GetCurDayTime() : -1);
+    /*int time = (map ? map->GetCurDayTime() : -1);
     uchar rain = (map ? map->GetRainCapacity() : 0);
     bool no_log_out = (map ? map->GetIsNoLogOut() : true);
 
@@ -1787,7 +1764,7 @@ void Client::Send_GameInfo(Map* map)
     Connection->Bout << no_log_out;
     Connection->Bout.Push(day_time, sizeof(day_time));
     Connection->Bout.Push(day_color, sizeof(day_color));
-    CLIENT_OUTPUT_END(this);
+    CLIENT_OUTPUT_END(this);*/
 }
 
 void Client::Send_Text(Critter* from_cr, const string& text, uchar how_say)
@@ -1989,7 +1966,7 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
     if (IsSendDisabled() || IsOffline())
         return;
 
-    if (locs_vec)
+    /*if (locs_vec)
     {
         LocationVec* locs = (LocationVec*)locs_vec;
         uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(ushort);
@@ -2064,7 +2041,7 @@ void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 
         if (automaps)
             automaps->Release();
-    }
+    }*/
 }
 
 void Client::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
@@ -2176,7 +2153,7 @@ bool Client::IsTalking()
     return Talk.TalkType != TALK_NONE;
 }
 
-Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ScriptSystem& script_sys) :
+Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
     Critter(id, EntityType::Npc, proto, sett, script_sys)
 {
     CritterIsNpc = true;

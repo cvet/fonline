@@ -95,7 +95,7 @@ DataBase::Document PropertiesSerializator::SaveToDbDocument(
 bool PropertiesSerializator::LoadFromDbDocument(
     Properties* props, const DataBase::Document& doc, NameResolver& name_resolver)
 {
-    bool is_error = false;
+    /*bool is_error = false;
     for (const auto& kv : doc)
     {
         const string& key = kv.first;
@@ -748,13 +748,14 @@ bool PropertiesSerializator::LoadFromDbDocument(
             throw UnreachablePlaceException(LINE_STR);
         }
     }
-    return !is_error;
+    return !is_error;*/
+    return false;
 }
 
 DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
     Properties* props, Property* prop, NameResolver& name_resolver)
 {
-    RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
+    /*RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
     RUNTIME_ASSERT(!prop->isTemporary);
 
     uint data_size;
@@ -1053,6 +1054,6 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
     else
     {
         RUNTIME_ASSERT(!"Unexpected type");
-    }
+    }*/
     return DataBase::Value();
 }

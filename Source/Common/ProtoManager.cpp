@@ -375,10 +375,8 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
     // Check maps for locations
     for (auto& kv : locProtos)
     {
-        CScriptArray* map_pids = kv.second->GetMapProtos();
-        for (uint i = 0, j = map_pids->GetSize(); i < j; i++)
+        for (hash map_pid : kv.second->GetMapProtos())
         {
-            hash map_pid = *(hash*)map_pids->At(i);
             if (!mapProtos.count(map_pid))
             {
                 WriteLog("Proto map '{}' not found for proto location '{}'.\n", _str().parseHash(map_pid),
@@ -386,7 +384,6 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
                 errors++;
             }
         }
-        map_pids->Release();
     }
     if (errors)
         return false;

@@ -39,7 +39,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ScriptSystem& script_sys) :
+ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ClientScriptSystem& script_sys) :
     fileMngr {file_mngr}, sprMngr {spr_mngr}, scriptSys {script_sys}
 {
     eventUnsubscriber += fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
@@ -177,8 +177,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim
                 uint flags = 0;
                 int ox = 0, oy = 0;
                 string str;
-                if (scriptSys.RaiseInternalEvent(
-                        ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str))
+                if (scriptSys.CritterAnimationEvent(model_name, anim1, anim2, pass, flags, ox, oy, str))
                 {
                     if (!str.empty())
                     {
@@ -262,8 +261,8 @@ AnyFrames* ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim
         hash model_name_ = model_name;
         uint anim1_ = anim1, anim2_ = anim2;
         if (!anim &&
-            scriptSys.RaiseInternalEvent(ClientFunctions.CritterAnimationSubstitute, base_model_name, anim1_base,
-                anim2_base, &model_name, &anim1, &anim2))
+            scriptSys.CritterAnimationSubstituteEvent(
+                base_model_name, anim1_base, anim2_base, model_name, anim1, anim2))
         {
             if (model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_)
                 continue;
@@ -292,8 +291,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint an
 {
     // Convert from common to fallout specific
     uint anim1ex = 0, anim2ex = 0, flags = 0;
-    if (scriptSys.RaiseInternalEvent(
-            ClientFunctions.CritterAnimationFallout, model_name, &anim1, &anim2, &anim1ex, &anim2ex, &flags))
+    if (scriptSys.CritterAnimationFalloutEvent(model_name, anim1, anim2, anim1ex, anim2ex, flags))
     {
         // Load
         AnyFrames* anim = LoadFalloutAnimSpr(model_name, anim1, anim2);

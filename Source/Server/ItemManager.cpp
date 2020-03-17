@@ -42,7 +42,7 @@
 #include "Testing.h"
 
 ItemManager::ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
-    CritterManager& cr_mngr, ScriptSystem& script_sys) :
+    CritterManager& cr_mngr, ServerScriptSystem& script_sys) :
     protoMngr {proto_mngr}, entityMngr {entity_mngr}, mapMngr {map_mngr}, crMngr {cr_mngr}, scriptSys {script_sys}
 {
 }
@@ -202,7 +202,7 @@ Item* ItemManager::CreateItem(hash pid, uint count /* = 0 */, Properties* props 
         RadioRegister(item, true);
 
     // Scripts
-    scriptSys.RaiseInternalEvent(ServerFunctions.ItemInit, item, true);
+    scriptSys.ItemInitEvent(item, true);
     if (!item->IsDestroyed)
         item->SetScript(nullptr, true);
 
@@ -245,7 +245,7 @@ void ItemManager::DeleteItem(Item* item)
     item->IsDestroying = true;
 
     // Finish events
-    scriptSys.RaiseInternalEvent(ServerFunctions.ItemFinish, item);
+    scriptSys.ItemFinishEvent(item);
 
     // Tear off from environment
     while (item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems())
@@ -557,7 +557,7 @@ bool ItemManager::SetItemCritter(Critter* cr, hash pid, uint count)
 
 bool ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to)
 {
-    return scriptSys.RaiseInternalEvent(ServerFunctions.ItemCheckMove, item, count, from, to);
+    return scriptSys.ItemCheckMoveEvent(item, count, from, to);
 }
 
 bool ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, Item* item, uint count)

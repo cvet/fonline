@@ -37,14 +37,16 @@
 
 #include "ScriptSystem.h"
 
-class FOServer;
+class Entity;
+class Item;
+class Critter;
+class Map;
+class Location;
 
 class ServerScriptSystem : public ScriptSystem
 {
 public:
-    void InitNativeScripting(FOServer& server);
-    void InitAngelScriptScripting(FOServer& server);
-    void InitMonoScripting(FOServer& server);
+    ServerScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) : ScriptSystem(obj, sett, file_mngr) {}
 
 #define FO_API_SERVER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
 #define FO_API_ARG(type, name) type
@@ -55,4 +57,9 @@ public:
 #define FO_API_ARG_ARR_REF(type, name) vector<type>&
 #define FO_API_ARG_ENUM(type, name) int
 #include "ScriptApi.h"
+
+protected:
+    virtual void InitNativeScripting() override;
+    virtual void InitAngelScriptScripting() override;
+    virtual void InitMonoScripting() override;
 };

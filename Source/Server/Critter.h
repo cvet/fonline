@@ -117,7 +117,7 @@ public:
     ItemVec& GetInventory();
     bool IsHaveGeckItem();
 
-    bool SetScript(string func, bool first_time);
+    bool SetScript(const string& func, bool first_time);
 
     bool IsFree() { return Timer::GameTick() - startBreakTime >= breakTime; }
     bool IsBusy() { return !IsFree(); }
@@ -302,7 +302,7 @@ public:
     void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void Send_AddItem(Item* item);
     void Send_EraseItem(Item* item);
-    void Send_SomeItems(CScriptArray* items_arr, int param);
+    void Send_SomeItems(ItemVec* items, int param);
     void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
     void Send_GlobalLocation(Location* loc, bool add);
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);

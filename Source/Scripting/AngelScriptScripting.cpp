@@ -33,21 +33,30 @@
 
 #ifdef FO_SERVER_SCRIPTING
 #include "ServerScripting.h"
+#define SCRIPTING_CLASS ServerScriptSystem
 #endif
 #ifdef FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
+#define SCRIPTING_CLASS ClientScriptSystem
 #endif
 #ifdef FO_MAPPER_SCRIPTING
 #include "MapperScripting.h"
+#define SCRIPTING_CLASS MapperScriptSystem
 #endif
 
 #ifdef FO_ANGELSCRIPT_SCRIPTING
+#include "AngelScriptExtensions.h"
 #include "AngelScriptReflection.h"
+#include "AngelScriptScriptDict.h"
+#include "Log.h"
+#include "Testing.h"
 
 #include "angelscript.h"
 #include "datetime/datetime.h"
 #include "preprocessor.h"
 #include "scriptany/scriptany.h"
+#include "scriptarray/scriptarray.h"
+#include "scriptdictionary/scriptdictionary.h"
 #include "scriptfile/scriptfile.h"
 #include "scriptfile/scriptfilesystem.h"
 #include "scripthelper/scripthelper.h"
@@ -55,29 +64,78 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
-
-#ifdef FO_SERVER_SCRIPTING
-void ServerScriptSystem::InitAngelScriptScripting(FOServer& server)
-#endif
-#ifdef FO_CLIENT_SCRIPTING
-    void ClientScriptSystem::InitAngelScriptScripting(FOClient& client)
-#endif
-#ifdef FO_MAPPER_SCRIPTING
-        void MapperScriptSystem::InitAngelScriptScripting(FOMapper& mapper)
-#endif
+struct ScriptSystem::AngelScriptImpl
 {
+    asIScriptEngine* Engine {};
+};
+
+static const string ContextStatesStr[] = {
+    "Finished",
+    "Suspended",
+    "Aborted",
+    "Exception",
+    "Prepared",
+    "Uninitialized",
+    "Active",
+    "Error",
+};
+
+static void CallbackMessage(const asSMessageInfo* msg, void* param)
+{
+    const char* type = "Error";
+    if (msg->type == asMSGTYPE_WARNING)
+        type = "Warning";
+    else if (msg->type == asMSGTYPE_INFORMATION)
+        type = "Info";
+
+    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message,
+        Preprocessor::ResolveOriginalLine(msg->row));
+}
+
+void SCRIPTING_CLASS::InitAngelScriptScripting()
+{
+    pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
+
+    asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    RUNTIME_ASSERT(engine);
+    pAngelScriptImpl->Engine = engine;
+    // asEngine->ShutDownAndRelease();
+
+    engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL);
+
+    engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true);
+    engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true);
+    engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true);
+    engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+    engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true);
+    engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true);
+    engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true);
+    engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
+    engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
+
+    RegisterScriptArray(engine, true);
+    ScriptExtensions::RegisterScriptArrayExtensions(engine);
+    RegisterStdString(engine);
+    ScriptExtensions::RegisterScriptStdStringExtensions(engine);
+    RegisterScriptAny(engine);
+    RegisterScriptDictionary(engine);
+    RegisterScriptDict(engine);
+    ScriptExtensions::RegisterScriptDictExtensions(engine);
+    RegisterScriptFile(engine);
+    RegisterScriptFileSystem(engine);
+    RegisterScriptDateTime(engine);
+    RegisterScriptMath(engine);
+    RegisterScriptWeakRef(engine);
+    RegisterScriptReflection(engine);
+
+    engine->SetUserData(mainObj);
 }
 
 #else
-#ifdef FO_SERVER_SCRIPTING
-void ServerScriptSystem::InitAngelSriptScripting(FOServer& server)
-#endif
-#ifdef FO_CLIENT_SCRIPTING
-    void ClientScriptSystem::InitAngelSriptScripting(FOClient& client)
-#endif
-#ifdef FO_MAPPER_SCRIPTING
-        void MapperScriptSystem::InitAngelSriptScripting(FOMapper& mapper)
-#endif
+struct ScriptSystem::AngelScriptImpl
+{
+};
+void SCRIPTING_CLASS::InitAngelScriptScripting()
 {
 }
 #endif

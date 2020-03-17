@@ -528,11 +528,42 @@ FO_API_SERVER_EVENT(StaticItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(C
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
  * ...
+ ******************************************************************************/
+#endif
+FO_API_CLIENT_EVENT(Start)
+
+#ifdef FO_API_CLIENT_EVENT_DOC
+/*******************************************************************************
+ * ...
+ ******************************************************************************/
+#endif
+FO_API_CLIENT_EVENT(Finish)
+
+#ifdef FO_API_CLIENT_EVENT_DOC
+/*******************************************************************************
+ * ...
+ *
+ * @param login ...
+ * @param password ...
+ ******************************************************************************/
+#endif
+FO_API_CLIENT_EVENT(AutoLogin, FO_API_ARG(string, login), FO_API_ARG(string, password))
+
+#ifdef FO_API_CLIENT_EVENT_DOC
+/*******************************************************************************
+ * ...
+ ******************************************************************************/
+#endif
+FO_API_CLIENT_EVENT(Loop)
+
+#ifdef FO_API_CLIENT_EVENT_DOC
+/*******************************************************************************
+ * ...
  *
  * @param screens ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(GetActiveScreens, FO_API_ARG_ARR(int, screens))
+FO_API_CLIENT_EVENT(GetActiveScreens, FO_API_ARG_ARR_REF(int, screens))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -576,7 +607,7 @@ FO_API_CLIENT_EVENT(RenderMap)
  * @param button ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(MouseDown, FO_API_ARG(int, button))
+FO_API_CLIENT_EVENT(MouseDown, FO_API_ARG_ENUM(MouseButton, button))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -585,7 +616,7 @@ FO_API_CLIENT_EVENT(MouseDown, FO_API_ARG(int, button))
  * @param button ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(MouseUp, FO_API_ARG(int, button))
+FO_API_CLIENT_EVENT(MouseUp, FO_API_ARG_ENUM(MouseButton, button))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -605,7 +636,7 @@ FO_API_CLIENT_EVENT(MouseMove, FO_API_ARG(int, offsetX), FO_API_ARG(int, offsetY
  * @param text ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(KeyDown, FO_API_ARG(uchar, key), FO_API_ARG(string, text))
+FO_API_CLIENT_EVENT(KeyDown, FO_API_ARG_ENUM(KeyCode, key), FO_API_ARG(string, text))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -614,7 +645,7 @@ FO_API_CLIENT_EVENT(KeyDown, FO_API_ARG(uchar, key), FO_API_ARG(string, text))
  * @param key ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(KeyUp, FO_API_ARG(uchar, key))
+FO_API_CLIENT_EVENT(KeyUp, FO_API_ARG_ENUM(KeyCode, key))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -774,7 +805,7 @@ FO_API_CLIENT_EVENT(OutMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(int
  * @param scriptCall ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(MessageBox, FO_API_ARG_REF(string, text), FO_API_ARG(int, type), FO_API_ARG(bool, scriptCall))
+FO_API_CLIENT_EVENT(MessageBox, FO_API_ARG(string, text), FO_API_ARG_ENUM(MessageBoxTextType, type), FO_API_ARG(bool, scriptCall))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************
@@ -929,7 +960,7 @@ FO_API_MAPPER_EVENT(ConsoleMessage, FO_API_ARG_REF(string, text))
  * @param map ...
  ******************************************************************************/
 #endif
-FO_API_MAPPER_EVENT(MapLoad, FO_API_ARG_OBJ(Map, map))
+FO_API_MAPPER_EVENT(MapLoad, FO_API_ARG_OBJ(MapView, map))
 
 #ifdef FO_API_MAPPER_EVENT_DOC
 /*******************************************************************************
@@ -938,7 +969,7 @@ FO_API_MAPPER_EVENT(MapLoad, FO_API_ARG_OBJ(Map, map))
  * @param map ...
  ******************************************************************************/
 #endif
-FO_API_MAPPER_EVENT(MapSave, FO_API_ARG_OBJ(Map, map))
+FO_API_MAPPER_EVENT(MapSave, FO_API_ARG_OBJ(MapView, map))
 
 #ifdef FO_API_MAPPER_EVENT_DOC
 /*******************************************************************************
@@ -948,4 +979,4 @@ FO_API_MAPPER_EVENT(MapSave, FO_API_ARG_OBJ(Map, map))
  * @param properties ...
  ******************************************************************************/
 #endif
-FO_API_MAPPER_EVENT(InspectorProperties, FO_API_ARG_OBJ(Entity, entity), FO_API_ARG_ARR(int, properties))
+FO_API_MAPPER_EVENT(InspectorProperties, FO_API_ARG_OBJ(Entity, entity), FO_API_ARG_ARR_REF(int, properties))

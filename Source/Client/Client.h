@@ -112,17 +112,11 @@ DECLARE_EXCEPTION(ClientRestartException);
 #define INIT_NET_REASON_LOAD (3)
 #define INIT_NET_REASON_CUSTOM (4)
 
-class CScriptDictionary;
-class CScriptDict;
-class CScriptArray;
-
 class FOClient :
     public NonMovable // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
 {
 public:
-    static FOClient* Self; // Todo: remove client Self singleton
-
-    FOClient(ClientSettings& sett);
+    FOClient(GlobalSettings& sett);
     ~FOClient();
     void ProcessAutoLogin();
     void TryExit();
@@ -146,17 +140,19 @@ public:
     SoundManager SndMngr;
     CacheStorage Cache;
     GameTimer GameTime;
-
-    hash CurMapPid;
-    hash CurMapLocPid;
-    uint CurMapIndexInLoc;
-    StrVec Preload3dFiles;
-    int WindowResolutionDiffX;
-    int WindowResolutionDiffY;
-    string LoginName;
-    string LoginPassword;
-    bool CanDrawInScripts;
-    bool IsAutoLogin;
+    GlobalVars* Globals {};
+    hash CurMapPid {};
+    hash CurMapLocPid {};
+    uint CurMapIndexInLoc {};
+    StrVec Preload3dFiles {};
+    int WindowResolutionDiffX {};
+    int WindowResolutionDiffY {};
+    string LoginName {};
+    string LoginPassword {};
+    bool CanDrawInScripts {};
+    bool IsAutoLogin {};
+    MapView* CurMap {};
+    LocationView* CurLocation {};
 
     // Offscreen drawing
     vector<RenderEffect*> OffscreenEffects;
@@ -166,15 +162,15 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces;
 
     // Screen
-    int ScreenModeMain;
-    void ShowMainScreen(int new_screen, CScriptDictionary* params = nullptr);
+    int ScreenModeMain {};
+    void ShowMainScreen(int new_screen, StrIntMap params);
     int GetMainScreen() { return ScreenModeMain; }
     bool IsMainScreen(int check_screen) { return check_screen == ScreenModeMain; }
-    void ShowScreen(int screen, CScriptDictionary* params = nullptr);
+    void ShowScreen(int screen, StrIntMap params);
     void HideScreen(int screen);
-    int GetActiveScreen(IntVec** screens = nullptr);
+    int GetActiveScreen(IntVec* screens = nullptr);
     bool IsScreenPresent(int screen);
-    void RunScreenScript(bool show, int screen, CScriptDictionary* params);
+    void RunScreenScript(bool show, int screen, StrIntMap params);
 
     // Input
     void ProcessInputEvents();
@@ -317,17 +313,17 @@ public:
     string FmtGameText(uint str_num, ...);
 
     // Properties callbacks
-    static void OnSendGlobalValue(Entity* entity, Property* prop);
-    static void OnSendCritterValue(Entity* entity, Property* prop);
-    static void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSendItemValue(Entity* entity, Property* prop);
-    static void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSendMapValue(Entity* entity, Property* prop);
-    static void OnSendLocationValue(Entity* entity, Property* prop);
+    void OnSendGlobalValue(Entity* entity, Property* prop);
+    void OnSendCritterValue(Entity* entity, Property* prop);
+    void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSendItemValue(Entity* entity, Property* prop);
+    void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSendMapValue(Entity* entity, Property* prop);
+    void OnSendLocationValue(Entity* entity, Property* prop);
 
     /************************************************************************/
     /* Video                                                                */
@@ -445,10 +441,6 @@ public:
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
 
-    /************************************************************************/
-    /* Scripting                                                            */
-    /************************************************************************/
-    bool ReloadScripts();
     void OnItemInvChanged(ItemView* old_item, ItemView* new_item);
 
     /************************************************************************/

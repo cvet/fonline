@@ -40,7 +40,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 
 class MapManager;
 class CritterManager;
@@ -49,7 +49,8 @@ class ItemManager;
 class EntityManager
 {
 public:
-    EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ScriptSystem& script_sys);
+    EntityManager(
+        MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys);
 
     void RegisterEntity(Entity* entity);
     void UnregisterEntity(Entity* entity);
@@ -78,7 +79,7 @@ private:
     MapManager& mapMngr;
     CritterManager& crMngr;
     ItemManager& itemMngr;
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     EntityMap allEntities {};
     uint entitiesCount[(int)EntityType::Max] {};
 };

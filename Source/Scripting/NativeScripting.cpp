@@ -33,38 +33,34 @@
 
 #ifdef FO_SERVER_SCRIPTING
 #include "ServerScripting.h"
+#define SCRIPTING_CLASS ServerScriptSystem
 #endif
 #ifdef FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
+#define SCRIPTING_CLASS ClientScriptSystem
 #endif
 #ifdef FO_MAPPER_SCRIPTING
 #include "MapperScripting.h"
+#define SCRIPTING_CLASS MapperScriptSystem
 #endif
 
 #ifdef FO_NATIVE_SCRIPTING
+#include "Testing.h"
 
-#ifdef FO_SERVER_SCRIPTING
-void ServerScriptSystem::InitNativeScripting(FOServer& server)
-#endif
-#ifdef FO_CLIENT_SCRIPTING
-    void ClientScriptSystem::InitNativeScripting(FOClient& client)
-#endif
-#ifdef FO_MAPPER_SCRIPTING
-        void MapperScriptSystem::InitNativeScripting(FOMapper& mapper)
-#endif
+struct ScriptSystem::NativeImpl
 {
+};
+
+void SCRIPTING_CLASS::InitNativeScripting()
+{
+    pNativeImpl = std::make_unique<NativeImpl>();
 }
 
 #else
-#ifdef FO_SERVER_SCRIPTING
-void ServerScriptSystem::InitNativeScripting()
-#endif
-#ifdef FO_CLIENT_SCRIPTING
-    void ClientScriptSystem::InitNativeScripting(FOClient& client)
-#endif
-#ifdef FO_MAPPER_SCRIPTING
-        void MapperScriptSystem::InitNativeScripting(FOMapper& mapper)
-#endif
+struct ScriptSystem::NativeImpl
+{
+};
+void SCRIPTING_CLASS::InitNativeScripting()
 {
 }
 #endif

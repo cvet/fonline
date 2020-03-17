@@ -58,7 +58,7 @@ public:
 
     ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
     void SetProto(ProtoItem* proto);
-    bool SetScript(asIScriptFunction* func, bool first_time);
+    bool SetScript(string func, bool first_time);
     void SetSortValue(ItemVec& items);
     void ChangeCount(int val);
 

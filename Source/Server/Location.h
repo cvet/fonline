@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 
 #define FO_API_LOCATION_HEADER
 #include "ScriptApi.h"
@@ -51,7 +51,7 @@ using LocationMap = map<uint, Location*>;
 class Location : public Entity
 {
 public:
-    Location(uint id, ProtoLocation* proto, ScriptSystem& script_sys);
+    Location(uint id, ProtoLocation* proto, ServerScriptSystem& script_sys);
     void BindScript();
     ProtoLocation* GetProtoLoc();
     bool IsLocVisible();
@@ -79,6 +79,6 @@ public:
 #include "ScriptApi.h"
 
 private:
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     MapVec locMaps {};
 };

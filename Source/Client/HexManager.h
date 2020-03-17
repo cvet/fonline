@@ -38,6 +38,7 @@
 #include "Common.h"
 
 #include "CacheStorage.h"
+#include "ClientScripting.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
@@ -47,7 +48,6 @@
 #include "MapLoader.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 #include "Sprites.h"
@@ -134,7 +134,7 @@ class HexManager
 {
 public:
     HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-        EffectManager& effect_mngr, ResourceManager& res_mngr, ScriptSystem& script_sys);
+        EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);
@@ -196,7 +196,7 @@ private:
     SpriteManager& sprMngr;
     EffectManager& effectMngr;
     ResourceManager& resMngr;
-    ScriptSystem& scriptSys;
+    ClientScriptSystem& scriptSys;
 
     ushort maxHexX {};
     ushort maxHexY {};

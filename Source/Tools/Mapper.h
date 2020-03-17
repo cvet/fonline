@@ -49,11 +49,11 @@
 #include "LocationView.h"
 #include "MapLoader.h"
 #include "MapView.h"
+#include "MapperScripting.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -72,20 +72,14 @@
 #define FONT_DEFAULT (5)
 #endif
 
-class CScriptDictionary;
-class CScriptDict;
-class CScriptArray;
-
-class FOMapper : public NonCopyable // Todo: rename FOMapper to just Mapper
+class FOMapper : public NonMovable // Todo: rename FOMapper to just Mapper
 {
 public:
-    static FOMapper* Self; // Todo: remove mapper Self singleton
-
     MapperSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
     FileManager ServerFileMngr;
-    ScriptSystem ScriptSys;
+    MapperScriptSystem ScriptSys;
     CacheStorage Cache;
     Keyboard Keyb;
     ProtoManager ProtoMngr;
@@ -94,11 +88,13 @@ public:
     HexManager HexMngr;
     ResourceManager ResMngr;
     ConfigFile IfaceIni;
-    string ServerWritePath;
-    string ClientWritePath;
-    PropertyVec ShowProps;
+    string ServerWritePath {};
+    string ClientWritePath {};
+    PropertyVec ShowProps {};
+    MapView* ClientCurMap {};
+    LocationView* ClientCurLocation {};
 
-    FOMapper(MapperSettings& sett);
+    FOMapper(GlobalSettings& sett);
     int InitIface();
     bool IfaceLoadRect(Rect& comp, const char* name);
     void MainLoop();
@@ -424,16 +420,15 @@ public:
     bool SaveLogFile();
 
     // Scripts
-    static bool SpritesCanDraw;
-    bool InitScriptSystem();
+    bool SpritesCanDraw;
     void RunStartScript();
     void RunMapLoadScript(MapView* map);
     void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    static void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
 };

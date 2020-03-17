@@ -63,9 +63,9 @@ void Item::SetProto(ProtoItem* proto)
     Props = proto->Props;
 }
 
-bool Item::SetScript(asIScriptFunction* func, bool first_time)
+bool Item::SetScript(string func, bool first_time)
 {
-    if (func)
+    /*if (func)
     {
         hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
@@ -82,7 +82,7 @@ bool Item::SetScript(asIScriptFunction* func, bool first_time)
         scriptSys.SetArgEntity(this);
         scriptSys.SetArgBool(first_time);
         scriptSys.RunPrepared();
-    }
+    }*/
     return true;
 }
 

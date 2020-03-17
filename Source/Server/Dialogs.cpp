@@ -73,7 +73,7 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
     else if (prop_map)
         prop = prop_map, type = DR_PROP_MAP;
 
-    if (type == DR_PROP_CRITTER && prop->IsDict())
+    /*if (type == DR_PROP_CRITTER && prop->IsDict())
     {
         type = DR_PROP_CRITTER_DICT;
         if (prop->GetASObjectType()->GetSubTypeId(0) != asTYPEID_UINT32)
@@ -89,7 +89,7 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
             WriteLog("DR property '{}' is not POD type.\n", str);
             return -1;
         }
-    }
+    }*/
 
     if (is_demand && !prop->IsReadable())
     {
@@ -106,7 +106,7 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FileManager& file_mngr, ScriptSystem& script_sys) :
+DialogManager::DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys) :
     fileMngr {file_mngr}, scriptSys {script_sys}
 {
 }
@@ -521,7 +521,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
             fail = true;
         }
 
-// Bind function
+        /*// Bind function
 #define BIND_D_FUNC(params) \
     do \
     { \
@@ -578,7 +578,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
         {
             WriteLog("Script '{}' bind error.\n", name);
             return nullptr;
-        }
+        }*/
     }
     break;
     case DR_OR:
@@ -621,14 +621,15 @@ uint DialogManager::GetNotAnswerAction(const string& str, bool& ret_val)
     if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None")
         return 0;
 
-    uint id = scriptSys.BindByFuncName(str, "uint %s(Critter, Critter, string)", false, true);
+    /*uint id = scriptSys.BindByFuncName(str, "uint %s(Critter, Critter, string)", false, true);
     if (id)
     {
         ret_val = true;
         return id;
     }
 
-    return scriptSys.BindByFuncName(str, "void %s(Critter, Critter, string)", false);
+    return scriptSys.BindByFuncName(str, "void %s(Critter, Critter, string)", false);*/
+    return 0;
 }
 
 char DialogManager::GetDRType(const string& str)

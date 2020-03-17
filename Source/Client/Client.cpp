@@ -53,14 +53,12 @@
         return; \
     }
 
-FOClient* FOClient::Self = nullptr;
-
-FOClient::FOClient(ClientSettings& sett) :
+FOClient::FOClient(GlobalSettings& sett) :
     Settings {sett},
     GeomHelper(Settings),
     GameTime(Settings, Globals),
     FileMngr(),
-    ScriptSys(Settings, FileMngr),
+    ScriptSys(this, sett, FileMngr),
     SndMngr(Settings, FileMngr),
     Keyb(Settings, SprMngr),
     ProtoMngr(),
@@ -71,9 +69,7 @@ FOClient::FOClient(ClientSettings& sett) :
     Cache("Data/Cache.bin"),
     GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
-    RUNTIME_ASSERT(!Self);
-    Self = this;
-
+    Globals = new GlobalVars();
     ComBuf.resize(NetBuffer::DefaultBufSize);
     Sock = INVALID_SOCKET;
     InitNetReason = INIT_NET_REASON_NONE;
@@ -114,18 +110,12 @@ FOClient::FOClient(ClientSettings& sett) :
     WaitDraw();
     SprMngr.EndScene();
 
-    // Scripts
-    bool reload_scripts_ok = ReloadScripts();
-    RUNTIME_ASSERT(reload_scripts_ok);
-
     // Recreate static atlas
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType(AtlasType::Static);
 
     // Modules initialization
-    ScriptSys.RunModuleInitFunctions();
-    ScriptSys.Events.Start();
-    ScriptSys.Events.Finish();
+    ScriptSys.StartEvent();
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -156,14 +146,10 @@ FOClient::FOClient(ClientSettings& sett) :
 FOClient::~FOClient()
 {
     NetDisconnect();
-    Self = nullptr;
 }
 
 void FOClient::ProcessAutoLogin()
 {
-    if (!ClientFunctions.AutoLogin)
-        return;
-
     string auto_login = Settings.AutoLogin;
 
 #ifdef FO_WEB
@@ -194,8 +180,7 @@ void FOClient::ProcessAutoLogin()
 
     IsAutoLogin = true;
 
-    if (!ScriptSys.RaiseInternalEvent(ClientFunctions.AutoLogin, &auto_login_args[0], &auto_login_args[1]) ||
-        InitNetReason == INIT_NET_REASON_NONE)
+    if (ScriptSys.AutoLoginEvent(auto_login_args[0], auto_login_args[1]) && InitNetReason == INIT_NET_REASON_NONE)
     {
         LoginName = auto_login_args[0];
         LoginPassword = auto_login_args[1];
@@ -658,7 +643,7 @@ void FOClient::MainLoop()
         {
             if (!NetConnect(Settings.Host, Settings.Port))
             {
-                ShowMainScreen(SCREEN_LOGIN);
+                ShowMainScreen(SCREEN_LOGIN, {});
                 AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
             }
         }
@@ -686,7 +671,7 @@ void FOClient::MainLoop()
 
     // Exit in Login screen if net disconnect
     if (!IsConnected && !IsMainScreen(SCREEN_LOGIN))
-        ShowMainScreen(SCREEN_LOGIN);
+        ShowMainScreen(SCREEN_LOGIN, {});
 
     // Input
     ProcessInputEvents();
@@ -721,14 +706,8 @@ void FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
 
-    // Process pending invocations
-    ScriptSys.ProcessDeferredCalls();
-
     // Script loop
-    ScriptSys.RaiseInternalEvent(ClientFunctions.Loop);
-
-    // Suspended contexts
-    ScriptSys.RunSuspended();
+    ScriptSys.LoopEvent();
 
     // Quake effect
     ProcessScreenEffectQuake();
@@ -749,13 +728,13 @@ void FOClient::DrawIface()
     // Make dirty offscreen surfaces
     if (!PreDirtyOffscreenSurfaces.empty())
     {
-        DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), Self->PreDirtyOffscreenSurfaces.begin(),
-            Self->PreDirtyOffscreenSurfaces.end());
+        DirtyOffscreenSurfaces.insert(
+            DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
         PreDirtyOffscreenSurfaces.clear();
     }
 
     CanDrawInScripts = true;
-    ScriptSys.RaiseInternalEvent(ClientFunctions.RenderIface);
+    ScriptSys.RenderIfaceEvent();
     CanDrawInScripts = false;
 }
 
@@ -864,7 +843,7 @@ void FOClient::ProcessInputEvents()
             continue;
 
         Keyb.Lost();
-        ScriptSys.RaiseInternalEvent(ClientFunctions.InputLost);
+        ScriptSys.InputLostEvent();
         return;
     }
 
@@ -897,7 +876,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT)
             Keyb.ShiftDwn = true;
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.KeyDown, key_code, &key_text);
+        ScriptSys.KeyDownEvent((int)key_code, key_text);
     }
     else if (event.Type == InputEvent::EventType::KeyUpEvent)
     {
@@ -910,7 +889,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT)
             Keyb.ShiftDwn = false;
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.KeyUp, key_code);
+        ScriptSys.KeyUpEvent((int)key_code);
     }
     else if (event.Type == InputEvent::EventType::MouseMoveEvent)
     {
@@ -922,7 +901,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         Settings.MouseX = mouse_x;
         Settings.MouseY = mouse_y;
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseMove, delta_x, delta_y);
+        ScriptSys.MouseMoveEvent(delta_x, delta_y);
     }
     else if (event.Type == InputEvent::EventType::MouseDownEvent)
     {
@@ -934,13 +913,13 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
                 NextVideo();
         }
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseDown, mouse_button);
+        ScriptSys.MouseDownEvent((int)mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseUpEvent)
     {
         MouseButton mouse_button = event.MU.Button;
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.MouseUp, mouse_button);
+        ScriptSys.MouseUpEvent((int)mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseWheelEvent)
     {
@@ -1686,7 +1665,7 @@ void FOClient::NetProcess()
             Net_OnSomeItems();
             break;
         case NETMSG_RPC:
-            ScriptSys.HandleRpc(&Bin);
+            // ScriptSys.HandleRpc(&Bin);
             break;
 
         case NETMSG_ADD_ITEM_ON_MAP:
@@ -1805,7 +1784,7 @@ void FOClient::Net_SendText(const char* send_str, uchar how_say)
     bool result = false;
     int say_type = how_say;
     string str = send_str;
-    result = ScriptSys.RaiseInternalEvent(ClientFunctions.OutMessage, &str, &say_type);
+    result = ScriptSys.OutMessageEvent(str, say_type);
 
     how_say = say_type;
 
@@ -2090,7 +2069,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
         AddCritter(cr);
 
-        ScriptSys.RaiseInternalEvent(ClientFunctions.CritterIn, cr);
+        ScriptSys.CritterInEvent(cr);
 
         if (cr->IsChosen())
             RebuildLookBorders = true;
@@ -2110,7 +2089,7 @@ void FOClient::Net_OnRemoveCritter()
 
     cr->Finish();
 
-    ScriptSys.RaiseInternalEvent(ClientFunctions.CritterOut, cr);
+    ScriptSys.CritterOutEvent(cr);
 }
 
 void FOClient::Net_OnText()
@@ -2198,7 +2177,7 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
 
     uint text_delay = Settings.TextDelay + (uint)fstr.length() * 100;
     string sstr = fstr;
-    bool result = ScriptSys.RaiseInternalEvent(ClientFunctions.InMessage, &sstr, &how_say, &crid, &text_delay);
+    bool result = ScriptSys.InMessageEvent(sstr, how_say, crid, text_delay);
     if (!result)
         return;
 
@@ -2291,7 +2270,7 @@ void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
 {
     uint text_delay = Settings.TextDelay + (uint)str.length() * 100;
     string sstr = str;
-    ScriptSys.RaiseInternalEvent(ClientFunctions.MapMessage, &sstr, &hx, &hy, &color, &text_delay);
+    ScriptSys.MapMessageEvent(sstr, hx, hy, color, text_delay);
 
     MapText t;
     t.HexX = hx;
@@ -2892,7 +2871,7 @@ void FOClient::Net_OnChosenAddItem()
         HexMngr.RebuildLight();
 
     if (!InitialItemsSend)
-        ScriptSys.RaiseInternalEvent(ClientFunctions.ItemInvIn, item);
+        ScriptSys.ItemInvInEvent(item);
 
     item->Release();
 }
@@ -2922,7 +2901,7 @@ void FOClient::Net_OnChosenEraseItem()
     Chosen->DeleteItem(item, true);
     if (rebuild_light)
         HexMngr.RebuildLight();
-    ScriptSys.RaiseInternalEvent(ClientFunctions.ItemInvOut, clone);
+    ScriptSys.ItemInvOutEvent(clone);
     clone->Release();
 }
 
@@ -2939,7 +2918,7 @@ void FOClient::Net_OnAllItemsSend()
     if (Chosen->Anim3d)
         Chosen->Anim3d->StartMeshGeneration();
 
-    ScriptSys.RaiseInternalEvent(ClientFunctions.ItemInvAllIn);
+    ScriptSys.ItemInvAllInEvent();
 }
 
 void FOClient::Net_OnAddItemOnMap()
@@ -2965,7 +2944,7 @@ void FOClient::Net_OnAddItemOnMap()
 
     ItemView* item = HexMngr.GetItemById(item_id);
     if (item)
-        ScriptSys.RaiseInternalEvent(ClientFunctions.ItemMapIn, item);
+        ScriptSys.ItemMapInEvent(item);
 
     // Refresh borders
     if (item && !item->GetIsShootThru())
@@ -2983,7 +2962,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
     ItemView* item = HexMngr.GetItemById(item_id);
     if (item)
-        ScriptSys.RaiseInternalEvent(ClientFunctions.ItemMapOut, item);
+        ScriptSys.ItemMapOutEvent(item);
 
     // Refresh borders
     if (item && !item->GetIsShootThru())
@@ -3025,14 +3004,7 @@ void FOClient::Net_OnCombatResult()
 
     CHECK_IN_BUFF_ERROR;
 
-    CScriptArray* arr = ScriptSys.CreateArray("uint[]");
-    arr->Resize(data_count);
-    for (uint i = 0; i < data_count; i++)
-        *((uint*)arr->At(i)) = data_vec[i];
-
-    ScriptSys.RaiseInternalEvent(ClientFunctions.CombatResult, arr);
-
-    arr->Release();
+    ScriptSys.CombatResultEvent(data_vec);
 }
 
 void FOClient::Net_OnEffect()
@@ -3165,12 +3137,12 @@ void FOClient::Net_OnEndParseToGame()
         HexMngr.SkipItemsFade();
         HexMngr.FindSetCenter(Chosen->GetHexX(), Chosen->GetHexY());
         Chosen->AnimateStay();
-        ShowMainScreen(SCREEN_GAME);
+        ShowMainScreen(SCREEN_GAME, {});
         HexMngr.RebuildLight();
     }
     else
     {
-        ShowMainScreen(SCREEN_GLOBAL_MAP);
+        ShowMainScreen(SCREEN_GLOBAL_MAP, {});
     }
 
     WriteLog("Entering to game complete.\n");
@@ -3274,12 +3246,12 @@ void FOClient::Net_OnProperty(uint data_size)
     case NetProperty::Map:
         prop = MapView::PropertiesRegistrator->Get(property_index);
         if (prop)
-            entity = ScriptFunc.ClientCurMap;
+            entity = CurMap;
         break;
     case NetProperty::Location:
         prop = LocationView::PropertiesRegistrator->Get(property_index);
         if (prop)
-            entity = ScriptFunc.ClientCurLocation;
+            entity = CurLocation;
         break;
     default:
         RUNTIME_ASSERT(false);
@@ -3293,7 +3265,7 @@ void FOClient::Net_OnProperty(uint data_size)
     entity->Props.SetSendIgnore(nullptr, nullptr);
 
     if (type == NetProperty::MapItem)
-        ScriptSys.RaiseInternalEvent(ClientFunctions.ItemMapChanged, entity, entity);
+        ScriptSys.ItemMapChangedEvent((ItemView*)entity, (ItemView*)entity);
 
     if (type == NetProperty::ChosenItem)
     {
@@ -3355,20 +3327,19 @@ void FOClient::Net_OnChosenTalk()
     string str = CurLang.Msg[TEXTMSG_DLG].GetStr(text_id);
     FormatTags(str, Chosen, npc, lexems);
     string text_to_script = str;
-    CScriptArray* answers_to_script = ScriptSys.CreateArray("string[]");
+    vector<string> answers_to_script;
     for (uint answers_text : answers_texts)
     {
         str = CurLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
         FormatTags(str, Chosen, npc, lexems);
-        string sstr = str;
-        answers_to_script->InsertLast(&sstr);
+        answers_to_script.push_back(str);
     }
 
     Bin >> talk_time;
 
     CHECK_IN_BUFF_ERROR;
 
-    CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
+    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
     dict->Set("TalkerIsNpc", &is_npc, asTYPEID_BOOL);
     dict->Set("TalkerId", &talk_id, asTYPEID_UINT32);
     dict->Set("Text", &text_to_script, ScriptSys.GetEngine()->GetTypeIdByDecl("string"));
@@ -3376,7 +3347,7 @@ void FOClient::Net_OnChosenTalk()
     dict->Set("TalkTime", &talk_time, asTYPEID_UINT32);
     ShowScreen(SCREEN__DIALOG, dict);
     answers_to_script->Release();
-    dict->Release();
+    dict->Release();*/
 }
 
 void FOClient::Net_OnGameInfo()
@@ -3445,18 +3416,18 @@ void FOClient::Net_OnLoadMap()
 
     CHECK_IN_BUFF_ERROR;
 
-    if (ScriptFunc.ClientCurMap)
-        ScriptFunc.ClientCurMap->IsDestroyed = true;
-    if (ScriptFunc.ClientCurLocation)
-        ScriptFunc.ClientCurLocation->IsDestroyed = true;
-    SAFEREL(ScriptFunc.ClientCurMap);
-    SAFEREL(ScriptFunc.ClientCurLocation);
+    if (CurMap)
+        CurMap->IsDestroyed = true;
+    if (CurLocation)
+        CurLocation->IsDestroyed = true;
+    SAFEREL(CurMap);
+    SAFEREL(CurLocation);
     if (map_pid)
     {
-        ScriptFunc.ClientCurLocation = new LocationView(0, ProtoMngr.GetProtoLocation(loc_pid));
-        ScriptFunc.ClientCurLocation->Props.RestoreData(TempPropertiesDataExt);
-        ScriptFunc.ClientCurMap = new MapView(0, ProtoMngr.GetProtoMap(map_pid));
-        ScriptFunc.ClientCurMap->Props.RestoreData(TempPropertiesData);
+        CurLocation = new LocationView(0, ProtoMngr.GetProtoLocation(loc_pid));
+        CurLocation->Props.RestoreData(TempPropertiesDataExt);
+        CurMap = new MapView(0, ProtoMngr.GetProtoMap(map_pid));
+        CurMap->Props.RestoreData(TempPropertiesData);
     }
 
     Settings.SpritesZoom = 1.0f;
@@ -3467,7 +3438,7 @@ void FOClient::Net_OnLoadMap()
     GameMapTexts.clear();
     HexMngr.UnloadMap();
     SndMngr.StopSounds();
-    ShowMainScreen(SCREEN_WAIT);
+    ShowMainScreen(SCREEN_WAIT, {});
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
 
@@ -3753,17 +3724,7 @@ void FOClient::Net_OnSomeItems()
 
     CHECK_IN_BUFF_ERROR;
 
-    CScriptArray* items_arr = nullptr;
-    if (!is_null)
-    {
-        items_arr = ScriptSys.CreateArray("Item[]");
-        ScriptSys.AppendVectorToArray(item_container, items_arr);
-    }
-
-    ScriptSys.RaiseInternalEvent(ClientFunctions.ReceiveItems, items_arr, param);
-
-    if (items_arr)
-        items_arr->Release();
+    ScriptSys.ReceiveItemsEvent(item_container, param);
 }
 
 void FOClient::Net_OnUpdateFilesList()
@@ -3995,15 +3956,15 @@ void FOClient::Net_OnViewMap()
         return;
 
     HexMngr.FindSetCenter(hx, hy);
-    ShowMainScreen(SCREEN_GAME);
+    ShowMainScreen(SCREEN_GAME, {});
     ScreenFadeOut();
     HexMngr.RebuildLight();
 
-    CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
+    /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
     dict->Set("LocationId", &loc_id, asTYPEID_UINT32);
     dict->Set("LocationEntrance", &loc_ent, asTYPEID_UINT32);
     ShowScreen(SCREEN__TOWN_VIEW, dict);
-    dict->Release();
+    dict->Release();*/
 }
 
 void FOClient::SetGameColor(uint color)
@@ -4638,7 +4599,7 @@ void FOClient::AnimProcess()
 void FOClient::OnSendGlobalValue(Entity* entity, Property* prop)
 {
     if (prop->GetAccess() == Property::PublicFullModifiable)
-        Self->Net_SendProperty(NetProperty::Global, prop, Globals);
+        Net_SendProperty(NetProperty::Global, prop, Globals);
     else
         throw GenericException("Unable to send global modifiable property", prop->GetName());
 }
@@ -4647,9 +4608,9 @@ void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
 {
     CritterView* cr = (CritterView*)entity;
     if (cr->IsChosen())
-        Self->Net_SendProperty(NetProperty::Chosen, prop, cr);
+        Net_SendProperty(NetProperty::Chosen, prop, cr);
     else if (prop->GetAccess() == Property::PublicFullModifiable)
-        Self->Net_SendProperty(NetProperty::Critter, prop, cr);
+        Net_SendProperty(NetProperty::Critter, prop, cr);
     else
         throw GenericException("Unable to send critter modifiable property", prop->GetName());
 }
@@ -4668,18 +4629,18 @@ void FOClient::OnSendItemValue(Entity* entity, Property* prop)
     {
         if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER)
         {
-            CritterView* cr = Self->GetCritter(item->GetCritId());
+            CritterView* cr = GetCritter(item->GetCritId());
             if (cr && cr->IsChosen())
-                Self->Net_SendProperty(NetProperty::ChosenItem, prop, item);
+                Net_SendProperty(NetProperty::ChosenItem, prop, item);
             else if (cr && prop->GetAccess() == Property::PublicFullModifiable)
-                Self->Net_SendProperty(NetProperty::CritterItem, prop, item);
+                Net_SendProperty(NetProperty::CritterItem, prop, item);
             else
                 throw GenericException("Unable to send item (a critter) modifiable property", prop->GetName());
         }
         else if (item->GetAccessory() == ITEM_ACCESSORY_HEX)
         {
             if (prop->GetAccess() == Property::PublicFullModifiable)
-                Self->Net_SendProperty(NetProperty::MapItem, prop, item);
+                Net_SendProperty(NetProperty::MapItem, prop, item);
             else
                 throw GenericException("Unable to send item (a map) modifiable property", prop->GetName());
         }
@@ -4695,7 +4656,7 @@ void FOClient::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
     ItemView* item = (ItemView*)entity;
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded())
+    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded())
     {
         ItemHexView* hex_item = (ItemHexView*)item;
         bool rebuild_cache = false;
@@ -4704,13 +4665,13 @@ void FOClient::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
         else if (prop == ItemView::PropertyIsBadItem)
             hex_item->SetSprite(nullptr);
         else if (prop == ItemView::PropertyIsShootThru)
-            Self->RebuildLookBorders = true, rebuild_cache = true;
+            RebuildLookBorders = true, rebuild_cache = true;
         else if (prop == ItemView::PropertyIsLightThru)
-            Self->HexMngr.RebuildLight(), rebuild_cache = true;
+            HexMngr.RebuildLight(), rebuild_cache = true;
         else if (prop == ItemView::PropertyIsNoBlock)
             rebuild_cache = true;
         if (rebuild_cache)
-            Self->HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
+            HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
     }
 }
 
@@ -4718,8 +4679,8 @@ void FOClient::OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_valu
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
-    if (Self->HexMngr.IsMapLoaded())
-        Self->HexMngr.RebuildLight();
+    if (HexMngr.IsMapLoaded())
+        HexMngr.RebuildLight();
 }
 
 void FOClient::OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value)
@@ -4739,11 +4700,11 @@ void FOClient::OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value
 
     ItemView* item = (ItemView*)entity;
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded())
+    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded())
     {
         ItemHexView* hex_item = (ItemHexView*)item;
         hex_item->SetAnimOffs();
-        Self->HexMngr.ProcessHexBorders(hex_item);
+        HexMngr.ProcessHexBorders(hex_item);
     }
 }
 
@@ -4766,7 +4727,7 @@ void FOClient::OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, 
 void FOClient::OnSendMapValue(Entity* entity, Property* prop)
 {
     if (prop->GetAccess() == Property::PublicFullModifiable)
-        Self->Net_SendProperty(NetProperty::Map, prop, Globals);
+        Net_SendProperty(NetProperty::Map, prop, Globals);
     else
         throw GenericException("Unable to send map modifiable property", prop->GetName());
 }
@@ -4774,7 +4735,7 @@ void FOClient::OnSendMapValue(Entity* entity, Property* prop)
 void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
 {
     if (prop->GetAccess() == Property::PublicFullModifiable)
-        Self->Net_SendProperty(NetProperty::Location, prop, Globals);
+        Net_SendProperty(NetProperty::Location, prop, Globals);
     else
         throw GenericException("Unable to send location modifiable property", prop->GetName());
 }
@@ -4841,8 +4802,7 @@ void FOClient::GameDraw()
 
 void FOClient::AddMess(int mess_type, const string& msg, bool script_call)
 {
-    string text = msg;
-    ScriptSys.RaiseInternalEvent(ClientFunctions.MessageBox, &text, mess_type, script_call);
+    ScriptSys.MessageBoxEvent(msg, mess_type, script_call);
 }
 
 void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems)
@@ -4966,7 +4926,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' &&
                 tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ')
             {
-                string func_name = _str(tag.substr(7)).substringUntil('$');
+                /*string func_name = _str(tag.substr(7)).substringUntil('$');
                 uint bind_id = ScriptSys.BindByFuncName(func_name, "string %s(string)", true);
                 tag = "<script function not found>";
                 if (bind_id)
@@ -4976,7 +4936,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
                     ScriptSys.SetArgObject(&script_lexems);
                     if (ScriptSys.RunPrepared())
                         tag = *(string*)ScriptSys.GetReturnedObject();
-                }
+                }*/
             }
             // Error
             else
@@ -4998,7 +4958,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
     text = dialogs[GenericUtils::Random(0, (uint)dialogs.size() - 1)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, CScriptDictionary* params /* = NULL */)
+void FOClient::ShowMainScreen(int new_screen, StrIntMap params)
 {
     while (GetActiveScreen() != SCREEN_NONE)
         HideScreen(SCREEN_NONE);
@@ -5010,7 +4970,7 @@ void FOClient::ShowMainScreen(int new_screen, CScriptDictionary* params /* = NUL
 
     int prev_main_screen = ScreenModeMain;
     if (ScreenModeMain)
-        RunScreenScript(false, ScreenModeMain, nullptr);
+        RunScreenScript(false, ScreenModeMain, {});
     ScreenModeMain = new_screen;
     RunScreenScript(true, new_screen, params);
 
@@ -5035,18 +4995,14 @@ void FOClient::ShowMainScreen(int new_screen, CScriptDictionary* params /* = NUL
     }
 }
 
-int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
+int FOClient::GetActiveScreen(IntVec* screens)
 {
-    static IntVec active_screens;
-    active_screens.clear();
-
-    CScriptArray* arr = ScriptSys.CreateArray("int[]");
-    ScriptSys.RaiseInternalEvent(ClientFunctions.GetActiveScreens, arr);
-    ScriptSys.AssignScriptArrayInVector(active_screens, arr);
-    arr->Release();
+    IntVec active_screens;
+    ScriptSys.GetActiveScreensEvent(active_screens);
 
     if (screens)
-        *screens = &active_screens;
+        *screens = active_screens;
+
     int active = (active_screens.size() ? active_screens.back() : SCREEN_NONE);
     if (active >= SCREEN_LOGIN && active <= SCREEN_WAIT)
         active = SCREEN_NONE;
@@ -5055,12 +5011,12 @@ int FOClient::GetActiveScreen(IntVec** screens /* = NULL */)
 
 bool FOClient::IsScreenPresent(int screen)
 {
-    IntVec* active_screens;
+    IntVec active_screens;
     GetActiveScreen(&active_screens);
-    return std::find(active_screens->begin(), active_screens->end(), screen) != active_screens->end();
+    return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
 }
 
-void FOClient::ShowScreen(int screen, CScriptDictionary* params /* = NULL */)
+void FOClient::ShowScreen(int screen, StrIntMap params)
 {
     RunScreenScript(true, screen, params);
 }
@@ -5072,12 +5028,12 @@ void FOClient::HideScreen(int screen)
     if (screen == SCREEN_NONE)
         return;
 
-    RunScreenScript(false, screen, nullptr);
+    RunScreenScript(false, screen, {});
 }
 
-void FOClient::RunScreenScript(bool show, int screen, CScriptDictionary* params)
+void FOClient::RunScreenScript(bool show, int screen, StrIntMap params)
 {
-    ScriptSys.RaiseInternalEvent(ClientFunctions.ScreenChange, show, screen, params);
+    ScriptSys.ScreenChangeEvent(show, screen, params);
 }
 
 void FOClient::LmapPrepareMap()
@@ -5157,201 +5113,8 @@ void FOClient::WaitDraw()
     SprMngr.Flush();
 }
 
-namespace ClientBind
-{
-#undef BIND_SERVER
-#undef BIND_CLIENT
-#undef BIND_MAPPER
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#undef BIND_DUMMY_DATA
-#define BIND_CLIENT
-#define BIND_CLASS FOClient::SScriptFunc::
-#define BIND_CLASS_EXT FOClient::Self->
-#define BIND_ASSERT(x) \
-    if ((x) < 0) \
-    { \
-        WriteLog("Bind error, line {}.\n", __LINE__); \
-        errors++; \
-    }
-#include "ScriptBind_Include.h"
-} // namespace ClientBind
-
-MapView* FOClient::SScriptFunc::ClientCurMap;
-LocationView* FOClient::SScriptFunc::ClientCurLocation;
-
-bool FOClient::ReloadScripts()
-{
-    WriteLog("Load scripts...\n");
-
-    FOMsg& msg_script = CurLang.Msg[TEXTMSG_INTERNAL];
-    if (!msg_script.Count(STR_INTERNAL_SCRIPT_MODULE) || !msg_script.Count(STR_INTERNAL_SCRIPT_MODULE + 1))
-    {
-        WriteLog("Main script section not found in MSG.\n");
-        AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
-        return false;
-    }
-
-    // Reinitialize engine
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback(PRAGMA_CLIENT, &ProtoMngr, nullptr);
-    if (!ScriptSys.Init(pragma_callback, "CLIENT"))
-    {
-        WriteLog("Unable to start script engine.\n");
-        AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
-        return false;
-    }
-    ScriptSys.SetExceptionCallback([this](const string& str) {
-        MessageBox::ShowErrorMessage(str, "");
-        throw ClientRestartException("Restart");
-    });
-
-    // Bind stuff
-    asIScriptEngine* engine = ScriptSys.GetEngine();
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-    int bind_errors = ClientBind::Bind(engine, registrators);
-    if (bind_errors)
-    {
-        WriteLog("Bind fail, errors {}.\n", bind_errors);
-        AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_FAIL_RUN_START_SCRIPT));
-        return false;
-    }
-
-    // Options
-    ScriptSys.Undef("");
-    ScriptSys.Define("__CLIENT");
-    ScriptSys.Define(_str("__VERSION {}", FO_VERSION));
-
-    // Pragmas
-    Pragmas pragmas;
-    for (int i = STR_INTERNAL_SCRIPT_PRAGMAS;; i += 3)
-    {
-        if (!msg_script.Count(i))
-            break;
-        RUNTIME_ASSERT(msg_script.Count(i + 1));
-        RUNTIME_ASSERT(msg_script.Count(i + 2));
-
-        Preprocessor::PragmaInstance pragma;
-        pragma.Name = msg_script.GetStr(i);
-        pragma.Text = msg_script.GetStr(i + 1);
-        pragma.CurrentFile = msg_script.GetStr(i + 2);
-        pragmas.push_back(pragma);
-    }
-    ScriptSys.CallPragmas(pragmas);
-
-    // Load module
-    int errors = 0;
-
-    UCharVec bytecode;
-    msg_script.GetBinary(STR_INTERNAL_SCRIPT_MODULE, bytecode);
-    RUNTIME_ASSERT(!bytecode.empty());
-    UCharVec lnt_data;
-    msg_script.GetBinary(STR_INTERNAL_SCRIPT_MODULE + 1, lnt_data);
-    RUNTIME_ASSERT(!lnt_data.empty());
-    if (ScriptSys.RestoreRootModule(bytecode, lnt_data))
-    {
-        if (ScriptSys.PostInitScriptSystem())
-        {
-            ScriptSys.CacheEnumValues();
-        }
-        else
-        {
-            WriteLog("Init client script fail.\n");
-            errors++;
-        }
-    }
-    else
-    {
-        WriteLog("Load client script fail.\n");
-        errors++;
-    }
-
-// Bind events
-#define BIND_INTERNAL_EVENT(name) ClientFunctions.name = ScriptSys.FindInternalEvent("Event" #name)
-    BIND_INTERNAL_EVENT(Start);
-    BIND_INTERNAL_EVENT(Finish);
-    BIND_INTERNAL_EVENT(Loop);
-    BIND_INTERNAL_EVENT(GetActiveScreens);
-    BIND_INTERNAL_EVENT(AutoLogin);
-    BIND_INTERNAL_EVENT(ScreenChange);
-    BIND_INTERNAL_EVENT(ScreenScroll);
-    BIND_INTERNAL_EVENT(RenderIface);
-    BIND_INTERNAL_EVENT(RenderMap);
-    BIND_INTERNAL_EVENT(MouseDown);
-    BIND_INTERNAL_EVENT(MouseUp);
-    BIND_INTERNAL_EVENT(MouseMove);
-    BIND_INTERNAL_EVENT(KeyDown);
-    BIND_INTERNAL_EVENT(KeyUp);
-    BIND_INTERNAL_EVENT(InputLost);
-    BIND_INTERNAL_EVENT(CritterIn);
-    BIND_INTERNAL_EVENT(CritterOut);
-    BIND_INTERNAL_EVENT(ItemMapIn);
-    BIND_INTERNAL_EVENT(ItemMapChanged);
-    BIND_INTERNAL_EVENT(ItemMapOut);
-    BIND_INTERNAL_EVENT(ItemInvAllIn);
-    BIND_INTERNAL_EVENT(ItemInvIn);
-    BIND_INTERNAL_EVENT(ItemInvChanged);
-    BIND_INTERNAL_EVENT(ItemInvOut);
-    BIND_INTERNAL_EVENT(MapLoad);
-    BIND_INTERNAL_EVENT(MapUnload);
-    BIND_INTERNAL_EVENT(ReceiveItems);
-    BIND_INTERNAL_EVENT(MapMessage);
-    BIND_INTERNAL_EVENT(InMessage);
-    BIND_INTERNAL_EVENT(OutMessage);
-    BIND_INTERNAL_EVENT(MessageBox);
-    BIND_INTERNAL_EVENT(CombatResult);
-    BIND_INTERNAL_EVENT(ItemCheckMove);
-    BIND_INTERNAL_EVENT(CritterAction);
-    BIND_INTERNAL_EVENT(Animation2dProcess);
-    BIND_INTERNAL_EVENT(Animation3dProcess);
-    BIND_INTERNAL_EVENT(CritterAnimation);
-    BIND_INTERNAL_EVENT(CritterAnimationSubstitute);
-    BIND_INTERNAL_EVENT(CritterAnimationFallout);
-    BIND_INTERNAL_EVENT(CritterCheckMoveItem);
-    BIND_INTERNAL_EVENT(CritterGetAttackDistantion);
-#undef BIND_INTERNAL_EVENT
-
-    if (errors)
-        return false;
-
-    GlobalVars::SetPropertyRegistrator(registrators[0]);
-    GlobalVars::PropertiesRegistrator->SetNativeSendCallback(OnSendGlobalValue);
-    Globals = new GlobalVars();
-    CritterView::SetPropertyRegistrator(registrators[1]);
-    ProtoCritter::SetPropertyRegistrator(registrators[1]);
-    CritterView::PropertiesRegistrator->SetNativeSendCallback(OnSendCritterValue);
-    CritterView::PropertiesRegistrator->SetNativeSetCallback("ModelName", OnSetCritterModelName);
-    ItemView::SetPropertyRegistrator(registrators[2]);
-    ProtoItem::SetPropertyRegistrator(registrators[2]);
-    ItemView::PropertiesRegistrator->SetNativeSendCallback(OnSendItemValue);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsColorize", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsBadItem", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsShootThru", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsLightThru", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsNoBlock", OnSetItemFlags);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("IsLight", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightIntensity", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightDistance", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightFlags", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("LightColor", OnSetItemSomeLight);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("PicMap", OnSetItemPicMap);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("OffsetX", OnSetItemOffsetXY);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("OffsetY", OnSetItemOffsetXY);
-    ItemView::PropertiesRegistrator->SetNativeSetCallback("Opened", OnSetItemOpened);
-    MapView::SetPropertyRegistrator(registrators[3]);
-    ProtoMap::SetPropertyRegistrator(registrators[3]);
-    MapView::PropertiesRegistrator->SetNativeSendCallback(OnSendMapValue);
-    LocationView::SetPropertyRegistrator(registrators[4]);
-    ProtoLocation::SetPropertyRegistrator(registrators[4]);
-    LocationView::PropertiesRegistrator->SetNativeSendCallback(OnSendLocationValue);
-
-    Globals->Props.RestoreData(GlovalVarsPropertiesData);
-
-    WriteLog("Load scripts complete.\n");
-    return true;
-}
-
 void FOClient::OnItemInvChanged(ItemView* old_item, ItemView* item)
 {
-    ScriptSys.RaiseInternalEvent(ClientFunctions.ItemInvChanged, item, old_item);
+    ScriptSys.ItemInvChangedEvent(item, old_item);
     old_item->Release();
 }

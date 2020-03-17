@@ -37,10 +37,10 @@
 
 #include "3dAnimation.h"
 #include "Application.h"
+#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 
 #define ANIMATION_STAY (0x01)
@@ -162,7 +162,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
-        ScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator);
+        ClientScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator);
     AnimSet* LoadAnimation(const string& anim_fname, const string& anim_name);
     MeshTexture* LoadTexture(const string& texture_name, const string& model_path);
     void DestroyTextures();
@@ -183,7 +183,7 @@ private:
     RenderSettings& settings;
     FileManager& fileMngr;
     EffectManager& effectMngr;
-    ScriptSystem& scriptSys;
+    ClientScriptSystem& scriptSys;
     MeshTextureCreator meshTexCreator {};
     set<hash> processedFiles {};
     vector<unique_ptr<Bone, std::function<void(Bone*)>>> loadedModels {};

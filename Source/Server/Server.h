@@ -50,7 +50,7 @@
 #include "MapManager.h"
 #include "Networking.h"
 #include "ProtoManager.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
@@ -68,21 +68,15 @@
         after_disconnect; \
     }
 
-class CScriptDictionary;
-class CScriptDict;
-class CScriptArray;
-
 class FOServer : public NonCopyable // Todo: rename FOServer to just Server
 {
 public:
-    FOServer(ServerSettings& sett);
-
-    static FOServer* Self; // Todo: remove server Self singleton
+    FOServer(GlobalSettings& sett);
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
-    ScriptSystem ScriptSys;
+    ServerScriptSystem ScriptSys;
     ProtoManager ProtoMngr;
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -90,8 +84,9 @@ public:
     ItemManager ItemMngr;
     DialogManager DlgMngr;
     GameTimer GameTime;
+    GlobalVars* Globals {};
 
-    static void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
     // Net process
     void Process_ParseToGame(Client* cl);
@@ -129,18 +124,11 @@ public:
 
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
 
-    // Init/Finish system
-    bool InitScriptSystem();
-
     // Dialogs demand and result
     bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
     uint DialogScriptResult(DemandResult& result, Critter* master, Critter* slave);
 
-    // Client script
-    bool RequestReloadClientScripts = false;
-    bool ReloadClientScripts();
-
-// Text listen
+    // Text listen
 #define TEXT_LISTEN_FIRST_STR_MAX_LEN (63)
     struct TextListen
     {
@@ -153,21 +141,21 @@ public:
     TextListenVec TextListeners;
     std::mutex TextListenersLocker;
 
-    static void OnSendGlobalValue(Entity* entity, Property* prop);
-    static void OnSendCritterValue(Entity* entity, Property* prop);
-    static void OnSendMapValue(Entity* entity, Property* prop);
-    static void OnSendLocationValue(Entity* entity, Property* prop);
+    void OnSendGlobalValue(Entity* entity, Property* prop);
+    void OnSendCritterValue(Entity* entity, Property* prop);
+    void OnSendMapValue(Entity* entity, Property* prop);
+    void OnSendLocationValue(Entity* entity, Property* prop);
 
     // Items
     Item* CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks);
-    static void OnSendItemValue(Entity* entity, Property* prop);
-    static void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemRecacheHex(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemIsGeck(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemIsRadio(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSendItemValue(Entity* entity, Property* prop);
+    void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemRecacheHex(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsGeck(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsRadio(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
     // Npc
     void ProcessCritter(Critter* cr);

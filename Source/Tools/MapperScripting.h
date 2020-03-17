@@ -38,14 +38,13 @@
 #include "ClientScripting.h"
 #include "ScriptSystem.h"
 
-class FOMapper;
-
 class MapperScriptSystem : public ClientScriptSystem
 {
 public:
-    void InitNativeScripting(FOMapper& mapper);
-    void InitAngelScriptScripting(FOMapper& mapper);
-    void InitMonoScripting(FOMapper& mapper);
+    MapperScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) :
+        ClientScriptSystem(obj, sett, file_mngr)
+    {
+    }
 
 #define FO_API_MAPPER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
 #define FO_API_ARG(type, name) type
@@ -56,4 +55,9 @@ public:
 #define FO_API_ARG_ARR_REF(type, name) vector<type>&
 #define FO_API_ARG_ENUM(type, name) int
 #include "ScriptApi.h"
+
+protected:
+    virtual void InitNativeScripting() override;
+    virtual void InitAngelScriptScripting() override;
+    virtual void InitMonoScripting() override;
 };

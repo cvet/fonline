@@ -110,7 +110,7 @@ AnyFrames* AnyFrames::GetDir(int dir)
 }
 
 SpriteManager::SpriteManager(
-    RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys) :
+    RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys) :
     settings {sett}, fileMngr {file_mngr}, effectMngr {effect_mngr}
 {
     baseColor = COLOR_RGBA(255, 128, 128, 128);

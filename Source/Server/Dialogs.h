@@ -37,7 +37,7 @@
 
 #include "FileSystem.h"
 #include "MsgFiles.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 
 #define TALK_NONE (0)
 #define TALK_WITH_NPC (1)
@@ -138,7 +138,7 @@ struct Talking : public NonCopyable
 class DialogManager : public NonCopyable
 {
 public:
-    DialogManager(FileManager& file_mngr, ScriptSystem& script_sys);
+    DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys);
     bool LoadDialogs();
     DialogPack* ParseDialog(const string& pack_name, const string& data);
     bool AddDialog(DialogPack* pack);
@@ -154,6 +154,6 @@ private:
     bool CheckOper(char oper);
 
     FileManager& fileMngr;
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     map<hash, unique_ptr<DialogPack>> dialogPacks {};
 };

@@ -40,45 +40,15 @@
 
 bool CritterView::SlotEnabled[0x100];
 
+#define FO_API_CRITTER_VIEW_IMPL
+#include "ScriptApi.h"
+
 PROPERTIES_IMPL(CritterView);
-#include "CritterProperties.h"
-CLASS_PROPERTY_IMPL(CritterView, HexX);
-CLASS_PROPERTY_IMPL(CritterView, HexY);
-CLASS_PROPERTY_IMPL(CritterView, Dir);
-CLASS_PROPERTY_IMPL(CritterView, Cond);
-CLASS_PROPERTY_IMPL(CritterView, Multihex);
-CLASS_PROPERTY_IMPL(CritterView, Anim1Life);
-CLASS_PROPERTY_IMPL(CritterView, Anim1Knockout);
-CLASS_PROPERTY_IMPL(CritterView, Anim1Dead);
-CLASS_PROPERTY_IMPL(CritterView, Anim2Life);
-CLASS_PROPERTY_IMPL(CritterView, Anim2Knockout);
-CLASS_PROPERTY_IMPL(CritterView, Anim2Dead);
-CLASS_PROPERTY_IMPL(CritterView, ModelName);
-CLASS_PROPERTY_IMPL(CritterView, ScriptId);
-CLASS_PROPERTY_IMPL(CritterView, LookDistance);
-CLASS_PROPERTY_IMPL(CritterView, Anim3dLayer);
-CLASS_PROPERTY_IMPL(CritterView, Gender);
-CLASS_PROPERTY_IMPL(CritterView, DialogId);
-CLASS_PROPERTY_IMPL(CritterView, WorldX);
-CLASS_PROPERTY_IMPL(CritterView, WorldY);
-CLASS_PROPERTY_IMPL(CritterView, GlobalMapLeaderId);
-CLASS_PROPERTY_IMPL(CritterView, TalkDistance);
-CLASS_PROPERTY_IMPL(CritterView, CurrentHp);
-CLASS_PROPERTY_IMPL(CritterView, WalkTime);
-CLASS_PROPERTY_IMPL(CritterView, RunTime);
-CLASS_PROPERTY_IMPL(CritterView, ScaleFactor);
-CLASS_PROPERTY_IMPL(CritterView, TimeoutBattle);
-CLASS_PROPERTY_IMPL(CritterView, TimeoutTransfer);
-CLASS_PROPERTY_IMPL(CritterView, TimeoutRemoveFromGame);
-CLASS_PROPERTY_IMPL(CritterView, IsNoWalk);
-CLASS_PROPERTY_IMPL(CritterView, IsNoRun);
-CLASS_PROPERTY_IMPL(CritterView, IsNoRotate);
-CLASS_PROPERTY_IMPL(CritterView, IsNoTalk);
-CLASS_PROPERTY_IMPL(CritterView, IsHide);
-CLASS_PROPERTY_IMPL(CritterView, IsNoFlatten);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(CritterView, name)
+#include "ScriptApi.h"
 
 CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-    ResourceManager& res_mngr, EffectManager& effect_mngr, ScriptSystem& script_sys, bool mapper_mode) :
+    ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, bool mapper_mode) :
     Entity(id, EntityType::CritterView, PropertiesRegistrator, proto),
     settings {sett},
     geomHelper(settings),
@@ -90,11 +60,9 @@ CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett
 {
     tickFidget = Timer::GameTick() + GenericUtils::Random(settings.CritterFidgetTime, settings.CritterFidgetTime * 2);
     DrawEffect = effectMngr.Effects.Critter;
-
-    CScriptArray* arr = scriptSys.CreateArray("int[]");
-    arr->Resize(LAYERS3D_COUNT);
-    SetAnim3dLayer(arr);
-    arr->Release();
+    auto layers = GetAnim3dLayer();
+    layers.resize(LAYERS3D_COUNT);
+    SetAnim3dLayer(layers);
 }
 
 CritterView::~CritterView()
@@ -180,7 +148,7 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     InvItems.erase(it);
 
     item->IsDestroyed = true;
-    scriptSys.RemoveEventsEntity(item);
+    scriptSys.RemoveEntity(item);
     item->Release();
 
     if (animate && !IsAnim())
@@ -263,7 +231,7 @@ bool CritterView::CheckFind(int find_type)
 uint CritterView::GetAttackDist()
 {
     uint dist = 0;
-    scriptSys.RaiseInternalEvent(ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist);
+    scriptSys.CritterGetAttackDistantionEvent(this, nullptr, 0, dist);
     return dist;
 }
 
@@ -476,7 +444,7 @@ void CritterView::Move(int dir)
 
 void CritterView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
 {
-    scriptSys.RaiseInternalEvent(ClientFunctions.CritterAction, local_call, this, action, action_ext, item);
+    scriptSys.CritterActionEvent(local_call, this, action, action_ext, item);
 
     switch (action)
     {
@@ -754,18 +722,17 @@ uint CritterView::GetAnim2()
 
 void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
 {
-    scriptSys.RaiseInternalEvent(is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess,
-        animate_stay, this, anim1, anim2, item);
+    if (is2d)
+        scriptSys.Animation2dProcessEvent(animate_stay, this, anim1, anim2, item);
+    else
+        scriptSys.Animation3dProcessEvent(animate_stay, this, anim1, anim2, item);
 }
 
 int* CritterView::GetLayers3dData()
 {
-    CScriptArray* layers = GetAnim3dLayer();
-    if (layers->GetSize() == LAYERS3D_COUNT)
-        memcpy(anim3dLayers, layers->At(0), sizeof(anim3dLayers));
-    else
-        memzero(anim3dLayers, sizeof(anim3dLayers));
-    SAFEREL(layers);
+    auto layers = GetAnim3dLayer();
+    RUNTIME_ASSERT(layers.size() == LAYERS3D_COUNT);
+    memcpy(anim3dLayers, &layers[0], sizeof(anim3dLayers));
     return anim3dLayers;
 }
 

@@ -38,7 +38,7 @@
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "MapLoader.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 #include "Settings.h"
 
 #define FO_API_MAP_HEADER
@@ -84,7 +84,7 @@ class Map : public Entity
 
 public:
     Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
-        ScriptSystem& script_sys);
+        ServerScriptSystem& script_sys);
     ~Map();
     StaticMap* GetStaticMap() { return staticMap; }
 
@@ -163,7 +163,7 @@ public:
     void SendFlyEffect(
         hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
 
-    bool SetScript(asIScriptFunction* func, bool first_time);
+    bool SetScript(string func, bool first_time);
 
     void GetStaticItemTriggers(ushort hx, ushort hy, ItemVec& triggers);
     Item* GetStaticItem(ushort hx, ushort hy, hash pid);
@@ -181,7 +181,7 @@ public:
 private:
     MapSettings& settings;
     GeometryHelper geomHelper;
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     StaticMap* staticMap {};
     uchar* hexFlags {};
     int hexFlagsSize {};

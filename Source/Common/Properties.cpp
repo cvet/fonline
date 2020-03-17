@@ -37,8 +37,6 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
-NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
-
 Property::Property()
 {
     nativeSendCallback = nullptr;
@@ -48,138 +46,138 @@ Property::Property()
 
 void* Property::CreateRefValue(uchar* data, uint data_size)
 {
-    asIScriptEngine* engine = asObjType->GetEngine();
-    if (dataType == Property::Array)
-    {
-        if (isArrayOfString)
+    /*    asIScriptEngine* engine = asObjType->GetEngine();
+        if (dataType == Property::Array)
         {
-            if (data_size)
+            if (isArrayOfString)
             {
-                uint arr_size;
-                memcpy(&arr_size, data, sizeof(arr_size));
-                data += sizeof(uint);
-                CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
-                RUNTIME_ASSERT(arr);
-                for (uint i = 0; i < arr_size; i++)
+                if (data_size)
                 {
-                    uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
-                    string str((char*)data, str_size);
-                    arr->SetValue(i, &str);
-                    data += str_size;
-                }
-                return arr;
-            }
-            else
-            {
-                CScriptArray* arr = CScriptArray::Create(asObjType);
-                RUNTIME_ASSERT(arr);
-                return arr;
-            }
-        }
-        else
-        {
-            uint element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId());
-            uint arr_size = data_size / element_size;
-            CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
-            RUNTIME_ASSERT(arr);
-            if (arr_size)
-                memcpy(arr->At(0), data, arr_size * element_size);
-            return arr;
-        }
-    }
-    else if (dataType == Property::Dict)
-    {
-        CScriptDict* dict = CScriptDict::Create(asObjType);
-        RUNTIME_ASSERT(dict);
-        if (data_size)
-        {
-            uint key_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(0));
-            if (isDictOfArray)
-            {
-                asITypeInfo* arr_type = asObjType->GetSubType(1);
-                uint arr_element_size = engine->GetSizeOfPrimitiveType(arr_type->GetSubTypeId());
-                uchar* data_end = data + data_size;
-                while (data < data_end)
-                {
-                    void* key = data;
-                    data += key_element_size;
                     uint arr_size;
                     memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(uint);
-                    CScriptArray* arr = CScriptArray::Create(arr_type, arr_size);
+                    CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
                     RUNTIME_ASSERT(arr);
-                    if (arr_size)
+                    for (uint i = 0; i < arr_size; i++)
                     {
-                        if (isDictOfArrayOfString)
-                        {
-                            for (uint i = 0; i < arr_size; i++)
-                            {
-                                uint str_size;
-                                memcpy(&str_size, data, sizeof(str_size));
-                                data += sizeof(uint);
-                                string str((char*)data, str_size);
-                                arr->SetValue(i, &str);
-                                data += str_size;
-                            }
-                        }
-                        else
-                        {
-                            memcpy(arr->At(0), data, arr_size * arr_element_size);
-                            data += arr_size * arr_element_size;
-                        }
+                        uint str_size;
+                        memcpy(&str_size, data, sizeof(str_size));
+                        data += sizeof(uint);
+                        string str((char*)data, str_size);
+                        arr->SetValue(i, &str);
+                        data += str_size;
                     }
-                    dict->Set(key, &arr);
-                    arr->Release();
+                    return arr;
                 }
-            }
-            else if (isDictOfString)
-            {
-                uchar* data_end = data + data_size;
-                while (data < data_end)
+                else
                 {
-                    void* key = data;
-                    data += key_element_size;
-                    uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
-                    string str((char*)data, str_size);
-                    dict->Set(key, &str);
-                    data += str_size;
+                    CScriptArray* arr = CScriptArray::Create(asObjType);
+                    RUNTIME_ASSERT(arr);
+                    return arr;
                 }
             }
             else
             {
-                uint value_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(1));
-                uint whole_element_size = key_element_size + value_element_size;
-                uint dict_size = data_size / whole_element_size;
-                for (uint i = 0; i < dict_size; i++)
-                    dict->Set(data + i * whole_element_size, data + i * whole_element_size + key_element_size);
+                uint element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId());
+                uint arr_size = data_size / element_size;
+                CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
+                RUNTIME_ASSERT(arr);
+                if (arr_size)
+                    memcpy(arr->At(0), data, arr_size * element_size);
+                return arr;
             }
         }
-        return dict;
-    }
-    else
-    {
-        RUNTIME_ASSERT(!"Unexpected type");
-    }
+        else if (dataType == Property::Dict)
+        {
+            CScriptDict* dict = CScriptDict::Create(asObjType);
+            RUNTIME_ASSERT(dict);
+            if (data_size)
+            {
+                uint key_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(0));
+                if (isDictOfArray)
+                {
+                    asITypeInfo* arr_type = asObjType->GetSubType(1);
+                    uint arr_element_size = engine->GetSizeOfPrimitiveType(arr_type->GetSubTypeId());
+                    uchar* data_end = data + data_size;
+                    while (data < data_end)
+                    {
+                        void* key = data;
+                        data += key_element_size;
+                        uint arr_size;
+                        memcpy(&arr_size, data, sizeof(arr_size));
+                        data += sizeof(uint);
+                        CScriptArray* arr = CScriptArray::Create(arr_type, arr_size);
+                        RUNTIME_ASSERT(arr);
+                        if (arr_size)
+                        {
+                            if (isDictOfArrayOfString)
+                            {
+                                for (uint i = 0; i < arr_size; i++)
+                                {
+                                    uint str_size;
+                                    memcpy(&str_size, data, sizeof(str_size));
+                                    data += sizeof(uint);
+                                    string str((char*)data, str_size);
+                                    arr->SetValue(i, &str);
+                                    data += str_size;
+                                }
+                            }
+                            else
+                            {
+                                memcpy(arr->At(0), data, arr_size * arr_element_size);
+                                data += arr_size * arr_element_size;
+                            }
+                        }
+                        dict->Set(key, &arr);
+                        arr->Release();
+                    }
+                }
+                else if (isDictOfString)
+                {
+                    uchar* data_end = data + data_size;
+                    while (data < data_end)
+                    {
+                        void* key = data;
+                        data += key_element_size;
+                        uint str_size;
+                        memcpy(&str_size, data, sizeof(str_size));
+                        data += sizeof(uint);
+                        string str((char*)data, str_size);
+                        dict->Set(key, &str);
+                        data += str_size;
+                    }
+                }
+                else
+                {
+                    uint value_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(1));
+                    uint whole_element_size = key_element_size + value_element_size;
+                    uint dict_size = data_size / whole_element_size;
+                    for (uint i = 0; i < dict_size; i++)
+                        dict->Set(data + i * whole_element_size, data + i * whole_element_size + key_element_size);
+                }
+            }
+            return dict;
+        }
+        else
+        {
+            RUNTIME_ASSERT(!"Unexpected type");
+        }*/
     return nullptr;
 }
 
 void Property::ReleaseRefValue(void* value)
 {
-    if (dataType == Property::Array)
+    /*if (dataType == Property::Array)
         ((CScriptArray*)value)->Release();
     else if (dataType == Property::Dict)
         ((CScriptDict*)value)->Release();
     else
-        RUNTIME_ASSERT(!"Unexpected type");
+        RUNTIME_ASSERT(!"Unexpected type");*/
 }
 
 uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need_delete)
 {
-    need_delete = false;
+    /*need_delete = false;
     if (dataType == Property::String)
     {
         string& str = *(string*)value;
@@ -380,13 +378,13 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
     else
     {
         RUNTIME_ASSERT(!"Unexpected type");
-    }
+    }*/
     return nullptr;
 }
 
 void Property::GenericGet(Entity* entity, void* ret_value)
 {
-    Properties* properties = &entity->Props;
+    /*Properties* properties = &entity->Props;
 
     // Validate entity
     if (entity->IsDestroyed)
@@ -412,7 +410,7 @@ void Property::GenericGet(Entity* entity, void* ret_value)
 
         properties->getCallbackLocked[getIndex] = true;
 
-        /*Script::PrepareContext(getCallback, GetName());
+        / *Script::PrepareContext(getCallback, GetName());
         if (getCallbackArgs > 0)
             Script::SetArgEntity(entity);
         if (getCallbackArgs > 1)
@@ -451,7 +449,7 @@ void Property::GenericGet(Entity* entity, void* ret_value)
             }
 
             return;
-        }*/
+        }* /
 
         properties->getCallbackLocked[getIndex] = false;
 
@@ -484,12 +482,12 @@ void Property::GenericGet(Entity* entity, void* ret_value)
     else
     {
         RUNTIME_ASSERT(!"Unexpected type");
-    }
+    }*/
 }
 
 void Property::GenericSet(Entity* entity, void* new_value)
 {
-    Properties* properties = &entity->Props;
+    /*Properties* properties = &entity->Props;
 
     // Validate entity
     if (entity->IsDestroyed)
@@ -511,7 +509,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
                 properties->registrator->scriptClassName, propName);
         }
 
-        /*for (size_t i = 0; i < setCallbacks.size(); i++)
+        / *for (size_t i = 0; i < setCallbacks.size(); i++)
         {
             Script::PrepareContext(setCallbacks[i], GetName());
             Script::SetArgObject(entity);
@@ -536,7 +534,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
             RUNTIME_ASSERT(!entity->IsDestroyed);
             if (!run_ok)
                 break;
-        }*/
+        }* /
 
         return;
     }
@@ -595,7 +593,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
     // Script callbacks
     if (!setCallbacks.empty())
     {
-        /*for (size_t i = 0; i < setCallbacks.size(); i++)
+        / *for (size_t i = 0; i < setCallbacks.size(); i++)
         {
             Script::PrepareContext(setCallbacks[i], GetName());
             Script::SetArgObject(entity);
@@ -620,7 +618,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
             RUNTIME_ASSERT(!entity->IsDestroyed);
             if (!run_ok)
                 break;
-        }*/
+        }* /
     }
 
     // Check min/max for POD value and store
@@ -787,7 +785,7 @@ void Property::GenericSet(Entity* entity, void* new_value)
         {
             nativeSendCallback(entity, this);
         }
-    }
+    }*/
 }
 
 string Property::GetName()
@@ -818,11 +816,6 @@ Property::AccessType Property::GetAccess()
 uint Property::GetBaseSize()
 {
     return baseSize;
-}
-
-asITypeInfo* Property::GetASObjectType()
-{
-    return asObjType;
 }
 
 bool Property::IsPOD()
@@ -1021,46 +1014,9 @@ void Property::SetPODValueAsInt(Entity* entity, int value)
     }
 }
 
-string Property::SetGetCallback(asIScriptFunction* func)
+/*string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
 {
-    // Todo: check can get in SetGetCallback
-
-    /*uint bind_id = Script::BindByFunc(func, false);
-    if (!bind_id)
-        return "Unable to bind function '" + string(func->GetName()) + "'.";
-
-    getCallback = bind_id;
-    getCallbackArgs = func->GetParamCount();*/
-
-    return "";
-
-    /*char decl[ MAX_FOTEXT ];
-       X_str( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s",
-       registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() ); uint bind_id =
-       Script::BindByFuncNameInRuntime( script_func, decl, false, true ); if( !bind_id )
-       {
-        X_str( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s",
-       registrator->scriptClassName.c_str() ); bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true
-       ); if( !bind_id )
-        {
-            char buf[ MAX_FOTEXT ];
-            X_str( buf, decl, script_func );
-            return "Unable to bind function '" + string( buf ) + "'.";
-        }
-        getCallbackArgs = 1;
-       }
-       else
-       {
-        getCallbackArgs = 2;
-       }
-
-       getCallback = bind_id;
-       return "";*/
-}
-
-string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
-{
-    /*uint bind_id = Script::BindByFunc(func, false);
+    uint bind_id = Script::BindByFunc(func, false);
     if (!bind_id)
         return "Unable to bind function '" + string(func->GetName()) + "'.";
 
@@ -1072,11 +1028,9 @@ string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
         setCallbacksAnyNewValue = true;
 
     setCallbacks.push_back(bind_id);
-    setCallbacksDeferred.push_back(deferred);*/
+    setCallbacksDeferred.push_back(deferred);
 
-    return "";
-
-    /*char decl[ MAX_FOTEXT ];
+    / *char decl[ MAX_FOTEXT ];
        X_str( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(),
        registrator->enumTypeName.c_str(), typeName.c_str() ); uint  bind_id = ( !deferred ?
        Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 ); if( !bind_id )
@@ -1130,8 +1084,8 @@ string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
 
        setCallbacks.push_back( bind_id );
        setCallbacksDeferred.push_back( deferred );
-       return "";*/
-}
+       return "";
+}*/
 
 Properties::Properties(PropertyRegistrator* reg)
 {
@@ -1501,7 +1455,7 @@ static string DecodeString(const string& str)
     return result;
 }
 
-string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep)
+/*string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep)
 {
     if (!(type_id & asTYPEID_MASK_OBJECT))
     {
@@ -1681,11 +1635,11 @@ void* ReadValue(
     }
     throw UnreachablePlaceException(LINE_STR);
     return nullptr;
-}
+}*/
 
 bool Properties::LoadFromText(const StrMap& key_values)
 {
-    bool is_error = false;
+    /*bool is_error = false;
     for (const auto& kv : key_values)
     {
         const string& key = kv.first;
@@ -1712,7 +1666,8 @@ bool Properties::LoadFromText(const StrMap& key_values)
         if (!LoadPropertyFromText(prop, value))
             is_error = true;
     }
-    return !is_error;
+    return !is_error;*/
+    return false;
 }
 
 void Properties::SaveToText(StrMap& key_values, Properties* base)
@@ -1770,7 +1725,7 @@ void Properties::SaveToText(StrMap& key_values, Properties* base)
 
 bool Properties::LoadPropertyFromText(Property* prop, const string& text)
 {
-    RUNTIME_ASSERT(prop);
+    /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
     RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
     bool is_error = false;
@@ -1798,12 +1753,13 @@ bool Properties::LoadPropertyFromText(Property* prop, const string& text)
         // Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
     }
 
-    return !is_error;
+    return !is_error;*/
+    return false;
 }
 
 string Properties::SavePropertyToText(Property* prop)
 {
-    RUNTIME_ASSERT(prop);
+    /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
     RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
 
@@ -1830,12 +1786,13 @@ string Properties::SavePropertyToText(Property* prop)
     if (prop->dataType == Property::Array || prop->dataType == Property::Dict)
         prop->ReleaseRefValue(value);
 
-    return text;
+    return text;*/
+    return "";
 }
 
 int Properties::GetValueAsInt(Entity* entity, int enum_value)
 {
-    Property* prop = entity->Props.registrator->FindByEnum(enum_value);
+    /*Property* prop = entity->Props.registrator->FindByEnum(enum_value);
     if (!prop)
         SCRIPT_ERROR_R0("Enum '{}' not found", enum_value);
     if (!prop->IsPOD())
@@ -1843,12 +1800,13 @@ int Properties::GetValueAsInt(Entity* entity, int enum_value)
     if (!prop->IsReadable())
         SCRIPT_ERROR_R0("Can't retreive integer value from non readable property '{}'", prop->GetName());
 
-    return prop->GetPODValueAsInt(entity);
+    return prop->GetPODValueAsInt(entity);*/
+    return 0;
 }
 
 void Properties::SetValueAsInt(Entity* entity, int enum_value, int value)
 {
-    Property* prop = entity->Props.registrator->FindByEnum(enum_value);
+    /*Property* prop = entity->Props.registrator->FindByEnum(enum_value);
     if (!prop)
         SCRIPT_ERROR_R("Enum '{}' not found", enum_value);
     if (!prop->IsPOD())
@@ -1856,12 +1814,12 @@ void Properties::SetValueAsInt(Entity* entity, int enum_value, int value)
     if (!prop->IsWritable())
         SCRIPT_ERROR_R("Can't set integer value to non writable property '{}'", prop->GetName());
 
-    prop->SetPODValueAsInt(entity, value);
+    prop->SetPODValueAsInt(entity, value);*/
 }
 
 bool Properties::SetValueAsIntByName(Entity* entity, const string& enum_name, int value)
 {
-    Property* prop = entity->Props.registrator->Find(enum_name);
+    /*Property* prop = entity->Props.registrator->Find(enum_name);
     if (!prop)
         SCRIPT_ERROR_R0("Enum '{}' not found", enum_name);
     if (!prop->IsPOD())
@@ -1869,13 +1827,13 @@ bool Properties::SetValueAsIntByName(Entity* entity, const string& enum_name, in
     if (!prop->IsWritable())
         SCRIPT_ERROR_R0("Can't set integer value to non writable property '{}'", prop->GetName());
 
-    prop->SetPODValueAsInt(entity, value);
+    prop->SetPODValueAsInt(entity, value);*/
     return true;
 }
 
 bool Properties::SetValueAsIntProps(Properties* props, int enum_value, int value)
 {
-    Property* prop = props->registrator->FindByEnum(enum_value);
+    /*Property* prop = props->registrator->FindByEnum(enum_value);
     if (!prop)
         SCRIPT_ERROR_R0("Enum '{}' not found", enum_value);
     if (!prop->IsPOD())
@@ -1917,7 +1875,7 @@ bool Properties::SetValueAsIntProps(Properties* props, int enum_value, int value
             props->SetPropValue<uint>(prop, (uint)value);
         else if (prop->baseSize == 8)
             props->SetPropValue<uint64>(prop, (uint64)value);
-    }
+    }*/
     return true;
 }
 
@@ -1960,7 +1918,7 @@ PropertyRegistrator::PropertyRegistrator(bool is_server, const string& script_cl
 
 PropertyRegistrator::~PropertyRegistrator()
 {
-    scriptClassName = "";
+    /*scriptClassName = "";
     wholePodDataSize = 0;
 
     for (size_t i = 0; i < registeredProperties.size(); i++)
@@ -1974,7 +1932,7 @@ PropertyRegistrator::~PropertyRegistrator()
         delete[] podDataPool[i];
     podDataPool.clear();
 
-    SetDefaults();
+    SetDefaults();*/
 }
 
 bool PropertyRegistrator::Init()
@@ -2025,7 +1983,7 @@ bool PropertyRegistrator::Init()
     return true;
 }
 
-template<typename T>
+/*template<typename T>
 static void Property_GetValue_Generic(asIScriptGeneric* gen)
 {
     new (gen->GetAddressOfReturnLocation()) T(((Property*)gen->GetAuxiliary())->GetValue<T>((Entity*)gen->GetObject()));
@@ -2035,14 +1993,14 @@ template<typename T>
 static void Property_SetValue_Generic(asIScriptGeneric* gen)
 {
     ((Property*)gen->GetAuxiliary())->SetValue<T>((Entity*)gen->GetObject(), *(T*)gen->GetAddressOfArg(0));
-}
+}*/
 
 Property* PropertyRegistrator::Register(const string& type_name, const string& name, Property::AccessType access,
     bool is_const, const char* group /* = nullptr */, int64* min_value /* = nullptr */,
     int64* max_value /* = nullptr */, bool is_temporary /* = false */, bool is_no_history /* = false */
 )
 {
-    if (registrationFinished)
+    /*if (registrationFinished)
     {
         WriteLog("Registration of class properties is finished.\n");
         return nullptr;
@@ -2225,9 +2183,9 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
         disable_set = true;
 
     // Todo: rework FONLINE_
-    /*#ifdef FONLINE_EDITOR
+    / *#ifdef FONLINE_EDITOR
         disable_get = false;
-    #endif*/
+    #endif* /
 
     // Register default getter
     bool is_handle = (data_type == Property::Array || data_type == Property::Dict);
@@ -2499,10 +2457,11 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     if (prop->asObjType)
         prop->asObjType->AddRef();
 
-    return prop;
+    return prop;*/
+    return 0;
 }
 
-static void GetEntityComponent(asIScriptGeneric* gen)
+/*static void GetEntityComponent(asIScriptGeneric* gen)
 {
     Entity* entity = (Entity*)gen->GetObject();
     hash component_name = *(hash*)gen->GetAuxiliary();
@@ -2510,11 +2469,11 @@ static void GetEntityComponent(asIScriptGeneric* gen)
         *(Entity**)gen->GetAddressOfReturnLocation() = entity;
     else
         *(Entity**)gen->GetAddressOfReturnLocation() = nullptr;
-}
+}*/
 
 bool PropertyRegistrator::RegisterComponent(const string& name)
 {
-    asIScriptEngine* engine = 0; // Script::GetEngine();
+    /*asIScriptEngine* engine = 0; // Script::GetEngine();
     RUNTIME_ASSERT(engine);
 
     string class_name = scriptClassName + name;
@@ -2551,7 +2510,7 @@ bool PropertyRegistrator::RegisterComponent(const string& name)
         return false;
     }
 
-    registeredComponents.insert(*name_hash);
+    registeredComponents.insert(*name_hash);*/
     return true;
 }
 
