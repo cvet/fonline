@@ -132,10 +132,10 @@ public:
 #define TEXT_LISTEN_FIRST_STR_MAX_LEN (63)
     struct TextListen
     {
-        uint FuncId;
-        int SayType;
-        string FirstStr;
-        uint64 Parameter;
+        ScriptFunc<void, Critter*, string> Func {};
+        int SayType {};
+        string FirstStr {};
+        uint64 Parameter {};
     };
     using TextListenVec = vector<TextListen>;
     TextListenVec TextListeners;

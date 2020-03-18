@@ -126,11 +126,11 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
 
     for (auto& item : static_map.AllItemsVec)
     {
-        /*if (!item->IsStatic() && item->GetScriptId())
+        if (!item->IsStatic() && item->GetScriptId())
         {
             string func_name = _str().parseHash(item->GetScriptId());
-            hash func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Item, bool)");
-            if (!func_num)
+            auto func = scriptSys.FindFunc<void, Item*, bool>(func_name);
+            if (!func)
             {
                 WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
@@ -139,20 +139,22 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         else if (item->IsStatic() && item->GetScriptId())
         {
             string func_name = _str().parseHash(item->GetScriptId());
-            uint bind_id = 0;
+            ScriptFunc<bool, Critter*, Item*, bool, int> scenery_func;
+            ScriptFunc<void, Critter*, Item*, bool, uchar> trigger_func;
             if (item->GetIsTrigger() || item->GetIsTrap())
-                bind_id = scriptSys.BindByFuncName(func_name, "void %s(Critter, const Item, bool, uint8)", false);
+                trigger_func = scriptSys.FindFunc<void, Critter*, Item*, bool, uchar>(func_name);
             else
-                bind_id = scriptSys.BindByFuncName(func_name, "bool %s(Critter, const Item, Item, int)", false);
+                scenery_func = scriptSys.FindFunc<bool, Critter*, Item*, bool, int>(func_name);
 
-            if (!bind_id)
+            if (!scenery_func && !trigger_func)
             {
                 WriteLog("Map '{}', can't bind static item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
 
-            item->SceneryScriptBindId = bind_id;
-        }*/
+            item->SceneryScriptFunc = scenery_func;
+            item->TriggerScriptFunc = trigger_func;
+        }
     }
 
     if (errors)

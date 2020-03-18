@@ -473,19 +473,15 @@ void CritterManager::CloseTalk(Client* cl)
             }
         }
 
-        if (cl->Talk.CurDialog.DlgScript)
+        if (cl->Talk.CurDialog.DlgScriptFunc)
         {
-            /*scriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-            scriptSys.SetArgEntity(cl);
-            scriptSys.SetArgEntity(npc);
-            scriptSys.SetArgEntity(nullptr);
             cl->Talk.Locked = true;
-            scriptSys.RunPrepared();
-            cl->Talk.Locked = false;*/
+            cl->Talk.CurDialog.DlgScriptFunc(cl, npc);
+            cl->Talk.Locked = false;
         }
     }
 
-    cl->Talk = Talking {};
+    cl->Talk = Talking();
     cl->Send_Talk();
 }
 

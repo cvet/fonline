@@ -325,7 +325,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Client: fix soft scroll if critter teleports
 * Client: add working in IPv6 networks
 * Client: rename FOClient to just Client (after reworking server Client to ClientConnection)
-* Client: remove client Self singleton
 * CritterView: migrate critter on head text moving in scripts
 * CritterView: do same for 2d animations
 * HexManager: optimize lighting rebuilding to skip unvisible lights
@@ -357,7 +356,6 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * NetBuffer: allow transferring of any type and add safe transferring of floats
-* Properties: check can get in SetGetCallback
 * Properties: rework FONLINE_
 * Properties: don't preserve memory for not allocated components in entity
 * ProtoManager: remove ProtoManager::ClearProtos
@@ -403,14 +401,13 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: rename FOServer to just Server
-* Server: remove server Self singleton
 * Server: synchronize LangPacks
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * Mapper: need attention! (20)
+* Mapper: mapper render iface layer
 * Mapper: add standalone Mapper application
 * Mapper: rename FOMapper to just Mapper
-* Mapper: remove mapper Self singleton
 * ModelBaker: fix assimp, exclude fbxsdk
 * ModelBaker: return AssimpLogging on models bakering
   

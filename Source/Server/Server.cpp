@@ -841,7 +841,7 @@ void FOServer::Process_Text(Client* cl)
 
     // Text listen
     int listen_count = 0;
-    int listen_func_id[100]; // 100 calls per one message is enough
+    ScriptFunc<void, Critter*, string> listen_func[100]; // 100 calls per one message is enough
     string listen_str[100];
 
     {
@@ -856,7 +856,7 @@ void FOServer::Process_Text(Client* cl)
                     std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() &&
                     _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
                 {
-                    listen_func_id[listen_count] = tl.FuncId;
+                    listen_func[listen_count] = tl.Func;
                     listen_str[listen_count] = str;
                     if (++listen_count >= 100)
                         break;
@@ -873,7 +873,7 @@ void FOServer::Process_Text(Client* cl)
                 if (tl.SayType == how_say && tl.Parameter == pid &&
                     _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr))
                 {
-                    listen_func_id[listen_count] = tl.FuncId;
+                    listen_func[listen_count] = tl.Func;
                     listen_str[listen_count] = str;
                     if (++listen_count >= 100)
                         break;
@@ -883,12 +883,7 @@ void FOServer::Process_Text(Client* cl)
     }
 
     for (int i = 0; i < listen_count; i++)
-    {
-        /*ScriptSys.PrepareContext(listen_func_id[i], cl->GetName());
-        ScriptSys.SetArgEntity(cl);
-        ScriptSys.SetArgObject(&listen_str[i]);
-        ScriptSys.RunPrepared();*/
-    }
+        listen_func[i](cl, listen_str[i]);
 }
 
 void FOServer::Process_Command(NetBuffer& buf, LogFunc logcb, Client* cl_, const string& admin_panel)
@@ -1279,23 +1274,10 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
             break;
         }
 
-        /*uint bind_id = ScriptSys.BindByFuncName(func_name, "void %s(Critter, int, int, int)", true);
-        if (!bind_id)
-        {
-            logcb("Fail, function not found.");
-            break;
-        }
-
-        ScriptSys.PrepareContext(bind_id, cl_ ? cl_->GetName() : "AdminPanel");
-        ScriptSys.SetArgObject(cl_);
-        ScriptSys.SetArgUInt(param0);
-        ScriptSys.SetArgUInt(param1);
-        ScriptSys.SetArgUInt(param2);
-
-        if (ScriptSys.RunPrepared())
+        if (ScriptSys.CallFunc<void, Critter*, int, int, int>(func_name, cl_, param0, param1, param2))
             logcb("Run script success.");
         else
-            logcb("Run script fail.");*/
+            logcb("Run script fail.");
     }
     break;
     case CMD_REGENMAP: {
@@ -2488,15 +2470,8 @@ void FOServer::VerifyTrigger(
         map->GetStaticItemTriggers(from_hx, from_hy, triggers);
         for (Item* item : triggers)
         {
-            if (item->SceneryScriptBindId)
-            {
-                /*ScriptSys.PrepareContext(item->SceneryScriptBindId, cr->GetName());
-                ScriptSys.SetArgEntity(cr);
-                ScriptSys.SetArgEntity(item);
-                ScriptSys.SetArgBool(false);
-                ScriptSys.SetArgUChar(dir);
-                ScriptSys.RunPreparedSuspend();*/
-            }
+            if (item->TriggerScriptFunc)
+                item->TriggerScriptFunc(cr, item, false, dir);
 
             ScriptSys.StaticItemWalkEvent(item, cr, false, dir);
         }
@@ -2508,15 +2483,8 @@ void FOServer::VerifyTrigger(
         map->GetStaticItemTriggers(to_hx, to_hy, triggers);
         for (Item* item : triggers)
         {
-            if (item->SceneryScriptBindId)
-            {
-                /*ScriptSys.PrepareContext(item->SceneryScriptBindId, cr->GetName());
-                ScriptSys.SetArgEntity(cr);
-                ScriptSys.SetArgEntity(item);
-                ScriptSys.SetArgBool(true);
-                ScriptSys.SetArgUChar(dir);
-                ScriptSys.RunPreparedSuspend();*/
-            }
+            if (item->TriggerScriptFunc)
+                item->TriggerScriptFunc(cr, item, true, dir);
 
             ScriptSys.StaticItemWalkEvent(item, cr, true, dir);
         }
@@ -4392,19 +4360,12 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (cl->Talk.CurDialog.DlgScript)
+    if (cl->Talk.CurDialog.DlgScriptFunc)
     {
-        /*string lexems;
-        ScriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-        ScriptSys.SetArgEntity(cl);
-        ScriptSys.SetArgEntity(npc);
-        ScriptSys.SetArgObject(&lexems);
         cl->Talk.Locked = true;
-        if (ScriptSys.RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
-            cl->Talk.Lexems = lexems;
-        else
-            cl->Talk.Lexems = "";
-        cl->Talk.Locked = false;*/
+        if (cl->Talk.CurDialog.DlgScriptFunc(cl, npc))
+            cl->Talk.Lexems = cl->Talk.CurDialog.DlgScriptFunc.GetResult();
+        cl->Talk.Locked = false;
     }
 
     // On head text
@@ -4538,7 +4499,7 @@ void FOServer::Process_Dialog(Client* cl)
         case uint(-3):
         case DIALOG_BARTER:
         label_Barter:
-            if (cur_dialog->DlgScript)
+            if (cur_dialog->DlgScriptFunc)
             {
                 cl->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
                 return;
@@ -4599,19 +4560,12 @@ void FOServer::Process_Dialog(Client* cl)
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (cl->Talk.CurDialog.DlgScript)
+    if (cl->Talk.CurDialog.DlgScriptFunc)
     {
-        /*string lexems;
-        ScriptSys.PrepareContext(cl->Talk.CurDialog.DlgScript, cl->GetName());
-        ScriptSys.SetArgEntity(cl);
-        ScriptSys.SetArgEntity(npc);
-        ScriptSys.SetArgObject(&lexems);
         cl->Talk.Locked = true;
-        if (ScriptSys.RunPrepared() && lexems.length() <= MAX_DLG_LEXEMS_TEXT)
-            cl->Talk.Lexems = lexems;
-        else
-            cl->Talk.Lexems = "";
-        cl->Talk.Locked = false;*/
+        if (cl->Talk.CurDialog.DlgScriptFunc(cl, npc))
+            cl->Talk.Lexems = cl->Talk.CurDialog.DlgScriptFunc.GetResult();
+        cl->Talk.Locked = false;
     }
 
     // On head text

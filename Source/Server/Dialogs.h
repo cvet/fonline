@@ -102,8 +102,7 @@ public:
     uint TextId {};
     AnswersVec Answers {};
     uint Flags {};
-    bool RetVal {};
-    uint DlgScript {};
+    ScriptFunc<string, Critter*, Critter*> DlgScriptFunc {};
 };
 using DialogsVec = vector<Dialog>;
 
@@ -148,7 +147,7 @@ public:
 
 private:
     DemandResult* LoadDemandResult(istringstream& input, bool is_demand);
-    uint GetNotAnswerAction(const string& str, bool& ret_val);
+    ScriptFunc<string, Critter*, Critter*> GetNotAnswerAction(const string& str);
     char GetDRType(const string& str);
     char GetWho(char who);
     bool CheckOper(char oper);

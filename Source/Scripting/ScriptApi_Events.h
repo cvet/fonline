@@ -805,7 +805,8 @@ FO_API_CLIENT_EVENT(OutMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(int
  * @param scriptCall ...
  ******************************************************************************/
 #endif
-FO_API_CLIENT_EVENT(MessageBox, FO_API_ARG(string, text), FO_API_ARG_ENUM(MessageBoxTextType, type), FO_API_ARG(bool, scriptCall))
+FO_API_CLIENT_EVENT(
+    MessageBox, FO_API_ARG(string, text), FO_API_ARG_ENUM(MessageBoxTextType, type), FO_API_ARG(bool, scriptCall))
 
 #ifdef FO_API_CLIENT_EVENT_DOC
 /*******************************************************************************

@@ -36,7 +36,7 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "ScriptSystem.h"
+#include "ServerScripting.h"
 
 #define FO_API_ITEM_HEADER
 #include "ScriptApi.h"
@@ -54,7 +54,7 @@ class Item : public Entity
     friend class ItemManager;
 
 public:
-    Item(uint id, ProtoItem* proto, ScriptSystem& script_sys);
+    Item(uint id, ProtoItem* proto, ServerScriptSystem& script_sys);
 
     ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
     void SetProto(ProtoItem* proto);
@@ -76,7 +76,8 @@ public:
     bool RadioIsRecvActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_RECV); }
 
     bool ViewPlaceOnMap {};
-    uint SceneryScriptBindId {};
+    ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
+    ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
 #define FO_API_ITEM_CLASS
@@ -87,6 +88,6 @@ public:
 #include "ScriptApi.h"
 
 private:
-    ScriptSystem& scriptSys;
+    ServerScriptSystem& scriptSys;
     ItemVec* childItems {};
 };

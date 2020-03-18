@@ -274,9 +274,8 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
     uint text_id;
     uint link;
     string read_str;
-    bool ret_val;
 
-    int script;
+    ScriptFunc<string, Critter*, Critter*> script;
     uint flags;
 
     while (true)
@@ -294,8 +293,8 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
         input >> read_str;
         if (input.fail())
             LOAD_FAIL("Bad not answer action.");
-        script = GetNotAnswerAction(read_str, ret_val);
-        if (script < 0)
+        script = GetNotAnswerAction(read_str);
+        if (!script)
         {
             WriteLog("Unable to parse '{}'.\n", read_str);
             LOAD_FAIL("Invalid not answer action.");
@@ -307,9 +306,8 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
         current_dialog.TextId = DLG_STR_ID(pack->PackId, text_id / 10);
-        current_dialog.DlgScript = script;
+        current_dialog.DlgScriptFunc = script;
         current_dialog.Flags = flags;
-        current_dialog.RetVal = ret_val;
 
         // Read answers
         input >> ch;
@@ -614,22 +612,12 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
     return &result;
 }
 
-uint DialogManager::GetNotAnswerAction(const string& str, bool& ret_val)
+ScriptFunc<string, Critter*, Critter*> DialogManager::GetNotAnswerAction(const string& str)
 {
-    ret_val = false;
-
     if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None")
-        return 0;
+        return {};
 
-    /*uint id = scriptSys.BindByFuncName(str, "uint %s(Critter, Critter, string)", false, true);
-    if (id)
-    {
-        ret_val = true;
-        return id;
-    }
-
-    return scriptSys.BindByFuncName(str, "void %s(Critter, Critter, string)", false);*/
-    return 0;
+    return scriptSys.FindFunc<string, Critter*, Critter*>(str);
 }
 
 char DialogManager::GetDRType(const string& str)

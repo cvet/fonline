@@ -47,7 +47,7 @@ PROPERTIES_IMPL(Item);
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, name)
 #include "ScriptApi.h"
 
-Item::Item(uint id, ProtoItem* proto, ScriptSystem& script_sys) :
+Item::Item(uint id, ProtoItem* proto, ServerScriptSystem& script_sys) :
     Entity(id, EntityType::Item, PropertiesRegistrator, proto), scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);

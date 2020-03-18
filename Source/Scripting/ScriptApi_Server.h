@@ -260,15 +260,11 @@ FO_API_ITEM_METHOD(CallStaticItemFunction, FO_API_RET(bool), FO_API_ARG_OBJ(Crit
 #ifdef FO_API_ITEM_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr), FO_API_ARG_OBJ_MARSHAL(Item, item), FO_API_ARG_MARSHAL(int, param))
 {
-    if (!_this->SceneryScriptBindId)
+    if (!_this->SceneryScriptFunc)
         FO_API_RETURN(false);
 
-    _server->ScriptSys.PrepareContext(_this->SceneryScriptBindId, cr->GetName());
-    _server->ScriptSys.SetArgEntity(cr);
-    _server->ScriptSys.SetArgEntity(_this);
-    _server->ScriptSys.SetArgEntity(item);
-    _server->ScriptSys.SetArgUInt(param);
-    FO_API_RETURN(_server->ScriptSys.RunPrepared() && _server->ScriptSys.GetReturnedBool());
+    bool result;
+    FO_API_RETURN(_this->SceneryScriptFunc(cr, _this, item, param, result) && result);
 }
 FO_API_EPILOG(0)
 #endif

@@ -50,7 +50,7 @@ public:
 };
 
 template<typename... Args>
-class ScriptEvent
+class ScriptEvent : public NonCopyable
 {
 public:
     using Callback = std::function<bool(Args...)>;
@@ -75,6 +75,38 @@ private:
     vector<Callback> callbacks {};
 };
 
+template<typename TRet, typename... Args>
+class ScriptFunc
+{
+public:
+    using Func = std::function<bool(Args..., TRet&)>;
+
+    ScriptFunc() = default;
+    ScriptFunc(Func f) : func {f} {}
+    operator bool() { return !!func; }
+    bool operator()(Args... args) { return func(std::forward<Args>(args)..., ret); }
+    TRet GetResult() { return ret; }
+
+private:
+    Func func {};
+    TRet ret {};
+};
+
+template<typename... Args>
+class ScriptFunc<void, Args...>
+{
+public:
+    using Func = std::function<bool(Args...)>;
+
+    ScriptFunc() = default;
+    ScriptFunc(Func f) : func {f} {}
+    operator bool() { return !!func; }
+    bool operator()(Args... args) { return func(std::forward<Args>(args)...); }
+
+private:
+    Func func {};
+};
+
 class ScriptSystem : public NameResolver, public NonMovable
 {
 public:
@@ -85,6 +117,37 @@ public:
     int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) { return 0; }
     string GetEnumValueName(const string& enum_name, int value) { return ""; }
     void RemoveEntity(Entity* entity) {}
+
+    template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
+    ScriptFunc<TRet, Args...> FindFunc(const string& func_name)
+    {
+        return ScriptFunc<TRet, Args...>();
+    }
+
+    template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
+    ScriptFunc<void, Args...> FindFunc(const string& func_name)
+    {
+        return ScriptFunc<void, Args...>();
+    }
+
+    template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
+    bool CallFunc(const string& func_name, Args... args, TRet& ret)
+    {
+        auto func = FindFunc<TRet, Args...>(func_name);
+        if (func && func(args...))
+        {
+            ret = func.GetResult();
+            return true;
+        }
+        return false;
+    }
+
+    template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
+    bool CallFunc(const string& func_name, Args... args)
+    {
+        auto func = FindFunc<void, Args...>(func_name);
+        return func && func(args...);
+    }
 
 protected:
     virtual void InitNativeScripting() = 0;

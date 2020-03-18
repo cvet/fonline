@@ -4926,17 +4926,9 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' &&
                 tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ')
             {
-                /*string func_name = _str(tag.substr(7)).substringUntil('$');
-                uint bind_id = ScriptSys.BindByFuncName(func_name, "string %s(string)", true);
-                tag = "<script function not found>";
-                if (bind_id)
-                {
-                    string script_lexems = lexems;
-                    ScriptSys.PrepareContext(bind_id, "Game");
-                    ScriptSys.SetArgObject(&script_lexems);
-                    if (ScriptSys.RunPrepared())
-                        tag = *(string*)ScriptSys.GetReturnedObject();
-                }*/
+                string func_name = _str(tag.substr(7)).substringUntil('$');
+                if (!ScriptSys.CallFunc<string, string>(func_name, lexems, tag))
+                    tag = "<script function not found>";
             }
             // Error
             else
