@@ -42,13 +42,6 @@ ScriptSystem::ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mn
 {
 }
 
-void ScriptSystem::Initialize()
-{
-    InitNativeScripting();
-    InitAngelScriptScripting();
-    InitMonoScripting();
-}
-
 /*void ScriptSystem::UnloadScripts()
 {
     for (asUINT i = 0, j = asEngine->GetModuleCount(); i < j; i++)

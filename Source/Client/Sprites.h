@@ -128,38 +128,3 @@ private:
     Sprite& PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
         uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback);
 };
-
-class MapSprite : public NonCopyable
-{
-public:
-    void AddRef() const { ++RefCount; }
-    void Release() const
-    {
-        if (--RefCount == 0)
-            delete this;
-    }
-    static MapSprite* Factory() { return new MapSprite(); }
-
-    mutable int RefCount {1};
-    bool Valid {};
-    uint SprId {};
-    ushort HexX {};
-    ushort HexY {};
-    hash ProtoId {};
-    int FrameIndex {};
-    int OffsX {};
-    int OffsY {};
-    bool IsFlat {};
-    bool NoLight {};
-    int DrawOrder {};
-    int DrawOrderHyOffset {};
-    int Corner {};
-    bool DisableEgg {};
-    uint Color {};
-    uint ContourColor {};
-    bool IsTweakOffs {};
-    short TweakOffsX {};
-    short TweakOffsY {};
-    bool IsTweakAlpha {};
-    uchar TweakAlpha {};
-};

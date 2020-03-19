@@ -32,6 +32,8 @@
 //
 
 #ifdef FO_API_COMMON_IMPL
+#include "GenericUtils.h"
+
 class MapSprite : public NonCopyable
 {
 public:
@@ -114,7 +116,7 @@ FO_API_EPILOG()
 #endif
 FO_API_GLOBAL_COMMON_FUNC(Random, FO_API_RET(int), FO_API_ARG(int, min), FO_API_ARG(int, max))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, min), FO_API_ARG_MARSHAL(int, max))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, min) FO_API_ARG_MARSHAL(int, max))
 {
     FO_API_RETURN(GenericUtils::Random(min, max));
 }
@@ -149,7 +151,7 @@ FO_API_EPILOG()
 #endif
 FO_API_GLOBAL_COMMON_FUNC(StrToInt, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(int, result))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_REF_MARSHAL(int, result))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(int, result))
 {
     if (!_str(text).isNumber())
         FO_API_RETURN(false);
@@ -170,7 +172,7 @@ FO_API_EPILOG(0)
 #endif
 FO_API_GLOBAL_COMMON_FUNC(StrToFloat, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(float, result))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_REF_MARSHAL(float, result))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(float, result))
 {
     if (!_str(text).isNumber())
         FO_API_RETURN(false);
@@ -194,7 +196,7 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetDistantion, FO_API_RET(uint), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1),
     FO_API_ARG(ushort, hx2), FO_API_ARG(ushort, hy2))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1), FO_API_ARG_MARSHAL(ushort, hy1), FO_API_ARG_MARSHAL(ushort, hx2),
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO_API_ARG_MARSHAL(ushort, hx2),
     FO_API_ARG_MARSHAL(ushort, hy2))
 {
     // Todo: need attention!
@@ -218,7 +220,7 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetDirection, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx),
     FO_API_ARG_MARSHAL(ushort, toHy))
 {
     // Todo: need attention!
@@ -243,8 +245,8 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetOffsetDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx), FO_API_ARG_MARSHAL(ushort, fromHy), FO_API_ARG_MARSHAL(ushort, toHx),
-    FO_API_ARG_MARSHAL(ushort, toHy), FO_API_ARG_MARSHAL(float, offset))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx),
+    FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, offset))
 {
     // Todo: need attention!
     // FO_API_RETURN(GetFarDir(fromHx, fromHy, toHx, toHy, offset));
@@ -297,7 +299,7 @@ FO_API_EPILOG(0)
 #endif
 FO_API_GLOBAL_COMMON_FUNC(SetAngelScriptProperty, FO_API_RET(bool), FO_API_ARG(int, property), FO_API_ARG(uint, value))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, property), FO_API_ARG_MARSHAL(uint, value))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, property) FO_API_ARG_MARSHAL(uint, value))
 {
     FO_API_RETURN(asGetActiveContext()->GetEngine()->SetEngineProperty((asEEngineProp)property, value) >= 0);
 }
@@ -351,7 +353,7 @@ FO_API_EPILOG(0)
 #endif
 FO_API_GLOBAL_COMMON_FUNC(DecodeUTF8, FO_API_RET(uint), FO_API_ARG(string, text), FO_API_ARG_REF(uint, length))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text), FO_API_ARG_REF_MARSHAL(uint, length))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(uint, length))
 {
     FO_API_RETURN(utf8::Decode(text.c_str(), &length));
 }
@@ -596,7 +598,7 @@ FO_API_EPILOG(0)
 #endif
 FO_API_GLOBAL_COMMON_FUNC(SystemCallExt, FO_API_RET(int), FO_API_ARG(string, command), FO_API_ARG_REF(string, output))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command), FO_API_ARG_REF_MARSHAL(string, output))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string, output))
 {
     output = "";
     FO_API_RETURN(SystemCall(command, [&output](const string& line) {
@@ -642,7 +644,7 @@ FO_API_EPILOG()
 #endif
 FO_API_GLOBAL_COMMON_FUNC(GetProtoItem, FO_API_RET_OBJ(void), FO_API_ARG(hash, pid), FO_API_ARG(map<int - int>, props))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid), FO_API_ARG_MARSHAL(map<int - int>, props))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(map<int - int>, props))
 {
 #if 0
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );

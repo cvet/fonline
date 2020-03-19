@@ -46,7 +46,12 @@ class LocationView;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    ClientScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) : ScriptSystem(obj, sett, file_mngr) {}
+    ClientScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) : ScriptSystem(obj, sett, file_mngr)
+    {
+        InitNativeScripting();
+        InitAngelScriptScripting();
+        InitMonoScripting();
+    }
 
 #define FO_API_CLIENT_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
 #define FO_API_ARG(type, name) type
@@ -59,8 +64,8 @@ public:
 #define FO_API_ARG_DICT(key, val, name) map<key, val>
 #include "ScriptApi.h"
 
-protected:
-    virtual void InitNativeScripting() override;
-    virtual void InitAngelScriptScripting() override;
-    virtual void InitMonoScripting() override;
+private:
+    void InitNativeScripting();
+    void InitAngelScriptScripting();
+    void InitMonoScripting();
 };

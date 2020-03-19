@@ -40,6 +40,7 @@
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ScriptSystemException);
+DECLARE_EXCEPTION(ScriptException);
 
 class NameResolver
 {
@@ -112,7 +113,6 @@ class ScriptSystem : public NameResolver, public NonMovable
 public:
     ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr);
     virtual ~ScriptSystem() = default;
-    void Initialize();
     int GetEnumValue(const string& enum_value_name, bool& fail) { return 0; }
     int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) { return 0; }
     string GetEnumValueName(const string& enum_name, int value) { return ""; }
@@ -150,10 +150,6 @@ public:
     }
 
 protected:
-    virtual void InitNativeScripting() = 0;
-    virtual void InitAngelScriptScripting() = 0;
-    virtual void InitMonoScripting() = 0;
-
     void* mainObj;
     GlobalSettings& settings;
     FileManager& fileMngr;

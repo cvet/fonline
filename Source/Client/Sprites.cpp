@@ -82,7 +82,8 @@ void Sprite::Unvalidate()
 
     if (MapSpr)
     {
-        MapSpr->Release();
+        // Todo: MapSprite releasing
+        // MapSpr->Release();
         MapSpr = nullptr;
     }
 

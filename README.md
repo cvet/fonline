@@ -339,6 +339,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * SpriteManager: improve client rendering brightness
 * SpriteManager: move fonts stuff to separate module
 * Sprites: exclude sprite cut system?
+* Sprites: MapSprite releasing
 * Application: move different renderers to separate modules
 * Application: map all framebuffer ext functions
 * Application: reasearch about std::quick_exit
@@ -376,7 +377,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system (4)
 * ScriptApi_Common: need attention! (3)
-* ScriptApi_Mapper: need attention! (5)
+* ScriptApi_Mapper: need attention! (4)
 * ScriptApi_Server: need attention!
 * AdminPanel: admin panel network to Asio
 * Critter: remove static SlotEnabled and SlotDataSendEnabled
