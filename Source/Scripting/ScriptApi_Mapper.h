@@ -218,12 +218,9 @@ FO_API_GLOBAL_MAPPER_FUNC(DeleteEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(E
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities))
 {
-    for (int i = 0, j = entities->GetSize(); i < j; i++)
-    {
-        Entity* entity = *(Entity**)entities->At(i);
+    for (Entity* entity : entities)
         if (entity && !entity->IsDestroyed)
             _mapper->DeleteEntity(entity);
-    }
 }
 FO_API_EPILOG()
 #endif
@@ -263,9 +260,8 @@ FO_API_GLOBAL_MAPPER_FUNC(SelectEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(E
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities) FO_API_ARG_MARSHAL(bool, set))
 {
-    for (int i = 0, j = entities->GetSize(); i < j; i++)
+    for (Entity* entity : entities)
     {
-        Entity* entity = *(Entity**)entities->At(i);
         if (entity)
         {
             if (set)
@@ -309,7 +305,7 @@ FO_API_PROLOG()
     entities.reserve(_mapper->SelectedEntities.size());
     for (uint i = 0, j = (uint)_mapper->SelectedEntities.size(); i < j; i++)
         entities.push_back(_mapper->SelectedEntities[i]);
-    FO_API_RETURN(_mapper->ScriptSys.CreateArrayRef("Entity[]", entities));
+    FO_API_RETURN(entities);
 }
 FO_API_EPILOG(0)
 #endif
@@ -355,8 +351,8 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_MAPPER_FUNC(DeleteTile, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof),
-    FO_API_ARG_MARSHAL(int, layer))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof)
+        FO_API_ARG_MARSHAL(int, layer))
 {
     if (!_mapper->HexMngr.IsMapLoaded())
         throw ScriptException("Map not loaded");
@@ -707,13 +703,13 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMapFileNames, FO_API_RET_ARR(string), FO_API_ARG(st
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, dir))
 {
-    CScriptArray* names = _mapper->ScriptSys.CreateArray("string[]");
+    StrVec names;
     FileCollection map_files = _mapper->ServerFileMngr.FilterFiles("fomap", dir);
     while (map_files.MoveNext())
     {
         FileHeader file_header = map_files.GetCurFileHeader();
         string fname = file_header.GetName();
-        names->InsertLast(&fname);
+        names.push_back(fname);
     }
     FO_API_RETURN(names);
 }
@@ -814,13 +810,13 @@ FO_API_EPILOG()
 FO_API_GLOBAL_MAPPER_FUNC(TabGetTileDirs, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG_ARR_REF(string, dirNames),
     FO_API_ARG_ARR_REF(bool, includeSubdirs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab),
-    FO_API_ARG_ARR_REF_MARSHAL(string, dirNames) FO_API_ARG_ARR_REF_MARSHAL(bool, includeSubdirs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_ARR_REF_MARSHAL(string, dirNames)
+        FO_API_ARG_ARR_REF_MARSHAL(bool, includeSubdirs))
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
 
-    TileTab& ttab = _mapper->TabsTiles[tab];
+    /*FOMapper::TileTab& ttab = _mapper->TabsTiles[tab];
     if (dirNames)
     {
         asUINT i = dirNames->GetSize();
@@ -833,7 +829,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab),
     }
     if (includeSubdirs)
         _mapper->ScriptSys.AppendVectorToArray(ttab.TileSubDirs, includeSubdirs);
-    FO_API_RETURN((uint)ttab.TileDirs.size());
+    FO_API_RETURN((uint)ttab.TileDirs.size());*/
 }
 FO_API_EPILOG(0)
 #endif
@@ -859,10 +855,10 @@ FO_API_PROLOG(
     if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
         FO_API_RETURN(0);
 
-    SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    /*SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
     if (itemPids)
         _mapper->ScriptSys.AppendVectorToArray(stab.ItemProtos, itemPids);
-    FO_API_RETURN((uint)stab.ItemProtos.size());
+    FO_API_RETURN((uint)stab.ItemProtos.size());*/
 }
 FO_API_EPILOG(0)
 #endif
@@ -888,10 +884,10 @@ FO_API_PROLOG(
     if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
         FO_API_RETURN(0);
 
-    SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    /*SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
     if (critterPids)
         _mapper->ScriptSys.AppendVectorToArray(stab.NpcProtos, critterPids);
-    FO_API_RETURN((uint)stab.NpcProtos.size());
+    FO_API_RETURN((uint)stab.NpcProtos.size());*/
 }
 FO_API_EPILOG(0)
 #endif
@@ -913,7 +909,7 @@ FO_API_PROLOG(
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
-    if (dirNames && includeSubdirs && dirNames->GetSize() != includeSubdirs->GetSize())
+    /*if (dirNames && includeSubdirs && dirNames->GetSize() != includeSubdirs->GetSize())
         FO_API_RETURN_VOID();
 
     TileTab& ttab = _mapper->TabsTiles[tab];
@@ -933,7 +929,7 @@ FO_API_PROLOG(
         }
     }
 
-    _mapper->RefreshTiles(tab);
+    _mapper->RefreshTiles(tab);*/
 }
 FO_API_EPILOG()
 #endif
@@ -954,7 +950,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
-    if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
+    /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
         FO_API_RETURN_VOID();
 
     // Add protos to sub tab
@@ -1002,7 +998,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
         _mapper->TabsActive[tab] = &stab_default;
 
     // Refresh
-    _mapper->RefreshCurProtos();
+    _mapper->RefreshCurProtos();*/
 }
 FO_API_EPILOG()
 #endif
@@ -1023,7 +1019,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
-    if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
+    /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
         FO_API_RETURN_VOID();
 
     // Add protos to sub tab
@@ -1071,7 +1067,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
         _mapper->TabsActive[tab] = &stab_default;
 
     // Refresh
-    _mapper->RefreshCurProtos();
+    _mapper->RefreshCurProtos();*/
 }
 FO_API_EPILOG()
 #endif
@@ -1090,9 +1086,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
 
-    _mapper->Tabs[tab].clear();
+    /*_mapper->Tabs[tab].clear();
     SubTab& stab_default = _mapper->Tabs[tab][DEFAULT_SUB_TAB];
-    _mapper->TabsActive[tab] = &stab_default;
+    _mapper->TabsActive[tab] = &stab_default;*/
 }
 FO_API_EPILOG()
 #endif
@@ -1705,7 +1701,7 @@ FO_API_GLOBAL_MAPPER_FUNC(LoadFont, FO_API_RET(bool), FO_API_ARG(int, fontIndex)
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, fontFname))
 {
     bool result;
-    if (fontFname.length() > 0 && font_fname[0] == '*')
+    if (fontFname.length() > 0 && fontFname[0] == '*')
         result = _mapper->SprMngr.LoadFontFO(fontIndex, fontFname.c_str() + 1, false);
     else
         result = _mapper->SprMngr.LoadFontBMF(fontIndex, fontFname.c_str());
@@ -1811,11 +1807,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO
         FO_API_RETURN_VOID();
 
     if (key1)
-        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1_text})});
+        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1Text})});
 
     if (key2)
     {
-        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2_text})});
+        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2Text})});
         _mapper->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key2})});
     }
 
@@ -2018,8 +2014,8 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_MAPPER_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x),
-    FO_API_ARG_MARSHAL(int, y))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
+        FO_API_ARG_MARSHAL(int, y))
 {
     if (!sprId)
         FO_API_RETURN(0);
@@ -2079,7 +2075,7 @@ FO_API_GLOBAL_MAPPER_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId),
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
         FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
-    if (!SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId)
         FO_API_RETURN_VOID();
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
@@ -2121,7 +2117,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(bool, zoom)
             FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
-    if (!SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId)
         FO_API_RETURN_VOID();
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
@@ -2163,7 +2159,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h)
             FO_API_ARG_MARSHAL(int, sprWidth) FO_API_ARG_MARSHAL(int, sprHeight) FO_API_ARG_MARSHAL(uint, color))
 {
-    if (!SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId)
         FO_API_RETURN_VOID();
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
@@ -2195,7 +2191,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API
         FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(uint, color)
             FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags))
 {
-    if (!SpritesCanDraw)
+    if (!_mapper->SpritesCanDraw)
         FO_API_RETURN_VOID();
     if (text.length() == 0)
         FO_API_RETURN_VOID();
@@ -2220,7 +2216,7 @@ FO_API_GLOBAL_MAPPER_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primi
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
 {
-    if (!SpritesCanDraw || data->GetSize() == 0)
+    if (!_mapper->SpritesCanDraw || data.empty())
         FO_API_RETURN_VOID();
 
     RenderPrimitiveType prim;
@@ -2249,15 +2245,15 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
     }
 
     static PointVec points;
-    int size = data->GetSize() / 3;
+    size_t size = data.size() / 3;
     points.resize(size);
 
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
         PrepPoint& pp = points[i];
-        pp.PointX = *(int*)data->At(i * 3);
-        pp.PointY = *(int*)data->At(i * 3 + 1);
-        pp.PointColor = *(int*)data->At(i * 3 + 2);
+        pp.PointX = data[i * 3];
+        pp.PointY = data[i * 3 + 1];
+        pp.PointColor = data[i * 3 + 2];
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
     }
@@ -2461,27 +2457,27 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
         anim3d->SetTimer(false);
     }
 
-    uint count = (position ? position->GetSize() : 0);
-    float x = (count > 0 ? *(float*)position->At(0) : 0.0f);
-    float y = (count > 1 ? *(float*)position->At(1) : 0.0f);
-    float rx = (count > 2 ? *(float*)position->At(2) : 0.0f);
-    float ry = (count > 3 ? *(float*)position->At(3) : 0.0f);
-    float rz = (count > 4 ? *(float*)position->At(4) : 0.0f);
-    float sx = (count > 5 ? *(float*)position->At(5) : 1.0f);
-    float sy = (count > 6 ? *(float*)position->At(6) : 1.0f);
-    float sz = (count > 7 ? *(float*)position->At(7) : 1.0f);
-    float speed = (count > 8 ? *(float*)position->At(8) : 1.0f);
-    float period = (count > 9 ? *(float*)position->At(9) : 0.0f);
-    float stl = (count > 10 ? *(float*)position->At(10) : 0.0f);
-    float stt = (count > 11 ? *(float*)position->At(11) : 0.0f);
-    float str = (count > 12 ? *(float*)position->At(12) : 0.0f);
-    float stb = (count > 13 ? *(float*)position->At(13) : 0.0f);
+    uint count = (uint)position.size();
+    float x = (count > 0 ? position[0] : 0.0f);
+    float y = (count > 1 ? position[1] : 0.0f);
+    float rx = (count > 2 ? position[2] : 0.0f);
+    float ry = (count > 3 ? position[3] : 0.0f);
+    float rz = (count > 4 ? position[4] : 0.0f);
+    float sx = (count > 5 ? position[5] : 1.0f);
+    float sy = (count > 6 ? position[6] : 1.0f);
+    float sz = (count > 7 ? position[7] : 1.0f);
+    float speed = (count > 8 ? position[8] : 1.0f);
+    float period = (count > 9 ? position[9] : 0.0f);
+    float stl = (count > 10 ? position[10] : 0.0f);
+    float stt = (count > 11 ? position[11] : 0.0f);
+    float str = (count > 12 ? position[12] : 0.0f);
+    float stb = (count > 13 ? position[13] : 0.0f);
     if (count > 13)
         _mapper->SprMngr.PushScissor((int)stl, (int)stt, (int)str, (int)stb);
 
     memzero(DrawCritter3dLayers, sizeof(DrawCritter3dLayers));
-    for (uint i = 0, j = (layers ? layers->GetSize() : 0); i < j && i < LAYERS3D_COUNT; i++)
-        DrawCritter3dLayers[i] = *(int*)layers->At(i);
+    for (uint i = 0, j = (uint)layers.size(); i < j && i < LAYERS3D_COUNT; i++)
+        DrawCritter3dLayers[i] = layers[i];
 
     anim3d->SetDirAngle(0);
     anim3d->SetRotation(rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f);

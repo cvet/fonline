@@ -30,10 +30,12 @@
 
 ## Features
 
-* C++17
-* Open source under [MIT license](https://github.com/cvet/fonline/blob/master/LICENSE)
+* Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Online mode with authoritative server
 * Singleplayer mode *(with or without back run in online mode)*
+* Supporting of hexagonal and square map tiling
+* Perendered sprites for environment but with possibility of using 3D models for characters
+* Engine core writtlen in C++17
 * Flexible scripting system with varies supporting languages:
   + Mono C# (modern and safe scripting)
   + Native C++ (for performance critical places)
@@ -54,14 +56,12 @@
   + DirectX
   + Metal
   + Vulkan
-* Supporting of following asset formats:
+* Supporting of following asset file formats:
   + Fallout 1/2
   + Fallout Tactics
   + Arcanum
-  + Boldur's Gate
   + 3D characters in modern graphic formats
   + and more...
-* Supporting of hexagonal and square map tiling
 
 Important note: *Not all from descripted above features are already implemented, for additional information look at 'Work in progress' section below*.
 
@@ -375,8 +375,7 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
-* ScriptApi_Common: fix script system (4)
-* ScriptApi_Common: need attention! (3)
+* ScriptApi_Common: fix script system
 * ScriptApi_Mapper: need attention! (4)
 * ScriptApi_Server: need attention!
 * AdminPanel: admin panel network to Asio

@@ -276,6 +276,10 @@
 
 #include "CustomScriptApi.h" // Automatically generated include
 
+#undef FO_API_COMMON_IMPL
+#undef FO_API_SERVER_IMPL
+#undef FO_API_CLIENT_IMPL
+#undef FO_API_MAPPER_IMPL
 #undef FO_API_ENUM_GROUP
 #undef FO_API_ENUM_GROUP_DOC
 #undef FO_API_ENUM_ENTRY

@@ -32,6 +32,7 @@
 //
 
 // Todo: move WinApi to separate module because it's give too much garbage in global namespace
+#pragma once
 
 // WinApi universal header
 #ifdef FO_WINDOWS
@@ -53,6 +54,7 @@
 #undef FindFirstFile
 #undef FindNextFile
 #undef GetClassName
+#undef Yield
 #undef min
 #undef max
 #endif

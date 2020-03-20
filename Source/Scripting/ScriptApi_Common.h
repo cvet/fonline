@@ -33,6 +33,9 @@
 
 #ifdef FO_API_COMMON_IMPL
 #include "GenericUtils.h"
+#include "StringUtils.h"
+#include "Timer.h"
+#include "Version_Include.h"
 
 class MapSprite : public NonCopyable
 {
@@ -81,9 +84,8 @@ FO_API_GLOBAL_COMMON_FUNC(Assert, FO_API_RET(void), FO_API_ARG(bool, condition))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, condition))
 {
-    // Todo: fix script system
-    // if (!condition)
-    //    Script::RaiseException("Assertion failed");
+    if (!condition)
+        throw ScriptException("Assertion failed");
 }
 FO_API_EPILOG()
 #endif
@@ -99,8 +101,7 @@ FO_API_GLOBAL_COMMON_FUNC(ThrowException, FO_API_RET(void), FO_API_ARG(string, m
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, message))
 {
-    // Todo: fix script system
-    // Script::RaiseException(message);
+    throw ScriptException(message);
 }
 FO_API_EPILOG()
 #endif
@@ -114,11 +115,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_COMMON_FUNC(Random, FO_API_RET(int), FO_API_ARG(int, min), FO_API_ARG(int, max))
+FO_API_GLOBAL_COMMON_FUNC(Random, FO_API_RET(int), FO_API_ARG(int, minValue), FO_API_ARG(int, maxValue))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, min) FO_API_ARG_MARSHAL(int, max))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, minValue) FO_API_ARG_MARSHAL(int, maxValue))
 {
-    FO_API_RETURN(GenericUtils::Random(min, max));
+    FO_API_RETURN(GenericUtils::Random(minValue, maxValue));
 }
 FO_API_EPILOG(0)
 #endif
@@ -134,8 +135,7 @@ FO_API_GLOBAL_COMMON_FUNC(Log, FO_API_RET(void), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
-    // Todo: fix script system
-    // Script::Log(text);
+    WriteLog("{}\n", text);
 }
 FO_API_EPILOG()
 #endif
@@ -196,12 +196,10 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetDistantion, FO_API_RET(uint), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1),
     FO_API_ARG(ushort, hx2), FO_API_ARG(ushort, hy2))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO_API_ARG_MARSHAL(ushort, hx2),
-    FO_API_ARG_MARSHAL(ushort, hy2))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO_API_ARG_MARSHAL(ushort, hx2)
+        FO_API_ARG_MARSHAL(ushort, hy2))
 {
-    // Todo: need attention!
-    // FO_API_RETURN(DistGame(hx1, hy1, hx2, hy2));
-    FO_API_RETURN(0);
+    FO_API_RETURN(_common->GeomHelper.DistGame(hx1, hy1, hx2, hy2));
 }
 FO_API_EPILOG(0)
 #endif
@@ -220,12 +218,10 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetDirection, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx),
-    FO_API_ARG_MARSHAL(ushort, toHy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx)
+        FO_API_ARG_MARSHAL(ushort, toHy))
 {
-    // Todo: need attention!
-    // FO_API_RETURN(GetFarDir(fromHx, fromHy, toHx, toHy));
-    FO_API_RETURN(0);
+    FO_API_RETURN(_common->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy));
 }
 FO_API_EPILOG(0)
 #endif
@@ -245,12 +241,10 @@ FO_API_EPILOG(0)
 FO_API_GLOBAL_COMMON_FUNC(GetOffsetDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx),
-    FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, offset))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx)
+        FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, offset))
 {
-    // Todo: need attention!
-    // FO_API_RETURN(GetFarDir(fromHx, fromHy, toHx, toHy, offset));
-    FO_API_RETURN(0);
+    FO_API_RETURN(_common->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset));
 }
 FO_API_EPILOG(0)
 #endif
@@ -267,41 +261,6 @@ FO_API_GLOBAL_COMMON_FUNC(GetTick, FO_API_RET(uint))
 FO_API_PROLOG()
 {
     FO_API_RETURN(Timer::FastTick());
-}
-FO_API_EPILOG(0)
-#endif
-
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
-/*******************************************************************************
- * ...
- *
- * @param property ...
- * @return ...
- ******************************************************************************/
-#endif
-FO_API_GLOBAL_COMMON_FUNC(GetAngelScriptProperty, FO_API_RET(uint), FO_API_ARG(int, property))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, property))
-{
-    FO_API_RETURN((uint)asGetActiveContext()->GetEngine()->GetEngineProperty((asEEngineProp)property));
-}
-FO_API_EPILOG(0)
-#endif
-
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
-/*******************************************************************************
- * ...
- *
- * @param property ...
- * @param value ...
- * @return ...
- ******************************************************************************/
-#endif
-FO_API_GLOBAL_COMMON_FUNC(SetAngelScriptProperty, FO_API_RET(bool), FO_API_ARG(int, property), FO_API_ARG(uint, value))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, property) FO_API_ARG_MARSHAL(uint, value))
-{
-    FO_API_RETURN(asGetActiveContext()->GetEngine()->SetEngineProperty((asEEngineProp)property, value) >= 0);
 }
 FO_API_EPILOG(0)
 #endif
@@ -386,7 +345,7 @@ FO_API_EPILOG(0)
  * @param time ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_COMMON_FUNC(Yield, FO_API_RET(void), FO_API_ARG(uint, time))
+FO_API_GLOBAL_COMMON_FUNC(Yield0, FO_API_RET(void), FO_API_ARG(uint, time))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
 {
@@ -582,7 +541,7 @@ FO_API_GLOBAL_COMMON_FUNC(SystemCall, FO_API_RET(int), FO_API_ARG(string, comman
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
 {
     string prefix = command.substr(0, command.find(' '));
-    FO_API_RETURN(SystemCall(command, [&prefix](const string& line) { WriteLog("{} : {}\n", prefix, line)); });
+    FO_API_RETURN(SystemCall(command, [&prefix](const string& line) { WriteLog("{} : {}\n", prefix, line); }));
 }
 FO_API_EPILOG(0)
 #endif
@@ -603,9 +562,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string,
     output = "";
     FO_API_RETURN(SystemCall(command, [&output](const string& line) {
         if (!output.empty())
-            output += "\n");
+            output += "\n";
         output += line;
-    });
+    }));
 }
 FO_API_EPILOG(0)
 #endif
@@ -642,9 +601,9 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_COMMON_FUNC(GetProtoItem, FO_API_RET_OBJ(void), FO_API_ARG(hash, pid), FO_API_ARG(map<int - int>, props))
+FO_API_GLOBAL_COMMON_FUNC(GetProtoItem, FO_API_RET_OBJ(Entity), FO_API_ARG(hash, pid), FO_API_ARG_DICT(int, int, props))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(map<int - int>, props))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_DICT_MARSHAL(int, int, props))
 {
 #if 0
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
@@ -665,7 +624,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(map<int - int>, p
     }
     FO_API_RETURN(item);
 #endif
-    FO_API_RETURN(0);
+    FO_API_RETURN(nullptr);
 }
 FO_API_EPILOG(0)
 #endif

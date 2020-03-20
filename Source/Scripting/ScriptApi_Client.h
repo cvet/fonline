@@ -32,6 +32,7 @@
 //
 
 #ifdef FO_API_CLIENT_IMPL
+#include "NetCommand.h"
 #endif
 
 #ifdef FO_API_CRITTER_VIEW_METHOD_DOC
@@ -896,7 +897,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         _client->NetDisconnect();
 
         if (!_client->IsConnected && !_client->IsMainScreen(SCREEN_LOGIN))
-            _client->ShowMainScreen(SCREEN_LOGIN);
+            _client->ShowMainScreen(SCREEN_LOGIN, {});
     }
     else if (cmd == "TryExit")
     {
@@ -1228,13 +1229,14 @@ FO_API_GLOBAL_CLIENT_FUNC(GetMapAllItems, FO_API_RET_OBJ_ARR(ItemView))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
-    CScriptArray* items = _client->ScriptSys.CreateArray("Item[]");
+    ItemViewVec items;
     if (_client->HexMngr.IsMapLoaded())
     {
         ItemHexViewVec& items_ = _client->HexMngr.GetItems();
         for (auto it = items_.begin(); it != items_.end();)
             it = ((*it)->IsFinishing() ? items_.erase(it) : ++it);
-        _client->ScriptSys.AppendVectorToArrayRef(items_, items);
+        for (ItemView* item : items_)
+            items.push_back(item);
     }
     FO_API_RETURN(items);
 }
@@ -1344,10 +1346,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
             critters.push_back(cr);
     }
 
-    auto* self = Self;
-    std::sort(critters.begin(), critters.end(), [&self, &hx, &hy](CritterView* cr1, CritterView* cr2) {
-        return self->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
-            self->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+    std::sort(critters.begin(), critters.end(), [_client, &hx, &hy](CritterView* cr1, CritterView* cr2) {
+        return _client->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) <
+            _client->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
     });
 
     FO_API_RETURN(critters);
@@ -1389,7 +1390,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(int, findType))
                 critters.push_back(cr);
         }
     }
-    FO_API_RETURN(_client->ScriptSys.CreateArrayRef("Critter[]", critters));
+    FO_API_RETURN(critters);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1516,11 +1517,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
         throw ScriptException("Invalid to hexes args");
 
     if (cut > 0 && !_client->HexMngr.CutPath(nullptr, fromHx, fromHy, toHx, toHy, cut))
-        FO_API_RETURN({});
+        FO_API_RETURN(UCharVec());
 
     UCharVec steps;
     if (!_client->HexMngr.FindPath(nullptr, fromHx, fromHy, toHx, toHy, steps, -1))
-        FO_API_RETURN({});
+        FO_API_RETURN(UCharVec());
 
     FO_API_RETURN(steps);
 }
@@ -1548,11 +1549,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
         throw ScriptException("Invalid to hexes args");
 
     if (cut > 0 && !_client->HexMngr.CutPath(cr, cr->GetHexX(), cr->GetHexY(), toHx, toHy, cut))
-        FO_API_RETURN({});
+        FO_API_RETURN(UCharVec());
 
     UCharVec steps;
     if (!_client->HexMngr.FindPath(cr, cr->GetHexX(), cr->GetHexY(), toHx, toHy, steps, -1))
-        FO_API_RETURN({});
+        FO_API_RETURN(UCharVec());
 
     FO_API_RETURN(steps);
 }
@@ -2224,16 +2225,16 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month)
         FO_API_ARG_MARSHAL(ushort, hour) FO_API_ARG_MARSHAL(ushort, minute) FO_API_ARG_MARSHAL(ushort, second))
 {
     if (!year)
-        year = Globals->GetYear();
+        year = _client->Globals->GetYear();
     else
-        year = CLAMP(year, Globals->GetYearStart(), Globals->GetYearStart() + 130);
+        year = CLAMP(year, _client->Globals->GetYearStart(), _client->Globals->GetYearStart() + 130);
     if (!month)
-        month = Globals->GetMonth();
+        month = _client->Globals->GetMonth();
     else
         month = CLAMP(month, 1, 12);
     if (!day)
     {
-        day = Globals->GetDay();
+        day = _client->Globals->GetDay();
     }
     else
     {
@@ -2377,16 +2378,8 @@ FO_API_GLOBAL_CLIENT_FUNC(Preload3dFiles, FO_API_RET(void), FO_API_ARG_ARR(strin
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
 {
-    size_t k = _client->Preload3dFiles.size();
-
-    for (asUINT i = 0; i < fnames->GetSize(); i++)
-    {
-        string& s = *(string*)fnames->At(i);
-        _client->Preload3dFiles.push_back(s);
-    }
-
-    for (; k < _client->Preload3dFiles.size(); k++)
-        _client->Preload3dFiles[k] = _client->Preload3dFiles[k].c_str();
+    for (size_t i = 0; i < fnames.size(); i++)
+        _client->Preload3dFiles.push_back(fnames[i]);
 }
 FO_API_EPILOG()
 #endif
@@ -2421,7 +2414,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, font
 {
     _client->SprMngr.PushAtlasType(AtlasType::Static);
     bool result;
-    if (fontFname.length() > 0 && font_fname[0] == '*')
+    if (fontFname.length() > 0 && fontFname[0] == '*')
         result = _client->SprMngr.LoadFontFO(fontIndex, fontFname.c_str() + 1, false, false);
     else
         result = _client->SprMngr.LoadFontBMF(fontIndex, fontFname.c_str());
@@ -2657,11 +2650,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO
         FO_API_RETURN_VOID();
 
     if (key1)
-        _client->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key1, key1_text}));
+        _client->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key1, key1Text}));
 
     if (key2)
     {
-        _client->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key2, key2_text}));
+        _client->ProcessInputEvent(InputEvent::KeyDown({(KeyCode)key2, key2Text}));
         _client->ProcessInputEvent(InputEvent::KeyUp({(KeyCode)key2}));
     }
 
@@ -3155,11 +3148,11 @@ FO_API_EPILOG()
 #endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primitiveType), FO_API_ARG_ARR(int, data))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType), FO_API_ARG_ARR_MARSHAL(int, data))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
 {
     if (!_client->CanDrawInScripts)
         throw ScriptException("You can use this function only in RenderIface event");
-    if (data->GetSize() == 0)
+    if (data.empty())
         FO_API_RETURN_VOID();
 
     RenderPrimitiveType prim;
@@ -3188,15 +3181,15 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType), FO_API_ARG_ARR_MARSHAL(int
     }
 
     PointVec points;
-    int size = data->GetSize() / 3;
+    size_t size = data.size() / 3;
     points.resize(size);
 
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
         PrepPoint& pp = points[i];
-        pp.PointX = *(int*)data->At(i * 3);
-        pp.PointY = *(int*)data->At(i * 3 + 1);
-        pp.PointColor = *(int*)data->At(i * 3 + 2);
+        pp.PointX = data[i * 3];
+        pp.PointY = data[i * 3 + 1];
+        pp.PointColor = data[i * 3 + 2];
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
     }
@@ -3402,27 +3395,27 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
         anim3d->SetTimer(false);
     }
 
-    uint count = (position ? position->GetSize() : 0);
-    float x = (count > 0 ? *(float*)position->At(0) : 0.0f);
-    float y = (count > 1 ? *(float*)position->At(1) : 0.0f);
-    float rx = (count > 2 ? *(float*)position->At(2) : 0.0f);
-    float ry = (count > 3 ? *(float*)position->At(3) : 0.0f);
-    float rz = (count > 4 ? *(float*)position->At(4) : 0.0f);
-    float sx = (count > 5 ? *(float*)position->At(5) : 1.0f);
-    float sy = (count > 6 ? *(float*)position->At(6) : 1.0f);
-    float sz = (count > 7 ? *(float*)position->At(7) : 1.0f);
-    float speed = (count > 8 ? *(float*)position->At(8) : 1.0f);
-    float period = (count > 9 ? *(float*)position->At(9) : 0.0f);
-    float stl = (count > 10 ? *(float*)position->At(10) : 0.0f);
-    float stt = (count > 11 ? *(float*)position->At(11) : 0.0f);
-    float str = (count > 12 ? *(float*)position->At(12) : 0.0f);
-    float stb = (count > 13 ? *(float*)position->At(13) : 0.0f);
+    uint count = (uint)position.size();
+    float x = (count > 0 ? position[0] : 0.0f);
+    float y = (count > 1 ? position[1] : 0.0f);
+    float rx = (count > 2 ? position[2] : 0.0f);
+    float ry = (count > 3 ? position[3] : 0.0f);
+    float rz = (count > 4 ? position[4] : 0.0f);
+    float sx = (count > 5 ? position[5] : 1.0f);
+    float sy = (count > 6 ? position[6] : 1.0f);
+    float sz = (count > 7 ? position[7] : 1.0f);
+    float speed = (count > 8 ? position[8] : 1.0f);
+    float period = (count > 9 ? position[9] : 0.0f);
+    float stl = (count > 10 ? position[10] : 0.0f);
+    float stt = (count > 11 ? position[11] : 0.0f);
+    float str = (count > 12 ? position[12] : 0.0f);
+    float stb = (count > 13 ? position[13] : 0.0f);
     if (count > 13)
         _client->SprMngr.PushScissor((int)stl, (int)stt, (int)str, (int)stb);
 
     memzero(DrawCritter3dLayers, sizeof(DrawCritter3dLayers));
-    for (uint i = 0, j = (layers ? layers->GetSize() : 0); i < j && i < LAYERS3D_COUNT; i++)
-        DrawCritter3dLayers[i] = *(int*)layers->At(i);
+    for (uint i = 0, j = (uint)layers.size(); i < j && i < LAYERS3D_COUNT; i++)
+        DrawCritter3dLayers[i] = layers[i];
 
     anim3d->SetDirAngle(0);
     anim3d->SetRotation(rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f);
@@ -3653,9 +3646,9 @@ FO_API_EPILOG()
  * @param params ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG(map<int - int>, params))
+FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG_DICT(string, int, params))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_MARSHAL(map<int - int>, params))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, int, params))
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT)
         _client->ShowMainScreen(screen, params);
@@ -3945,9 +3938,7 @@ FO_API_GLOBAL_CLIENT_FUNC(SetCacheData, FO_API_RET(void), FO_API_ARG(string, nam
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, data))
 {
-    UCharVec data_vec;
-    _client->ScriptSys.AssignScriptArrayInVector(data_vec, data);
-    _client->Cache.SetCache(name, data_vec);
+    _client->Cache.SetCache(name, data);
 }
 FO_API_EPILOG()
 #endif
@@ -3966,10 +3957,8 @@ FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataSize, FO_API_RET(void), FO_API_ARG(string,
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, data) FO_API_ARG_MARSHAL(uint, dataSize))
 {
-    UCharVec data_vec;
-    _client->ScriptSys.AssignScriptArrayInVector(data_vec, data);
-    data_vec.resize(dataSize);
-    _client->Cache.SetCache(name, data_vec);
+    data.resize(dataSize);
+    _client->Cache.SetCache(name, data);
 }
 FO_API_EPILOG()
 #endif
@@ -3986,10 +3975,10 @@ FO_API_GLOBAL_CLIENT_FUNC(GetCacheData, FO_API_RET_ARR(uchar), FO_API_ARG(string
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
-    UCharVec data_vec;
-    if (!_client->Cache.GetCache(name, data_vec))
-        FO_API_RETURN(nullptr);
-    FO_API_RETURN(data_vec);
+    UCharVec data;
+    if (!_client->Cache.GetCache(name, data))
+        FO_API_RETURN(UCharVec());
+    FO_API_RETURN(data);
 }
 FO_API_EPILOG(0)
 #endif
@@ -4073,12 +4062,8 @@ FO_API_GLOBAL_CLIENT_FUNC(SetUserConfig, FO_API_RET(void), FO_API_ARG_DICT(strin
 FO_API_PROLOG(FO_API_ARG_DICT_MARSHAL(string, string, keyValues))
 {
     OutputFile cfg_user = _client->FileMngr.WriteFile(CONFIG_NAME);
-    for (asUINT i = 0; i < keyValues->GetSize() - 1; i += 2)
-    {
-        string& key = *(string*)keyValues->At(i);
-        string& value = *(string*)keyValues->At(i + 1);
-        cfg_user.SetStr(_str("{} = {}\n", key, value));
-    }
+    for (auto& kv : keyValues)
+        cfg_user.SetStr(_str("{} = {}\n", kv.first, kv.second));
     cfg_user.Save();
 }
 FO_API_EPILOG()

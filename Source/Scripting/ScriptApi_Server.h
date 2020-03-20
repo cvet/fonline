@@ -32,6 +32,8 @@
 //
 
 #ifdef FO_API_COMMON_IMPL
+#include "PropertiesSerializator.h"
+
 #include "curl/curl.h"
 #include "minizip/zip.h"
 #include "png.h"
@@ -3478,7 +3480,7 @@ FO_API_LOCATION_METHOD(GetMaps, FO_API_RET_OBJ_ARR(Map))
 #ifdef FO_API_LOCATION_METHOD_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(_server->ScriptSys.CreateArrayRef("Map[]", _this->GetMaps()));
+    FO_API_RETURN(_this->GetMaps());
 }
 FO_API_EPILOG(0)
 #endif
@@ -3493,28 +3495,21 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_LOCATION_METHOD(GetEntrance, FO_API_RET(bool), FO_API_ARG(uint, entrance), FO_API_ARG_REF(uint, mapIndex),
+FO_API_LOCATION_METHOD(GetEntrance, FO_API_RET(void), FO_API_ARG(uint, entrance), FO_API_ARG_REF(uint, mapIndex),
     FO_API_ARG_REF(hash, entire))
 #ifdef FO_API_LOCATION_METHOD_IMPL
 FO_API_PROLOG(
     FO_API_ARG_MARSHAL(uint, entrance) FO_API_ARG_REF_MARSHAL(uint, mapIndex) FO_API_ARG_REF_MARSHAL(hash, entire))
 {
-    CScriptArray* map_entrances = _this->GetMapEntrances();
-    uint count = map_entrances->GetSize() / 2;
+    HashVec map_entrances = _this->GetMapEntrances();
+    uint count = (uint)map_entrances.size() / 2;
     if (entrance >= count)
-    {
-        map_entrances->Release();
         throw ScriptException("Invalid entrance");
-    }
-    hash entrance_map = *(hash*)map_entrances->At(entrance * 2);
-    hash entrance_entire = *(hash*)map_entrances->At(entrance * 2 + 1);
-    map_entrances->Release();
 
-    mapIndex = _this->GetMapIndex(entrance_map);
-    entire = entrance_entire;
-    FO_API_RETURN(true);
+    mapIndex = _this->GetMapIndex(map_entrances[entrance * 2]);
+    entire = map_entrances[entrance * 2 + 1];
 }
-FO_API_EPILOG(0)
+FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_LOCATION_METHOD_DOC
@@ -3526,31 +3521,22 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_LOCATION_METHOD(GetEntrances, FO_API_RET(uint), FO_API_ARG_ARR(int, mapsIndex), FO_API_ARG_ARR(hash, entires))
+FO_API_LOCATION_METHOD(
+    GetEntrances, FO_API_RET(uint), FO_API_ARG_ARR_REF(int, mapsIndex), FO_API_ARG_ARR_REF(hash, entires))
 #ifdef FO_API_LOCATION_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(int, mapsIndex) FO_API_ARG_ARR_MARSHAL(hash, entires))
+FO_API_PROLOG(FO_API_ARG_ARR_REF_MARSHAL(int, mapsIndex) FO_API_ARG_ARR_REF_MARSHAL(hash, entires))
 {
-    CScriptArray* map_entrances = _this->GetMapEntrances();
-    uint count = map_entrances->GetSize() / 2;
+    HashVec map_entrances = _this->GetMapEntrances();
+    uint count = (uint)map_entrances.size() / 2;
 
-    if (mapsIndex || entires)
+    for (uint e = 0; e < count; e++)
     {
-        for (uint e = 0; e < count; e++)
-        {
-            if (mapsIndex)
-            {
-                uint index = _this->GetMapIndex(*(hash*)map_entrances->At(e * 2));
-                mapsIndex->InsertLast(&index);
-            }
-            if (entires)
-            {
-                hash entire = *(hash*)map_entrances->At(e * 2 + 1);
-                entires->InsertLast(&entire);
-            }
-        }
+        int index = _this->GetMapIndex(map_entrances[e * 2]);
+        mapsIndex.push_back(index);
+        hash entire = map_entrances[e * 2 + 1];
+        entires.push_back(entire);
     }
 
-    map_entrances->Release();
     FO_API_RETURN(count);
 }
 FO_API_EPILOG(0)
@@ -3743,14 +3729,11 @@ FO_API_GLOBAL_SERVER_FUNC(MoveItemsCr, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item
 FO_API_PROLOG(
     FO_API_ARG_OBJ_ARR_MARSHAL(Item, items) FO_API_ARG_OBJ_MARSHAL(Critter, toCr) FO_API_ARG_MARSHAL(bool, skipChecks))
 {
-    if (!items)
-        throw ScriptException("Items arg is null");
     if (!toCr)
         throw ScriptException("Critter arg is null");
 
-    for (int i = 0, j = items->GetSize(); i < j; i++)
+    for (Item* item : items)
     {
-        Item* item = *(Item**)items->At(i);
         if (!item || item->IsDestroyed)
             continue;
 
@@ -3777,17 +3760,13 @@ FO_API_GLOBAL_SERVER_FUNC(MoveItemsMap, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Ite
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items) FO_API_ARG_OBJ_MARSHAL(Map, toMap)
         FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(bool, skipChecks))
 {
-    if (!items)
-        throw ScriptException("Items arg is null");
     if (!toMap)
         throw ScriptException("Map arg is null");
-
     if (toHx >= toMap->GetWidth() || toHy >= toMap->GetHeight())
         throw ScriptException("Invalid hexex args");
 
-    for (int i = 0, j = items->GetSize(); i < j; i++)
+    for (Item* item : items)
     {
-        Item* item = *(Item**)items->At(i);
         if (!item || item->IsDestroyed)
             continue;
 
@@ -3813,14 +3792,11 @@ FO_API_GLOBAL_SERVER_FUNC(MoveItemsCont, FO_API_RET(void), FO_API_ARG_OBJ_ARR(It
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items) FO_API_ARG_OBJ_MARSHAL(Item, toCont)
         FO_API_ARG_MARSHAL(uint, stackId) FO_API_ARG_MARSHAL(bool, skipChecks))
 {
-    if (!items)
-        throw ScriptException("Items arg is null");
     if (!toCont)
         throw ScriptException("Container arg is null");
 
-    for (int i = 0, j = items->GetSize(); i < j; i++)
+    for (Item* item : items)
     {
-        Item* item = *(Item**)items->At(i);
         if (!item || item->IsDestroyed)
             continue;
 
@@ -3876,12 +3852,9 @@ FO_API_GLOBAL_SERVER_FUNC(DeleteItems, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items))
 {
-    for (int i = 0, j = items->GetSize(); i < j; i++)
-    {
-        Item* item = *(Item**)items->At(i);
+    for (Item* item : items)
         if (item)
             _server->ItemMngr.DeleteItem(item);
-    }
 }
 FO_API_EPILOG()
 #endif
@@ -3893,17 +3866,13 @@ FO_API_EPILOG()
  * @param items ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(DeleteItemsById, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Item, items))
+FO_API_GLOBAL_SERVER_FUNC(DeleteItemsById, FO_API_RET(void), FO_API_ARG_ARR(uint, itemIds))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items))
+FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(uint, itemIds))
 {
-    if (!items)
-        throw ScriptException("Items arg is null");
-
     ItemVec items_to_delete;
-    for (int i = 0, j = items->GetSize(); i < j; i++)
+    for (uint item_id : itemIds)
     {
-        uint item_id = *(uint*)items->At(i);
         if (item_id)
         {
             Item* item = _server->ItemMngr.GetItem(item_id);
@@ -4029,16 +3998,16 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month)
         FO_API_ARG_MARSHAL(ushort, hour) FO_API_ARG_MARSHAL(ushort, minute) FO_API_ARG_MARSHAL(ushort, second))
 {
     if (!year)
-        year = Globals->GetYear();
+        year = _server->Globals->GetYear();
     else
-        year = CLAMP(year, Globals->GetYearStart(), Globals->GetYearStart() + 130);
+        year = CLAMP(year, _server->Globals->GetYearStart(), _server->Globals->GetYearStart() + 130);
     if (!month)
-        month = Globals->GetMonth();
+        month = _server->Globals->GetMonth();
     else
         month = CLAMP(month, 1, 12);
     if (!day)
     {
-        day = Globals->GetDay();
+        day = _server->Globals->GetDay();
     }
     else
     {
@@ -4114,34 +4083,29 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, locPid) FO_API_ARG_MARSHAL(ushort, wx) FO
         throw ScriptException("Unable to create location '{}'.", _str().parseHash(locPid));
 
     // Add known locations to critters
-    if (critters)
+    for (Critter* cr : critters)
     {
-        for (uint i = 0, j = critters->GetSize(); i < j; i++)
+        _server->MapMngr.AddKnownLoc(cr, loc->GetId());
+        if (!cr->GetMapId())
+            cr->Send_GlobalLocation(loc, true);
+        if (loc->IsNonEmptyAutomaps())
+            cr->Send_AutomapsInfo(nullptr, loc);
+
+        ushort zx = loc->GetWorldX() / _server->Settings.GlobalMapZoneLength;
+        ushort zy = loc->GetWorldY() / _server->Settings.GlobalMapZoneLength;
+        UCharVec gmap_fog = cr->GetGlobalMapFog();
+        if (gmap_fog.size() != GM_ZONES_FOG_SIZE)
+            gmap_fog.resize(GM_ZONES_FOG_SIZE);
+        TwoBitMask gmap_mask(GM__MAXZONEX, GM__MAXZONEY, gmap_fog.data());
+        if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL)
         {
-            Critter* cr = *(Critter**)critters->At(i);
-
-            _server->MapMngr.AddKnownLoc(cr, loc->GetId());
+            gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
+            cr->SetGlobalMapFog(gmap_fog);
             if (!cr->GetMapId())
-                cr->Send_GlobalLocation(loc, true);
-            if (loc->IsNonEmptyAutomaps())
-                cr->Send_AutomapsInfo(nullptr, loc);
-
-            ushort zx = loc->GetWorldX() / _server->Settings.GlobalMapZoneLength;
-            ushort zy = loc->GetWorldY() / _server->Settings.GlobalMapZoneLength;
-            CScriptArray* gmap_fog = cr->GetGlobalMapFog();
-            if (gmap_fog->GetSize() != GM_ZONES_FOG_SIZE)
-                gmap_fog->Resize(GM_ZONES_FOG_SIZE);
-            TwoBitMask gmap_mask(GM__MAXZONEX, GM__MAXZONEY, (uchar*)gmap_fog->At(0));
-            if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL)
-            {
-                gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
-                cr->SetGlobalMapFog(gmap_fog);
-                if (!cr->GetMapId())
-                    cr->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
-            }
-            gmap_fog->Release();
+                cr->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
         }
     }
+
     FO_API_RETURN(loc);
 }
 FO_API_EPILOG(0)
@@ -4427,10 +4391,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zx) FO_API_ARG_MARSHAL(ushort, zy) FO_A
 {
     UIntVec loc_ids;
     _server->MapMngr.GetZoneLocations(zx, zy, zoneRadius, loc_ids);
-
-    CScriptArray* ids = _server->ScriptSys.CreateArray("uint[]");
-    _server->ScriptSys.AppendVectorToArray<uint>(loc_ids, ids);
-    FO_API_RETURN(ids);
+    FO_API_RETURN(loc_ids);
 }
 FO_API_EPILOG(0)
 #endif
@@ -4574,13 +4535,13 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(AddTextListener, FO_API_RET(bool), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr),
+FO_API_GLOBAL_SERVER_FUNC(AddTextListener, FO_API_RET(void), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr),
     FO_API_ARG(uint, parameter), FO_API_ARG_CALLBACK(func))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstStr) FO_API_ARG_MARSHAL(uint, parameter)
         FO_API_ARG_CALLBACK_MARSHAL(func))
 {
-    if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
+    /*if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
         throw ScriptException("First string arg length greater than maximum");
 
     uint func_id = _server->ScriptSys.BindByFunc(func, false);
@@ -4595,10 +4556,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
 
     SCOPE_LOCK(_server->TextListenersLocker);
 
-    _server->TextListeners.push_back(tl);
-    FO_API_RETURN(true);
+    _server->TextListeners.push_back(tl);*/
 }
-FO_API_EPILOG(0)
+FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_GLOBAL_SERVER_FUNC_DOC
@@ -4615,7 +4575,7 @@ FO_API_GLOBAL_SERVER_FUNC(EraseTextListener, FO_API_RET(void), FO_API_ARG(int, s
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstStr) FO_API_ARG_MARSHAL(uint, parameter))
 {
-    SCOPE_LOCK(_server->TextListenersLocker);
+    /*SCOPE_LOCK(_server->TextListenersLocker);
 
     for (auto it = _server->TextListeners.begin(), end = _server->TextListeners.end(); it != end; ++it)
     {
@@ -4625,7 +4585,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
             _server->TextListeners.erase(it);
             FO_API_RETURN_VOID();
         }
-    }
+    }*/
 }
 FO_API_EPILOG()
 #endif
@@ -4647,7 +4607,7 @@ static void SwapCrittersRefreshNpc(Npc* npc)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_SERVER_FUNC(SwapCritters, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2),
+FO_API_GLOBAL_SERVER_FUNC(SwapCritters, FO_API_RET(void), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2),
     FO_API_ARG(bool, withInventory))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(
@@ -4736,12 +4696,12 @@ FO_API_PROLOG(
     cr1->ClearVisible();
     cr2->ClearVisible();
 
-    auto swap_critters_refresh_client = [](CritterManager& cr_mngr, Client* cl, Map* map, Map* prev_map) {
+    auto swap_critters_refresh_client = [_server](Client* cl, Map* map, Map* prev_map) {
         UNSETFLAG(cl->Flags, FCRIT_NPC);
         SETFLAG(cl->Flags, FCRIT_PLAYER);
 
         if (cl->Talk.TalkType != TALK_NONE)
-            cr_mngr.CloseTalk(cl);
+            _server->CrMngr.CloseTalk(cl);
 
         if (map != prev_map)
         {
@@ -4758,12 +4718,12 @@ FO_API_PROLOG(
     if (cr1->IsNpc())
         SwapCrittersRefreshNpc((Npc*)cr1);
     else
-        swap_critters_refresh_client(_server->CrMngr, (Client*)cr1, map2, map1);
+        swap_critters_refresh_client((Client*)cr1, map2, map1);
 
     if (cr2->IsNpc())
         SwapCrittersRefreshNpc((Npc*)cr2);
     else
-        swap_critters_refresh_client(_server->CrMngr, (Client*)cr2, map1, map2);
+        swap_critters_refresh_client((Client*)cr2, map1, map2);
 
     if (map1 == map2)
     {
@@ -4778,9 +4738,8 @@ FO_API_PROLOG(
         _server->MapMngr.ProcessVisibleItems(cr1);
         _server->MapMngr.ProcessVisibleItems(cr2);
     }
-    FO_API_RETURN(true);
 }
-FO_API_EPILOG(0)
+FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_GLOBAL_SERVER_FUNC_DOC
@@ -5252,13 +5211,13 @@ static size_t WriteMemoryCallback(char* ptr, size_t size, size_t nmemb, void* us
     return len;
 }
 
-static void YieldWebRequest(
-    string url, vector<string> headers, map<string - string> post1, string post2, bool& success, string& result)
+static void YieldWebRequestInternal(FOServer* server, string url, vector<string> headers, map<string, string> post1,
+    string post2, bool& success, string& result)
 {
     success = false;
     result = "";
 
-    asIScriptContext* ctx = FOServer::Self->ScriptSys.SuspendCurrentContext(uint(-1));
+    /*asIScriptContext* ctx = server->ScriptSys.SuspendCurrentContext(uint(-1));
     if (!ctx)
         return;
 
@@ -5369,7 +5328,7 @@ static void YieldWebRequest(
             request_data->Post1->Release();
         delete request_data;
     };
-    std::thread(request_func, request_data).detach();
+    std::thread(request_func, request_data).detach();*/
 }
 #endif
 #ifdef FO_API_GLOBAL_SERVER_FUNC_DOC
@@ -5385,10 +5344,10 @@ static void YieldWebRequest(
 FO_API_GLOBAL_SERVER_FUNC(YieldWebRequest, FO_API_RET(void), FO_API_ARG(string, url),
     FO_API_ARG_DICT(string, string, post), FO_API_ARG_REF(bool, success), FO_API_ARG_REF(string, result))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url) FO_API_ARG_DICT_MARSHAL(string, string, post),
-    FO_API_ARG_REF_MARSHAL(bool, success) FO_API_ARG_REF_MARSHAL(string, result))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url) FO_API_ARG_DICT_MARSHAL(string, string, post)
+        FO_API_ARG_REF_MARSHAL(bool, success) FO_API_ARG_REF_MARSHAL(string, result))
 {
-    YieldWebRequest(url, nullptr, post, "", success, result);
+    // YieldWebRequestInternal(_server, url, nullptr, post, "", success, result);
 }
 FO_API_EPILOG()
 #endif
@@ -5411,7 +5370,7 @@ FO_API_GLOBAL_SERVER_FUNC(YieldWebRequestExt, FO_API_RET(void), FO_API_ARG(strin
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, url) FO_API_ARG_ARR_MARSHAL(string, headers) FO_API_ARG_MARSHAL(string, post)
         FO_API_ARG_REF_MARSHAL(bool, success) FO_API_ARG_REF_MARSHAL(string, result))
 {
-    YieldWebRequest(url, headers, nullptr, post, success, result);
+    // YieldWebRequestInternal(_server, url, headers, nullptr, post, success, result);
 }
 FO_API_EPILOG()
 #endif

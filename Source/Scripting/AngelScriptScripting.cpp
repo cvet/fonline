@@ -177,6 +177,11 @@ inline CScriptArray* MarshalBack(vector<T> arr)
     return 0;
 }
 
+inline string MarshalBack(string str)
+{
+    return str;
+}
+
 inline ScriptEntity* MarshalBack(Entity* obj)
 {
     return 0;
@@ -221,11 +226,17 @@ static void ReportException(std::exception& ex)
 #define FO_API_RETURN_VOID() return
 
 #if defined(FO_SERVER_SCRIPTING)
-#define CONTEXT_ARG FOServer* _server = (FOServer*)asGetActiveContext()->GetEngine()->GetUserData()
+#define CONTEXT_ARG \
+    FOServer* _server = (FOServer*)asGetActiveContext()->GetEngine()->GetUserData(); \
+    FOServer* _common = _server
 #elif defined(FO_CLIENT_SCRIPTING)
-#define CONTEXT_ARG FOClient* _client = (FOClient*)asGetActiveContext()->GetEngine()->GetUserData()
+#define CONTEXT_ARG \
+    FOClient* _client = (FOClient*)asGetActiveContext()->GetEngine()->GetUserData(); \
+    FOClient* _common = _client
 #elif defined(FO_MAPPER_SCRIPTING)
-#define CONTEXT_ARG FOMapper* _mapper = (FOMapper*)asGetActiveContext()->GetEngine()->GetUserData()
+#define CONTEXT_ARG \
+    FOMapper* _mapper = (FOMapper*)asGetActiveContext()->GetEngine()->GetUserData(); \
+    FOMapper* _common = _mapper
 #endif
 
 #define FO_API_PROLOG(...) \
@@ -288,6 +299,43 @@ struct ScriptMap : ScriptEntity
 #include "ScriptApi.h"
 #undef THIS_ARG
 };
+
+struct ScriptLocation : ScriptEntity
+{
+#if defined(FO_SERVER_SCRIPTING)
+#define THIS_ARG Location* _this = (Location*)GameEntity
+#define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_LOCATION_METHOD_IMPL
+#elif defined(FO_CLIENT_SCRIPTING)
+#define THIS_ARG LocationView* _this = (LocationView*)GameEntity
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_LOCATION_VIEW_METHOD_IMPL
+#endif
+#include "ScriptApi.h"
+#undef THIS_ARG
+};
+
+struct ScriptGlobal
+{
+#define THIS_ARG (void)0
+#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
+#define FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
+#define FO_API_GLOBAL_SERVER_FUNC_IMPL
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
+#define FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#elif defined(FO_MAPPER_SCRIPTING)
+#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
+#define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#endif
+#include "ScriptApi.h"
+#undef THIS_ARG
+};
+
+//#undef FO_API_PARTLY_UNDEF
+//#include "ScriptApi.h"
 
 static const string ContextStatesStr[] = {
     "Finished",
