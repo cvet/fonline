@@ -85,7 +85,7 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
-#define AS_ASSERT(expr) \
+#define AS_VERIFY(expr) \
     as_result = expr; \
     RUNTIME_ASSERT_STR(as_result >= 0, #expr)
 
@@ -137,26 +137,34 @@ struct ScriptEntity
     bool OwnedEntity {};
 };
 
-template<typename T>
-inline T* MarshalObj(ScriptEntity* obj)
+template<typename T,
+    std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
+inline T Marshal(T value)
 {
-    return 0;
+    return value;
 }
 
 template<typename T>
-inline vector<T> MarshalArray(CScriptArray* arr)
+inline T Marshal(CScriptArray* arr)
 {
     return {};
 }
 
 template<typename T>
-inline vector<T*> MarshalObjArray(CScriptArray* arr)
+inline T* MarshalObj(ScriptEntity* value)
+{
+    return 0;
+}
+
+template<typename T>
+inline vector<T*> MarshalObjArr(CScriptArray* arr)
 {
     return {};
 }
 
 inline std::function<void()> MarshalCallback(asIScriptFunction* func)
 {
+    return {};
 }
 
 template<typename T>
@@ -177,20 +185,81 @@ inline CScriptArray* MarshalBack(vector<T> arr)
     return 0;
 }
 
-inline string MarshalBack(string str)
-{
-    return str;
-}
-
 inline ScriptEntity* MarshalBack(Entity* obj)
 {
     return 0;
 }
 
-template<typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+template<typename T,
+    std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
 inline T MarshalBack(T value)
 {
     return value;
+}
+
+template<typename T>
+inline string GetASType(string name)
+{
+    static unordered_map<size_t, string> as_types = {{typeid(char).hash_code(), "int8"},
+        {typeid(short).hash_code(), "int16"}, {typeid(int).hash_code(), "int"}, {typeid(int64).hash_code(), "int64"},
+        {typeid(uchar).hash_code(), "uint8"}, {typeid(ushort).hash_code(), "uint16"},
+        {typeid(uint).hash_code(), "uint"}, {typeid(uint64).hash_code(), "uint64"},
+        {typeid(string).hash_code(), "string"}};
+    string type = as_types[typeid(T).hash_code()];
+    return name.empty() ? type : type + " " + name;
+}
+
+inline string MergeASTypes(vector<string> args)
+{
+    string result;
+    for (size_t i = 0; i < args.size(); i++)
+        result += (i > 0 ? ", " : "") + args[i];
+    return result;
+}
+
+inline string MakeMethodDecl(string name, string ret, string decl)
+{
+    return fmt::format("{} {}({}}", ret, name, decl);
+}
+
+template<class T>
+static Entity* EntityDownCast(T* a)
+{
+    if (!a)
+        return nullptr;
+    Entity* b = (Entity*)a;
+    b->AddRef();
+    return b;
+}
+
+template<class T>
+static T* EntityUpCast(Entity* a)
+{
+    if (!a)
+        return nullptr;
+#define CHECK_CAST(cast_class, entity_type) \
+    if (std::is_same<T, cast_class>::value && (EntityType)a->Type == entity_type) \
+    { \
+        T* b = (T*)a; \
+        b->AddRef(); \
+        return b; \
+    }
+#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
+    CHECK_CAST(Location, EntityType::Location);
+    CHECK_CAST(Map, EntityType::Map);
+    CHECK_CAST(Critter, EntityType::Npc);
+    CHECK_CAST(Critter, EntityType::Client);
+    CHECK_CAST(Item, EntityType::Item);
+#endif
+#if defined(FONLINE_CLIENT) || defined(FONLINE_EDITOR)
+    CHECK_CAST(LocationView, EntityType::LocationView);
+    CHECK_CAST(MapView, EntityType::MapView);
+    CHECK_CAST(CritterView, EntityType::CritterView);
+    CHECK_CAST(ItemView, EntityType::ItemView);
+    CHECK_CAST(ItemView, EntityType::ItemHexView);
+#endif
+#undef CHECK_CAST
+    return nullptr;
 }
 
 static void ReportException(std::exception& ex)
@@ -209,11 +278,11 @@ static void ReportException(std::exception& ex)
 #define FO_API_ARG_PREDICATE(type, name) asIScriptFunction* _##name
 #define FO_API_ARG_DICT(key, val, name) CScriptDict* _##name
 #define FO_API_ARG_MARSHAL(type, name)
-#define FO_API_ARG_ARR_MARSHAL(type, name) vector<type> name = MarshalArray<type>(_##name);
+#define FO_API_ARG_ARR_MARSHAL(type, name) vector<type> name = Marshal<vector<type>>(_##name);
 #define FO_API_ARG_OBJ_MARSHAL(type, name) type* name = MarshalObj<type>(_##name);
-#define FO_API_ARG_OBJ_ARR_MARSHAL(type, name) vector<type*> name = MarshalObjArray<type>(_##name);
+#define FO_API_ARG_OBJ_ARR_MARSHAL(type, name) vector<type*> name = MarshalObjArr<type>(_##name);
 #define FO_API_ARG_REF_MARSHAL(type, name)
-#define FO_API_ARG_ARR_REF_MARSHAL(type, name) vector<type> name = MarshalArray<type>(_##name);
+#define FO_API_ARG_ARR_REF_MARSHAL(type, name) vector<type> name = Marshal<vector<type>>(_##name);
 #define FO_API_ARG_ENUM_MARSHAL(type, name)
 #define FO_API_ARG_CALLBACK_MARSHAL(name) std::function<void()> name = MarshalCallback(_##name);
 #define FO_API_ARG_PREDICATE_MARSHAL(type, name) std::function<bool(type*)> name = MarshalPredicate<type>(_##name);
@@ -224,6 +293,12 @@ static void ReportException(std::exception& ex)
 #define FO_API_RET_OBJ_ARR(type) CScriptArray*
 #define FO_API_RETURN(expr) return MarshalBack(expr)
 #define FO_API_RETURN_VOID() return
+#define FO_API_PROPERTY_TYPE(type) type
+#define FO_API_PROPERTY_TYPE_ARR(type) CScriptArray*
+#define FO_API_PROPERTY_TYPE_OBJ(type) ScriptEntity*
+#define FO_API_PROPERTY_TYPE_OBJ_ARR(type) CScriptArray*
+#define FO_API_PROPERTY_TYPE_ENUM(type) int
+#define FO_API_PROPERTY_MOD(mod)
 
 #if defined(FO_SERVER_SCRIPTING)
 #define CONTEXT_ARG \
@@ -261,13 +336,26 @@ struct ScriptItem : ScriptEntity
 #define THIS_ARG Item* _this = (Item*)GameEntity
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
+#define ITEM_CLASS Item
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG ItemView* _this = (ItemView*)GameEntity
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_VIEW_METHOD_IMPL
+#define ITEM_CLASS ItemView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define ITEM_CLASS ItemView
 #endif
+#define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((ITEM_CLASS*)GameEntity)->Get##name()); }
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((ITEM_CLASS*)GameEntity)->Get##name()); } \
+    void Set_##name(type value) \
+    { \
+        ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); \
+    }
 #include "ScriptApi.h"
 #undef THIS_ARG
+#undef ITEM_CLASS
 };
 
 struct ScriptCritter : ScriptEntity
@@ -276,13 +364,26 @@ struct ScriptCritter : ScriptEntity
 #define THIS_ARG Critter* _this = (Critter*)GameEntity
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
+#define CRITTER_CLASS Critter
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG CritterView* _this = (CritterView*)GameEntity
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_VIEW_METHOD_IMPL
+#define CRITTER_CLASS CritterView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define CRITTER_CLASS CritterView
 #endif
+#define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((CRITTER_CLASS*)GameEntity)->Get##name()); }
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((CRITTER_CLASS*)GameEntity)->Get##name()); } \
+    void Set_##name(type value) \
+    { \
+        ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); \
+    }
 #include "ScriptApi.h"
 #undef THIS_ARG
+#undef CRITTER_CLASS
 };
 
 struct ScriptMap : ScriptEntity
@@ -291,13 +392,26 @@ struct ScriptMap : ScriptEntity
 #define THIS_ARG Map* _this = (Map*)GameEntity
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
+#define MAP_CLASS Map
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG MapView* _this = (MapView*)GameEntity
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_VIEW_METHOD_IMPL
+#define MAP_CLASS MapView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define MAP_CLASS MapView
 #endif
+#define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((MAP_CLASS*)GameEntity)->Get##name()); }
+#define FO_API_MAP_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((MAP_CLASS*)GameEntity)->Get##name()); } \
+    void Set_##name(type value) \
+    { \
+        ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); \
+    }
 #include "ScriptApi.h"
 #undef THIS_ARG
+#undef MAP_CLASS
 };
 
 struct ScriptLocation : ScriptEntity
@@ -306,13 +420,27 @@ struct ScriptLocation : ScriptEntity
 #define THIS_ARG Location* _this = (Location*)GameEntity
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
+#define LOCATION_CLASS Location
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG LocationView* _this = (LocationView*)GameEntity
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_VIEW_METHOD_IMPL
+#define LOCATION_CLASS LocationView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define LOCATION_CLASS LocationView
 #endif
+#define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((LOCATION_CLASS*)GameEntity)->Get##name()); }
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((LOCATION_CLASS*)GameEntity)->Get##name()); } \
+    void Set_##name(type value) \
+    { \
+        ((LOCATION_CLASS*)GameEntity) \
+            ->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); \
+    }
 #include "ScriptApi.h"
 #undef THIS_ARG
+#undef LOCATION_CLASS
 };
 
 struct ScriptGlobal
@@ -334,8 +462,8 @@ struct ScriptGlobal
 #undef THIS_ARG
 };
 
-//#undef FO_API_PARTLY_UNDEF
-//#include "ScriptApi.h"
+#undef FO_API_PARTLY_UNDEF
+#include "ScriptApi.h"
 
 static const string ContextStatesStr[] = {
     "Finished",
@@ -370,17 +498,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
     // asEngine->ShutDownAndRelease();
 
     int as_result;
-    AS_ASSERT(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
+    AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
 
-    AS_ASSERT(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
-    AS_ASSERT(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
 
     RegisterScriptArray(engine, true);
     ScriptExtensions::RegisterScriptArrayExtensions(engine);
@@ -399,23 +527,142 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
 
     engine->SetUserData(mainObj);
 
-    AS_ASSERT(engine->RegisterTypedef("hash", "uint"));
-    AS_ASSERT(engine->RegisterTypedef("resource", "uint"));
+    AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
+    AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
 
 #define REGISTER_ENTITY(class_name, real_class) \
-    AS_ASSERT(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_ASSERT(engine->RegisterObjectBehaviour( \
+    AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour( \
         class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(real_class, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_ASSERT(engine->RegisterObjectBehaviour( \
+    AS_VERIFY(engine->RegisterObjectBehaviour( \
         class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(real_class, Release), SCRIPT_METHOD_CONV)); \
-    AS_ASSERT(engine->RegisterObjectProperty(class_name, "const uint Id", OFFSETOF(real_class, Id))); \
-    AS_ASSERT(engine->RegisterObjectMethod( \
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const uint Id", OFFSETOF(real_class, Id))); \
+    AS_VERIFY(engine->RegisterObjectMethod( \
         class_name, "hash get_ProtoId() const", SCRIPT_METHOD(real_class, GetProtoId), SCRIPT_METHOD_CONV)); \
-    AS_ASSERT( \
+    AS_VERIFY( \
         engine->RegisterObjectProperty(class_name, "const bool IsDestroyed", OFFSETOF(real_class, IsDestroyed))); \
-    AS_ASSERT( \
+    AS_VERIFY( \
         engine->RegisterObjectProperty(class_name, "const bool IsDestroying", OFFSETOF(real_class, IsDestroying))); \
-    AS_ASSERT(engine->RegisterObjectProperty(class_name, "const int RefCounter", OFFSETOF(real_class, RefCounter)));
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const int RefCounter", OFFSETOF(real_class, RefCounter)));
+#define REGISTER_ENTITY_CAST(class_name, real_class) \
+    AS_VERIFY(engine->RegisterObjectMethod( \
+        "Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", \
+        SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod( \
+        class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", \
+        SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV));
+
+    REGISTER_ENTITY("Entity", Entity);
+#if defined(FO_CLIENT_SCRIPTING) || defined(FO_MAPPER_SCRIPTING)
+    REGISTER_ENTITY("Item", ItemView);
+    REGISTER_ENTITY_CAST("Item", ItemView);
+    REGISTER_ENTITY("Critter", CritterView);
+    REGISTER_ENTITY_CAST("Critter", CritterView);
+    REGISTER_ENTITY("Map", MapView);
+    REGISTER_ENTITY_CAST("Map", MapView);
+    REGISTER_ENTITY("Location", LocationView);
+    REGISTER_ENTITY_CAST("Location", LocationView);
+#elif defined(FO_SERVER_SCRIPTING)
+    REGISTER_ENTITY("Item", Item);
+    REGISTER_ENTITY_CAST("Item", Item);
+    REGISTER_ENTITY("Critter", Critter);
+    REGISTER_ENTITY_CAST("Critter", Critter);
+    REGISTER_ENTITY("Map", Map);
+    REGISTER_ENTITY_CAST("Map", Map);
+    REGISTER_ENTITY("Location", Location);
+    REGISTER_ENTITY_CAST("Location", Location);
+#endif
+
+    // AS_VERIFY(engine->RegisterFuncdef("bool ItemPredicate(const Item@+)"));
+    // AS_VERIFY(engine->RegisterFuncdef("void ItemInitFunc(Item@+, bool)"));
+#if defined(FO_CLIENT_SCRIPTING)
+    // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
+    // AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &BIND_CLASS ClientCurLocation));
+#endif
+
+#define FO_API_ARG(type, name) GetASType<type>(#name)
+#define FO_API_ARG_ARR(type, name) GetASType<vector<type>>(#name)
+#define FO_API_ARG_OBJ(type, name) GetASType<type>(#name)
+#define FO_API_ARG_OBJ_ARR(type, name) GetASType<vector<type>>(#name)
+#define FO_API_ARG_REF(type, name) GetASType<type&>(#name)
+#define FO_API_ARG_ARR_REF(type, name) GetASType<vector<type>&>(#name)
+#define FO_API_ARG_ENUM(type, name) fmt::format("{} {}", #type, #name)
+#define FO_API_ARG_CALLBACK(name) fmt::format("Callback {}", #name)
+#define FO_API_ARG_PREDICATE(type, name) fmt::format("{}Predicate {}", GetASType<type>(""), #name)
+#define FO_API_ARG_DICT(key, val, name) GetASType<map<key, val>>(#name)
+#define FO_API_RET(type) GetASType<type>("")
+#define FO_API_RET_ARR(type) GetASType<vector<type>>("")
+#define FO_API_RET_OBJ(type) GetASType<type>("")
+#define FO_API_RET_OBJ_ARR(type) GetASType<vector<type>>("")
+
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_ITEM_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptItem, name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptCritter, name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptMap, name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_METHOD(name, ret, ...) \
+    AS_VERIFY( \
+        engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+            SCRIPT_METHOD(ScriptLocation, name), SCRIPT_METHOD_CONV));
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptItem, name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptCritter, name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+        SCRIPT_METHOD(ScriptMap, name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
+    AS_VERIFY( \
+        engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
+            SCRIPT_METHOD(ScriptLocation, name), SCRIPT_METHOD_CONV));
+#endif
+#include "ScriptApi.h"
+
+#define FO_API_PROPERTY_TYPE(type) GetASType<type>("")
+#define FO_API_PROPERTY_TYPE_ARR(type) GetASType<vector<type>>("")
+#define FO_API_PROPERTY_TYPE_OBJ(type) GetASType<type*>("")
+#define FO_API_PROPERTY_TYPE_OBJ_ARR(type) GetASType<vector<type*>>("")
+#define FO_API_PROPERTY_TYPE_ENUM(type) string(#type)
+
+#define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), \
+        SCRIPT_METHOD(ScriptItem, Get_##name), SCRIPT_METHOD_CONV));
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) \
+    FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+        SCRIPT_METHOD(ScriptItem, Set_##name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), \
+        SCRIPT_METHOD(ScriptCritter, Get_##name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+        SCRIPT_METHOD(ScriptCritter, Set_##name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), \
+        SCRIPT_METHOD(ScriptMap, Get_##name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_PROPERTY(access, type, name, ...) \
+    FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+        SCRIPT_METHOD(ScriptMap, Set_##name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
+    AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), \
+        SCRIPT_METHOD(ScriptLocation, Get_##name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+        SCRIPT_METHOD(ScriptLocation, Set_##name), SCRIPT_METHOD_CONV));
+#include "ScriptApi.h"
 }
 
 #else

@@ -496,9 +496,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
     for (size_t i = 0, j = tiles.size(); i < j; i++)
     {
         if (tiles[i].Layer == layer)
-            FO_API_RETURN(_str().parseHash(tiles[i].Name));
+            FO_API_RETURN(_str().parseHash(tiles[i].Name).str());
     }
-    FO_API_RETURN("");
+    FO_API_RETURN(string(""));
 }
 FO_API_EPILOG(0)
 #endif
