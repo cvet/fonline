@@ -47,6 +47,9 @@
 #define FO_API_SERVER_IMPL
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS ServerScriptSystem
+#define IS_SERVER true
+#define IS_CLIENT false
+#define IS_MAPPER false
 #endif
 #ifdef FO_CLIENT_SCRIPTING
 #include "Client.h"
@@ -54,6 +57,9 @@
 #define FO_API_CLIENT_IMPL
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS ClientScriptSystem
+#define IS_SERVER false
+#define IS_CLIENT true
+#define IS_MAPPER false
 #endif
 #ifdef FO_MAPPER_SCRIPTING
 #include "Mapper.h"
@@ -61,6 +67,9 @@
 #define FO_API_MAPPER_IMPL
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS MapperScriptSystem
+#define IS_SERVER false
+#define IS_CLIENT false
+#define IS_MAPPER true
 #endif
 
 #ifdef FO_ANGELSCRIPT_SCRIPTING
@@ -86,8 +95,10 @@
 #include "weakref/weakref.h"
 
 #define AS_VERIFY(expr) \
-    as_result = expr; \
-    RUNTIME_ASSERT_STR(as_result >= 0, #expr)
+    { \
+        as_result = expr; \
+        RUNTIME_ASSERT_STR(as_result >= 0, #expr); \
+    }
 
 #ifndef FO_SCRIPTING_REF
 #ifdef AS_MAX_PORTABILITY
@@ -190,8 +201,12 @@ inline ScriptEntity* MarshalBack(Entity* obj)
     return 0;
 }
 
-template<typename T,
-    std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
+inline string MarshalBack(string value)
+{
+    return value;
+}
+
+template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T MarshalBack(T value)
 {
     return value;
@@ -262,10 +277,6 @@ static T* EntityUpCast(Entity* a)
     return nullptr;
 }
 
-static void ReportException(std::exception& ex)
-{
-}
-
 #define FO_API_PARTLY_UNDEF
 #define FO_API_ARG(type, name) type name
 #define FO_API_ARG_ARR(type, name) CScriptArray* _##name
@@ -316,19 +327,10 @@ static void ReportException(std::exception& ex)
 
 #define FO_API_PROLOG(...) \
     { \
-        try \
-        { \
-            CONTEXT_ARG; \
-            THIS_ARG; \
-            __VA_ARGS__
-#define FO_API_EPILOG(...) \
-    } \
-    catch (std::exception & ex) \
-    { \
-        ReportException(ex); \
-        return __VA_ARGS__; \
-    } \
-    }
+        CONTEXT_ARG; \
+        THIS_ARG; \
+        __VA_ARGS__
+#define FO_API_EPILOG(...) }
 
 struct ScriptItem : ScriptEntity
 {
@@ -634,34 +636,53 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
 #define FO_API_PROPERTY_TYPE_OBJ_ARR(type) GetASType<vector<type*>>("")
 #define FO_API_PROPERTY_TYPE_ENUM(type) string(#type)
 
+#define CHECK_GETTER(access) \
+    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
+        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || \
+        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_SETTER(access) \
+    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
+        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && \
+            ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || \
+                (Property::AccessType::access & Property::AccessType::ModifiableMask))) || \
+        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), \
-        SCRIPT_METHOD(ScriptItem, Get_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_GETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), \
+            SCRIPT_METHOD(ScriptItem, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
     FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-        SCRIPT_METHOD(ScriptItem, Set_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_SETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+            SCRIPT_METHOD(ScriptItem, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), \
-        SCRIPT_METHOD(ScriptCritter, Get_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_GETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), \
+            SCRIPT_METHOD(ScriptCritter, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
     FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-        SCRIPT_METHOD(ScriptCritter, Set_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_SETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+            SCRIPT_METHOD(ScriptCritter, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), \
-        SCRIPT_METHOD(ScriptMap, Get_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_GETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), \
+            SCRIPT_METHOD(ScriptMap, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_PROPERTY(access, type, name, ...) \
     FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-        SCRIPT_METHOD(ScriptMap, Set_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_SETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+            SCRIPT_METHOD(ScriptMap, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), \
-        SCRIPT_METHOD(ScriptLocation, Get_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_GETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), \
+            SCRIPT_METHOD(ScriptLocation, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
     FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-    AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-        SCRIPT_METHOD(ScriptLocation, Set_##name), SCRIPT_METHOD_CONV));
+    if (CHECK_SETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), \
+            SCRIPT_METHOD(ScriptLocation, Set_##name), SCRIPT_METHOD_CONV));
 #include "ScriptApi.h"
 }
 

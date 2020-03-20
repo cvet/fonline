@@ -1730,6 +1730,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, identifier) FO_API_ARG_ARR_REF_MARSHAL(int
         te_rate->Release();
 
     FO_API_RETURN(size);*/
+    FO_API_RETURN(0);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1830,6 +1831,7 @@ FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(int, findIdentifiers) FO_API_ARG_ARR_MARSHA
         te_rate->Release();
 
     FO_API_RETURN(size);*/
+    FO_API_RETURN(0);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1939,6 +1941,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, identifier))
     te_identifier->Release();
 
     FO_API_RETURN(result);*/
+    FO_API_RETURN(0);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1994,6 +1997,7 @@ FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(int, identifiers))
     te_identifier->Release();
 
     FO_API_RETURN(result);*/
+    FO_API_RETURN(0);
 }
 FO_API_EPILOG(0)
 #endif
