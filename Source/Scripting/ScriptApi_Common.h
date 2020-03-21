@@ -273,13 +273,13 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_COMMON_FUNC(GetStrHash, FO_API_RET(hash), FO_API_ARG(string, str))
+FO_API_GLOBAL_COMMON_FUNC(GetStrHash, FO_API_RET(hash), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, str))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
-    if (str.empty())
+    if (text.empty())
         FO_API_RETURN(0);
-    FO_API_RETURN(_str(str).toHash());
+    FO_API_RETURN(_str(text).toHash());
 }
 FO_API_EPILOG(0)
 #endif

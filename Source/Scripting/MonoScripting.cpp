@@ -33,15 +33,43 @@
 
 #ifdef FO_SERVER_SCRIPTING
 #include "ServerScripting.h"
-#define SCRIPTING_CLASS ServerScriptSystem
 #endif
 #ifdef FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
-#define SCRIPTING_CLASS ClientScriptSystem
 #endif
 #ifdef FO_MAPPER_SCRIPTING
 #include "MapperScripting.h"
+#endif
+
+#ifdef FO_SERVER_SCRIPTING
+#include "Server.h"
+#define FO_API_COMMON_IMPL
+#define FO_API_SERVER_IMPL
+#include "ScriptApi.h"
+#define SCRIPTING_CLASS ServerScriptSystem
+#define IS_SERVER true
+#define IS_CLIENT false
+#define IS_MAPPER false
+#endif
+#ifdef FO_CLIENT_SCRIPTING
+#include "Client.h"
+#define FO_API_COMMON_IMPL
+#define FO_API_CLIENT_IMPL
+#include "ScriptApi.h"
+#define SCRIPTING_CLASS ClientScriptSystem
+#define IS_SERVER false
+#define IS_CLIENT true
+#define IS_MAPPER false
+#endif
+#ifdef FO_MAPPER_SCRIPTING
+#include "Mapper.h"
+#define FO_API_COMMON_IMPL
+#define FO_API_MAPPER_IMPL
+#include "ScriptApi.h"
 #define SCRIPTING_CLASS MapperScriptSystem
+#define IS_SERVER false
+#define IS_CLIENT false
+#define IS_MAPPER true
 #endif
 
 #ifdef FO_MONO_SCRIPTING
@@ -53,6 +81,368 @@
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/mono-config.h>
 #include <mono/mini/jit.h>
+
+template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
+inline T Marshal(T value)
+{
+    return value;
+}
+
+template<typename T, std::enable_if_t<!std::is_same_v<T, string>, int> = 0>
+inline T Marshal(MonoArray* arr)
+{
+    return {};
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
+inline T Marshal(MonoString* str)
+{
+    return "";
+}
+
+template<typename T>
+inline T* MarshalObj(MonoObject* value)
+{
+    return 0;
+}
+
+template<typename T>
+inline vector<T*> MarshalObjArr(MonoArray* arr)
+{
+    return {};
+}
+
+inline std::function<void()> MarshalCallback(MonoObject* func)
+{
+    return {};
+}
+
+template<typename T>
+inline std::function<bool(T*)> MarshalPredicate(MonoObject* func)
+{
+    return {};
+}
+
+template<typename TKey, typename TValue>
+inline map<TKey, TValue> MarshalDict(MonoObject* dict)
+{
+    return {};
+}
+
+template<typename T>
+inline MonoArray* MarshalBack(vector<T> arr)
+{
+    return 0;
+}
+
+inline MonoObject* MarshalBack(Entity* obj)
+{
+    return 0;
+}
+
+inline MonoString* MarshalBack(string value)
+{
+    return mono_string_new(mono_domain_get(), value.c_str());
+}
+
+template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
+inline T MarshalBack(T value)
+{
+    return value;
+}
+
+#define Mono_bool MonoBoolean
+#define Mono_char signed char
+#define Mono_short gint16
+#define Mono_int gint32
+#define Mono_int64 gint64
+#define Mono_uchar guchar
+#define Mono_ushort guint16
+#define Mono_uint guint32
+#define Mono_uint64 guint64
+#define Mono_float float
+#define Mono_double double
+#define Mono_string MonoString*
+#define Mono_hash hash
+#define Mono_void void
+#define FO_API_PARTLY_UNDEF
+#define FO_API_ARG(type, name) Mono_##type _##name
+#define FO_API_ARG_ARR(type, name) MonoArray* _##name
+#define FO_API_ARG_OBJ(type, name) MonoObject* _##name
+#define FO_API_ARG_OBJ_ARR(type, name) MonoArray* _##name
+#define FO_API_ARG_REF(type, name) type* _##name
+#define FO_API_ARG_ARR_REF(type, name) MonoArray* _##name
+#define FO_API_ARG_ENUM(type, name) int name
+#define FO_API_ARG_CALLBACK(name) MonoObject* _##name
+#define FO_API_ARG_PREDICATE(type, name) MonoObject* _##name
+#define FO_API_ARG_DICT(key, val, name) MonoObject* _##name
+#define FO_API_ARG_MARSHAL(type, name) type name = Marshal<type>(_##name);
+#define FO_API_ARG_ARR_MARSHAL(type, name) vector<type> name = Marshal<vector<type>>(_##name);
+#define FO_API_ARG_OBJ_MARSHAL(type, name) type* name = MarshalObj<type>(_##name);
+#define FO_API_ARG_OBJ_ARR_MARSHAL(type, name) vector<type*> name = MarshalObjArr<type>(_##name);
+#define FO_API_ARG_REF_MARSHAL(type, name) type name = *_##name;
+#define FO_API_ARG_ARR_REF_MARSHAL(type, name) vector<type> name = Marshal<vector<type>>(_##name);
+#define FO_API_ARG_ENUM_MARSHAL(type, name)
+#define FO_API_ARG_CALLBACK_MARSHAL(name) std::function<void()> name = MarshalCallback(_##name);
+#define FO_API_ARG_PREDICATE_MARSHAL(type, name) std::function<bool(type*)> name = MarshalPredicate<type>(_##name);
+#define FO_API_ARG_DICT_MARSHAL(key, val, name) map<key, val> name = MarshalDict<key, val>(_##name);
+#define FO_API_RET(type) Mono_##type
+#define FO_API_RET_ARR(type) MonoArray*
+#define FO_API_RET_OBJ(type) MonoObject*
+#define FO_API_RET_OBJ_ARR(type) MonoArray*
+#define FO_API_RETURN(expr) return MarshalBack(expr)
+#define FO_API_RETURN_VOID() return
+#define FO_API_PROPERTY_TYPE(type) Mono_##type
+#define FO_API_PROPERTY_TYPE_ARR(type) MonoArray*
+#define FO_API_PROPERTY_TYPE_OBJ(type) MonoObject*
+#define FO_API_PROPERTY_TYPE_OBJ_ARR(type) MonoArray*
+#define FO_API_PROPERTY_TYPE_ENUM(type) int
+#define FO_API_PROPERTY_MOD(mod)
+
+static thread_local void* ContextObj;
+
+#if defined(FO_SERVER_SCRIPTING)
+#define CONTEXT_ARG \
+    FOServer* _server = (FOServer*)ContextObj; \
+    FOServer* _common = _server
+#elif defined(FO_CLIENT_SCRIPTING)
+#define CONTEXT_ARG \
+    FOClient* _client = (FOClient*)ContextObj; \
+    FOClient* _common = _client
+#elif defined(FO_MAPPER_SCRIPTING)
+#define CONTEXT_ARG \
+    FOMapper* _mapper = (FOMapper*)ContextObj; \
+    FOMapper* _common = _mapper
+#endif
+
+#define FO_API_PROLOG(...) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            CONTEXT_ARG; \
+            THIS_ARG; \
+            __VA_ARGS__
+#define FO_API_EPILOG(...) \
+    } \
+    catch (std::exception & ex) \
+    { \
+        *_ex = mono_string_new(_domain, ex.what()); \
+        return __VA_ARGS__; \
+    } \
+    }
+
+#if defined(FO_SERVER_SCRIPTING)
+#define THIS_ARG Item* _this = (Item*)_thisPtr
+#define FO_API_ITEM_METHOD(name, ret, ...) \
+    static ret MonoItem_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_ITEM_METHOD_IMPL
+#define ITEM_CLASS Item
+#elif defined(FO_CLIENT_SCRIPTING)
+#define THIS_ARG ItemView* _this = (ItemView*)_thisPtr
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
+    static ret MonoItem_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_ITEM_VIEW_METHOD_IMPL
+#define ITEM_CLASS ItemView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define ITEM_CLASS ItemView
+#endif
+#define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
+    static type MonoItem_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            return MarshalBack(((ITEM_CLASS*)_thisPtr)->Get##name()); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+            return 0; \
+        } \
+    }
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) \
+    FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    static void MonoItem_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            ((ITEM_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((ITEM_CLASS*)_thisPtr)->Get##name())>(value)); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+        } \
+    }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef ITEM_CLASS
+
+#if defined(FO_SERVER_SCRIPTING)
+#define THIS_ARG Critter* _this = (Critter*)_thisPtr
+#define FO_API_CRITTER_METHOD(name, ret, ...) \
+    static ret MonoCritter_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_CRITTER_METHOD_IMPL
+#define CRITTER_CLASS Critter
+#elif defined(FO_CLIENT_SCRIPTING)
+#define THIS_ARG CritterView* _this = (CritterView*)_thisPtr
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
+    static ret MonoCritter_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_CRITTER_VIEW_METHOD_IMPL
+#define CRITTER_CLASS CritterView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define CRITTER_CLASS CritterView
+#endif
+#define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
+    static type MonoCritter_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            return MarshalBack(((CRITTER_CLASS*)_thisPtr)->Get##name()); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+            return 0; \
+        } \
+    }
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    static void MonoCritter_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            ((CRITTER_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((CRITTER_CLASS*)_thisPtr)->Get##name())>(value)); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+        } \
+    }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef CRITTER_CLASS
+
+#if defined(FO_SERVER_SCRIPTING)
+#define THIS_ARG Map* _this = (Map*)_thisPtr
+#define FO_API_MAP_METHOD(name, ret, ...) \
+    static ret MonoMap_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_MAP_METHOD_IMPL
+#define MAP_CLASS Map
+#elif defined(FO_CLIENT_SCRIPTING)
+#define THIS_ARG MapView* _this = (MapView*)_thisPtr
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
+    static ret MonoMap_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_MAP_VIEW_METHOD_IMPL
+#define MAP_CLASS MapView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define MAP_CLASS MapView
+#endif
+#define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
+    static type MonoMap_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            return MarshalBack(((MAP_CLASS*)_thisPtr)->Get##name()); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+            return 0; \
+        } \
+    }
+#define FO_API_MAP_PROPERTY(access, type, name, ...) \
+    FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    static void MonoMap_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            ((MAP_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((MAP_CLASS*)_thisPtr)->Get##name())>(value)); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+        } \
+    }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef MAP_CLASS
+
+#if defined(FO_SERVER_SCRIPTING)
+#define THIS_ARG Location* _this = (Location*)_thisPtr
+#define FO_API_LOCATION_METHOD(name, ret, ...) \
+    static ret MonoLocation_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_LOCATION_METHOD_IMPL
+#define LOCATION_CLASS Location
+#elif defined(FO_CLIENT_SCRIPTING)
+#define THIS_ARG LocationView* _this = (LocationView*)_thisPtr
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
+    static ret MonoLocation_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_LOCATION_VIEW_METHOD_IMPL
+#define LOCATION_CLASS LocationView
+#elif defined(FO_MAPPER_SCRIPTING)
+#define LOCATION_CLASS LocationView
+#endif
+#define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
+    static type MonoLocation_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            return MarshalBack(((LOCATION_CLASS*)_thisPtr)->Get##name()); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+            return 0; \
+        } \
+    }
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    static void MonoLocation_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    { \
+        *_ex = nullptr; \
+        try \
+        { \
+            ((LOCATION_CLASS*)_thisPtr) \
+                ->Set##name(Marshal<decltype(((LOCATION_CLASS*)_thisPtr)->Get##name())>(value)); \
+        } \
+        catch (std::exception & ex) \
+        { \
+            *_ex = mono_string_new(_domain, ex.what()); \
+        } \
+    }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef LOCATION_CLASS
+
+#define THIS_ARG (void)0
+#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_SERVER_FUNC_IMPL
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#elif defined(FO_MAPPER_SCRIPTING)
+#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#endif
+#include "ScriptApi.h"
+#undef THIS_ARG
+
+#undef FO_API_PARTLY_UNDEF
+#include "ScriptApi.h"
 
 // static void SetMonoInternalCalls();
 // static MonoAssembly* LoadNetAssembly(const string& name);
@@ -68,8 +458,8 @@ void SCRIPTING_CLASS::InitMonoScripting()
 {
     pMonoImpl = std::make_unique<MonoImpl>();
 
-    /*g_set_print_handler([](const gchar* string) { WriteLog("{}", string); });
-    g_set_printerr_handler([](const gchar* string) { WriteLog("{}", string); });
+    g_set_print_handler([](const gchar* str) { WriteLog("{}", str); });
+    g_set_printerr_handler([](const gchar* str) { WriteLog("{}", str); });
 
     mono_config_parse_memory(R"(
     <configuration>
@@ -120,7 +510,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
     mono_set_dirs("./dummy/lib", "./dummy/etc");
     mono_set_assemblies_path("./dummy/lib/gac");
 
-    RUNTIME_ASSERT(pMonoImpl->EngineAssemblyImages.empty());
+    /*RUNTIME_ASSERT(pMonoImpl->EngineAssemblyImages.empty());
     mono_install_assembly_preload_hook(
         [](MonoAssemblyName* aname, char** assemblies_path, void* user_data) -> MonoAssembly* {
             auto assembly_images = (map<string, MonoImage*>*)user_data;
@@ -128,14 +518,72 @@ void SCRIPTING_CLASS::InitMonoScripting()
                 return LoadGameAssembly(aname->name, *assembly_images);
             return LoadNetAssembly(aname->name);
         },
-        (void*)&EngineAssemblyImages);
+        (void*)&EngineAssemblyImages);*/
 
-    MonoDomain* domain = mono_jit_init_version("FOnlineDomain", "v4.0.30319");
+    static std::atomic_int domain_counter;
+    int domain_num = domain_counter++;
+    MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
     RUNTIME_ASSERT(domain);
 
-    SetMonoInternalCalls();
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
+#define FO_API_CRITTER_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
+#define FO_API_MAP_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
+#define FO_API_LOCATION_METHOD(name, ret, ...) mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
+    mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
+    mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
+#endif
+#include "ScriptApi.h"
 
-    if (assemblies_data)
+#define CHECK_GETTER(access) \
+    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
+        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || \
+        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_SETTER(access) \
+    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
+        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && \
+            ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || \
+                (Property::AccessType::access & Property::AccessType::ModifiableMask))) || \
+        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+
+#define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        mono_add_internal_call("Item::_Get_" #name, (void*)&MonoItem_Get_##name);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) \
+    FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        mono_add_internal_call("Item::_Set_" #name, (void*)&MonoItem_Set_##name);
+#define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        mono_add_internal_call("Critter::_Get_" #name, (void*)&MonoCritter_Get_##name);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        mono_add_internal_call("Critter::_Set_" #name, (void*)&MonoCritter_Set_##name);
+#define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        mono_add_internal_call("Map::_Get_" #name, (void*)&MonoMap_Get_##name);
+#define FO_API_MAP_PROPERTY(access, type, name, ...) \
+    FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        mono_add_internal_call("Map::_Set_" #name, (void*)&MonoMap_Set_##name);
+#define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        mono_add_internal_call("Location::_Get_" #name, (void*)&MonoLocation_Get_##name);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        mono_add_internal_call("Location::_Set_" #name, (void*)&MonoLocation_Set_##name);
+#include "ScriptApi.h"
+
+    // SetMonoInternalCalls();
+
+    /*if (assemblies_data)
     {
         for (auto& kv : *assemblies_data)
         {
