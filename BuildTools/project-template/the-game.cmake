@@ -5,7 +5,8 @@
 # AddNativeIncludeDir dir
 # AddNativeSource pathPattern
 # AddAngelScriptSource pathPattern
-# AddMonoAssembly assembly commonRefs serverRefs clientRefs mapperRefs
+# AddMonoAssembly assembly
+# AddMonoReference assembly type refs
 # AddMonoSource assembly pathPattern
 # CreateConfig config inheritenConfig
 # TweakConfig config option value
@@ -25,10 +26,11 @@ AddResources( "TheGame" "Resources/**" )
 # Scripts
 AddScriptApi( "Scripts/MyScriptApi.h" )
 AddNativeIncludeDir( "Scripts" )
-AddNativeSource( "Scripts/*.cpp" )
-AddAngelScriptSource( "Scripts/*.fos" )
-AddMonoAssembly( "TheGame" "System" "" "" "" )
-AddMonoSource( "TheGame" "Scripts/*.cs" )
+AddNativeSource( "Scripts/Test.cpp" )
+AddAngelScriptSource( "Scripts/Test.fos" )
+AddMonoAssembly( "TheGame" )
+AddMonoReference( "TheGame" "Common" "FOnline" )
+AddMonoSource( "TheGame" "Scripts/Test.cs" )
 
 # Default config
 CreateConfig( "Default" "" )

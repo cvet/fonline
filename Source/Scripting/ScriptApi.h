@@ -32,6 +32,7 @@
 //
 
 // Possible defines:
+// FO_API_PARTLY_UNDEF
 // FO_API_ENUM_GROUP(name)
 // FO_API_ENUM_GROUP_DOC
 // FO_API_ENUM_ENTRY(group, name, value)

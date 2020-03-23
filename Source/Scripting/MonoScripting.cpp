@@ -79,6 +79,7 @@
 #include <mono/dis/meta.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/exception.h>
 #include <mono/metadata/mono-config.h>
 #include <mono/mini/jit.h>
 
@@ -199,19 +200,24 @@ inline T MarshalBack(T value)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-static thread_local void* ContextObj;
+static unordered_map<MonoDomain*, void*> DomainToContextArg;
+
+static MonoException* ReportException(MonoDomain* domain, const std::exception& ex)
+{
+    return mono_get_exception_invalid_operation(ex.what());
+}
 
 #if defined(FO_SERVER_SCRIPTING)
 #define CONTEXT_ARG \
-    FOServer* _server = (FOServer*)ContextObj; \
+    FOServer* _server = (FOServer*)DomainToContextArg[_domain]; \
     FOServer* _common = _server
 #elif defined(FO_CLIENT_SCRIPTING)
 #define CONTEXT_ARG \
-    FOClient* _client = (FOClient*)ContextObj; \
+    FOClient* _client = (FOClient*)DomainToContextArg[_domain]; \
     FOClient* _common = _client
 #elif defined(FO_MAPPER_SCRIPTING)
 #define CONTEXT_ARG \
-    FOMapper* _mapper = (FOMapper*)ContextObj; \
+    FOMapper* _mapper = (FOMapper*)DomainToContextArg[_domain]; \
     FOMapper* _common = _mapper
 #endif
 
@@ -227,7 +233,7 @@ static thread_local void* ContextObj;
     } \
     catch (std::exception & ex) \
     { \
-        *_ex = mono_string_new(_domain, ex.what()); \
+        *_ex = ReportException(_domain, ex); \
         return __VA_ARGS__; \
     } \
     }
@@ -235,20 +241,20 @@ static thread_local void* ContextObj;
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Item* _this = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) \
-    static ret MonoItem_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
 #define ITEM_CLASS Item
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG ItemView* _this = (ItemView*)_thisPtr
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
-    static ret MonoItem_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_ITEM_VIEW_METHOD_IMPL
 #define ITEM_CLASS ItemView
 #elif defined(FO_MAPPER_SCRIPTING)
 #define ITEM_CLASS ItemView
 #endif
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
-    static type MonoItem_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    static type MonoItem_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
         try \
@@ -257,13 +263,13 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
     }
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
     FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    static void MonoItem_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    static void MonoItem_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
         try \
@@ -272,7 +278,7 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
         } \
     }
 #include "ScriptApi.h"
@@ -282,20 +288,20 @@ static thread_local void* ContextObj;
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Critter* _this = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
-    static ret MonoCritter_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
 #define CRITTER_CLASS Critter
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG CritterView* _this = (CritterView*)_thisPtr
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
-    static ret MonoCritter_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_CRITTER_VIEW_METHOD_IMPL
 #define CRITTER_CLASS CritterView
 #elif defined(FO_MAPPER_SCRIPTING)
 #define CRITTER_CLASS CritterView
 #endif
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
-    static type MonoCritter_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    static type MonoCritter_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
         try \
@@ -304,13 +310,13 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
     }
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
     FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    static void MonoCritter_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    static void MonoCritter_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
         try \
@@ -319,7 +325,7 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
         } \
     }
 #include "ScriptApi.h"
@@ -329,20 +335,20 @@ static thread_local void* ContextObj;
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Map* _this = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) \
-    static ret MonoMap_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
 #define MAP_CLASS Map
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG MapView* _this = (MapView*)_thisPtr
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
-    static ret MonoMap_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_MAP_VIEW_METHOD_IMPL
 #define MAP_CLASS MapView
 #elif defined(FO_MAPPER_SCRIPTING)
 #define MAP_CLASS MapView
 #endif
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
-    static type MonoMap_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    static type MonoMap_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
         try \
@@ -351,13 +357,13 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
     }
 #define FO_API_MAP_PROPERTY(access, type, name, ...) \
     FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    static void MonoMap_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    static void MonoMap_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
         try \
@@ -366,7 +372,7 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
         } \
     }
 #include "ScriptApi.h"
@@ -376,20 +382,20 @@ static thread_local void* ContextObj;
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Location* _this = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
-    static ret MonoLocation_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
 #define LOCATION_CLASS Location
 #elif defined(FO_CLIENT_SCRIPTING)
 #define THIS_ARG LocationView* _this = (LocationView*)_thisPtr
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
-    static ret MonoLocation_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, ##__VA_ARGS__)
+    static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_LOCATION_VIEW_METHOD_IMPL
 #define LOCATION_CLASS LocationView
 #elif defined(FO_MAPPER_SCRIPTING)
 #define LOCATION_CLASS LocationView
 #endif
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
-    static type MonoLocation_Get_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr) \
+    static type MonoLocation_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
         try \
@@ -398,13 +404,13 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
     }
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
     FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
-    static void MonoLocation_Set_##name(MonoDomain* _domain, MonoString** _ex, void* _thisPtr, type value) \
+    static void MonoLocation_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
         try \
@@ -414,7 +420,7 @@ static thread_local void* ContextObj;
         } \
         catch (std::exception & ex) \
         { \
-            *_ex = mono_string_new(_domain, ex.what()); \
+            *_ex = ReportException(_domain, ex); \
         } \
     }
 #include "ScriptApi.h"
@@ -423,19 +429,19 @@ static thread_local void* ContextObj;
 
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
 #if defined(FO_SERVER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL
 #elif defined(FO_CLIENT_SCRIPTING)
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_CLIENT_FUNC_IMPL
 #elif defined(FO_MAPPER_SCRIPTING)
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoString** _ex, ##__VA_ARGS__)
+    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_MAPPER_FUNC_IMPL
 #endif
 #include "ScriptApi.h"
@@ -525,6 +531,8 @@ void SCRIPTING_CLASS::InitMonoScripting()
     MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
     RUNTIME_ASSERT(domain);
 
+    DomainToContextArg[domain] = mainObj;
+
 #if defined(FO_SERVER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
@@ -580,8 +588,6 @@ void SCRIPTING_CLASS::InitMonoScripting()
     if (CHECK_SETTER(access)) \
         mono_add_internal_call("Location::_Set_" #name, (void*)&MonoLocation_Set_##name);
 #include "ScriptApi.h"
-
-    // SetMonoInternalCalls();
 
     /*if (assemblies_data)
     {
