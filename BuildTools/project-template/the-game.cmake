@@ -1,13 +1,19 @@
-# AddContent pathPattern
-# AddResources packName pathPattern
-# AddRawResources pathPattern
-# AddScriptApi headerPath
-# AddNativeIncludeDir dir
-# AddNativeSource pathPattern
-# AddAngelScriptSource pathPattern
+# AddContent pathPattern(s)
+# AddResources packName pathPattern(s)
+# AddRawResources pathPattern(s)
+# AddScriptApi headerPath(s)
+# AddNativeIncludeDir dir(s)
+# AddNativeSource pathPattern(s)
+# AddAngelScriptSource pathPattern(s)
 # AddMonoAssembly assembly
-# AddMonoReference assembly type refs
-# AddMonoSource assembly pathPattern
+# AddMonoCommonReference assembly ref(s)
+# AddMonoServerReference assembly ref(s)
+# AddMonoClientReference assembly ref(s)
+# AddMonoMapperReference assembly ref(s)
+# AddMonoCommonSource assembly pathPattern(s)
+# AddMonoServerSource assembly pathPattern(s)
+# AddMonoClientSource assembly pathPattern(s)
+# AddMonoMapperSource assembly pathPattern(s)
 # CreateConfig config inheritenConfig
 # TweakConfig config option value
 # CreatePackage package niceName devName author version
@@ -17,8 +23,7 @@
 # Content
 AddContent( "Critters/*.focr" )
 AddContent( "Items/*.foitem" )
-AddContent( "Maps/*.fomap" )
-AddContent( "Maps/*.foloc" )
+AddContent( "Maps/*.fomap" "Maps/*.foloc" )
 
 # Resources
 AddResources( "TheGame" "Resources/**" )
@@ -29,8 +34,8 @@ AddNativeIncludeDir( "Scripts" )
 AddNativeSource( "Scripts/Test.cpp" )
 AddAngelScriptSource( "Scripts/Test.fos" )
 AddMonoAssembly( "TheGame" )
-AddMonoReference( "TheGame" "Common" "FOnline" )
-AddMonoSource( "TheGame" "Scripts/Test.cs" )
+AddMonoCommonReference( "TheGame" "System" "System.Core" )
+AddMonoCommonSource( "TheGame" "Scripts/Test.cs" )
 
 # Default config
 CreateConfig( "Default" "" )

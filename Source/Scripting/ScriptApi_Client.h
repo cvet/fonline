@@ -3643,17 +3643,17 @@ FO_API_EPILOG()
  * ...
  *
  * @param screen ...
- * @param params ...
+ * @param data ...
  ******************************************************************************/
 #endif
-FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG_DICT(string, int, params))
+FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG_DICT(string, int, data))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, int, params))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, int, data))
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT)
-        _client->ShowMainScreen(screen, params);
+        _client->ShowMainScreen(screen, data);
     else if (screen != SCREEN_NONE)
-        _client->ShowScreen(screen, params);
+        _client->ShowScreen(screen, data);
     else
         _client->HideScreen(screen);
 }

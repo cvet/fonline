@@ -1,6 +1,6 @@
 # FOnline Engine
 
-> Engine currently in unusable state due to heavy refactoring.  
+> Engine currently in completely unusable state due to heavy refactoring.  
 > Estimated finishing date is middle of this year.
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
@@ -20,12 +20,14 @@
     + [Visual Studio Code](#visual-studio-code)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
+  * [Tutorial](#tutorial)
 - [Work in progress](#work-in-progress)
   * [Roadmap](#roadmap)
   * [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
   * [Code refactoring plans](#code-refactoring-plans)
   * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
 - [Repository structure](#repository-structure)
+- [Frequently Asked Questions](frequently-asked-questions)
 - [Help and support](#help-and-support)
 
 ## Features
@@ -107,7 +109,8 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 
 ### Public API
 
-*Todo: write about versioning SemVer https://semver.org and what public API included to itself*
+*Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
+*Todo: add link to PUBLIC_API.md*
 
 ### Setup
 
@@ -191,6 +194,10 @@ They are located in ThirdParty directory.
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
+
+### Tutorial
+
+*Todo: link to TUTORIAL.md*
 
 ## Work in progress
 
@@ -417,6 +424,10 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * *Resources* - resources for build applications but not related to code
 * *Source* - fonline engine specific code
 * *ThirdParty* - external dependencies of engine, included to repository
+
+## Frequently Asked Questions
+
+*Todo: link to FAQ.md*
 
 ## Help and support
 
