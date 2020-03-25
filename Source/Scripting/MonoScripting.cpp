@@ -200,24 +200,32 @@ inline T MarshalBack(T value)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-static unordered_map<MonoDomain*, void*> DomainToContextArg;
-
 static MonoException* ReportException(MonoDomain* domain, const std::exception& ex)
 {
     return mono_get_exception_invalid_operation(ex.what());
 }
 
+static void SetDomainUserData(MonoDomain* domain, void* user_data)
+{
+    // Todo: set Mono domain user data
+}
+
+inline void* GetDomainUserData(MonoDomain* domain)
+{
+    return nullptr; // Todo: get Mono domain user data
+}
+
 #if defined(FO_SERVER_SCRIPTING)
 #define CONTEXT_ARG \
-    FOServer* _server = (FOServer*)DomainToContextArg[_domain]; \
+    FOServer* _server = (FOServer*)GetDomainUserData(_domain); \
     FOServer* _common = _server
 #elif defined(FO_CLIENT_SCRIPTING)
 #define CONTEXT_ARG \
-    FOClient* _client = (FOClient*)DomainToContextArg[_domain]; \
+    FOClient* _client = (FOClient*)GetDomainUserData(_domain); \
     FOClient* _common = _client
 #elif defined(FO_MAPPER_SCRIPTING)
 #define CONTEXT_ARG \
-    FOMapper* _mapper = (FOMapper*)DomainToContextArg[_domain]; \
+    FOMapper* _mapper = (FOMapper*)GetDomainUserData(_domain); \
     FOMapper* _common = _mapper
 #endif
 
@@ -531,7 +539,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
     MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
     RUNTIME_ASSERT(domain);
 
-    DomainToContextArg[domain] = mainObj;
+    SetDomainUserData(domain, mainObj);
 
 #if defined(FO_SERVER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);

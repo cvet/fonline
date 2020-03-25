@@ -150,12 +150,15 @@ for line in lines:
 
 # Generate API
 files = {}
+lastFile = None
 
 def createFile(name):
-    files[name] = []
+    global lastFile
+    lastFile = []
+    files[name] = lastFile
 
-def writeFile(name, line):
-    files[name].append(line)
+def writeFile(line):
+    lastFile.append(line)
 
 def flushFiles():
     if not os.path.isdir(outputPath):
@@ -181,14 +184,14 @@ if config['AngelScript']:
     # Generate content file
     createFile('Content.fos')
     def writeEnums(name, lst):
-        writeFile('Content.fos', 'enum ' + name)
-        writeFile('Content.fos', '{')
+        writeFile('enum ' + name)
+        writeFile('{')
         for i in lst:
-            writeFile('Content.fos', '    ' + i + ' = ' + getHash(i) + ',')
-        writeFile('Content.fos', '}')
-        writeFile('Content.fos', '')
-    writeFile('Content.fos', '// FOS Common')
-    writeFile('Content.fos', '')
+            writeFile('    ' + i + ' = ' + getHash(i) + ',')
+        writeFile('}')
+        writeFile('')
+    writeFile('// FOS Common')
+    writeFile('')
     writeEnums('Item', content['foitem'])
     writeEnums('Critter', content['focr'])
     writeEnums('Map', content['fomap'])
@@ -235,14 +238,12 @@ if config['AngelScript']:
 
     # Write files
     def writeRootModule(target, files):
-        fname = target + 'RootModule.fos'
-
         def addInclude(file, comment):
-            writeFile(fname, 'namespace ' + os.path.splitext(os.path.basename(file))[0] + ' {')
-            writeFile(fname, '#include "' + file + ('" // ' + comment if comment else ''))
-            writeFile(fname, '}')
+            writeFile('namespace ' + os.path.splitext(os.path.basename(file))[0] + ' {')
+            writeFile('#include "' + file + ('" // ' + comment if comment else ''))
+            writeFile('}')
 
-        createFile(fname)
+        createFile(target + 'RootModule.fos')
         addInclude(outputPath.replace('\\', '/') + '/Content.fos', 'Generated')
         for file in files:
             addInclude(file[1], 'Sort ' + str(file[0]) if file[0] else None)
@@ -254,16 +255,22 @@ if config['AngelScript']:
 # C# projects
 if config['Mono']:
     # Generate source
-    createFile('Game.cs')
-    writeFile('Game.cs', 'using System;')
-    writeFile('Game.cs', 'using System.Collections.Generic;')
-    writeFile('Game.cs', 'using System.Runtime.CompilerServices;')
-    writeFile('Game.cs', 'using hash = System.UInt32;')
-    writeFile('Game.cs', '')
-    writeFile('Game.cs', 'namespace FOnline')
-    writeFile('Game.cs', '{')
-    writeFile('Game.cs', '    public static class Game')
-    writeFile('Game.cs', '    {')
+    def writeHeader(rootClass, usings=None):
+        writeFile('using System;')
+        writeFile('using System.Collections.Generic;')
+        writeFile('using System.Runtime.CompilerServices;')
+        writeFile('using hash = System.UInt32;')
+        if usings:
+            for u in usings:
+                writeFile(u)
+        writeFile('')
+        writeFile('namespace FOnline')
+        writeFile('{')
+        writeFile('    ' + rootClass)
+        writeFile('    {')
+    def writeEndHeader():
+        writeFile('    }')
+        writeFile('}')
     def parseType(t):
         def mapType(t):
             typeMap = {'char': 'sbyte', 'uchar': 'byte', 'int64': 'long', 'uint64': 'ulong',
@@ -283,88 +290,287 @@ if config['Mono']:
         if 'ref' in tt:
             r = 'ref ' + r
         return r
-    def parseExtArgs(args):
-        return ', '.join(['AppDomain domain', 'out Exception ex'] + [parseType(a[0]) + ' ' + a[1] for a in args])
     def parseArgs(args):
         return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
-    def parsePassArgs(args):
-        return ', '.join(['AppDomain.CurrentDomain', 'out _ex'] +
-                [('ref ' if 'ref' in a[0].split('.') else '') + a[1] for a in args])
-    def writeGlobalFunc(tok):
-        if tok[3]:
-            for comm in tok[3][1:-1]:
-                writeFile('Game.cs', '        /// ' + comm[3:])
-        writeFile('Game.cs', '        public static ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')')
-        writeFile('Game.cs', '        {')
-        writeFile('Game.cs', '            Exception _ex;')
-        writeFile('Game.cs', '            ' + ('var _result = ' if tok[1] != 'void' else '') +
-                '_' + tok[0] + '(' + parsePassArgs(tok[2]) + ');')
-        writeFile('Game.cs', '            if (_ex != null)')
-        writeFile('Game.cs', '                throw _ex;')
+    def parseExtArgs(args, entity):
+        r = ['AppDomain domain']
+        if entity:
+            r.append('IntPtr entityPtr')
+        return ', '.join(r + ['out Exception ex'] + [parseType(a[0]) + ' ' + a[1] for a in args])
+    def parsePassArgs(args, entity, addDomEx=True):
+        r = []
+        if addDomEx:
+            r.append('AppDomain.CurrentDomain')
+        if entity:
+            r.append('_entityPtr')
+        if addDomEx:
+            r.append('out _ex')
+        return ', '.join(r + [('ref ' if 'ref' in a[0].split('.') else '') + a[1] for a in args])
+    def writeDoc(ident, doc):
+        if doc:
+            for comm in doc[1:-1]:
+                writeFile(''.center(ident) + '/// ' + comm[3:])
+    def writeMethods(tok, entity, extCalls):
+        writeDoc(8, tok[3])
+        writeFile('        public ' + ('static ' if entity is None else '') + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')')
+        writeFile('        {')
+        writeFile('            Exception _ex;')
+        writeFile('            ' + ('var _result = ' if tok[1] != 'void' else '') +
+                '_' + tok[0] + '(' + parsePassArgs(tok[2], entity) + ');')
+        writeFile('            if (_ex != null)')
+        writeFile('                throw _ex;')
         if tok[1] != 'void':
-            writeFile('Game.cs', '            return _result;')
-        writeFile('Game.cs', '        }')
-        writeFile('Game.cs', '')
-    def writeGlobalExtFunc(tok):
-        writeFile('Game.cs', '        [MethodImpl(MethodImplOptions.InternalCall)]')
-        writeFile('Game.cs', '        extern static ' + parseType(tok[1]) + ' _' + tok[0] + '(' + parseExtArgs(tok[2]) + ');')
-    for i in methods['globalcommon']:
-        writeGlobalFunc(i)
-    writeFile('Game.cs', '#if SERVER')
-    for i in methods['globalserver']:
-        writeGlobalFunc(i)
-    writeFile('Game.cs', '#elif CLIENT')
-    for i in methods['globalclient']:
-        writeGlobalFunc(i)
-    writeFile('Game.cs', '#elif MAPPER')
-    for i in methods['globalmapper']:
-        writeGlobalFunc(i)
-    writeFile('Game.cs', '#endif')
-    writeFile('Game.cs', '')
-    for i in methods['globalcommon']:
-        writeGlobalExtFunc(i)
-    writeFile('Game.cs', '#if SERVER')
-    for i in methods['globalserver']:
-        writeGlobalExtFunc(i)
-    writeFile('Game.cs', '#elif CLIENT')
-    for i in methods['globalclient']:
-        writeGlobalExtFunc(i)
-    writeFile('Game.cs', '#elif MAPPER')
-    for i in methods['globalmapper']:
-        writeGlobalExtFunc(i)
-    writeFile('Game.cs', '#endif')
-    writeFile('Game.cs', '    }')
-    writeFile('Game.cs', '}')
+            writeFile('            return _result;')
+        writeFile('        }')
+        writeFile('')
+        extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
+        extCalls.append('        extern static ' + parseType(tok[1]) + ' _' + tok[0] + '(' + parseExtArgs(tok[2], entity) + ');')
+    def writeProps(tok, entity, extCalls):
+        def isPropGet(target, access):
+            return True
+        def isPropSet(target, access):
+            return True
+        def evalDefines(srv, cl, mapp):
+            if not srv and not cl and not mapp:
+                return None
+            if srv and cl and mapp:
+                return ''
+            if srv and cl:
+                return '#if SERVER || CLIENT'
+            if srv and mapp:
+                return '#if SERVER || MAPPER'
+            if cl and mapp:
+                return '#if CLIENT || MAPPER'
+            assert False
+        rw, name, access, ret, mods, comms = tok
+        isServerGet, isServerSet = isPropGet('Server', access), (rw == 'rw' and isPropSet('Server', access))
+        isClientGet, isClientSet = isPropGet('Client', access), (rw == 'rw' and isPropSet('Client', access))
+        isMapperGet, isMapperSet = isPropGet('Mapper', access), (rw == 'rw' and isPropSet('Mapper', access))
+        writeDoc(8, comms)
+        writeFile('        public ' + ('static ' if entity is None else '') + parseType(ret) + ' ' + name)
+        writeFile('        {')
+        defines = evalDefines(isServerGet, isClientGet, isMapperGet)
+        if defines is not None:
+            if defines:
+                writeFile(defines)
+                extCalls.append(defines)
+            writeFile('            get')
+            writeFile('            {')
+            writeFile('                Exception _ex;')
+            if entity:
+                writeFile('                var _result = _Get_' + name + '(AppDomain.CurrentDomain, _entityPtr, out _ex);')
+            else:
+                writeFile('                var _result = _Get_' + name + '(AppDomain.CurrentDomain, out _ex);')
+            writeFile('                if (_ex != null)')
+            writeFile('                    throw _ex;')
+            writeFile('                return _result;')
+            writeFile('            }')
+            extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
+            if entity:
+                extCalls.append('        extern static ' + parseType(ret) + ' _Get_' + name + '(AppDomain domain, IntPtr entityPtr, out Exception ex);')
+            else:
+                extCalls.append('        extern static ' + parseType(ret) + ' _Get_' + name + '(AppDomain domain, out Exception ex);')
+            if defines:
+                writeFile('#endif')
+                extCalls.append('#endif')
+        defines = evalDefines(isServerSet, isClientSet, isMapperSet)
+        if defines is not None:
+            if defines:
+                writeFile(defines)
+                ext.append(defines)
+            writeFile('            set')
+            writeFile('            {')
+            writeFile('                Exception _ex;')
+            if entity:
+                writeFile('                _Set_' + name + '(AppDomain.CurrentDomain, _entityPtr, out _ex, value);')
+            else:
+                writeFile('                _Set_' + name + '(AppDomain.CurrentDomain, out _ex, value);')
+            writeFile('                if (_ex != null)')
+            writeFile('                    throw _ex;')
+            writeFile('            }')
+            extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
+            if entity:
+                extCalls.append('        extern static void _Set_' + name + '(AppDomain domain, IntPtr entityPtr, out Exception ex, ' + parseType(ret) + ' value);')
+            else:
+                extCalls.append('        extern static void _Set_' + name + '(AppDomain domain, out Exception ex, ' + parseType(ret) + ' value);')
+            if defines:
+                writeFile('#endif')
+                extCalls.append('#endif')
+        writeFile('        }')
+        writeFile('')
 
-    # Todo:
+    # Global methods
+    createFile('Game.cs')
+    writeHeader('public static partial class Game')
+    extCalls = []
+    for i in methods['globalcommon']:
+        writeMethods(i, None, extCalls)
+    writeFile('#if SERVER')
+    extCalls.append('#if SERVER')
+    for i in methods['globalserver']:
+        writeMethods(i, None, extCalls)
+    writeFile('#elif CLIENT')
+    extCalls.append('#elif CLIENT')
+    for i in methods['globalclient']:
+        writeMethods(i, None, extCalls)
+    writeFile('#elif MAPPER')
+    extCalls.append('#elif MAPPER')
+    for i in methods['globalmapper']:
+        writeMethods(i, None, extCalls)
+    writeFile('#endif')
+    extCalls.append('#endif')
+    writeFile('')
+    for i in extCalls:
+        writeFile(i)
+    writeEndHeader()
+
     # Global properties
-    # Item
-    # Critter
-    # Map
-    # Location
-    # Events
-    # Settings
-    # Enums
+    createFile('Globals.cs')
+    writeHeader('public static partial class Game')
+    extCalls = []
+    for i in properties['global']:
+        writeProps(i, None, extCalls)
+    for i in extCalls:
+        writeFile(i)
+    writeEndHeader()
 
-    # Generate content file
+    # Entities
+    for entity in ['Item', 'Critter', 'Map', 'Location']:
+        createFile(entity + '.cs')
+        writeHeader('public partial class ' + entity + ' : Entity')
+        extCalls = []
+        for i in properties[entity.lower()]:
+            writeProps(i, entity, extCalls)
+        writeFile('#if SERVER')
+        extCalls.append('#if SERVER')
+        for i in methods[entity.lower()]:
+            writeMethods(i, entity, extCalls)
+        writeFile('#elif CLIENT')
+        extCalls.append('#elif CLIENT')
+        for i in methods[entity.lower() + 'view']:
+            writeMethods(i, entity, extCalls)
+        writeFile('#endif')
+        extCalls.append('#endif')
+        for i in extCalls:
+            writeFile(i)
+        writeEndHeader()
+
+    # Events
+    createFile('Events.cs')
+    writeHeader('public static partial class Game', ['using System.Linq;'])
+    def writeEvent(tok):
+        name, args, doc = tok
+        writeDoc(8, doc)
+        writeFile('        public static event On' + name + 'Delegate On' + name + ';')
+        writeFile('        public delegate void On' + name + 'Delegate(' + parseArgs(args) + ');')
+        writeFile('        public static event On' + name + 'RetDelegate On' + name + 'Ret;')
+        writeFile('        public delegate bool On' + name + 'RetDelegate(' + parseArgs(args) + ');')
+        writeFile('')
+    def writeEventExt(tok):
+        name, args, doc = tok
+        pargs = parseArgs(args)
+        writeFile('        static bool _' + name + '(' + (pargs + ', ' if pargs else '') + 'out Exception[] exs)')
+        writeFile('        {')
+        writeFile('            exs = null;')
+        writeFile('            foreach (var eventDelegate in On' + name + '.GetInvocationList().Cast<On' + name + 'Delegate>())')
+        writeFile('            {')
+        writeFile('                try')
+        writeFile('                {')
+        writeFile('                    eventDelegate(' + parsePassArgs(args, None, False) + ');')
+        writeFile('                }')
+        writeFile('                catch (Exception ex)')
+        writeFile('                {')
+        writeFile('                    exs = exs == null ? new Exception[] { ex } : exs.Concat(new Exception[] { ex }).ToArray();')
+        writeFile('                }')
+        writeFile('            }')
+        writeFile('            foreach (var eventDelegate in On' + name + 'Ret.GetInvocationList().Cast<On' + name + 'RetDelegate>())')
+        writeFile('            {')
+        writeFile('                try')
+        writeFile('                {')
+        writeFile('                    if (eventDelegate(' + parsePassArgs(args, None, False) + '))')
+        writeFile('                        return true;')
+        writeFile('                }')
+        writeFile('                catch (Exception ex)')
+        writeFile('                {')
+        writeFile('                    exs = exs == null ? new Exception[] { ex } : exs.Concat(new Exception[] { ex }).ToArray();')
+        writeFile('                }')
+        writeFile('            }')
+        writeFile('            return false;')
+        writeFile('        }')
+        writeFile('')
+    for ename in ['server', 'client', 'mapper']:
+        writeFile('#if ' + ename.upper())
+        for e in events[ename]:
+            writeEvent(e)
+        writeFile('#endif')
+    for ename in ['server', 'client', 'mapper']:
+        writeFile('#if ' + ename.upper())
+        for e in events[ename]:
+            writeEventExt(e)
+        writeFile('#endif')
+    writeEndHeader()
+
+    # Settings
+    createFile('Settings.cs')
+    writeHeader('public static partial class Game')
+    writeFile('        public static class Settings')
+    writeFile('        {')
+    for i in settings:
+        ret, name, init, doc = i
+        writeDoc(12, doc)
+        writeFile('            public static ' + parseType(ret) + ' ' + name)
+        writeFile('            {')
+        writeFile('                get')
+        writeFile('                {')
+        writeFile('                    Exception _ex;')
+        writeFile('                    var _result = _Setting_' + name + '(AppDomain.CurrentDomain, out _ex);')
+        writeFile('                    if (_ex != null)')
+        writeFile('                        throw _ex;')
+        writeFile('                    return _result;')
+        writeFile('                }')
+        writeFile('            }')
+        writeFile('')
+        extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
+        extCalls.append('        extern static ' + parseType(ret) + ' _Setting_' + name + '(AppDomain domain, out Exception ex);')
+    writeFile('        }')
+    writeEndHeader()
+
+    # Enums
+    createFile('Enums.cs')
+    writeFile('namespace FOnline')
+    writeFile('{')
+    for i in enums:
+        group, entries, doc = i
+        writeDoc(4, doc)
+        writeFile('    public enum ' + group)
+        writeFile('    {')
+        for e in entries:
+            name, val, edoc = e
+            writeDoc(8, edoc)
+            writeFile('        ' + name + ' = ' + val + ',')
+        writeFile('    }')
+        writeFile('')
+    writeFile('}')
+
+    # Content pids
     createFile('Content.cs')
-    writeFile('Content.cs', 'namespace FOnline')
-    writeFile('Content.cs', '{')
-    writeFile('Content.cs', '    public static class Content')
-    writeFile('Content.cs', '    {')
+    writeFile('namespace FOnline')
+    writeFile('{')
+    writeFile('    public static class Content')
+    writeFile('    {')
     def writeEnums(name, lst):
-        writeFile('Content.cs', '        public enum ' + name)
-        writeFile('Content.cs', '        {')
+        writeFile('        public enum ' + name)
+        writeFile('        {')
         for i in lst:
-            writeFile('Content.cs', '            ' + i + ' = ' + getHash(i) + ',')
-        writeFile('Content.cs', '        }')
-        writeFile('Content.cs', '')
+            writeFile('            ' + i + ' = ' + getHash(i) + ',')
+        writeFile('        }')
+        writeFile('')
     writeEnums('Item', content['foitem'])
     writeEnums('Critter', content['focr'])
     writeEnums('Map', content['fomap'])
     writeEnums('Location', content['foloc'])
-    writeFile('Content.cs', '    }')
-    writeFile('Content.cs', '}')
+    writeFile('    }')
+    writeFile('}')
 
     # Generate .csproj files
     csprojects = []
@@ -378,41 +584,41 @@ if config['Mono']:
             csprojects.append((csprojName, projGuid))
 
             createFile(csprojName)
-            writeFile(csprojName, '<?xml version="1.0" encoding="utf-8"?>')
-            writeFile(csprojName, '<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">')
+            writeFile('<?xml version="1.0" encoding="utf-8"?>')
+            writeFile('<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">')
 
-            writeFile(csprojName, '  <PropertyGroup>')
-            writeFile(csprojName, '    <Configuration Condition=" \'$(Configuration)\' == \'\' ">Debug</Configuration>')
-            writeFile(csprojName, '    <Platform Condition=" \'$(Platform)\' == \'\' ">AnyCPU</Platform>')
-            writeFile(csprojName, '    <ProjectGuid>' + projGuid + '</ProjectGuid>')
-            writeFile(csprojName, '    <OutputType>Library</OutputType>')
-            writeFile(csprojName, '    <RootNamespace>' + cmd[1] + '</RootNamespace>')
-            writeFile(csprojName, '    <AssemblyName>' + cmd[1] + '.' + target + '</AssemblyName>')
-            writeFile(csprojName, '    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>')
-            writeFile(csprojName, '    <FileAlignment>512</FileAlignment>')
-            writeFile(csprojName, '    <Deterministic>true</Deterministic>')
-            writeFile(csprojName, '  </PropertyGroup>')
+            writeFile('  <PropertyGroup>')
+            writeFile('    <Configuration Condition=" \'$(Configuration)\' == \'\' ">Debug</Configuration>')
+            writeFile('    <Platform Condition=" \'$(Platform)\' == \'\' ">AnyCPU</Platform>')
+            writeFile('    <ProjectGuid>' + projGuid + '</ProjectGuid>')
+            writeFile('    <OutputType>Library</OutputType>')
+            writeFile('    <RootNamespace>' + cmd[1] + '</RootNamespace>')
+            writeFile('    <AssemblyName>' + cmd[1] + '.' + target + '</AssemblyName>')
+            writeFile('    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>')
+            writeFile('    <FileAlignment>512</FileAlignment>')
+            writeFile('    <Deterministic>true</Deterministic>')
+            writeFile('  </PropertyGroup>')
 
-            writeFile(csprojName, '  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Debug|AnyCPU\' ">')
-            writeFile(csprojName, '    <DebugSymbols>true</DebugSymbols>')
-            writeFile(csprojName, '    <DebugType>embedded</DebugType>')
-            writeFile(csprojName, '    <Optimize>false</Optimize>')
-            writeFile(csprojName, '    <OutputPath>bin\\Debug\\</OutputPath>')
-            writeFile(csprojName, '    <DefineConstants>DEBUG;TRACE;' + target.upper() + '</DefineConstants>')
-            writeFile(csprojName, '    <ErrorReport>prompt</ErrorReport>')
-            writeFile(csprojName, '    <WarningLevel>4</WarningLevel>')
-            writeFile(csprojName, '  </PropertyGroup>')
+            writeFile('  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Debug|AnyCPU\' ">')
+            writeFile('    <DebugSymbols>true</DebugSymbols>')
+            writeFile('    <DebugType>embedded</DebugType>')
+            writeFile('    <Optimize>false</Optimize>')
+            writeFile('    <OutputPath>bin\\Debug\\</OutputPath>')
+            writeFile('    <DefineConstants>DEBUG;TRACE;' + target.upper() + '</DefineConstants>')
+            writeFile('    <ErrorReport>prompt</ErrorReport>')
+            writeFile('    <WarningLevel>4</WarningLevel>')
+            writeFile('  </PropertyGroup>')
 
-            writeFile(csprojName, '  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Release|AnyCPU\' ">')
-            writeFile(csprojName, '    <DebugType>embedded</DebugType>')
-            writeFile(csprojName, '    <Optimize>true</Optimize>')
-            writeFile(csprojName, '    <OutputPath>bin\\Release\\</OutputPath>')
-            writeFile(csprojName, '    <DefineConstants>TRACE;' + target.upper() + '</DefineConstants>')
-            writeFile(csprojName, '    <ErrorReport>prompt</ErrorReport>')
-            writeFile(csprojName, '    <WarningLevel>4</WarningLevel>')
-            writeFile(csprojName, '  </PropertyGroup>')
+            writeFile('  <PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'Release|AnyCPU\' ">')
+            writeFile('    <DebugType>embedded</DebugType>')
+            writeFile('    <Optimize>true</Optimize>')
+            writeFile('    <OutputPath>bin\\Release\\</OutputPath>')
+            writeFile('    <DefineConstants>TRACE;' + target.upper() + '</DefineConstants>')
+            writeFile('    <ErrorReport>prompt</ErrorReport>')
+            writeFile('    <WarningLevel>4</WarningLevel>')
+            writeFile('  </PropertyGroup>')
 
-            writeFile(csprojName, '  <ItemGroup>')
+            writeFile('  <ItemGroup>')
             for src in config['Mono']:
                 if src[0] != 'Source' or src[1] != cmd[1]:
                     continue
@@ -421,12 +627,20 @@ if config['Mono']:
                 def csGenerator():
                     return ['using FOnline;', 'using System;', '', 'namespace ' + src[1], '{', '}', '']
                 for file in collectFiles(src[3], csGenerator):
-                    writeFile(csprojName, '    <Compile Include="' + file.replace('/', '\\') + '" />')
-            writeFile(csprojName, '    <Compile Include="Game.cs" />')
-            writeFile(csprojName, '    <Compile Include="Content.cs" />')
-            writeFile(csprojName, '  </ItemGroup>')
+                    writeFile('    <Compile Include="' + file.replace('/', '\\') + '" />')
+            writeFile('    <Compile Include="Game.cs" />')
+            writeFile('    <Compile Include="Globals.cs" />')
+            writeFile('    <Compile Include="Item.cs" />')
+            writeFile('    <Compile Include="Critter.cs" />')
+            writeFile('    <Compile Include="Map.cs" />')
+            writeFile('    <Compile Include="Location.cs" />')
+            writeFile('    <Compile Include="Events.cs" />')
+            writeFile('    <Compile Include="Settings.cs" />')
+            writeFile('    <Compile Include="Enums.cs" />')
+            writeFile('    <Compile Include="Content.cs" />')
+            writeFile('  </ItemGroup>')
 
-            writeFile(csprojName, '  <ItemGroup>')
+            writeFile('  <ItemGroup>')
             for src in config['Mono']:
                 if src[0] != 'Reference' or src[1] != cmd[1]:
                     continue
@@ -438,16 +652,16 @@ if config['Mono']:
                             return True
                     return False
                 if isInternalReference(src[3]):
-                    writeFile(csprojName, '    <ProjectReference Include="' + src[3] + '.' + target + '.csproj">')
-                    writeFile(csprojName, '      <Project>' + getGuid(src[3] + '.' + target + '.csproj') + '</Project>')
-                    writeFile(csprojName, '      <Name>' + src[3] + '.' + target + '</Name>')
-                    writeFile(csprojName, '    </ProjectReference>')
+                    writeFile('    <ProjectReference Include="' + src[3] + '.' + target + '.csproj">')
+                    writeFile('      <Project>' + getGuid(src[3] + '.' + target + '.csproj') + '</Project>')
+                    writeFile('      <Name>' + src[3] + '.' + target + '</Name>')
+                    writeFile('    </ProjectReference>')
                 else:
-                    writeFile(csprojName, '    <Reference Include="' + src[3] + '" />')
-            writeFile(csprojName, '  </ItemGroup>')
+                    writeFile('    <Reference Include="' + src[3] + '" />')
+            writeFile('  </ItemGroup>')
 
-            writeFile(csprojName, '  <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />')
-            writeFile(csprojName, '</Project>')
+            writeFile('  <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />')
+            writeFile('</Project>')
 
     # Write solution file that contains all project files
     for cmd in config['Mono']:
@@ -456,39 +670,39 @@ if config['Mono']:
             break
 
     createFile(slnName)
-    writeFile(slnName, '')
-    writeFile(slnName, 'Microsoft Visual Studio Solution File, Format Version 12.00')
-    writeFile(slnName, '# Visual Studio Version 16')
-    writeFile(slnName, 'VisualStudioVersion = 16.0.29905.134')
-    writeFile(slnName, 'MinimumVisualStudioVersion = 10.0.40219.1')
+    writeFile('')
+    writeFile('Microsoft Visual Studio Solution File, Format Version 12.00')
+    writeFile('# Visual Studio Version 16')
+    writeFile('VisualStudioVersion = 16.0.29905.134')
+    writeFile('MinimumVisualStudioVersion = 10.0.40219.1')
 
     for name, guid in csprojects:
-        writeFile(slnName, 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "' +
+        writeFile('Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "' +
                 name[:-7] + '", "' + name + '", "' + guid + '"')
-        writeFile(slnName, 'EndProject')
+        writeFile('EndProject')
 
-    writeFile(slnName, 'Global')
-    writeFile(slnName, '    GlobalSection(SolutionConfigurationPlatforms) = preSolution')
-    writeFile(slnName, '        Debug|Any CPU = Debug|Any CPU')
-    writeFile(slnName, '        Release|Any CPU = Release|Any CPU')
-    writeFile(slnName, '    EndGlobalSection')
-    writeFile(slnName, '    GlobalSection(ProjectConfigurationPlatforms) = postSolution')
+    writeFile('Global')
+    writeFile('    GlobalSection(SolutionConfigurationPlatforms) = preSolution')
+    writeFile('        Debug|Any CPU = Debug|Any CPU')
+    writeFile('        Release|Any CPU = Release|Any CPU')
+    writeFile('    EndGlobalSection')
+    writeFile('    GlobalSection(ProjectConfigurationPlatforms) = postSolution')
 
     for name, guid in csprojects:
-        writeFile(slnName, '    ' + guid + '.Debug|Any CPU.ActiveCfg = Debug|Any CPU')
-        writeFile(slnName, '    ' + guid + '.Debug|Any CPU.Build.0 = Debug|Any CPU')
-        writeFile(slnName, '    ' + guid + '.Release|Any CPU.ActiveCfg = Release|Any CPU')
-        writeFile(slnName, '    ' + guid + '.Release|Any CPU.Build.0 = Release|Any CPU')
+        writeFile('    ' + guid + '.Debug|Any CPU.ActiveCfg = Debug|Any CPU')
+        writeFile('    ' + guid + '.Debug|Any CPU.Build.0 = Debug|Any CPU')
+        writeFile('    ' + guid + '.Release|Any CPU.ActiveCfg = Release|Any CPU')
+        writeFile('    ' + guid + '.Release|Any CPU.Build.0 = Release|Any CPU')
 
-    writeFile(slnName, '    EndGlobalSection')
-    writeFile(slnName, '    GlobalSection(SolutionProperties) = preSolution')
-    writeFile(slnName, '        HideSolutionNode = FALSE')
-    writeFile(slnName, '    EndGlobalSection')
-    writeFile(slnName, '    GlobalSection(ExtensibilityGlobals) = postSolution')
-    writeFile(slnName, '        SolutionGuid = ' + getGuid(slnName))
-    writeFile(slnName, '    EndGlobalSection')
-    writeFile(slnName, 'EndGlobal')
-    writeFile(slnName, '')
+    writeFile('    EndGlobalSection')
+    writeFile('    GlobalSection(SolutionProperties) = preSolution')
+    writeFile('        HideSolutionNode = FALSE')
+    writeFile('    EndGlobalSection')
+    writeFile('    GlobalSection(ExtensibilityGlobals) = postSolution')
+    writeFile('        SolutionGuid = ' + getGuid(slnName))
+    writeFile('    EndGlobalSection')
+    writeFile('EndGlobal')
+    writeFile('')
 
 # Actual writing of generated files
 flushFiles()

@@ -3,13 +3,6 @@ using System.Reflection;
 
 namespace FOnline
 {
-    public class Entity { }
-    public class Item : Entity { }
-    public class Critter : Entity { }
-    public class Map : Entity { }
-    public class Location : Entity { }
-    public class MapSprite { }
-
     public static class Initializator
     {
         static void Initialize()

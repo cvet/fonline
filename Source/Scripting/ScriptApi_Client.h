@@ -354,7 +354,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(GetItemPredicate, FO_API_RET_OBJ(ItemView), FO_API_ARG_PREDICATE(ItemView*, predicate))
+FO_API_CRITTER_VIEW_METHOD(GetItemPredicate, FO_API_RET_OBJ(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 {
@@ -472,7 +472,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_VIEW_METHOD(GetItemsPredicate, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG_PREDICATE(ItemView*, predicate))
+FO_API_CRITTER_VIEW_METHOD(GetItemsPredicate, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 {
