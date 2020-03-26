@@ -380,6 +380,8 @@ Bugs, performance cases and feature requests you can disscuss at [Issues page](h
 * Testing: send client dumps to server
 * Timer: timers to std::chrono
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
+* MonoScripting: set Mono domain user data
+* MonoScripting: get Mono domain user data
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system

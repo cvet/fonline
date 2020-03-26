@@ -38,7 +38,6 @@
 #include "ImageBaker.h"
 #include "Log.h"
 #include "ModelBaker.h"
-#include "Server.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
@@ -49,6 +48,7 @@
 static GlobalSettings Settings;
 
 static bool GenerateResources(StrVec* resource_names);
+static bool CompileAngelScriptSource();
 
 #ifndef FO_TESTING
 int main(int argc, char** argv)
@@ -59,6 +59,9 @@ static int main_disabled(int argc, char** argv)
     CatchExceptions("FOnlineBaker", FO_VERSION);
     LogToFile("FOnlineBaker.log");
     Settings.ParseArgs(argc, argv);
+
+    CompileAngelScriptSource();
+
     return 0;
 }
 
@@ -270,4 +273,27 @@ static bool GenerateResources(StrVec* resource_names)
     }*/
 
     return something_changed;
+}
+
+struct ServerScriptSystem
+{
+    void InitAngelScriptScripting();
+};
+
+struct ClientScriptSystem
+{
+    void InitAngelScriptScripting();
+};
+
+struct MapperScriptSystem
+{
+    void InitAngelScriptScripting();
+};
+
+static bool CompileAngelScriptSource()
+{
+    ServerScriptSystem().InitAngelScriptScripting();
+    ClientScriptSystem().InitAngelScriptScripting();
+    MapperScriptSystem().InitAngelScriptScripting();
+    return false;
 }

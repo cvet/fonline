@@ -987,7 +987,7 @@ public:
     }
 
     template<class T>
-    inline T* ReadPtr(size_t size)
+    inline const T* ReadPtr(size_t size)
     {
         readPos += size;
         return size ? &dataBuf[readPos - size] : nullptr;

@@ -31,45 +31,90 @@
 // SOFTWARE.
 //
 
-#ifdef FO_SERVER_SCRIPTING
+#ifndef FO_ANGELSCRIPT_COMPILER
+#if defined(FO_SERVER_SCRIPTING)
 #include "ServerScripting.h"
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "ClientScripting.h"
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "MapperScripting.h"
 #endif
-
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING)
 #include "Server.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_SERVER_IMPL
 #include "ScriptApi.h"
-#define SCRIPTING_CLASS ServerScriptSystem
-#define IS_SERVER true
-#define IS_CLIENT false
-#define IS_MAPPER false
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "Client.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_CLIENT_IMPL
 #include "ScriptApi.h"
-#define SCRIPTING_CLASS ClientScriptSystem
-#define IS_SERVER false
-#define IS_CLIENT true
-#define IS_MAPPER false
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "Mapper.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_MAPPER_IMPL
 #include "ScriptApi.h"
+#endif
+#else
+#include "Common.h"
+
+#include "FileSystem.h"
+#include "StringUtils.h"
+
+DECLARE_EXCEPTION(ScriptCompilerException);
+#endif
+
+#if defined(FO_SERVER_SCRIPTING)
+#define SCRIPTING_CLASS ServerScriptSystem
+#define IS_SERVER true
+#define IS_CLIENT false
+#define IS_MAPPER false
+#elif defined(FO_CLIENT_SCRIPTING)
+#define SCRIPTING_CLASS ClientScriptSystem
+#define IS_SERVER false
+#define IS_CLIENT true
+#define IS_MAPPER false
+#elif defined(FO_MAPPER_SCRIPTING)
 #define SCRIPTING_CLASS MapperScriptSystem
 #define IS_SERVER false
 #define IS_CLIENT false
 #define IS_MAPPER true
+#endif
+
+#ifdef FO_ANGELSCRIPT_COMPILER
+struct Property
+{
+    // Cope paste from Properties.h
+    enum AccessType
+    {
+        PrivateCommon = 0x0010,
+        PrivateClient = 0x0020,
+        PrivateServer = 0x0040,
+        Public = 0x0100,
+        PublicModifiable = 0x0200,
+        PublicFullModifiable = 0x0400,
+        Protected = 0x1000,
+        ProtectedModifiable = 0x2000,
+        VirtualPrivateCommon = 0x0011,
+        VirtualPrivateClient = 0x0021,
+        VirtualPrivateServer = 0x0041,
+        VirtualPublic = 0x0101,
+        VirtualProtected = 0x1001,
+
+        VirtualMask = 0x000F,
+        PrivateMask = 0x00F0,
+        PublicMask = 0x0F00,
+        ProtectedMask = 0xF000,
+        ClientOnlyMask = 0x0020,
+        ServerOnlyMask = 0x0040,
+        ModifiableMask = 0x2600,
+    };
+};
+
+struct SCRIPTING_CLASS
+{
+    void InitAngelScriptScripting();
+};
 #endif
 
 #ifdef FO_ANGELSCRIPT_SCRIPTING
@@ -94,13 +139,49 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
+#ifdef FO_ANGELSCRIPT_COMPILER
+struct Entity
+{
+    void AddRef() {}
+    void Release() {}
+    uint Id {};
+    int RefCounter {1};
+    bool IsDestroyed {};
+    bool IsDestroying {};
+};
+struct Item : Entity
+{
+};
+struct Critter : Entity
+{
+};
+struct Map : Entity
+{
+};
+struct Location : Entity
+{
+};
+struct ItemView : Entity
+{
+};
+struct CritterView : Entity
+{
+};
+struct MapView : Entity
+{
+};
+struct LocationView : Entity
+{
+};
+#endif
+
 #define AS_VERIFY(expr) \
     { \
         as_result = expr; \
         RUNTIME_ASSERT_STR(as_result >= 0, #expr); \
     }
 
-#ifndef FO_SCRIPTING_REF
+#ifndef FO_ANGELSCRIPT_COMPILER
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
@@ -134,18 +215,25 @@ static void DummyFunc(asIScriptGeneric* gen)
 }
 #endif
 
+#ifndef FO_ANGELSCRIPT_COMPILER
 struct ScriptSystem::AngelScriptImpl
 {
     asIScriptEngine* Engine {};
 };
+#endif
 
 struct ScriptEntity
 {
-    void AddRef() {}
-    void Release() {}
+    ScriptEntity(Entity* entity) : GameEntity {entity} { GameEntity->AddRef(); }
+    ~ScriptEntity() { GameEntity->Release(); }
+    void AddRef() { ++RefCounter; }
+    void Release()
+    {
+        if (--RefCounter == 0)
+            delete this;
+    }
     int RefCounter {1};
     Entity* GameEntity {};
-    bool OwnedEntity {};
 };
 
 template<typename T,
@@ -334,6 +422,7 @@ static T* EntityUpCast(Entity* a)
 
 struct ScriptItem : ScriptEntity
 {
+#ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Item* _this = (Item*)GameEntity
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
@@ -355,6 +444,20 @@ struct ScriptItem : ScriptEntity
     { \
         ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); \
     }
+#else
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_ITEM_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
+#define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); }
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); } \
+    void Set_##name(type value) { throw ScriptCompilerException("Stub"); }
+#endif
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef ITEM_CLASS
@@ -362,6 +465,7 @@ struct ScriptItem : ScriptEntity
 
 struct ScriptCritter : ScriptEntity
 {
+#ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Critter* _this = (Critter*)GameEntity
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
@@ -383,6 +487,20 @@ struct ScriptCritter : ScriptEntity
     { \
         ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); \
     }
+#else
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_CRITTER_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
+#define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); }
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); } \
+    void Set_##name(type value) { throw ScriptCompilerException("Stub"); }
+#endif
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef CRITTER_CLASS
@@ -390,6 +508,7 @@ struct ScriptCritter : ScriptEntity
 
 struct ScriptMap : ScriptEntity
 {
+#ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Map* _this = (Map*)GameEntity
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
@@ -411,6 +530,20 @@ struct ScriptMap : ScriptEntity
     { \
         ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); \
     }
+#else
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_MAP_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
+#define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); }
+#define FO_API_MAP_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); } \
+    void Set_##name(type value) { throw ScriptCompilerException("Stub"); }
+#endif
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef MAP_CLASS
@@ -418,6 +551,7 @@ struct ScriptMap : ScriptEntity
 
 struct ScriptLocation : ScriptEntity
 {
+#ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING)
 #define THIS_ARG Location* _this = (Location*)GameEntity
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
@@ -440,6 +574,20 @@ struct ScriptLocation : ScriptEntity
         ((LOCATION_CLASS*)GameEntity) \
             ->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); \
     }
+#else
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_LOCATION_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
+#define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); }
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); } \
+    void Set_##name(type value) { throw ScriptCompilerException("Stub"); }
+#endif
 #include "ScriptApi.h"
 #undef THIS_ARG
 #undef LOCATION_CLASS
@@ -447,6 +595,7 @@ struct ScriptLocation : ScriptEntity
 
 struct ScriptGlobal
 {
+#ifndef FO_ANGELSCRIPT_COMPILER
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
@@ -459,6 +608,20 @@ struct ScriptGlobal
 #elif defined(FO_MAPPER_SCRIPTING)
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) static ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#endif
+#else
+#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
+    static ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#if defined(FO_SERVER_SCRIPTING)
+#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
+    static ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
+    static ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif defined(FO_MAPPER_SCRIPTING)
+#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
+    static ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
 #endif
 #include "ScriptApi.h"
 #undef THIS_ARG
@@ -490,14 +653,22 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
         Preprocessor::ResolveOriginalLine(msg->row));
 }
 
+#ifdef FO_ANGELSCRIPT_COMPILER
+static void CompileRootModule(asIScriptEngine* engine, const string& script_path);
+#else
+static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
+#endif
+
 void SCRIPTING_CLASS::InitAngelScriptScripting()
 {
-    pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
-
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
+
+#ifndef FO_ANGELSCRIPT_COMPILER
+    pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
     pAngelScriptImpl->Engine = engine;
-    // asEngine->ShutDownAndRelease();
+// asEngine->ShutDownAndRelease();
+#endif
 
     int as_result;
     AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
@@ -527,7 +698,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
 
+#ifndef FO_ANGELSCRIPT_COMPILER
     engine->SetUserData(mainObj);
+#endif
 
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
     AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
@@ -684,13 +857,195 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
         AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), \
             SCRIPT_METHOD(ScriptLocation, Set_##name), SCRIPT_METHOD_CONV));
 #include "ScriptApi.h"
+
+#ifdef FO_ANGELSCRIPT_COMPILER
+    CompileRootModule(engine, "...");
+    engine->ShutDownAndRelease();
+#else
+    File script_file = fileMngr.ReadFile("...");
+    RestoreRootModule(engine, script_file);
+#endif
+}
+
+class BinaryStream : public asIBinaryStream
+{
+public:
+    BinaryStream(std::vector<asBYTE>& buf) : binBuf {buf} {}
+
+    virtual void Write(const void* ptr, asUINT size) override
+    {
+        if (!ptr || !size)
+            return;
+        binBuf.resize(binBuf.size() + size);
+        memcpy(&binBuf[writePos], ptr, size);
+        writePos += size;
+    }
+
+    virtual void Read(void* ptr, asUINT size) override
+    {
+        if (!ptr || !size)
+            return;
+        memcpy(ptr, &binBuf[readPos], size);
+        readPos += size;
+    }
+
+    std::vector<asBYTE>& GetBuf() { return binBuf; }
+
+private:
+    std::vector<asBYTE>& binBuf;
+    int readPos {};
+    int writePos {};
+};
+
+#ifdef FO_ANGELSCRIPT_COMPILER
+static void CompileRootModule(asIScriptEngine* engine, const string& script_path)
+{
+    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+
+    // File loader
+    class ScriptLoader : public Preprocessor::FileLoader
+    {
+    public:
+        ScriptLoader(UCharVec& root) : rootScript {&root} {}
+
+        virtual bool LoadFile(
+            const string& dir, const string& file_name, vector<char>& data, string& file_path) override
+        {
+            if (rootScript)
+            {
+                data.resize(rootScript->size());
+                memcpy(data.data(), rootScript->data(), rootScript->size());
+                rootScript = nullptr;
+                file_path = "(Root)";
+                return true;
+            }
+
+            includeDeep++;
+            RUNTIME_ASSERT(includeDeep <= 1);
+
+            file_path = _str(file_name).extractFileName().eraseFileExtension();
+            data.resize(0);
+
+            if (includeDeep == 1)
+            {
+                DiskFile script_file = DiskFileSystem::OpenFile(file_name, false);
+                if (!script_file)
+                    return false;
+                if (script_file.GetSize() == 0)
+                    return true;
+
+                data.resize(script_file.GetSize());
+                if (!script_file.Read(data.data(), script_file.GetSize()))
+                    return false;
+
+                return true;
+            }
+
+            return Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
+        }
+
+        virtual void FileLoaded() override { includeDeep--; }
+
+    private:
+        UCharVec* rootScript {};
+        int includeDeep {0};
+    };
+
+    DiskFile script_file = DiskFileSystem::OpenFile(script_path, false);
+    if (!script_file)
+        throw ScriptCompilerException("Root script file not found", script_path);
+    if (script_file.GetSize() == 0)
+        throw ScriptCompilerException("Root script file is empty", script_path);
+
+    UCharVec script_data(script_file.GetSize());
+    if (!script_file.Read(script_data.data(), script_file.GetSize()))
+        throw ScriptCompilerException("Can't read root script file", script_path);
+
+    ScriptLoader loader {script_data};
+    Preprocessor::StringOutStream result, errors;
+    int errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
+
+    while (!errors.String.empty() && errors.String.back() == '\n')
+        errors.String.pop_back();
+
+    if (errors_count)
+        throw ScriptCompilerException("Preprocessor failed", errors.String);
+    else if (!errors.String.empty())
+        WriteLog("Preprocessor message: {}.\n", errors.String);
+
+    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    if (!mod)
+        throw ScriptCompilerException("Create root module failed");
+
+    int as_result = mod->AddScriptSection("Root", result.String.c_str());
+    if (as_result < 0)
+        throw ScriptCompilerException("Unable to add script section", as_result);
+
+    as_result = mod->Build();
+    if (as_result < 0)
+        throw ScriptCompilerException("Unable to build module", as_result);
+
+    vector<asBYTE> buf;
+    BinaryStream binary {buf};
+    as_result = mod->SaveByteCode(&binary);
+    if (as_result < 0)
+        throw ScriptCompilerException("Unable to save byte code", as_result);
+
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
+    UCharVec lnt_data;
+    Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
+
+    UCharVec data;
+    DataWriter writer {data};
+    writer.Write((uint)buf.size());
+    writer.WritePtr(buf.data(), buf.size());
+    writer.Write((uint)lnt_data.size());
+    writer.WritePtr(lnt_data.data(), lnt_data.size());
+
+    DiskFile file = DiskFileSystem::OpenFile(script_path + "b", true);
+    if (!file)
+        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+    if (!file.Write(data.data(), (uint)data.size()))
+        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
 }
 
 #else
+static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
+{
+    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(script_file);
+
+    DataReader reader {script_file.GetBuf()};
+    vector<asBYTE> buf(reader.Read<uint>());
+    memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
+    UCharVec lnt_data(reader.Read<uint>());
+    memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
+    RUNTIME_ASSERT(!buf.empty());
+    RUNTIME_ASSERT(!lnt_data.empty());
+
+    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    if (!mod)
+        throw ScriptException("Create root module fail");
+
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+
+    BinaryStream binary {buf};
+    int as_result = mod->LoadByteCode(&binary);
+    if (as_result < 0)
+        throw ScriptException("Can't load binary", as_result);
+}
+#endif
+
+#else
+#ifndef FO_ANGELSCRIPT_COMPILER
 struct ScriptSystem::AngelScriptImpl
 {
 };
+#endif
 void SCRIPTING_CLASS::InitAngelScriptScripting()
 {
+#ifdef FO_ANGELSCRIPT_COMPILER
+    throw ScriptCompilerException("AngelScript not supported");
+#endif
 }
 #endif
