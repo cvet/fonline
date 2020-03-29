@@ -173,6 +173,9 @@ VAR_SETTING(uint, GameTimeTick, 0);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ScriptSettings, virtual TimerSettings);
+VAR_SETTING(string, ASServer);
+VAR_SETTING(string, ASClient);
+VAR_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 
 SETTING_GROUP(MapSettings, virtual ServerGameplaySettings, virtual GeometrySettings);

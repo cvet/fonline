@@ -36,6 +36,10 @@
 #include "StringUtils.h"
 #include "Timer.h"
 #include "Version_Include.h"
+#include "WinApi_Include.h"
+
+#include "sha1.h"
+#include "sha2.h"
 
 class MapSprite : public NonCopyable
 {

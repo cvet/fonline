@@ -3,19 +3,30 @@
 import os
 import argparse
 import uuid
+try:
+    import mmh3 as mmh3
+except ImportError:
+    import pymmh3 as mmh3
 
-parser = argparse.ArgumentParser(description='FOnline script API generation')
+parser = argparse.ArgumentParser(description='FOnline scripts generation')
 parser.add_argument('-meta', dest='meta', required=True, help='path to script api metadata (ScriptApiMeta.txt)')
-parser.add_argument('-config', dest='config', required=True, help='path to script config file (ScriptConfig.txt)')
-parser.add_argument('-content', dest='content', required=True, help='path to content info file (Content.txt)')
-parser.add_argument('-foroot', dest='foroot', help='path to fonline engine repository root (detected automatically if not specified)')
+parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
+parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='generate angelscript api')
+parser.add_argument('-csharp', dest='csharp', action='store_true', help='generate csharp api')
+parser.add_argument('-assource', dest='assource', action='append', default=[], help='angelscript file path')
+parser.add_argument('-monoassembly', dest='monoassembly', action='append', default=[], help='assembly name')
+parser.add_argument('-monocommonref', dest='monocommonref', action='append', default=[], help='mono assembly common reference')
+parser.add_argument('-monoserverref', dest='monoserverref', action='append', default=[], help='mono assembly server reference')
+parser.add_argument('-monoclientref', dest='monoclientref', action='append', default=[], help='mono assembly client reference')
+parser.add_argument('-monomapperref', dest='monomapperref', action='append', default=[], help='mono assembly mapper reference')
+parser.add_argument('-monocommonsource', dest='monocommonsource', action='append', default=[], help='csharp common file path')
+parser.add_argument('-monoserversource', dest='monoserversource', action='append', default=[], help='csharp server file path')
+parser.add_argument('-monoclientsource', dest='monoclientsource', action='append', default=[], help='csharp client file path')
+parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
+parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
 parser.add_argument('-output', dest='output', help='output dir (current if not specified)')
 args = parser.parse_args()
 
-metaPath = args.meta
-configPath = args.config
-contentPath = args.content
-foRootPath = (args.foroot if args.foroot else os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))).rstrip('\\/')
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 
 def collectFiles(pathPattern, generator):
@@ -42,10 +53,6 @@ def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
 def getHash(s):
-    try:
-        import mmh3 as mmh3
-    except ImportError:
-        import pymmh3 as mmh3
     return str(mmh3.hash(s, seed=0))
 
 # Parse meta information
@@ -58,7 +65,7 @@ properties = { 'global': [], 'item': [], 'critter': [], 'map': [], 'location': [
 settings = []
 doc = None
 
-with open(metaPath, 'r') as f:
+with open(args.meta, 'r') as f:
     lines = f.readlines()
 
 for line in lines:
@@ -107,34 +114,10 @@ for line in lines:
     elif tokens[0] == 'setting':
         settings.append((tokens[1], tokens[2], tokens[3:], getDoc()))
 
-# Parse config
-config = { 'Native': [], 'AngelScript': [], 'Mono': [] }
-
-with open(configPath, 'r') as f:
-    lines = f.readlines()
-
-for line in lines:
-    line = line.rstrip('\r\n')
-    tokens = line.split()
-    if not tokens:
-        continue
-
-    config[tokens[0]].append(tokens[1:])
-
 # Parse content
 content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [] }
 
-with open(contentPath, 'r') as f:
-    lines = f.readlines()
-
-for line in lines:
-    line = line.rstrip('\r\n')
-    tokens = line.split()
-    if not tokens:
-        continue
-
-    assert tokens[0] == 'Proto', tokens
-
+for file in args.content:
     def getPidNames(file):
         result = [os.path.splitext(os.path.basename(file))[0]]
         with open(file) as f:
@@ -144,9 +127,8 @@ for line in lines:
                 result.append(fileLine[fileLine.find('=') + 1:].strip(' \r\n'))
         return result
 
-    for file in collectFiles(tokens[1], None):
-        ext = os.path.splitext(os.path.basename(file))[1]
-        content[ext[1:]].extend(getPidNames(file))
+    ext = os.path.splitext(os.path.basename(file))[1]
+    content[ext[1:]].extend(getPidNames(file))
 
 # Generate API
 files = {}
@@ -174,13 +156,13 @@ def flushFiles():
             f.write('\n'.join(lines))
 
 # C++ projects
-if config['Native']:
+if args.native:
     # Todo:
     # createFile('FOnline.h')
     pass
 
 # AngelScript root file
-if config['AngelScript']:
+if args.angelscript:
     # Generate content file
     createFile('Content.fos')
     def writeEnums(name, lst):
@@ -197,15 +179,6 @@ if config['AngelScript']:
     writeEnums('Map', content['fomap'])
     writeEnums('Location', content['foloc'])
 
-    # Collect files
-    asFiles = []
-    for entry in config['AngelScript']:
-        assert entry[0] == 'Source', entry
-        def fosGenerator():
-            return ['// FOS Common', '']
-        for file in collectFiles(entry[1], fosGenerator):
-            asFiles.append(file)
-
     # Sort files
     asServerFiles = []
     asClientFiles = []
@@ -218,7 +191,7 @@ if config['AngelScript']:
                 return
         files.append((sort, file))
 
-    for file in asFiles:
+    for file in args.assource:
         with open(file, 'r') as f:
             line = f.readline()
 
@@ -253,7 +226,7 @@ if config['AngelScript']:
     writeRootModule('Mapper', asMapperFiles)
 
 # C# projects
-if config['Mono']:
+if args.csharp:
     # Generate source
     def writeHeader(rootClass, usings=None):
         writeFile('using System;')
@@ -574,12 +547,9 @@ if config['Mono']:
 
     # Generate .csproj files
     csprojects = []
-    for cmd in config['Mono']:
-        if cmd[0] != 'Assembly':
-            continue
-
+    for assembly in args.monoassembly:
         for target in ['Server', 'Client', 'Mapper']:
-            csprojName = cmd[1] + '.' + target + '.csproj'
+            csprojName = assembly + '.' + target + '.csproj'
             projGuid = getGuid(csprojName)
             csprojects.append((csprojName, projGuid))
 
@@ -592,8 +562,8 @@ if config['Mono']:
             writeFile('    <Platform Condition=" \'$(Platform)\' == \'\' ">AnyCPU</Platform>')
             writeFile('    <ProjectGuid>' + projGuid + '</ProjectGuid>')
             writeFile('    <OutputType>Library</OutputType>')
-            writeFile('    <RootNamespace>' + cmd[1] + '</RootNamespace>')
-            writeFile('    <AssemblyName>' + cmd[1] + '.' + target + '</AssemblyName>')
+            writeFile('    <RootNamespace>' + assembly + '</RootNamespace>')
+            writeFile('    <AssemblyName>' + assembly + '.' + target + '</AssemblyName>')
             writeFile('    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>')
             writeFile('    <FileAlignment>512</FileAlignment>')
             writeFile('    <Deterministic>true</Deterministic>')
@@ -619,15 +589,21 @@ if config['Mono']:
             writeFile('  </PropertyGroup>')
 
             writeFile('  <ItemGroup>')
-            for src in config['Mono']:
-                if src[0] != 'Source' or src[1] != cmd[1]:
-                    continue
-                if src[2] != 'Common' and src[2] != target:
-                    continue
-                def csGenerator():
-                    return ['using FOnline;', 'using System;', '', 'namespace ' + src[1], '{', '}', '']
-                for file in collectFiles(src[3], csGenerator):
-                    writeFile('    <Compile Include="' + file.replace('/', '\\') + '" />')
+            for src in args.monocommonsource:
+                if src.split(',')[0] == assembly:
+                    writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
+            if target == 'Server':
+                for src in args.monoserversource:
+                    if src.split(',')[0] == assembly:
+                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
+            if target == 'Client':
+                for src in args.monoclientsource:
+                    if src.split(',')[0] == assembly:
+                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
+            if target == 'Mapper':
+                for src in args.monocommonsource:
+                    if src.split(',')[0] == assembly:
+                        writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
             writeFile('    <Compile Include="Game.cs" />')
             writeFile('    <Compile Include="Globals.cs" />')
             writeFile('    <Compile Include="Item.cs" />')
@@ -641,34 +617,36 @@ if config['Mono']:
             writeFile('  </ItemGroup>')
 
             writeFile('  <ItemGroup>')
-            for src in config['Mono']:
-                if src[0] != 'Reference' or src[1] != cmd[1]:
-                    continue
-                if src[2] != 'Common' and src[2] != target:
-                    continue
-                def isInternalReference(ref):
-                    for r in config['Mono']:
-                        if r[0] == 'Assembly' and r[1] == ref:
-                            return True
-                    return False
-                if isInternalReference(src[3]):
-                    writeFile('    <ProjectReference Include="' + src[3] + '.' + target + '.csproj">')
-                    writeFile('      <Project>' + getGuid(src[3] + '.' + target + '.csproj') + '</Project>')
-                    writeFile('      <Name>' + src[3] + '.' + target + '</Name>')
+            def addRef(ref):
+                if ref in args.monoassembly:
+                    writeFile('    <ProjectReference Include="' + ref + '.' + target + '.csproj">')
+                    writeFile('      <Project>' + getGuid(ref + '.' + target + '.csproj') + '</Project>')
+                    writeFile('      <Name>' + ref + '.' + target + '</Name>')
                     writeFile('    </ProjectReference>')
                 else:
-                    writeFile('    <Reference Include="' + src[3] + '" />')
+                    writeFile('    <Reference Include="' + ref + '" />')
+            for ref in args.monocommonref:
+                if ref.split(',')[0] == assembly:
+                    addRef(ref.split(',')[1])
+            if target == 'Server':
+                for ref in args.monoserverref:
+                    if ref.split(',')[0] == assembly:
+                        addRef(ref.split(',')[1])
+            if target == 'Client':
+                for ref in args.monoclientref:
+                    if ref.split(',')[0] == assembly:
+                        addRef(ref.split(',')[1])
+            if target == 'Mapper':
+                for ref in args.monomapperref:
+                    if ref.split(',')[0] == assembly:
+                        addRef(ref.split(',')[1])
             writeFile('  </ItemGroup>')
 
             writeFile('  <Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />')
             writeFile('</Project>')
 
     # Write solution file that contains all project files
-    for cmd in config['Mono']:
-        if cmd[0] == 'Assembly':
-            slnName = cmd[1] + '.sln'
-            break
-
+    slnName = args.monoassembly[0]
     createFile(slnName)
     writeFile('')
     writeFile('Microsoft Visual Studio Solution File, Format Version 12.00')

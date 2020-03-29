@@ -524,6 +524,8 @@ void SCRIPTING_CLASS::InitMonoScripting()
     mono_set_dirs("./dummy/lib", "./dummy/etc");
     mono_set_assemblies_path("./dummy/lib/gac");
 
+    // mono_dllmap_insert
+    // mono_install_load_aot_data_hook()
     /*RUNTIME_ASSERT(pMonoImpl->EngineAssemblyImages.empty());
     mono_install_assembly_preload_hook(
         [](MonoAssemblyName* aname, char** assemblies_path, void* user_data) -> MonoAssembly* {

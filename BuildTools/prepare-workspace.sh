@@ -169,7 +169,7 @@ function generate_compilation_env()
     mkdir compilation-env
     cd compilation-env
     cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
-    cmake.exe --build . --config RelWithDebInfo
+    cmake.exe --build . --config Debug
 }
 
 function generate_vscode_js_toolset()
@@ -191,7 +191,7 @@ function generate_vscode_native_toolset()
     mkdir vscode-native-toolset
     cd vscode-native-toolset
     cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
-    cmake.exe --build . --config RelWithDebInfo
+    cmake.exe --build . --config Release
 }
 
 function verify_workspace_part()
@@ -219,7 +219,7 @@ if [ ! -z `check_arg linux all` ]; then
     verify_workspace_part linux-packages 1 install_linux_packages
     wait_jobs
 fi
-if [ ! -z `check_arg web web-debug all` ]; then
+if [ ! -z `check_arg web all` ]; then
     verify_workspace_part web-packages 1 install_web_packages
     wait_jobs
 fi
@@ -238,7 +238,7 @@ fi
 if [ ! -z `check_arg ios all` ]; then
     verify_workspace_part ios-toolchain 1 setup_ios_toolchain
 fi
-if [ ! -z `check_arg web web-debug all` ]; then
+if [ ! -z `check_arg web all` ]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten
 fi
 if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then

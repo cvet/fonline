@@ -1,0 +1,11 @@
+<linker>
+	<assembly fullname="Library">
+		<type fullname="Foo" />
+		<type fullname="Bar" preserve="nothing" required="false" />
+		<type fullname="Baz" preserve="fields" required="false" />
+		<type fullname="Gazonk">
+			<method signature="System.Void .ctor(System.String)" />
+			<field signature="System.String _blah" />
+		</type>
+	</assembly>
+</linker>

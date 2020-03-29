@@ -14,7 +14,7 @@ function build_vscode_js_toolset()
 function build_vscode_native_toolset()
 {
     cd vscode-native-toolset
-    cmake.exe --build . --config RelWithDebInfo
+    cmake.exe --build . --config Release
 }
 
 run_job build_vscode_js_toolset

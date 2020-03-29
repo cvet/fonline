@@ -110,11 +110,6 @@ struct Property
         ModifiableMask = 0x2600,
     };
 };
-
-struct SCRIPTING_CLASS
-{
-    void InitAngelScriptScripting();
-};
 #endif
 
 #ifdef FO_ANGELSCRIPT_SCRIPTING
@@ -138,6 +133,16 @@ struct SCRIPTING_CLASS
 #include "scriptmath/scriptmath.h"
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
+
+#ifdef FO_ANGELSCRIPT_COMPILER
+#define INIT_ARGS const string& script_path
+struct SCRIPTING_CLASS
+{
+    void InitAngelScriptScripting(INIT_ARGS);
+};
+#else
+#define INIT_ARGS
+#endif
 
 #ifdef FO_ANGELSCRIPT_COMPILER
 struct Entity
@@ -659,7 +664,7 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
 static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 #endif
 
-void SCRIPTING_CLASS::InitAngelScriptScripting()
+void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
@@ -859,7 +864,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting()
 #include "ScriptApi.h"
 
 #ifdef FO_ANGELSCRIPT_COMPILER
-    CompileRootModule(engine, "...");
+    CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
     File script_file = fileMngr.ReadFile("...");
@@ -1042,7 +1047,7 @@ struct ScriptSystem::AngelScriptImpl
 {
 };
 #endif
-void SCRIPTING_CLASS::InitAngelScriptScripting()
+void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
 #ifdef FO_ANGELSCRIPT_COMPILER
     throw ScriptCompilerException("AngelScript not supported");

@@ -31,14 +31,12 @@
 // SOFTWARE.
 //
 
-#ifdef FO_API_COMMON_IMPL
+#ifdef FO_API_SERVER_IMPL
 #include "PropertiesSerializator.h"
 
 #include "curl/curl.h"
 #include "minizip/zip.h"
 #include "png.h"
-#include "sha1.h"
-#include "sha2.h"
 #endif
 
 #ifdef FO_API_ITEM_METHOD_DOC
