@@ -65,8 +65,8 @@ int main(int argc, char** argv)
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    CatchExceptions("FOnlineBaker", FO_VERSION);
-    LogToFile("FOnlineBaker.log");
+    CatchExceptions("FOnlineASCompiler", FO_VERSION);
+    LogToFile("FOnlineASCompiler.log");
     Settings.ParseArgs(argc, argv);
 
     int errors = 0;

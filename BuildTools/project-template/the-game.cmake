@@ -1,6 +1,6 @@
 # AddContent pathPattern(s)
-# AddResources packName pathPattern(s)
-# AddRawResources pathPattern(s)
+# AddResources packName rootDir pathPattern(s)
+# AddRawResources rootDir pathPattern(s)
 # AddScriptApi headerPath(s)
 # AddNativeIncludeDir dir(s)
 # AddNativeSource pathPattern(s)
@@ -26,7 +26,7 @@ AddContent( "Items/*.foitem" )
 AddContent( "Maps/*.fomap" "Maps/*.foloc" )
 
 # Resources
-AddResources( "TheGame" "Resources/**" )
+AddResources( "TheGame" "Resources" "*.*" )
 
 # Scripts
 AddScriptApi( "Scripts/MyScriptApi.h" )
