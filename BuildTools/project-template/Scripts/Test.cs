@@ -5,7 +5,7 @@ namespace TheGame
 {
     public static class Test
     {
-        static void ModuleInit()
+        static void Main()
         {
 #if SERVER
             Console.WriteLine("SERVER");

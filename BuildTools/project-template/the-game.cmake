@@ -16,9 +16,9 @@
 # AddMonoMapperSource assembly pathPattern(s)
 # CreateConfig config inheritenConfig
 # TweakConfig config option value
-# CreatePackage package niceName devName author version
-# AddClientToPackage package platform config packType
-# AddServerToPackage package platform config packType
+# CreatePackage package devName niceName author version config devMode
+# AddClientToPackage package platform packType [customConfig]
+# AddServerToPackage package platform packType [customConfig]
 
 # Content
 AddContent( "Critters/*.focr" )
@@ -50,22 +50,22 @@ CreateConfig( "LocalWebTest" "LocalTest" )
 TweakConfig( "LocalWebTest" "MyOpt" "42" )
 
 # Test builds
-CreatePackage( "Test" "The Game" "TheGame" "MeCoolLtd" "0.0.1" )
-AddClientToPackage( "Test" "Win32-Debug" "LocalTest" "raw" )
-AddClientToPackage( "Test" "Web-Debug" "LocalWebTest" "wasm" )
-AddServerToPackage( "Test" "Win64-Debug" "LocalTest" "raw" )
+CreatePackage( "Test" "TheGame" "The Game (wip)" "MeCoolLtd" "0.0.1" "LocalTest" YES )
+AddClientToPackage( "Test" "Win32" "raw" )
+AddClientToPackage( "Test" "Web" "wasm" "LocalWebTest" )
+AddServerToPackage( "Test" "Win64" "raw" )
 
 # Production builds
-CreatePackage( "Production" "The Game" "TheGame" "MeCoolLtd" "1.0.0" )
-AddClientToPackage( "Production" "Win32-Release" "Default" "raw" )
-AddClientToPackage( "Production" "Win32-Release" "Default" "wix" )
-AddClientToPackage( "Production" "Win32-Release" "Default" "zip" )
-AddClientToPackage( "Production" "Android-Release" "Default" "arm-arm64-x86" )
-AddClientToPackage( "Production" "Web-Release" "Default" "wasm-js" )
-AddClientToPackage( "Production" "Mac-Release" "Default" "bundle" )
-AddClientToPackage( "Production" "iOS-Release" "Default" "bundle" )
-AddClientToPackage( "Production" "Linux-Release" "Default" "zip" )
-AddServerToPackage( "Production" "Win64-Release" "Default" "raw" )
-AddServerToPackage( "Production" "Win64-Release" "Default" "zip" )
-AddServerToPackage( "Production" "Linux-Release" "Default" "raw" )
-AddServerToPackage( "Production" "Linux-Release" "Default" "tar" )
+CreatePackage( "Production" "TheGame" "The Game" "MeCoolLtd" "1.0.0" "Default" NO )
+AddClientToPackage( "Production" "Win32" "raw" )
+AddClientToPackage( "Production" "Win32" "wix" )
+AddClientToPackage( "Production" "Win32" "zip" )
+AddClientToPackage( "Production" "Android" "arm-arm64-x86" )
+AddClientToPackage( "Production" "Web" "wasm-js" )
+AddClientToPackage( "Production" "macOS" "bundle" )
+AddClientToPackage( "Production" "iOS" "bundle" )
+AddClientToPackage( "Production" "Linux" "zip" )
+AddServerToPackage( "Production" "Win64" "raw" )
+AddServerToPackage( "Production" "Win64" "zip" )
+AddServerToPackage( "Production" "Linux" "raw" )
+AddServerToPackage( "Production" "Linux" "tar" )

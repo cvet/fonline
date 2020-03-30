@@ -10,48 +10,25 @@ import tarfile
 import PIL
 
 parser = argparse.ArgumentParser(description='FOnline packager')
-parser.add_argument('-package', dest='package', required=True, help='path to packaging file (Package-*.txt)')
-#parser.add_argument('-version', dest='version', required=True, help='version of produced package')
-parser.add_argument('-binaries', dest='binaries', help='directory to find client/server binaries (detected automatically if not specified)')
-parser.add_argument('-scripts', dest='scripts', help='directory to generated scripts (detected automatically if not specified)')
+parser.add_argument('-target', dest='target', required=True,
+		choises=['Server', 'Client'], help='package target type')
+parser.add_argument('-platform', dest='platform', required=True,
+		choises=['Win32', 'Win64', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
+parser.add_argument('-devmode', dest='devmode', required=True, action='const_true', help='development mode')
+parser.add_argument('-pack', dest='pack', required=True, help='package type')
+
+parser.add_argument('-binaries', dest='binaries', required=True, help='directory where to find binaries')
+parser.add_argument('-scripts', dest='scripts', required=True, help='directory to generated scripts')
+parser.add_argument('-resources', dest='resources', required=True, help='directory to generated resources')
+
+parser.add_argument('-config', dest='config', action='append', default=[], help='config tweaks')
+
 parser.add_argument('-foroot', dest='foroot', help='path to fonline engine repository root (detected automatically if not specified)')
-#parser.add_argument('-temp', dest='foroot', help='path to fonline engine repository root (detected automatically if not specified)')
 parser.add_argument('-output', dest='output', help='output dir (current if not specified)')
 args = parser.parse_args()
 
-packagePath = args.package
-binariesPath = (args.binaries if args.binaries else os.path.abspath(os.path.join(os.path.dirname(args.package), '..'))).rstrip('\\/')
-scriptsPath = (args.scripts if args.scripts else os.path.abspath(os.path.join(os.path.dirname(args.package), '..', 'Scripts'))).rstrip('\\/')
 foRootPath = (args.foroot if args.foroot else os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))).rstrip('\\/')
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
-
-with open(packagePath, 'r') as f:
-	packageParts = [l.rstrip(' \t\r\n') for l in f.readlines() if l.strip(' \t\r\n')]
-
-# Evaluate new version
-# Get info from previous or forced version
-lastVersion = None
-for part in packageParts:
-	binType, platform, config, content, resources, packType = part
-
-# Check and compare all versions of binaries
-for part in packageParts:
-	binType, platform, config, content, resources, packType = part
-	...
-
-# Bake content
-# Bake resources
-# Compile AngelScript source
-# Compile Mono source
-Scripts.fores
-Content.fores
-Critters.fores
-Items.fores
-
-# Produce packages in temp dir
-
-# Compare whole output with previous
-# Finally ship or cancel
 
 for a in sys.argv:
 	print a

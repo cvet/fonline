@@ -601,7 +601,7 @@ if args.csharp:
                     if src.split(',')[0] == assembly:
                         writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
             if target == 'Mapper':
-                for src in args.monocommonsource:
+                for src in args.monomappersource:
                     if src.split(',')[0] == assembly:
                         writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
             writeFile('    <Compile Include="Game.cs" />')
@@ -624,7 +624,9 @@ if args.csharp:
                     writeFile('      <Name>' + ref + '.' + target + '</Name>')
                     writeFile('    </ProjectReference>')
                 else:
-                    writeFile('    <Reference Include="' + ref + '" />')
+                    writeFile('    <Reference Include="' + ref + '">')
+                    writeFile('      <Private>True</Private>')
+                    writeFile('    </Reference>')
             for ref in args.monocommonref:
                 if ref.split(',')[0] == assembly:
                     addRef(ref.split(',')[1])
@@ -646,7 +648,7 @@ if args.csharp:
             writeFile('</Project>')
 
     # Write solution file that contains all project files
-    slnName = args.monoassembly[0]
+    slnName = args.monoassembly[0] + '.sln'
     createFile(slnName)
     writeFile('')
     writeFile('Microsoft Visual Studio Solution File, Format Version 12.00')
