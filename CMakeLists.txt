@@ -1364,7 +1364,7 @@ if( FONLINE_NATIVE_SCRIPTING OR FONLINE_ANGELSCRIPT_SCRIPTING OR FONLINE_MONO_SC
 endif()
 
 # Bakering
-set( bakeCommands "" )
+set( bakeCommands "FOnlineBaker" )
 set( bakeSources "" )
 foreach( entry ${FO_CONTENT} )
 	list( APPEND bakeCommands -ContentFile "${entry}" )
@@ -1383,7 +1383,7 @@ add_custom_target( BakeResources
 	COMMAND ${genScriptApi}
 	COMMAND ${buildASScripts}
 	COMMAND ${buildMonoScripts}
-	COMMAND FOnlineBaker ${bakeCommands}
+	COMMAND ${bakeCommands}
 	DEPENDS ${genApiDepends}
 	SOURCES ${bakeSources}
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
@@ -1391,24 +1391,34 @@ add_custom_target( BakeResources
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
 
 # Packaging
+add_custom_target( MakeAllPackages
+	COMMAND ${genScriptApi}
+	COMMAND ${buildASScripts}
+	COMMAND ${buildMonoScripts}
+	COMMAND ${bakeCommands}
+	DEPENDS ${genApiDepends}
+	WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
+	COMMENT "Make all packages" )
+list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
+
 foreach( package ${FO_PACKAGES} )
 	add_custom_target( MakePackage-${package}
 		COMMAND ${genScriptApi}
 		COMMAND ${buildASScripts}
 		COMMAND ${buildMonoScripts}
-		COMMAND FOnlineBaker ${bakeCommands}
+		COMMAND ${bakeCommands}
 		DEPENDS ${genApiDepends}
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 		COMMENT "Make package ${package}" )
 	list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
 
-	function( AddPackageCommand package target settings )
-		string( REPLACE "," ";" settings ${settings} )
-		list( GET settings 0 platform )
-		list( GET settings 1 packType )
-		list( GET settings 2 customConfig )
+	function( AddPackagePart package target partOpts )
+		string( REPLACE "," ";" partOpts ${partOpts} )
+		list( GET partOpts 0 platform )
+		list( GET partOpts 1 packType )
+		list( GET partOpts 2 customConfig )
 
-		set( packageCommands "" )
+		set( packageCommands python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
 		list( APPEND packageCommands -devname "${Package_${package}_DevName}" )
 		list( APPEND packageCommands -nicename "${Package_${package}_NiceName}" )
 		list( APPEND packageCommands -author "${Package_${package}_Author}" )
@@ -1442,16 +1452,20 @@ foreach( package ${FO_PACKAGES} )
 			list( APPEND packageCommands -res ${entry} )
 		endforeach()
 
+		set( packagePartName ${package}-${target}-${platform}-${packType} )
 		add_custom_command( TARGET MakePackage-${package} POST_BUILD
-			COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" ${packageCommands}
-			COMMENT "Process ${target} ${platform}" )
+			COMMAND ${packageCommands}
+			COMMENT "Process ${packagePartName}" )
+		add_custom_command( TARGET MakeAllPackages POST_BUILD
+			COMMAND ${packageCommands}
+			COMMENT "Process ${packagePartName}" )
 	endfunction()
 
 	foreach( entry ${Package_${package}_Clients} )
-		AddPackageCommand( ${package} Client ${entry} )
+		AddPackagePart( ${package} Client ${entry} )
 	endforeach()
 	foreach( entry ${Package_${package}_Servers} )
-		AddPackageCommand( ${package} Server ${entry} )
+		AddPackagePart( ${package} Server ${entry} )
 	endforeach()
 endforeach()
 
