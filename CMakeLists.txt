@@ -5,10 +5,11 @@ project( FOnlineProject )
 set( FONLINE_VERBOSE_BUILD OFF CACHE BOOL "Verbose build mode" )
 set( FONLINE_DEBUG_BUILD OFF CACHE BOOL "Produce debug binaries output" )
 set( FONLINE_OUTPUT_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "Common output path" )
-set( FONLINE_BUILD_CLIENT ON CACHE BOOL "Build client binaries" )
-set( FONLINE_BUILD_SERVER OFF CACHE BOOL "Build server binaries" )
-set( FONLINE_BUILD_MAPPER OFF CACHE BOOL "Build mapper binaries" )
-set( FONLINE_BUILD_BAKER OFF CACHE BOOL "Build baker binaries" )
+set( FONLINE_BUILD_CLIENT ON CACHE BOOL "Build Client binaries" )
+set( FONLINE_BUILD_SERVER OFF CACHE BOOL "Build Server binaries" )
+set( FONLINE_BUILD_MAPPER OFF CACHE BOOL "Build Mapper binaries" )
+set( FONLINE_BUILD_ASCOMPILER OFF CACHE BOOL "Build AngelScript compiler" )
+set( FONLINE_BUILD_BAKER OFF CACHE BOOL "Build Baker binaries" )
 set( FONLINE_UNIT_TESTS OFF CACHE BOOL "Build only binaries for Unit Testing" )
 set( FONLINE_CODE_COVERAGE OFF CACHE BOOL "Build only binaries for Code Coverage reports" )
 set( FONLINE_CUSTOM_VERSION "" CACHE STRING "Custom version for build (integer FO_VERSION in code), use hex digits (0-9, a-f), maximum are 8" )
@@ -283,8 +284,6 @@ set( CMAKE_CONFIGURATION_TYPES "${FO_BUILD_CONFIGURATION}" CACHE STRING "Forced 
 set( CMAKE_BUILD_TYPE "${FO_BUILD_CONFIGURATION}" CACHE STRING "Forced by FOnline" FORCE )
 
 StatusMessage( "Output path: ${FONLINE_OUTPUT_PATH}" )
-set( FONLINE_OUTPUT_PATH "${FONLINE_OUTPUT_PATH}" )
-file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}" )
 set( FO_CLIENT_OUTPUT "${FONLINE_OUTPUT_PATH}/Client/${FO_BUILD_PLATFORM}-${FO_BUILD_CONFIGURATION}" )
 set( FO_SERVER_OUTPUT "${FONLINE_OUTPUT_PATH}/Server/${FO_BUILD_PLATFORM}-${FO_BUILD_CONFIGURATION}" )
 set( FO_TOOLS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tools" )
@@ -292,6 +291,16 @@ set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tests" )
 set( FO_SCRIPTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Scripts" )
 set( FO_RESOURCES_OUTPUT "${FONLINE_OUTPUT_PATH}/Resources" )
 set( FO_PACKAGES_OUTPUT "${FONLINE_OUTPUT_PATH}/Packages" )
+file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}" )
+file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}/Client" )
+file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}/Server" )
+file( MAKE_DIRECTORY "${FO_CLIENT_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_SERVER_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_TOOLS_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_TESTS_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_SCRIPTS_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_RESOURCES_OUTPUT}" )
+file( MAKE_DIRECTORY "${FO_PACKAGES_OUTPUT}" )
 
 if( FONLINE_NATIVE_SCRIPTING )
 	list( APPEND FO_BUILD_DEFINES "FO_NATIVE_SCRIPTING" )
@@ -875,7 +884,7 @@ file( GLOB FO_SCRIPTING_SOURCE CONFIGURE_DEPENDS "Source/Scripting/*.*" )
 # Applications
 StatusMessage( "Applications:" )
 
-if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_BAKER )
+if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER )
 	add_library( CommonLib STATIC ${FO_COMMON_SOURCE} )
 	set_target_properties( CommonLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES}" )
 	list( APPEND FO_CORE_LIBS_GROUP "CommonLib" )
@@ -991,7 +1000,7 @@ if( FONLINE_BUILD_BAKER )
 	target_link_libraries( FOnlineBaker "CommonLib" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_BAKER_SYSTEM_LIBS}" "${FO_BAKER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
-if( FONLINE_ANGELSCRIPT_SCRIPTING )
+if( FONLINE_BUILD_ASCOMPILER AND FONLINE_ANGELSCRIPT_SCRIPTING )
 	StatusMessage( "+ FOnlineASCompiler" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineASCompiler" )
 	add_executable( FOnlineASCompiler "Source/Applications/ASCompilerApp.cpp" "Source/Common/MessageBoxStub.cpp" )
@@ -1229,6 +1238,10 @@ endforeach()
 FinalizeGeneratedIncludes()
 
 # Scripts
+set( genScriptApi "" )
+set( buildASScripts "" )
+set( buildMonoScripts "" )
+set( genApiDepends "" )
 if( FONLINE_NATIVE_SCRIPTING OR FONLINE_ANGELSCRIPT_SCRIPTING OR FONLINE_MONO_SCRIPTING )
 	# Script API meta
 	get_property( idirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES )
@@ -1248,8 +1261,8 @@ if( FONLINE_NATIVE_SCRIPTING OR FONLINE_ANGELSCRIPT_SCRIPTING OR FONLINE_MONO_SC
 		COMMENT "Generate script API meta file" )
 
 	# Script API generation
-	set( genApiCommands "-meta;${CMAKE_BINARY_DIR}/ScriptApiMeta.txt" )
 	set( genApiDepends "${CMAKE_BINARY_DIR}/ScriptApiMeta.txt" )
+	set( genApiCommands -meta "${CMAKE_BINARY_DIR}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
 
 	if( FONLINE_NATIVE_SCRIPTING )
 		list( APPEND genApiCommands -native )
@@ -1263,7 +1276,6 @@ if( FONLINE_NATIVE_SCRIPTING OR FONLINE_ANGELSCRIPT_SCRIPTING OR FONLINE_MONO_SC
 
 	foreach( src ${FO_ANGELSCRIPT_FILES} )
 		list( APPEND genApiCommands -assource ${src} )
-		list( APPEND genApiDepends ${src} )
 	endforeach()
 
 	set( csFiles "" )
@@ -1283,71 +1295,70 @@ if( FONLINE_NATIVE_SCRIPTING OR FONLINE_ANGELSCRIPT_SCRIPTING OR FONLINE_MONO_SC
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_CommonSource} )
 			list( APPEND genApiCommands -monocommonsource "${entry},{src}" )
-			list( APPEND genApiDepends ${src} )
 			list( APPEND csFiles ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_ServerSource} )
 			list( APPEND genApiCommands -monoserversource "${entry},{src}" )
-			list( APPEND genApiDepends ${src} )
 			list( APPEND csFiles ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_ClientSource} )
 			list( APPEND genApiCommands -monoclientsource "${entry},{src}" )
-			list( APPEND genApiDepends ${src} )
 			list( APPEND csFiles ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_MapperSource} )
 			list( APPEND genApiCommands -monomappersource "${entry},{src}" )
-			list( APPEND genApiDepends ${src} )
 			list( APPEND csFiles ${src} )
 		endforeach()
 	endforeach()
 
 	foreach( src ${FO_CONTENT} )
 		list( APPEND genApiCommands -content ${src} )
-		list( APPEND genApiDepends ${src} )
 	endforeach()
 
+	set( genScriptApi python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-script-api.py" ${genApiCommands} )
 	add_custom_target( GenerateScriptApi
-		python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-script-api.py" ${genApiCommands}
+		COMMAND ${genScriptApi}
 		DEPENDS ${genApiDepends}
 		SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h"
-		WORKING_DIRECTORY "${FO_SCRIPTS_OUTPUT}"
+		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 		COMMENT "Generate script API" )
-	set_target_properties( GenerateScriptApi PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD TRUE )
 	list( APPEND FO_COMMANDS_GROUP "GenerateScriptApi" )
 
 	# Build AngelScript scripts
 	if( FONLINE_ANGELSCRIPT_SCRIPTING )
+		set( buildASScripts FOnlineASCompiler
+			-ASServer "${FO_SCRIPTS_OUTPUT}/ServerRootModule.fos"
+			-ASClient "${FO_SCRIPTS_OUTPUT}/ClientRootModule.fos"
+			-ASMapper "${FO_SCRIPTS_OUTPUT}/MapperRootModule.fos" )
+
 		add_custom_target( BuildAngelScriptScripts
-			FOnlineASCompiler
-				-ASServer "${FO_SCRIPTS_OUTPUT}/ServerRootModule.fos"
-				-ASClient "${FO_SCRIPTS_OUTPUT}/ClientRootModule.fos"
-				-ASMapper "${FO_SCRIPTS_OUTPUT}/MapperRootModule.fos"
-			DEPENDS "GenerateScriptApi" "FOnlineASCompiler"
+			COMMAND ${genScriptApi}
+			COMMAND ${buildASScripts}
+			DEPENDS ${genApiDepends}
 			SOURCES ${FO_ANGELSCRIPT_FILES}
-			WORKING_DIRECTORY "${FO_SCRIPTS_OUTPUT}"
+			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Build AngelScript scripts" )
-		set_target_properties( BuildAngelScriptScripts PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD TRUE )
 		list( APPEND FO_COMMANDS_GROUP "BuildAngelScriptScripts" )
 	endif()
 
 	# Build Mono scripts
 	if( FONLINE_MONO_SCRIPTING )
-		set( buildCommands "" )
+		set( monoBuildCommands -output ${FO_SCRIPTS_OUTPUT} )
 		foreach( entry ${FO_MONO_ASSEMBLIES} )
-			list( APPEND buildCommands "-server" "${FO_SCRIPTS_OUTPUT}/${entry}.Server.csproj" )
-			list( APPEND buildCommands "-client" "${FO_SCRIPTS_OUTPUT}/${entry}.Client.csproj" )
-			list( APPEND buildCommands "-mapper" "${FO_SCRIPTS_OUTPUT}/${entry}.Mapper.csproj" )
+			list( APPEND monoBuildCommands "-server" "${FO_SCRIPTS_OUTPUT}/${entry}.Server.csproj" )
+			list( APPEND monoBuildCommands "-client" "${FO_SCRIPTS_OUTPUT}/${entry}.Client.csproj" )
+			list( APPEND monoBuildCommands "-mapper" "${FO_SCRIPTS_OUTPUT}/${entry}.Mapper.csproj" )
 		endforeach()
 
+		set( buildMonoScripts python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/build-mono-scripts.py" ${monoBuildCommands} )
+
 		add_custom_target( BuildMonoScripts
-			python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/build-mono-scripts.py" ${buildCommands}
-			DEPENDS "GenerateScriptApi"
-			SOURCES "${csFiles}"
-			WORKING_DIRECTORY "${FO_SCRIPTS_OUTPUT}"
+			COMMAND ${genScriptApi}
+			COMMAND ${buildMonoScripts}
+			DEPENDS ${genApiDepends}
+			SOURCES ${csFiles}
+			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Build Mono scripts" )
-		set_target_properties( BuildMonoScripts PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD TRUE )
 		list( APPEND FO_COMMANDS_GROUP "BuildMonoScripts" )
 	endif()
 endif()
@@ -1368,21 +1379,15 @@ foreach( entry ${FO_RESOURCES} )
 	endforeach()
 endforeach()
 
-set( bakeDeps "" )
-if( FONLINE_ANGELSCRIPT_SCRIPTING )
-	list( APPEND bakeDeps "BuildAngelScriptScripts" )
-endif()
-if( FONLINE_MONO_SCRIPTING )
-	list( APPEND bakeDeps "BuildMonoScripts" )
-endif()
-
 add_custom_target( BakeResources
-	FOnlineBaker ${bakeCommands}
-		DEPENDS "FOnlineBaker" ${bakeDeps}
-		SOURCES ${bakeSources}
-		WORKING_DIRECTORY "${FO_RESOURCES_OUTPUT}"
-		COMMENT "Bake resources" )
-set_target_properties( BakeResources PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD TRUE )
+	COMMAND ${genScriptApi}
+	COMMAND ${buildASScripts}
+	COMMAND ${buildMonoScripts}
+	COMMAND FOnlineBaker ${bakeCommands}
+	DEPENDS ${genApiDepends}
+	SOURCES ${bakeSources}
+	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
+	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
 
 # Packaging
@@ -1405,11 +1410,14 @@ foreach( package ${FO_PACKAGES} )
 	list( APPEND packageCommands -searchpath "${FONLINE_OUTPUT_PATH}" )
 
 	add_custom_target( MakePackage-${package}
-		python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" ${packageCommands}
-			DEPENDS "BakeResources"
-			WORKING_DIRECTORY "${FO_PACKAGES_OUTPUT}"
-			COMMENT "Make package ${package}" )
-	set_target_properties( MakePackage-${package} PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD TRUE )
+		COMMAND ${genScriptApi}
+		COMMAND ${buildASScripts}
+		COMMAND ${buildMonoScripts}
+		COMMAND FOnlineBaker ${bakeCommands}
+		COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" ${packageCommands}
+		DEPENDS ${genApiDepends}
+		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
+		COMMENT "Make package ${package}" )
 	list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
 endforeach()
 
