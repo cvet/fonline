@@ -1,3 +1,7 @@
+# SetCustomVersion version
+# DisableNativeScripting
+# DisableAngelScriptScripting
+# DisableMonoScripting
 # AddContent pathPattern(s)
 # AddResources packName rootDir pathPattern(s)
 # AddRawResources rootDir pathPattern(s)
@@ -16,7 +20,7 @@
 # AddMonoMapperSource assembly pathPattern(s)
 # CreateConfig config inheritenConfig
 # TweakConfig config option value
-# CreatePackage package devName niceName author version config devMode
+# CreatePackage package devName niceName author version config devBuild
 # AddClientToPackage package platform packType [customConfig]
 # AddServerToPackage package platform packType [customConfig]
 
@@ -51,21 +55,21 @@ TweakConfig( "LocalWebTest" "MyOpt" "42" )
 
 # Test builds
 CreatePackage( "Test" "TheGame" "The Game (wip)" "MeCoolLtd" "0.0.1" "LocalTest" YES )
-AddClientToPackage( "Test" "Win32" "raw" )
-AddClientToPackage( "Test" "Web" "wasm" "LocalWebTest" )
-AddServerToPackage( "Test" "Win64" "raw" )
+AddClientToPackage( "Test" "Win32" "Raw" )
+AddClientToPackage( "Test" "Web" "Wasm" "LocalWebTest" )
+AddServerToPackage( "Test" "Win64" "Raw" )
 
 # Production builds
 CreatePackage( "Production" "TheGame" "The Game" "MeCoolLtd" "1.0.0" "Default" NO )
-AddClientToPackage( "Production" "Win32" "raw" )
-AddClientToPackage( "Production" "Win32" "wix" )
-AddClientToPackage( "Production" "Win32" "zip" )
-AddClientToPackage( "Production" "Android" "arm-arm64-x86" )
-AddClientToPackage( "Production" "Web" "wasm-js" )
-AddClientToPackage( "Production" "macOS" "bundle" )
-AddClientToPackage( "Production" "iOS" "bundle" )
-AddClientToPackage( "Production" "Linux" "zip" )
-AddServerToPackage( "Production" "Win64" "raw" )
-AddServerToPackage( "Production" "Win64" "zip" )
-AddServerToPackage( "Production" "Linux" "raw" )
-AddServerToPackage( "Production" "Linux" "tar" )
+AddClientToPackage( "Production" "Win32" "Raw" )
+AddClientToPackage( "Production" "Win32" "Wix" )
+AddClientToPackage( "Production" "Win32" "Zip" )
+AddClientToPackage( "Production" "Android" "Arm+Arm64+x86" )
+AddClientToPackage( "Production" "Web" "Wasm+Js" )
+AddClientToPackage( "Production" "macOS" "Bundle" )
+AddClientToPackage( "Production" "iOS" "Bundle" )
+AddClientToPackage( "Production" "Linux" "Zip" )
+AddServerToPackage( "Production" "Win64" "Raw" )
+AddServerToPackage( "Production" "Win64" "Zip" )
+AddServerToPackage( "Production" "Linux" "Raw" )
+AddServerToPackage( "Production" "Linux" "Tar" )
