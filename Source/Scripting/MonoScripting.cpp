@@ -113,7 +113,8 @@ inline vector<T*> MarshalObjArr(MonoArray* arr)
     return {};
 }
 
-inline std::function<void()> MarshalCallback(MonoObject* func)
+template<typename T>
+inline std::function<void(T*)> MarshalCallback(MonoObject* func)
 {
     return {};
 }
@@ -174,7 +175,7 @@ inline T MarshalBack(T value)
 #define FO_API_ARG_REF(type, name) type* _##name
 #define FO_API_ARG_ARR_REF(type, name) MonoArray* _##name
 #define FO_API_ARG_ENUM(type, name) int name
-#define FO_API_ARG_CALLBACK(name) MonoObject* _##name
+#define FO_API_ARG_CALLBACK(type, name) MonoObject* _##name
 #define FO_API_ARG_PREDICATE(type, name) MonoObject* _##name
 #define FO_API_ARG_DICT(key, val, name) MonoObject* _##name
 #define FO_API_ARG_MARSHAL(type, name) type name = Marshal<type>(_##name);
@@ -184,7 +185,7 @@ inline T MarshalBack(T value)
 #define FO_API_ARG_REF_MARSHAL(type, name) type name = *_##name;
 #define FO_API_ARG_ARR_REF_MARSHAL(type, name) vector<type> name = Marshal<vector<type>>(_##name);
 #define FO_API_ARG_ENUM_MARSHAL(type, name)
-#define FO_API_ARG_CALLBACK_MARSHAL(name) std::function<void()> name = MarshalCallback(_##name);
+#define FO_API_ARG_CALLBACK_MARSHAL(type, name) std::function<void(type*)> name = MarshalCallback<type>(_##name);
 #define FO_API_ARG_PREDICATE_MARSHAL(type, name) std::function<bool(type*)> name = MarshalPredicate<type>(_##name);
 #define FO_API_ARG_DICT_MARSHAL(key, val, name) map<key, val> name = MarshalDict<key, val>(_##name);
 #define FO_API_RET(type) Mono_##type

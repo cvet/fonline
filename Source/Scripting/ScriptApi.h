@@ -135,7 +135,7 @@
 // FO_API_ARG_REF(type, name) // Todo: remove for better portability
 // FO_API_ARG_ARR_REF(type, name) // Todo: remove for better portability
 // FO_API_ARG_ENUM(type, name)
-// FO_API_ARG_CALLBACK(name)
+// FO_API_ARG_CALLBACK(type, name)
 // FO_API_ARG_PREDICATE(type, name)
 // FO_API_ARG_DICT(key, val, name)
 // FO_API_ARG_MARSHAL(type, name)
@@ -145,7 +145,7 @@
 // FO_API_ARG_REF_MARSHAL(type, name)
 // FO_API_ARG_ARR_REF_MARSHAL(type, name)
 // FO_API_ARG_ENUM_MARSHAL(type, name)
-// FO_API_ARG_CALLBACK_MARSHAL(name)
+// FO_API_ARG_CALLBACK_MARSHAL(type, name)
 // FO_API_ARG_PREDICATE_MARSHAL(type, name)
 // FO_API_ARG_DICT_MARSHAL(key, val, name)
 // FO_API_RET(type)

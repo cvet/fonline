@@ -43,11 +43,11 @@ def aotAssembly(target, name, platform):
 for target in ['Server', 'Client', 'Mapper']:
     for platform in ['x86', 'amd64', 'arm', 'arm64', 'wasm']:
         for assembly in args.assembly:
-            aotAssenbly('Client', assembly, platform)
+            aotAssembly('Client', assembly, platform)
 
 for platform in ['x86', 'amd64', 'arm', 'arm64', 'wasm']:
     for a in args.assembly:
-        aotAssenbly('Client', a, platform)
+        aotAssembly('Client', a, platform)
 for platform in ['x86', 'amd64', 'wasm']:
     for a in args.assembly:
-        aotAssenbly('Mapper', a, platform)
+        aotAssembly('Mapper', a, platform)

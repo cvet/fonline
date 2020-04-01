@@ -38,7 +38,7 @@
 #define FO_API_ARG_REF(type, name) type.ref name
 #define FO_API_ARG_ARR_REF(type, name) type.arr.ref name
 #define FO_API_ARG_ENUM(type, name) type.enum name
-#define FO_API_ARG_CALLBACK(name) callback name
+#define FO_API_ARG_CALLBACK(type, name) callback.type name
 #define FO_API_ARG_PREDICATE(type, name) predicate.type name
 #define FO_API_ARG_DICT(key, val, name) dict.key.val name
 #define FO_API_RET(type) type

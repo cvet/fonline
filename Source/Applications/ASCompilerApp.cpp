@@ -79,7 +79,8 @@ static int main_disabled(int argc, char** argv)
         }
         catch (std::exception& ex)
         {
-            WriteLog("Server scripts compilation failed:\n{}\n", ex.what());
+            WriteLog("Server scripts compilation failed!\n");
+            ReportException(ex);
             errors++;
         }
     }
@@ -92,7 +93,8 @@ static int main_disabled(int argc, char** argv)
         }
         catch (std::exception& ex)
         {
-            WriteLog("Client scripts compilation failed:\n{}\n", ex.what());
+            WriteLog("Client scripts compilation failed!\n");
+            ReportException(ex);
             errors++;
         }
     }
@@ -105,7 +107,8 @@ static int main_disabled(int argc, char** argv)
         }
         catch (std::exception& ex)
         {
-            WriteLog("Mapper scripts compilation failed:\n{}\n", ex.what());
+            WriteLog("Mapper scripts compilation failed!\n");
+            ReportException(ex);
             errors++;
         }
     }

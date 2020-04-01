@@ -50,7 +50,7 @@ public:
         if (--RefCount == 0)
             delete this;
     }
-    MapSprite* Factory() { return new MapSprite(); }
+    static MapSprite* Factory() { return new MapSprite(); }
 
     mutable int RefCount {1};
     bool Valid {};

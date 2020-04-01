@@ -297,12 +297,24 @@ class GenericException : public std::exception
 public:
     template<typename... Args>
     GenericException(const char* message, Args... args) :
-        exceptionMessage {message}, exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+        exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
     {
+        exceptionMessage = "Exception: ";
+        exceptionMessage.append(message);
+        if (!exceptionParams.empty())
+        {
+            exceptionMessage.append("\n  Context args:");
+            for (auto& param : exceptionParams)
+                exceptionMessage.append("\n  - ").append(param);
+        }
+        exceptionMessage.append("\n  Traceback:");
+        exceptionMessage.append("\n  - (todo)");
+        exceptionMessage.append("\n  - (todo)");
+        exceptionMessage.append("\n  - (todo)");
     }
     template<typename... Args>
     GenericException(const string& message, Args... args) :
-        exceptionMessage {message}, exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+        GenericException(message.c_str(), std::forward<Args>(args)...)
     {
     }
     ~GenericException() noexcept = default;

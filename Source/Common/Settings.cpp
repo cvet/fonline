@@ -274,7 +274,7 @@ void GlobalSettings::ParseArgs(int argc, char** argv)
             else
             {
                 if (i < argc - 1 && argv[i + 1][0] != '-')
-                    SetValue(key, _str("{}", argv[i + 1][0]).trim());
+                    SetValue(key, _str("{}", argv[i + 1]).trim());
                 else
                     SetValue(key, "1");
             }

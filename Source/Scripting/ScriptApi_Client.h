@@ -589,10 +589,10 @@ FO_API_EPILOG()
  ******************************************************************************/
 #endif
 FO_API_CRITTER_VIEW_METHOD(AddAnimationCallback, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2),
-    FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(animationCallback))
+    FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(CritterView, animationCallback))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(float, normalizedTime)
-        FO_API_ARG_CALLBACK_MARSHAL(animationCallback))
+        FO_API_ARG_CALLBACK_MARSHAL(CritterView, animationCallback))
 {
     if (!_this->Anim3d)
         throw ScriptException("Critter is not 3d");
@@ -601,7 +601,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO
 
     _this->Anim3d->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_this, animationCallback] {
                                                      if (!_this->IsDestroyed)
-                                                         animationCallback(); // Pass _this?
+                                                         animationCallback(_this);
                                                  }});
 }
 FO_API_EPILOG()

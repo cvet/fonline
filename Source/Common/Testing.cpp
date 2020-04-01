@@ -732,6 +732,11 @@ bool RaiseAssert(const string& message, const string& file, int line)
     return true;
 }
 
+void ReportException(const std::exception& ex)
+{
+    WriteLog("{}\n", ex.what());
+}
+
 TEST_CASE()
 {
     RUNTIME_ASSERT(1 == 1);

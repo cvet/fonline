@@ -1238,6 +1238,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	set( genApiDepends "${CMAKE_BINARY_DIR}/ScriptApiMeta.txt" )
 	set( genApiCommands -meta "${CMAKE_BINARY_DIR}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
 
+	list( APPEND genApiCommands -markdown )
 	if( FO_NATIVE_SCRIPTING )
 		list( APPEND genApiCommands -native )
 	endif()

@@ -10,6 +10,7 @@ except ImportError:
 
 parser = argparse.ArgumentParser(description='FOnline scripts generation')
 parser.add_argument('-meta', dest='meta', required=True, help='path to script api metadata (ScriptApiMeta.txt)')
+parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='generate angelscript api')
 parser.add_argument('-csharp', dest='csharp', action='store_true', help='generate csharp api')
@@ -150,10 +151,219 @@ def flushFiles():
         fpath = os.path.join(outputPath, name)
         if os.path.isfile(fpath):
             with open(fpath, 'r') as f:
-                if [l.rstrip('\r\n') for l in f.readlines()] == lines:
+                if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
                     continue
         with open(fpath, 'w') as f:
-            f.write('\n'.join(lines))
+            f.write('\n'.join(lines) + '\n')
+
+# Markdown
+if args.markdown:
+    createFile('SCRIPT_API.md')
+    writeFile('# FOnline Engine Script API')
+    writeFile('')
+    writeFile('> Document under development, do not rely on this API before the global refactoring complete.  ')
+    writeFile('> Estimated finishing date is middle of this year.')
+    writeFile('')
+    writeFile('## Table of Content')
+    writeFile('')
+    writeFile('- [General information](#general-information)')
+    writeFile('- [Common global methods](#common-global-methods)')
+    writeFile('- [Server global methods](#server-global-methods)')
+    writeFile('- [Client global methods](#client-global-methods)')
+    writeFile('- [Mapper global methods](#mapper-global-methods)')
+    writeFile('- [Global properties](#global-properties)')
+    writeFile('- [Entities](#entities)')
+    writeFile('  * [Item properties](#item-properties)')
+    writeFile('  * [Item server methods](#item-server-methods)')
+    writeFile('  * [Item client methods](#item-client-methods)')
+    writeFile('  * [Critter properties](#critter-properties)')
+    writeFile('  * [Critter server methods](#critter-server-methods)')
+    writeFile('  * [Critter client methods](#critter-client-methods)')
+    writeFile('  * [Map properties](#map-properties)')
+    writeFile('  * [Map server methods](#map-server-methods)')
+    writeFile('  * [Map client methods](#map-client-methods)')
+    writeFile('  * [Location properties](#location-properties)')
+    writeFile('  * [Location server methods](#location-server-methods)')
+    writeFile('  * [Location client methods](#location-client-methods)')
+    writeFile('- [Events](#events)')
+    writeFile('  * [Server events](#server-events)')
+    writeFile('  * [Client events](#client-events)')
+    writeFile('  * [Mapper events](#mapper-events)')
+    writeFile('- [Settings](#settings)')
+    writeFile('- [Enums](#enums)')
+    writeFile('  * [MessageBoxTextType](#messageboxtexttype)')
+    writeFile('  * [MouseButton](#mousebutton)')
+    writeFile('  * [KeyCode](#keycode)')
+    writeFile('  * [CornerType](#cornertype)')
+    writeFile('  * [MovingState](#movingstate)')
+    writeFile('  * [CritterCondition](#crittercondition)')
+    writeFile('  * [ItemOwnership](#itemownership)')
+    writeFile('  * [Anim1](#anim1)')
+    writeFile('  * [CursorType](#cursortype)')
+    writeFile('- [Content](#content)')
+    writeFile('  * [Item pids](#item-pids)')
+    writeFile('  * [Critter pids](#critter-pids)')
+    writeFile('  * [Map pids](#map-pids)')
+    writeFile('  * [Location pids](#location-pids)')
+    writeFile('')
+    writeFile('## General infomation')
+    writeFile('')
+    writeFile('This document automatically generated from engine provided script API so any change in API will reflect to this document and all scripting layers (C++, C#, AngelScript).  ')
+    writeFile('You can easily contribute to this API using provided by engine functionality.  ')
+    writeFile('...write about FO_API* macro usage...')
+    writeFile('')
+
+    # Generate source
+    def parseType(t):
+        def mapType(t):
+            typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+                    'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
+            return typeMap[t] if t in typeMap else t
+        tt = t.split('.')
+        if tt[0] == 'dict':
+            r = mapType(tt[1]) + '->' + mapType(tt[2])
+        elif tt[0] == 'callback':
+            r = 'callback-' + mapType(tt[1])
+        elif tt[0] == 'predicate':
+            r = 'predicate-' + mapType(tt[1])
+        else:
+            r = mapType(tt[0])
+        if 'arr' in tt:
+            r += '[]'
+        if 'ref' in tt:
+            r = 'ref ' + r
+        return r
+    def parseArgs(args):
+        return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
+    def writeDoc(doc):
+        if doc:
+            pass
+    def writeMethod(tok, entity):
+        writeFile('* ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')')
+        writeDoc(tok[3])
+    def writeProp(tok, entity):
+        def isPropGet(target, access):
+            return True
+        def isPropSet(target, access):
+            return True
+        def evalUsage(srv, cl, mapp):
+            if not srv and not cl and not mapp:
+                return 'none'
+            if srv and cl and mapp:
+                return 'all'
+            if srv and cl:
+                return 'server or client'
+            if srv and mapp:
+                return 'server or mapper'
+            if cl and mapp:
+                return 'client or mapper'
+            assert False
+        rw, name, access, ret, mods, comms = tok
+        isServerGet, isServerSet = isPropGet('Server', access), (rw == 'rw' and isPropSet('Server', access))
+        isClientGet, isClientSet = isPropGet('Client', access), (rw == 'rw' and isPropSet('Client', access))
+        isMapperGet, isMapperSet = isPropGet('Mapper', access), (rw == 'rw' and isPropSet('Mapper', access))
+        getUsage = evalUsage(isServerGet, isClientGet, isMapperGet)
+        setUsage = evalUsage(isServerSet, isClientSet, isMapperSet)
+        writeFile('* ' + parseType(ret) + ' ' + name + ' (get = ' + getUsage + ', set = ' + setUsage + ')')
+        writeDoc(comms)
+
+    # Global methods
+    writeFile('## Common global methods')
+    writeFile('')
+    for i in methods['globalcommon']:
+        writeMethod(i, None)
+    writeFile('')
+    writeFile('## Server global methods')
+    writeFile('')
+    for i in methods['globalserver']:
+        writeMethod(i, None)
+    writeFile('')
+    writeFile('## Client global methods')
+    writeFile('')
+    for i in methods['globalclient']:
+        writeMethod(i, None)
+    writeFile('')
+    writeFile('## Mapper global methods')
+    writeFile('')
+    for i in methods['globalmapper']:
+        writeMethod(i, None)
+    writeFile('')
+
+    # Global properties
+    writeFile('## Global properties')
+    writeFile('')
+    for i in properties['global']:
+        writeProp(i, None)
+    writeFile('')
+
+    # Entities
+    writeFile('## Entities')
+    writeFile('')
+    for entity in ['Item', 'Critter', 'Map', 'Location']:
+        writeFile('### ' + entity + ' properties')
+        writeFile('')
+        for i in properties[entity.lower()]:
+            writeProp(i, entity)
+        writeFile('')
+        writeFile('### ' + entity + ' server methods')
+        writeFile('')
+        for i in methods[entity.lower()]:
+            writeMethod(i, entity)
+        writeFile('')
+        writeFile('### ' + entity + ' client methods')
+        writeFile('')
+        for i in methods[entity.lower() + 'view']:
+            writeMethod(i, entity)
+        writeFile('')
+
+    # Events
+    writeFile('## Events')
+    writeFile('')
+    for ename in ['server', 'client', 'mapper']:
+        writeFile('### ' + ename[0].upper() + ename[1:] + ' events')
+        writeFile('')
+        for e in events[ename]:
+            name, eargs, doc = e
+            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
+            writeDoc(doc)
+        writeFile('')
+
+    # Settings
+    writeFile('## Settings')
+    writeFile('')
+    for i in settings:
+        ret, name, init, doc = i
+        writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
+        writeDoc(doc)
+        writeFile('')
+
+    # Enums
+    writeFile('## Enums')
+    writeFile('')
+    for i in enums:
+        group, entries, doc = i
+        writeFile('### ' + group)
+        writeDoc(doc)
+        writeFile('')
+        for e in entries:
+            name, val, edoc = e
+            writeFile('* ' + name + ' = ' + val)
+            writeDoc(edoc)
+        writeFile('')
+
+    # Content pids
+    writeFile('## Content')
+    writeFile('')
+    def writeEnums(name, lst):
+        writeFile('### ' + name + ' pids')
+        writeFile('')
+        for i in lst:
+            writeFile('* ' +  i)
+        writeFile('')
+    writeEnums('Item', content['foitem'])
+    writeEnums('Critter', content['focr'])
+    writeEnums('Map', content['fomap'])
+    writeEnums('Location', content['foloc'])
 
 # C++ projects
 if args.native:
@@ -213,7 +423,7 @@ if args.angelscript:
     def writeRootModule(target, files):
         def addInclude(file, comment):
             writeFile('namespace ' + os.path.splitext(os.path.basename(file))[0] + ' {')
-            writeFile('#include "' + file + ('" // ' + comment if comment else ''))
+            writeFile('#include "' + file + ('" // ' + comment if comment else '"'))
             writeFile('}')
 
         createFile(target + 'RootModule.fos')
@@ -253,7 +463,7 @@ if args.csharp:
         if tt[0] == 'dict':
             r = 'Dictionary<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
         elif tt[0] == 'callback':
-            r = 'Action'
+            r = 'Action<' + mapType(tt[1]) + '>'
         elif tt[0] == 'predicate':
             r = 'Func<' + mapType(tt[1]) + ', bool>'
         else:
@@ -283,7 +493,7 @@ if args.csharp:
         if doc:
             for comm in doc[1:-1]:
                 writeFile(''.center(ident) + '/// ' + comm[3:])
-    def writeMethods(tok, entity, extCalls):
+    def writeMethod(tok, entity, extCalls):
         writeDoc(8, tok[3])
         writeFile('        public ' + ('static ' if entity is None else '') + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ')')
         writeFile('        {')
@@ -298,7 +508,7 @@ if args.csharp:
         writeFile('')
         extCalls.append('        [MethodImpl(MethodImplOptions.InternalCall)]')
         extCalls.append('        extern static ' + parseType(tok[1]) + ' _' + tok[0] + '(' + parseExtArgs(tok[2], entity) + ');')
-    def writeProps(tok, entity, extCalls):
+    def writeProp(tok, entity, extCalls):
         def isPropGet(target, access):
             return True
         def isPropSet(target, access):
@@ -377,19 +587,19 @@ if args.csharp:
     writeHeader('public static partial class Game')
     extCalls = []
     for i in methods['globalcommon']:
-        writeMethods(i, None, extCalls)
+        writeMethod(i, None, extCalls)
     writeFile('#if SERVER')
     extCalls.append('#if SERVER')
     for i in methods['globalserver']:
-        writeMethods(i, None, extCalls)
+        writeMethod(i, None, extCalls)
     writeFile('#elif CLIENT')
     extCalls.append('#elif CLIENT')
     for i in methods['globalclient']:
-        writeMethods(i, None, extCalls)
+        writeMethod(i, None, extCalls)
     writeFile('#elif MAPPER')
     extCalls.append('#elif MAPPER')
     for i in methods['globalmapper']:
-        writeMethods(i, None, extCalls)
+        writeMethod(i, None, extCalls)
     writeFile('#endif')
     extCalls.append('#endif')
     writeFile('')
@@ -402,7 +612,7 @@ if args.csharp:
     writeHeader('public static partial class Game')
     extCalls = []
     for i in properties['global']:
-        writeProps(i, None, extCalls)
+        writeProp(i, None, extCalls)
     for i in extCalls:
         writeFile(i)
     writeEndHeader()
@@ -413,15 +623,15 @@ if args.csharp:
         writeHeader('public partial class ' + entity + ' : Entity')
         extCalls = []
         for i in properties[entity.lower()]:
-            writeProps(i, entity, extCalls)
+            writeProp(i, entity, extCalls)
         writeFile('#if SERVER')
         extCalls.append('#if SERVER')
         for i in methods[entity.lower()]:
-            writeMethods(i, entity, extCalls)
+            writeMethod(i, entity, extCalls)
         writeFile('#elif CLIENT')
         extCalls.append('#elif CLIENT')
         for i in methods[entity.lower() + 'view']:
-            writeMethods(i, entity, extCalls)
+            writeMethod(i, entity, extCalls)
         writeFile('#endif')
         extCalls.append('#endif')
         for i in extCalls:
@@ -432,16 +642,16 @@ if args.csharp:
     createFile('Events.cs')
     writeHeader('public static partial class Game', ['using System.Linq;'])
     def writeEvent(tok):
-        name, args, doc = tok
+        name, eargs, doc = tok
         writeDoc(8, doc)
         writeFile('        public static event On' + name + 'Delegate On' + name + ';')
-        writeFile('        public delegate void On' + name + 'Delegate(' + parseArgs(args) + ');')
+        writeFile('        public delegate void On' + name + 'Delegate(' + parseArgs(eargs) + ');')
         writeFile('        public static event On' + name + 'RetDelegate On' + name + 'Ret;')
-        writeFile('        public delegate bool On' + name + 'RetDelegate(' + parseArgs(args) + ');')
+        writeFile('        public delegate bool On' + name + 'RetDelegate(' + parseArgs(eargs) + ');')
         writeFile('')
     def writeEventExt(tok):
-        name, args, doc = tok
-        pargs = parseArgs(args)
+        name, eargs, doc = tok
+        pargs = parseArgs(eargs)
         writeFile('        static bool _' + name + '(' + (pargs + ', ' if pargs else '') + 'out Exception[] exs)')
         writeFile('        {')
         writeFile('            exs = null;')
@@ -449,7 +659,7 @@ if args.csharp:
         writeFile('            {')
         writeFile('                try')
         writeFile('                {')
-        writeFile('                    eventDelegate(' + parsePassArgs(args, None, False) + ');')
+        writeFile('                    eventDelegate(' + parsePassArgs(eargs, None, False) + ');')
         writeFile('                }')
         writeFile('                catch (Exception ex)')
         writeFile('                {')
@@ -460,7 +670,7 @@ if args.csharp:
         writeFile('            {')
         writeFile('                try')
         writeFile('                {')
-        writeFile('                    if (eventDelegate(' + parsePassArgs(args, None, False) + '))')
+        writeFile('                    if (eventDelegate(' + parsePassArgs(eargs, None, False) + '))')
         writeFile('                        return true;')
         writeFile('                }')
         writeFile('                catch (Exception ex)')

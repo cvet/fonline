@@ -91,9 +91,9 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_ITEM_METHOD(SetScript, FO_API_RET(bool), FO_API_ARG_CALLBACK(func))
+FO_API_ITEM_METHOD(SetScript, FO_API_RET(bool), FO_API_ARG_CALLBACK(Item, func))
 #ifdef FO_API_ITEM_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func))
+FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(Item, func))
 {
     if (func)
     {
@@ -1610,10 +1610,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(
-    AddTimeEvent, FO_API_RET(void), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration), FO_API_ARG(int, identifier))
+FO_API_CRITTER_METHOD(AddTimeEvent, FO_API_RET(void), FO_API_ARG_CALLBACK(Critter, func), FO_API_ARG(uint, duration),
+    FO_API_ARG(int, identifier))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func) FO_API_ARG_MARSHAL(uint, duration) FO_API_ARG_MARSHAL(int, identifier))
+FO_API_PROLOG(
+    FO_API_ARG_CALLBACK_MARSHAL(Critter, func) FO_API_ARG_MARSHAL(uint, duration) FO_API_ARG_MARSHAL(int, identifier))
 {
     /*hash func_num = _server->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
@@ -1635,11 +1636,11 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 #endif
-FO_API_CRITTER_METHOD(AddTimeEventRate, FO_API_RET(void), FO_API_ARG_CALLBACK(func), FO_API_ARG(uint, duration),
-    FO_API_ARG(int, identifier), FO_API_ARG(uint, rate))
+FO_API_CRITTER_METHOD(AddTimeEventRate, FO_API_RET(void), FO_API_ARG_CALLBACK(Critter, func),
+    FO_API_ARG(uint, duration), FO_API_ARG(int, identifier), FO_API_ARG(uint, rate))
 #ifdef FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(func) FO_API_ARG_MARSHAL(uint, duration) FO_API_ARG_MARSHAL(int, identifier)
-        FO_API_ARG_MARSHAL(uint, rate))
+FO_API_PROLOG(FO_API_ARG_CALLBACK_MARSHAL(Critter, func) FO_API_ARG_MARSHAL(uint, duration)
+        FO_API_ARG_MARSHAL(int, identifier) FO_API_ARG_MARSHAL(uint, rate))
 {
     /*hash func_num = _server->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
@@ -4538,10 +4539,10 @@ FO_API_EPILOG(0)
  ******************************************************************************/
 #endif
 FO_API_GLOBAL_SERVER_FUNC(AddTextListener, FO_API_RET(void), FO_API_ARG(int, sayType), FO_API_ARG(string, firstStr),
-    FO_API_ARG(uint, parameter), FO_API_ARG_CALLBACK(func))
+    FO_API_ARG(uint, parameter), FO_API_ARG_CALLBACK(Entity, func))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstStr) FO_API_ARG_MARSHAL(uint, parameter)
-        FO_API_ARG_CALLBACK_MARSHAL(func))
+        FO_API_ARG_CALLBACK_MARSHAL(Entity, func))
 {
     /*if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
         throw ScriptException("First string arg length greater than maximum");
