@@ -586,7 +586,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_DICT_MARSHAL(int, int, pr
     }
     FO_API_RETURN(item);
 #endif
-    FO_API_RETURN(nullptr);
+    FO_API_RETURN((Entity*)nullptr);
 }
 FO_API_EPILOG(0)
 #endif

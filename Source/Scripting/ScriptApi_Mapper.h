@@ -1540,7 +1540,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_M
         throw ScriptException("Map not loaded");
 
     if (!ignoreInterface && _mapper->IsCurInInterface())
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((Entity*)nullptr);
 
     ItemHexView* item;
     CritterView* cr;

@@ -367,9 +367,190 @@ if args.markdown:
 
 # C++ projects
 if args.native:
-    # Todo:
-    # createFile('FOnline.h')
-    pass
+    createFile('FOnline.h')
+    writeFile('// FOnline scripting native API')
+    writeFile('')
+    writeFile('#include <cstdint>')
+    writeFile('#include <vector>')
+    writeFile('#include <map>')
+    writeFile('#include <function>')
+    writeFile('')
+    writeFile('using hash = uint32_t;')
+    writeFile('using uint = uint32_t;')
+    writeFile('')
+
+    # Generate source
+    def parseType(t):
+        def mapType(t):
+            typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t',
+                    'int64': 'int64_t', 'uint64': 'uint64_t', 'ItemView': 'ScriptItem*',
+                    'CritterView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
+                    'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*'}
+            return typeMap[t] if t in typeMap else t
+        tt = t.split('.')
+        if tt[0] == 'dict':
+            r = 'std::map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
+        elif tt[0] == 'callback':
+            r = 'std::function<void(' + mapType(tt[1]) + ')>'
+        elif tt[0] == 'predicate':
+            r = 'std::function<bool(' + mapType(tt[1]) + ')>'
+        else:
+            r = mapType(tt[0])
+        if 'arr' in tt:
+            r = 'std::vector<' + r + '>'
+        if 'ref' in tt:
+            r += '&'
+        return r
+    def parseArgs(args):
+        return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
+    def writeDoc(ident, doc):
+        if doc:
+            for d in doc:
+                writeFile(''.center(ident) + d)
+    def writeMethod(tok, entity):
+        writeDoc(4, tok[3])
+        writeFile('    ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ');')
+        writeFile('')
+    def writeProp(tok, entity):
+        def isPropGet(target, access):
+            return True
+        def isPropSet(target, access):
+            return True
+        def evalUsage(srv, cl, mapp):
+            if not srv and not cl and not mapp:
+                return None
+            if srv and cl and mapp:
+                return ''
+            if srv and cl:
+                return '#if defined(SERVER) || defined(CLIENT)'
+            if srv and mapp:
+                return '#if defined(SERVER) || defined(MAPPER)'
+            if cl and mapp:
+                return '#if defined(CLIENT) || defined(MAPPER)'
+            assert False
+        rw, name, access, ret, mods, comms = tok
+        isServerGet, isServerSet = isPropGet('Server', access), (rw == 'rw' and isPropSet('Server', access))
+        isClientGet, isClientSet = isPropGet('Client', access), (rw == 'rw' and isPropSet('Client', access))
+        isMapperGet, isMapperSet = isPropGet('Mapper', access), (rw == 'rw' and isPropSet('Mapper', access))
+        getUsage = evalUsage(isServerGet, isClientGet, isMapperGet)
+        setUsage = evalUsage(isServerSet, isClientSet, isMapperSet)
+        if getUsage is not None:
+            if getUsage:
+                writeFile(getUsage)
+            writeDoc(4, comms)
+            writeFile('    ' + parseType(ret) + ' Get' + name + '();')
+            if getUsage:
+                writeFile('#endif')
+            writeFile('')
+        if setUsage is not None:
+            if setUsage:
+                writeFile(setUsage)
+            writeDoc(4, comms)
+            writeFile('    void Set' + name + '(' + parseType(ret) + ' value);')
+            if setUsage:
+                writeFile('#endif')
+            writeFile('')
+
+    # Global
+    writeFile('class ScriptGame')
+    writeFile('{')
+    writeFile('public:')
+    for i in properties['global']:
+        writeProp(i, None)
+    for i in methods['globalcommon']:
+        writeMethod(i, None)
+    writeFile('#if defined(SERVER)')
+    for i in methods['globalserver']:
+        writeMethod(i, None)
+    writeFile('#elif defined(CLIENT)')
+    for i in methods['globalclient']:
+        writeMethod(i, None)
+    writeFile('#elif defined(MAPPER)')
+    for i in methods['globalmapper']:
+        writeMethod(i, None)
+    writeFile('#endif')
+    writeFile('')
+    writeFile('private:')
+    writeFile('    void* _mainObjPtr;')
+    writeFile('};')
+    writeFile('')
+
+    # Entities
+    writeFile('class ScriptEntity')
+    writeFile('{')
+    writeFile('protected:')
+    writeFile('    void* _mainObjPtr;')
+    writeFile('    void* _thisPtr;')
+    writeFile('};')
+    writeFile('')
+
+    for entity in ['Item', 'Critter', 'Map', 'Location']:
+        writeFile('class Script' + entity + ' : public ScriptEntity')
+        writeFile('{')
+        writeFile('public:')
+        for i in properties[entity.lower()]:
+            writeProp(i, entity)
+        writeFile('')
+        writeFile('#if defined(SERVER)')
+        for i in methods[entity.lower()]:
+            writeMethod(i, entity)
+        writeFile('#elif defined(CLIENT)')
+        for i in methods[entity.lower() + 'view']:
+            writeMethod(i, entity)
+        writeFile('#endif')
+        writeFile('};')
+        writeFile('')
+
+    # Events
+    """
+    writeFile('## Events')
+    writeFile('')
+    for ename in ['server', 'client', 'mapper']:
+        writeFile('### ' + ename[0].upper() + ename[1:] + ' events')
+        writeFile('')
+        for e in events[ename]:
+            name, eargs, doc = e
+            writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
+            writeDoc(doc)
+        writeFile('')
+
+    # Settings
+    writeFile('## Settings')
+    writeFile('')
+    for i in settings:
+        ret, name, init, doc = i
+        writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
+        writeDoc(doc)
+        writeFile('')
+
+    # Enums
+    writeFile('## Enums')
+    writeFile('')
+    for i in enums:
+        group, entries, doc = i
+        writeFile('### ' + group)
+        writeDoc(doc)
+        writeFile('')
+        for e in entries:
+            name, val, edoc = e
+            writeFile('* ' + name + ' = ' + val)
+            writeDoc(edoc)
+        writeFile('')
+
+    # Content pids
+    writeFile('## Content')
+    writeFile('')
+    def writeEnums(name, lst):
+        writeFile('### ' + name + ' pids')
+        writeFile('')
+        for i in lst:
+            writeFile('* ' +  i)
+        writeFile('')
+    writeEnums('Item', content['foitem'])
+    writeEnums('Critter', content['focr'])
+    writeEnums('Map', content['fomap'])
+    writeEnums('Location', content['foloc'])
+    """
 
 # AngelScript root file
 if args.angelscript:

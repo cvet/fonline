@@ -1102,6 +1102,15 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
     if (!script_file.Read(script_data.data(), script_file.GetSize()))
         throw ScriptCompilerException("Can't read root script file", script_path);
 
+    Preprocessor::UndefAll();
+#if defined(FO_SERVER_SCRIPTING)
+    Preprocessor::Define("SERVER");
+#elif defined(FO_CLIENT_SCRIPTING)
+    Preprocessor::Define("CLIENT");
+#elif defined(FO_MAPPER_SCRIPTING)
+    Preprocessor::Define("MAPPER");
+#endif
+
     ScriptLoader loader {script_data};
     Preprocessor::StringOutStream result, errors;
     int errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);

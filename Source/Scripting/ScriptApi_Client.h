@@ -322,7 +322,7 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
     for (ItemView* item : inv_items)
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed)
             FO_API_RETURN(item);
-    FO_API_RETURN(nullptr);
+    FO_API_RETURN((ItemView*)nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -354,7 +354,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 {
     ProtoItem* proto_item = _client->ProtoMngr.GetProtoItem(protoId);
     if (!proto_item)
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((ItemView*)nullptr);
 
     if (proto_item->GetStackable())
     {
@@ -380,7 +380,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
         }
         FO_API_RETURN(another_slot);
     }
-    FO_API_RETURN(nullptr);
+    FO_API_RETURN((ItemView*)nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1098,7 +1098,7 @@ FO_API_GLOBAL_CLIENT_FUNC(GetChosen, FO_API_RET_OBJ(CritterView))
 FO_API_PROLOG()
 {
     if (_client->Chosen && _client->Chosen->IsDestroyed)
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((CritterView*)nullptr);
     FO_API_RETURN(_client->Chosen);
 }
 FO_API_EPILOG(0)
@@ -1134,7 +1134,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
     }
 
     if (!item || item->IsDestroyed)
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((ItemView*)nullptr);
     FO_API_RETURN(item);
 }
 FO_API_EPILOG(0)
@@ -1222,10 +1222,10 @@ FO_API_GLOBAL_CLIENT_FUNC(GetCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(ui
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, critterId))
 {
     if (!critterId)
-        FO_API_RETURN(nullptr); // throw ScriptException("Critter id arg is zero");
+        FO_API_RETURN((CritterView*)nullptr); // throw ScriptException("Critter id arg is zero");
     CritterView* cr = _client->GetCritter(critterId);
     if (!cr || cr->IsDestroyed)
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((CritterView*)nullptr);
     FO_API_RETURN(cr);
 }
 FO_API_EPILOG(0)

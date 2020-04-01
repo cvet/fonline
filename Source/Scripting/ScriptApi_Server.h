@@ -125,7 +125,7 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
         {
             hx = cr->GetWorldX();
             hy = cr->GetWorldY();
-            FO_API_RETURN(nullptr);
+            FO_API_RETURN((Map*)nullptr);
         }
         map = _server->MapMngr.GetMap(cr->GetMapId());
         if (!map)
@@ -976,7 +976,7 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(Item, predicate))
     for (Item* item : inv_items)
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed)
             FO_API_RETURN(item);
-    FO_API_RETURN(nullptr);
+    FO_API_RETURN((Item*)nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -2010,7 +2010,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         props_ = proto->Props;
         for (auto& kv : props)
             if (!Properties::SetValueAsIntProps(&props_, kv.first, kv.second))
-                FO_API_RETURN(nullptr);
+                FO_API_RETURN((Item*)nullptr);
         FO_API_RETURN(_server->CreateItemOnHex(_this, hx, hy, protoId, count, &props_, true));
     }
     FO_API_RETURN(_server->CreateItemOnHex(_this, hx, hy, protoId, count, nullptr, true));
@@ -2757,7 +2757,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId) FO_API_ARG_MARSHAL(ushort, hx) F
         props_ = proto->Props;
         for (auto& kv : props)
             if (!Properties::SetValueAsIntProps(&props_, kv.first, kv.second))
-                FO_API_RETURN(nullptr);
+                FO_API_RETURN((Critter*)nullptr);
 
         npc = _server->CrMngr.CreateNpc(protoId, &props_, _this, hx, hy, dir, false);
     }
@@ -3196,7 +3196,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, mapPid))
     for (Map* map : _this->GetMaps())
         if (map->GetProtoId() == mapPid)
             FO_API_RETURN(map);
-    FO_API_RETURN(nullptr);
+    FO_API_RETURN((Map*)nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -3345,7 +3345,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 
     Item* item = _server->ItemMngr.GetItem(itemId);
     if (!item || item->IsDestroyed)
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((Item*)nullptr);
     FO_API_RETURN(item);
 }
 FO_API_EPILOG(0)
@@ -3856,7 +3856,7 @@ FO_API_GLOBAL_SERVER_FUNC(GetCritter, FO_API_RET_OBJ(Critter), FO_API_ARG(uint, 
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, crid))
 {
     if (!crid)
-        FO_API_RETURN(nullptr); // throw ScriptException("Critter id arg is zero");
+        FO_API_RETURN((Critter*)nullptr); // throw ScriptException("Critter id arg is zero");
     FO_API_RETURN(_server->CrMngr.GetCritter(crid));
 }
 FO_API_EPILOG(0)
@@ -3876,7 +3876,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
     uint id = MAKE_CLIENT_ID(name);
     DataBase::Document doc = DbStorage->Get("Players", id);
     if (doc.empty())
-        FO_API_RETURN(nullptr);
+        FO_API_RETURN((Critter*)nullptr);
 
     // Find online
     Client* cl = _server->CrMngr.GetPlayer(id);
