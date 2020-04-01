@@ -31,32 +31,24 @@
 // SOFTWARE.
 //
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(MessageBoxTextType)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(MouseButton)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(KeyCode)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(CornerType)
 FO_API_ENUM_ENTRY(CornerType, NorthSouth, 0)
 FO_API_ENUM_ENTRY(CornerType, West, 1)
@@ -65,11 +57,9 @@ FO_API_ENUM_ENTRY(CornerType, South, 3)
 FO_API_ENUM_ENTRY(CornerType, North, 4)
 FO_API_ENUM_ENTRY(CornerType, EastWest, 5)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(MovingState)
 FO_API_ENUM_ENTRY(MovingState, InProgress, 0)
 FO_API_ENUM_ENTRY(MovingState, Success, 1)
@@ -84,40 +74,32 @@ FO_API_ENUM_ENTRY(MovingState, HexBusyRing, 9)
 FO_API_ENUM_ENTRY(MovingState, Deadlock, 10)
 FO_API_ENUM_ENTRY(MovingState, TraceFail, 11)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(CritterCondition)
 FO_API_ENUM_ENTRY(CritterCondition, Unknown, 0)
 FO_API_ENUM_ENTRY(CritterCondition, Alive, 1)
 FO_API_ENUM_ENTRY(CritterCondition, Knockout, 2)
 FO_API_ENUM_ENTRY(CritterCondition, Dead, 3)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(ItemOwnership)
 FO_API_ENUM_ENTRY(ItemOwnership, Nowhere, 0)
 FO_API_ENUM_ENTRY(ItemOwnership, CritterInventory, 1)
 FO_API_ENUM_ENTRY(ItemOwnership, MapHex, 2)
 FO_API_ENUM_ENTRY(ItemOwnership, ItemContainer, 3)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(Anim1)
 FO_API_ENUM_ENTRY(Anim1, None, 0)
 
-#ifdef FO_API_ENUM_GROUP_DOC
 /*******************************************************************************
  * ...
  ******************************************************************************/
-#endif
 FO_API_ENUM_GROUP(CursorType)
 FO_API_ENUM_ENTRY(CursorType, Default, 0)

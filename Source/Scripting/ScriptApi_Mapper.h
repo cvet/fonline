@@ -34,7 +34,6 @@
 #ifdef FO_API_MAPPER_IMPL
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -43,7 +42,6 @@
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     AddItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -60,7 +58,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(ushort, hx) FO_AP
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -69,7 +66,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     AddCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -86,7 +82,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(ushort, hx) FO_AP
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -94,7 +89,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetItemByHex, FO_API_RET_OBJ(ItemView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
@@ -104,7 +98,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -112,7 +105,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetItemsByHex, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
@@ -124,7 +116,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -133,7 +124,6 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetCritterByHex, FO_API_RET_OBJ(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -146,7 +136,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -155,7 +144,6 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetCrittersByHex, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx),
     FO_API_ARG(ushort, hy), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -168,7 +156,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -176,7 +163,6 @@ FO_API_EPILOG(0)
  * @param hx ...
  * @param hy ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     MoveEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity, entity), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -191,13 +177,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity) FO_API_ARG_MARSHAL(ushort, 
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param entity ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DeleteEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity, entity))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity))
@@ -207,13 +191,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param entities ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DeleteEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Entity, entities))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities))
@@ -225,14 +207,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param entity ...
  * @param set ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(SelectEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity, entity), FO_API_ARG(bool, set))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity) FO_API_ARG_MARSHAL(bool, set))
@@ -248,14 +228,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity) FO_API_ARG_MARSHAL(bool, se
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param entities ...
  * @param set ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(SelectEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(Entity, entities), FO_API_ARG(bool, set))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities) FO_API_ARG_MARSHAL(bool, set))
@@ -274,13 +252,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities) FO_API_ARG_MARSHAL(bo
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSelectedEntity, FO_API_RET_OBJ(Entity))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG()
@@ -290,13 +266,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSelectedEntities, FO_API_RET_OBJ_ARR(Entity))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG()
@@ -310,7 +284,6 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -319,7 +292,6 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     GetTilesCount, FO_API_RET(uint), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -338,7 +310,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -347,7 +318,6 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param layer ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DeleteTile, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -396,7 +366,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -406,7 +375,6 @@ FO_API_EPILOG()
  * @param layer ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetTileHash, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -431,7 +399,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -443,7 +410,6 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param picHash ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(AddTileHash, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof), FO_API_ARG(hash, picHash))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -468,7 +434,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -478,7 +443,6 @@ FO_API_EPILOG()
  * @param layer ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetTileName, FO_API_RET(string), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -503,7 +467,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -515,7 +478,6 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param picName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(AddTileName, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof),
     FO_API_ARG(string, picName))
@@ -542,14 +504,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param index ...
  * @param enableSend ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(AllowSlot, FO_API_RET(void), FO_API_ARG(uchar, index), FO_API_ARG(bool, enableSend))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSend))
@@ -559,14 +519,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSe
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param fileName ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(LoadMap, FO_API_RET_OBJ(MapView), FO_API_ARG(string, fileName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fileName))
@@ -584,13 +542,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fileName))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param map ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(UnloadMap, FO_API_RET(void), FO_API_ARG_OBJ(MapView, map))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
@@ -615,7 +571,6 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -623,7 +578,6 @@ FO_API_EPILOG()
  * @param customName ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(SaveMap, FO_API_RET(bool), FO_API_ARG_OBJ(MapView, map), FO_API_ARG(string, customName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map) FO_API_ARG_MARSHAL(string, customName))
@@ -639,14 +593,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map) FO_API_ARG_MARSHAL(string, cu
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param map ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(ShowMap, FO_API_RET(bool), FO_API_ARG_OBJ(MapView, map))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
@@ -667,14 +619,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param index ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetLoadedMaps, FO_API_RET_OBJ_ARR(MapView), FO_API_ARG_REF(int, index))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(int, index))
@@ -691,14 +641,12 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(int, index))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param dir ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMapFileNames, FO_API_RET_ARR(string), FO_API_ARG(string, dir))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, dir))
@@ -716,14 +664,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, dir))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param width ...
  * @param height ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(ResizeMap, FO_API_RET(void), FO_API_ARG(ushort, width), FO_API_ARG(ushort, height))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, width) FO_API_ARG_MARSHAL(ushort, height))
@@ -797,7 +743,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, width) FO_API_ARG_MARSHAL(ushort, heigh
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -806,7 +751,6 @@ FO_API_EPILOG()
  * @param includeSubdirs ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabGetTileDirs, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG_ARR_REF(string, dirNames),
     FO_API_ARG_ARR_REF(bool, includeSubdirs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -834,7 +778,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_ARR_REF_MARSHAL(string, di
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -843,7 +786,6 @@ FO_API_EPILOG(0)
  * @param itemPids ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabGetItemPids, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
     FO_API_ARG_ARR_REF(hash, itemPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -863,7 +805,6 @@ FO_API_PROLOG(
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -872,7 +813,6 @@ FO_API_EPILOG(0)
  * @param critterPids ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabGetCritterPids, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
     FO_API_ARG_ARR_REF(hash, critterPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -892,7 +832,6 @@ FO_API_PROLOG(
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -900,7 +839,6 @@ FO_API_EPILOG(0)
  * @param dirNames ...
  * @param includeSubdirs ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabSetTileDirs, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG_ARR(string, dirNames),
     FO_API_ARG_ARR(bool, includeSubdirs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -934,7 +872,6 @@ FO_API_PROLOG(
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -942,7 +879,6 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param itemPids ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     TabSetItemPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG_ARR(hash, itemPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1003,7 +939,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1011,7 +946,6 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param critterPids ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabSetCritterPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
     FO_API_ARG_ARR(hash, critterPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1072,13 +1006,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param tab ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabDelete, FO_API_RET(void), FO_API_ARG(int, tab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
@@ -1093,7 +1025,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1101,7 +1032,6 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param show ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     TabSelect, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG(bool, show))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1123,14 +1053,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param tab ...
  * @param tabName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(TabSetName, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, tabName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, tabName))
@@ -1143,7 +1071,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, tabName))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1152,7 +1079,6 @@ FO_API_EPILOG()
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1172,7 +1098,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1181,7 +1106,6 @@ FO_API_EPILOG()
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy),
     FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1196,7 +1120,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1205,7 +1128,6 @@ FO_API_EPILOG()
  * @param dir ...
  * @param steps ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy),
     FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1238,14 +1160,12 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param key ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetIfaceIniStr, FO_API_RET(string), FO_API_ARG(string, key))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, key))
@@ -1255,13 +1175,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, key))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param msg ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(Message, FO_API_RET(void), FO_API_ARG(string, msg))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
@@ -1271,14 +1189,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param textMsg ...
  * @param strNum ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MessageMsg, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1290,7 +1206,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1303,7 +1218,6 @@ FO_API_EPILOG()
  * @param ox ...
  * @param oy ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx),
     FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox),
     FO_API_ARG(int, oy))
@@ -1330,7 +1244,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1338,7 +1251,6 @@ FO_API_EPILOG()
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMsgStr, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1351,7 +1263,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1360,7 +1271,6 @@ FO_API_EPILOG(0)
  * @param skipCount ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1374,7 +1284,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) 
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1382,7 +1291,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrNumUpper, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1395,7 +1303,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1403,7 +1310,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrNumLower, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1416,7 +1322,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1424,7 +1329,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrCount, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1437,7 +1341,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1445,7 +1348,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(IsMsgStr, FO_API_RET(bool), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1458,7 +1360,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1467,7 +1368,6 @@ FO_API_EPILOG(0)
  * @param str ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1481,7 +1381,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replac
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1490,7 +1389,6 @@ FO_API_EPILOG(0)
  * @param i ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1504,7 +1402,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replac
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1515,7 +1412,6 @@ FO_API_EPILOG(0)
  * @param angle ...
  * @param dist ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1531,7 +1427,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1542,7 +1437,6 @@ FO_API_EPILOG()
  * @param cut ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1564,7 +1458,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1574,7 +1467,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1596,7 +1488,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1607,7 +1498,6 @@ FO_API_EPILOG(0)
  * @param ignoreInterface ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y),
     FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(bool, ignoreInterface))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1633,7 +1523,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_R
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1642,7 +1531,6 @@ FO_API_EPILOG(0)
  * @param ignoreInterface ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     GetMonitorObject, FO_API_RET_OBJ(Entity), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(bool, ignoreInterface))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1668,13 +1556,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_M
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param datName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(AddDataSource, FO_API_RET(void), FO_API_ARG(string, datName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
@@ -1687,7 +1573,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1695,7 +1580,6 @@ FO_API_EPILOG()
  * @param fontFname ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(LoadFont, FO_API_RET(bool), FO_API_ARG(int, fontIndex), FO_API_ARG(string, fontFname))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, fontFname))
@@ -1712,14 +1596,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, font
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param font ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(SetDefaultFont, FO_API_RET(void), FO_API_ARG(int, font), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(uint, color))
@@ -1751,7 +1633,6 @@ FO_API_EPILOG()
     return -1;
 }*/
 #endif
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1759,7 +1640,6 @@ FO_API_EPILOG()
  * @param y ...
  * @param button ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(MouseClick, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, button))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, button))
@@ -1787,7 +1667,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_M
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1796,7 +1675,6 @@ FO_API_EPILOG()
  * @param key1Text ...
  * @param key2Text ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2),
     FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1821,14 +1699,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param fallAnimName ...
  * @param dropAnimName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -1840,13 +1716,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param targetZoom ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(ChangeZoom, FO_API_RET(void), FO_API_ARG(float, targetZoom))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
@@ -1882,14 +1756,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprName ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(LoadSprite, FO_API_RET(uint), FO_API_ARG(string, sprName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
@@ -1899,14 +1771,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param nameHash ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(LoadSpriteHash, FO_API_RET(uint), FO_API_ARG(uint, nameHash))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, nameHash))
@@ -1916,7 +1786,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, nameHash))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1924,7 +1793,6 @@ FO_API_EPILOG(0)
  * @param sprIndex ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSpriteWidth, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, sprIndex))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
@@ -1940,7 +1808,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1948,7 +1815,6 @@ FO_API_EPILOG(0)
  * @param sprIndex ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSpriteHeight, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, sprIndex))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
@@ -1964,14 +1830,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSpriteCount, FO_API_RET(uint), FO_API_ARG(uint, sprId))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
@@ -1982,14 +1846,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetSpriteTicks, FO_API_RET(uint), FO_API_ARG(uint, sprId))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
@@ -2000,7 +1862,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2010,7 +1871,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -2030,7 +1890,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2043,7 +1902,6 @@ FO_API_EPILOG(0)
  * @param th ...
  * @param lines ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w),
     FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th),
     FO_API_ARG_REF(int, lines))
@@ -2057,7 +1915,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2068,7 +1925,6 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -2094,7 +1950,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2108,7 +1963,6 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom),
     FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
@@ -2136,7 +1990,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2150,7 +2003,6 @@ FO_API_EPILOG()
  * @param sprHeight ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth),
     FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
@@ -2170,7 +2022,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2183,7 +2034,6 @@ FO_API_EPILOG()
  * @param font ...
  * @param flags ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y),
     FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -2204,14 +2054,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param primitiveType ...
  * @param data ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primitiveType), FO_API_ARG_ARR(int, data))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
@@ -2263,13 +2111,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param mapSpr ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawMapSprite, FO_API_RET(void), FO_API_ARG_OBJ(MapSprite, mapSpr))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
@@ -2364,7 +2210,6 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2380,7 +2225,6 @@ FO_API_EPILOG()
  * @param center ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1),
     FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r),
     FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
@@ -2403,7 +2247,6 @@ static UIntVec DrawCritter3dCrType;
 static BoolVec DrawCritter3dFailToLoad;
 static int DrawCritter3dLayers[LAYERS3D_COUNT];
 #endif
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2415,7 +2258,6 @@ static int DrawCritter3dLayers[LAYERS3D_COUNT];
  * @param position ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName),
     FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position),
     FO_API_ARG(uint, color))
@@ -2494,7 +2336,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2503,7 +2344,6 @@ FO_API_EPILOG()
  * @param w ...
  * @param h ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(
     PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
@@ -2515,12 +2355,10 @@ FO_API_PROLOG(
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_MAPPER_FUNC(PopDrawScissor, FO_API_RET(void))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG()

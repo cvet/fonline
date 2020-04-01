@@ -77,13 +77,11 @@ public:
 };
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param condition ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(Assert, FO_API_RET(void), FO_API_ARG(bool, condition))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, condition))
@@ -94,13 +92,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, condition))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param message ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(ThrowException, FO_API_RET(void), FO_API_ARG(string, message))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, message))
@@ -110,7 +106,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, message))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -118,7 +113,6 @@ FO_API_EPILOG()
  * @param max ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(Random, FO_API_RET(int), FO_API_ARG(int, minValue), FO_API_ARG(int, maxValue))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, minValue) FO_API_ARG_MARSHAL(int, maxValue))
@@ -128,13 +122,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, minValue) FO_API_ARG_MARSHAL(int, maxValue
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param text ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(Log, FO_API_RET(void), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
@@ -144,7 +136,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -152,7 +143,6 @@ FO_API_EPILOG()
  * @param result ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(StrToInt, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(int, result))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(int, result))
@@ -165,7 +155,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(int, resul
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -173,7 +162,6 @@ FO_API_EPILOG(0)
  * @param result ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(StrToFloat, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(float, result))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(float, result))
@@ -186,7 +174,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(float, res
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -196,7 +183,6 @@ FO_API_EPILOG(0)
  * @param hy2 ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetDistantion, FO_API_RET(uint), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1),
     FO_API_ARG(ushort, hx2), FO_API_ARG(ushort, hy2))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
@@ -208,7 +194,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -218,7 +203,6 @@ FO_API_EPILOG(0)
  * @param toHy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetDirection, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
@@ -230,7 +214,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -241,7 +224,6 @@ FO_API_EPILOG(0)
  * @param offset ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetOffsetDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
@@ -253,13 +235,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetTick, FO_API_RET(uint))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG()
@@ -269,14 +249,12 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param str ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetStrHash, FO_API_RET(hash), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
@@ -288,14 +266,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param h ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetHashStr, FO_API_RET(string), FO_API_ARG(hash, h))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, h))
@@ -305,7 +281,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, h))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -313,7 +288,6 @@ FO_API_EPILOG(0)
  * @param length ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(DecodeUTF8, FO_API_RET(uint), FO_API_ARG(string, text), FO_API_ARG_REF(uint, length))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(uint, length))
@@ -323,14 +297,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(uint, leng
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param ucs ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(EncodeUTF8, FO_API_RET(string), FO_API_ARG(uint, ucs))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ucs))
@@ -342,13 +314,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ucs))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param time ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(Yield0, FO_API_RET(void), FO_API_ARG(uint, time))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
@@ -359,14 +329,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param text ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(SHA1, FO_API_RET(string), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
@@ -386,14 +354,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param text ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(SHA2, FO_API_RET(string), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
@@ -532,14 +498,12 @@ static int SystemCall(string command, std::function<void(const string&)> log_cal
 #endif
 }
 #endif
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param command ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(SystemCall, FO_API_RET(int), FO_API_ARG(string, command))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
@@ -550,7 +514,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -558,7 +521,6 @@ FO_API_EPILOG(0)
  * @param output ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(SystemCallExt, FO_API_RET(int), FO_API_ARG(string, command), FO_API_ARG_REF(string, output))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string, output))
@@ -573,13 +535,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string,
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param link ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(OpenLink, FO_API_RET(void), FO_API_ARG(string, link))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, link))
@@ -596,7 +556,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, link))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -604,7 +563,6 @@ FO_API_EPILOG()
  * @param props ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetProtoItem, FO_API_RET_OBJ(Entity), FO_API_ARG(hash, pid), FO_API_ARG_DICT(int, int, props))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_DICT_MARSHAL(int, int, props))
@@ -633,13 +591,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_DICT_MARSHAL(int, int, pr
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_COMMON_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_COMMON_FUNC(GetUnixTime, FO_API_RET(uint))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG()

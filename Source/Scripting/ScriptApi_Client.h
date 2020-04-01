@@ -35,13 +35,11 @@
 #include "NetCommand.h"
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsChosen, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -51,13 +49,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsPlayer, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -67,13 +63,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsNpc, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -83,13 +77,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsOffline, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -99,13 +91,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsLife, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -115,13 +105,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsKnockout, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -131,13 +119,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsDead, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -147,13 +133,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsFree, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -163,13 +147,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsBusy, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -179,13 +161,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsAnim3d, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -195,7 +175,6 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -203,7 +182,6 @@ FO_API_EPILOG(0)
  * @param anim2 ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsAnimAviable, FO_API_RET(bool), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
@@ -213,13 +191,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(IsAnimPlaying, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -229,13 +205,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetAnim1, FO_API_RET(uint))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -245,14 +219,12 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param anim1 ...
  * @param anim2 ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
@@ -262,7 +234,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -270,7 +241,6 @@ FO_API_EPILOG()
  * @param anim2 ...
  * @param item ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(
     AnimateEx, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_OBJ(ItemView, item))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
@@ -281,12 +251,10 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(ClearAnim, FO_API_RET(void))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -296,13 +264,11 @@ FO_API_PROLOG()
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param ms ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(Wait, FO_API_RET(void), FO_API_ARG(uint, ms))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ms))
@@ -312,14 +278,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ms))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param protoId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(CountItem, FO_API_RET(uint), FO_API_ARG(hash, protoId))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
@@ -329,14 +293,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param itemId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(uint, itemId))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
@@ -346,14 +308,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param predicate ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItemPredicate, FO_API_RET_OBJ(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
@@ -367,14 +327,12 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param slot ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItemBySlot, FO_API_RET_OBJ(ItemView), FO_API_ARG(int, slot))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
@@ -384,14 +342,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param protoId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItemByPid, FO_API_RET_OBJ(ItemView), FO_API_ARG(hash, protoId))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
@@ -429,13 +385,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItems, FO_API_RET_OBJ_ARR(ItemView))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -445,14 +399,12 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param slot ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItemsBySlot, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(int, slot))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
@@ -464,14 +416,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param predicate ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetItemsPredicate, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
@@ -487,13 +437,11 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param visible ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(SetVisible, FO_API_RET(void), FO_API_ARG(bool, visible))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, visible))
@@ -504,13 +452,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, visible))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetVisible, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -520,13 +466,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param value ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(set_ContourColor, FO_API_RET(void), FO_API_ARG(uint, value))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, value))
@@ -539,13 +483,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, value))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(get_ContourColor, FO_API_RET(uint))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
@@ -555,7 +497,6 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -566,7 +507,6 @@ FO_API_EPILOG(0)
  * @param h ...
  * @param lines ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetNameTextInfo, FO_API_RET(void), FO_API_ARG_REF(bool, nameVisible), FO_API_ARG_REF(int, x),
     FO_API_ARG_REF(int, y), FO_API_ARG_REF(int, w), FO_API_ARG_REF(int, h), FO_API_ARG_REF(int, lines))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
@@ -578,7 +518,6 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(bool, nameVisible) FO_API_ARG_REF_MARSHAL(i
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -587,7 +526,6 @@ FO_API_EPILOG()
  * @param normalizedTime ...
  * @param animationCallback ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(AddAnimationCallback, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2),
     FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(CritterView, animationCallback))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
@@ -607,7 +545,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_CRITTER_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -616,7 +553,6 @@ FO_API_EPILOG()
  * @param boneY ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_CRITTER_VIEW_METHOD(GetBonePosition, FO_API_RET(bool), FO_API_ARG(hash, boneName), FO_API_ARG_REF(int, boneX),
     FO_API_ARG_REF(int, boneY))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
@@ -635,14 +571,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName) FO_API_ARG_REF_MARSHAL(int, bon
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ITEM_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param count ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_ITEM_VIEW_METHOD(Clone, FO_API_RET_OBJ(ItemView), FO_API_ARG(uint, count))
 #ifdef FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, count))
@@ -655,7 +589,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, count))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ITEM_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
@@ -663,7 +596,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_ITEM_VIEW_METHOD(GetMapPosition, FO_API_RET(bool), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
 #ifdef FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy))
@@ -704,14 +636,12 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ITEM_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param fromFrame ...
  * @param toFrame ...
  ******************************************************************************/
-#endif
 FO_API_ITEM_VIEW_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, fromFrame), FO_API_ARG(uint, toFrame))
 #ifdef FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromFrame) FO_API_ARG_MARSHAL(uint, toFrame))
@@ -725,14 +655,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromFrame) FO_API_ARG_MARSHAL(uint, toFra
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_ITEM_VIEW_METHOD_DOC
 /*******************************************************************************
  * ...
  *
  * @param stackId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_ITEM_VIEW_METHOD(GetItems, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(uint, stackId))
 #ifdef FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
@@ -745,7 +673,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -753,7 +680,6 @@ FO_API_EPILOG(0)
  * @param separator ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(CustomCall, FO_API_RET(string), FO_API_ARG(string, command), FO_API_ARG(string, separator))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, separator))
@@ -1162,13 +1088,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetChosen, FO_API_RET_OBJ(CritterView))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -1180,14 +1104,12 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param itemId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(uint, itemId))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
@@ -1218,13 +1140,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMapAllItems, FO_API_RET_OBJ_ARR(ItemView))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -1243,7 +1163,6 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1251,7 +1170,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMapHexItems, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
@@ -1268,7 +1186,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1276,7 +1193,6 @@ FO_API_EPILOG(0)
  * @param cr2 ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     GetCrittersDistantion, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr1), FO_API_ARG_OBJ(CritterView, cr2))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1295,14 +1211,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr1) FO_API_ARG_OBJ_MARSHAL(Cr
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param critterId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(uint, critterId))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, critterId))
@@ -1317,7 +1231,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, critterId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1327,7 +1240,6 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCritters, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1356,7 +1268,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1364,7 +1275,6 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     GetCrittersByPids, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1395,7 +1305,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(int, findType))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1408,7 +1317,6 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPath, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx),
     FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
     FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
@@ -1425,7 +1333,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1442,7 +1349,6 @@ FO_API_EPILOG(0)
  * @param blockHy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPathBlock, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx),
     FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle),
     FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx),
@@ -1466,7 +1372,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1477,7 +1382,6 @@ FO_API_EPILOG(0)
  * @param angle ...
  * @param dist ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1493,7 +1397,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1504,7 +1407,6 @@ FO_API_EPILOG()
  * @param cut ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetPathHex, FO_API_RET_ARR(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1528,7 +1430,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1538,7 +1439,6 @@ FO_API_EPILOG(0)
  * @param cut ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetPathCr, FO_API_RET_ARR(uchar), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx),
     FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1560,7 +1460,6 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1571,7 +1470,6 @@ FO_API_EPILOG(0)
  * @param cut ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1595,7 +1493,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1605,7 +1502,6 @@ FO_API_EPILOG(0)
  * @param cut ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthCr, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx),
     FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1627,7 +1523,6 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1635,7 +1530,6 @@ FO_API_EPILOG(0)
  * @param toColor ...
  * @param ms ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     FlushScreen, FO_API_RET(void), FO_API_ARG(uint, fromColor), FO_API_ARG(uint, toColor), FO_API_ARG(uint, ms))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1646,14 +1540,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromColor) FO_API_ARG_MARSHAL(uint, toCol
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param noise ...
  * @param ms ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(QuakeScreen, FO_API_RET(void), FO_API_ARG(uint, noise), FO_API_ARG(uint, ms))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, noise) FO_API_ARG_MARSHAL(uint, ms))
@@ -1663,14 +1555,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, noise) FO_API_ARG_MARSHAL(uint, ms))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param soundName ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PlaySound, FO_API_RET(bool), FO_API_ARG(string, soundName))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, soundName))
@@ -1680,7 +1570,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, soundName))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1688,7 +1577,6 @@ FO_API_EPILOG(0)
  * @param repeatTime ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PlayMusic, FO_API_RET(bool), FO_API_ARG(string, musicName), FO_API_ARG(uint, repeatTime))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, musicName) FO_API_ARG_MARSHAL(uint, repeatTime))
@@ -1704,14 +1592,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, musicName) FO_API_ARG_MARSHAL(uint, rep
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param videoName ...
  * @param canStop ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PlayVideo, FO_API_RET(void), FO_API_ARG(string, videoName), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, videoName) FO_API_ARG_MARSHAL(bool, canStop))
@@ -1722,13 +1608,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, videoName) FO_API_ARG_MARSHAL(bool, can
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCurrentMapPid, FO_API_RET(hash))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -1740,13 +1624,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param msg ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(Message, FO_API_RET(void), FO_API_ARG(string, msg))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
@@ -1756,14 +1638,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param msg ...
  * @param type ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MessageType, FO_API_RET(void), FO_API_ARG(string, msg), FO_API_ARG(int, type))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg) FO_API_ARG_MARSHAL(int, type))
@@ -1773,14 +1653,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg) FO_API_ARG_MARSHAL(int, type))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param textMsg ...
  * @param strNum ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MessageMsg, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1793,7 +1671,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1801,7 +1678,6 @@ FO_API_EPILOG()
  * @param strNum ...
  * @param type ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     MessageMsgType, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(int, type))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1815,7 +1691,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) 
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1828,7 +1703,6 @@ FO_API_EPILOG()
  * @param ox ...
  * @param oy ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx),
     FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox),
     FO_API_ARG(int, oy))
@@ -1855,7 +1729,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1863,7 +1736,6 @@ FO_API_EPILOG()
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStr, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1875,7 +1747,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1884,7 +1755,6 @@ FO_API_EPILOG(0)
  * @param skipCount ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -1897,7 +1767,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) 
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1905,7 +1774,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrNumUpper, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1917,7 +1785,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1925,7 +1792,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrNumLower, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1937,7 +1803,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1945,7 +1810,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrCount, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1957,7 +1821,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1965,7 +1828,6 @@ FO_API_EPILOG(0)
  * @param strNum ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(IsMsgStr, FO_API_RET(bool), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
@@ -1977,7 +1839,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -1986,7 +1847,6 @@ FO_API_EPILOG(0)
  * @param str ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2000,7 +1860,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replac
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2009,7 +1868,6 @@ FO_API_EPILOG(0)
  * @param i ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2023,7 +1881,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replac
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2031,7 +1888,6 @@ FO_API_EPILOG(0)
  * @param lexems ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(FormatTags, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, lexems))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, lexems))
@@ -2042,7 +1898,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, lexems
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2051,7 +1906,6 @@ FO_API_EPILOG(0)
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2071,7 +1925,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2080,7 +1933,6 @@ FO_API_EPILOG()
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy),
     FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2095,7 +1947,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2103,7 +1954,6 @@ FO_API_EPILOG()
  * @param softLock ...
  * @param unlockIfSame ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(LockScreenScroll, FO_API_RET(void), FO_API_ARG_OBJ(CritterView, cr),
     FO_API_ARG(bool, softLock), FO_API_ARG(bool, unlockIfSame))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2132,7 +1982,6 @@ FO_API_PROLOG(
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2140,7 +1989,6 @@ FO_API_EPILOG()
  * @param zoneY ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetFog, FO_API_RET(int), FO_API_ARG(ushort, zoneX), FO_API_ARG(ushort, zoneY))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zoneX) FO_API_ARG_MARSHAL(ushort, zoneY))
@@ -2152,14 +2000,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zoneX) FO_API_ARG_MARSHAL(ushort, zoneY
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param dayPart ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetDayTime, FO_API_RET(uint), FO_API_ARG(uint, dayPart))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart))
@@ -2174,7 +2020,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2183,7 +2028,6 @@ FO_API_EPILOG(0)
  * @param g ...
  * @param b ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetDayColor, FO_API_RET(void), FO_API_ARG(uint, dayPart), FO_API_ARG_REF(uchar, r),
     FO_API_ARG_REF(uchar, g), FO_API_ARG_REF(uchar, b))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2205,7 +2049,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart) FO_API_ARG_REF_MARSHAL(uchar, r)
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2217,7 +2060,6 @@ FO_API_EPILOG()
  * @param second ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
     FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2254,7 +2096,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month)
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2267,7 +2108,6 @@ FO_API_EPILOG(0)
  * @param minute ...
  * @param second ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year),
     FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek),
     FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
@@ -2289,7 +2129,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond) FO_API_ARG_REF_MARSHAL(ushort
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2298,7 +2137,6 @@ FO_API_EPILOG()
  * @param dir ...
  * @param steps ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy),
     FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2325,7 +2163,6 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2335,7 +2172,6 @@ FO_API_EPILOG()
  * @param layer ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetTileName, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2367,13 +2203,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param fnames ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(Preload3dFiles, FO_API_RET(void), FO_API_ARG_ARR(string, fnames))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
@@ -2384,12 +2218,10 @@ FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(WaitPing, FO_API_RET(void))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -2399,7 +2231,6 @@ FO_API_PROLOG()
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2407,7 +2238,6 @@ FO_API_EPILOG()
  * @param fontFname ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(LoadFont, FO_API_RET(bool), FO_API_ARG(int, fontIndex), FO_API_ARG(string, fontFname))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, fontFname))
@@ -2426,14 +2256,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, font
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param font ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetDefaultFont, FO_API_RET(void), FO_API_ARG(int, font), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(uint, color))
@@ -2443,7 +2271,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(uint, color))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2453,7 +2280,6 @@ FO_API_EPILOG()
  * @param effectDefines ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetEffect, FO_API_RET(bool), FO_API_ARG(int, effectType), FO_API_ARG(int, effectSubtype),
     FO_API_ARG(string, effectName), FO_API_ARG(string, effectDefines))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2563,7 +2389,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType) FO_API_ARG_MARSHAL(int, effect
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2571,7 +2396,6 @@ FO_API_EPILOG(0)
  * @param onlyRoof ...
  * @param onlyLight ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     RefreshMap, FO_API_RET(void), FO_API_ARG(bool, onlyTiles), FO_API_ARG(bool, onlyRoof), FO_API_ARG(bool, onlyLight))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2593,7 +2417,6 @@ FO_API_PROLOG(
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2601,7 +2424,6 @@ FO_API_EPILOG()
  * @param y ...
  * @param button ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(MouseClick, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, button))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, button))
@@ -2630,7 +2452,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_M
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2639,7 +2460,6 @@ FO_API_EPILOG()
  * @param key1Text ...
  * @param key2Text ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2),
     FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2664,14 +2484,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param fallAnimName ...
  * @param dropAnimName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2683,13 +2501,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param targetZoom ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(ChangeZoom, FO_API_RET(void), FO_API_ARG(float, targetZoom))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
@@ -2729,7 +2545,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2742,7 +2557,6 @@ FO_API_EPILOG()
  * @param second ...
  * @param milliseconds ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month),
     FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour),
     FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
@@ -2766,14 +2580,12 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year) FO_API_ARG_REF_MARSHAL(ushort
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param index ...
  * @param enableSend ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(AllowSlot, FO_API_RET(void), FO_API_ARG(uchar, index), FO_API_ARG(bool, enableSend))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSend))
@@ -2783,13 +2595,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSe
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param datName ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(AddDataSource, FO_API_RET(void), FO_API_ARG(string, datName))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
@@ -2799,14 +2609,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprName ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(LoadSprite, FO_API_RET(uint), FO_API_ARG(string, sprName))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
@@ -2816,14 +2624,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param nameHash ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(LoadSpriteHash, FO_API_RET(uint), FO_API_ARG(uint, nameHash))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, nameHash))
@@ -2833,7 +2639,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, nameHash))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2841,7 +2646,6 @@ FO_API_EPILOG(0)
  * @param frameIndex ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteWidth, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex))
@@ -2857,7 +2661,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2865,7 +2668,6 @@ FO_API_EPILOG(0)
  * @param frameIndex ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteHeight, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex))
@@ -2881,14 +2683,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteCount, FO_API_RET(uint), FO_API_ARG(uint, sprId))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
@@ -2899,14 +2699,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param sprId ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteTicks, FO_API_RET(uint), FO_API_ARG(uint, sprId))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
@@ -2917,7 +2715,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2927,7 +2724,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -2947,7 +2743,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2960,7 +2755,6 @@ FO_API_EPILOG(0)
  * @param th ...
  * @param lines ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w),
     FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th),
     FO_API_ARG_REF(int, lines))
@@ -2974,7 +2768,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -2985,7 +2778,6 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3016,7 +2808,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3030,7 +2821,6 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom),
     FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
@@ -3063,7 +2853,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3077,7 +2866,6 @@ FO_API_EPILOG()
  * @param sprHeight ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth),
     FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
@@ -3101,7 +2889,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3114,7 +2901,6 @@ FO_API_EPILOG()
  * @param font ...
  * @param flags ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y),
     FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3138,14 +2924,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param primitiveType ...
  * @param data ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primitiveType), FO_API_ARG_ARR(int, data))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
@@ -3199,13 +2983,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param mapSpr ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawMapSprite, FO_API_RET(void), FO_API_ARG_OBJ(MapSprite, mapSpr))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
@@ -3300,7 +3082,6 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3316,7 +3097,6 @@ FO_API_EPILOG()
  * @param center ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1),
     FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r),
     FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
@@ -3339,7 +3119,6 @@ static UIntVec DrawCritter3dCrType;
 static BoolVec DrawCritter3dFailToLoad;
 static int DrawCritter3dLayers[LAYERS3D_COUNT];
 #endif
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3351,7 +3130,6 @@ static int DrawCritter3dLayers[LAYERS3D_COUNT];
  * @param position ...
  * @param color ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName),
     FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position),
     FO_API_ARG(uint, color))
@@ -3432,7 +3210,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3441,7 +3218,6 @@ FO_API_EPILOG()
  * @param w ...
  * @param h ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(
     PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3453,12 +3229,10 @@ FO_API_PROLOG(
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PopDrawScissor, FO_API_RET(void))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -3468,13 +3242,11 @@ FO_API_PROLOG()
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param forceClear ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(ActivateOffscreenSurface, FO_API_RET(void), FO_API_ARG(bool, forceClear))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, forceClear))
@@ -3513,13 +3285,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, forceClear))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param effectSubtype ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurface, FO_API_RET(void), FO_API_ARG(int, effectSubtype))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype))
@@ -3546,7 +3316,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3556,7 +3325,6 @@ FO_API_EPILOG()
  * @param w ...
  * @param h ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt, FO_API_RET(void), FO_API_ARG(int, effectSubtype),
     FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3588,7 +3356,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, x) 
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3602,7 +3369,6 @@ FO_API_EPILOG()
  * @param toW ...
  * @param toH ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt2, FO_API_RET(void), FO_API_ARG(int, effectSubtype),
     FO_API_ARG(int, fromX), FO_API_ARG(int, fromY), FO_API_ARG(int, fromW), FO_API_ARG(int, fromH),
     FO_API_ARG(int, toX), FO_API_ARG(int, toY), FO_API_ARG(int, toW), FO_API_ARG(int, toH))
@@ -3638,14 +3404,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, fro
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param screen ...
  * @param data ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG_DICT(string, int, data))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, int, data))
@@ -3660,13 +3424,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, in
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param screen ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(HideScreen, FO_API_RET(void), FO_API_ARG(int, screen))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen))
@@ -3676,7 +3438,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3686,7 +3447,6 @@ FO_API_EPILOG()
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
     FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3708,7 +3468,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3718,7 +3477,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y),
     FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3744,7 +3502,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_R
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3752,7 +3509,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMonitorItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
@@ -3763,7 +3519,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3771,7 +3526,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMonitorCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
@@ -3781,7 +3535,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3789,7 +3542,6 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMonitorEntity, FO_API_RET_OBJ(Entity), FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
@@ -3802,13 +3554,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMapWidth, FO_API_RET(ushort))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -3821,13 +3571,11 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetMapHeight, FO_API_RET(ushort))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
@@ -3840,7 +3588,6 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3848,7 +3595,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(IsMapHexPassed, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
@@ -3863,7 +3609,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3871,7 +3616,6 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(IsMapHexRaked, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
@@ -3886,13 +3630,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param filePath ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SaveScreenshot, FO_API_RET(void), FO_API_ARG(string, filePath))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath))
@@ -3902,7 +3644,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3910,7 +3651,6 @@ FO_API_EPILOG()
  * @param text ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SaveText, FO_API_RET(bool), FO_API_ARG(string, filePath), FO_API_ARG(string, text))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath) FO_API_ARG_MARSHAL(string, text))
@@ -3926,14 +3666,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath) FO_API_ARG_MARSHAL(string, te
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  * @param data ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheData, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, data))
@@ -3943,7 +3681,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, dat
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
@@ -3951,7 +3688,6 @@ FO_API_EPILOG()
  * @param data ...
  * @param dataSize ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataSize, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data),
     FO_API_ARG(uint, dataSize))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
@@ -3963,14 +3699,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, dat
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCacheData, FO_API_RET_ARR(uchar), FO_API_ARG(string, name))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
@@ -3983,14 +3717,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  * @param str ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataStr, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG(string, str))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_MARSHAL(string, str))
@@ -4000,14 +3732,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_MARSHAL(string, str))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(GetCacheDataStr, FO_API_RET(string), FO_API_ARG(string, name))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
@@ -4017,14 +3747,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  * @return ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(IsCacheData, FO_API_RET(bool), FO_API_ARG(string, name))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
@@ -4034,13 +3762,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param name ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(EraseCacheData, FO_API_RET(void), FO_API_ARG(string, name))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
@@ -4050,13 +3776,11 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_DOC
 /*******************************************************************************
  * ...
  *
  * @param keyValues ...
  ******************************************************************************/
-#endif
 FO_API_GLOBAL_CLIENT_FUNC(SetUserConfig, FO_API_RET(void), FO_API_ARG_DICT(string, string, keyValues))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_DICT_MARSHAL(string, string, keyValues))
