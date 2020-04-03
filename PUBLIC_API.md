@@ -18,7 +18,7 @@ If some thing is not described neither in included or not included then it's lik
 In articles below described what is public api include to itself.  
 What is not included or just planned to including will described in the end of this document.
 
-### Visual Studio Code actions
+### Visual Studio Code extension
 
 ...
 
@@ -120,9 +120,7 @@ Also you able to disable unnecessary stuff in your game (like AngelScript suppor
 
 ### CMake contribution
 
-CMake contributions included to main CMakeLists.txt scope.  
-Also you can use different CMake functionality to affect internal build processes but there is not grantee that this functionality not broken during development.  
-For example you can add source file directly to client lib using target_sources(ClientLib "MySourceFile.cpp") and this may work long time but some minor update can break this code.
+CMake contributions included to main CMakeLists.txt scope.
 
 * SetCustomVersion version
 * DisableNativeScripting
@@ -187,6 +185,11 @@ In this article described what is not included in public API.
 
 ### Engine core
 ### CMake tweaks outside provided API
+
+Yeah, you can use different CMake functionality to affect internal build processes but there is not grantee that this functionality not broken during development.  
+For example you can add source file directly to client lib using target_sources(ClientLib "MySourceFile.cpp") and this may work long time but some minor update can break this code.  
+So if you ready for these surprises then why not.
+
 ### Repository structure
 ### Resources packed formats
 ### Network protocol

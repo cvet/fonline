@@ -20,6 +20,7 @@
     + [Visual Studio Code](#visual-studio-code)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
+  * [Footprint](#footprint)
   * [Tutorial](#tutorial)
 - [Work in progress](#work-in-progress)
   * [Roadmap](#roadmap)
@@ -130,8 +131,8 @@ Currently WSL2 available only on Windows Insider distros but in time when engine
 
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
-Extension activates automatically when editor finds `fonline*.json` at workspace root.  
-*Todo: write about extension features and usage*  
+Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.  
+More about extension usage you can find in [Tutorial](https://github.com/cvet/fonline/blob/master/TUTORIAL.md) document.
 
 #### Package dependencies
 
@@ -196,13 +197,22 @@ They are located in ThirdParty directory.
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
 
+### Footprint
+
+Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client/singleplayer output.  
+Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.  
+This process in terms of fonline engine called `Bakering`.  
+Also as you can see all third-party dependencies linked statically to final executable (except one - proprietary libfbxsdk.dll/so for Baker but the last one is not target for small footprint) and this frees up end user from installing additional runtime to play in your game.  
+*Todo: write about memory footprint*  
+*Todo: write about network footprint*
+
 ### Tutorial
 
 *Todo: link to TUTORIAL.md*
 
 ## Work in progress
 
-Bugs, performance cases and feature requests you can disscuss at [Issues page](https://github.com/cvet/fonline/issues).
+Bugs, performance cases and feature requests you can discuss at [Issues page](https://github.com/cvet/fonline/issues).
 
 ### Roadmap
 
