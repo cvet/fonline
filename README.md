@@ -216,15 +216,17 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 
 ### Roadmap
 
+* Rework scripting system *(Native C++, AngelScript and C#/Mono scripting layers)*
+* Improve DirectX rendering
 * Code refactoring *(look at separate section below)*
-* Rework scripting system *(add C bindings with optional submodules for C++, AngelScript and C#/Mono)*
-* [Singleplayer mode](https://github.com/cvet/fonline/issues/12)
-* Improve DirectX/Metal/Vulkan rendering
-* Improve supporting of Universal Windows Platform
-* [Documentation](https://github.com/cvet/fonline/issues/49)
+* Documentation
 * API freezing and continuing development with it's backward compatibility
-* Adopt Fallout Star-Trek SL for run Fallout on engine out of the box
+* Improve Singleplayer mode
+* Tasks related to Visual Studio Code extension *(see separate section below)*
+* Particle system
 * Improve supporting of PlayStation
+* Improve supporting of Universal Windows Platform
+* Improve Metal/Vulkan rendering
 
 ### Roadmap for Visual Studio Code extension
 
@@ -252,7 +254,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Improve more unit tests and gain code coverage to at least 80%
 * Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
 * Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
-* Add constness as much as nessesary
+* Add constness as much as necessary
 
 ### Todo list *(generated from source code)*
 
