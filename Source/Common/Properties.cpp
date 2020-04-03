@@ -1591,7 +1591,7 @@ void* ReadValue(
     else if (Str::Compare(as_obj_type->GetName(), "string"))
     {
         // string* str = (string*)Script::GetEngine()->CreateScriptObject(as_obj_type);
-        //*str = DecodeString(value);
+        // *str = DecodeString(value);
         // return str;
         return 0;
     }

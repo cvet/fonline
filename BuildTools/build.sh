@@ -32,36 +32,44 @@ else
     BUILD_DIR="build-$1"
 fi
 
+CONFIG="Release"
+if [ "$2" = "debug" ] || [ "$3" = "debug" ]; then
+    CONFIG="Debug"
+    BUILD_TARGETS="$BUILD_TARGETS -DFONLINE_DEBUG_BUILD=1"
+    BUILD_DIR="$BUILD_DIR-debug"
+fi
+
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
 if [ "$1" = "win64" ] || [ "$1" = "win32" ] || [ "$1" = "uwp" ]; then
     FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
     OUTPUT_PATH_WIN=`wsl_path_to_windows "$OUTPUT_PATH"`
+    FO_CMAKE_CONTRIBUTION_WIN=`wsl_path_to_windows "$FO_CMAKE_CONTRIBUTION"`
 
     if [ "$1" = "win64" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config Release
+        cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
+        cmake.exe --build . --config $CONFIG --parallel
     elif [ "$1" = "win32" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config Release
+        cmake.exe -G "Visual Studio 16 2019" -A Win32 -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
+        cmake.exe --build . --config $CONFIG --parallel
     elif [ "$1" = "uwp" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildTools/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS "$FO_ROOT_WIN"
-        cmake.exe --build . --config Release
+        cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildTools/uwp.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
+        cmake.exe --build . --config $CONFIG --parallel
     fi
 
 elif [ "$1" = "linux" ]; then
     export CC=/usr/bin/clang
     export CXX=/usr/bin/clang++
 
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config Release -- -j$(nproc)
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake --build . --config Release --parallel
 
 elif [ "$1" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config Release -- -j$(nproc)
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake --build . --config Release --parallel
 
 elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
     if [ "$1" = "android" ]; then
@@ -75,19 +83,19 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
         export ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-    cmake --build . --config Release -- -j$(nproc)
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake --build . --config Release --parallel
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     if [ "$1" = "mac" ] && [ -d "$FO_WORKSPACE/osxcross" ]; then
         echo "OSXCross cross compilation"
-        "$FO_WORKSPACE/osxcross/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release -- -j$(nproc)
+        "$FO_WORKSPACE/osxcross/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        cmake --build . --config Release --parallel
 
     elif [ "$1" = "ios" ] && [ -d "$FO_WORKSPACE/ios-toolchain" ]; then
         echo "iOS cross compilation"
-        "$FO_WORKSPACE/ios-toolchain/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-        cmake --build . --config Release -- -j$(nproc)
+        "$FO_WORKSPACE/ios-toolchain/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        cmake --build . --config Release --parallel
 
     else
         if [ -x "$(command -v cmake)" ]; then
@@ -97,11 +105,11 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
         fi
 
         if [ "$1" = "mac" ]; then
-            $CMAKE -G "Xcode" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-            $CMAKE --build . --config Release --target FOnline
+            $CMAKE -G "Xcode" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+            $CMAKE --build . --config Release --parallel
         else
-            $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS "$FO_ROOT"
-            $CMAKE --build . --config Release --target FOnline
+            $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_BINARIES_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+            $CMAKE --build . --config Release --parallel
         fi
     fi
 fi

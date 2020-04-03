@@ -1,0 +1,17 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "The Game"
+        },
+        {
+            "path": "../../",
+            "name": "FOnline"
+        }
+    ],
+    "settings": {
+        "window.autoDetectColorScheme": true,
+        "fonline.path": "../../",
+		"fonline.cmake": "TheGame.fonline.cmake"
+    }
+}

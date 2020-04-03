@@ -51,7 +51,7 @@ struct DummySettings
 #define VAR_SETTING(type, name, ...) type name = {__VA_ARGS__}
 #include "Settings_Include.h"
 
-struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings, EditorSettings
+struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings
 {
 public:
     GlobalSettings() = default;
@@ -59,6 +59,5 @@ public:
     void Draw(bool editable);
 
 private:
-    void ResetStrongConstants();
     void SetValue(const string& setting_name, string value);
 };

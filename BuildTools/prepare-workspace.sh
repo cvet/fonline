@@ -161,37 +161,17 @@ function setup_android_ndk()
     python make_standalone_toolchain.py --arch x86 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-x86-toolchain
 }
 
-function generate_compilation_env()
+function generate_maintenance_env()
 {
-    echo "Generate compilation environment"
+    echo "Generate maintenance environment"
     FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
-    rm -rf compilation-env
-    mkdir compilation-env
-    cd compilation-env
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
-    cmake.exe --build . --config Debug
-}
-
-function generate_vscode_js_toolset()
-{
-    echo "Generate VSCode js toolset"
-    rm -rf vscode-js-toolset
-    mkdir vscode-js-toolset
-    cd vscode-js-toolset
-    source $FO_WORKSPACE/emsdk/emsdk_env.sh
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_BUILD_MAPPER=1 "$FO_ROOT"
-    cmake --build . --config Release -- -j$(nproc)
-}
-
-function generate_vscode_native_toolset()
-{
-    echo "Generate VSCode native toolset"
-    FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
-    rm -rf vscode-native-toolset
-    mkdir vscode-native-toolset
-    cd vscode-native-toolset
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_BAKER=1 "$FO_ROOT_WIN"
+    FO_CMAKE_CONTRIBUTION_WIN=`wsl_path_to_windows "$FO_CMAKE_CONTRIBUTION"`
+    rm -rf maintenance-env
+    mkdir maintenance-env
+    cd maintenance-env
+    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
     cmake.exe --build . --config Release
+    cmake.exe --build . --config Release --target GenerateScriptApi
 }
 
 function verify_workspace_part()
@@ -246,12 +226,8 @@ if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
 fi
 wait_jobs
 
-if [ ! -z `check_arg compilation all` ]; then
-    verify_workspace_part compilation-env 1 generate_compilation_env
-fi
-if [ ! -z `check_arg vscode all` ]; then
-    verify_workspace_part vscode-js-toolset 1 generate_vscode_js_toolset
-    verify_workspace_part vscode-native-toolset 1 generate_vscode_native_toolset
+if [ ! -z `check_arg maintenance all` ]; then
+    verify_workspace_part maintenance 1 generate_maintenance_env
 fi
 wait_jobs
 

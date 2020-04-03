@@ -438,14 +438,9 @@ macro( AddServerToPackage package platform packType )
 endmacro()
 
 # User contribution
-if( NOT "$ENV{FO_CMAKE_CONTRIBUTION}" STREQUAL "" OR NOT "${FONLINE_CMAKE_CONTRIBUTION}" STREQUAL "" )
+if( NOT "${FONLINE_CMAKE_CONTRIBUTION}" STREQUAL "" )
 	StatusMessage( "Contributions:" )
 	foreach( inc ${FONLINE_CMAKE_CONTRIBUTION} )
-		get_filename_component( FO_CONTRIBUTION_DIR ${inc} DIRECTORY )
-		StatusMessage( "+ ${inc}" )
-		include( ${inc} )
-	endforeach()
-	foreach( inc $ENV{FO_CMAKE_CONTRIBUTION} )
 		get_filename_component( FO_CONTRIBUTION_DIR ${inc} DIRECTORY )
 		StatusMessage( "+ ${inc}" )
 		include( ${inc} )
@@ -1087,22 +1082,22 @@ endif()
 
 if( FONLINE_BUILD_CLIENT )
 	if( NOT FO_BUILD_CLIENT_LIBRARY )
-		StatusMessage( "+ FOnline" )
-		list( APPEND FO_APPLICATIONS_GROUP "FOnline" )
-		add_executable( FOnline WIN32 "Source/Applications/ClientApp.cpp" "Source/Common/MessageBox.cpp" "Resources/Default.rc" )
+		StatusMessage( "+ FOnlineClient" )
+		list( APPEND FO_APPLICATIONS_GROUP "FOnlineClient" )
+		add_executable( FOnlineClient WIN32 "Source/Applications/ClientApp.cpp" "Source/Common/MessageBox.cpp" "Resources/Default.rc" )
 		# Todo: cmake make bundles for Mac and iOS
-		# add_executable( FOnline MACOSX_BUNDLE ... "Default.rc" )
-		set_target_properties( FOnline PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_CLIENT_OUTPUT}
+		# add_executable( FOnlineClient MACOSX_BUNDLE ... "Default.rc" )
+		set_target_properties( FOnlineClient PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_CLIENT_OUTPUT}
 			RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_CLIENT_OUTPUT} )
 	else()
-		StatusMessage( "+ FOnline (shared library)" )
-		list( APPEND FO_APPLICATIONS_GROUP "FOnline" )
-		add_library( FOnline SHARED "Source/Applications/ClientApp.cpp" "Source/Common/MessageBox.cpp" )
-		set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} )
+		StatusMessage( "+ FOnlineClient (shared library)" )
+		list( APPEND FO_APPLICATIONS_GROUP "FOnlineClient" )
+		add_library( FOnlineClient SHARED "Source/Applications/ClientApp.cpp" "Source/Common/MessageBox.cpp" )
+		set_target_properties( FOnlineClient PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} )
 	endif()
-	set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline" )
-	set_target_properties( FOnline PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES}" )
-	target_link_libraries( FOnline "ClientLib" "CommonLib" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	set_target_properties( FOnlineClient PROPERTIES OUTPUT_NAME "FOnlineClient" )
+	set_target_properties( FOnlineClient PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES}" )
+	target_link_libraries( FOnlineClient "ClientLib" "CommonLib" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
 if( FONLINE_BUILD_SERVER )
@@ -1213,8 +1208,8 @@ endif()
 
 # Scripts
 set( genScriptApi "" )
-set( buildASScripts "" )
-set( buildMonoScripts "" )
+set( compileASScripts "" )
+set( compileMonoScripts "" )
 set( genApiDepends "" )
 if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	# Script API meta
@@ -1299,41 +1294,52 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		COMMENT "Generate script API" )
 	list( APPEND FO_COMMANDS_GROUP "GenerateScriptApi" )
 
-	# Build AngelScript scripts
+	# Compile AngelScript scripts
 	if( FO_ANGELSCRIPT_SCRIPTING )
-		set( buildASScripts FOnlineASCompiler
+		set( compileASScripts FOnlineASCompiler
 			-ASServer "${FO_SCRIPTS_OUTPUT}/ServerRootModule.fos"
 			-ASClient "${FO_SCRIPTS_OUTPUT}/ClientRootModule.fos"
 			-ASMapper "${FO_SCRIPTS_OUTPUT}/MapperRootModule.fos" )
 
-		add_custom_target( BuildAngelScriptScripts
+		add_custom_target( CompileAngelScripts
 			COMMAND ${genScriptApi}
-			COMMAND ${buildASScripts}
+			COMMAND ${compileASScripts}
 			DEPENDS ${genApiDepends}
 			SOURCES ${FO_ANGELSCRIPT_FILES}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
-			COMMENT "Build AngelScript scripts" )
-		list( APPEND FO_COMMANDS_GROUP "BuildAngelScriptScripts" )
+			COMMENT "Compile AngelScript scripts" )
+		list( APPEND FO_COMMANDS_GROUP "CompileAngelScripts" )
 	endif()
 
-	# Build Mono scripts
+	# Compile Mono scripts
 	if( FO_MONO_SCRIPTING )
-		set( monoBuildCommands -scripts ${FO_SCRIPTS_OUTPUT} )
+		set( monoCompileCommands -scripts ${FO_SCRIPTS_OUTPUT} )
 		foreach( entry ${FO_MONO_ASSEMBLIES} )
-			list( APPEND monoBuildCommands -assembly ${entry} )
+			list( APPEND monoCompileCommands -assembly ${entry} )
 		endforeach()
 
-		set( buildMonoScripts python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/build-mono-scripts.py" ${monoBuildCommands} )
+		set( compileMonoScripts python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
 
-		add_custom_target( BuildMonoScripts
+		add_custom_target( CompileMonoScripts
 			COMMAND ${genScriptApi}
-			COMMAND ${buildMonoScripts}
+			COMMAND ${compileMonoScripts}
 			DEPENDS ${genApiDepends}
 			SOURCES ${csFiles}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
-			COMMENT "Build Mono scripts" )
-		list( APPEND FO_COMMANDS_GROUP "BuildMonoScripts" )
+			COMMENT "Compile Mono scripts" )
+		list( APPEND FO_COMMANDS_GROUP "CompileMonoScripts" )
 	endif()
+
+	# Build all scripts
+	add_custom_target( CompileAllScripts
+		COMMAND ${genScriptApi}
+		COMMAND ${compileASScripts}
+		COMMAND ${compileMonoScripts}
+		DEPENDS ${genApiDepends}
+		SOURCES ${FO_ANGELSCRIPT_FILES} ${csFiles}
+		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
+		COMMENT "Compile all scripts" )
+	list( APPEND FO_COMMANDS_GROUP "CompileAllScripts" )
 endif()
 
 # Bakering
@@ -1354,8 +1360,8 @@ endforeach()
 
 add_custom_target( BakeResources
 	COMMAND ${genScriptApi}
-	COMMAND ${buildASScripts}
-	COMMAND ${buildMonoScripts}
+	COMMAND ${compileASScripts}
+	COMMAND ${compileMonoScripts}
 	COMMAND ${bakeCommands}
 	DEPENDS ${genApiDepends}
 	SOURCES ${bakeSources}
@@ -1367,8 +1373,8 @@ list( APPEND FO_COMMANDS_GROUP "BakeResources" )
 if( FO_PACKAGES )
 	add_custom_target( MakeAllPackages
 		COMMAND ${genScriptApi}
-		COMMAND ${buildASScripts}
-		COMMAND ${buildMonoScripts}
+		COMMAND ${compileASScripts}
+		COMMAND ${compileMonoScripts}
 		COMMAND ${bakeCommands}
 		DEPENDS ${genApiDepends}
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
@@ -1380,8 +1386,8 @@ if( FO_PACKAGES )
 	foreach( package ${FO_PACKAGES} )
 		add_custom_target( MakePackage-${package}
 			COMMAND ${genScriptApi}
-			COMMAND ${buildASScripts}
-			COMMAND ${buildMonoScripts}
+			COMMAND ${compileASScripts}
+			COMMAND ${compileMonoScripts}
 			COMMAND ${bakeCommands}
 			DEPENDS ${genApiDepends}
 			WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}

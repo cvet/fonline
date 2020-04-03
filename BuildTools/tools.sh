@@ -22,6 +22,25 @@ function wait_jobs()
     return ${status}
 }
 
+function verify_workspace_part()
+{
+    if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
+        if [ ! -z `check_arg check` ]; then
+            echo "Workspace is not ready"
+            exit 10
+        fi
+
+        workspace_job()
+        {
+            eval $3
+            cd $FO_WORKSPACE
+            echo $2 > "$1-version.txt"
+        }
+
+        run_job "workspace_job $1 $2 $3"
+    fi
+}
+
 function wsl_path_to_windows()
 {
     local path="$1"

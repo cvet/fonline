@@ -49,6 +49,11 @@
             "command": "BuildTools/prepare-workspace.sh all"
         },
         {
+            "label": "Prepare VSCode Toolset",
+            "group": "Service",
+            "command": "BuildTools/update-vscode-toolset.sh"
+        },
+        {
             "label": "Update VSCode Toolset",
             "group": "Service",
             "command": "BuildTools/update-vscode-toolset.sh"
@@ -124,6 +129,91 @@
             "command": "BuildTools/build.sh linux server"
         },
         {
+            "label": "Debug client for Windows (x64)",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh win64 debug"
+        },
+        {
+            "label": "Debug client for Windows (x86)",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh win32 debug"
+        },
+        {
+            "label": "Debug client for UWP",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh uwp debug"
+        },
+        {
+            "label": "Debug client for Linux",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh linux debug"
+        },
+        {
+            "label": "Debug client for Web",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh web debug"
+        },
+        {
+            "label": "Debug client for Android (arm)",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh android debug"
+        },
+        {
+            "label": "Debug client for Android (arm64)",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh android-arm64 debug"
+        },
+        {
+            "label": "Debug client for Android (x86)",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh android-x86 debug"
+        },
+        {
+            "label": "Debug client for macOS",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh mac debug"
+        },
+        {
+            "label": "Debug client for iOS",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh ios debug"
+        },
+        {
+            "label": "Debug server for Windows",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh win64 server debug"
+        },
+        {
+            "label": "Debug server for Linux",
+            "group": "Build (Debug)",
+            "command": "BuildTools/build.sh linux server debug"
+        },
+        {
+            "label": "Compile all scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh"
+        },
+        {
+            "label": "Compile AngelScript scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh angelscript"
+        },
+        {
+            "label": "Compile Mono scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh mono"
+        },
+        {
+            "label": "Bake resources",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh"
+        },
+        {
+            "label": "Make packages",
+            "group": "Package",
+            "command": "BuildTools/make-packages.sh"
+        },
+        {
             "label": "Run unit tests",
             "group": "Test",
             "command": "BuildTools/validate.sh unit-tests"
@@ -132,11 +222,6 @@
             "label": "Run code coverage",
             "group": "Test",
             "command": "BuildTools/validate.sh code-coverage"
-        },
-        {
-            "label": "Package server",
-            "group": "Package",
-            "command": "BuildTools/package.sh"
         }
     ]
 }

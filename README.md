@@ -93,16 +93,17 @@ You may do it in separate environments (like build Windows binaries in your IDE,
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
 * Build executables from source to platforms that you needed
-* Bake all resources (shaders, images, scripts and etc) to special formats that will be loaded super fast by server/client
+* Compile scripts (AngelScript and/or Mono; but Native were compiled with built executables)
+* Bake all resources (shaders, images and etc) to special formats that will be loaded super fast by server/client
 * Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
 * Enjoy your shipped game and iterate development
 
 There are couple of shell scripts that help us to do it:  
 * `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/build.sh` - build executable for specific platform
-* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats and zip their
-* `BuildTools/package-server.sh` - package our server for using on target platform
-* `BuildTools/package-client.sh` - package client for our end-user
+* `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
+* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats and compress their
+* `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
 * `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actoins
 
 Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in BuildTools/README.md.

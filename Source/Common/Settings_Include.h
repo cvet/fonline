@@ -283,10 +283,6 @@ SETTING(bool, NoStart, false);
 SETTING(int, GameSleep, 0);
 SETTING_GROUP_END();
 
-SETTING_GROUP(EditorSettings, virtual DummySettings);
-SETTING(vector<string>, ProjectFiles);
-SETTING_GROUP_END();
-
 #undef SETTING
 #undef VAR_SETTING
 #undef SETTING_GROUP

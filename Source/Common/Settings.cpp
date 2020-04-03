@@ -69,15 +69,19 @@ static void SetEntry(float& entry, const string& value)
 }
 static void SetEntry(vector<string>& entry, const string& value)
 {
+    entry.push_back(value);
 }
 static void SetEntry(vector<int>& entry, const string& value)
 {
+    entry.push_back(_str(value).toInt());
 }
 static void SetEntry(vector<uint>& entry, const string& value)
 {
+    entry.push_back(_str(value).toUInt());
 }
 static void SetEntry(vector<float>& entry, const string& value)
 {
+    entry.push_back(_str(value).toFloat());
 }
 
 static void DrawEntry(const char* name, const string& entry)
@@ -281,11 +285,6 @@ void GlobalSettings::ParseArgs(int argc, char** argv)
         }
     }
 
-    ResetStrongConstants();
-}
-
-void GlobalSettings::ResetStrongConstants()
-{
 #ifdef FO_WEB
     const_cast<bool&>(WebBuild) = true;
 #else
@@ -332,22 +331,8 @@ void GlobalSettings::ResetStrongConstants()
 
 void GlobalSettings::SetValue(const string& setting_name, string value)
 {
-    if (setting_name == "MonoPath" || setting_name == "ServerDir")
-    {
+    if (setting_name == "ServerDir")
         DiskFileSystem::ResolvePath(value);
-    }
-    else if (setting_name == "ProjectFiles")
-    {
-        string new_value {};
-        for (string project_path : _str(value).split(';'))
-        {
-            DiskFileSystem::ResolvePath(project_path);
-            new_value += project_path + ";";
-        }
-        if (!new_value.empty())
-            new_value.pop_back();
-        value = new_value;
-    }
 
 #define SETTING(type, name, ...) \
     if (setting_name == #name) \

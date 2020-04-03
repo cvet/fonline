@@ -419,45 +419,6 @@ inline string MakeMethodDecl(string name, string ret, string decl)
     return fmt::format("{} {}({})", ret, name, decl);
 }
 
-template<class T>
-static ASEntity* EntityDownCast(T* a)
-{
-    if (!a)
-        return nullptr;
-
-    ASEntity* b = (ASEntity*)a;
-    b->AddRef();
-    return b;
-}
-
-template<class T>
-static T* EntityUpCast(ASEntity* a)
-{
-    if (!a)
-        return nullptr;
-
-#define CHECK_CAST(cast_class, entity_type) \
-    if (std::is_same<T, cast_class>::value && (EntityType)a->GameEntity->Type == entity_type) \
-    { \
-        T* b = (T*)a; \
-        b->AddRef(); \
-        return b; \
-    }
-    CHECK_CAST(ASLocation, EntityType::Location);
-    CHECK_CAST(ASMap, EntityType::Map);
-    CHECK_CAST(ASCritter, EntityType::Npc);
-    CHECK_CAST(ASCritter, EntityType::Client);
-    CHECK_CAST(ASItem, EntityType::Item);
-    CHECK_CAST(ASLocation, EntityType::LocationView);
-    CHECK_CAST(ASMap, EntityType::MapView);
-    CHECK_CAST(ASCritter, EntityType::CritterView);
-    CHECK_CAST(ASItem, EntityType::ItemView);
-    CHECK_CAST(ASItem, EntityType::ItemHexView);
-#undef CHECK_CAST
-
-    return nullptr;
-}
-
 #define FO_API_PARTLY_UNDEF
 #define FO_API_ARG(type, name) type name
 #define FO_API_ARG_ARR(type, name) CScriptArray* _##name
@@ -719,6 +680,45 @@ struct ASLocation : ASEntity
 
 #undef FO_API_PARTLY_UNDEF
 #include "ScriptApi.h"
+
+template<class T>
+static ASEntity* EntityDownCast(T* a)
+{
+    if (!a)
+        return nullptr;
+
+    ASEntity* b = (ASEntity*)a;
+    b->AddRef();
+    return b;
+}
+
+template<class T>
+static T* EntityUpCast(ASEntity* a)
+{
+    if (!a)
+        return nullptr;
+
+#define CHECK_CAST(cast_class, entity_type) \
+    if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) \
+    { \
+        T* b = (T*)a; \
+        b->AddRef(); \
+        return b; \
+    }
+    CHECK_CAST(ASLocation, EntityType::Location);
+    CHECK_CAST(ASMap, EntityType::Map);
+    CHECK_CAST(ASCritter, EntityType::Npc);
+    CHECK_CAST(ASCritter, EntityType::Client);
+    CHECK_CAST(ASItem, EntityType::Item);
+    CHECK_CAST(ASLocation, EntityType::LocationView);
+    CHECK_CAST(ASMap, EntityType::MapView);
+    CHECK_CAST(ASCritter, EntityType::CritterView);
+    CHECK_CAST(ASItem, EntityType::ItemView);
+    CHECK_CAST(ASItem, EntityType::ItemHexView);
+#undef CHECK_CAST
+
+    return nullptr;
+}
 
 static const string ContextStatesStr[] = {
     "Finished",
