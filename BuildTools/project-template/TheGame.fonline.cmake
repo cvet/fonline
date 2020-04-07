@@ -2,9 +2,9 @@
 # DisableNativeScripting
 # DisableAngelScriptScripting
 # DisableMonoScripting
-# AddContent pathPattern(s)
-# AddResources packName rootDir pathPattern(s)
-# AddRawResources rootDir pathPattern(s)
+# AddContent dir(s)
+# AddResources packName dir(s)
+# AddRawResources dir(s)
 # AddScriptApi headerPath(s)
 # AddNativeIncludeDir dir(s)
 # AddNativeSource pathPattern(s)
@@ -25,12 +25,11 @@
 # AddServerToPackage package platform packType [customConfig]
 
 # Content
-AddContent( "Critters/*.focr" )
-AddContent( "Items/*.foitem" )
-AddContent( "Maps/*.fomap" "Maps/*.foloc" )
+AddContent( "Critters" "Items" "Maps" )
+AddContent( "Dialogs" )
 
 # Resources
-AddResources( "TheGame" "Resources" "*.*" )
+AddResources( "TheGame" "Resources" )
 
 # Scripts
 AddScriptApi( "Scripts/MyScriptApi.h" )

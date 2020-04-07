@@ -332,6 +332,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: find something from STL instead TwoBitMask
 * Common: move NetProperty to more proper place
+* BakerApp: add dialogs verification during baking
 * ClientApp: fix script system
 * MapperApp: fix script system
 * 3dAnimation: add interpolation for tracks more than two
@@ -379,7 +380,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * NetBuffer: allow transferring of any type and add safe transferring of floats
 * Properties: rework FONLINE_
 * Properties: don't preserve memory for not allocated components in entity
-* ProtoManager: remove ProtoManager::ClearProtos
 * ScriptSystem: rework FONLINE_
 * ScriptSystem: fill settings to scripts
 * ScriptSystem: rework FONLINE_

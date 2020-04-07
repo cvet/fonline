@@ -526,10 +526,10 @@ void FileManager::AddDataSource(const string& path, bool cache_dirs)
 
 FileCollection FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs)
 {
-    vector<FileHeader> files {};
+    vector<FileHeader> files;
     for (DataSource& ds : dataSources)
     {
-        StrVec file_names {};
+        StrVec file_names;
         ds.GetFileNames(dir, include_subdirs, ext, file_names);
 
         for (string& fname : file_names)

@@ -213,13 +213,8 @@ DataSource::DataSource(const string& path, bool cache_dirs)
         pImpl = std::make_unique<CachedDir>(path);
 }
 
-DataSource::~DataSource()
-{
-}
-
-DataSource::DataSource(DataSource&&)
-{
-}
+DataSource::~DataSource() = default;
+DataSource::DataSource(DataSource&&) noexcept = default;
 
 bool DataSource::IsDiskDir()
 {

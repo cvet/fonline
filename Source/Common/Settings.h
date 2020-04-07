@@ -51,7 +51,7 @@ struct DummySettings
 #define VAR_SETTING(type, name, ...) type name = {__VA_ARGS__}
 #include "Settings_Include.h"
 
-struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings
+struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings, BakerSettings
 {
 public:
     GlobalSettings() = default;

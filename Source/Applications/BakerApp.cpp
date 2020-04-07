@@ -38,16 +38,13 @@
 #include "ImageBaker.h"
 #include "Log.h"
 #include "ModelBaker.h"
+#include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Version_Include.h"
 
-#include "minizip/zip.h"
-
 static GlobalSettings Settings;
-
-static bool GenerateResources(StrVec* resource_names);
 
 #ifndef FO_TESTING
 int main(int argc, char** argv)
@@ -59,215 +56,135 @@ static int main_disabled(int argc, char** argv)
     LogToFile("FOnlineBaker.log");
     Settings.ParseArgs(argc, argv);
 
-    return 0;
-}
-
-static bool GenerateResources(StrVec* resource_names)
-{
-    // Generate resources
-    bool something_changed = false;
-    StrSet update_file_names;
-
-    /*for (const string& project_path : ProjectFiles)
+    try
     {
-        StrVec dummy_vec;
-        StrVec check_dirs;
-        File::GetFolderFileNames(project_path, true, "", dummy_vec, nullptr, &check_dirs);
-        check_dirs.insert(check_dirs.begin(), "");
+        DiskFileSystem::MakeDirTree(Settings.ResourcesOutput);
+        bool set_res_dir_ok = DiskFileSystem::SetCurrentDir(Settings.ResourcesOutput);
+        RUNTIME_ASSERT(set_res_dir_ok);
 
-        for (const string& check_dir : check_dirs)
+        // Content
+        if (!Settings.ContentEntry.empty())
         {
-            if (!_str(project_path + check_dir).extractLastDir().compareIgnoreCase("Resources"))
-                continue;
+            WriteLog("Bake content.\n");
 
-            string resources_root = project_path + check_dir;
-            FindDataVec resources_dirs;
-            File::GetFolderFileNames(resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs);
-            for (const FindData& resource_dir : resources_dirs)
+            FileManager content_files;
+            for (const string& dir : Settings.ContentEntry)
             {
-                const string& res_name = resource_dir.FileName;
-                FileCollection resources("", resources_root + res_name + "/");
-                if (!resources.GetFilesCount())
-                    continue;
+                WriteLog("Add content entry '{}'.\n", dir);
+                content_files.AddDataSource(dir, true);
+            }
 
-                if (res_name.find("_Raw") == string::npos)
+            // Protos
+            ProtoManager proto_mngr;
+            proto_mngr.LoadProtosFromFiles(content_files);
+            UCharVec data = proto_mngr.GetProtosBinaryData();
+            RUNTIME_ASSERT(!data.empty());
+            DiskFile protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
+            RUNTIME_ASSERT(protos_file);
+            bool protos_write_ok = protos_file.Write(data.data(), (uint)data.size());
+            RUNTIME_ASSERT(protos_write_ok);
+
+            // Dialogs
+            // Todo: add dialogs verification during baking
+            bool del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
+            RUNTIME_ASSERT(del_dialogs_ok);
+            FileCollection dialogs = content_files.FilterFiles("fodlg");
+            while (dialogs.MoveNext())
+            {
+                File file = dialogs.GetCurFile();
+                DiskFile dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
+                RUNTIME_ASSERT(dlg_file);
+                bool dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetFsize());
+                RUNTIME_ASSERT(dlg_file_write_ok);
+            }
+
+            // Texts
+            // LanguagePack lang;
+            // lang.LoadFromFiles(content_files);
+            // Raw Texts
+            // Texts.fobin
+        }
+
+        // Resources
+        if (!Settings.ResourcesEntry.empty())
+        {
+            WriteLog("Bake resources.\n");
+
+            map<string, vector<string>> res_packs;
+            for (const string& re : Settings.ResourcesEntry)
+            {
+                StrVec re_splitted = _str(re).split(',');
+                RUNTIME_ASSERT(re_splitted.size() == 2);
+                res_packs[re_splitted[0]].push_back(re_splitted[1]);
+            }
+
+            for (const auto& kv : res_packs)
+            {
+                const string& pack_name = kv.first;
+
+                FileManager res_files;
+                for (const string& path : kv.second)
                 {
-                    string res_name_zip = (string)res_name + ".zip";
-                    string zip_path = (string) "Update/" + res_name_zip;
-                    bool skip_making_zip = true;
+                    WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
+                    res_files.AddDataSource(path, true);
+                }
 
-                    File::CreateDirectoryTree(zip_path);
+                FileCollection resources = res_files.FilterFiles("");
 
-                    // Check if file available
-                    File zip_file;
-                    if (!zip_file.LoadFile(zip_path, true))
-                        skip_making_zip = false;
+                if (pack_name != "_Raw")
+                {
+                    WriteLog("Create resources '{}' from files {}...\n", pack_name, resources.GetFilesCount());
 
-                    // Test consistency
-                    if (skip_making_zip)
+                    // Bake files
+                    map<string, UCharVec> baked_files;
                     {
-                        zipFile zip = zipOpen(zip_path.c_str(), APPEND_STATUS_ADDINZIP);
-                        if (!zip)
-                            skip_making_zip = false;
-                        else
-                            zipClose(zip, nullptr);
+                        ImageBaker image_baker(Settings, resources);
+                        ModelBaker model_baker(resources);
+                        EffectBaker effect_baker(resources);
+                        image_baker.AutoBakeImages();
+                        model_baker.AutoBakeModels();
+                        effect_baker.AutoBakeEffects();
+                        image_baker.FillBakedFiles(baked_files);
+                        model_baker.FillBakedFiles(baked_files);
+                        effect_baker.FillBakedFiles(baked_files);
                     }
 
-                    // Check timestamps of inner resources
-                    while (resources.IsNextFile())
+                    // Write to disk
+                    bool del_res_ok = DiskFileSystem::DeleteDir(_str("Pack_{}", pack_name));
+                    RUNTIME_ASSERT(del_res_ok);
+
+                    for (const auto& kv : baked_files)
                     {
-                        string relative_path;
-                        File& file = resources.GetNextFile(nullptr, nullptr, &relative_path, true);
-                        if (resource_names)
-                            resource_names->push_back(relative_path);
-
-                        if (skip_making_zip && file.GetWriteTime() > zip_file.GetWriteTime())
-                            skip_making_zip = false;
+                        DiskFile res_file = DiskFileSystem::OpenFile(_str("Pack_{}/{}", pack_name, kv.first), true);
+                        RUNTIME_ASSERT(res_file);
+                        bool res_file_write_ok = res_file.Write(kv.second.data(), (uint)kv.second.size());
+                        RUNTIME_ASSERT(res_file_write_ok);
                     }
-
-                    // Make zip
-                    if (!skip_making_zip)
-                    {
-                        WriteLog("Pack resource '{}', files {}...\n", res_name, resources.GetFilesCount());
-
-                        zipFile zip = zipOpen((zip_path + ".tmp").c_str(), APPEND_STATUS_CREATE);
-                        if (zip)
-                        {
-                            resources.ResetCounter();
-
-                            map<string, UCharVec> baked_files;
-                            {
-                                ImageBaker image_baker(resources);
-                                ModelBaker model_baker(resources);
-                                EffectBaker effect_baker(resources);
-                                image_baker.AutoBakeImages();
-                                model_baker.AutoBakeModels();
-                                effect_baker.AutoBakeEffects();
-                                image_baker.FillBakedFiles(baked_files);
-                                model_baker.FillBakedFiles(baked_files);
-                                effect_baker.FillBakedFiles(baked_files);
-                            }
-
-                            // Fill other files
-                            resources.ResetCounter();
-                            while (resources.IsNextFile())
-                            {
-                                string relative_path;
-                                resources.GetNextFile(nullptr, nullptr, &relative_path, true);
-                                if (baked_files.count(relative_path))
-                                    continue;
-
-                                File& file = resources.GetCurFile();
-                                UCharVec data;
-                                DataWriter writer {data};
-                                writer.WritePtr(file.GetBuf(), file.GetFsize());
-                                baked_files.emplace(relative_path, std::move(data));
-                            }
-
-                            // Write to zip
-                            for (const auto& kv : baked_files)
-                            {
-                                zip_fileinfo zfi;
-                                memzero(&zfi, sizeof(zfi));
-                                if (zipOpenNewFileInZip(zip, kv.first.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr,
-                                        Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK)
-                                {
-                                    if (zipWriteInFileInZip(zip, &kv.second[0], static_cast<uint>(kv.second.size())))
-                                        throw GenericException("Can't write file in zip file", kv.first, zip_path);
-
-                                    zipCloseFileInZip(zip);
-                                }
-                                else
-                                {
-                                    throw GenericException("Can't open file in zip file", kv.first, zip_path);
-                                }
-                            }
-
-                            zipClose(zip, nullptr);
-
-                            File::DeleteFile(zip_path);
-                            if (!File::RenameFile(zip_path + ".tmp", zip_path))
-                                throw GenericException("Can't rename file", zip_path + ".tmp", zip_path);
-
-                            something_changed = true;
-                        }
-                        else
-                        {
-                            WriteLog("Can't open zip file '{}'.\n", zip_path);
-                        }
-                    }
-
-                    update_file_names.insert(res_name_zip);
                 }
                 else
                 {
-                    bool log_shown = false;
-                    while (resources.IsNextFile())
+                    WriteLog("Copy raw resource files {}...\n", resources.GetFilesCount());
+
+                    bool del_raw_ok = DiskFileSystem::DeleteDir("Raw");
+                    RUNTIME_ASSERT(del_raw_ok);
+
+                    while (resources.MoveNext())
                     {
-                        string path, relative_path;
-                        File& file = resources.GetNextFile(nullptr, &path, &relative_path);
-                        string fname = "Update/" + relative_path;
-                        File update_file;
-                        if (!update_file.LoadFile(fname, true) || file.GetWriteTime() > update_file.GetWriteTime())
-                        {
-                            if (!log_shown)
-                            {
-                                log_shown = true;
-                                WriteLog("Copy resource '{}', files {}...\n", res_name, resources.GetFilesCount());
-                            }
-
-                            File* converted_file = nullptr; // Convert(fname, file);
-                            if (!converted_file)
-                            {
-                                WriteLog("File '{}' conversation error.\n", fname);
-                                continue;
-                            }
-                            converted_file->SaveFile(fname);
-                            if (converted_file != &file)
-                                delete converted_file;
-
-                            something_changed = true;
-                        }
-
-                        if (resource_names)
-                        {
-                            string ext = _str(fname).getFileExtension();
-                            if (ext == "zip" || ext == "bos" || ext == "dat")
-                            {
-                                DataFile* inner = DataFile::TryLoad(path);
-                                if (inner)
-                                {
-                                    StrVec inner_files;
-                                    inner->GetFileNames("", true, "", inner_files);
-                                    resource_names->insert(
-                                        resource_names->end(), inner_files.begin(), inner_files.end());
-                                }
-                                else
-                                {
-                                    WriteLog("Can't read data file '{}'.\n", path);
-                                }
-                            }
-                        }
-
-                        update_file_names.insert(relative_path);
+                        File file = resources.GetCurFile();
+                        DiskFile raw_file = DiskFileSystem::OpenFile(_str("Raw/{}", file.GetPath()), true);
+                        RUNTIME_ASSERT(raw_file);
+                        bool raw_file_write_ok = raw_file.Write(file.GetBuf(), file.GetFsize());
+                        RUNTIME_ASSERT(raw_file_write_ok);
                     }
                 }
             }
         }
     }
-
-    // Delete unnecessary update files
-    FileCollection update_files("", "Update/");
-    while (update_files.IsNextFile())
+    catch (std::exception& ex)
     {
-        string path, relative_path;
-        update_files.GetNextFile(nullptr, &path, &relative_path, true);
-        if (!update_file_names.count(relative_path))
-        {
-            File::DeleteFile(path);
-            something_changed = true;
-        }
-    }*/
+        ReportException(ex);
+        return 1;
+    }
 
-    return something_changed;
+    return 0;
 }

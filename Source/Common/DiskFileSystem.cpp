@@ -869,7 +869,7 @@ static void RecursiveDirLook(const string& base_dir, const string& cur_dir, bool
             else
             {
                 if (ext.empty() || _str(path).getFileExtension() == ext)
-                    visitor(cur_dir + path + "/", find.GetFileSize(), find.GetWriteTime());
+                    visitor(cur_dir + path, find.GetFileSize(), find.GetWriteTime());
             }
         }
     }
@@ -877,5 +877,5 @@ static void RecursiveDirLook(const string& base_dir, const string& cur_dir, bool
 
 void DiskFileSystem::IterateDir(const string& path, const string& ext, bool include_subdirs, FileVisitor visitor)
 {
-    RecursiveDirLook(_str(path).formatPath(), "", include_subdirs, ext, visitor);
+    RecursiveDirLook(path, "", include_subdirs, ext, visitor);
 }

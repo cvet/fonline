@@ -71,7 +71,7 @@ FOMapper::FOMapper(GlobalSettings& sett) :
     FileMngr(),
     ServerFileMngr(),
     ScriptSys(this, sett, FileMngr),
-    Cache("Data/Cache.bin"),
+    Cache("Data/Cache.fobin"),
     ProtoMngr(),
     EffectMngr(Settings, FileMngr),
     SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
@@ -124,8 +124,8 @@ FOMapper::FOMapper(GlobalSettings& sett) :
     CurLang.LoadFromFiles(FileMngr, Settings.Language);
 
     // Prototypes
-    bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
-    RUNTIME_ASSERT(protos_ok);
+    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
+    // RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
     const auto& cr_protos = ProtoMngr.GetProtoCritters();

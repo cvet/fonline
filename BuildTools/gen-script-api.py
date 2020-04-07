@@ -116,20 +116,30 @@ for line in lines:
         settings.append((tokens[1], tokens[2], tokens[3:], getDoc()))
 
 # Parse content
-content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [] }
+content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
 
-for file in args.content:
-    def getPidNames(file):
-        result = [os.path.splitext(os.path.basename(file))[0]]
-        with open(file) as f:
-            fileLines = f.readlines()
-        for fileLine in fileLines:
-            if fileLine.startswith('$Name'):
-                result.append(fileLine[fileLine.find('=') + 1:].strip(' \r\n'))
+for contentDir in args.content:
+    def collectFiles(dir):
+        # Todo: recursive search
+        result = []
+        for file in os.listdir(dir):
+            fileParts = os.path.splitext(file)
+            if len(fileParts) > 1 and fileParts[1][1:] in content:
+                result.append(dir + '/' + file)
         return result
 
-    ext = os.path.splitext(os.path.basename(file))[1]
-    content[ext[1:]].extend(getPidNames(file))
+    for file in collectFiles(contentDir):
+        def getPidNames(file):
+            result = [os.path.splitext(os.path.basename(file))[0]]
+            with open(file) as f:
+                fileLines = f.readlines()
+            for fileLine in fileLines:
+                if fileLine.startswith('$Name'):
+                    result.append(fileLine[fileLine.find('=') + 1:].strip(' \r\n'))
+            return result
+
+        ext = os.path.splitext(os.path.basename(file))[1]
+        content[ext[1:]].extend(getPidNames(file))
 
 # Generate API
 files = {}

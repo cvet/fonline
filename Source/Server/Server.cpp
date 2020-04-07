@@ -1731,8 +1731,8 @@ bool FOServer::InitReal()
     // Managers
     if (!DlgMngr.LoadDialogs())
         return false; // Dialog manager
-    if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
-        return false;
+    // if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
+    //    return false;
 
     // Language packs
     if (!InitLangPacksDialogs(LangPacks))
@@ -2191,8 +2191,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation /* = false */, StrVec* 
     }
 
     // Fill prototypes
-    UCharVec proto_items_data;
-    ProtoMngr.GetBinaryData(proto_items_data);
+    UCharVec proto_items_data = ProtoMngr.GetProtosBinaryData();
 
     memzero(&update_file, sizeof(update_file));
     update_file.Size = (uint)proto_items_data.size();

@@ -2286,7 +2286,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
     {
         if (anim3d)
             _mapper->SprMngr.FreePure3dAnimation(anim3d);
-        anim3d = _mapper->SprMngr.LoadPure3dAnimation(_str().parseHash(modelName).c_str(), false);
+        anim3d = _mapper->SprMngr.LoadPure3dAnimation(_str().parseHash(modelName), false);
         DrawCritter3dCrType[instance] = modelName;
         DrawCritter3dFailToLoad[instance] = false;
 

@@ -37,14 +37,14 @@
 
 DECLARE_EXCEPTION(DataSourceException);
 
-class DataSource : public Pointable
+class DataSource : public NonCopyable
 {
 public:
     class Impl;
 
     DataSource(const string& path, bool cache_dirs);
     ~DataSource();
-    DataSource(DataSource&&);
+    DataSource(DataSource&&) noexcept;
     bool IsDiskDir();
     const string& GetPackName();
     bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time);

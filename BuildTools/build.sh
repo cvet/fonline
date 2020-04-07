@@ -106,10 +106,10 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
 
         if [ "$1" = "mac" ]; then
             $CMAKE -G "Xcode" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-            $CMAKE --build . --config Release --parallel
+            $CMAKE --build . --config Release
         else
             $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGETS -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-            $CMAKE --build . --config Release --parallel
+            $CMAKE --build . --config Release
         fi
     fi
 fi

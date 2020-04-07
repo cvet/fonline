@@ -116,11 +116,10 @@ static void InsertMapValues(const StrMap& from_kv, StrMap& to_kv, bool overwrite
     }
 }
 
-#pragma warning(disable : 4503)
 template<class T>
-static int ParseProtos(FileManager& file_mngr, const string& ext, const string& app_name, map<hash, T*>& protos)
+static void ParseProtos(FileManager& file_mngr, const string& ext, const string& app_name, map<hash, T*>& protos)
 {
-    int errors = 0;
+    WriteLog("Load protos '{}'.\n", ext);
 
     // Collect data
     FileCollection files = file_mngr.FilterFiles(ext);
@@ -130,6 +129,7 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
     {
         File file = files.GetCurFile();
         ConfigFile fopro(file.GetCStr());
+        WriteLog("Load proto '{}'.\n", file.GetName());
 
         PStrMapVec protos_data;
         fopro.GetApps(app_name, protos_data);
@@ -139,14 +139,10 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
         for (auto& pkv : protos_data)
         {
             auto& kv = *pkv;
-            const string& name = (kv.count("$Name") ? kv["$Name"] : file.GetName());
+            string name = (kv.count("$Name") ? kv["$Name"] : file.GetName());
             hash pid = _str(name).toHash();
             if (files_protos.count(pid))
-            {
-                WriteLog("Proto '{}' already loaded.\n", name);
-                errors++;
-                continue;
-            }
+                throw ProtoManagerException("Proto already loaded", name);
 
             files_protos.insert(std::make_pair(pid, kv));
 
@@ -167,16 +163,11 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
         }
 
         if (protos_data.empty())
-        {
-            WriteLog("File '{}' does not contain any proto.\n", file.GetName());
-            errors++;
-        }
+            throw ProtoManagerException("File does not contain any proto", file.GetName());
     }
-    if (errors)
-        return errors;
 
     // Injection
-    auto injection = [&files_protos, &errors](const char* key_name, bool overwrite) {
+    auto injection = [&files_protos](const char* key_name, bool overwrite) {
         for (auto& inject_kv : files_protos)
         {
             if (inject_kv.second.count(key_name))
@@ -193,12 +184,8 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
                     {
                         hash inject_name_hash = _str(inject_name).toHash();
                         if (!files_protos.count(inject_name_hash))
-                        {
-                            WriteLog("Proto '{}' not found for injection from proto '{}'.\n", inject_name.c_str(),
-                                _str().parseHash(inject_kv.first));
-                            errors++;
-                            continue;
-                        }
+                            throw ProtoManagerException("Proto not found for injection from another proto",
+                                inject_name.c_str(), _str().parseHash(inject_kv.first));
                         InsertMapValues(inject_kv.second, files_protos[inject_name_hash], overwrite);
                     }
                 }
@@ -206,8 +193,6 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
         }
     };
     injection("$Inject", false);
-    if (errors)
-        return errors;
 
     // Protos
     for (auto& kv : files_protos)
@@ -218,7 +203,7 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
 
         // Fill content from parents
         StrMap final_kv;
-        std::function<bool(const string&, StrMap&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv](
+        std::function<void(const string&, StrMap&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv](
                                                                       const string& name, StrMap& cur_kv) {
             const char* parent_name_line = (cur_kv.count("$Parent") ? cur_kv["$Parent"].c_str() : "");
             for (auto& parent_name : _str(parent_name_line).split(' '))
@@ -228,40 +213,28 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
                 if (parent == files_protos.end())
                 {
                     if (base_name == name)
-                        WriteLog("Proto '{}' fail to load parent '{}'.\n", base_name, parent_name);
+                        throw ProtoManagerException("Proto fail to load parent", base_name, parent_name);
                     else
-                        WriteLog("Proto '{}' fail to load parent '{}' for proto '{}'.\n", base_name, parent_name, name);
-                    return false;
+                        throw ProtoManagerException(
+                            "Proto fail to load parent for another proto", base_name, parent_name, name);
                 }
 
-                if (!fill_parent(parent_name, parent->second))
-                    return false;
+                fill_parent(parent_name, parent->second);
                 InsertMapValues(parent->second, final_kv, true);
             }
-            return true;
         };
-        if (!fill_parent(base_name, kv.second))
-        {
-            errors++;
-            continue;
-        }
+        fill_parent(base_name, kv.second);
 
         // Actual content
         InsertMapValues(kv.second, final_kv, true);
 
         // Final injection
         injection("$InjectOverride", true);
-        if (errors)
-            return errors;
 
         // Create proto
         T* proto = new T(pid);
         if (!proto->Props.LoadFromText(final_kv))
-        {
-            WriteLog("Proto item '{}' fail to load properties.\n", base_name);
-            errors++;
-            continue;
-        }
+            throw ProtoManagerException("Proto item fail to load properties", base_name);
 
         // Components
         if (final_kv.count("$Components"))
@@ -270,11 +243,7 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
             {
                 hash component_name_hash = _str(component_name).toHash();
                 if (!proto->Props.GetRegistrator()->IsComponentRegistered(component_name_hash))
-                {
-                    WriteLog("Proto item '{}' invalid component '{}'.\n", base_name, component_name);
-                    errors++;
-                    continue;
-                }
+                    throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 proto->Components.insert(component_name_hash);
             }
         }
@@ -282,8 +251,6 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
         // Add to collection
         protos.insert(std::make_pair(pid, proto));
     }
-    if (errors)
-        return errors;
 
     // Texts
     for (auto& kv : files_texts)
@@ -315,40 +282,16 @@ static int ParseProtos(FileManager& file_mngr, const string& ext, const string& 
             proto->Texts.push_back(msg);
         }
     }
-
-    return errors;
 }
 
-void ProtoManager::ClearProtos()
+void ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
 {
-    for (auto& proto : itemProtos)
-        proto.second->Release();
-    itemProtos.clear();
-    for (auto& proto : crProtos)
-        proto.second->Release();
-    crProtos.clear();
-    for (auto& proto : mapProtos)
-        proto.second->Release();
-    mapProtos.clear();
-    for (auto& proto : locProtos)
-        proto.second->Release();
-    locProtos.clear();
-}
+    WriteLog("Load protos from files.\n");
 
-bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
-{
-    WriteLog("Load prototypes...\n");
-
-    ClearProtos();
-
-    // Load protos
-    int errors = 0;
-    errors += ParseProtos(file_mngr, "foitem", "ProtoItem", itemProtos);
-    errors += ParseProtos(file_mngr, "focr", "ProtoCritter", crProtos);
-    errors += ParseProtos(file_mngr, "fomap", "ProtoMap", mapProtos);
-    errors += ParseProtos(file_mngr, "foloc", "ProtoLocation", locProtos);
-    if (errors)
-        return false;
+    ParseProtos(file_mngr, "foitem", "ProtoItem", itemProtos);
+    ParseProtos(file_mngr, "focr", "ProtoCritter", crProtos);
+    ParseProtos(file_mngr, "fomap", "ProtoMap", mapProtos);
+    ParseProtos(file_mngr, "foloc", "ProtoLocation", locProtos);
 
     // Mapper collections
     for (auto& kv : itemProtos)
@@ -365,48 +308,29 @@ bool ProtoManager::LoadProtosFromFiles(FileManager& file_mngr)
 
     // Check player proto
     if (!crProtos.count(_str("Player").toHash()))
-    {
-        WriteLog("Player proto 'Player.focr' not loaded.\n");
-        errors++;
-    }
-    if (errors)
-        return false;
+        throw ProtoManagerException("Player proto 'Player.focr' not loaded");
 
     // Check maps for locations
     for (auto& kv : locProtos)
-    {
         for (hash map_pid : kv.second->GetMapProtos())
-        {
             if (!mapProtos.count(map_pid))
-            {
-                WriteLog("Proto map '{}' not found for proto location '{}'.\n", _str().parseHash(map_pid),
-                    kv.second->GetName());
-                errors++;
-            }
-        }
-    }
-    if (errors)
-        return false;
-
-    WriteLog("Load prototypes complete, count {}.\n",
-        itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size());
-    return true;
+                throw ProtoManagerException(
+                    "Proto map not found for proto location", _str().parseHash(map_pid), kv.second->GetName());
 }
 
-void ProtoManager::GetBinaryData(UCharVec& data)
+UCharVec ProtoManager::GetProtosBinaryData()
 {
-    data.clear();
+    UCharVec data;
     WriteProtosToBinary(data, itemProtos);
     WriteProtosToBinary(data, crProtos);
     WriteProtosToBinary(data, mapProtos);
     WriteProtosToBinary(data, locProtos);
     Compressor::Compress(data);
+    return data;
 }
 
 void ProtoManager::LoadProtosFromBinaryData(UCharVec& data)
 {
-    ClearProtos();
-
     if (data.empty())
         return;
     if (!Compressor::Uncompress(data, 15))

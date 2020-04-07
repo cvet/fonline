@@ -38,12 +38,13 @@
 #include "Entity.h"
 #include "FileSystem.h"
 
+DECLARE_EXCEPTION(ProtoManagerException);
+
 class ProtoManager : public NonCopyable
 {
 public:
-    void ClearProtos(); // Todo: remove ProtoManager::ClearProtos
-    bool LoadProtosFromFiles(FileManager& file_mngr);
-    void GetBinaryData(UCharVec& data);
+    void LoadProtosFromFiles(FileManager& file_mngr);
+    UCharVec GetProtosBinaryData();
     void LoadProtosFromBinaryData(UCharVec& data);
     bool ValidateProtoResources(StrVec& resource_names);
 

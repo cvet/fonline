@@ -311,15 +311,6 @@ macro( ResolveContributedFiles fileList )
 		list( APPEND result ${globFiles} )
 	endforeach()
 endmacro()
-macro( ResolveResourceFiles rootDir fileList )
-	set( result "" )
-	foreach( file ${fileList} )
-		file( GLOB_RECURSE globFiles CONFIGURE_DEPENDS LIST_DIRECTORIES FALSE FOLLOW_SYMLINKS RELATIVE ${rootDir} "${rootDir}/${file}" )
-		foreach( globFile ${globFiles} )
-			list( APPEND result "${rootDir},${globFile}" )
-		endforeach()
-	endforeach()
-endmacro()
 
 macro( SetCustomVersion version )
 	# Custom version for build (integer FO_VERSION in code), use hex digits (0-9, a-f), maximum are 8
@@ -336,21 +327,19 @@ macro( DisableMonoScripting )
 endmacro()
 
 macro( AddContent )
-	ResolveContributedFiles( ${ARGN} )
-	list( APPEND FO_CONTENT ${result} )
+	foreach( dir ${ARGN} )
+		list( APPEND FO_CONTENT "${FO_CONTRIBUTION_DIR}/${dir}" )
+	endforeach()
 endmacro()
-macro( AddResources packName rootDir )
-	list( FIND FO_RESOURCES ${packName} packIndex )
-	if( packIndex EQUAL -1 )
-		list( APPEND FO_RESOURCES ${packName} )
-		set( Resources_${packName}_Files "" )
-	endif()
-	ResolveResourceFiles( ${rootDir} ${ARGN} )
-	list( APPEND Resources_${packName}_Files ${result} )
+macro( AddResources packName )
+	foreach( dir ${ARGN} )
+		list( APPEND FO_RESOURCES "${packName},${FO_CONTRIBUTION_DIR}/${dir}" )
+	endforeach()
 endmacro()
-macro( AddRawResources rootDir )
-	ResolveResourceFiles( ${rootDir} ${ARGN} )
-	list( APPEND Resources_Raw_Files ${result} )
+macro( AddRawResources )
+	foreach( dir ${ARGN} )
+		list( APPEND FO_RESOURCES "Raw,${FO_CONTRIBUTION_DIR}/${dir}" )
+	endforeach()
 endmacro()
 macro( AddScriptApi )
 	ResolveContributedFiles( ${ARGN} )
@@ -457,8 +446,7 @@ if( NOT FO_MONO_ASSEMBLIES )
 endif()
 list( GET FO_MONO_ASSEMBLIES 0 monoMainAssembly )
 AddMonoCommonSource( ${monoMainAssembly} "Source/Scripting/Mono/*.cs" )
-AddContent( "Resources/Core/*.foitem" "Resources/Core/*.focr"  "Resources/Core/*.fomap" "Resources/Core/*.foloc" )
-AddResources( "Core" "Resources/Core" "*.*" )
+AddResources( "Core" "Resources/Core" )
 
 # Scripting defines
 if( FO_NATIVE_SCRIPTING )
@@ -1279,8 +1267,8 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		endforeach()
 	endforeach()
 
-	foreach( src ${FO_CONTENT} )
-		list( APPEND genApiCommands -content ${src} )
+	foreach( entry ${FO_CONTENT} )
+		list( APPEND genApiCommands -content ${entry} )
 	endforeach()
 
 	set( genScriptApi python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-script-api.py" ${genApiCommands} )
@@ -1328,7 +1316,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		list( APPEND FO_COMMANDS_GROUP "CompileMonoScripts" )
 	endif()
 
-	# Build all scripts
+	# Compile all scripts
 	add_custom_target( CompileAllScripts
 		COMMAND ${genScriptApi}
 		COMMAND ${compileASScripts}
@@ -1341,31 +1329,34 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 endif()
 
 # Bakering
-set( bakeCommands "FOnlineBaker" )
-set( bakeSources "" )
+set( bakeContent "FOnlineBaker" -ResourcesOutput ${FO_RESOURCES_OUTPUT} )
 foreach( entry ${FO_CONTENT} )
-	list( APPEND bakeCommands -ContentFile "${entry}" )
-	list( APPEND bakeSources ${entry} )
+	list( APPEND bakeContent -ContentEntry ${entry} )
 endforeach()
 
+add_custom_target( BakeContent
+	COMMAND ${bakeContent}
+	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
+	COMMENT "Bake resources" )
+list( APPEND FO_COMMANDS_GROUP "BakeContent" )
+
+set( bakeResources "FOnlineBaker" -ResourcesOutput ${FO_RESOURCES_OUTPUT} )
 foreach( entry ${FO_RESOURCES} )
-	foreach( file ${Resources_${entry}_Files} )
-		list( APPEND bakeCommands -ResourceFile "${entry},${file}" )
-		string( REPLACE "," "/" file ${file} )
-		list( APPEND bakeSources ${file} )
-	endforeach()
+	list( APPEND bakeResources -ResourcesEntry ${entry} )
 endforeach()
 
 add_custom_target( BakeResources
-	COMMAND ${genScriptApi}
-	COMMAND ${compileASScripts}
-	COMMAND ${compileMonoScripts}
-	COMMAND ${bakeCommands}
-	DEPENDS ${genApiDepends}
-	SOURCES ${bakeSources}
+	COMMAND ${bakeResources}
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
+
+add_custom_target( BakeAll
+	COMMAND ${bakeContent}
+	COMMAND ${bakeResources}
+	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
+	COMMENT "Bake all" )
+list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 
 # Packaging
 if( FO_PACKAGES )
@@ -1373,7 +1364,8 @@ if( FO_PACKAGES )
 		COMMAND ${genScriptApi}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
-		COMMAND ${bakeCommands}
+		COMMAND ${bakeContent}
+		COMMAND ${bakeResources}
 		DEPENDS ${genApiDepends}
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 		COMMENT "Make all packages" )
@@ -1386,7 +1378,8 @@ if( FO_PACKAGES )
 			COMMAND ${genScriptApi}
 			COMMAND ${compileASScripts}
 			COMMAND ${compileMonoScripts}
-			COMMAND ${bakeCommands}
+			COMMAND ${bakeContent}
+			COMMAND ${bakeResources}
 			DEPENDS ${genApiDepends}
 			WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 			COMMENT "Make package ${package}" )

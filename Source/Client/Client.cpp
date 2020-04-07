@@ -66,7 +66,7 @@ FOClient::FOClient(GlobalSettings& sett) :
     SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
     ResMngr(FileMngr, SprMngr, ScriptSys),
     HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
-    Cache("Data/Cache.bin"),
+    Cache("Data/Cache.fobin"),
     GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
     Globals = new GlobalVars();
@@ -287,7 +287,7 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesFilesChanged = false;
             SAFEDEL(UpdateFilesList);
             UpdateFileDownloading = false;
-            FileMngr.DeleteFile("Update.bin");
+            FileMngr.DeleteFile("Update.fobin");
             UpdateFilesTick = Timer::FastTick();
 
             Net_SendUpdate();
@@ -319,7 +319,7 @@ void FOClient::UpdateFilesLoop()
 
                 if (update_file.Name[0] == '$')
                 {
-                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.bin")});
+                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.fobin")});
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -334,7 +334,7 @@ void FOClient::UpdateFilesLoop()
 #endif
 
                     FileMngr.DeleteFile(update_file.Name);
-                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.bin")});
+                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.fobin")});
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -3859,7 +3859,7 @@ void FOClient::Net_OnUpdateFileData()
         // Cache
         if (update_file.Name[0] == '$')
         {
-            File temp_file = FileMngr.ReadFile("Update.bin");
+            File temp_file = FileMngr.ReadFile("Update.fobin");
             if (!temp_file)
             {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
@@ -3868,13 +3868,13 @@ void FOClient::Net_OnUpdateFileData()
 
             Cache.SetCache(update_file.Name, temp_file.GetBuf(), temp_file.GetFsize());
             Cache.SetCache(update_file.Name + ".hash", (uchar*)&update_file.Hash, sizeof(update_file.Hash));
-            FileMngr.DeleteFile("Update.bin");
+            FileMngr.DeleteFile("Update.fobin");
         }
         // File
         else
         {
             FileMngr.DeleteFile(update_file.Name);
-            FileMngr.RenameFile("Update.bin", update_file.Name);
+            FileMngr.RenameFile("Update.fobin", update_file.Name);
         }
 
         UpdateFilesList->erase(UpdateFilesList->begin());
