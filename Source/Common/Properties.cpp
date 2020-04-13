@@ -32,147 +32,128 @@
 //
 
 #include "Properties.h"
-#include "Entity.h"
 #include "Log.h"
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
-Property::Property()
+unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* data, uint data_size)
 {
-    nativeSendCallback = nullptr;
-    nativeSetCallback = nullptr;
-    setCallbacksAnyNewValue = false;
-}
-
-void* Property::CreateRefValue(uchar* data, uint data_size)
-{
-    /*    asIScriptEngine* engine = asObjType->GetEngine();
-        if (dataType == Property::Array)
+    /*if (dataType == Property::Array)
+    {
+        if (isArrayOfString)
         {
-            if (isArrayOfString)
+            if (data_size)
             {
-                if (data_size)
+                uint arr_size;
+                memcpy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(uint);
+                CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
+                RUNTIME_ASSERT(arr);
+                for (uint i = 0; i < arr_size; i++)
                 {
+                    uint str_size;
+                    memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(uint);
+                    string str((char*)data, str_size);
+                    arr->SetValue(i, &str);
+                    data += str_size;
+                }
+                return arr;
+            }
+            else
+            {
+                CScriptArray* arr = CScriptArray::Create(asObjType);
+                RUNTIME_ASSERT(arr);
+                return arr;
+            }
+        }
+        else
+        {
+            uint element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId());
+            uint arr_size = data_size / element_size;
+            CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
+            RUNTIME_ASSERT(arr);
+            if (arr_size)
+                memcpy(arr->At(0), data, arr_size * element_size);
+            return arr;
+        }
+    }
+    else if (dataType == Property::Dict)
+    {
+        CScriptDict* dict = CScriptDict::Create(asObjType);
+        RUNTIME_ASSERT(dict);
+        if (data_size)
+        {
+            uint key_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(0));
+            if (isDictOfArray)
+            {
+                asITypeInfo* arr_type = asObjType->GetSubType(1);
+                uint arr_element_size = engine->GetSizeOfPrimitiveType(arr_type->GetSubTypeId());
+                uchar* data_end = data + data_size;
+                while (data < data_end)
+                {
+                    void* key = data;
+                    data += key_element_size;
                     uint arr_size;
                     memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(uint);
-                    CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
+                    CScriptArray* arr = CScriptArray::Create(arr_type, arr_size);
                     RUNTIME_ASSERT(arr);
-                    for (uint i = 0; i < arr_size; i++)
+                    if (arr_size)
                     {
-                        uint str_size;
-                        memcpy(&str_size, data, sizeof(str_size));
-                        data += sizeof(uint);
-                        string str((char*)data, str_size);
-                        arr->SetValue(i, &str);
-                        data += str_size;
+                        if (isDictOfArrayOfString)
+                        {
+                            for (uint i = 0; i < arr_size; i++)
+                            {
+                                uint str_size;
+                                memcpy(&str_size, data, sizeof(str_size));
+                                data += sizeof(uint);
+                                string str((char*)data, str_size);
+                                arr->SetValue(i, &str);
+                                data += str_size;
+                            }
+                        }
+                        else
+                        {
+                            memcpy(arr->At(0), data, arr_size * arr_element_size);
+                            data += arr_size * arr_element_size;
+                        }
                     }
-                    return arr;
+                    dict->Set(key, &arr);
+                    arr->Release();
                 }
-                else
+            }
+            else if (isDictOfString)
+            {
+                uchar* data_end = data + data_size;
+                while (data < data_end)
                 {
-                    CScriptArray* arr = CScriptArray::Create(asObjType);
-                    RUNTIME_ASSERT(arr);
-                    return arr;
+                    void* key = data;
+                    data += key_element_size;
+                    uint str_size;
+                    memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(uint);
+                    string str((char*)data, str_size);
+                    dict->Set(key, &str);
+                    data += str_size;
                 }
             }
             else
             {
-                uint element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId());
-                uint arr_size = data_size / element_size;
-                CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
-                RUNTIME_ASSERT(arr);
-                if (arr_size)
-                    memcpy(arr->At(0), data, arr_size * element_size);
-                return arr;
+                uint value_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(1));
+                uint whole_element_size = key_element_size + value_element_size;
+                uint dict_size = data_size / whole_element_size;
+                for (uint i = 0; i < dict_size; i++)
+                    dict->Set(data + i * whole_element_size, data + i * whole_element_size + key_element_size);
             }
         }
-        else if (dataType == Property::Dict)
-        {
-            CScriptDict* dict = CScriptDict::Create(asObjType);
-            RUNTIME_ASSERT(dict);
-            if (data_size)
-            {
-                uint key_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(0));
-                if (isDictOfArray)
-                {
-                    asITypeInfo* arr_type = asObjType->GetSubType(1);
-                    uint arr_element_size = engine->GetSizeOfPrimitiveType(arr_type->GetSubTypeId());
-                    uchar* data_end = data + data_size;
-                    while (data < data_end)
-                    {
-                        void* key = data;
-                        data += key_element_size;
-                        uint arr_size;
-                        memcpy(&arr_size, data, sizeof(arr_size));
-                        data += sizeof(uint);
-                        CScriptArray* arr = CScriptArray::Create(arr_type, arr_size);
-                        RUNTIME_ASSERT(arr);
-                        if (arr_size)
-                        {
-                            if (isDictOfArrayOfString)
-                            {
-                                for (uint i = 0; i < arr_size; i++)
-                                {
-                                    uint str_size;
-                                    memcpy(&str_size, data, sizeof(str_size));
-                                    data += sizeof(uint);
-                                    string str((char*)data, str_size);
-                                    arr->SetValue(i, &str);
-                                    data += str_size;
-                                }
-                            }
-                            else
-                            {
-                                memcpy(arr->At(0), data, arr_size * arr_element_size);
-                                data += arr_size * arr_element_size;
-                            }
-                        }
-                        dict->Set(key, &arr);
-                        arr->Release();
-                    }
-                }
-                else if (isDictOfString)
-                {
-                    uchar* data_end = data + data_size;
-                    while (data < data_end)
-                    {
-                        void* key = data;
-                        data += key_element_size;
-                        uint str_size;
-                        memcpy(&str_size, data, sizeof(str_size));
-                        data += sizeof(uint);
-                        string str((char*)data, str_size);
-                        dict->Set(key, &str);
-                        data += str_size;
-                    }
-                }
-                else
-                {
-                    uint value_element_size = engine->GetSizeOfPrimitiveType(asObjType->GetSubTypeId(1));
-                    uint whole_element_size = key_element_size + value_element_size;
-                    uint dict_size = data_size / whole_element_size;
-                    for (uint i = 0; i < dict_size; i++)
-                        dict->Set(data + i * whole_element_size, data + i * whole_element_size + key_element_size);
-                }
-            }
-            return dict;
-        }
-        else
-        {
-            RUNTIME_ASSERT(!"Unexpected type");
-        }*/
-    return nullptr;
-}
-
-void Property::ReleaseRefValue(void* value)
-{
-    /*if (dataType == Property::Array)
-        ((CScriptArray*)value)->Release();
-    else if (dataType == Property::Dict)
-        ((CScriptDict*)value)->Release();
+        return dict;
+    }
     else
-        RUNTIME_ASSERT(!"Unexpected type");*/
+    {
+        RUNTIME_ASSERT(!"Unexpected type");
+    }*/
+    return nullptr;
 }
 
 uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need_delete)
@@ -382,412 +363,6 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
     return nullptr;
 }
 
-void Property::GenericGet(Entity* entity, void* ret_value)
-{
-    /*Properties* properties = &entity->Props;
-
-    // Validate entity
-    if (entity->IsDestroyed)
-    {
-        SCRIPT_ERROR_R("Attempt to get property '{} {}::{}' on destroyed entity.", typeName,
-            properties->registrator->scriptClassName, propName);
-    }
-
-    // Virtual property
-    if (accessType & Property::VirtualMask)
-    {
-        if (!getCallback)
-        {
-            SCRIPT_ERROR_R("'Get' callback is not assigned for virtual property '{} {}::{}'.", typeName,
-                properties->registrator->scriptClassName, propName);
-        }
-
-        if (properties->getCallbackLocked[getIndex])
-        {
-            SCRIPT_ERROR_R("Recursive call for virtual property '{} {}::{}'.", typeName,
-                properties->registrator->scriptClassName, propName);
-        }
-
-        properties->getCallbackLocked[getIndex] = true;
-
-        / *Script::PrepareContext(getCallback, GetName());
-        if (getCallbackArgs > 0)
-            Script::SetArgEntity(entity);
-        if (getCallbackArgs > 1)
-            Script::SetArgUInt(enumValue);
-        if (Script::RunPrepared())
-        {
-            properties->getCallbackLocked[getIndex] = false;
-
-            if (dataType == Property::String)
-            {
-                *(string*)ret_value = *(string*)Script::GetReturnedRawAddress();
-            }
-            else if (dataType == Property::POD)
-            {
-                memcpy(ret_value, Script::GetReturnedRawAddress(), baseSize);
-            }
-            else if (dataType == Property::Array || dataType == Property::Dict)
-            {
-                memcpy(ret_value, Script::GetReturnedRawAddress(), sizeof(void*));
-                void*& val = *(void**)ret_value;
-                if (val)
-                {
-                    if (dataType == Property::Array)
-                        ((CScriptArray*)val)->AddRef();
-                    else
-                        ((CScriptDict*)val)->AddRef();
-                }
-                else
-                {
-                    val = CreateRefValue(nullptr, 0);
-                }
-            }
-            else
-            {
-                RUNTIME_ASSERT(!"Unexpected type");
-            }
-
-            return;
-        }* /
-
-        properties->getCallbackLocked[getIndex] = false;
-
-        // Error
-        // Script::PassException();
-        return;
-    }
-
-    // Raw property
-    if (dataType == Property::String)
-    {
-        RUNTIME_ASSERT(complexDataIndex != uint(-1));
-        uchar* data = properties->complexData[complexDataIndex];
-        uint data_size = properties->complexDataSizes[complexDataIndex];
-        if (data_size)
-            (*(string*)ret_value).assign((char*)data, data_size);
-    }
-    else if (dataType == Property::POD)
-    {
-        RUNTIME_ASSERT(podDataOffset != uint(-1));
-        memcpy(ret_value, &properties->podData[podDataOffset], baseSize);
-    }
-    else if (dataType == Property::Array || dataType == Property::Dict)
-    {
-        RUNTIME_ASSERT(complexDataIndex != uint(-1));
-        uchar* data = properties->complexData[complexDataIndex];
-        uint data_size = properties->complexDataSizes[complexDataIndex];
-        *(void**)ret_value = CreateRefValue(data, data_size);
-    }
-    else
-    {
-        RUNTIME_ASSERT(!"Unexpected type");
-    }*/
-}
-
-void Property::GenericSet(Entity* entity, void* new_value)
-{
-    /*Properties* properties = &entity->Props;
-
-    // Validate entity
-    if (entity->IsDestroyed)
-    {
-        SCRIPT_ERROR_R("Attempt to set property '{} {}::{}' on destroyed entity.", typeName,
-            properties->registrator->scriptClassName, propName);
-    }
-
-    // Dereference ref types
-    if (dataType == DataType::Array || dataType == DataType::Dict)
-        new_value = *(void**)new_value;
-
-    // Virtual property
-    if (accessType & Property::VirtualMask)
-    {
-        if (setCallbacks.empty())
-        {
-            SCRIPT_ERROR_R("'Set' callback is not assigned for virtual property '{} {}::{}'.", typeName,
-                properties->registrator->scriptClassName, propName);
-        }
-
-        / *for (size_t i = 0; i < setCallbacks.size(); i++)
-        {
-            Script::PrepareContext(setCallbacks[i], GetName());
-            Script::SetArgObject(entity);
-            if (setCallbacksArgs[i] > 1)
-            {
-                Script::SetArgUInt(enumValue);
-                if (setCallbacksArgs[i] == 3)
-                    Script::SetArgAddress(new_value);
-            }
-            else if (setCallbacksArgs[i] < -1)
-            {
-                Script::SetArgAddress(new_value);
-                if (setCallbacksArgs[i] == -3)
-                    Script::SetArgUInt(enumValue);
-            }
-
-            bool run_ok = true;
-            if (setCallbacksDeferred[i])
-                Script::RunPreparedSuspend();
-            else
-                run_ok = Script::RunPrepared();
-            RUNTIME_ASSERT(!entity->IsDestroyed);
-            if (!run_ok)
-                break;
-        }* /
-
-        return;
-    }
-
-    // Get current value
-    void* cur_pod_value = nullptr;
-    uint64 old_pod_value = 0;
-    bool new_value_data_need_delete = false;
-    uint new_value_data_size = 0;
-    uchar* new_value_data = nullptr;
-    if (dataType == Property::POD)
-    {
-        RUNTIME_ASSERT(podDataOffset != uint(-1));
-        cur_pod_value = &properties->podData[podDataOffset];
-
-        // Ignore void calls
-        if (!memcmp(new_value, cur_pod_value, baseSize))
-            return;
-
-        // Store old value for native callbacks
-        memcpy(&old_pod_value, cur_pod_value, baseSize);
-    }
-    else
-    {
-        RUNTIME_ASSERT(complexDataIndex != uint(-1));
-
-        // Check for null
-        if (!new_value)
-        {
-            SCRIPT_ERROR_R("Attempt to set null on property '{} {}::{}'.", typeName,
-                properties->registrator->scriptClassName, propName);
-        }
-
-        // Expand new value data for comparison
-        new_value_data = ExpandComplexValueData(new_value, new_value_data_size, new_value_data_need_delete);
-
-        // Get current data for comparison
-        uint cur_value_data_size = properties->complexDataSizes[complexDataIndex];
-        uchar* cur_value_data = properties->complexData[complexDataIndex];
-
-        // Compare for ignore void calls
-        bool void_call = false;
-        if (new_value_data_size == cur_value_data_size &&
-            (cur_value_data_size == 0 || !memcmp(new_value_data, cur_value_data, cur_value_data_size)))
-            void_call = true;
-
-        // Deallocate data
-        if (new_value_data_need_delete && new_value_data_size && (setCallbacksAnyNewValue || void_call))
-            SAFEDELA(new_value_data);
-
-        // Ignore void calls
-        if (void_call)
-            return;
-    }
-
-    // Script callbacks
-    if (!setCallbacks.empty())
-    {
-        / *for (size_t i = 0; i < setCallbacks.size(); i++)
-        {
-            Script::PrepareContext(setCallbacks[i], GetName());
-            Script::SetArgObject(entity);
-            if (setCallbacksArgs[i] > 1)
-            {
-                Script::SetArgUInt(enumValue);
-                if (setCallbacksArgs[i] == 3)
-                    Script::SetArgAddress(new_value);
-            }
-            else if (setCallbacksArgs[i] < -1)
-            {
-                Script::SetArgAddress(new_value);
-                if (setCallbacksArgs[i] == -3)
-                    Script::SetArgUInt(enumValue);
-            }
-
-            bool run_ok = true;
-            if (setCallbacksDeferred[i])
-                Script::RunPreparedSuspend();
-            else
-                run_ok = Script::RunPrepared();
-            RUNTIME_ASSERT(!entity->IsDestroyed);
-            if (!run_ok)
-                break;
-        }* /
-    }
-
-    // Check min/max for POD value and store
-    if (dataType == Property::POD)
-    {
-        // Clamp
-        if (checkMaxValue)
-        {
-#define CHECK_MAX_VALUE(type) \
-    do \
-    { \
-        type max_v = (type)maxValue; \
-        if (*(type*)new_value > max_v) \
-            *(type*)new_value = max_v; \
-    } while (0)
-            if (isIntDataType && isSignedIntDataType)
-            {
-                if (baseSize == 1)
-                    CHECK_MAX_VALUE(char);
-                else if (baseSize == 2)
-                    CHECK_MAX_VALUE(short);
-                else if (baseSize == 4)
-                    CHECK_MAX_VALUE(int);
-                else if (baseSize == 8)
-                    CHECK_MAX_VALUE(int64);
-            }
-            else if (isIntDataType && !isSignedIntDataType)
-            {
-                if (baseSize == 1)
-                    CHECK_MAX_VALUE(uchar);
-                else if (baseSize == 2)
-                    CHECK_MAX_VALUE(ushort);
-                else if (baseSize == 4)
-                    CHECK_MAX_VALUE(uint);
-                else if (baseSize == 8)
-                    CHECK_MAX_VALUE(uint64);
-            }
-            else if (isFloatDataType)
-            {
-                if (baseSize == 4)
-                    CHECK_MAX_VALUE(float);
-                else if (baseSize == 8)
-                    CHECK_MAX_VALUE(double);
-            }
-#undef CHECK_MAX_VALUE
-        }
-        if (checkMinValue)
-        {
-#define CHECK_MIN_VALUE(type) \
-    do \
-    { \
-        type min_v = (type)minValue; \
-        if (*(type*)new_value < min_v) \
-            *(type*)new_value = min_v; \
-    } while (0)
-            if (isIntDataType && isSignedIntDataType)
-            {
-                if (baseSize == 1)
-                    CHECK_MIN_VALUE(char);
-                else if (baseSize == 2)
-                    CHECK_MIN_VALUE(short);
-                else if (baseSize == 4)
-                    CHECK_MIN_VALUE(int);
-                else if (baseSize == 8)
-                    CHECK_MIN_VALUE(int64);
-            }
-            else if (isIntDataType && !isSignedIntDataType)
-            {
-                if (baseSize == 1)
-                    CHECK_MIN_VALUE(uchar);
-                else if (baseSize == 2)
-                    CHECK_MIN_VALUE(ushort);
-                else if (baseSize == 4)
-                    CHECK_MIN_VALUE(uint);
-                else if (baseSize == 8)
-                    CHECK_MIN_VALUE(uint64);
-            }
-            else if (isFloatDataType)
-            {
-                if (baseSize == 4)
-                    CHECK_MIN_VALUE(float);
-                else if (baseSize == 8)
-                    CHECK_MIN_VALUE(double);
-            }
-#undef CHECK_MIN_VALUE
-        }
-
-        // Ignore void calls
-        if (!memcmp(new_value, cur_pod_value, baseSize))
-            return;
-
-        // Store
-        memcpy(cur_pod_value, new_value, baseSize);
-    }
-
-    // Store complex value
-    if (dataType != Property::POD)
-    {
-        RUNTIME_ASSERT(complexDataIndex != uint(-1));
-
-        // Expand new value data for comparison
-        if (!new_value_data)
-            new_value_data = ExpandComplexValueData(new_value, new_value_data_size, new_value_data_need_delete);
-
-        // Get current data for comparison
-        uint cur_value_data_size = properties->complexDataSizes[complexDataIndex];
-        uchar* cur_value_data = properties->complexData[complexDataIndex];
-
-        // Compare for ignore void calls
-        if (new_value_data_size == cur_value_data_size &&
-            (cur_value_data_size == 0 || !memcmp(new_value_data, cur_value_data, cur_value_data_size)))
-        {
-            // Deallocate data
-            if (new_value_data_need_delete && new_value_data_size)
-                SAFEDELA(new_value_data);
-            return;
-        }
-
-        // Copy new property data
-        if (properties->complexDataSizes[complexDataIndex] != new_value_data_size && new_value_data_size &&
-            new_value_data_need_delete)
-        {
-            new_value_data_need_delete = false;
-            SAFEDELA(properties->complexData[complexDataIndex]);
-            properties->complexDataSizes[complexDataIndex] = new_value_data_size;
-            properties->complexData[complexDataIndex] = new_value_data;
-        }
-        else
-        {
-            if (properties->complexDataSizes[complexDataIndex] != new_value_data_size)
-            {
-                SAFEDELA(properties->complexData[complexDataIndex]);
-                properties->complexDataSizes[complexDataIndex] = new_value_data_size;
-                if (new_value_data_size)
-                    properties->complexData[complexDataIndex] = new uchar[new_value_data_size];
-            }
-            if (new_value_data_size)
-                memcpy(properties->complexData[complexDataIndex], new_value_data, new_value_data_size);
-        }
-
-        // Deallocate data
-        if (new_value_data_need_delete && new_value_data_size)
-            SAFEDELA(new_value_data);
-    }
-
-    // Native set callbacks
-    if (nativeSetCallback || !PropertyRegistrator::GlobalSetCallbacks.empty())
-    {
-        if (nativeSetCallback)
-            nativeSetCallback(entity, this, new_value, &old_pod_value);
-        for (size_t i = 0, j = PropertyRegistrator::GlobalSetCallbacks.size(); i < j; i++)
-            PropertyRegistrator::GlobalSetCallbacks[i](entity, this, new_value, &old_pod_value);
-
-        // Maybe callback reset value
-        if (dataType == Property::POD && !memcmp(new_value, &old_pod_value, baseSize))
-            return;
-    }
-
-    // Native send callback
-    if (nativeSendCallback && !(this == properties->sendIgnoreProperty && entity == properties->sendIgnoreEntity))
-    {
-        if ((properties->registrator->isServer && (accessType & (Property::PublicMask | Property::ProtectedMask))) ||
-            (!properties->registrator->isServer && (accessType & Property::ModifiableMask)))
-        {
-            nativeSendCallback(entity, this);
-        }
-    }*/
-}
-
 string Property::GetName()
 {
     return propName;
@@ -868,233 +443,11 @@ bool Property::IsNoHistory()
     return isNoHistory;
 }
 
-uchar* Property::GetRawData(Entity* entity, uint& data_size)
-{
-    return GetPropRawData(&entity->Props, data_size);
-}
-
-uchar* Property::GetPropRawData(Properties* properties, uint& data_size)
-{
-    if (dataType == Property::POD)
-    {
-        RUNTIME_ASSERT(podDataOffset != uint(-1));
-        data_size = baseSize;
-        return &properties->podData[podDataOffset];
-    }
-
-    RUNTIME_ASSERT(complexDataIndex != uint(-1));
-    data_size = properties->complexDataSizes[complexDataIndex];
-    return properties->complexData[complexDataIndex];
-}
-
-void Property::SetPropRawData(Properties* properties, uchar* data, uint data_size)
-{
-    if (IsPOD())
-    {
-        RUNTIME_ASSERT(podDataOffset != uint(-1));
-        RUNTIME_ASSERT(baseSize == data_size);
-        memcpy(&properties->podData[podDataOffset], data, data_size);
-    }
-    else
-    {
-        RUNTIME_ASSERT(complexDataIndex != uint(-1));
-        if (data_size != properties->complexDataSizes[complexDataIndex])
-        {
-            properties->complexDataSizes[complexDataIndex] = data_size;
-            SAFEDELA(properties->complexData[complexDataIndex]);
-            if (data_size)
-                properties->complexData[complexDataIndex] = new uchar[data_size];
-        }
-        if (data_size)
-            memcpy(properties->complexData[complexDataIndex], data, data_size);
-    }
-}
-
-void Property::SetData(Entity* entity, uchar* data, uint data_size)
-{
-    if (dataType == Property::String)
-    {
-        string str;
-        if (data_size)
-            str.assign((char*)data, data_size);
-        GenericSet(entity, &str);
-    }
-    else if (dataType == Property::POD)
-    {
-        RUNTIME_ASSERT(data_size == baseSize);
-        GenericSet(entity, data);
-    }
-    else if (dataType == Property::Array || dataType == Property::Dict)
-    {
-        void* value = CreateRefValue(data, data_size);
-        GenericSet(entity, &value);
-        ReleaseRefValue(value);
-    }
-    else
-    {
-        RUNTIME_ASSERT(!"Unexpected type");
-    }
-}
-
-int Property::GetPODValueAsInt(Entity* entity)
-{
-    RUNTIME_ASSERT(dataType == Property::POD);
-    if (isBoolDataType)
-    {
-        return GetValue<bool>(entity) ? 1 : 0;
-    }
-    else if (isFloatDataType)
-    {
-        if (baseSize == 4)
-            return (int)GetValue<float>(entity);
-        else if (baseSize == 8)
-            return (int)GetValue<double>(entity);
-    }
-    else if (isSignedIntDataType)
-    {
-        if (baseSize == 1)
-            return (int)GetValue<char>(entity);
-        if (baseSize == 2)
-            return (int)GetValue<short>(entity);
-        if (baseSize == 4)
-            return (int)GetValue<int>(entity);
-        if (baseSize == 8)
-            return (int)GetValue<int64>(entity);
-    }
-    else
-    {
-        if (baseSize == 1)
-            return (int)GetValue<uchar>(entity);
-        if (baseSize == 2)
-            return (int)GetValue<ushort>(entity);
-        if (baseSize == 4)
-            return (int)GetValue<uint>(entity);
-        if (baseSize == 8)
-            return (int)GetValue<uint64>(entity);
-    }
-    throw UnreachablePlaceException(LINE_STR);
-    return 0;
-}
-
-void Property::SetPODValueAsInt(Entity* entity, int value)
-{
-    RUNTIME_ASSERT(dataType == Property::POD);
-    if (isBoolDataType)
-    {
-        SetValue<bool>(entity, value != 0);
-    }
-    else if (isFloatDataType)
-    {
-        if (baseSize == 4)
-            SetValue<float>(entity, (float)value);
-        else if (baseSize == 8)
-            SetValue<double>(entity, (double)value);
-    }
-    else if (isSignedIntDataType)
-    {
-        if (baseSize == 1)
-            SetValue<char>(entity, (char)value);
-        else if (baseSize == 2)
-            SetValue<short>(entity, (short)value);
-        else if (baseSize == 4)
-            SetValue<int>(entity, (int)value);
-        else if (baseSize == 8)
-            SetValue<int64>(entity, (int64)value);
-    }
-    else
-    {
-        if (baseSize == 1)
-            SetValue<uchar>(entity, (uchar)value);
-        else if (baseSize == 2)
-            SetValue<ushort>(entity, (ushort)value);
-        else if (baseSize == 4)
-            SetValue<uint>(entity, (uint)value);
-        else if (baseSize == 8)
-            SetValue<uint64>(entity, (uint64)value);
-    }
-}
-
-/*string Property::AddSetCallback(asIScriptFunction* func, bool deferred)
-{
-    uint bind_id = Script::BindByFunc(func, false);
-    if (!bind_id)
-        return "Unable to bind function '" + string(func->GetName()) + "'.";
-
-    setCallbacksArgs.push_back(func->GetParamCount());
-    asDWORD flags;
-    if (setCallbacksArgs.back() >= 2 && func->GetParam(1, nullptr, &flags) > 0 && flags & asTM_INOUTREF)
-        setCallbacksArgs.back() = -setCallbacksArgs.back();
-    if (setCallbacksArgs.back() == 3 || setCallbacksArgs.back() == -3 || setCallbacksArgs.back() == -2)
-        setCallbacksAnyNewValue = true;
-
-    setCallbacks.push_back(bind_id);
-    setCallbacksDeferred.push_back(deferred);
-
-    / *char decl[ MAX_FOTEXT ];
-       X_str( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(),
-       registrator->enumTypeName.c_str(), typeName.c_str() ); uint  bind_id = ( !deferred ?
-       Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 ); if( !bind_id )
-       {
-        X_str( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(),
-       typeName.c_str(), registrator->enumTypeName.c_str() ); bind_id = ( !deferred ? Script::BindByFuncNameInRuntime(
-       script_func, decl, false, true ) : 0 ); if( !bind_id )
-        {
-            X_str( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(),
-       registrator->enumTypeName.c_str() ); bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
-            if( !bind_id )
-            {
-                X_str( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(),
-       typeName.c_str() ); bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0
-       ); if( !bind_id )
-                {
-                    X_str( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str()
-       ); bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true ); if( !bind_id )
-                    {
-                        char buf[ MAX_FOTEXT ];
-                        X_str( buf, decl, script_func );
-                        return "Unable to bind function '" + string( buf ) + "'.";
-                    }
-                    else
-                    {
-                        setCallbacksArgs.push_back( 1 );
-                    }
-                }
-                else
-                {
-                    setCallbacksArgs.push_back( -2 );
-                    setCallbacksAnyNewValue = true;
-                }
-            }
-            else
-            {
-                setCallbacksArgs.push_back( 2 );
-            }
-        }
-        else
-        {
-            setCallbacksArgs.push_back( -3 );
-            setCallbacksAnyNewValue = true;
-        }
-       }
-       else
-       {
-        setCallbacksArgs.push_back( 3 );
-        setCallbacksAnyNewValue = true;
-       }
-
-       setCallbacks.push_back( bind_id );
-       setCallbacksDeferred.push_back( deferred );
-       return "";
-}*/
-
 Properties::Properties(PropertyRegistrator* reg)
 {
     registrator = reg;
     RUNTIME_ASSERT(registrator);
-    RUNTIME_ASSERT(registrator->registrationFinished);
 
-    getCallbackLocked = new bool[registrator->getPropertiesCount];
-    memzero(getCallbackLocked, registrator->getPropertiesCount * sizeof(bool));
     sendIgnoreEntity = nullptr;
     sendIgnoreProperty = nullptr;
 
@@ -1133,15 +486,10 @@ Properties::Properties(const Properties& other) : Properties(other.registrator)
 
 Properties::~Properties()
 {
-    delete[] getCallbackLocked;
-
     registrator->podDataPool.push_back(podData);
-    podData = nullptr;
 
     for (size_t i = 0; i < complexData.size(); i++)
         SAFEDELA(complexData[i]);
-    complexData.clear();
-    complexDataSizes.clear();
 }
 
 Properties& Properties::operator=(const Properties& other)
@@ -1156,8 +504,7 @@ Properties& Properties::operator=(const Properties& other)
     {
         Property* prop = registrator->registeredProperties[i];
         if (prop->complexDataIndex != uint(-1))
-            prop->SetPropRawData(
-                this, other.complexData[prop->complexDataIndex], other.complexDataSizes[prop->complexDataIndex]);
+            SetRawData(prop, other.complexData[prop->complexDataIndex], other.complexDataSizes[prop->complexDataIndex]);
     }
 
     return *this;
@@ -1244,7 +591,7 @@ void Properties::RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes)
             RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
             uint data_size = all_data_sizes[2 + i];
             uchar* data = all_data[2 + i];
-            prop->SetPropRawData(this, data, data_size);
+            SetRawData(prop, data, data_size);
         }
     }
 }
@@ -1759,14 +1106,14 @@ bool Properties::LoadPropertyFromText(Property* prop, const string& text)
 
 string Properties::SavePropertyToText(Property* prop)
 {
-    /*RUNTIME_ASSERT(prop);
+    RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
     RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
 
     uint data_size;
-    void* data = prop->GetPropRawData(this, data_size);
+    void* data = GetRawData(prop, data_size);
 
-    void* value = data;
+    /*void* value = data;
     string str;
     if (prop->dataType == Property::String)
     {
@@ -1784,104 +1131,10 @@ string Properties::SavePropertyToText(Property* prop)
     string text = WriteValue(value, prop->asObjTypeId, prop->asObjType, is_hashes, 0);
 
     if (prop->dataType == Property::Array || prop->dataType == Property::Dict)
-        prop->ReleaseRefValue(value);
+        prop->ReleaseRefValue(value);*/
 
-    return text;*/
+    // return text;
     return "";
-}
-
-int Properties::GetValueAsInt(Entity* entity, int enum_value)
-{
-    /*Property* prop = entity->Props.registrator->FindByEnum(enum_value);
-    if (!prop)
-        SCRIPT_ERROR_R0("Enum '{}' not found", enum_value);
-    if (!prop->IsPOD())
-        SCRIPT_ERROR_R0("Can't retreive integer value from non POD property '{}'", prop->GetName());
-    if (!prop->IsReadable())
-        SCRIPT_ERROR_R0("Can't retreive integer value from non readable property '{}'", prop->GetName());
-
-    return prop->GetPODValueAsInt(entity);*/
-    return 0;
-}
-
-void Properties::SetValueAsInt(Entity* entity, int enum_value, int value)
-{
-    /*Property* prop = entity->Props.registrator->FindByEnum(enum_value);
-    if (!prop)
-        SCRIPT_ERROR_R("Enum '{}' not found", enum_value);
-    if (!prop->IsPOD())
-        SCRIPT_ERROR_R("Can't set integer value to non POD property '{}'", prop->GetName());
-    if (!prop->IsWritable())
-        SCRIPT_ERROR_R("Can't set integer value to non writable property '{}'", prop->GetName());
-
-    prop->SetPODValueAsInt(entity, value);*/
-}
-
-bool Properties::SetValueAsIntByName(Entity* entity, const string& enum_name, int value)
-{
-    /*Property* prop = entity->Props.registrator->Find(enum_name);
-    if (!prop)
-        SCRIPT_ERROR_R0("Enum '{}' not found", enum_name);
-    if (!prop->IsPOD())
-        SCRIPT_ERROR_R0("Can't set by name integer value from non POD property '{}'", prop->GetName());
-    if (!prop->IsWritable())
-        SCRIPT_ERROR_R0("Can't set integer value to non writable property '{}'", prop->GetName());
-
-    prop->SetPODValueAsInt(entity, value);*/
-    return true;
-}
-
-bool Properties::SetValueAsIntProps(Properties* props, int enum_value, int value)
-{
-    /*Property* prop = props->registrator->FindByEnum(enum_value);
-    if (!prop)
-        SCRIPT_ERROR_R0("Enum '{}' not found", enum_value);
-    if (!prop->IsPOD())
-        SCRIPT_ERROR_R0("Can't set integer value to non POD property '{}'", prop->GetName());
-    if (!prop->IsWritable())
-        SCRIPT_ERROR_R0("Can't set integer value to non writable property '{}'", prop->GetName());
-    if (prop->accessType & Property::VirtualMask)
-        SCRIPT_ERROR_R0("Can't set integer value to virtual property '{}'", prop->GetName());
-
-    if (prop->isBoolDataType)
-    {
-        props->SetPropValue<bool>(prop, value != 0);
-    }
-    else if (prop->isFloatDataType)
-    {
-        if (prop->baseSize == 4)
-            props->SetPropValue<float>(prop, (float)value);
-        else if (prop->baseSize == 8)
-            props->SetPropValue<double>(prop, (double)value);
-    }
-    else if (prop->isSignedIntDataType)
-    {
-        if (prop->baseSize == 1)
-            props->SetPropValue<char>(prop, (char)value);
-        else if (prop->baseSize == 2)
-            props->SetPropValue<short>(prop, (short)value);
-        else if (prop->baseSize == 4)
-            props->SetPropValue<int>(prop, (int)value);
-        else if (prop->baseSize == 8)
-            props->SetPropValue<int64>(prop, (int64)value);
-    }
-    else
-    {
-        if (prop->baseSize == 1)
-            props->SetPropValue<uchar>(prop, (uchar)value);
-        else if (prop->baseSize == 2)
-            props->SetPropValue<ushort>(prop, (ushort)value);
-        else if (prop->baseSize == 4)
-            props->SetPropValue<uint>(prop, (uint)value);
-        else if (prop->baseSize == 8)
-            props->SetPropValue<uint64>(prop, (uint64)value);
-    }*/
-    return true;
-}
-
-string Properties::GetClassName()
-{
-    return registrator->scriptClassName;
 }
 
 void Properties::SetSendIgnore(Property* prop, Entity* entity)
@@ -1901,131 +1154,260 @@ void Properties::SetSendIgnore(Property* prop, Entity* entity)
     sendIgnoreProperty = prop;
 }
 
-PropertyRegistrator::PropertyRegistrator(bool is_server, const string& script_class_name)
+uint Properties::GetRawDataSize(Property* prop)
 {
-    registrationFinished = false;
+    uint data_size = 0;
+    GetRawData(prop, data_size);
+    return data_size;
+}
+
+uchar* Properties::GetRawData(Property* prop, uint& data_size)
+{
+    if (prop->dataType == Property::POD)
+    {
+        RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
+        data_size = prop->baseSize;
+        return &podData[prop->podDataOffset];
+    }
+
+    RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+    data_size = complexDataSizes[prop->complexDataIndex];
+    return complexData[prop->complexDataIndex];
+}
+
+void Properties::SetRawData(Property* prop, uchar* data, uint data_size)
+{
+    if (prop->IsPOD())
+    {
+        RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
+        RUNTIME_ASSERT(prop->baseSize == data_size);
+        memcpy(&podData[prop->podDataOffset], data, data_size);
+    }
+    else
+    {
+        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        if (data_size != complexDataSizes[prop->complexDataIndex])
+        {
+            complexDataSizes[prop->complexDataIndex] = data_size;
+            SAFEDELA(complexData[prop->complexDataIndex]);
+            if (data_size)
+                complexData[prop->complexDataIndex] = new uchar[data_size];
+        }
+        if (data_size)
+            memcpy(complexData[prop->complexDataIndex], data, data_size);
+    }
+}
+
+void Properties::SetValueFromData(Property* prop, uchar* data, uint data_size)
+{
+    /*if (dataType == Property::String)
+    {
+        string str;
+        if (data_size)
+            str.assign((char*)data, data_size);
+        GenericSet(entity, &str);
+    }
+    else if (dataType == Property::POD)
+    {
+        RUNTIME_ASSERT(data_size == baseSize);
+        GenericSet(entity, data);
+    }
+    else if (dataType == Property::Array || dataType == Property::Dict)
+    {
+        auto value = CreateRefValue(data, data_size);
+        GenericSet(entity, value.get());
+    }
+    else
+    {
+        RUNTIME_ASSERT(!"Unexpected type");
+    }*/
+}
+
+int Properties::GetPODValueAsInt(Property* prop)
+{
+    RUNTIME_ASSERT(prop->dataType == Property::POD);
+
+    if (prop->isBoolDataType)
+    {
+        return GetValue<bool>(prop) ? 1 : 0;
+    }
+    else if (prop->isFloatDataType)
+    {
+        if (prop->baseSize == 4)
+            return (int)GetValue<float>(prop);
+        else if (prop->baseSize == 8)
+            return (int)GetValue<double>(prop);
+    }
+    else if (prop->isSignedIntDataType)
+    {
+        if (prop->baseSize == 1)
+            return (int)GetValue<char>(prop);
+        if (prop->baseSize == 2)
+            return (int)GetValue<short>(prop);
+        if (prop->baseSize == 4)
+            return (int)GetValue<int>(prop);
+        if (prop->baseSize == 8)
+            return (int)GetValue<int64>(prop);
+    }
+    else
+    {
+        if (prop->baseSize == 1)
+            return (int)GetValue<uchar>(prop);
+        if (prop->baseSize == 2)
+            return (int)GetValue<ushort>(prop);
+        if (prop->baseSize == 4)
+            return (int)GetValue<uint>(prop);
+        if (prop->baseSize == 8)
+            return (int)GetValue<uint64>(prop);
+    }
+
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+void Properties::SetPODValueAsInt(Property* prop, int value)
+{
+    RUNTIME_ASSERT(prop->dataType == Property::POD);
+
+    if (prop->isBoolDataType)
+    {
+        SetValue<bool>(prop, value != 0);
+    }
+    else if (prop->isFloatDataType)
+    {
+        if (prop->baseSize == 4)
+            SetValue<float>(prop, (float)value);
+        else if (prop->baseSize == 8)
+            SetValue<double>(prop, (double)value);
+    }
+    else if (prop->isSignedIntDataType)
+    {
+        if (prop->baseSize == 1)
+            SetValue<char>(prop, (char)value);
+        else if (prop->baseSize == 2)
+            SetValue<short>(prop, (short)value);
+        else if (prop->baseSize == 4)
+            SetValue<int>(prop, (int)value);
+        else if (prop->baseSize == 8)
+            SetValue<int64>(prop, (int64)value);
+    }
+    else
+    {
+        if (prop->baseSize == 1)
+            SetValue<uchar>(prop, (uchar)value);
+        else if (prop->baseSize == 2)
+            SetValue<ushort>(prop, (ushort)value);
+        else if (prop->baseSize == 4)
+            SetValue<uint>(prop, (uint)value);
+        else if (prop->baseSize == 8)
+            SetValue<uint64>(prop, (uint64)value);
+    }
+}
+
+int Properties::GetValueAsInt(int enum_value)
+{
+    Property* prop = registrator->FindByEnum(enum_value);
+    if (!prop)
+        throw PropertiesException("Enum not found", enum_value);
+    if (!prop->IsPOD())
+        throw PropertiesException("Can't retreive integer value from non POD property", prop->GetName());
+    if (!prop->IsReadable())
+        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+
+    return GetPODValueAsInt(prop);
+}
+
+void Properties::SetValueAsInt(int enum_value, int value)
+{
+    Property* prop = registrator->FindByEnum(enum_value);
+    if (!prop)
+        throw PropertiesException("Enum not found", enum_value);
+    if (!prop->IsPOD())
+        throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
+    if (!prop->IsWritable())
+        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+
+    SetPODValueAsInt(prop, value);
+}
+
+void Properties::SetValueAsIntByName(const string& enum_name, int value)
+{
+    Property* prop = registrator->Find(enum_name);
+    if (!prop)
+        throw PropertiesException("Enum not found", enum_name);
+    if (!prop->IsPOD())
+        throw PropertiesException("Can't set by name integer value from non POD property", prop->GetName());
+    if (!prop->IsWritable())
+        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+
+    SetPODValueAsInt(prop, value);
+}
+
+void Properties::SetValueAsIntProps(int enum_value, int value)
+{
+    Property* prop = registrator->FindByEnum(enum_value);
+    if (!prop)
+        throw PropertiesException("Enum not found", enum_value);
+    if (!prop->IsPOD())
+        throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
+    if (!prop->IsWritable())
+        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->accessType & Property::VirtualMask)
+        throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
+
+    if (prop->isBoolDataType)
+    {
+        SetValue<bool>(prop, value != 0);
+    }
+    else if (prop->isFloatDataType)
+    {
+        if (prop->baseSize == 4)
+            SetValue<float>(prop, (float)value);
+        else if (prop->baseSize == 8)
+            SetValue<double>(prop, (double)value);
+    }
+    else if (prop->isSignedIntDataType)
+    {
+        if (prop->baseSize == 1)
+            SetValue<char>(prop, (char)value);
+        else if (prop->baseSize == 2)
+            SetValue<short>(prop, (short)value);
+        else if (prop->baseSize == 4)
+            SetValue<int>(prop, (int)value);
+        else if (prop->baseSize == 8)
+            SetValue<int64>(prop, (int64)value);
+    }
+    else
+    {
+        if (prop->baseSize == 1)
+            SetValue<uchar>(prop, (uchar)value);
+        else if (prop->baseSize == 2)
+            SetValue<ushort>(prop, (ushort)value);
+        else if (prop->baseSize == 4)
+            SetValue<uint>(prop, (uint)value);
+        else if (prop->baseSize == 8)
+            SetValue<uint64>(prop, (uint64)value);
+    }
+}
+
+PropertyRegistrator::PropertyRegistrator(bool is_server)
+{
     isServer = is_server;
-    scriptClassName = script_class_name;
-    wholePodDataSize = 0;
-    complexPropertiesCount = 0;
-    defaultGroup = nullptr;
-    defaultMinValue = nullptr;
-    defaultMaxValue = nullptr;
-    defaultTemporary = false;
-    defaultNoHistory = false;
-    getPropertiesCount = 0;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
 {
-    /*scriptClassName = "";
-    wholePodDataSize = 0;
-
     for (size_t i = 0; i < registeredProperties.size(); i++)
-    {
-        SAFEREL(registeredProperties[i]->asObjType);
-        SAFEDEL(registeredProperties[i]);
-    }
-    registeredProperties.clear();
-
+        delete registeredProperties[i];
     for (size_t i = 0; i < podDataPool.size(); i++)
         delete[] podDataPool[i];
-    podDataPool.clear();
-
-    SetDefaults();*/
 }
 
-bool PropertyRegistrator::Init()
+Property* PropertyRegistrator::Register(Property::AccessType access, const type_info& type, const string& name)
 {
-    // Register common stuff on first property registration
-    string enum_type =
-        (scriptClassName.find("Cl") != string::npos ? scriptClassName.substr(0, scriptClassName.size() - 2) :
-                                                      scriptClassName) +
-        "Property";
-    enumTypeName = enum_type;
-    RUNTIME_ASSERT(enumTypeName.length() > 0);
+#define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
 
-    /*asIScriptEngine* engine = Script::GetEngine();
-    RUNTIME_ASSERT(engine);
-
-    int result = engine->RegisterEnum(enum_type.c_str());
-    if (result < 0)
-    {
-        WriteLog("Register entity property enum '{}' fail, error {}.\n", enum_type, result);
-        return false;
-    }
-
-    result = engine->RegisterEnumValue(enum_type.c_str(), "Invalid", 0);
-    if (result < 0)
-    {
-        WriteLog("Register entity property enum '{}::Invalid' zero value fail, error {}.\n", enum_type, result);
-        return false;
-    }
-
-    string decl = _str("int GetAsInt({}) const", enum_type);
-    result = engine->RegisterObjectMethod(
-        scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS(Properties::GetValueAsInt), SCRIPT_FUNC_THIS_CONV);
-    if (result < 0)
-    {
-        WriteLog("Register entity method '{}' fail, error {}.\n", decl, result);
-        return false;
-    }
-
-    decl = _str("void SetAsInt({},int)", enum_type);
-    result = engine->RegisterObjectMethod(
-        scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS(Properties::SetValueAsInt), SCRIPT_FUNC_THIS_CONV);
-    if (result < 0)
-    {
-        WriteLog("Register entity method '{}' fail, error {}.\n", decl, result);
-        return false;
-    }*/
-
-    return true;
-}
-
-/*template<typename T>
-static void Property_GetValue_Generic(asIScriptGeneric* gen)
-{
-    new (gen->GetAddressOfReturnLocation()) T(((Property*)gen->GetAuxiliary())->GetValue<T>((Entity*)gen->GetObject()));
-}
-
-template<typename T>
-static void Property_SetValue_Generic(asIScriptGeneric* gen)
-{
-    ((Property*)gen->GetAuxiliary())->SetValue<T>((Entity*)gen->GetObject(), *(T*)gen->GetAddressOfArg(0));
-}*/
-
-Property* PropertyRegistrator::Register(const string& type_name, const string& name, Property::AccessType access,
-    bool is_const, const char* group /* = nullptr */, int64* min_value /* = nullptr */,
-    int64* max_value /* = nullptr */, bool is_temporary /* = false */, bool is_no_history /* = false */
-)
-{
-    /*if (registrationFinished)
-    {
-        WriteLog("Registration of class properties is finished.\n");
-        return nullptr;
-    }
-
-    // Check defaults
-    group = (group ? group : defaultGroup);
-    min_value = (min_value ? min_value : defaultMinValue);
-    max_value = (max_value ? max_value : defaultMaxValue);
-
-    // Get engine
-    asIScriptEngine* engine = 0; // Script::GetEngine();
-    RUNTIME_ASSERT(engine);
-
-    // Extract type
-    int type_id = engine->GetTypeIdByDecl(type_name.c_str());
-    if (type_id < 0)
-    {
-        WriteLog("Invalid type '{}'.\n", type_name);
-        return nullptr;
-    }
-
-    Property::DataType data_type;
+    Property::DataType data_type = Property::DataType::POD;
     uint data_size = 0;
-    asITypeInfo* as_obj_type = engine->GetTypeInfoById(type_id);
     bool is_int_data_type = false;
     bool is_signed_int_data_type = false;
     bool is_float_data_type = false;
@@ -2038,68 +1420,50 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     bool is_hash_sub0 = false;
     bool is_hash_sub1 = false;
     bool is_hash_sub2 = false;
-    if (!(type_id & asTYPEID_MASK_OBJECT))
+
+    if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) ||
+        ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(float) || ISTYPE(double) || ISTYPE(bool))
     {
         data_type = Property::POD;
 
-        int type_id = engine->GetTypeIdByDecl(type_name.c_str());
-        int primitive_size = engine->GetSizeOfPrimitiveType(type_id);
-        if (primitive_size <= 0)
-        {
-            WriteLog("Invalid property POD type '{}'.\n", type_name);
-            return nullptr;
-        }
+        if (ISTYPE(char) || ISTYPE(uchar) || ISTYPE(bool))
+            data_size = 1;
+        else if (ISTYPE(short) || ISTYPE(ushort))
+            data_size = 2;
+        else if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(float))
+            data_size = 4;
+        else if (ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(double))
+            data_size = 8;
+        else
+            throw UnreachablePlaceException(LINE_STR);
 
-        data_size = (uint)primitive_size;
-        if (data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8)
-        {
-            WriteLog("Invalid size of property POD type '{}', size {}.\n", type_name, data_size);
-            return nullptr;
-        }
-
-        is_int_data_type = (type_id >= asTYPEID_INT8 && type_id <= asTYPEID_UINT64);
-        is_signed_int_data_type = (type_id >= asTYPEID_INT8 && type_id <= asTYPEID_INT64);
-        is_float_data_type = (type_id == asTYPEID_FLOAT || type_id == asTYPEID_DOUBLE);
-        is_bool_data_type = (type_id == asTYPEID_BOOL);
-        is_enum_data_type = (type_id > asTYPEID_DOUBLE);
+        is_int_data_type = (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) ||
+            ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64));
+        is_signed_int_data_type = (ISTYPE(int) || ISTYPE(char) || ISTYPE(short) || ISTYPE(int64));
+        is_float_data_type = (ISTYPE(float) || ISTYPE(double));
+        is_bool_data_type = ISTYPE(bool);
+        // is_enum_data_type = (type_id > asTYPEID_DOUBLE);
     }
-    else if (Str::Compare(as_obj_type->GetName(), "string"))
+    else if (ISTYPE(string))
     {
         data_type = Property::String;
         data_size = sizeof(string);
     }
-    else if (Str::Compare(as_obj_type->GetName(), "array"))
+    else if (ISTYPE(vector<int>))
     {
         data_type = Property::Array;
         data_size = sizeof(void*);
 
-        bool is_array_of_pod = !(as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT);
-        is_array_of_string = (!is_array_of_pod && Str::Compare(as_obj_type->GetSubType()->GetName(), "string"));
-        if (!is_array_of_pod && !is_array_of_string)
-        {
-            WriteLog("Invalid property type '{}', array elements must have POD/string type.\n", type_name);
-            return nullptr;
-        }
-        if (_str(type_name).str().find("resource") != string::npos)
-        {
-            WriteLog("Invalid property type '{}', array elements can't be resource type.\n", type_name);
-            return nullptr;
-        }
-
-        is_hash_sub0 = (_str(type_name).str().find("hash") != string::npos);
+        bool is_array_of_pod = (ISTYPE(vector<int>));
+        is_array_of_string = ISTYPE(vector<string>);
+        is_hash_sub0 = ISTYPE(vector<hash>);
     }
-    else if (Str::Compare(as_obj_type->GetName(), "dict"))
+    else if (ISTYPE(vector<int>))
     {
         data_type = Property::Dict;
         data_size = sizeof(void*);
 
-        if (as_obj_type->GetSubTypeId(0) & asTYPEID_MASK_OBJECT)
-        {
-            WriteLog("Invalid property type '{}', dict key must have POD type.\n", type_name);
-            return nullptr;
-        }
-
-        int value_sub_type_id = as_obj_type->GetSubTypeId(1);
+        /*int value_sub_type_id = as_obj_type->GetSubTypeId(1);
         asITypeInfo* value_sub_type = as_obj_type->GetSubType(1);
         if (value_sub_type_id & asTYPEID_MASK_OBJECT)
         {
@@ -2127,42 +1491,12 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
         is_hash_sub1 =
             (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && !is_dict_of_array);
         is_hash_sub2 =
-            (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && is_dict_of_array);
+            (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && is_dict_of_array);*/
     }
     else
     {
-        WriteLog("Invalid property type '{}'.\n", type_name);
-        return nullptr;
-    }
-
-    // Check for component
-    size_t component_separator = name.find('.');
-    string component_name;
-    string property_name;
-    if (component_separator != string::npos)
-    {
-        component_name = name.substr(0, component_separator);
-        property_name = name.substr(component_separator + 1);
-    }
-    else
-    {
-        component_name = "";
-        property_name = name;
-    }
-
-    // Check name for already used
-    string class_name = scriptClassName + component_name;
-    asITypeInfo* ot = engine->GetTypeInfoByName(class_name.c_str());
-    RUNTIME_ASSERT_STR(ot, class_name);
-    for (asUINT i = 0, j = ot->GetPropertyCount(); i < j; i++)
-    {
-        const char* n;
-        ot->GetProperty(i, &n);
-        if (property_name == n)
-        {
-            WriteLog("Trying to register already registered property '{}'.\n", name);
-            return nullptr;
-        }
+        // WriteLog("Invalid property type '{}'.\n", type_name);
+        // return nullptr;
     }
 
     // Allocate property
@@ -2179,167 +1513,18 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     if (!isServer && ((access & Property::PublicMask) || (access & Property::ProtectedMask)) &&
         !(access & Property::ModifiableMask))
         disable_set = true;
-    if (is_const)
-        disable_set = true;
+    // if (is_const)
+    //    disable_set = true;
 
-    // Todo: rework FONLINE_
-    / *#ifdef FONLINE_EDITOR
-        disable_get = false;
-    #endif* /
+    disable_get = false;
 
     // Register default getter
-    bool is_handle = (data_type == Property::Array || data_type == Property::Dict);
-    if (!disable_get)
-    {
-        string decl = _str("const {}{} get_{}() const", type_name, is_handle ? "@" : "", property_name);
-        int result = -1;
-#ifdef AS_MAX_PORTABILITY
-        if (data_type == Property::String)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<string>), asCALL_GENERIC, prop);
-        else if (data_type != Property::POD)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<void*>), asCALL_GENERIC, prop);
-        else if (data_size == 1)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<char>), asCALL_GENERIC, prop);
-        else if (data_size == 2)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<short>), asCALL_GENERIC, prop);
-        else if (data_size == 4)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<int>), asCALL_GENERIC, prop);
-        else if (data_size == 8)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION(Property_GetValue_Generic<int64>), asCALL_GENERIC, prop);
-#else
-        if (data_type == Property::String)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<string>, (Entity*), string), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_type != Property::POD)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<void*>, (Entity*), void*), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 1)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<char>, (Entity*), char), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 2)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<short>, (Entity*), short), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 4)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<int>, (Entity*), int), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 8)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, GetValue<int64>, (Entity*), int64), asCALL_THISCALL_OBJFIRST, prop);
-#endif
-        if (result < 0)
-        {
-            WriteLog("Register entity property '{}' getter fail, error {}.\n", name, result);
-            return nullptr;
-        }
-    }
+    if (disable_get)
+        return nullptr;
 
     // Register setter
     if (!disable_set)
     {
-        string decl =
-            _str("void set_{}({}{}{})", property_name, is_handle ? "const " : "", type_name, is_handle ? "@" : "");
-        int result = -1;
-#ifdef AS_MAX_PORTABILITY
-        if (data_type == Property::String)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asFUNCTION((Property_SetValue_Generic<string>)), asCALL_GENERIC, prop);
-        else if (data_type != Property::POD)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION((Property_SetValue_Generic<void*>)), asCALL_GENERIC, prop);
-        else if (data_size == 1)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION((Property_SetValue_Generic<char>)), asCALL_GENERIC, prop);
-        else if (data_size == 2)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION((Property_SetValue_Generic<short>)), asCALL_GENERIC, prop);
-        else if (data_size == 4)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION((Property_SetValue_Generic<int>)), asCALL_GENERIC, prop);
-        else if (data_size == 8)
-            result = engine->RegisterObjectMethod(
-                class_name.c_str(), decl.c_str(), asFUNCTION((Property_SetValue_Generic<int64>)), asCALL_GENERIC, prop);
-#else
-        if (data_type == Property::String)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<string>, (Entity*, string), void), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_type != Property::POD)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<void*>, (Entity*, void*), void), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 1)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<char>, (Entity*, char), void), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 2)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<short>, (Entity*, short), void), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 4)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<int>, (Entity*, int), void), asCALL_THISCALL_OBJFIRST, prop);
-        else if (data_size == 8)
-            result = engine->RegisterObjectMethod(class_name.c_str(), decl.c_str(),
-                asMETHODPR(Property, SetValue<int64>, (Entity*, int64), void), asCALL_THISCALL_OBJFIRST, prop);
-#endif
-        if (result < 0)
-        {
-            WriteLog("Register entity property '{}' setter fail, error {}.\n", name, result);
-            return nullptr;
-        }
-    }
-
-    // Register enum values for property reflection
-    string enum_value_name = _str(name).replace('.', '_');
-    int enum_value = (int)_str("{}::{}", enumTypeName, enum_value_name).toHash();
-    int result = engine->RegisterEnumValue(enumTypeName.c_str(), enum_value_name.c_str(), enum_value);
-    if (result < 0)
-    {
-        WriteLog("Register entity property enum '{}::{}' value {} fail, error {}.\n", enumTypeName, enum_value_name,
-            enum_value, result);
-        return nullptr;
-    }
-
-    // Add property to group
-    if (group)
-    {
-        string full_decl = _str("const array<{}>@ {}{}", enumTypeName, enumTypeName, group);
-
-        CScriptArray* group_array = nullptr;
-        if (enumGroups.count(full_decl))
-            group_array = enumGroups[full_decl];
-
-        if (!group_array)
-        {
-            string decl = _str("array<{}>", enumTypeName);
-            asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl(decl.c_str());
-            if (!enum_array_type)
-            {
-                WriteLog("Invalid type for property group '{}'.\n", decl);
-                return nullptr;
-            }
-
-            group_array = CScriptArray::Create(enum_array_type);
-            if (!enum_array_type)
-            {
-                WriteLog("Can not create array type for property group '{}'.\n", decl);
-                return nullptr;
-            }
-
-            enumGroups.insert(std::make_pair(string(full_decl), group_array));
-
-            int result = engine->RegisterGlobalProperty(full_decl.c_str(), &enumGroups[full_decl]);
-            if (result < 0)
-            {
-                WriteLog("Register entity property group '{}' fail, error {}.\n", full_decl, result);
-                enumGroups.erase(full_decl);
-                return nullptr;
-            }
-        }
-
-        group_array->InsertLast(&enum_value);
     }
 
     // POD property data offset
@@ -2413,27 +1598,24 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     prop->registrator = this;
     prop->regIndex = reg_index;
     prop->getIndex = (!disable_get ? getPropertiesCount++ : uint(-1));
-    prop->enumValue = enum_value;
+    // prop->enumValue = enum_value;
     prop->complexDataIndex = complex_data_index;
     prop->podDataOffset = data_base_offset;
     prop->baseSize = data_size;
-    prop->getCallback = 0;
-    prop->getCallbackArgs = 0;
-    prop->nativeSetCallback = nullptr;
 
     prop->propName = _str(name).replace('.', '_');
-    prop->typeName = type_name;
-    prop->componentName = component_name;
+    // prop->typeName = type_name;
+    // prop->componentName = component_name;
     prop->dataType = data_type;
     prop->accessType = access;
-    prop->isConst = is_const;
-    prop->asObjTypeId = type_id;
-    prop->asObjType = as_obj_type;
-    prop->isHash = type_name == "hash";
+    // prop->isConst = is_const;
+    // prop->asObjTypeId = type_id;
+    // prop->asObjType = as_obj_type;
+    // prop->isHash = type_name == "hash";
     prop->isHashSubType0 = is_hash_sub0;
     prop->isHashSubType1 = is_hash_sub1;
     prop->isHashSubType2 = is_hash_sub2;
-    prop->isResource = type_name == "resource";
+    // prop->isResource = type_name == "resource";
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;
@@ -2445,102 +1627,14 @@ Property* PropertyRegistrator::Register(const string& type_name, const string& n
     prop->isDictOfArrayOfString = is_dict_of_array_of_string;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
-    prop->isTemporary = (defaultTemporary || is_temporary);
-    prop->isNoHistory = (defaultNoHistory || is_no_history);
-    prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
-    prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
-    prop->minValue = (min_value ? *min_value : 0);
-    prop->maxValue = (max_value ? *max_value : 0);
+    // prop->isTemporary = (defaultTemporary || is_temporary);
+    // prop->isNoHistory = (defaultNoHistory || is_no_history);
+    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->minValue = (min_value ? *min_value : 0);
+    // prop->maxValue = (max_value ? *max_value : 0);
 
     registeredProperties.push_back(prop);
-
-    if (prop->asObjType)
-        prop->asObjType->AddRef();
-
-    return prop;*/
-    return 0;
-}
-
-/*static void GetEntityComponent(asIScriptGeneric* gen)
-{
-    Entity* entity = (Entity*)gen->GetObject();
-    hash component_name = *(hash*)gen->GetAuxiliary();
-    if (entity->Proto->HaveComponent(component_name))
-        *(Entity**)gen->GetAddressOfReturnLocation() = entity;
-    else
-        *(Entity**)gen->GetAddressOfReturnLocation() = nullptr;
-}*/
-
-bool PropertyRegistrator::RegisterComponent(const string& name)
-{
-    /*asIScriptEngine* engine = 0; // Script::GetEngine();
-    RUNTIME_ASSERT(engine);
-
-    string class_name = scriptClassName + name;
-    int r = engine->RegisterObjectType(class_name.c_str(), 0, asOBJ_REF);
-    if (r < 0)
-    {
-        WriteLog("Can't register '{}' component '{}'.\n", scriptClassName, class_name);
-        return false;
-    }
-
-    r = engine->RegisterObjectBehaviour(
-        class_name.c_str(), asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV);
-    RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectBehaviour(
-        class_name.c_str(), asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV);
-    RUNTIME_ASSERT(r >= 0);
-
-    hash* name_hash = new hash(_str(name).toHash());
-    string decl = _str("{}@+ get_{}()", class_name, name);
-    r = engine->RegisterObjectMethod(
-        scriptClassName.c_str(), decl.c_str(), asFUNCTION(GetEntityComponent), asCALL_GENERIC, name_hash);
-    if (r < 0)
-    {
-        WriteLog("Can't register '{}' component '{}' method '{}'.\n", scriptClassName, class_name, decl);
-        return false;
-    }
-
-    string const_decl = "const " + decl + " const";
-    r = engine->RegisterObjectMethod(
-        scriptClassName.c_str(), const_decl.c_str(), asFUNCTION(GetEntityComponent), asCALL_GENERIC, name_hash);
-    if (r < 0)
-    {
-        WriteLog("Can't register '{}' component '{}' const method '{}'.\n", scriptClassName, class_name, const_decl);
-        return false;
-    }
-
-    registeredComponents.insert(*name_hash);*/
-    return true;
-}
-
-void PropertyRegistrator::SetDefaults(const char* group /* = nullptr */, int64* min_value /* = nullptr */,
-    int64* max_value /* = nullptr */, bool is_temporary /* = false */, bool is_no_history /* = false */
-)
-{
-    SAFEDELA(defaultGroup);
-    SAFEDEL(defaultMinValue);
-    SAFEDEL(defaultMaxValue);
-    defaultTemporary = false;
-    defaultNoHistory = false;
-
-    if (group)
-        defaultGroup = Str::Duplicate(group);
-    if (min_value)
-        defaultMinValue = new int64(*min_value);
-    if (max_value)
-        defaultMaxValue = new int64(*max_value);
-    if (is_temporary)
-        defaultTemporary = true;
-    if (is_no_history)
-        defaultNoHistory = true;
-}
-
-void PropertyRegistrator::FinishRegistration()
-{
-    if (registrationFinished)
-        return;
-    registrationFinished = true;
 
     // Fix POD data offsets
     for (size_t i = 0, j = registeredProperties.size(); i < j; i++)
@@ -2554,6 +1648,20 @@ void PropertyRegistrator::FinishRegistration()
         else if (prop->accessType & Property::PrivateMask)
             prop->podDataOffset += (uint)publicPodDataSpace.size() + (uint)protectedPodDataSpace.size();
     }
+
+    return prop;
+}
+
+void PropertyRegistrator::RegisterComponent(const string& name)
+{
+    hash name_hash = _str(name).toHash();
+    RUNTIME_ASSERT(!registeredComponents.count(name_hash));
+    registeredComponents.insert(name_hash);
+}
+
+string PropertyRegistrator::GetClassName()
+{
+    return className;
 }
 
 uint PropertyRegistrator::GetCount()
@@ -2597,21 +1705,10 @@ bool PropertyRegistrator::IsComponentRegistered(hash component_name)
 void PropertyRegistrator::SetNativeSetCallback(const string& property_name, NativeCallback callback)
 {
     RUNTIME_ASSERT(!property_name.empty());
-    Find(property_name)->nativeSetCallback = callback;
-}
-
-void PropertyRegistrator::SetNativeSendCallback(NativeSendCallback callback)
-{
-    for (auto& prop : registeredProperties)
-        prop->nativeSendCallback = callback;
+    // Find(property_name)->nativeSetCallback = callback;
 }
 
 uint PropertyRegistrator::GetWholeDataSize()
 {
     return wholePodDataSize;
-}
-
-string PropertyRegistrator::GetClassName()
-{
-    return scriptClassName;
 }

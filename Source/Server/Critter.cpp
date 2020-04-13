@@ -47,8 +47,8 @@
 #define FO_API_CRITTER_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(Critter);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, name)
+PROPERTIES_IMPL(Critter, "Critter", true);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 // Todo: remove static SlotEnabled and SlotDataSendEnabled
@@ -1210,7 +1210,7 @@ void Client::Send_Property(NetProperty::Type type, Property* prop, Entity* entit
     }
 
     uint data_size;
-    void* data = prop->GetRawData(entity, data_size);
+    void* data = entity->Props.GetRawData(prop, data_size);
 
     CLIENT_OUTPUT_BEGIN(this);
 

@@ -123,7 +123,7 @@ Npc* CritterManager::CreateNpc(
     if (!props)
         multihex = proto->GetMultihex();
     else
-        multihex = props->GetPropValue<uint>(Critter::PropertyMultihex);
+        multihex = props->GetValue<uint>(Critter::PropertyMultihex);
 
     if (!map->IsHexesPassed(hx, hy, multihex))
     {

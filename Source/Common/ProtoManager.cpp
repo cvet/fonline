@@ -356,7 +356,7 @@ static int ValidateProtoResourcesExt(map<hash, T*>& protos, HashSet& hashes)
             Property* prop = registrator->Get(i);
             if (prop->IsResource())
             {
-                hash h = proto->Props.template GetPropValue<hash>(prop);
+                hash h = proto->Props.template GetValue<hash>(prop);
                 if (h && !hashes.count(h))
                 {
                     WriteLog("Resource '{}' not found for property '{}' in prototype '{}'.\n", _str().parseHash(h),

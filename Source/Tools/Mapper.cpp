@@ -1661,7 +1661,7 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = (*CurNpcProtos)[i];
 
-            hash model_name = proto->Props.GetPropValue<hash>(CritterView::PropertyModelName);
+            hash model_name = proto->Props.GetValue<hash>(CritterView::PropertyModelName);
             uint spr_id =
                 ResMngr.GetCritSprId(model_name, 1, 1, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if (!spr_id)
@@ -3633,7 +3633,7 @@ void FOMapper::CurDraw()
         }
         else if (IsCritMode() && CurNpcProtos->size())
         {
-            hash model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetPropValue<hash>(CritterView::PropertyModelName);
+            hash model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
             uint spr_id = ResMngr.GetCritSprId(model_name, 1, 1, NpcDir);
             if (!spr_id)
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);

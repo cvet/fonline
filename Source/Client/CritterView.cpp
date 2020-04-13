@@ -43,8 +43,9 @@ bool CritterView::SlotEnabled[0x100];
 #define FO_API_CRITTER_VIEW_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(CritterView);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(CritterView, name)
+PROPERTIES_IMPL(CritterView, "Critter", false);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(CritterView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 CritterView::CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,

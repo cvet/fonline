@@ -48,8 +48,8 @@
 #define FO_API_MAP_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(Map);
-#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, name)
+PROPERTIES_IMPL(Map, "Map", true);
+#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 Map::Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,

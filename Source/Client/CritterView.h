@@ -41,7 +41,6 @@
 #include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
-#include "Properties.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Settings.h"

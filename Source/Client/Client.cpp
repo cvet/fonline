@@ -1860,7 +1860,7 @@ void FOClient::Net_SendProperty(NetProperty::Type type, Property* prop, Entity* 
     }
 
     uint data_size;
-    void* data = prop->GetRawData(entity, data_size);
+    void* data = entity->Props.GetRawData(prop, data_size);
 
     bool is_pod = prop->IsPOD();
     if (is_pod)
@@ -3261,7 +3261,7 @@ void FOClient::Net_OnProperty(uint data_size)
         return;
 
     entity->Props.SetSendIgnore(prop, entity);
-    prop->SetData(entity, !TempPropertyData.empty() ? &TempPropertyData[0] : nullptr, (uint)TempPropertyData.size());
+    entity->Props.SetValueFromData(prop, TempPropertyData.data(), (uint)TempPropertyData.size());
     entity->Props.SetSendIgnore(nullptr, nullptr);
 
     if (type == NetProperty::MapItem)

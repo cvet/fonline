@@ -34,7 +34,6 @@
 #include "MapLoader.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "Properties.h"
 #include "StringUtils.h"
 #include "Testing.h"
 
@@ -63,8 +62,8 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     Properties props(ProtoMap::PropertiesRegistrator);
     props.LoadFromText(map_data.GetApp("ProtoMap"));
 
-    ushort width = props.GetPropValue<ushort>(ProtoMap::PropertyWidth);
-    ushort height = props.GetPropValue<ushort>(ProtoMap::PropertyHeight);
+    ushort width = props.GetValue<ushort>(ProtoMap::PropertyWidth);
+    ushort height = props.GetValue<ushort>(ProtoMap::PropertyHeight);
 
     // Critters
     PStrMapVec npc_data;
@@ -143,5 +142,5 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     }
 
     if (!errors.empty())
-        throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
+        throw MapLoaderException("Map load error", errors); // Todo: pass errors vector to MapLoaderException
 }

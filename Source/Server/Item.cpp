@@ -43,8 +43,8 @@
 #define FO_API_ITEM_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(Item);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, name)
+PROPERTIES_IMPL(Item, "Item", true);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 Item::Item(uint id, ProtoItem* proto, ServerScriptSystem& script_sys) :

@@ -38,6 +38,21 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
+#define PROPERTIES_HEADER() static PropertyRegistrator* PropertiesRegistrator
+
+#define PROPERTIES_IMPL(class_name, script_name, is_server) \
+    PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
+
+#define CLASS_PROPERTY(access_type, prop_type, prop, ...) \
+    static Property* Property##prop; \
+    inline prop_type Get##prop() { return Props.GetValue<prop_type>(Property##prop); } \
+    inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
+    inline bool IsNonEmpty##prop() { return Props.GetRawDataSize(Property##prop) > 0; }
+
+#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) \
+    Property* class_name::Property##prop = \
+        class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
+
 enum class EntityType
 {
     ItemProto,

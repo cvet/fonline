@@ -37,8 +37,9 @@
 #define FO_API_LOCATION_VIEW_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(LocationView);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(LocationView, name)
+PROPERTIES_IMPL(LocationView, "Location", false);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(LocationView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 LocationView::LocationView(uint id, ProtoLocation* proto) :

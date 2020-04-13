@@ -108,40 +108,43 @@ CustomEntity::CustomEntity(uint id, uint sub_type, PropertyRegistrator* registra
 {
 }
 
-PROPERTIES_IMPL(GlobalVars);
-#define FO_API_GLOBAL_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(GlobalVars, name)
+PROPERTIES_IMPL(GlobalVars, "GlobalVars", true);
+#define FO_API_GLOBAL_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(GlobalVars, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, nullptr)
 {
 }
 
-PROPERTIES_IMPL(ProtoItem);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, name)
+PROPERTIES_IMPL(ProtoItem, "Item", true);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, EntityType::ItemProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoCritter);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoCritter, name)
+PROPERTIES_IMPL(ProtoCritter, "Critter", true);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(ProtoCritter, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, EntityType::CritterProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoMap);
-#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoMap, name)
+PROPERTIES_IMPL(ProtoMap, "Map", true);
+#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoMap, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, PropertiesRegistrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoLocation);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoLocation, name)
+PROPERTIES_IMPL(ProtoLocation, "Location", true);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(ProtoLocation, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, EntityType::LocationProto, PropertiesRegistrator)

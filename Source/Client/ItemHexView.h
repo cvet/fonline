@@ -38,7 +38,6 @@
 #include "EffectManager.h"
 #include "Entity.h"
 #include "ItemView.h"
-#include "Properties.h"
 #include "ResourceManager.h"
 
 class ItemHexView;

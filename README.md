@@ -103,9 +103,9 @@ There are couple of shell scripts that help us to do it:
 * `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/build.sh` - build executable for specific platform
 * `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
-* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats and compress their
+* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats
 * `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
-* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actoins
+* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
 
 Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in BuildTools/README.md.
 
@@ -113,6 +113,10 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 
 *Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
 *Todo: add link to PUBLIC_API.md*
+Documents related to public API:
+* [PUBLIC_API.md](https://github.com/cvet/fonline/blob/master/PUBLIC_API.md)
+* [MULTIPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MULTIPLAYER_SCRIPT_API.md)
+* [SINGLEPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/SINGLEPLAYER_SCRIPT_API.md)
 
 ### Setup
 
@@ -220,12 +224,13 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Improve DirectX rendering
 * Code refactoring *(look at separate section below)*
 * Documentation
-* API freezing and continuing development with it's backward compatibility
 * Improve Singleplayer mode
+* API freezing and continuing development with it's backward compatibility
 * Tasks related to Visual Studio Code extension *(see separate section below)*
 * Particle system
 * Improve supporting of PlayStation
 * Improve supporting of Universal Windows Platform
+* Add supporting of Unity engine
 * Improve Metal/Vulkan rendering
 
 ### Roadmap for Visual Studio Code extension
@@ -378,7 +383,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * NetBuffer: allow transferring of any type and add safe transferring of floats
-* Properties: rework FONLINE_
 * Properties: don't preserve memory for not allocated components in entity
 * ScriptSystem: rework FONLINE_
 * ScriptSystem: fill settings to scripts
@@ -395,6 +399,15 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
 * MonoScripting: get Mono domain user data
+* ScriptApi: add FO_API_MULTIPLAYER_ONLY macro guard for separate multiplayer only stuff from common
+* ScriptApi: add FO_API_SINGLEPLAYER_ONLY macro guard for separate singleplayer only stuff from common
+* ScriptApi: add FO_API_ANGELSCRIPT_ONLY macro guard for separate angelscript only stuff from common
+* ScriptApi: add FO_API_MONO_ONLY macro guard for separate mono only stuff from common
+* ScriptApi: add FO_API_NATIVE_ONLY macro guard for separate native only stuff from common
+* ScriptApi: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
+* ScriptApi: add supporting of components for properties
+* ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
+* ScriptApi: improve RPC calls
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system

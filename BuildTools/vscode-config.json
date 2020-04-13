@@ -204,6 +204,16 @@
             "command": "BuildTools/compile-scripts.sh mono"
         },
         {
+            "label": "Bake all",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh content"
+        },
+        {
+            "label": "Bake content",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh resources"
+        },
+        {
             "label": "Bake resources",
             "group": "Resources",
             "command": "BuildTools/bake-resources.sh"

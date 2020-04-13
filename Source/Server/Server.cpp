@@ -1127,7 +1127,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
                 return;
             }
 
-            prop->SetValue<int>(cr, property_value);
+            cr->Props.SetValue<int>(prop, property_value);
             logcb("Done.");
         }
         else
@@ -3467,7 +3467,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
         return;
 
     // Todo: disable send changing field by client to this client
-    prop->SetData(entity, !data.empty() ? &data[0] : nullptr, (uint)data.size());
+    entity->Props.SetValueFromData(prop, data.data(), (uint)data.size());
 }
 
 void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
@@ -3843,7 +3843,7 @@ bool FOServer::Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bo
             }
             else
             {
-                val = prop->GetPODValueAsInt(entity);
+                val = entity->Props.GetPODValueAsInt(prop);
             }
 
             switch (demand.Op)

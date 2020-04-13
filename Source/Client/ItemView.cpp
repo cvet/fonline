@@ -38,8 +38,8 @@
 #define FO_API_ITEM_VIEW_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(ItemView);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ItemView, name)
+PROPERTIES_IMPL(ItemView, "Item", false);
+#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ItemView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ItemView::ItemView(uint id, ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)

@@ -39,8 +39,9 @@
 #define FO_API_LOCATION_IMPL
 #include "ScriptApi.h"
 
-PROPERTIES_IMPL(Location);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Location, name)
+PROPERTIES_IMPL(Location, "Location", true);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
+    CLASS_PROPERTY_IMPL(Location, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 Location::Location(uint id, ProtoLocation* proto, ServerScriptSystem& script_sys) :

@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "Properties.h"
 
 #define FO_API_MAP_VIEW_HEADER
 #include "ScriptApi.h"

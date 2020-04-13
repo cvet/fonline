@@ -2009,8 +2009,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         Properties props_(Item::PropertiesRegistrator);
         props_ = proto->Props;
         for (auto& kv : props)
-            if (!Properties::SetValueAsIntProps(&props_, kv.first, kv.second))
-                FO_API_RETURN((Item*)nullptr);
+            props_.SetValueAsIntProps(kv.first, kv.second);
         FO_API_RETURN(_server->CreateItemOnHex(_this, hx, hy, protoId, count, &props_, true));
     }
     FO_API_RETURN(_server->CreateItemOnHex(_this, hx, hy, protoId, count, nullptr, true));
@@ -2756,8 +2755,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId) FO_API_ARG_MARSHAL(ushort, hx) F
         Properties props_(Critter::PropertiesRegistrator);
         props_ = proto->Props;
         for (auto& kv : props)
-            if (!Properties::SetValueAsIntProps(&props_, kv.first, kv.second))
-                FO_API_RETURN((Critter*)nullptr);
+            props_.SetValueAsIntProps(kv.first, kv.second);
 
         npc = _server->CrMngr.CreateNpc(protoId, &props_, _this, hx, hy, dir, false);
     }
