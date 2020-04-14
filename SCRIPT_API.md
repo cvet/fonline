@@ -129,8 +129,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void AddDataSource(string datName)
 * bool LoadImage(uint index, string imageName, uint imageDepth)
 * uint GetImageColor(uint index, uint x, uint y)
-* void YieldWebRequest(string url, string->string post, ref bool success, ref string result)
-* void YieldWebRequestExt(string url, string[] headers, string post, ref bool success, ref string result)
 
 ## Client global methods
 
@@ -895,4 +893,5 @@ You can easily contribute to this API using provided by engine functionality.
 
 ### Location pids
 
+* BaseLocation
 

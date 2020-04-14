@@ -112,7 +112,7 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 ### Public API
 
 *Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
-*Todo: add link to PUBLIC_API.md*
+*Todo: add link to PUBLIC_API.md*  
 Documents related to public API:
 * [PUBLIC_API.md](https://github.com/cvet/fonline/blob/master/PUBLIC_API.md)
 * [MULTIPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MULTIPLAYER_SCRIPT_API.md)
@@ -188,7 +188,6 @@ They are located in ThirdParty directory.
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
-* [cURL](https://curl.haxx.se/) - transferring data via different network protocols
 * [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
@@ -230,7 +229,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Particle system
 * Improve supporting of PlayStation
 * Improve supporting of Universal Windows Platform
-* Add supporting of Unity engine
+* Integration with Unity engine (research)
 * Improve Metal/Vulkan rendering
 
 ### Roadmap for Visual Studio Code extension

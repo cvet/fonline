@@ -16,7 +16,6 @@
 * SPIRV-Cross - [SPIRV-Cross-260220](https://github.com/KhronosGroup/SPIRV-Cross)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
-* cURL - [curl-7.61.1](https://curl.haxx.se/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
 * fmt - [fmt-6.1.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-docking-04.03.20](https://github.com/ocornut/imgui)

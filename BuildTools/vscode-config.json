@@ -189,6 +189,11 @@
             "command": "BuildTools/build.sh linux server debug"
         },
         {
+            "label": "Generate script API",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh gen-api"
+        },
+        {
             "label": "Compile all scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh"

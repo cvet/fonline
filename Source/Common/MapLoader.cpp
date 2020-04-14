@@ -142,5 +142,5 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     }
 
     if (!errors.empty())
-        throw MapLoaderException("Map load error", errors); // Todo: pass errors vector to MapLoaderException
+        throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
 }
