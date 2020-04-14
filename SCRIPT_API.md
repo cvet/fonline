@@ -67,7 +67,7 @@ You can easily contribute to this API using provided by engine functionality.
 * string GetHashStr(hash h)
 * uint DecodeUTF8(string text, ref uint length)
 * string EncodeUTF8(uint ucs)
-* void Yield0(uint time)
+* void Yield(uint time)
 * string SHA1(string text)
 * string SHA2(string text)
 * int SystemCall(string command)

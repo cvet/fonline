@@ -438,6 +438,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Server: synchronize LangPacks
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
+* ImageBaker: add supporting of APNG file format
 * Mapper: need attention! (20)
 * Mapper: mapper render iface layer
 * Mapper: add standalone Mapper application

@@ -32,14 +32,14 @@
 //
 
 #ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "ServerScripting.h"
 #elif defined(FO_CLIENT_SCRIPTING)
 #include "ClientScripting.h"
 #elif defined(FO_MAPPER_SCRIPTING)
 #include "MapperScripting.h"
 #endif
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "Server.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_SERVER_IMPL
@@ -64,7 +64,7 @@
 DECLARE_EXCEPTION(ScriptCompilerException);
 #endif
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define SCRIPTING_CLASS ServerScriptSystem
 #define IS_SERVER true
 #define IS_CLIENT false
@@ -363,7 +363,7 @@ inline string GetASType(string name)
         {typeid(double).hash_code(), "double"},
         {typeid(Entity).hash_code(), "Entity@+"},
         {typeid(vector<Entity>).hash_code(), "array<Entity>@+"},
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
         {typeid(Item).hash_code(), "Item@+"},
         {typeid(Critter).hash_code(), "Critter@+"},
         {typeid(Map).hash_code(), "Map@+"},
@@ -453,7 +453,7 @@ inline string MakeMethodDecl(string name, string ret, string decl)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)asGetActiveContext()->GetEngine()->GetUserData(); \
     FOServer* _common = _server
@@ -477,7 +477,7 @@ inline string MakeMethodDecl(string name, string ret, string decl)
 struct ASItem : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Item* _this = (Item*)GameEntity
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
@@ -499,7 +499,7 @@ struct ASItem : ASEntity
         ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); \
     }
 #else
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -520,7 +520,7 @@ struct ASItem : ASEntity
 struct ASCritter : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Critter* _this = (Critter*)GameEntity
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
@@ -542,7 +542,7 @@ struct ASCritter : ASEntity
         ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); \
     }
 #else
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -563,7 +563,7 @@ struct ASCritter : ASEntity
 struct ASMap : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Map* _this = (Map*)GameEntity
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
@@ -585,7 +585,7 @@ struct ASMap : ASEntity
         ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); \
     }
 #else
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_MAP_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -606,7 +606,7 @@ struct ASMap : ASEntity
 struct ASLocation : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Location* _this = (Location*)GameEntity
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
@@ -629,7 +629,7 @@ struct ASLocation : ASEntity
             ->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); \
     }
 #else
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -651,7 +651,7 @@ struct ASLocation : ASEntity
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -664,7 +664,7 @@ struct ASLocation : ASEntity
 #else
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #elif defined(FO_CLIENT_SCRIPTING)
@@ -901,7 +901,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
     AS_VERIFY(engine->RegisterGlobalFunction( \
         MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
     AS_VERIFY(engine->RegisterGlobalFunction( \
         MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
@@ -914,7 +914,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalFunction( \
         MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #endif
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) \
     AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
         SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
@@ -1103,7 +1103,7 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
         throw ScriptCompilerException("Can't read root script file", script_path);
 
     Preprocessor::UndefAll();
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
     Preprocessor::Define("SERVER");
 #elif defined(FO_CLIENT_SCRIPTING)
     Preprocessor::Define("CLIENT");

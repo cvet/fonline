@@ -31,17 +31,15 @@
 // SOFTWARE.
 //
 
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "ServerScripting.h"
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "ClientScripting.h"
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "MapperScripting.h"
 #endif
 
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "Server.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_SERVER_IMPL
@@ -50,8 +48,7 @@
 #define IS_SERVER true
 #define IS_CLIENT false
 #define IS_MAPPER false
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "Client.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_CLIENT_IMPL
@@ -60,8 +57,7 @@
 #define IS_SERVER false
 #define IS_CLIENT true
 #define IS_MAPPER false
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "Mapper.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_MAPPER_IMPL
@@ -216,7 +212,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
     return nullptr; // Todo: get Mono domain user data
 }
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)GetDomainUserData(_domain); \
     FOServer* _common = _server
@@ -247,7 +243,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
     } \
     }
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Item* _this = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) \
     static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
@@ -294,7 +290,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef ITEM_CLASS
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Critter* _this = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
     static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
@@ -341,7 +337,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef CRITTER_CLASS
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Map* _this = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) \
     static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
@@ -388,7 +384,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef MAP_CLASS
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Location* _this = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
     static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
@@ -440,7 +436,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
     static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
     static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL
@@ -544,7 +540,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
 
     SetDomainUserData(domain, mainObj);
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);

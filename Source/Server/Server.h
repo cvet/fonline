@@ -54,6 +54,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
+#ifdef FO_SINGLEPLAYER
+#include "Client.h"
+#endif
 
 #include "imgui.h"
 
@@ -72,6 +75,10 @@ class FOServer : public NonCopyable // Todo: rename FOServer to just Server
 {
 public:
     FOServer(GlobalSettings& sett);
+
+#ifdef FO_SINGLEPLAYER
+    int RunAsSingleplayer(FOClient* client) { return 0; }
+#endif
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;

@@ -31,17 +31,15 @@
 // SOFTWARE.
 //
 
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "ServerScripting.h"
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "ClientScripting.h"
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "MapperScripting.h"
 #endif
 
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #include "Server.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_SERVER_IMPL
@@ -50,8 +48,7 @@
 #define IS_SERVER true
 #define IS_CLIENT false
 #define IS_MAPPER false
-#endif
-#ifdef FO_CLIENT_SCRIPTING
+#elif defined(FO_CLIENT_SCRIPTING)
 #include "Client.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_CLIENT_IMPL
@@ -60,8 +57,7 @@
 #define IS_SERVER false
 #define IS_CLIENT true
 #define IS_MAPPER false
-#endif
-#ifdef FO_MAPPER_SCRIPTING
+#elif defined(FO_MAPPER_SCRIPTING)
 #include "Mapper.h"
 #define FO_API_COMMON_IMPL
 #define FO_API_MAPPER_IMPL
@@ -129,7 +125,7 @@ inline vector<ScriptEntity*> MarshalBack(vector<Entity*> obj)
     return {};
 }
 
-#ifdef FO_SERVER_SCRIPTING
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 inline ScriptItem* MarshalBack(Item* obj)
 {
     return 0;
@@ -258,7 +254,7 @@ inline T MarshalBack(T value)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)_mainObjPtr; \
     FOServer* _common = _server
@@ -282,7 +278,7 @@ inline T MarshalBack(T value)
 class ScriptItem : public ScriptEntity
 {
 public:
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Item* _this = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
@@ -308,7 +304,7 @@ public:
 class ScriptCritter : public ScriptEntity
 {
 public:
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Critter* _this = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
@@ -334,7 +330,7 @@ public:
 class ScriptMap : public ScriptEntity
 {
 public:
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Map* _this = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
@@ -360,7 +356,7 @@ public:
 class ScriptLocation : public ScriptEntity
 {
 public:
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define THIS_ARG Location* _this = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
@@ -389,7 +385,7 @@ public:
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
-#if defined(FO_SERVER_SCRIPTING)
+#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL
 #elif defined(FO_CLIENT_SCRIPTING)

@@ -32,6 +32,7 @@
 //
 
 // Todo: finish with GLSL to SPIRV to GLSL/HLSL/MSL
+// Todo: add supporting of APNG file format
 
 #include "ImageBaker.h"
 #include "F2Palette_Include.h"

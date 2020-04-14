@@ -319,7 +319,7 @@ FO_API_EPILOG(0)
  *
  * @param time ...
  ******************************************************************************/
-FO_API_GLOBAL_COMMON_FUNC(Yield0, FO_API_RET(void), FO_API_ARG(uint, time))
+FO_API_GLOBAL_COMMON_FUNC(Yield, FO_API_RET(void), FO_API_ARG(uint, time))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
 {
