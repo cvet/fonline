@@ -68,8 +68,8 @@ extern "C" int main(int argc, char** argv)
 static int main_disabled(int argc, char** argv)
 #endif
 {
-    CatchExceptions("FOnlineServerHeadless", FO_VERSION);
-    LogToFile("FOnlineServerHeadless.log");
+    CatchExceptions("FOnlineSingleplayer", FO_VERSION);
+    LogToFile("FOnlineSingleplayer.log");
     Settings.ParseArgs(argc, argv);
 
     FOClient* client = new FOClient(Settings);

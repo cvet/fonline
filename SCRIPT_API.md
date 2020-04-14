@@ -127,8 +127,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 * void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
-* bool LoadImage(uint index, string imageName, uint imageDepth)
-* uint GetImageColor(uint index, uint x, uint y)
 
 ## Client global methods
 

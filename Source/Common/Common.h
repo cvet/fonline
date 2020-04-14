@@ -203,6 +203,7 @@ using std::shared_ptr;
 using std::string;
 using std::tuple;
 using std::type_index;
+using std::type_info;
 using std::unique_ptr;
 using std::unordered_map;
 using std::unordered_set;

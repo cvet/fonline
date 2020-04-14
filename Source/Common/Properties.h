@@ -191,7 +191,7 @@ public:
     {
         RUNTIME_ASSERT(sizeof(T) == prop->baseSize);
         RUNTIME_ASSERT(prop->dataType == Property::DataType::POD);
-        return *(T*)podData[prop->podDataOffset];
+        return *reinterpret_cast<T*>(podData[prop->podDataOffset]);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
@@ -199,10 +199,10 @@ public:
     {
         RUNTIME_ASSERT(sizeof(T) == prop->baseSize);
         RUNTIME_ASSERT(prop->dataType == Property::DataType::POD);
-        T old_value = *(T*)podData[prop->podDataOffset];
+        T old_value = *reinterpret_cast<T*>(podData[prop->podDataOffset]);
         if (new_value != old_value)
         {
-            *(T*)podData[prop->podDataOffset] = new_value;
+            *reinterpret_cast<T*>(podData[prop->podDataOffset]) = new_value;
             // setCallback(enumValue, old_value)
         }
     }
@@ -213,7 +213,7 @@ public:
         RUNTIME_ASSERT(prop->dataType == Property::DataType::String);
         RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
         uint data_size = complexDataSizes[prop->complexDataIndex];
-        return data_size ? string((char*)podData[prop->complexDataIndex], data_size) : string();
+        return data_size ? string(reinterpret_cast<char*>(podData[prop->complexDataIndex]), data_size) : string();
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
