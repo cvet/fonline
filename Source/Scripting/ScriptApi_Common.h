@@ -77,6 +77,7 @@ public:
 };
 #endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -91,7 +92,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, condition))
 }
 FO_API_EPILOG()
 #endif
+#endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -104,6 +107,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, message))
     throw ScriptException(message);
 }
 FO_API_EPILOG()
+#endif
 #endif
 
 /*******************************************************************************
@@ -136,6 +140,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG()
 #endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -154,7 +159,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(int, resul
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -172,6 +179,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(float, res
     FO_API_RETURN(true);
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -314,6 +322,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ucs))
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -327,6 +336,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
     // Script::SuspendCurrentContext(time);
 }
 FO_API_EPILOG()
+#endif
 #endif
 
 /*******************************************************************************
@@ -377,6 +387,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 static void PrintLog(string& log, bool last_call, std::function<void(const string&)> log_callback)
 {
@@ -513,7 +524,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -533,6 +546,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string,
     }));
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************

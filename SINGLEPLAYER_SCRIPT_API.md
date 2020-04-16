@@ -1,4 +1,4 @@
-# FOnline Engine Multiplayer Script API
+# FOnline Engine Singleplayer Script API
 
 > Document under development, do not rely on this API before the global refactoring complete.  
 > Estimated finishing date is middle of this year.
@@ -6,26 +6,18 @@
 ## Table of Content
 
 - [General information](#general-information)
-- [Common global methods](#common-global-methods)
-- [Server global methods](#server-global-methods)
-- [Client global methods](#client-global-methods)
+- [Global methods](#global-methods)
 - [Global properties](#global-properties)
 - [Entities](#entities)
   * [Item properties](#item-properties)
-  * [Item server methods](#item-server-methods)
-  * [Item client methods](#item-client-methods)
+  * [Item methods](#item-methods)
   * [Critter properties](#critter-properties)
-  * [Critter server methods](#critter-server-methods)
-  * [Critter client methods](#critter-client-methods)
+  * [Critter methods](#critter-methods)
   * [Map properties](#map-properties)
-  * [Map server methods](#map-server-methods)
-  * [Map client methods](#map-client-methods)
+  * [Map methods](#map-methods)
   * [Location properties](#location-properties)
-  * [Location server methods](#location-server-methods)
-  * [Location client methods](#location-client-methods)
+  * [Location methods](#location-methods)
 - [Events](#events)
-  * [Server events](#server-events)
-  * [Client events](#client-events)
 - [Settings](#settings)
 - [Enums](#enums)
   * [MessageBoxTextType](#messageboxtexttype)
@@ -49,7 +41,7 @@ This document automatically generated from engine provided script API so any cha
 You can easily contribute to this API using provided by engine functionality.  
 ...write about FO_API* macro usage...
 
-## Common global methods
+## Global methods
 
 * void Assert(bool condition) *(AngelScript only)*
 * void ThrowException(string message) *(AngelScript only)*
@@ -73,9 +65,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void OpenLink(string link)
 * Entity GetProtoItem(hash pid, int->int props)
 * uint GetUnixTime()
-
-## Server global methods
-
 * uint GetCrittersDistantion(Critter cr1, Critter cr2)
 * Item GetItem(uint itemId)
 * void MoveItemCr(Item item, uint count, Critter toCr, bool skipChecks)
@@ -125,25 +114,10 @@ You can easily contribute to this API using provided by engine functionality.
 * void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 * void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
-
-## Client global methods
-
 * string CustomCall(string command, string separator)
 * Critter GetChosen()
-* Item GetItem(uint itemId)
 * Item[] GetMapVisibleItems()
-* Item[] GetMapHexItems(uint16 hx, uint16 hy)
 * uint GetCrittersDistantion(Critter cr1, Critter cr2)
-* Critter GetCritter(uint critterId)
-* Critter[] GetCritters(uint16 hx, uint16 hy, uint radius, int findType)
-* Critter[] GetCrittersByPids(hash pid, int findType)
-* Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
-* Critter[] GetCrittersInPathBlock(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
-* void GetHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
-* uint8[] GetPathHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
-* uint8[] GetPathCr(Critter cr, uint16 toHx, uint16 toHy, uint cut)
-* uint GetPathLengthHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
-* uint GetPathLengthCr(Critter cr, uint16 toHx, uint16 toHy, uint cut)
 * void FlushScreen(uint fromColor, uint toColor, uint ms)
 * void QuakeScreen(uint noise, uint ms)
 * bool PlaySound(string soundName)
@@ -175,7 +149,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * hash GetTileName(uint16 hx, uint16 hy, bool roof, int layer)
 * void Preload3dFiles(string[] fnames)
-* void WaitPing()
 * bool LoadFont(int fontIndex, string fontFname)
 * void SetDefaultFont(int font, uint color)
 * bool SetEffect(int effectType, int effectSubtype, string effectName, string effectDefines)
@@ -185,7 +158,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void SetRainAnimation(string fallAnimName, string dropAnimName)
 * void ChangeZoom(float targetZoom)
 * void GetTime(ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second, ref uint16 milliseconds)
-* void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
 * uint LoadSprite(string sprName)
 * uint LoadSpriteHash(uint nameHash)
@@ -325,7 +297,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint8 RadioBroadcastSend
 * uint8 RadioBroadcastRecv
 
-### Item server methods
+### Item methods
 
 * Item AddItem(hash pid, uint count, uint stackId)
 * Item[] GetItems(uint stackId)
@@ -334,13 +306,9 @@ You can easily contribute to this API using provided by engine functionality.
 * bool ChangeProto(hash pid)
 * void Animate(uint8 fromFrm, uint8 toFrm)
 * bool CallStaticItemFunction(Critter cr, Item item, int param)
-
-### Item client methods
-
 * Item Clone(uint count)
 * bool GetMapPosition(ref uint16 hx, ref uint16 hy)
 * void Animate(uint fromFrame, uint toFrame)
-* Item[] GetItems(uint stackId)
 
 ### Critter properties
 
@@ -415,7 +383,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint TimeoutTransfer
 * uint TimeoutRemoveFromGame
 
-### Critter server methods
+### Critter methods
 
 * bool IsPlayer()
 * bool IsNpc()
@@ -484,13 +452,8 @@ You can easily contribute to this API using provided by engine functionality.
 * void MoveToHex(uint16 hx, uint16 hy, uint cut, bool isRun)
 * int GetMovingState()
 * void ResetMovingState(ref uint gagId)
-
-### Critter client methods
-
 * bool IsChosen()
-* bool IsPlayer()
 * bool IsNpc()
-* bool IsOffline()
 * bool IsLife()
 * bool IsKnockout()
 * bool IsDead()
@@ -504,14 +467,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void AnimateEx(uint anim1, uint anim2, Item item)
 * void ClearAnim()
 * void Wait(uint ms)
-* uint CountItem(hash protoId)
-* Item GetItem(uint itemId)
-* Item GetItemPredicate(predicate-Item predicate)
-* Item GetItemBySlot(int slot)
-* Item GetItemByPid(hash protoId)
-* Item[] GetItems()
-* Item[] GetItemsBySlot(int slot)
-* Item[] GetItemsPredicate(predicate-Item predicate)
 * void SetVisible(bool visible)
 * bool GetVisible()
 * void SetContourColor(uint value)
@@ -541,7 +496,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint8[] DayColor
 * bool IsNoLogOut
 
-### Map server methods
+### Map methods
 
 * Location GetLocation()
 * void SetScript(string funcName)
@@ -593,9 +548,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * void VerifyTrigger(Critter cr, uint16 hx, uint16 hy, uint8 dir)
 
-### Map client methods
-
-
 ### Location properties
 
 * hash[] MapProtos
@@ -613,7 +565,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint Color
 * bool IsEncounter
 
-### Location server methods
+### Location methods
 
 * uint GetMapCount()
 * Map GetMap(hash mapPid)
@@ -623,12 +575,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint GetEntrances(ref int[] mapsIndex, ref hash[] entires)
 * bool Reload()
 
-### Location client methods
-
-
 ## Events
-
-### Server events
 
 * Init()
 * GenerateWorld()
@@ -667,23 +614,13 @@ You can easily contribute to this API using provided by engine functionality.
 * CritterTalk(Critter critter, Critter who, bool begin, uint talkers)
 * CritterBarter(Critter cr, Critter trader, bool begin, uint barterCount)
 * CritterGetAttackDistantion(Critter critter, Item item, uint8 itemMode, ref uint dist)
-* PlayerRegistration(uint ip, string name, ref uint disallowMsgNum, ref uint disallowStrNum, ref string disallowLex)
-* PlayerLogin(uint ip, string name, uint id, ref uint disallowMsgNum, ref uint disallowStrNum, ref string disallowLex)
 * PlayerGetAccess(Critter player, int arg1, ref string arg2)
 * PlayerAllowCommand(Critter player, string arg1, uint8 arg2)
-* PlayerLogout(Critter player)
 * ItemInit(Item item, bool firstTime)
 * ItemFinish(Item item)
 * ItemWalk(Item item, Critter critter, bool isIn, uint8 dir)
 * ItemCheckMove(Item item, uint count, Entity from, Entity to)
 * StaticItemWalk(Item item, Critter critter, bool isIn, uint8 dir)
-
-### Client events
-
-* Start()
-* Finish()
-* AutoLogin(string login, string password)
-* Loop()
 * GetActiveScreens(ref int[] screens)
 * ScreenChange(bool show, int screen, string->int data)
 * ScreenScroll(int offsetX, int offsetY)

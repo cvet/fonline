@@ -114,8 +114,10 @@ FOClient::FOClient(GlobalSettings& sett) :
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType(AtlasType::Static);
 
+#ifndef FO_SINGLEPLAYER
     // Modules initialization
     ScriptSys.StartEvent();
+#endif
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -180,12 +182,14 @@ void FOClient::ProcessAutoLogin()
 
     IsAutoLogin = true;
 
+#ifndef FO_SINGLEPLAYER
     if (ScriptSys.AutoLoginEvent(auto_login_args[0], auto_login_args[1]) && InitNetReason == INIT_NET_REASON_NONE)
     {
         LoginName = auto_login_args[0];
         LoginPassword = auto_login_args[1];
         InitNetReason = INIT_NET_REASON_LOGIN;
     }
+#endif
 }
 
 void FOClient::UpdateFilesStart()
@@ -706,8 +710,10 @@ void FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
 
+#ifndef FO_SINGLEPLAYER
     // Script loop
     ScriptSys.LoopEvent();
+#endif
 
     // Quake effect
     ProcessScreenEffectQuake();

@@ -26,6 +26,7 @@ elif [ "$1" = "code-coverage" ]; then
     TARGET_ARG=code-coverage
 else
     echo "Invalid argument"
+    exit 1
 fi
 
 if [ "$1" != "mac" ] && [ "$1" != "ios" ]; then

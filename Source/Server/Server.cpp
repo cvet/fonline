@@ -206,7 +206,10 @@ void FOServer::RemoveClient(Client* cl)
     Client* cl_ = (id ? CrMngr.GetPlayer(id) : nullptr);
     if (cl_ && cl_ == cl)
     {
+#ifndef FO_SINGLEPLAYER
         ScriptSys.PlayerLogoutEvent(cl);
+#endif
+
         if (cl->GetClientToDelete())
             ScriptSys.CritterFinishEvent(cl);
 
@@ -2704,6 +2707,7 @@ void FOServer::Process_CreateClient(Client* cl)
         }
     }
 
+#ifndef FO_SINGLEPLAYER
     uint disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
     bool allow = ScriptSys.PlayerRegistrationEvent(cl->GetIp(), cl->Name, disallow_msg_num, disallow_str_num, lexems);
@@ -2716,6 +2720,7 @@ void FOServer::Process_CreateClient(Client* cl)
         cl->Disconnect();
         return;
     }
+#endif
 
     // Register
     cl->SetId(id);
@@ -2862,6 +2867,7 @@ void FOServer::Process_LogIn(Client*& cl)
         }
     }
 
+#ifndef FO_SINGLEPLAYER
     // Request script
     uint disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
@@ -2875,6 +2881,7 @@ void FOServer::Process_LogIn(Client*& cl)
         cl->Disconnect();
         return;
     }
+#endif
 
     // Find in players in game
     Client* cl_old = CrMngr.GetPlayer(id);

@@ -112,11 +112,11 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 ### Public API
 
 *Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
-*Todo: add link to PUBLIC_API.md*  
 Documents related to public API:
 * [PUBLIC_API.md](https://github.com/cvet/fonline/blob/master/PUBLIC_API.md)
 * [MULTIPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MULTIPLAYER_SCRIPT_API.md)
 * [SINGLEPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/SINGLEPLAYER_SCRIPT_API.md)
+* [MAPPER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MAPPER_SCRIPT_API.md)
 
 ### Setup
 
@@ -398,15 +398,11 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
 * MonoScripting: get Mono domain user data
-* ScriptApi: add FO_API_MULTIPLAYER_ONLY macro guard for separate multiplayer only stuff from common
-* ScriptApi: add FO_API_SINGLEPLAYER_ONLY macro guard for separate singleplayer only stuff from common
-* ScriptApi: add FO_API_ANGELSCRIPT_ONLY macro guard for separate angelscript only stuff from common
-* ScriptApi: add FO_API_MONO_ONLY macro guard for separate mono only stuff from common
-* ScriptApi: add FO_API_NATIVE_ONLY macro guard for separate native only stuff from common
 * ScriptApi: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
 * ScriptApi: add supporting of components for properties
 * ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
 * ScriptApi: improve RPC calls
+* ScriptApi: add custom entities handling
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system

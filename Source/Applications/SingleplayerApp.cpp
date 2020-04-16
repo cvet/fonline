@@ -41,6 +41,8 @@
 #include "Testing.h"
 #include "Version_Include.h"
 
+#include "SDL_main.h"
+
 NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback)
 {
     throw UnreachablePlaceException(LINE_STR);
@@ -63,7 +65,7 @@ void ClientScriptSystem::InitMonoScripting()
 static GlobalSettings Settings;
 
 #ifndef FO_TESTING
-extern "C" int main(int argc, char** argv)
+extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 static int main_disabled(int argc, char** argv)
 #endif

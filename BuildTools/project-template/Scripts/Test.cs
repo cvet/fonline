@@ -11,6 +11,8 @@ namespace TheGame
             Console.WriteLine("SERVER");
 #elif CLIENT
             Console.WriteLine("CLIENT");
+#elif SINGLE
+            Console.WriteLine("SINGLE");
 #elif MAPPER
             Console.WriteLine("MAPPER");
 #else

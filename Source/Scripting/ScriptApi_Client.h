@@ -49,6 +49,7 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -61,6 +62,7 @@ FO_API_PROLOG()
     FO_API_RETURN(_this->IsPlayer());
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -77,6 +79,7 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -89,6 +92,7 @@ FO_API_PROLOG()
     FO_API_RETURN(_this->IsOffline());
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -278,6 +282,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ms))
 FO_API_EPILOG()
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -292,7 +297,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -307,7 +314,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -326,7 +335,9 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -341,7 +352,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -384,7 +397,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -398,7 +413,9 @@ FO_API_PROLOG()
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -415,7 +432,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -435,6 +454,7 @@ FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
     FO_API_RETURN(items);
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -471,7 +491,7 @@ FO_API_EPILOG(0)
  *
  * @param value ...
  ******************************************************************************/
-FO_API_CRITTER_VIEW_METHOD(set_ContourColor, FO_API_RET(void), FO_API_ARG(uint, value))
+FO_API_CRITTER_VIEW_METHOD(SetContourColor, FO_API_RET(void), FO_API_ARG(uint, value))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, value))
 {
@@ -488,7 +508,7 @@ FO_API_EPILOG()
  *
  * @return ...
  ******************************************************************************/
-FO_API_CRITTER_VIEW_METHOD(get_ContourColor, FO_API_RET(uint))
+FO_API_CRITTER_VIEW_METHOD(GetContourColor, FO_API_RET(uint))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
@@ -655,6 +675,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromFrame) FO_API_ARG_MARSHAL(uint, toFra
 FO_API_EPILOG()
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -671,6 +692,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
     FO_API_RETURN(items);
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -1104,6 +1126,7 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1139,13 +1162,14 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_CLIENT_FUNC(GetMapAllItems, FO_API_RET_OBJ_ARR(ItemView))
+FO_API_GLOBAL_CLIENT_FUNC(GetMapVisibleItems, FO_API_RET_OBJ_ARR(ItemView))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
@@ -1163,6 +1187,7 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1184,6 +1209,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
     FO_API_RETURN(items);
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -1211,6 +1237,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr1) FO_API_ARG_OBJ_MARSHAL(Cr
 FO_API_EPILOG(0)
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1230,7 +1257,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, critterId))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1267,7 +1296,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1304,7 +1335,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(int, findType))
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1332,7 +1365,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1371,7 +1406,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1396,7 +1433,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 }
 FO_API_EPILOG()
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1429,7 +1468,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1459,7 +1500,9 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1492,7 +1535,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
 }
 FO_API_EPILOG(0)
 #endif
+#endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1521,6 +1566,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
     FO_API_RETURN((uint)steps.size());
 }
 FO_API_EPILOG(0)
+#endif
 #endif
 
 /*******************************************************************************
@@ -2218,6 +2264,7 @@ FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
 FO_API_EPILOG()
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2229,6 +2276,7 @@ FO_API_PROLOG()
     _client->WaitPing();
 }
 FO_API_EPILOG()
+#endif
 #endif
 
 /*******************************************************************************
@@ -2580,6 +2628,7 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year) FO_API_ARG_REF_MARSHAL(ushort
 FO_API_EPILOG()
 #endif
 
+#ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2593,6 +2642,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSe
     CritterView::SlotEnabled[index] = true;
 }
 FO_API_EPILOG()
+#endif
 #endif
 
 /*******************************************************************************

@@ -199,104 +199,104 @@
             "command": "BuildTools/build.sh linux server debug"
         },
         {
-            "label": "Singleplayer for Windows (x64)",
+            "label": "Single for Windows (x64)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh win64 singleplayer"
+            "command": "BuildTools/build.sh win64 single"
         },
         {
-            "label": "Singleplayer for Windows (x86)",
+            "label": "Single for Windows (x86)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh win32 singleplayer"
+            "command": "BuildTools/build.sh win32 single"
         },
         {
-            "label": "Singleplayer for UWP",
+            "label": "Single for UWP",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh uwp singleplayer"
+            "command": "BuildTools/build.sh uwp single"
         },
         {
-            "label": "Singleplayer for Linux",
+            "label": "Single for Linux",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh linux singleplayer"
+            "command": "BuildTools/build.sh linux single"
         },
         {
-            "label": "Singleplayer for Web",
+            "label": "Single for Web",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh web singleplayer"
+            "command": "BuildTools/build.sh web single"
         },
         {
-            "label": "Singleplayer for Android (arm)",
+            "label": "Single for Android (arm)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh android singleplayer"
+            "command": "BuildTools/build.sh android single"
         },
         {
-            "label": "Singleplayer for Android (arm64)",
+            "label": "Single for Android (arm64)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh android-arm64 singleplayer"
+            "command": "BuildTools/build.sh android-arm64 single"
         },
         {
-            "label": "Singleplayer for Android (x86)",
+            "label": "Single for Android (x86)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh android-x86 singleplayer"
+            "command": "BuildTools/build.sh android-x86 single"
         },
         {
-            "label": "Singleplayer for macOS",
+            "label": "Single for macOS",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh mac singleplayer"
+            "command": "BuildTools/build.sh mac single"
         },
         {
-            "label": "Singleplayer for iOS",
+            "label": "Single for iOS",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh ios singleplayer"
+            "command": "BuildTools/build.sh ios single"
         },
         {
-            "label": "Debug Singleplayer for Windows (x64)",
+            "label": "Debug Single for Windows (x64)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win64 singleplayer debug"
+            "command": "BuildTools/build.sh win64 single debug"
         },
         {
-            "label": "Debug Singleplayer for Windows (x86)",
+            "label": "Debug Single for Windows (x86)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win32 singleplayer debug"
+            "command": "BuildTools/build.sh win32 single debug"
         },
         {
-            "label": "Debug Singleplayer for UWP",
+            "label": "Debug Single for UWP",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh uwp singleplayer debug"
+            "command": "BuildTools/build.sh uwp single debug"
         },
         {
-            "label": "Debug Singleplayer for Linux",
+            "label": "Debug Single for Linux",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh linux singleplayer debug"
+            "command": "BuildTools/build.sh linux single debug"
         },
         {
-            "label": "Debug Singleplayer for Web",
+            "label": "Debug Single for Web",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh web singleplayer debug"
+            "command": "BuildTools/build.sh web single debug"
         },
         {
-            "label": "Debug Singleplayer for Android (arm)",
+            "label": "Debug Single for Android (arm)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android singleplayer debug"
+            "command": "BuildTools/build.sh android single debug"
         },
         {
-            "label": "Debug Singleplayer for Android (arm64)",
+            "label": "Debug Single for Android (arm64)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android-arm64 singleplayer debug"
+            "command": "BuildTools/build.sh android-arm64 single debug"
         },
         {
-            "label": "Debug Singleplayer for Android (x86)",
+            "label": "Debug Single for Android (x86)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android-x86 singleplayer debug"
+            "command": "BuildTools/build.sh android-x86 single debug"
         },
         {
-            "label": "Debug Singleplayer for macOS",
+            "label": "Debug Single for macOS",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh mac singleplayer debug"
+            "command": "BuildTools/build.sh mac single debug"
         },
         {
-            "label": "Debug Singleplayer for iOS",
+            "label": "Debug Single for iOS",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh ios singleplayer debug"
+            "command": "BuildTools/build.sh ios single debug"
         },
         {
             "label": "Generate script API",

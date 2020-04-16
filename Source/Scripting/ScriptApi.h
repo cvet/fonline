@@ -31,15 +31,11 @@
 // SOFTWARE.
 //
 
-// Todo: add FO_API_MULTIPLAYER_ONLY macro guard for separate multiplayer only stuff from common
-// Todo: add FO_API_SINGLEPLAYER_ONLY macro guard for separate singleplayer only stuff from common
-// Todo: add FO_API_ANGELSCRIPT_ONLY macro guard for separate angelscript only stuff from common
-// Todo: add FO_API_MONO_ONLY macro guard for separate mono only stuff from common
-// Todo: add FO_API_NATIVE_ONLY macro guard for separate native only stuff from common
 // Todo: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
 // Todo: add supporting of components for properties
 // Todo: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
 // Todo: improve RPC calls
+// Todo: add custom entities handling
 
 // Possible defines:
 // FO_API_PARTLY_UNDEF
