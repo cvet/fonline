@@ -452,7 +452,8 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 
 ## Frequently Asked Questions
 
-*Todo: link to FAQ.md*
+Following document contains some issues thats give additional information about this engine:
+* [FAQ document](https://fonline.ru/FAQ)
 
 ## Help and support
 
