@@ -35,7 +35,6 @@
 // Todo: make entities positioning free in space, without hard-linking to hex
 // Todo: add third 'up' coordinate to positioning that allow create multidimensional maps
 // Todo: use Common.h as precompiled header
-// Todo: review push_back -> emplace_back
 // Todo: use smart pointers instead raw
 // Todo: fix all PVS Studio warnings
 // Todo: SHA replace to openssl SHA
@@ -43,16 +42,11 @@
 // Todo: improve valgrind
 // Todo: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
 // Todo: move defines to const and enums
-// Todo: don't use rtti and remove from compilation options
-// Todo: wrap fonline code to namespace
-// Todo: fix LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
-// Todo: fix LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
+// Todo: don't use rtti/typeid and remove from compilation options?
+// Todo: wrap fonline code to namespace?
 // Todo: fix build warnings for all platforms
 // Todo: enable threating warnings as errors
-// Todo: sound and video preprocessing move to editor
 // Todo: id and hash to 8 byte integer
-// Todo: add to copyrigths for https://github.com/taka-no-me/android-cmake
-// Todo: make all depedencies as git submodules?
 // Todo: research about std::string_view
 // Todo: research about std::filesystem
 // Todo: compile with -fpedantic
@@ -60,20 +54,19 @@
 // Todo: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
 // Todo: use par (for_each(par, v, [](int x))
 // Todo: improve some single standard to initialize objects ({} or ())
-// Todo: iterator -> const_iterator, auto -> const auto
 // Todo: add constness as much as nessesary
+// Todo: iterator -> const_iterator, auto -> const auto
 // Todo: use using instead of typedef
 // Todo: rework unscoped enums to scoped enums
 // Todo: use more noexcept
 // Todo: use more constexpr
 // Todo: improve BitReader/BitWriter to better network/disk space utilization
 // Todo: organize class members as public, protected, private; methods, fields
-// Todo: research c++20 modules
 // Todo: prefer this construction if(auto i = do(); i < 0) i... else i...
 // Todo: improve std::to_string or fmt::format to string conversions
 // Todo: casts between int types via NumericCast<to>()
 // Todo: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
-// Todo: build debug sanitiziers
+// Todo: clang debug builds with sanitiziers
 // Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
 // Todo: improve particle system based on SPARK engine

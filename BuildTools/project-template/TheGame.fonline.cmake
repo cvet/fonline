@@ -1,5 +1,4 @@
-# SetupGame(option value option value...)
-# Available options:
+# SetupGame option value option value...
 # - DEV_NAME (default: "Unknown")
 # - NICE_NAME (default: "Unknown")
 # - COMPANY_NAME (default: "Unknown")

@@ -1682,6 +1682,7 @@ bool FOServer::Init()
 
 bool FOServer::InitReal()
 {
+    // Todo: replace return code to exception during initialization
     WriteLog("***   Starting initialization   ***\n");
 
     // Root data file

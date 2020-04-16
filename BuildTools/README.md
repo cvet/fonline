@@ -15,7 +15,7 @@ Following environment variables may be set before starting build scripts:
 Path to root directory of FOnline repository.  
 If not specified then taked one level outside directory of running script file (i.e. outside `BuildTools`, at repository root).  
 
-*Default: `$(dirname ./script.sh)/../`*
+*Default: `$(dirname ./script.sh)/../`*  
 *Example: `export FO_ROOT=/mnt/d/fonline`*
 
 #### FO_WORKSPACE
@@ -23,5 +23,5 @@ If not specified then taked one level outside directory of running script file (
 Path to directory where all intermediate build files will be stored.  
 Default behaviour is build in current directory plus `Workspace`.  
 
-*Default: `$PWD/Workspace`*
+*Default: `$PWD/Workspace`*  
 *Example: `export FO_ROOT=/mnt/d/fonline-workspace`*

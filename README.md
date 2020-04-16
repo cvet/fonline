@@ -107,16 +107,16 @@ There are couple of shell scripts that help us to do it:
 * `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
 * `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
 
-Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in BuildTools/README.md.
+Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
 
 ### Public API
 
 *Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
 Documents related to public API:
-* [PUBLIC_API.md](https://github.com/cvet/fonline/blob/master/PUBLIC_API.md)
-* [MULTIPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MULTIPLAYER_SCRIPT_API.md)
-* [SINGLEPLAYER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/SINGLEPLAYER_SCRIPT_API.md)
-* [MAPPER_SCRIPT_API.md](https://github.com/cvet/fonline/blob/master/MAPPER_SCRIPT_API.md)
+* [Public API](https://fonline.ru/PUBLIC_API)
+* [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
+* [Singleplayer Script API](https://fonline.ru/SINGLEPLAYER_SCRIPT_API)
+* [Mapper Script API](https://fonline.ru/MAPPER_SCRIPT_API)
 
 ### Setup
 
@@ -136,7 +136,7 @@ Currently WSL2 available only on Windows Insider distros but in time when engine
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
 Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.  
-More about extension usage you can find in [Tutorial](https://github.com/cvet/fonline/blob/master/TUTORIAL.md) document.
+More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIAL) document.
 
 #### Package dependencies
 
@@ -165,6 +165,11 @@ And `fonline-setup.ps1` might install following Windows packages for you *(some 
 * [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
 * [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management
 * [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
+
+Other stuff used in build pipeline:
+* [Android CMake Toolchain](https://github.com/taka-no-me/android-cmake)
+* [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
+* [msicreator](https://github.com/jpakkane/msicreator)
 
 #### Statically linked packages
 
@@ -211,7 +216,8 @@ Also as you can see all third-party dependencies linked statically to final exec
 
 ### Tutorial
 
-*Todo: link to TUTORIAL.md*
+Please follow these instructions to understand how to use this engine by design:
+* [Tutorial document](https://fonline.ru/TUTORIAL)
 
 ## Work in progress
 
@@ -266,7 +272,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: make entities positioning free in space, without hard-linking to hex
 * Common: add third 'up' coordinate to positioning that allow create multidimensional maps
 * Common: use Common.h as precompiled header
-* Common: review push_back -> emplace_back
 * Common: use smart pointers instead raw
 * Common: fix all PVS Studio warnings
 * Common: SHA replace to openssl SHA
@@ -274,16 +279,11 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: improve valgrind
 * Common: add behaviour for SDL_WINDOW_ALWAYS_ON_TOP
 * Common: move defines to const and enums
-* Common: don't use rtti and remove from compilation options
-* Common: wrap fonline code to namespace
-* Common: fix LINK : warning LNK4044: unrecognized option '/INCREMENTAL:NO'; ignored
-* Common: fix LINK : warning LNK4044: unrecognized option '/MANIFEST:NO'; ignored
+* Common: don't use rtti/typeid and remove from compilation options?
+* Common: wrap fonline code to namespace?
 * Common: fix build warnings for all platforms
 * Common: enable threating warnings as errors
-* Common: sound and video preprocessing move to editor
 * Common: id and hash to 8 byte integer
-* Common: add to copyrigths for https://github.com/taka-no-me/android-cmake
-* Common: make all depedencies as git submodules?
 * Common: research about std::string_view
 * Common: research about std::filesystem
 * Common: compile with -fpedantic
@@ -291,20 +291,19 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: use more STL (for ... -> auto p = find(begin(v), end(v), val); find_if, begin, end...)
 * Common: use par (for_each(par, v, [](int x))
 * Common: improve some single standard to initialize objects ({} or ())
-* Common: iterator -> const_iterator, auto -> const auto
 * Common: add constness as much as nessesary
+* Common: iterator -> const_iterator, auto -> const auto
 * Common: use using instead of typedef
 * Common: rework unscoped enums to scoped enums
 * Common: use more noexcept
 * Common: use more constexpr
 * Common: improve BitReader/BitWriter to better network/disk space utilization
 * Common: organize class members as public, protected, private; methods, fields
-* Common: research c++20 modules
 * Common: prefer this construction if(auto i = do(); i < 0) i... else i...
 * Common: improve std::to_string or fmt::format to string conversions
 * Common: casts between int types via NumericCast<to>()
 * Common: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
-* Common: build debug sanitiziers
+* Common: clang debug builds with sanitiziers
 * Common: time ticks to uint64
 * Common: improve custom exceptions for every subsustem
 * Common: improve particle system based on SPARK engine
@@ -336,6 +335,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: find something from STL instead TwoBitMask
 * Common: move NetProperty to more proper place
+* BakerApp: sound and video preprocessing move to baker
 * BakerApp: add dialogs verification during baking
 * ClientApp: fix script system
 * MapperApp: fix script system
@@ -383,6 +383,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * MapLoader: remove mapper specific IsSelected from MapTile
 * NetBuffer: allow transferring of any type and add safe transferring of floats
 * Properties: don't preserve memory for not allocated components in entity
+* Properties: pack bool properties to one bit
 * ScriptSystem: rework FONLINE_
 * ScriptSystem: fill settings to scripts
 * ScriptSystem: rework FONLINE_
@@ -421,6 +422,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * MapManager: check group
 * Networking: catch exceptions in network servers
 * Server: restore settings (2)
+* Server: replace return code to exception during initialization
 * Server: restore hashes loading
 * Server: clients logging may be not thread safe
 * Server: disable look distance caching
@@ -431,7 +433,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: rename FOServer to just Server
-* Server: synchronize LangPacks
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * ImageBaker: add supporting of APNG file format
@@ -439,15 +440,15 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Mapper: mapper render iface layer
 * Mapper: add standalone Mapper application
 * Mapper: rename FOMapper to just Mapper
-* ModelBaker: fix assimp, exclude fbxsdk
+* ModelBaker: fix assimp, exclude fbxsdk or exclude assimp and leave only fbxsdk
 * ModelBaker: return AssimpLogging on models bakering
   
 ## Repository structure
 
-* *BuildTools* - scripts for automatical build in command line or any ci/cd system
-* *Resources* - resources for build applications but not related to code
-* *Source* - fonline engine specific code
-* *ThirdParty* - external dependencies of engine, included to repository
+* [BuildTools](https://github.com/cvet/fonline/tree/master/BuildTools) - scripts for automatical build in command line or any ci/cd system
+* [Resources](https://github.com/cvet/fonline/tree/master/Resources) - resources for build applications but not related to code
+* [Source](https://github.com/cvet/fonline/tree/master/Source) - fonline engine specific code
+* [ThirdParty](https://github.com/cvet/fonline/tree/master/ThirdParty) - external dependencies of engine, included to repository
 
 ## Frequently Asked Questions
 

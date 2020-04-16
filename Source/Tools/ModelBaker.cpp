@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-// Todo: fix assimp, exclude fbxsdk
+// Todo: fix assimp, exclude fbxsdk or exclude assimp and leave only fbxsdk
 
 #include "ModelBaker.h"
 #include "Application.h"

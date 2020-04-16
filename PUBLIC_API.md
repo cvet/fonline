@@ -34,6 +34,8 @@ What is not included or just planned to including will described in the end of t
 * bake-resources.sh
 * make-packages.sh
 
+Other scripts and files in `BuildTools` dir are not part of reliable public API.
+
 ### Environment variables
 
 These environment variables affected only on build scripts described above.  
@@ -72,14 +74,20 @@ I.e. build win/linux/mac/etc binaries in different places but collect output in 
 
 `FONLINE_BUILD_CLIENT (default: YES)`
 
-Produce client binaries.  
-Binaries will be placed in `output/Client` directory in separate directory named as `platform-configuration` (i.e. Win32-Debug).  
+Produce multiplayer client binaries.  
+Binaries will be placed in `output/Client` directory in separate directory named as `platform-arch-configuration` (i.e. Windows-win64-Debug).  
 These binaries later will be consumed by packager.
 
 `FONLINE_BUILD_SERVER (default: NO)`
 
-Produce server binaries.  
-Binaries will be placed in `output/Server` directory in separate directory named as `platform-configuration` (i.e. Web-Release).
+Produce multiplayer server binaries.  
+Binaries will be placed in `output/Server` directory in separate directory named as `platform-arch-configuration` (i.e. Linux-x64-Release).
+These binaries later will be consumed by packager.
+
+`FONLINE_BUILD_SINGLE (default: NO)`
+
+Produce singleplayer binaries.  
+Binaries will be placed in `output/Single` directory in separate directory named as `platform-arch-configuration` (i.e. Web-wasm-Release).
 These binaries later will be consumed by packager.
 
 `FONLINE_BUILD_MAPPER (default: NO)`
@@ -122,36 +130,39 @@ Also you able to disable unnecessary stuff in your game (like AngelScript suppor
 
 CMake contributions included to main CMakeLists.txt scope.
 
-* SetCustomVersion version
-* DisableNativeScripting
-* DisableAngelScriptScripting
-* DisableMonoScripting
-* AddContent pathPattern(s)
-* AddResources packName rootDir pathPattern(s)
-* AddRawResources rootDir pathPattern(s)
+* SetupGame option value option value...
+  - DEV_NAME (default: "Unknown")
+  - NICE_NAME (default: "Unknown")
+  - COMPANY_NAME (default: "Unknown")
+  - VERSION (default: "0.0.1")
+  - ENGINE_VERSION (default: "")
+  - MULTIPLAYER_SCRIPTING (default: YES)
+  - SINGLEPLAYER_SCRIPTING (default: YES)
+  - NATIVE_SCRIPTING (default: YES)
+  - ANGELSCRIPT_SCRIPTING (default: YES)
+  - MONO_SCRIPTING (default: YES)
+* AddContent dir(s)
+* AddResources packName dir(s)
+* AddRawResources dir(s)
 * AddScriptApi headerPath(s)
-* AddNativeIncludeDir dir(s)
-* AddNativeSource pathPattern(s)
+* AddNativeIncludeDir target dir(s)
+* AddNativeSource target pathPattern(s)
 * AddAngelScriptSource pathPattern(s)
 * AddMonoAssembly assembly
-* AddMonoCommonReference assembly ref(s)
-* AddMonoServerReference assembly ref(s)
-* AddMonoClientReference assembly ref(s)
-* AddMonoMapperReference assembly ref(s)
-* AddMonoCommonSource assembly pathPattern(s)
-* AddMonoServerSource assembly pathPattern(s)
-* AddMonoClientSource assembly pathPattern(s)
-* AddMonoMapperSource assembly pathPattern(s)
+* AddMonoReference assembly target ref(s)
+* AddMonoSource assembly target pathPattern(s)
 * CreateConfig config inheritenConfig
 * TweakConfig config option value
-* CreatePackage package devName niceName author version config devBuild
-* AddClientToPackage package platform packType [customConfig]
-* AddServerToPackage package platform packType [customConfig]
+* CreatePackage package config debug
+* AddToPackage package binary platform arch packType [customConfig]
 
 ### Script API
 
 Because developers can contribute to script API provided document describes only clear engine script API without any contribution.  
-[Click to navigate to Script API document.](https://github.com/cvet/fonline/blob/master/SCRIPT_API.md)
+Script API documents:
+* [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
+* [Singleplayer Script API](https://fonline.ru/SINGLEPLAYER_SCRIPT_API)
+* [Mapper Script API](https://fonline.ru/MAPPER_SCRIPT_API)
 
 ### Internal file formats
 
@@ -163,6 +174,11 @@ Because developers can contribute to script API provided document describes only
 * .fofrm
 * .fo3d
 * .fos
+* .fobin
+* .fofx
+* .focfg
+* .fodlg
+* .fogui
 
 ### External file formats
 
@@ -193,4 +209,3 @@ So if you ready for these surprises then why not.
 ### Repository structure
 ### Resources packed formats
 ### Network protocol
-### Packaging information
