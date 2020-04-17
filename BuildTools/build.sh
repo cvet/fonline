@@ -10,14 +10,14 @@ source $CUR_DIR/setup-env.sh
 source $CUR_DIR/tools.sh
 
 if [ "$2" = "full" ]; then
-    BUILD_TARGETS="-DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLEPLAYER=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_BUILD_BAKER=1"
+    BUILD_TARGETS="-DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_BUILD_BAKER=1"
     BUILD_DIR="build-$1-full"
 elif [ "$2" = "server" ]; then
     BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SERVER=1"
     BUILD_DIR="build-$1-server"
-elif [ "$2" = "singleplayer" ]; then
-    BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SINGLEPLAYER=1"
-    BUILD_DIR="build-$1-singleplayer"
+elif [ "$2" = "single" ]; then
+    BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SINGLE=1"
+    BUILD_DIR="build-$1-single"
 elif [ "$2" = "mapper" ]; then
     BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_MAPPER=1"
     BUILD_DIR="build-$1-mapper"
@@ -32,7 +32,7 @@ elif [ "$2" = "code-coverage" ]; then
     BUILD_DIR="build-$1-code-coverage"
 else
     BUILD_TARGETS="-DFONLINE_BUILD_CLIENT=1"
-    BUILD_DIR="build-$1"
+    BUILD_DIR="build-$1-client"
 fi
 
 CONFIG="Release"

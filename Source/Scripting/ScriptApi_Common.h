@@ -191,7 +191,7 @@ FO_API_EPILOG(0)
  * @param hy2 ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_COMMON_FUNC(GetDistantion, FO_API_RET(uint), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1),
+FO_API_GLOBAL_COMMON_FUNC(GetHexDistance, FO_API_RET(int), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1),
     FO_API_ARG(ushort, hx2), FO_API_ARG(ushort, hy2))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO_API_ARG_MARSHAL(ushort, hx2)
@@ -211,7 +211,7 @@ FO_API_EPILOG(0)
  * @param toHy ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_COMMON_FUNC(GetDirection, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
+FO_API_GLOBAL_COMMON_FUNC(GetHexDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
     FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx)
@@ -232,8 +232,8 @@ FO_API_EPILOG(0)
  * @param offset ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_COMMON_FUNC(GetOffsetDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
-    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
+FO_API_GLOBAL_COMMON_FUNC(GetHexDirWithOffset, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx),
+    FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx)
         FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, offset))

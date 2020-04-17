@@ -249,52 +249,52 @@
             "command": "BuildTools/build.sh ios single"
         },
         {
-            "label": "Debug Single for Windows (x64)",
+            "label": "Debug single for Windows (x64)",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh win64 single debug"
         },
         {
-            "label": "Debug Single for Windows (x86)",
+            "label": "Debug single for Windows (x86)",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh win32 single debug"
         },
         {
-            "label": "Debug Single for UWP",
+            "label": "Debug single for UWP",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh uwp single debug"
         },
         {
-            "label": "Debug Single for Linux",
+            "label": "Debug single for Linux",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh linux single debug"
         },
         {
-            "label": "Debug Single for Web",
+            "label": "Debug single for Web",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh web single debug"
         },
         {
-            "label": "Debug Single for Android (arm)",
+            "label": "Debug single for Android (arm)",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh android single debug"
         },
         {
-            "label": "Debug Single for Android (arm64)",
+            "label": "Debug single for Android (arm64)",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh android-arm64 single debug"
         },
         {
-            "label": "Debug Single for Android (x86)",
+            "label": "Debug single for Android (x86)",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh android-x86 single debug"
         },
         {
-            "label": "Debug Single for macOS",
+            "label": "Debug single for macOS",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh mac single debug"
         },
         {
-            "label": "Debug Single for iOS",
+            "label": "Debug single for iOS",
             "group": "Singleplayer (Debug)",
             "command": "BuildTools/build.sh ios single debug"
         },

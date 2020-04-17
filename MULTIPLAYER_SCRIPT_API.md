@@ -57,9 +57,9 @@ You can easily contribute to this API using provided by engine functionality.
 * void Log(string text)
 * bool StrToInt(string text, ref int result) *(AngelScript only)*
 * bool StrToFloat(string text, ref float result) *(AngelScript only)*
-* uint GetDistantion(uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
-* uint8 GetDirection(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
-* uint8 GetOffsetDir(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
+* int GetHexDistance(uint16 hx1, uint16 hy1, uint16 hx2, uint16 hy2)
+* uint8 GetHexDir(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy)
+* uint8 GetHexDirWithOffset(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 * uint GetTick()
 * hash GetStrHash(string text)
 * string GetHashStr(hash h)
@@ -76,14 +76,14 @@ You can easily contribute to this API using provided by engine functionality.
 
 ## Server global methods
 
-* uint GetCrittersDistantion(Critter cr1, Critter cr2)
+* int GetCritterDistance(Critter cr1, Critter cr2)
 * Item GetItem(uint itemId)
-* void MoveItemCr(Item item, uint count, Critter toCr, bool skipChecks)
-* void MoveItemMap(Item item, uint count, Map toMap, uint16 toHx, uint16 toHy, bool skipChecks)
-* void MoveItemCont(Item item, uint count, Item toCont, uint stackId, bool skipChecks)
-* void MoveItemsCr(Item[] items, Critter toCr, bool skipChecks)
-* void MoveItemsMap(Item[] items, Map toMap, uint16 toHx, uint16 toHy, bool skipChecks)
-* void MoveItemsCont(Item[] items, Item toCont, uint stackId, bool skipChecks)
+* void MoveItemToCritter(Item item, uint count, Critter toCr, bool skipChecks)
+* void MoveItemToMap(Item item, uint count, Map toMap, uint16 toHx, uint16 toHy, bool skipChecks)
+* void MoveItemToContainer(Item item, uint count, Item toCont, uint stackId, bool skipChecks)
+* void MoveItemsToCritter(Item[] items, Critter toCr, bool skipChecks)
+* void MoveItemsToMap(Item[] items, Map toMap, uint16 toHx, uint16 toHy, bool skipChecks)
+* void MoveItemsToContainer(Item[] items, Item toCont, uint stackId, bool skipChecks)
 * void DeleteItem(Item item)
 * void DeleteItemById(uint itemId)
 * void DeleteItems(Item[] items)
@@ -105,13 +105,13 @@ You can easily contribute to this API using provided by engine functionality.
 * Map GetMapByPid(hash mapPid, uint skipCount)
 * Location GetLocation(uint locId)
 * Location GetLocationByPid(hash locPid, uint skipCount)
-* Location[] GetLocations(uint16 wx, uint16 wy, uint radius)
-* Location[] GetVisibleLocations(uint16 wx, uint16 wy, uint radius, Critter cr)
+* Location[] GetLocationsAroundPos(uint16 wx, uint16 wy, uint radius)
+* Location[] GetVisibleLocationsAroundPos(uint16 wx, uint16 wy, uint radius, Critter cr)
 * uint[] GetZoneLocationIds(uint16 zx, uint16 zy, uint zoneRadius)
-* bool RunDialogNpc(Critter player, Critter npc, bool ignoreDistance)
-* bool RunDialogNpcDlgPack(Critter player, Critter npc, uint dlgPack, bool ignoreDistance)
-* bool RunDialogHex(Critter player, uint dlgPack, uint16 hx, uint16 hy, bool ignoreDistance)
-* int64 WorldItemCount(hash pid)
+* bool RunNpcDialog(Critter player, Critter npc, bool ignoreDistance)
+* bool RunCustomNpcDialog(Critter player, Critter npc, uint dlgPack, bool ignoreDistance)
+* bool RunCustomDialogOnHex(Critter player, uint dlgPack, uint16 hx, uint16 hy, bool ignoreDistance)
+* int64 GetWorldItemCount(hash pid)
 * void AddTextListener(int sayType, string firstStr, uint parameter, callback-Entity func)
 * void EraseTextListener(int sayType, string firstStr, uint parameter)
 * void SwapCritters(Critter cr1, Critter cr2, bool withInventory)
@@ -131,41 +131,41 @@ You can easily contribute to this API using provided by engine functionality.
 * string CustomCall(string command, string separator)
 * Critter GetChosen()
 * Item GetItem(uint itemId)
-* Item[] GetMapVisibleItems()
-* Item[] GetMapHexItems(uint16 hx, uint16 hy)
-* uint GetCrittersDistantion(Critter cr1, Critter cr2)
+* Item[] GetVisibleItems()
+* Item[] GetVisibleItemsOnHex(uint16 hx, uint16 hy)
+* int GetCritterDistance(Critter cr1, Critter cr2)
 * Critter GetCritter(uint critterId)
-* Critter[] GetCritters(uint16 hx, uint16 hy, uint radius, int findType)
+* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, int findType)
 * Critter[] GetCrittersByPids(hash pid, int findType)
 * Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
-* Critter[] GetCrittersInPathBlock(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
+* Critter[] GetCrittersWithBlockInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
 * void GetHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
-* uint8[] GetPathHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
-* uint8[] GetPathCr(Critter cr, uint16 toHx, uint16 toHy, uint cut)
-* uint GetPathLengthHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
-* uint GetPathLengthCr(Critter cr, uint16 toHx, uint16 toHy, uint cut)
+* uint8[] GetPathToHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+* uint8[] GetPathToCritter(Critter cr, uint16 toHx, uint16 toHy, uint cut)
+* uint GetPathLengthToHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+* uint GetPathLengthToCritter(Critter cr, uint16 toHx, uint16 toHy, uint cut)
 * void FlushScreen(uint fromColor, uint toColor, uint ms)
 * void QuakeScreen(uint noise, uint ms)
-* bool PlaySound(string soundName)
-* bool PlayMusic(string musicName, uint repeatTime)
+* void PlaySound(string soundName)
+* void PlayMusic(string musicName, uint repeatTime)
 * void PlayVideo(string videoName, bool canStop)
-* hash GetCurrentMapPid()
+* hash GetCurMapPid()
 * void Message(string msg)
-* void MessageType(string msg, int type)
+* void MessageExt(string msg, int type)
 * void MessageMsg(int textMsg, uint strNum)
-* void MessageMsgType(int textMsg, uint strNum, int type)
+* void MessageMsgExt(int textMsg, uint strNum, int type)
 * void MapMessage(string text, uint16 hx, uint16 hy, uint ms, uint color, bool fade, int ox, int oy)
 * string GetMsgStr(int textMsg, uint strNum)
-* string GetMsgStrSkip(int textMsg, uint strNum, uint skipCount)
+* string GetMsgStrExt(int textMsg, uint strNum, uint skipCount)
 * uint GetMsgStrNumUpper(int textMsg, uint strNum)
 * uint GetMsgStrNumLower(int textMsg, uint strNum)
 * uint GetMsgStrCount(int textMsg, uint strNum)
 * bool IsMsgStr(int textMsg, uint strNum)
-* string ReplaceTextStr(string text, string replace, string str)
-* string ReplaceTextInt(string text, string replace, int i)
+* string ReplaceTextStr(string text, string replace, string str) *(AngelScript only)*
+* string ReplaceTextInt(string text, string replace, int i) *(AngelScript only)*
 * string FormatTags(string text, string lexems)
 * void MoveScreenToHex(uint16 hx, uint16 hy, uint speed, bool canStop)
-* void MoveScreenOffset(int ox, int oy, uint speed, bool canStop)
+* void MoveScreenByOffset(int ox, int oy, uint speed, bool canStop)
 * void LockScreenScroll(Critter cr, bool softLock, bool unlockIfSame)
 * int GetFog(uint16 zoneX, uint16 zoneY)
 * uint GetDayTime(uint dayPart)
@@ -176,27 +176,27 @@ You can easily contribute to this API using provided by engine functionality.
 * hash GetTileName(uint16 hx, uint16 hy, bool roof, int layer)
 * void Preload3dFiles(string[] fnames)
 * void WaitPing()
-* bool LoadFont(int fontIndex, string fontFname)
+* void LoadFont(int fontIndex, string fontFname)
 * void SetDefaultFont(int font, uint color)
-* bool SetEffect(int effectType, int effectSubtype, string effectName, string effectDefines)
-* void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)
-* void MouseClick(int x, int y, int button)
-* void KeyboardPress(uint8 key1, uint8 key2, string key1Text, string key2Text)
-* void SetRainAnimation(string fallAnimName, string dropAnimName)
+* void SetEffect(int effectType, int effectSubtype, string effectName, string effectDefines)
+* void RedrawMap(bool onlyTiles, bool onlyRoof, bool onlyLight)
+* void SimulateMouseClick(int x, int y, int button)
+* void SimulateKeyboardPress(uint8 key1, uint8 key2, string key1Text, string key2Text)
+* void SetRainAnim(string fallAnimName, string dropAnimName)
 * void ChangeZoom(float targetZoom)
 * void GetTime(ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second, ref uint16 milliseconds)
 * void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
 * uint LoadSprite(string sprName)
-* uint LoadSpriteHash(uint nameHash)
+* uint LoadSpriteByHash(hash nameHash)
 * int GetSpriteWidth(uint sprId, int frameIndex)
 * int GetSpriteHeight(uint sprId, int frameIndex)
 * uint GetSpriteCount(uint sprId)
 * uint GetSpriteTicks(uint sprId)
-* uint GetPixelColor(uint sprId, int frameIndex, int x, int y)
+* uint GetSpritePixelColor(uint sprId, int frameIndex, int x, int y)
 * void GetTextInfo(string text, int w, int h, int font, int flags, ref int tw, ref int th, ref int lines)
 * void DrawSprite(uint sprId, int frameIndex, int x, int y, uint color, bool offs)
-* void DrawSpriteSize(uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
+* void DrawSpriteSized(uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
 * void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
 * void DrawText(string text, int x, int y, int w, int h, uint color, int font, int flags)
 * void DrawPrimitive(int primitiveType, int[] data)
@@ -211,209 +211,208 @@ You can easily contribute to this API using provided by engine functionality.
 * void PresentOffscreenSurfaceExt2(int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
 * void ShowScreen(int screen, string->int data)
 * void HideScreen(int screen)
-* bool GetHexPos(uint16 hx, uint16 hy, ref int x, ref int y)
-* bool GetMonitorHex(int x, int y, ref uint16 hx, ref uint16 hy)
-* Item GetMonitorItem(int x, int y)
-* Critter GetMonitorCritter(int x, int y)
-* Entity GetMonitorEntity(int x, int y)
+* bool GetHexMonitorPos(uint16 hx, uint16 hy, ref int x, ref int y)
+* bool GetHexByMonitorPos(int x, int y, ref uint16 hx, ref uint16 hy)
+* Item GetItemByMonitorPos(int x, int y)
+* Critter GetCritterByMonitorPos(int x, int y)
+* Entity GetEntityByMonitorPos(int x, int y)
 * uint16 GetMapWidth()
 * uint16 GetMapHeight()
 * bool IsMapHexPassed(uint16 hx, uint16 hy)
 * bool IsMapHexRaked(uint16 hx, uint16 hy)
 * void SaveScreenshot(string filePath)
-* bool SaveText(string filePath, string text)
+* void SaveText(string filePath, string text)
 * void SetCacheData(string name, uint8[] data)
-* void SetCacheDataSize(string name, uint8[] data, uint dataSize)
+* void SetCacheDataExt(string name, uint8[] data, uint dataSize)
 * uint8[] GetCacheData(string name)
-* void SetCacheDataStr(string name, string str)
-* string GetCacheDataStr(string name)
-* bool IsCacheData(string name)
-* void EraseCacheData(string name)
+* void SetCacheText(string name, string str)
+* string GetCacheText(string name)
+* bool IsCacheEntry(string name)
+* void RemoveCacheEntry(string name)
 * void SetUserConfig(string->string keyValues)
 
 ## Global properties
 
-* uint16 YearStart
-* uint16 Year
-* uint16 Month
-* uint16 Day
-* uint16 Hour
-* uint16 Minute
-* uint16 Second
-* uint16 TimeMultiplier
-* uint LastEntityId
-* uint LastDeferredCallId
-* uint HistoryRecordsId
+* PrivateCommon uint16 YearStart
+* PrivateCommon uint16 Year
+* PrivateCommon uint16 Month
+* PrivateCommon uint16 Day
+* PrivateCommon uint16 Hour
+* PrivateCommon uint16 Minute
+* PrivateCommon uint16 Second
+* PrivateCommon uint16 TimeMultiplier
+* PrivateServer uint LastEntityId
+* PrivateCommon uint LastDeferredCallId
+* PrivateCommon uint HistoryRecordsId
 
 ## Entities
 
 ### Item properties
 
-* ItemOwnership Accessory
-* uint MapId
-* uint16 HexX
-* uint16 HexY
-* uint CritId
-* uint8 CritSlot
-* uint ContainerId
-* uint ContainerStack
-* float FlyEffectSpeed
-* hash PicMap
-* hash PicInv
-* int16 OffsetX
-* int16 OffsetY
-* bool Stackable
-* bool GroundLevel
-* bool Opened
-* CornerType Corner
-* uint8 Slot
-* uint Weight
-* uint Volume
-* bool DisableEgg
-* uint16 AnimWaitBase
-* uint16 AnimWaitRndMin
-* uint16 AnimWaitRndMax
-* uint8 AnimStay0
-* uint8 AnimStay1
-* uint8 AnimShow0
-* uint8 AnimShow1
-* uint8 AnimHide0
-* uint8 AnimHide1
-* uint8 SpriteCut
-* int8 DrawOrderOffsetHexY
-* uint8[] BlockLines
-* bool IsStatic
-* bool IsScenery
-* bool IsWall
-* bool IsCanOpen
-* bool IsScrollBlock
-* bool IsHidden
-* bool IsHiddenPicture
-* bool IsHiddenInStatic
-* bool IsFlat
-* bool IsNoBlock
-* bool IsShootThru
-* bool IsLightThru
-* bool IsAlwaysView
-* bool IsBadItem
-* bool IsNoHighlight
-* bool IsShowAnim
-* bool IsShowAnimExt
-* bool IsLight
-* bool IsGeck
-* bool IsTrap
-* bool IsTrigger
-* bool IsNoLightInfluence
-* bool IsGag
-* bool IsColorize
-* bool IsColorizeInv
-* bool IsCanTalk
-* bool IsRadio
-* string Lexems
-* int16 SortValue
-* uint8 Info
-* uint8 Mode
-* int8 LightIntensity
-* uint8 LightDistance
-* uint8 LightFlags
-* uint LightColor
-* hash ScriptId
-* uint Count
-* int16 TrapValue
-* uint16 RadioChannel
-* uint16 RadioFlags
-* uint8 RadioBroadcastSend
-* uint8 RadioBroadcastRecv
+* Public ItemOwnership Accessory
+* Public uint MapId
+* Public uint16 HexX
+* Public uint16 HexY
+* Public uint CritId
+* Public uint8 CritSlot
+* Public uint ContainerId
+* Public uint ContainerStack
+* Public float FlyEffectSpeed
+* Public hash PicMap
+* Public hash PicInv
+* Public int16 OffsetX
+* Public int16 OffsetY
+* Public bool Stackable
+* Public bool GroundLevel
+* Public bool Opened
+* Public CornerType Corner
+* Public uint8 Slot
+* Public uint Weight
+* Public uint Volume
+* Public bool DisableEgg
+* Public uint16 AnimWaitBase
+* Public uint16 AnimWaitRndMin
+* Public uint16 AnimWaitRndMax
+* Public uint8 AnimStay0
+* Public uint8 AnimStay1
+* Public uint8 AnimShow0
+* Public uint8 AnimShow1
+* Public uint8 AnimHide0
+* Public uint8 AnimHide1
+* Public uint8 SpriteCut
+* Public int8 DrawOrderOffsetHexY
+* Public uint8[] BlockLines
+* Public bool IsStatic
+* Public bool IsScenery
+* Public bool IsWall
+* Public bool IsCanOpen
+* Public bool IsScrollBlock
+* Public bool IsHidden
+* Public bool IsHiddenPicture
+* Public bool IsHiddenInStatic
+* Public bool IsFlat
+* Public bool IsNoBlock
+* Public bool IsShootThru
+* Public bool IsLightThru
+* Public bool IsAlwaysView
+* Public bool IsBadItem
+* Public bool IsNoHighlight
+* Public bool IsShowAnim
+* Public bool IsShowAnimExt
+* Public bool IsLight
+* Public bool IsGeck
+* Public bool IsTrap
+* Public bool IsTrigger
+* Public bool IsNoLightInfluence
+* Public bool IsGag
+* Public bool IsColorize
+* Public bool IsColorizeInv
+* Public bool IsCanTalk
+* Public bool IsRadio
+* Public string Lexems
+* PublicModifiable int16 SortValue
+* Public uint8 Info
+* PublicModifiable uint8 Mode
+* Public int8 LightIntensity
+* Public uint8 LightDistance
+* Public uint8 LightFlags
+* Public uint LightColor
+* PrivateServer hash ScriptId
+* Public uint Count
+* Protected int16 TrapValue
+* Protected uint16 RadioChannel
+* Protected uint16 RadioFlags
+* Protected uint8 RadioBroadcastSend
+* Protected uint8 RadioBroadcastRecv
 
 ### Item server methods
 
 * Item AddItem(hash pid, uint count, uint stackId)
 * Item[] GetItems(uint stackId)
 * bool SetScript(callback-Item func)
-* Map GetMapPosition(ref uint16 hx, ref uint16 hy)
-* bool ChangeProto(hash pid)
+* Map GetMapPos(ref uint16 hx, ref uint16 hy)
+* void ChangeProto(hash pid)
 * void Animate(uint8 fromFrm, uint8 toFrm)
 * bool CallStaticItemFunction(Critter cr, Item item, int param)
 
 ### Item client methods
 
-* Item Clone(uint count)
-* bool GetMapPosition(ref uint16 hx, ref uint16 hy)
+* bool GetMapPos(ref uint16 hx, ref uint16 hy)
 * void Animate(uint fromFrame, uint toFrame)
 * Item[] GetItems(uint stackId)
 
 ### Critter properties
 
-* hash ModelName
-* uint WalkTime
-* uint RunTime
-* uint Multihex
-* uint MapId
-* uint RefMapId
-* hash RefMapPid
-* uint RefLocationId
-* hash RefLocationPid
-* uint16 HexX
-* uint16 HexY
-* uint8 Dir
-* string Password
-* CritterCondition Cond
-* bool ClientToDelete
-* uint16 WorldX
-* uint16 WorldY
-* uint GlobalMapLeaderId
-* uint GlobalMapTripId
-* uint RefGlobalMapTripId
-* uint RefGlobalMapLeaderId
-* uint16 LastMapHexX
-* uint16 LastMapHexY
-* uint Anim1Life
-* uint Anim1Knockout
-* uint Anim1Dead
-* uint Anim2Life
-* uint Anim2Knockout
-* uint Anim2Dead
-* uint8[] GlobalMapFog
-* hash[] TE_FuncNum
-* uint[] TE_Rate
-* uint[] TE_NextTime
-* int[] TE_Identifier
-* int SneakCoefficient
-* uint LookDistance
-* int8 Gender
-* hash NpcRole
-* int ReplicationTime
-* uint TalkDistance
-* int ScaleFactor
-* int CurrentHp
-* uint MaxTalkers
-* hash DialogId
-* string Lexems
-* uint HomeMapId
-* uint16 HomeHexX
-* uint16 HomeHexY
-* uint8 HomeDir
-* uint[] KnownLocations
-* uint[] ConnectionIp
-* uint16[] ConnectionPort
-* uint ShowCritterDist1
-* uint ShowCritterDist2
-* uint ShowCritterDist3
-* hash ScriptId
-* hash[] KnownLocProtoId
-* int[] Anim3dLayer
-* bool IsHide
-* bool IsNoHome
-* bool IsGeck
-* bool IsNoUnarmed
-* bool IsNoWalk
-* bool IsNoRun
-* bool IsNoRotate
-* bool IsNoTalk
-* bool IsNoFlatten
-* uint TimeoutBattle
-* uint TimeoutTransfer
-* uint TimeoutRemoveFromGame
+* Public hash ModelName
+* Protected uint WalkTime
+* Protected uint RunTime
+* Protected uint Multihex
+* PrivateServer uint MapId
+* PrivateServer uint RefMapId
+* PrivateServer hash RefMapPid
+* PrivateServer uint RefLocationId
+* PrivateServer hash RefLocationPid
+* PrivateCommon uint16 HexX
+* PrivateCommon uint16 HexY
+* PrivateCommon uint8 Dir
+* PrivateServer string Password
+* PrivateCommon CritterCondition Cond
+* PrivateServer bool ClientToDelete
+* Protected uint16 WorldX
+* Protected uint16 WorldY
+* Protected uint GlobalMapLeaderId
+* PrivateServer uint GlobalMapTripId
+* PrivateServer uint RefGlobalMapTripId
+* PrivateServer uint RefGlobalMapLeaderId
+* PrivateServer uint16 LastMapHexX
+* PrivateServer uint16 LastMapHexY
+* PrivateCommon uint Anim1Life
+* PrivateCommon uint Anim1Knockout
+* PrivateCommon uint Anim1Dead
+* PrivateCommon uint Anim2Life
+* PrivateCommon uint Anim2Knockout
+* PrivateCommon uint Anim2Dead
+* PrivateServer uint8[] GlobalMapFog
+* PrivateServer hash[] TE_FuncNum
+* PrivateServer uint[] TE_Rate
+* PrivateServer uint[] TE_NextTime
+* PrivateServer int[] TE_Identifier
+* VirtualPrivateServer int SneakCoefficient
+* VirtualProtected uint LookDistance
+* Public int8 Gender
+* Protected hash NpcRole
+* Protected int ReplicationTime
+* Public uint TalkDistance
+* Public int ScaleFactor
+* Public int CurrentHp
+* PrivateServer uint MaxTalkers
+* Public hash DialogId
+* Public string Lexems
+* PrivateServer uint HomeMapId
+* PrivateServer uint16 HomeHexX
+* PrivateServer uint16 HomeHexY
+* PrivateServer uint8 HomeDir
+* PrivateServer uint[] KnownLocations
+* PrivateServer uint[] ConnectionIp
+* PrivateServer uint16[] ConnectionPort
+* PrivateServer uint ShowCritterDist1
+* PrivateServer uint ShowCritterDist2
+* PrivateServer uint ShowCritterDist3
+* PrivateServer hash ScriptId
+* Protected hash[] KnownLocProtoId
+* PrivateClient int[] Anim3dLayer
+* Protected bool IsHide
+* Protected bool IsNoHome
+* Protected bool IsGeck
+* Protected bool IsNoUnarmed
+* VirtualProtected bool IsNoWalk
+* VirtualProtected bool IsNoRun
+* Protected bool IsNoRotate
+* Public bool IsNoTalk
+* Public bool IsNoFlatten
+* Public uint TimeoutBattle
+* Protected uint TimeoutTransfer
+* Protected uint TimeoutRemoveFromGame
 
 ### Critter server methods
 
@@ -428,13 +427,13 @@ You can easily contribute to this API using provided by engine functionality.
 * void TransitToGlobal()
 * void TransitToGlobalWithGroup(Critter[] group)
 * void TransitToGlobalGroup(Critter leader)
-* bool IsLife()
+* bool IsAlive()
 * bool IsKnockout()
 * bool IsDead()
 * bool IsFree()
 * bool IsBusy()
 * void Wait(uint ms)
-* void RefreshVisible()
+* void RefreshView()
 * void ViewMap(Map map, uint look, uint16 hx, uint16 hy, uint8 dir)
 * void Say(uint8 howSay, string text)
 * void SayMsg(uint8 howSay, uint16 textMsg, uint numStr)
@@ -449,37 +448,36 @@ You can easily contribute to this API using provided by engine functionality.
 * bool DeleteItem(hash pid, uint count)
 * Item AddItem(hash pid, uint count)
 * Item GetItem(uint itemId)
-* Item GetItemPredicate(predicate-Item predicate)
+* Item GetItemByPredicate(predicate-Item predicate)
 * Item GetItemBySlot(int slot)
 * Item GetItemByPid(hash protoId)
 * Item[] GetItems()
 * Item[] GetItemsBySlot(int slot)
-* Item[] GetItemsPredicate(predicate-Item predicate)
+* Item[] GetItemsByPredicate(predicate-Item predicate)
 * void ChangeItemSlot(uint itemId, int slot)
-* void SetCond(int cond)
+* void SetCondition(int cond)
 * void CloseDialog()
-* void SendCombatResult(uint[] arr)
 * void Action(int action, int actionExt, Item item)
 * void Animate(uint anim1, uint anim2, Item item, bool clearSequence, bool delayPlay)
-* void SetAnims(int cond, uint anim1, uint anim2)
+* void SetConditionAnims(int cond, uint anim1, uint anim2)
 * void PlaySound(string soundName, bool sendSelf)
-* bool IsKnownLoc(bool byId, uint locNum)
-* void SetKnownLoc(bool byId, uint locNum)
-* void UnsetKnownLoc(bool byId, uint locNum)
+* bool IsKnownLocation(bool byId, uint locNum)
+* void SetKnownLocation(bool byId, uint locNum)
+* void UnsetKnownLocation(bool byId, uint locNum)
 * void SetFog(uint16 zoneX, uint16 zoneY, int fog)
 * int GetFog(uint16 zoneX, uint16 zoneY)
-* void SendItems(Item[] items, int param)
+* void ShowItems(Item[] items, int param)
 * void Disconnect()
 * bool IsOnline()
 * void SetScript(string funcName)
 * void AddTimeEvent(callback-Critter func, uint duration, int identifier)
-* void AddTimeEventRate(callback-Critter func, uint duration, int identifier, uint rate)
+* void AddTimeEventWithRate(callback-Critter func, uint duration, int identifier, uint rate)
 * uint GetTimeEvents(int identifier, ref int[] indexes, ref int[] durations, ref int[] rates)
-* uint GetTimeEventsArr(int[] findIdentifiers, int[] identifiers, ref int[] indexes, ref int[] durations, ref int[] rates)
+* uint GetTimeEventsExt(int[] findIdentifiers, int[] identifiers, ref int[] indexes, ref int[] durations, ref int[] rates)
 * void ChangeTimeEvent(uint index, uint newDuration, uint newRate)
 * void EraseTimeEvent(uint index)
 * uint EraseTimeEvents(int identifier)
-* uint EraseTimeEventsArr(int[] identifiers)
+* uint EraseTimeEventsExt(int[] identifiers)
 * void MoveToCritter(Critter target, uint cut, bool isRun)
 * void MoveToHex(uint16 hx, uint16 hy, uint cut, bool isRun)
 * int GetMovingState()
@@ -491,55 +489,55 @@ You can easily contribute to this API using provided by engine functionality.
 * bool IsPlayer()
 * bool IsNpc()
 * bool IsOffline()
-* bool IsLife()
+* bool IsAlive()
 * bool IsKnockout()
 * bool IsDead()
 * bool IsFree()
 * bool IsBusy()
 * bool IsAnim3d()
-* bool IsAnimAviable(uint anim1, uint anim2)
+* bool IsAnimAvailable(uint anim1, uint anim2)
 * bool IsAnimPlaying()
 * uint GetAnim1()
 * void Animate(uint anim1, uint anim2)
-* void AnimateEx(uint anim1, uint anim2, Item item)
-* void ClearAnim()
+* void AnimateExt(uint anim1, uint anim2, Item item)
+* void StopAnim()
 * void Wait(uint ms)
 * uint CountItem(hash protoId)
 * Item GetItem(uint itemId)
-* Item GetItemPredicate(predicate-Item predicate)
+* Item GetItemByPredicate(predicate-Item predicate)
 * Item GetItemBySlot(int slot)
 * Item GetItemByPid(hash protoId)
 * Item[] GetItems()
 * Item[] GetItemsBySlot(int slot)
-* Item[] GetItemsPredicate(predicate-Item predicate)
-* void SetVisible(bool visible)
-* bool GetVisible()
+* Item[] GetItemsByPredicate(predicate-Item predicate)
+* void SetVisibility(bool visible)
+* bool GetVisibility()
 * void SetContourColor(uint value)
 * uint GetContourColor()
 * void GetNameTextInfo(ref bool nameVisible, ref int x, ref int y, ref int w, ref int h, ref int lines)
-* void AddAnimationCallback(uint anim1, uint anim2, float normalizedTime, callback-Critter animationCallback)
-* bool GetBonePosition(hash boneName, ref int boneX, ref int boneY)
+* void AddAnimCallback(uint anim1, uint anim2, float normalizedTime, callback-Critter animCallback)
+* bool GetBonePos(hash boneName, ref int boneX, ref int boneY)
 
 ### Map properties
 
-* uint LoopTime1
-* uint LoopTime2
-* uint LoopTime3
-* uint LoopTime4
-* uint LoopTime5
-* string FileDir
-* uint16 Width
-* uint16 Height
-* uint16 WorkHexX
-* uint16 WorkHexY
-* uint LocId
-* uint LocMapIndex
-* uint8 RainCapacity
-* int CurDayTime
-* hash ScriptId
-* int[] DayTime
-* uint8[] DayColor
-* bool IsNoLogOut
+* PrivateServer uint LoopTime1
+* PrivateServer uint LoopTime2
+* PrivateServer uint LoopTime3
+* PrivateServer uint LoopTime4
+* PrivateServer uint LoopTime5
+* PrivateServer string FileDir
+* PrivateServer uint16 Width
+* PrivateServer uint16 Height
+* PrivateServer uint16 WorkHexX
+* PrivateServer uint16 WorkHexY
+* PrivateServer uint LocId
+* PrivateServer uint LocMapIndex
+* PrivateServer uint8 RainCapacity
+* PrivateServer int CurDayTime
+* PrivateServer hash ScriptId
+* PrivateServer int[] DayTime
+* PrivateServer uint8[] DayColor
+* PrivateServer bool IsNoLogOut
 
 ### Map server methods
 
@@ -547,32 +545,32 @@ You can easily contribute to this API using provided by engine functionality.
 * void SetScript(string funcName)
 * Item AddItem(uint16 hx, uint16 hy, hash protoId, uint count, int->int props)
 * Item[] GetItems()
-* Item[] GetItemsHex(uint16 hx, uint16 hy)
-* Item[] GetItemsHexEx(uint16 hx, uint16 hy, uint radius, hash pid)
+* Item[] GetItemsOnHex(uint16 hx, uint16 hy)
+* Item[] GetItemsAroundHex(uint16 hx, uint16 hy, uint radius, hash pid)
 * Item[] GetItemsByPid(hash pid)
-* Item[] GetItemsPredicate(predicate-Item predicate)
-* Item[] GetItemsHexPredicate(uint16 hx, uint16 hy, predicate-Item predicate)
-* Item[] GetItemsHexRadiusPredicate(uint16 hx, uint16 hy, uint radius, predicate-Item predicate)
+* Item[] GetItemsByPredicate(predicate-Item predicate)
+* Item[] GetItemsOnHexByPredicate(uint16 hx, uint16 hy, predicate-Item predicate)
+* Item[] GetItemsAroundHexByPredicate(uint16 hx, uint16 hy, uint radius, predicate-Item predicate)
 * Item GetItem(uint itemId)
-* Item GetItemHex(uint16 hx, uint16 hy, hash pid)
-* Critter GetCritterHex(uint16 hx, uint16 hy)
-* Item GetStaticItem(uint16 hx, uint16 hy, hash pid)
-* Item[] GetStaticItemsHex(uint16 hx, uint16 hy)
-* Item[] GetStaticItemsHexEx(uint16 hx, uint16 hy, uint radius, hash pid)
+* Item GetItemOnHex(uint16 hx, uint16 hy, hash pid)
+* Critter GetCritterOnHex(uint16 hx, uint16 hy)
+* Item GetStaticItemOnHex(uint16 hx, uint16 hy, hash pid)
+* Item[] GetStaticItemsInHex(uint16 hx, uint16 hy)
+* Item[] GetStaticItemsAroundHex(uint16 hx, uint16 hy, uint radius, hash pid)
 * Item[] GetStaticItemsByPid(hash pid)
-* Item[] GetStaticItemsPredicate(predicate-Item predicate)
-* Item[] GetStaticItemsAll()
-* Critter GetCritterById(uint crid)
-* Critter[] GetCritters(uint16 hx, uint16 hy, uint radius, int findType)
+* Item[] GetStaticItemsByPredicate(predicate-Item predicate)
+* Item[] GetStaticItems()
+* Critter GetCritter(uint crid)
+* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, int findType)
 * Critter[] GetCrittersByPids(hash pid, int findType)
 * Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
-* Critter[] GetCrittersInPathBlock(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
+* Critter[] GetCrittersWithBlockInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
 * Critter[] GetCrittersWhoViewPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, int findType)
 * Critter[] GetCrittersSeeing(Critter[] critters, bool lookOnThem, int findType)
 * void GetHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
-* void GetHexInPathWall(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
-* uint GetPathLengthHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
-* uint GetPathLengthCr(Critter cr, uint16 toHx, uint16 toHy, uint cut)
+* void GetWallHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
+* uint GetPathLengthToHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
+* uint GetPathLengthToCritter(Critter cr, uint16 toHx, uint16 toHy, uint cut)
 * Critter AddNpc(hash protoId, uint16 hx, uint16 hy, uint8 dir, int->int props)
 * uint GetNpcCount(int npcRole, int findType)
 * Critter GetNpc(int npcRole, int findType, uint skipCount)
@@ -588,8 +586,8 @@ You can easily contribute to this API using provided by engine functionality.
 * void BlockHex(uint16 hx, uint16 hy, bool full)
 * void UnblockHex(uint16 hx, uint16 hy)
 * void PlaySound(string soundName)
-* void PlaySoundRadius(string soundName, uint16 hx, uint16 hy, uint radius)
-* bool Reload()
+* void PlaySoundInRadius(string soundName, uint16 hx, uint16 hy, uint radius)
+* void Regenerate()
 * void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * void VerifyTrigger(Critter cr, uint16 hx, uint16 hy, uint8 dir)
 
@@ -598,20 +596,20 @@ You can easily contribute to this API using provided by engine functionality.
 
 ### Location properties
 
-* hash[] MapProtos
-* hash[] MapEntrances
-* hash[] Automaps
-* uint MaxPlayers
-* bool AutoGarbage
-* bool GeckVisible
-* hash EntranceScript
-* uint16 WorldX
-* uint16 WorldY
-* uint16 Radius
-* bool Hidden
-* bool ToGarbage
-* uint Color
-* bool IsEncounter
+* PrivateServer hash[] MapProtos
+* PrivateServer hash[] MapEntrances
+* PrivateServer hash[] Automaps
+* PrivateServer uint MaxPlayers
+* PrivateServer bool AutoGarbage
+* PrivateServer bool GeckVisible
+* PrivateServer hash EntranceScript
+* PrivateServer uint16 WorldX
+* PrivateServer uint16 WorldY
+* PrivateServer uint16 Radius
+* PrivateServer bool Hidden
+* PrivateServer bool ToGarbage
+* PrivateServer uint Color
+* PrivateServer bool IsEncounter
 
 ### Location server methods
 
@@ -621,7 +619,7 @@ You can easily contribute to this API using provided by engine functionality.
 * Map[] GetMaps()
 * void GetEntrance(uint entrance, ref uint mapIndex, ref hash entire)
 * uint GetEntrances(ref int[] mapsIndex, ref hash[] entires)
-* bool Reload()
+* void Regenerate()
 
 ### Location client methods
 

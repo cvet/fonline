@@ -288,10 +288,11 @@ def genApiMarkdown(target):
         writeDoc(tok[3])
     def writeProp(tok, entity):
         rw, name, access, ret, mods, comms = tok
-        if not (target == 'Mapper' and 'Virtual' in access) and \
-                not (target == 'Server' and 'PrivateClient' in access) and \
-                not (target == 'Client' and 'PrivateServer' in access):
-            writeFile('* ' + parseType(ret) + ' ' + name)
+        if not (target == 'Mapper' and 'Virtual' in access):
+            if target == 'Multiplayer':
+                writeFile('* ' + access + ' ' + parseType(ret) + ' ' + name)
+            else:
+                writeFile('* ' + parseType(ret) + ' ' + name)
         writeDoc(comms)
     def getUsage(value, section, subsection):
         usage = []

@@ -36,9 +36,16 @@
 // Todo: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
 // Todo: improve RPC calls
 // Todo: add custom entities handling
+// Todo: add Proto* to scripts that have readable properties
+// Todo: add local entity events
 
 // Possible defines:
 // FO_API_PARTLY_UNDEF
+// FO_API_MULTIPLAYER_ONLY
+// FO_API_SINGLEPLAYER_ONLY
+// FO_API_NATIVE_ONLY
+// FO_API_ANGELSCRIPT_ONLY
+// FO_API_MONO_ONLY
 // FO_API_ENUM_GROUP(name)
 // FO_API_ENUM_ENTRY(group, name, value)
 // FO_API_COMMON_EVENT(name, ...)

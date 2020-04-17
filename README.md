@@ -35,7 +35,7 @@
 
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Online mode with authoritative server
-* Singleplayer mode *(with or without back run in online mode)*
+* Singleplayer mode *(work without distinguish between server and client sides)*
 * Supporting of hexagonal and square map tiling
 * Perendered sprites for environment but with possibility of using 3D models for characters
 * Engine core writtlen in C++17
@@ -52,13 +52,6 @@
   + Web
   + PlayStation
   + UWP *(PC, Mobile, Xbox)*
-* Rendering with:
-  + OpenGL
-  + OpenGLES
-  + WebGL
-  + DirectX
-  + Metal
-  + Vulkan
 * Supporting of following asset file formats:
   + Fallout 1/2
   + Fallout Tactics
@@ -404,6 +397,8 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
 * ScriptApi: improve RPC calls
 * ScriptApi: add custom entities handling
+* ScriptApi: add Proto* to scripts that have readable properties
+* ScriptApi: add local entity events
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system
