@@ -2,6 +2,7 @@ title: FOnline Engine
 description: Work in progress
 email: cvet@tut.by
 theme: jekyll-theme-slate
+google_analytics: UA-77340151-2
 exclude:
   - BuildTools/
   - Resources/

@@ -290,9 +290,9 @@ def genApiMarkdown(target):
         rw, name, access, ret, mods, comms = tok
         if not (target == 'Mapper' and 'Virtual' in access):
             if target == 'Multiplayer':
-                writeFile('* ' + access + ' ' + parseType(ret) + ' ' + name)
+                writeFile('* ' + access + ' ' + ('const ' if rw == 'ro' else '') + parseType(ret) + ' ' + name)
             else:
-                writeFile('* ' + parseType(ret) + ' ' + name)
+                writeFile('* ' + ('const ' if rw == 'ro' else '')  + parseType(ret) + ' ' + name)
         writeDoc(comms)
     def getUsage(value, section, subsection):
         usage = []
