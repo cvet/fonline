@@ -59,6 +59,13 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh mac-client
+  ios-client:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh ios-client
   win64-server:
     runs-on: windows-latest
     steps:
@@ -129,6 +136,13 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh mac-single
+  ios-single:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh ios-single
   win64-mapper:
     runs-on: windows-latest
     steps:
