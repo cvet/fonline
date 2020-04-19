@@ -3,45 +3,130 @@
 CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
-if [ "$1" = "linux" ]; then
+if [ "$1" = "linux-client" ]; then
     TARGET=linux
-    TARGET_ARG=full
-elif [ "$1" = "android-arm" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-arm-client" ]; then
     TARGET=android
-elif [ "$1" = "android-arm64" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-arm64-client" ]; then
     TARGET=android-arm64
-elif [ "$1" = "android-x86" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-x86-client" ]; then
     TARGET=android-x86
-elif [ "$1" = "web" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "web-client" ]; then
     TARGET=web
-elif [ "$1" = "mac" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "mac-client" ]; then
     TARGET=mac
-elif [ "$1" = "ios" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "ios-client" ]; then
     TARGET=ios
+    BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "linux-server" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_SERVER=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "linux-single" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-arm-single" ]; then
+    TARGET=android
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-arm64-single" ]; then
+    TARGET=android-arm64
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "android-x86-single" ]; then
+    TARGET=android-x86
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "web-single" ]; then
+    TARGET=web
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "mac-single" ]; then
+    TARGET=mac
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "ios-single" ]; then
+    TARGET=ios
+    BUILD_TARGET="-DFONLINE_BUILD_SINGLE=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "linux-mapper" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_MAPPER=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "linux-ascompiler" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_DEBUG_BUILD=1"
+elif [ "$1" = "linux-baker" ]; then
+    TARGET=linux
+    BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_DEBUG_BUILD=1"
 elif [ "$1" = "unit-tests" ]; then
     TARGET=linux
-    TARGET_ARG=unit-tests
+    BUILD_TARGET="-DFONLINE_UNIT_TESTS=1 -DFONLINE_DEBUG_BUILD=1"
 elif [ "$1" = "code-coverage" ]; then
     TARGET=linux
-    TARGET_ARG=code-coverage
+    BUILD_TARGET="-DFONLINE_CODE_COVERAGE=1 -DFONLINE_DEBUG_BUILD=1"
 else
     echo "Invalid argument"
     exit 1
 fi
 
-if [ "$1" != "mac" ] && [ "$1" != "ios" ]; then
+if [ "$TARGET" != "mac" ] && [ "$TARGET" != "ios" ]; then
     $CUR_DIR/prepare-workspace.sh $TARGET
 fi
 
-$CUR_DIR/build.sh $TARGET $TARGET_ARG
+BUILD_DIR=validate-$1
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
 
-if [ "$1" = "unit-tests" ]; then
+if [ "$TARGET" = "linux" ]; then
+    export CC=/usr/bin/clang
+    export CXX=/usr/bin/clang++
+
+    cmake -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
+    cmake --build . --config Debug --parallel
+
+elif [ "$TARGET" = "web" ]; then
+    source $FO_WORKSPACE/emsdk/emsdk_env.sh
+
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    cmake --build . --config Debug --parallel
+
+elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
+    if [ "$TARGET" = "android" ]; then
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm-toolchain
+        export ANDROID_ABI=armeabi-v7a
+    elif [ "$TARGET" = "android-arm64" ]; then
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm64-toolchain
+        export ANDROID_ABI=arm64-v8a
+    elif [ "$TARGET" = "android-x86" ]; then
+        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-x86-toolchain
+        export ANDROID_ABI=x86
+    fi
+
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    cmake --build . --config Debug --parallel
+
+elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
+    if [ -x "$(command -v cmake)" ]; then
+        CMAKE=cmake
+    else
+        CMAKE=/Applications/CMake.app/Contents/bin/cmake
+    fi
+
+    if [ "$TARGET" = "mac" ]; then
+        $CMAKE -G "Xcode" $BUILD_TARGET "$FO_ROOT"
+    else
+        $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    fi
+
+    $CMAKE --build . --config Debug
+fi
+
+if [ "$TARGET" = "unit-tests" ]; then
     echo "Run unit tests"
-    $OUTPUT_PATH/Tests/FOnlineUnitTests
+    ./Tests/FOnlineUnitTests
 
-elif [ "$1" = "code-coverage" ]; then
+elif [ "$TARGET" = "code-coverage" ]; then
     echo "Run code coverage"
-    $OUTPUT_PATH/Tests/FOnlineCodeCoverage
+    ./Tests/FOnlineCodeCoverage
 
     if [[ ! -z "$CODECOV_TOKEN" ]]; then
         echo "Upload reports to codecov.io"

@@ -568,13 +568,13 @@ static bool InvertMatrixf(const float m[16], float inv_out[16])
     return true;
 }
 
-TEST_CASE()
+TEST_CASE("MurmurHash2")
 {
     RUNTIME_ASSERT(Hashing::MurmurHash2((uchar*)"abcdef", 6) == 1271458169);
     RUNTIME_ASSERT(Hashing::MurmurHash2_64((uchar*)"abcdef", 6) == 13226566493390071673ULL);
 }
 
-TEST_CASE()
+TEST_CASE("StdRandom")
 {
     std::mt19937 rnd32;
     for (int i = 1; i < 10000; i++)

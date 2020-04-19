@@ -577,6 +577,8 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #undef FindFirstFile
 #undef FindNextFile
 #undef GetClassName
+#undef MessageBox
+#undef Yield
 #undef min
 #undef max
 

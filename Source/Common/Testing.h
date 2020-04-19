@@ -41,6 +41,7 @@
 #ifdef FO_TESTING
 #define CATCH_CONFIG_PREFIX_ALL
 #include "catch.hpp"
+#undef MessageBox
 #endif
 
 #ifdef FO_TESTING
@@ -48,7 +49,7 @@
 #undef RUNTIME_ASSERT_STR
 #define RUNTIME_ASSERT(expr) CATCH_REQUIRE(expr)
 #define RUNTIME_ASSERT_STR(expr, str) CATCH_REQUIRE(expr)
-#define TEST_CASE() CATCH_ANON_TEST_CASE()
+#define TEST_CASE(name) CATCH_TEST_CASE(name)
 #define TEST_SECTION() CATCH_SECTION(LINE_STR)
 #else
 #define TEST_CASE() [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)

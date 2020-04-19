@@ -32,17 +32,16 @@
 //
 
 #ifdef FO_TESTING
-#include "SDL_main.h"
 #define CATCH_CONFIG_RUNNER
 #endif
 
+#include "Testing.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "MessageBox.h"
 #include "ScriptSystem.h"
 #include "StringUtils.h"
-#include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
 #include "WinApi_Include.h"
@@ -62,6 +61,10 @@
 #include <execinfo.h>
 #include <signal.h>
 #include <sys/utsname.h>
+#endif
+
+#ifdef FO_TESTING
+#include "SDL_main.h"
 #endif
 
 static string AppName;
@@ -737,14 +740,14 @@ void ReportException(const std::exception& ex)
     WriteLog("{}\n", ex.what());
 }
 
-TEST_CASE()
+TEST_CASE("Dummy 1")
 {
     RUNTIME_ASSERT(1 == 1);
 
     TEST_SECTION() { RUNTIME_ASSERT(2 == 2); }
 }
 
-TEST_CASE()
+TEST_CASE("Dummy 2")
 {
     RUNTIME_ASSERT(1 == 1);
 

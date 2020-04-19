@@ -19,25 +19,38 @@ popd
 if not exist %FO_WORKSPACE% mkdir %FO_WORKSPACE%
 pushd %FO_WORKSPACE%
 
-if [%1] == [win32] (
-    echo Build 32-bit client binaries
-    if not exist "build-win32" mkdir "build-win32"
-    pushd "build-win32"
-    cmake -A Win32 -DFONLINE_OUTPUT_PATH="../output" "%FO_ROOT%"
-    cmake --build . --config Release
+if [%1] == [win32-client] (
+    set BUILD_TARGET=FONLINE_BUILD_CLIENT
+    set BUILD_ARCH=Win32
+) else if [%1] == [win64-client] (
+    set BUILD_TARGET=FONLINE_BUILD_CLIENT
+    set BUILD_ARCH=x64
+) else if [%1] == [win64-server] (
+    set BUILD_TARGET=FONLINE_BUILD_SERVER
+    set BUILD_ARCH=x64
 ) else if [%1] == [win32-single] (
-    echo Build 32-bit singleplayer binaries
-    if not exist "build-win32-singleplayer" mkdir "build-win32-singleplayer"
-    pushd "build-win32-singleplayer"
-    cmake -A Win32 -DFONLINE_OUTPUT_PATH="../output" -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_SINGLE=1 "%FO_ROOT%"
-    cmake --build . --config Release
-) else if [%1] == [win64] (
-    echo Build 64-bit all binaries
-    if not exist "build-win64-full" mkdir "build-win64-full"
-    pushd "build-win64-full"
-    cmake -A x64 -DFONLINE_OUTPUT_PATH="../output" -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_BUILD_BAKER=1 "%FO_ROOT%"
-    cmake --build . --config Release
+    set BUILD_TARGET=FONLINE_BUILD_SINGLE
+    set BUILD_ARCH=Win32
+) else if [%1] == [win64-single] (
+    set BUILD_TARGET=FONLINE_BUILD_SINGLE
+    set BUILD_ARCH=x64
+) else if [%1] == [win64-mapper] (
+    set BUILD_TARGET=FONLINE_BUILD_MAPPER
+    set BUILD_ARCH=x64
+) else if [%1] == [win64-ascompiler] (
+    set BUILD_TARGET=FONLINE_BUILD_ASCOMPILER
+    set BUILD_ARCH=x64
+) else if [%1] == [win64-baker] (
+    set BUILD_TARGET=FONLINE_BUILD_BAKER
+    set BUILD_ARCH=x64
 ) else (
     echo Invalid build argument, allowed only win32 or win64
     exit /b 1
 )
+
+set BUILD_DIR=validate-%1
+if not exist %BUILD_DIR% mkdir %BUILD_DIR%
+cd %BUILD_DIR%
+
+cmake -A %BUILD_ARCH% -D%BUILD_TARGET%=1 -DFONLINE_DEBUG_BUILD=1 "%FO_ROOT%"
+cmake --build . --config Debug --parallel

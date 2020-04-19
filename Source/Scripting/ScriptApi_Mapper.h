@@ -747,33 +747,18 @@ FO_API_EPILOG()
  * ...
  *
  * @param tab ...
- * @param dirNames ...
- * @param includeSubdirs ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(TabGetTileDirs, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG_ARR_REF(string, dirNames),
-    FO_API_ARG_ARR_REF(bool, includeSubdirs))
+FO_API_GLOBAL_MAPPER_FUNC(TabGetTileDirs, FO_API_RET_ARR(string), FO_API_ARG(int, tab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_ARR_REF_MARSHAL(string, dirNames)
-        FO_API_ARG_ARR_REF_MARSHAL(bool, includeSubdirs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
 
-    /*FOMapper::TileTab& ttab = _mapper->TabsTiles[tab];
-    if (dirNames)
-    {
-        asUINT i = dirNames->GetSize();
-        dirNames->Resize(dirNames->GetSize() + (uint)ttab.TileDirs.size());
-        for (uint k = 0, l = (uint)ttab.TileDirs.size(); k < l; k++, i++)
-        {
-            string& p = *(string*)dirNames->At(i);
-            p = ttab.TileDirs[k];
-        }
-    }
-    if (includeSubdirs)
-        _mapper->ScriptSys.AppendVectorToArray(ttab.TileSubDirs, includeSubdirs);
-    FO_API_RETURN((uint)ttab.TileDirs.size());*/
+    FOMapper::TileTab& ttab = _mapper->TabsTiles[tab];
+    // FO_API_RETURN(ttab.TileSubDirs);
+    FO_API_RETURN(StrVec());
 }
 FO_API_EPILOG(0)
 #endif
@@ -783,24 +768,20 @@ FO_API_EPILOG(0)
  *
  * @param tab ...
  * @param subTab ...
- * @param itemPids ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(TabGetItemPids, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
-    FO_API_ARG_ARR_REF(hash, itemPids))
+FO_API_GLOBAL_MAPPER_FUNC(TabGetItemPids, FO_API_RET_ARR(hash), FO_API_ARG(int, tab), FO_API_ARG(string, subTab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(
-    FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO_API_ARG_ARR_REF_MARSHAL(hash, itemPids))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab))
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
     if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
-        FO_API_RETURN(0);
+        FO_API_RETURN(HashVec());
 
-    /*SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
-    if (itemPids)
-        _mapper->ScriptSys.AppendVectorToArray(stab.ItemProtos, itemPids);
-    FO_API_RETURN((uint)stab.ItemProtos.size());*/
+    FOMapper::SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    // FO_API_RETURN(stab.ItemProtos);
+    FO_API_RETURN(HashVec());
 }
 FO_API_EPILOG(0)
 #endif
@@ -813,21 +794,18 @@ FO_API_EPILOG(0)
  * @param critterPids ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(TabGetCritterPids, FO_API_RET(uint), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
-    FO_API_ARG_ARR_REF(hash, critterPids))
+FO_API_GLOBAL_MAPPER_FUNC(TabGetCritterPids, FO_API_RET_ARR(hash), FO_API_ARG(int, tab), FO_API_ARG(string, subTab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(
-    FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO_API_ARG_ARR_REF_MARSHAL(hash, critterPids))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab))
 {
     if (tab < 0 || tab >= TAB_COUNT)
         throw ScriptException("Wrong tab arg");
     if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
-        FO_API_RETURN(0);
+        FO_API_RETURN(HashVec());
 
-    /*SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
-    if (critterPids)
-        _mapper->ScriptSys.AppendVectorToArray(stab.NpcProtos, critterPids);
-    FO_API_RETURN((uint)stab.NpcProtos.size());*/
+    FOMapper::SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    // FO_API_RETURN(stab.NpcProtos);
+    FO_API_RETURN(HashVec());
 }
 FO_API_EPILOG(0)
 #endif

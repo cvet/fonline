@@ -55,6 +55,7 @@
 #undef FindNextFile
 #undef GetClassName
 #undef Yield
+#undef MessageBox
 #undef min
 #undef max
 #endif

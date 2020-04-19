@@ -45,6 +45,11 @@
 #include "assimp/scene.h"
 #include "fbxsdk.h"
 
+// Linker errors workaround
+#define MeshData BakerMeshData
+#define Bone BakerBone
+#define AnimSet BakerAnimSet
+
 struct MeshData : public NonCopyable
 {
     void Save(DataWriter& writer)

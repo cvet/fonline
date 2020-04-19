@@ -400,6 +400,8 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * ScriptApi: add custom entities handling
 * ScriptApi: add Proto* to scripts that have readable properties
 * ScriptApi: add local entity events
+* ScriptApi: add ImGui bindings
+* ScriptApi: hex coords to single structure (hx, hy -> coord)
 * ScriptApi: remove for better portability (2)
 * ScriptApi_Client: need attention!
 * ScriptApi_Common: fix script system

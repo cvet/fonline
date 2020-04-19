@@ -72,7 +72,7 @@ Path where resulted binaries will be placed.
 This option allow to redirect output from different CMake build trees to one place.  
 I.e. build win/linux/mac/etc binaries in different places but collect output in single place.
 
-`FONLINE_BUILD_CLIENT (default: YES)`
+`FONLINE_BUILD_CLIENT (default: NO)`
 
 Produce multiplayer client binaries.  
 Binaries will be placed in `output/Client` directory in separate directory named as `platform-arch-configuration` (i.e. Windows-win64-Debug).  

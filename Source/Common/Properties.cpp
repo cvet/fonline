@@ -1566,7 +1566,7 @@ Property* PropertyRegistrator::Register(Property::AccessType access, const type_
 
         wholePodDataSize =
             (uint)(publicPodDataSpace.size() + protectedPodDataSpace.size() + privatePodDataSpace.size());
-        RUNTIME_ASSERT(!(wholePodDataSize % 8));
+        // RUNTIME_ASSERT((wholePodDataSize % 8) == 0);
     }
 
     // Complex property data index

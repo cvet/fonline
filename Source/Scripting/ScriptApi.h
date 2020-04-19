@@ -38,6 +38,8 @@
 // Todo: add custom entities handling
 // Todo: add Proto* to scripts that have readable properties
 // Todo: add local entity events
+// Todo: add ImGui bindings
+// Todo: hex coords to single structure (hx, hy -> coord)
 
 // Possible defines:
 // FO_API_PARTLY_UNDEF
