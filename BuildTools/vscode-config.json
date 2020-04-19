@@ -81,52 +81,52 @@
         {
             "label": "Client for Windows (x64)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh win64"
+            "command": "BuildTools/build.sh win64 client"
         },
         {
             "label": "Client for Windows (x86)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh win32"
+            "command": "BuildTools/build.sh win32 client"
         },
         {
             "label": "Client for UWP",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh uwp"
+            "command": "BuildTools/build.sh uwp client"
         },
         {
             "label": "Client for Linux",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh linux"
+            "command": "BuildTools/build.sh linux client"
         },
         {
             "label": "Client for Web",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh web"
+            "command": "BuildTools/build.sh web client"
         },
         {
             "label": "Client for Android (arm)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh android"
+            "command": "BuildTools/build.sh android client"
         },
         {
             "label": "Client for Android (arm64)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh android-arm64"
+            "command": "BuildTools/build.sh android-arm64 client"
         },
         {
             "label": "Client for Android (x86)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh android-x86"
+            "command": "BuildTools/build.sh android-x86 client"
         },
         {
             "label": "Client for macOS",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh mac"
+            "command": "BuildTools/build.sh mac client"
         },
         {
             "label": "Client for iOS",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh ios"
+            "command": "BuildTools/build.sh ios client"
         },
         {
             "label": "Server for Windows",
@@ -141,52 +141,52 @@
         {
             "label": "Debug client for Windows (x64)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win64 debug"
+            "command": "BuildTools/build.sh win64 client debug"
         },
         {
             "label": "Debug client for Windows (x86)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win32 debug"
+            "command": "BuildTools/build.sh win32 client debug"
         },
         {
             "label": "Debug client for UWP",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh uwp debug"
+            "command": "BuildTools/build.sh uwp client debug"
         },
         {
             "label": "Debug client for Linux",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh linux debug"
+            "command": "BuildTools/build.sh linux client debug"
         },
         {
             "label": "Debug client for Web",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh web debug"
+            "command": "BuildTools/build.sh web client debug"
         },
         {
             "label": "Debug client for Android (arm)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android debug"
+            "command": "BuildTools/build.sh android client debug"
         },
         {
             "label": "Debug client for Android (arm64)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android-arm64 debug"
+            "command": "BuildTools/build.sh android-arm64 client debug"
         },
         {
             "label": "Debug client for Android (x86)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android-x86 debug"
+            "command": "BuildTools/build.sh android-x86 client debug"
         },
         {
             "label": "Debug client for macOS",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh mac debug"
+            "command": "BuildTools/build.sh mac client debug"
         },
         {
             "label": "Debug client for iOS",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh ios debug"
+            "command": "BuildTools/build.sh ios client debug"
         },
         {
             "label": "Debug server for Windows",
