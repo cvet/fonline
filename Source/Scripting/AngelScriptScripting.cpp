@@ -82,6 +82,27 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 #endif
 
 #ifdef FO_ANGELSCRIPT_COMPILER
+enum class EntityType
+{
+    ItemProto,
+    CritterProto,
+    MapProto,
+    LocationProto,
+    Item,
+    Client,
+    Npc,
+    Map,
+    Location,
+    ItemView,
+    ItemHexView,
+    CritterView,
+    MapView,
+    LocationView,
+    Custom,
+    Global,
+    Max,
+};
+
 struct Property
 {
     // Cope paste from Properties.h

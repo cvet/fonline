@@ -40,7 +40,9 @@
 #include "WinApi_Include.h"
 
 #include "json.hpp"
+#ifndef FO_WEB
 #include "unqlite.h"
+#endif
 
 // Todo: restore mongodb (linux segfault and linking errors)
 #define REMOVE_MONGO
@@ -623,6 +625,7 @@ protected:
     }
 };
 
+#ifndef FO_WEB
 class DbUnQLite : public DataBase
 {
     string storageDir;
@@ -818,6 +821,7 @@ private:
         return db;
     }
 };
+#endif
 
 #ifndef REMOVE_MONGO
 class DbMongo : public DataBase
@@ -1135,8 +1139,10 @@ DataBase* GetDataBase(const string& connection_info)
     auto options = _str(connection_info).split(' ');
     if (options[0] == "JSON" && options.size() == 2)
         return DbJson::Create(options[1]);
+#ifndef FO_WEB
     else if (options[0] == "UnQLite" && options.size() == 2)
         return DbUnQLite::Create(options[1]);
+#endif
 #ifndef REMOVE_MONGO
     else if (options[0] == "Mongo" && options.size() == 3)
         return DbMongo::Create(options[1], options[2]);
