@@ -3,62 +3,174 @@ name: validate
 on: [push, pull_request]
 
 jobs:
-  win64-complete:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - run: BuildTools\validate.bat win64
-  linux-complete:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - run: BuildTools/validate.sh linux
   win32-client:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools\validate.bat win32
+    - run: BuildTools\validate.bat win32-client
+  win64-client:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-client
+  linux-client:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-client
   android-arm-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh android-arm
+    - run: BuildTools/validate.sh android-arm-client
   android-arm64-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh android-arm64
+    - run: BuildTools/validate.sh android-arm64-client
   android-x86-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh android-x86
+    - run: BuildTools/validate.sh android-x86-client
   web-client:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh web
+    - run: BuildTools/validate.sh web-client
   mac-client:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
-    - run: BuildTools/validate.sh mac
+    - run: BuildTools/validate.sh mac-client
+  win64-server:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-server
+  linux-server:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-server
+  win32-single:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win32-single
+  win64-single:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-single
+  linux-single:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-single
+  android-arm-single:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh android-arm-single
+  android-arm64-single:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh android-arm64-single
+  android-x86-single:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh android-x86-single
+  web-single:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh web-single
+  mac-single:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh mac-single
+  win64-mapper:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-mapper
+  linux-mapper:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-mapper
+  win64-ascompiler:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-ascompiler
+  linux-ascompiler:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-ascompiler
+  win64-baker:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat win64-baker
+  linux-baker:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools/validate.sh linux-baker
   unit-tests:
     runs-on: ubuntu-18.04
     steps:
