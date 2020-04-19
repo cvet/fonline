@@ -52,7 +52,7 @@
 #define TEST_CASE(name) CATCH_TEST_CASE(name)
 #define TEST_SECTION() CATCH_SECTION(LINE_STR)
 #else
-#define TEST_CASE() [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
+#define TEST_CASE(name) [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
 #define TEST_SECTION() if (!!(__LINE__))
 #endif
 
