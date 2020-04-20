@@ -17,6 +17,13 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-client
+  uwp-client:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat uwp-client
   linux-client:
     runs-on: ubuntu-18.04
     steps:
@@ -94,6 +101,13 @@ jobs:
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-single
+  uwp-single:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - run: BuildTools\validate.bat uwp-single
   linux-single:
     runs-on: ubuntu-18.04
     steps:
