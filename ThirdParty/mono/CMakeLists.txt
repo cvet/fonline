@@ -561,6 +561,16 @@ else()
 		"repo/mono/metadata/w32handle-namespace.c"
 		"repo/mono/metadata/file-mmap-posix.c" )
 endif()
+if( WIN32 AND WINRT )
+	set( LIBMONORUNTIME_COMMON_SOURCE ${LIBMONORUNTIME_COMMON_SOURCE}
+		"repo/mono/metadata/console-win32-uwp.c"
+		"repo/mono/metadata/coree-windows-uwp.c"
+		"repo/mono/metadata/icall-windows-uwp.c"
+		"repo/mono/metadata/marshal-windows-uwp.c"
+		"repo/mono/metadata/mono-security-windows-uwp.c"
+		"repo/mono/metadata/w32file-win32-uwp.c"
+		"repo/mono/metadata/w32process-win32-uwp.c" )
+endif()
 
 set( LIBMONORUNTIME_POSIX_SOURCE
 	"repo/mono/metadata/console-unix.c"
@@ -656,6 +666,14 @@ else()
 			"repo/mono/utils/mono-hwcap-x86.c"
 			"repo/mono/utils/mach-support-x86.c" )
 	endif()
+endif()
+if( WIN32 AND WINRT )
+	set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
+		"repo/mono/utils/mono-dl-windows-uwp.c"
+		"repo/mono/utils/mono-mmap-windows-uwp.c"
+		"repo/mono/utils/mono-os-wait-win32-uwp.c"
+		"repo/mono/utils/mono-proclib-windows-uwp.c"
+		"repo/mono/utils/mono-rand-windows-uwp.c" )
 endif()
 
 set( LIBMONOUTILS_COMMON_SOURCE

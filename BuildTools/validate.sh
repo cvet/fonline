@@ -120,11 +120,11 @@ elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
     $CMAKE --build . --config Debug
 fi
 
-if [ "$TARGET" = "unit-tests" ]; then
+if [ "$1" = "unit-tests" ]; then
     echo "Run unit tests"
     ./Tests/FOnlineUnitTests
 
-elif [ "$TARGET" = "code-coverage" ]; then
+elif [ "$1" = "code-coverage" ]; then
     echo "Run code coverage"
     ./Tests/FOnlineCodeCoverage
 

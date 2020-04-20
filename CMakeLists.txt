@@ -179,7 +179,7 @@ if( WIN32 AND NOT WINRT )
 		list( APPEND FO_BUILD_OPTIONS "/RTC1" "/GS" "/JMC" )
 		# Todo: "/RTCc" "/sdl" _ALLOW_RTCc_IN_STL
 	else()
-		list( APPEND FO_BUILD_OPTIONS "/GS-" "/sdl-" )
+		list( APPEND FO_BUILD_OPTIONS "/sdl-" ) # "/GS-"
 	endif()
 	list( APPEND FO_BUILD_OPTIONS "/MP" "/Zi" "/EHsc" "/utf-8" "/volatile:iso" "/W3" "/GR" "/bigobj" "/fp:fast" )
 	list( APPEND FO_BUILD_LINKER_OPTIONS "/DEBUG:FULL" "/INCREMENTAL:NO" "/OPT:REF" "/OPT:NOICF" )
@@ -197,9 +197,9 @@ elseif( WIN32 AND WINRT )
 		list( APPEND FO_BUILD_OPTIONS "/MDd" "/RTC1" "/GS" "/JMC" )
 		# Todo: "/RTCc" "/sdl" _ALLOW_RTCc_IN_STL
 	else()
-		list( APPEND FO_BUILD_OPTIONS "/MD" "/GS-" "/sdl-" )
+		list( APPEND FO_BUILD_OPTIONS "/MD" "/sdl-" ) # "/GS-"
 	endif()
-	list( APPEND FO_BUILD_OPTIONS "/MP" "/Zi" "/EHsc" "/utf-8" "/volatile:iso" "/W3" "/GR" "/bigobj" "/fp:fast" )
+	list( APPEND FO_BUILD_OPTIONS "/ZW" "/MP" "/Zi" "/EHsc" "/utf-8" "/volatile:iso" "/W3" "/GR" "/bigobj" "/fp:fast" )
 	list( APPEND FO_BUILD_LINKER_OPTIONS "/APPCONTAINER" "/DEBUG:FULL" "/INCREMENTAL:NO" "/OPT:REF" "/OPT:NOICF" )
 	list( APPEND FO_BUILD_DEFINES "WINRT" "UNICODE" "_UNICODE" "_CRT_SECURE_NO_WARNINGS" "_CRT_SECURE_NO_DEPRECATE" "_WINSOCK_DEPRECATED_NO_WARNINGS" )
 	list( APPEND FO_COMMON_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "d3d9" "gdi32" "xinput" )
@@ -496,7 +496,6 @@ set( CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${CMAKE_E
 StatusMessage( "Compiler flags (C++): ${CMAKE_CXX_FLAGS}" )
 StatusMessage( "Compiler flags (C): ${CMAKE_C_FLAGS}" )
 StatusMessage( "Linker flags: ${CMAKE_EXE_LINKER_FLAGS}" )
-set( CMAKE_CXX_STANDARD 17 )
 
 # Basic includes
 include_directories( "Source/Common" )
@@ -620,6 +619,7 @@ if( WIN32 AND WINRT )
 	include( "BuildTools/sdl-winrt.cmake" )
 	add_library( SDL2-static STATIC ${FO_SDL_WINRT_SOURCE} ${FO_SDL_WINRT_CX_SOURCE} )
 	add_library( SDL2main STATIC "${FO_SDL_DIR}/src/main/winrt/SDL_winrt_main_NonXAML.cpp" )
+	target_compile_options( SDL2-static PRIVATE "/std:c++14" )
 else()
 	add_subdirectory( "${FO_SDL_DIR}" )
 endif()

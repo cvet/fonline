@@ -57,7 +57,7 @@ string ProgramExecutor::ExecuteAsync()
     for (const string& arg : programArgs)
         command += " " + arg;
 
-#if defined(FO_WINDOWS)
+#if defined(FO_WINDOWS) && !defined(WINRT)
     HANDLE out_read = nullptr;
     HANDLE out_write = nullptr;
     SECURITY_ATTRIBUTES sa;
@@ -129,7 +129,7 @@ string ProgramExecutor::ExecuteAsync()
 
     return log;
 
-#elif !defined(FO_WEB)
+#elif !defined(FO_WINDOWS) && !defined(FO_WEB)
     FILE* in = popen(command.c_str(), "r");
     if (!in)
         throw GenericException("Failed to call popen", command);

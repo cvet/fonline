@@ -171,6 +171,7 @@ struct Entity
     void AddRef() {}
     void Release() {}
     uint Id {};
+    EntityType Type {};
     bool IsDestroyed {};
     bool IsDestroying {};
 };

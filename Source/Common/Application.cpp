@@ -507,7 +507,6 @@ void App::Init(GlobalSettings& settings)
         RUNTIME_ASSERT(!extension_errors);
 #undef CHECK_EXTENSION
     }
-#endif
 
     // Map framebuffer_object_ext to framebuffer_object
     if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object))
@@ -518,6 +517,7 @@ void App::Init(GlobalSettings& settings)
         // glFramebufferTexture2D = glFramebufferTexture2DEXT;
         // Todo: map all framebuffer ext functions
     }
+#endif
 
     // Determine main window size
     bool is_tablet = false;
@@ -722,7 +722,11 @@ void App::Init(GlobalSettings& settings)
         SDL_SysWMinfo wminfo;
         SDL_VERSION(&wminfo.version);
         SDL_GetWindowWMInfo(SdlWindow, &wminfo);
+#ifndef WINRT
         HWND hwnd = (HWND)wminfo.info.win.window;
+#else
+        HWND hwnd = 0;
+#endif
 
         DXGI_SWAP_CHAIN_DESC sd;
         ZeroMemory(&sd, sizeof(sd));
@@ -755,9 +759,14 @@ void App::Init(GlobalSettings& settings)
             D3D_FEATURE_LEVEL_9_1,
 #endif
         };
+#if !defined(WINRT)
         HRESULT d3d_create_device =
             ::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, 7,
                 D3D11_SDK_VERSION, &sd, &SwapChain, &D3DDevice, &feature_level, &D3DDeviceContext);
+#else
+        HRESULT d3d_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags,
+            feature_levels, 1, D3D11_SDK_VERSION, &D3DDevice, &feature_level, &D3DDeviceContext);
+#endif
         RUNTIME_ASSERT(d3d_create_device == S_OK);
 
         static const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
@@ -1111,10 +1120,12 @@ RenderTexture* App::Render::CreateTexture(
     const_cast<float&>(tex->SizeData[0]) = (float)height;
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[0];
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[1];
+#ifdef FO_HAVE_OPENGL
     const_cast<float&>(tex->Samples) = (multisampled && GlSamples ? GlSamples : 1.0f);
     const_cast<bool&>(tex->LinearFiltered) = linear_filtered;
     const_cast<bool&>(tex->Multisampled) = (multisampled && GlSamples);
     const_cast<bool&>(tex->WithDepth) = with_depth;
+#endif
 
 #ifdef FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL)

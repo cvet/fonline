@@ -25,6 +25,10 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-client] (
     set BUILD_TARGET=FONLINE_BUILD_CLIENT
     set BUILD_ARCH=x64
+) else if [%1] == [uwp-client] (
+    set BUILD_TARGET=FONLINE_BUILD_CLIENT
+    set BUILD_ARCH=x64
+    set BUILD_CACHE=uwp.cache.cmake
 ) else if [%1] == [win64-server] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
     set BUILD_ARCH=x64
@@ -34,6 +38,10 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-single] (
     set BUILD_TARGET=FONLINE_BUILD_SINGLE
     set BUILD_ARCH=x64
+) else if [%1] == [uwp-single] (
+    set BUILD_TARGET=FONLINE_BUILD_SINGLE
+    set BUILD_ARCH=x64
+    set BUILD_CACHE=uwp.cache.cmake
 ) else if [%1] == [win64-mapper] (
     set BUILD_TARGET=FONLINE_BUILD_MAPPER
     set BUILD_ARCH=x64
@@ -52,5 +60,9 @@ set BUILD_DIR=validate-%1
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 
-cmake -A %BUILD_ARCH% -D%BUILD_TARGET%=1 -DFONLINE_DEBUG_BUILD=1 "%FO_ROOT%"
+if [%BUILD_CACHE%] == [] (
+    cmake -A %BUILD_ARCH% -D%BUILD_TARGET%=1 -DFONLINE_DEBUG_BUILD=1 "%FO_ROOT%"
+) else (
+    cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -D%BUILD_TARGET%=1 -DFONLINE_DEBUG_BUILD=1 "%FO_ROOT%"
+)
 cmake --build . --config Debug --parallel
