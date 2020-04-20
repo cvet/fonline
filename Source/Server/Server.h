@@ -77,7 +77,8 @@ public:
     FOServer(GlobalSettings& sett);
 
 #ifdef FO_SINGLEPLAYER
-    int RunAsSingleplayer(FOClient* client) { return 0; }
+    void ConnectClient(FOClient* client) {}
+    void MainLoop() {}
 #endif
 
     ServerSettings& Settings;

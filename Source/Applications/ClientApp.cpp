@@ -41,14 +41,40 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Version_Include.h"
+#ifdef FO_SINGLEPLAYER
+#include "Server.h"
+#endif
 
 #include "SDL_main.h"
+
+#ifdef FO_SINGLEPLAYER
+NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback)
+{
+    throw UnreachablePlaceException(LINE_STR);
+}
+NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback)
+{
+    throw UnreachablePlaceException(LINE_STR);
+}
+void ClientScriptSystem::InitNativeScripting()
+{
+}
+void ClientScriptSystem::InitAngelScriptScripting()
+{
+}
+void ClientScriptSystem::InitMonoScripting()
+{
+}
+#endif
 
 static GlobalSettings Settings;
 
 static void ClientEntry(void*)
 {
-    static FOClient* client = nullptr;
+    static FOClient* client;
+#ifdef FO_SINGLEPLAYER
+    static FOServer* server;
+#endif
     if (!client)
     {
 #ifdef FO_WEB
@@ -58,7 +84,13 @@ static void ClientEntry(void*)
 #endif
 
         BEGIN_ROOT_EXCEPTION_BLOCK();
+#ifdef FO_SINGLEPLAYER
+        server = new FOServer(Settings);
+#endif
         client = new FOClient(Settings);
+#ifdef FO_SINGLEPLAYER
+        server->ConnectClient(client);
+#endif
         CATCH_EXCEPTION(GenericException);
         WriteLog("Something going wrong...");
         exit(1);
@@ -67,6 +99,9 @@ static void ClientEntry(void*)
 
     BEGIN_ROOT_EXCEPTION_BLOCK();
     App::BeginFrame();
+#ifdef FO_SINGLEPLAYER
+    server->MainLoop();
+#endif
     client->MainLoop();
     App::EndFrame();
     CATCH_EXCEPTION(GenericException);
