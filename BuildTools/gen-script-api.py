@@ -665,7 +665,10 @@ def genApi(target):
             with open(file, 'r') as f:
                 line = f.readline()
 
-            assert line.startswith('// FOS'), 'Invalid .fos file header: ' + file
+            if len(line) >= 3 and ord(line[0]) == 0xEF and ord(line[1]) == 0xBB and ord(line[2]) == 0xBF:
+                line = line[3:]
+
+            assert line.startswith('// FOS'), 'Invalid .fos file header: ' + file + ' = ' + line
             fosParams = line[6:].split()
             sort = int(fosParams[fosParams.index('Sort') + 1]) if 'Sort' in fosParams else 0
 
