@@ -80,17 +80,11 @@
 #define PRECOMPILED_HEADER_GUARD
 
 // Operating system (passed outside)
-// FO_WINDOWS
-// FO_LINUX
-// FO_MAC
-// FO_IOS
-// FO_ANDROID
-// FO_WEB
 // Todo: detect OS automatically not from passed constant from build system
-#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
+#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB + FO_PS4 == 0
 #error "Operating system not specified"
 #endif
-#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB != 1
+#if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB + FO_PS4 != 1
 #error "Multiple operating systems not allowed"
 #endif
 
@@ -103,6 +97,12 @@
 #endif
 #if defined(FO_WINDOWS)
 #define FO_HAVE_D3D
+#endif
+#if defined(FO_IOS)
+// #define FO_HAVE_METAL
+#endif
+#if defined(FO_PS4)
+#define FO_HAVE_GNM
 #endif
 
 // Standard API

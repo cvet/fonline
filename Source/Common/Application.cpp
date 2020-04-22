@@ -151,6 +151,9 @@ enum class RenderType
 #ifdef FO_HAVE_VULKAN
     Vulkan,
 #endif
+#ifdef FO_HAVE_GNM
+    Gnm,
+#endif
 };
 
 EventObserver<> App::OnFrameBegin {};
@@ -415,6 +418,10 @@ void App::Init(GlobalSettings& settings)
     if (settings.ForceVulkan)
         CurRenderType = RenderType::Vulkan;
 #endif
+#ifdef FO_HAVE_GNM
+    if (settings.ForceGnm)
+        CurRenderType = RenderType::Gnm;
+#endif
 
     // If none of selected then evaluate automatic selection
     if (CurRenderType == RenderType::None)
@@ -430,6 +437,9 @@ void App::Init(GlobalSettings& settings)
 #endif
 #ifdef FO_HAVE_VULKAN
         CurRenderType = RenderType::Vulkan;
+#endif
+#ifdef FO_HAVE_GNM
+        CurRenderType = RenderType::Gnm;
 #endif
 
         RUNTIME_ASSERT(CurRenderType != RenderType::None);

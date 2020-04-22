@@ -35,11 +35,11 @@
 ## Features
 
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
-* Online mode with authoritative server
+* Multiplayer mode with authoritative server
 * Singleplayer mode *(work without distinguish between server and client sides)*
 * Supporting of hexagonal and square map tiling
 * Perendered sprites for environment but with possibility of using 3D models for characters
-* Engine core writtlen in C++17
+* Engine core written in C++17
 * Flexible scripting system with varies supporting languages:
   + Mono C# (modern and safe scripting)
   + Native C++ (for performance critical places)
@@ -60,7 +60,7 @@
   + 3D characters in modern graphic formats
   + and more...
 
-Important note: *Not all from descripted above features are already implemented, for additional information look at 'Work in progress' section below*.
+Important note: *Not all from described above features are already implemented, for additional information look at 'Work in progress' section below*.
 
 ## Media
 

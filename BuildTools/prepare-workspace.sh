@@ -169,9 +169,8 @@ function generate_maintenance_env()
     rm -rf maintenance-env
     mkdir maintenance-env
     cd maintenance-env
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_CLIENT=0 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
+    cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
     cmake.exe --build . --config Release
-    cmake.exe --build . --config Release --target GenerateScriptApi
 }
 
 function verify_workspace_part()
