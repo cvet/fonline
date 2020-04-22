@@ -118,6 +118,10 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
         fi
     fi
 
+elif [ "$1" = "ps4" ]; then
+    cmake.exe -G "Unix Makefiles" -A x64 -C "$FO_ROOT/BuildTools/ps4.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake.exe --build . --config $CONFIG --parallel
+
 else
     echo "Invalid first command arg"
     exit 1

@@ -6,16 +6,14 @@ namespace FOnline
     {
         public uint Value { get; private set; }
 
+        public hash(uint value)
+        {
+            Value = value;
+        }
+
         public override string ToString()
         {
             return Game.GetHashStr(Value);
         }
     }
-
-    // mpos -> MapId, HexX, HexY, Height
-    // wpos
-    // point
-    // xyz
-    // ivec3 X Y Z
-    // ivec2 X Y
 }
