@@ -2647,23 +2647,6 @@ FO_API_EPILOG()
 /*******************************************************************************
  * ...
  *
- * @param index ...
- * @param enableSend ...
- ******************************************************************************/
-FO_API_GLOBAL_CLIENT_FUNC(AllowSlot, FO_API_RET(void), FO_API_ARG(uchar, index), FO_API_ARG(bool, enableSend))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSend))
-{
-    CritterView::SlotEnabled[index] = true;
-}
-FO_API_EPILOG()
-#endif
-#endif
-
-#ifdef FO_API_MULTIPLAYER_ONLY
-/*******************************************************************************
- * ...
- *
  * @param datName ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(AddDataSource, FO_API_RET(void), FO_API_ARG(string, datName))

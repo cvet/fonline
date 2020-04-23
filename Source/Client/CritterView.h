@@ -92,8 +92,6 @@ public:
 
     uint GetAttackDist();
 
-    static bool SlotEnabled[0x100];
-
     uint NameColor {};
     uint ContourColor {};
     UShortVec LastHexX {};

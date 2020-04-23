@@ -189,6 +189,8 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings,
     virtual GeometrySettings);
+SETTING(vector<bool>, CritterSlotEnabled, true, true, true);
+SETTING(vector<bool>, CritterSlotSendData, true, false, true);
 SETTING_GROUP_END();
 
 SETTING_GROUP(CritterViewSettings, virtual ViewSettings, virtual GeometrySettings, virtual TimerSettings);
@@ -270,7 +272,7 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(MapperSettings, virtual CommonSettings, virtual ScriptSettings, virtual ViewSettings,
     virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings,
-    virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings);
+    virtual PlatformSettings, virtual InputSettings, virtual CritterSettings, virtual CritterViewSettings);
 SETTING(string, ServerDir, "");
 SETTING(string, StartMap, "");
 SETTING(int, StartHexX, -1);

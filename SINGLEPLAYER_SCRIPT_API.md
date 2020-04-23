@@ -109,7 +109,6 @@ You can easily contribute to this API using provided by engine functionality.
 * Location[] GetAllLocations(hash pid)
 * void GetTime(ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second, ref uint16 milliseconds)
 * void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
-* void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
 * string CustomCall(string command, string separator)
 * Critter GetChosen()
@@ -196,56 +195,56 @@ You can easily contribute to this API using provided by engine functionality.
 
 ## Global properties
 
-* uint16 YearStart
-* uint16 Year
-* uint16 Month
-* uint16 Day
-* uint16 Hour
-* uint16 Minute
-* uint16 Second
-* uint16 TimeMultiplier
-* uint LastEntityId
-* uint LastDeferredCallId
-* uint HistoryRecordsId
+* const uint16 YearStart
+* const uint16 Year
+* const uint16 Month
+* const uint16 Day
+* const uint16 Hour
+* const uint16 Minute
+* const uint16 Second
+* const uint16 TimeMultiplier
+* const uint LastEntityId
+* const uint LastDeferredCallId
+* const uint HistoryRecordsId
 
 ## Entities
 
 ### Item properties
 
-* ItemOwnership Accessory
-* uint MapId
-* uint16 HexX
-* uint16 HexY
-* uint CritId
-* uint8 CritSlot
-* uint ContainerId
-* uint ContainerStack
+* const ItemOwnership Accessory
+* const uint MapId
+* const uint16 HexX
+* const uint16 HexY
+* const uint CritId
+* const uint8 CritSlot
+* const uint ContainerId
+* const uint ContainerStack
 * float FlyEffectSpeed
 * hash PicMap
 * hash PicInv
 * int16 OffsetX
 * int16 OffsetY
-* bool Stackable
+* const bool Stackable
 * bool GroundLevel
 * bool Opened
-* CornerType Corner
-* uint8 Slot
+* const CornerType Corner
+* const uint8 Slot
 * uint Weight
 * uint Volume
-* bool DisableEgg
-* uint16 AnimWaitBase
-* uint16 AnimWaitRndMin
-* uint16 AnimWaitRndMax
-* uint8 AnimStay0
-* uint8 AnimStay1
-* uint8 AnimShow0
-* uint8 AnimShow1
-* uint8 AnimHide0
-* uint8 AnimHide1
-* uint8 SpriteCut
-* int8 DrawOrderOffsetHexY
-* uint8[] BlockLines
-* bool IsStatic
+* const bool DisableEgg
+* const uint16 AnimWaitBase
+* const uint16 AnimWaitRndMin
+* const uint16 AnimWaitRndMax
+* const uint8 AnimStay0
+* const uint8 AnimStay1
+* const uint8 AnimShow0
+* const uint8 AnimShow1
+* const uint8 AnimHide0
+* const uint8 AnimHide1
+* const uint8 SpriteCut
+* const int8 DrawOrderOffsetHexY
+* const uint8[] BlockLines
+* const bool IsStatic
 * bool IsScenery
 * bool IsWall
 * bool IsCanOpen
@@ -303,37 +302,37 @@ You can easily contribute to this API using provided by engine functionality.
 * hash ModelName
 * uint WalkTime
 * uint RunTime
-* uint Multihex
-* uint MapId
-* uint RefMapId
-* hash RefMapPid
-* uint RefLocationId
-* hash RefLocationPid
-* uint16 HexX
-* uint16 HexY
-* uint8 Dir
-* string Password
-* CritterCondition Cond
-* bool ClientToDelete
+* const uint Multihex
+* const uint MapId
+* const uint RefMapId
+* const hash RefMapPid
+* const uint RefLocationId
+* const hash RefLocationPid
+* const uint16 HexX
+* const uint16 HexY
+* const uint8 Dir
+* const string Password
+* const CritterCondition Cond
+* const bool ClientToDelete
 * uint16 WorldX
 * uint16 WorldY
-* uint GlobalMapLeaderId
-* uint GlobalMapTripId
-* uint RefGlobalMapTripId
-* uint RefGlobalMapLeaderId
-* uint16 LastMapHexX
-* uint16 LastMapHexY
-* uint Anim1Life
-* uint Anim1Knockout
-* uint Anim1Dead
-* uint Anim2Life
-* uint Anim2Knockout
-* uint Anim2Dead
-* uint8[] GlobalMapFog
-* hash[] TE_FuncNum
-* uint[] TE_Rate
-* uint[] TE_NextTime
-* int[] TE_Identifier
+* const uint GlobalMapLeaderId
+* const uint GlobalMapTripId
+* const uint RefGlobalMapTripId
+* const uint RefGlobalMapLeaderId
+* const uint16 LastMapHexX
+* const uint16 LastMapHexY
+* const uint Anim1Life
+* const uint Anim1Knockout
+* const uint Anim1Dead
+* const uint Anim2Life
+* const uint Anim2Knockout
+* const uint Anim2Dead
+* const uint8[] GlobalMapFog
+* const hash[] TE_FuncNum
+* const uint[] TE_Rate
+* const uint[] TE_NextTime
+* const int[] TE_Identifier
 * int SneakCoefficient
 * uint LookDistance
 * int8 Gender
@@ -459,13 +458,13 @@ You can easily contribute to this API using provided by engine functionality.
 * uint LoopTime3
 * uint LoopTime4
 * uint LoopTime5
-* string FileDir
-* uint16 Width
-* uint16 Height
-* uint16 WorkHexX
-* uint16 WorkHexY
-* uint LocId
-* uint LocMapIndex
+* const string FileDir
+* const uint16 Width
+* const uint16 Height
+* const uint16 WorkHexX
+* const uint16 WorkHexY
+* const uint LocId
+* const uint LocMapIndex
 * uint8 RainCapacity
 * int CurDayTime
 * hash ScriptId
@@ -527,9 +526,9 @@ You can easily contribute to this API using provided by engine functionality.
 
 ### Location properties
 
-* hash[] MapProtos
-* hash[] MapEntrances
-* hash[] Automaps
+* const hash[] MapProtos
+* const hash[] MapEntrances
+* const hash[] Automaps
 * uint MaxPlayers
 * bool AutoGarbage
 * bool GeckVisible

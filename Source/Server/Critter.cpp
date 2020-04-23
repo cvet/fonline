@@ -51,10 +51,6 @@ PROPERTIES_IMPL(Critter, "Critter", true);
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-// Todo: remove static SlotEnabled and SlotDataSendEnabled
-bool Critter::SlotEnabled[0x100];
-bool Critter::SlotDataSendEnabled[0x100];
-
 Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
     Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings), scriptSys {script_sys}
 {
@@ -1326,7 +1322,8 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     {
         Item* item_ = *it;
         uchar slot = item_->GetCritSlot();
-        if (SlotEnabled[slot] && SlotDataSendEnabled[slot])
+        if (slot < settings.CritterSlotEnabled.size() && settings.CritterSlotEnabled[slot] &&
+            slot < settings.CritterSlotSendData.size() && settings.CritterSlotSendData[slot])
             items.push_back(item_);
     }
 

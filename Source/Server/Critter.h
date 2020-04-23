@@ -199,9 +199,6 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
-    static bool SlotEnabled[0x100];
-    static bool SlotDataSendEnabled[0x100];
-
     bool CritterIsNpc {};
     uint Flags {};
     string Name {};

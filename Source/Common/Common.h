@@ -89,7 +89,7 @@
 #endif
 
 // Rendering
-#if !(defined(FO_WINDOWS) && defined(WINRT))
+#if !(defined(FO_WINDOWS) && defined(WINRT)) && !defined(FO_PS4)
 #define FO_HAVE_OPENGL
 #if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB)
 #define FO_OPENGL_ES
@@ -98,7 +98,7 @@
 #if defined(FO_WINDOWS)
 #define FO_HAVE_D3D
 #endif
-#if defined(FO_IOS)
+#if defined(FO_MAC) || defined(FO_IOS)
 // #define FO_HAVE_METAL
 #endif
 #if defined(FO_PS4)

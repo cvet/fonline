@@ -220,17 +220,16 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 ### Roadmap
 
 * Rework scripting system *(Native C++, AngelScript and C#/Mono scripting layers)*
-* Improve DirectX rendering
+* Improve DirectX rendering with Universal Windows Platform
 * Code refactoring *(look at separate section below)*
-* Documentation
 * Improve Singleplayer mode
+* Documentation
 * API freezing and continuing development with it's backward compatibility
-* Tasks related to Visual Studio Code extension *(see separate section below)*
 * Particle system
+* Tasks related to Visual Studio Code extension *(see separate section below)*
 * Improve supporting of PlayStation
-* Improve supporting of Universal Windows Platform
+* Improve Metal rendering for macOS/iOS
 * Integration with Unity engine (research)
-* Improve Metal/Vulkan rendering
 
 ### Roadmap for Visual Studio Code extension
 
@@ -408,7 +407,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * ScriptApi_Mapper: need attention! (4)
 * ScriptApi_Server: need attention!
 * AdminPanel: admin panel network to Asio
-* Critter: remove static SlotEnabled and SlotDataSendEnabled
 * Critter: rework Client class to ClientConnection
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * DataBase: restore mongodb (linux segfault and linking errors)

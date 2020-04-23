@@ -1083,7 +1083,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId) FO_API_ARG_MARSHAL(int, slot))
     if (item->GetCritSlot() == slot)
         FO_API_RETURN_VOID();
 
-    if (!Critter::SlotEnabled[slot])
+    if (slot >= _server->Settings.CritterSlotEnabled.size() || !_server->Settings.CritterSlotEnabled[slot])
         throw ScriptException("Slot is not allowed");
 
     if (!_server->ScriptSys.CritterCheckMoveItemEvent(_this, item, slot))
@@ -4588,22 +4588,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, multiplier) FO_API_ARG_MARSHAL(ushort, 
             FO_API_ARG_MARSHAL(ushort, second))
 {
     _server->SetGameTime(multiplier, year, month, day, hour, minute, second);
-}
-FO_API_EPILOG()
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @param index ...
- * @param enableSend ...
- ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(AllowSlot, FO_API_RET(void), FO_API_ARG(uchar, index), FO_API_ARG(bool, enableSend))
-#ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSend))
-{
-    Critter::SlotEnabled[index] = true;
-    Critter::SlotDataSendEnabled[index] = enableSend;
 }
 FO_API_EPILOG()
 #endif

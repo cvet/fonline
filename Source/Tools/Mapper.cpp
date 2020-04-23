@@ -2260,7 +2260,7 @@ void FOMapper::IntLMouseDown()
                     CritterView* cr = (CritterView*)SelectedEntities[0];
 
                     int to_slot = InContItem->GetCritSlot() + 1;
-                    while (!CritterView::SlotEnabled[to_slot % 256])
+                    while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256])
                         to_slot++;
                     to_slot %= 256;
 

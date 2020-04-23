@@ -507,21 +507,6 @@ FO_API_EPILOG()
 /*******************************************************************************
  * ...
  *
- * @param index ...
- * @param enableSend ...
- ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(AllowSlot, FO_API_RET(void), FO_API_ARG(uchar, index), FO_API_ARG(bool, enableSend))
-#ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, index) FO_API_ARG_MARSHAL(bool, enableSend))
-{
-    //
-}
-FO_API_EPILOG()
-#endif
-
-/*******************************************************************************
- * ...
- *
  * @param fileName ...
  * @return ...
  ******************************************************************************/

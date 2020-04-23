@@ -123,7 +123,6 @@ You can easily contribute to this API using provided by engine functionality.
 * Location[] GetAllLocations(hash pid)
 * void GetTime(ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second, ref uint16 milliseconds)
 * void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
-* void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
 
 ## Client global methods
@@ -185,7 +184,6 @@ You can easily contribute to this API using provided by engine functionality.
 * void SetRainAnim(string fallAnimName, string dropAnimName)
 * void ChangeZoom(float targetZoom)
 * void GetTime(ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second, ref uint16 milliseconds)
-* void AllowSlot(uint8 index, bool enableSend)
 * void AddDataSource(string datName)
 * uint LoadSprite(string sprName)
 * uint LoadSpriteByHash(hash nameHash)
@@ -233,56 +231,56 @@ You can easily contribute to this API using provided by engine functionality.
 
 ## Global properties
 
-* PrivateCommon uint16 YearStart
-* PrivateCommon uint16 Year
-* PrivateCommon uint16 Month
-* PrivateCommon uint16 Day
-* PrivateCommon uint16 Hour
-* PrivateCommon uint16 Minute
-* PrivateCommon uint16 Second
-* PrivateCommon uint16 TimeMultiplier
-* PrivateServer uint LastEntityId
-* PrivateCommon uint LastDeferredCallId
-* PrivateCommon uint HistoryRecordsId
+* PrivateCommon const uint16 YearStart
+* PrivateCommon const uint16 Year
+* PrivateCommon const uint16 Month
+* PrivateCommon const uint16 Day
+* PrivateCommon const uint16 Hour
+* PrivateCommon const uint16 Minute
+* PrivateCommon const uint16 Second
+* PrivateCommon const uint16 TimeMultiplier
+* PrivateServer const uint LastEntityId
+* PrivateCommon const uint LastDeferredCallId
+* PrivateCommon const uint HistoryRecordsId
 
 ## Entities
 
 ### Item properties
 
-* Public ItemOwnership Accessory
-* Public uint MapId
-* Public uint16 HexX
-* Public uint16 HexY
-* Public uint CritId
-* Public uint8 CritSlot
-* Public uint ContainerId
-* Public uint ContainerStack
+* Public const ItemOwnership Accessory
+* Public const uint MapId
+* Public const uint16 HexX
+* Public const uint16 HexY
+* Public const uint CritId
+* Public const uint8 CritSlot
+* Public const uint ContainerId
+* Public const uint ContainerStack
 * Public float FlyEffectSpeed
 * Public hash PicMap
 * Public hash PicInv
 * Public int16 OffsetX
 * Public int16 OffsetY
-* Public bool Stackable
+* Public const bool Stackable
 * Public bool GroundLevel
 * Public bool Opened
-* Public CornerType Corner
-* Public uint8 Slot
+* Public const CornerType Corner
+* Public const uint8 Slot
 * Public uint Weight
 * Public uint Volume
-* Public bool DisableEgg
-* Public uint16 AnimWaitBase
-* Public uint16 AnimWaitRndMin
-* Public uint16 AnimWaitRndMax
-* Public uint8 AnimStay0
-* Public uint8 AnimStay1
-* Public uint8 AnimShow0
-* Public uint8 AnimShow1
-* Public uint8 AnimHide0
-* Public uint8 AnimHide1
-* Public uint8 SpriteCut
-* Public int8 DrawOrderOffsetHexY
-* Public uint8[] BlockLines
-* Public bool IsStatic
+* Public const bool DisableEgg
+* Public const uint16 AnimWaitBase
+* Public const uint16 AnimWaitRndMin
+* Public const uint16 AnimWaitRndMax
+* Public const uint8 AnimStay0
+* Public const uint8 AnimStay1
+* Public const uint8 AnimShow0
+* Public const uint8 AnimShow1
+* Public const uint8 AnimHide0
+* Public const uint8 AnimHide1
+* Public const uint8 SpriteCut
+* Public const int8 DrawOrderOffsetHexY
+* Public const uint8[] BlockLines
+* Public const bool IsStatic
 * Public bool IsScenery
 * Public bool IsWall
 * Public bool IsCanOpen
@@ -346,37 +344,37 @@ You can easily contribute to this API using provided by engine functionality.
 * Public hash ModelName
 * Protected uint WalkTime
 * Protected uint RunTime
-* Protected uint Multihex
-* PrivateServer uint MapId
-* PrivateServer uint RefMapId
-* PrivateServer hash RefMapPid
-* PrivateServer uint RefLocationId
-* PrivateServer hash RefLocationPid
-* PrivateCommon uint16 HexX
-* PrivateCommon uint16 HexY
-* PrivateCommon uint8 Dir
-* PrivateServer string Password
-* PrivateCommon CritterCondition Cond
-* PrivateServer bool ClientToDelete
+* Protected const uint Multihex
+* PrivateServer const uint MapId
+* PrivateServer const uint RefMapId
+* PrivateServer const hash RefMapPid
+* PrivateServer const uint RefLocationId
+* PrivateServer const hash RefLocationPid
+* PrivateCommon const uint16 HexX
+* PrivateCommon const uint16 HexY
+* PrivateCommon const uint8 Dir
+* PrivateServer const string Password
+* PrivateCommon const CritterCondition Cond
+* PrivateServer const bool ClientToDelete
 * Protected uint16 WorldX
 * Protected uint16 WorldY
-* Protected uint GlobalMapLeaderId
-* PrivateServer uint GlobalMapTripId
-* PrivateServer uint RefGlobalMapTripId
-* PrivateServer uint RefGlobalMapLeaderId
-* PrivateServer uint16 LastMapHexX
-* PrivateServer uint16 LastMapHexY
-* PrivateCommon uint Anim1Life
-* PrivateCommon uint Anim1Knockout
-* PrivateCommon uint Anim1Dead
-* PrivateCommon uint Anim2Life
-* PrivateCommon uint Anim2Knockout
-* PrivateCommon uint Anim2Dead
-* PrivateServer uint8[] GlobalMapFog
-* PrivateServer hash[] TE_FuncNum
-* PrivateServer uint[] TE_Rate
-* PrivateServer uint[] TE_NextTime
-* PrivateServer int[] TE_Identifier
+* Protected const uint GlobalMapLeaderId
+* PrivateServer const uint GlobalMapTripId
+* PrivateServer const uint RefGlobalMapTripId
+* PrivateServer const uint RefGlobalMapLeaderId
+* PrivateServer const uint16 LastMapHexX
+* PrivateServer const uint16 LastMapHexY
+* PrivateCommon const uint Anim1Life
+* PrivateCommon const uint Anim1Knockout
+* PrivateCommon const uint Anim1Dead
+* PrivateCommon const uint Anim2Life
+* PrivateCommon const uint Anim2Knockout
+* PrivateCommon const uint Anim2Dead
+* PrivateServer const uint8[] GlobalMapFog
+* PrivateServer const hash[] TE_FuncNum
+* PrivateServer const uint[] TE_Rate
+* PrivateServer const uint[] TE_NextTime
+* PrivateServer const int[] TE_Identifier
 * VirtualPrivateServer int SneakCoefficient
 * VirtualProtected uint LookDistance
 * Public int8 Gender
@@ -525,13 +523,13 @@ You can easily contribute to this API using provided by engine functionality.
 * PrivateServer uint LoopTime3
 * PrivateServer uint LoopTime4
 * PrivateServer uint LoopTime5
-* PrivateServer string FileDir
-* PrivateServer uint16 Width
-* PrivateServer uint16 Height
-* PrivateServer uint16 WorkHexX
-* PrivateServer uint16 WorkHexY
-* PrivateServer uint LocId
-* PrivateServer uint LocMapIndex
+* PrivateServer const string FileDir
+* PrivateServer const uint16 Width
+* PrivateServer const uint16 Height
+* PrivateServer const uint16 WorkHexX
+* PrivateServer const uint16 WorkHexY
+* PrivateServer const uint LocId
+* PrivateServer const uint LocMapIndex
 * PrivateServer uint8 RainCapacity
 * PrivateServer int CurDayTime
 * PrivateServer hash ScriptId
@@ -596,9 +594,9 @@ You can easily contribute to this API using provided by engine functionality.
 
 ### Location properties
 
-* PrivateServer hash[] MapProtos
-* PrivateServer hash[] MapEntrances
-* PrivateServer hash[] Automaps
+* PrivateServer const hash[] MapProtos
+* PrivateServer const hash[] MapEntrances
+* PrivateServer const hash[] Automaps
 * PrivateServer uint MaxPlayers
 * PrivateServer bool AutoGarbage
 * PrivateServer bool GeckVisible

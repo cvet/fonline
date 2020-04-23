@@ -38,8 +38,6 @@
 #include "Testing.h"
 #include "Timer.h"
 
-bool CritterView::SlotEnabled[0x100];
-
 #define FO_API_CRITTER_VIEW_IMPL
 #include "ScriptApi.h"
 

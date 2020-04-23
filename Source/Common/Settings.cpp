@@ -83,6 +83,10 @@ static void SetEntry(vector<float>& entry, const string& value)
 {
     entry.push_back(_str(value).toFloat());
 }
+static void SetEntry(vector<bool>& entry, const string& value)
+{
+    entry.push_back(_str(value).toBool());
+}
 
 static void DrawEntry(const char* name, const string& entry)
 {
@@ -128,6 +132,10 @@ static void DrawEntry(const char* name, const vector<float>& entry)
 {
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
+static void DrawEntry(const char* name, const vector<bool>& entry)
+{
+    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+}
 
 static void DrawEditableEntry(const char* name, string& entry)
 {
@@ -170,6 +178,10 @@ static void DrawEditableEntry(const char* name, vector<uint>& entry)
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(const char* name, vector<float>& entry)
+{
+    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+}
+static void DrawEditableEntry(const char* name, vector<bool>& entry)
 {
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
