@@ -3412,7 +3412,7 @@ void FOMapper::BufferCopy()
         entity_buf->HexY = (entity->Type == EntityType::CritterView ? ((CritterView*)entity)->GetHexY() :
                                                                       ((ItemHexView*)entity)->GetHexY());
         entity_buf->Type = entity->Type;
-        entity_buf->Proto = entity->Proto;
+        entity_buf->Proto = (ProtoEntity*)entity->Proto;
         entity_buf->Props = new Properties(entity->Props);
         // Todo: need attention!
         /*for (auto& child : entity->GetChildren())

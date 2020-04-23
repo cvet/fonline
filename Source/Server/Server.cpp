@@ -506,7 +506,7 @@ void FOServer::OnNewConnection(NetConnection* connection)
     {
         SCOPE_LOCK(ConnectedClientsLocker);
 
-        cl->GameState = STATE_CONNECTED;
+        cl->State = ClientState::Connected;
         ConnectedClients.push_back(cl);
         Statistics.CurOnline++;
     }
@@ -528,7 +528,7 @@ void FOServer::Process(Client* cl)
         return;
     }
 
-    if (cl->GameState == STATE_CONNECTED)
+    if (cl->State == ClientState::Connected)
     {
         SCOPE_LOCK(cl->Connection->BinLocker);
 
@@ -594,14 +594,14 @@ void FOServer::Process(Client* cl)
             CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
         }
 
-        if (cl->GameState == STATE_CONNECTED && cl->LastActivityTime &&
+        if (cl->State == ClientState::Connected && cl->LastActivityTime &&
             Timer::FastTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME) // Kick bot
         {
             WriteLog("Connection timeout, client kicked, maybe bot. Ip '{}'.\n", cl->GetIpStr());
             cl->Disconnect();
         }
     }
-    else if (cl->GameState == STATE_TRANSFERRING)
+    else if (cl->State == ClientState::Transferring)
     {
         SCOPE_LOCK(cl->Connection->BinLocker);
 
@@ -639,7 +639,7 @@ void FOServer::Process(Client* cl)
             CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
         }
     }
-    else if (cl->GameState == STATE_PLAYING)
+    else if (cl->State == ClientState::Playing)
     {
         static const int messages_per_cycle = 5;
         for (int i = 0; i < messages_per_cycle; i++)
@@ -762,21 +762,23 @@ void FOServer::Process_Text(Client* cl)
     if (!cl->IsLife() && how_say >= SAY_NORM && how_say <= SAY_RADIO)
         how_say = SAY_WHISP;
 
-    if (Str::Compare(str, cl->LastSay))
+    if (cl->LastSay == str)
     {
         cl->LastSayEqualCount++;
+
         if (cl->LastSayEqualCount >= 10)
         {
             WriteLog("Flood detected, client '{}'. Disconnect.\n", cl->GetName());
             cl->Disconnect();
             return;
         }
+
         if (cl->LastSayEqualCount >= 3)
             return;
     }
     else
     {
-        Str::Copy(cl->LastSay, str);
+        cl->LastSay = str;
         cl->LastSayEqualCount = 0;
     }
 
@@ -1077,7 +1079,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         }
 
         Client* cl2 = (Client*)cr;
-        if (cl2->GameState != STATE_PLAYING)
+        if (cl2->State != ClientState::Playing)
         {
             logcb("Player is not in a game.");
             return;
@@ -2900,8 +2902,8 @@ void FOServer::Process_LogIn(Client*& cl)
 
             // Swap data
             std::swap(cl_old->Connection, cl->Connection);
-            cl_old->GameState = STATE_CONNECTED;
-            cl->GameState = STATE_NONE;
+            cl_old->State = ClientState::Connected;
+            cl->State = ClientState::None;
             cl_old->LastActivityTime = 0;
             UNSETFLAG(cl_old->Flags, FCRIT_DISCONNECT);
             SETFLAG(cl->Flags, FCRIT_DISCONNECT);
@@ -3031,7 +3033,7 @@ void FOServer::Process_ParseToGame(Client* cl)
         return;
     cl->SetBreakTime(Settings.Breaktime);
 
-    cl->GameState = STATE_PLAYING;
+    cl->State = ClientState::Playing;
     cl->PingOk(PING_CLIENT_LIFE_TIME * 5);
 
     if (cl->ViewMapId)

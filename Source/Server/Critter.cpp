@@ -960,21 +960,11 @@ Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, 
     Critter(0, EntityType::Client, proto, sett, script_sys)
 {
     Connection = conn;
-    Access = ACCESS_DEFAULT;
-    pingOk = true;
-    LanguageMsg = 0;
-    GameState = STATE_NONE;
-    LastSendedMapTick = 0;
-    RadioMessageSended = 0;
-    UpdateFileIndex = -1;
-    UpdateFilePortion = 0;
     CritterIsNpc = false;
     SETFLAG(Flags, FCRIT_PLAYER);
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
     talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
     LastActivityTime = Timer::FastTick();
-    LastSay[0] = 0;
-    LastSayEqualCount = 0;
 }
 
 Client::~Client()
@@ -1026,7 +1016,7 @@ uint Client::GetOfflineTime()
 
 bool Client::IsToPing()
 {
-    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick &&
+    return State == ClientState::Playing && Timer::FastTick() >= pingNextTick &&
         !(GetTimeoutTransfer() > settings.FullSecond);
 }
 
@@ -1176,7 +1166,7 @@ void Client::Send_LoadMap(Map* map, MapManager& map_mngr)
 
     CLIENT_OUTPUT_END(this);
 
-    GameState = STATE_TRANSFERRING;
+    State = ClientState::Transferring;
 }
 
 void Client::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)

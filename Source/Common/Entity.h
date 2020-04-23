@@ -74,7 +74,6 @@ enum class EntityType
     Max,
 };
 
-class CScriptArray;
 class Entity;
 using EntityVec = vector<Entity*>;
 using EntityMap = map<uint, Entity*>;
@@ -95,7 +94,7 @@ public:
     Properties Props;
     const uint Id;
     const EntityType Type;
-    ProtoEntity* Proto {};
+    const ProtoEntity* Proto;
     mutable int RefCounter {1};
     bool IsDestroyed {};
     bool IsDestroying {};

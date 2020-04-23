@@ -53,11 +53,13 @@
     } \
     cl->Connection->Dispatch()
 
-// Client game states
-#define STATE_NONE (0)
-#define STATE_CONNECTED (1)
-#define STATE_PLAYING (2)
-#define STATE_TRANSFERRING (3)
+enum class ClientState
+{
+    None,
+    Connected,
+    Playing,
+    Transferring,
+};
 
 class MapManager;
 class Item;
@@ -335,21 +337,21 @@ public:
     bool IsTalking();
 
     NetConnection* Connection {};
-    uchar Access {};
+    uchar Access {ACCESS_DEFAULT};
     uint LanguageMsg {};
-    int GameState {};
+    ClientState State {};
     uint LastActivityTime {};
     uint LastSendedMapTick {};
-    char LastSay[UTF8_BUF_SIZE(MAX_CHAT_MESSAGE)] {};
+    string LastSay {};
     uint LastSayEqualCount {};
     uint RadioMessageSended {};
-    int UpdateFileIndex {};
+    int UpdateFileIndex {-1};
     uint UpdateFilePortion {};
     Talking Talk {};
 
 private:
     uint pingNextTick {};
-    bool pingOk {};
+    bool pingOk {true};
     uint talkNextTick {};
 };
 

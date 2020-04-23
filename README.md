@@ -219,19 +219,25 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 
 ### Roadmap
 
+First release version:
+
 * Rework scripting system *(Native C++, AngelScript and C#/Mono scripting layers)*
 * Improve DirectX rendering with Universal Windows Platform
-* Code refactoring *(look at separate section below)*
+* Major part of code refactoring *(look at separate section below)*
 * Improve Singleplayer mode
 * Documentation
 * API freezing and continuing development with it's backward compatibility
+
+Futher releases:
+
+* Finish with code refactoring *(see below)*
 * Particle system
 * Tasks related to Visual Studio Code extension *(see separate section below)*
 * Improve supporting of PlayStation
 * Improve Metal rendering for macOS/iOS
 * Integration with Unity engine (research)
 
-### Roadmap for Visual Studio Code extension
+### Visual Studio Code extension
 
 * Integrate mapper (as javascript module) for editing .fomap
 * Integrate dialog editor for editing .fodlg
@@ -257,6 +263,7 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Improve more unit tests and gain code coverage to at least 80%
 * Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
 * Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
+* C-style casts to C++-style casts
 * Add constness as much as necessary
 
 ### Todo list *(generated from source code)*
