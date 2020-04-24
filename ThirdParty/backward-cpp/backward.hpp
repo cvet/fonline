@@ -398,6 +398,16 @@ template <typename T> T &move(T &v) { return v; }
 #endif // BACKWARD_ATLEAST_CXX11
 
 namespace backward {
+namespace details {
+#if defined(BACKWARD_SYSTEM_WINDOWS)
+const char kBackwardPathDelimiter[] = ";";
+#else
+const char kBackwardPathDelimiter[] = ":";
+#endif
+} // namespace details
+} // namespace backward
+
+namespace backward {
 
 namespace system_tag {
 struct linux_tag; // seems that I cannot call that "linux" because the name
@@ -586,6 +596,29 @@ private:
 #endif // BACKWARD_SYSTEM_LINUX || BACKWARD_SYSTEM_DARWIN
 
 struct demangler : public demangler_impl<system_tag::current_tag> {};
+
+// Split a string on the platform's PATH delimiter.  Example: if delimiter
+// is ":" then:
+//   ""              --> []
+//   ":"             --> ["",""]
+//   "::"            --> ["","",""]
+//   "/a/b/c"        --> ["/a/b/c"]
+//   "/a/b/c:/d/e/f" --> ["/a/b/c","/d/e/f"]
+//   etc.
+inline std::vector<std::string> split_source_prefixes(const std::string &s) {
+  std::vector<std::string> out;
+  size_t last = 0;
+  size_t next = 0;
+  size_t delimiter_size = sizeof(kBackwardPathDelimiter)-1;
+  while ((next = s.find(kBackwardPathDelimiter, last)) != std::string::npos) {
+    out.push_back(s.substr(last, next-last));
+    last = next + delimiter_size;
+  }
+  if (last <= s.length()) {
+    out.push_back(s.substr(last));
+  }
+  return out;
+}
 
 } // namespace details
 
@@ -995,7 +1028,8 @@ private:
 
   static std::string get_argv0() {
     std::string argv0;
-    std::getline(std::ifstream("/proc/self/cmdline"), argv0, '\0');
+    std::ifstream ifs("/proc/self/cmdline");
+    std::getline(ifs, argv0, '\0');
     return argv0;
   }
 
@@ -1354,11 +1388,23 @@ private:
     if (result.found)
       return;
 
+#ifdef bfd_get_section_flags
     if ((bfd_get_section_flags(fobj.handle.get(), section) & SEC_ALLOC) == 0)
+#else
+    if ((bfd_section_flags(section) & SEC_ALLOC) == 0)
+#endif
       return; // a debug section is never loaded automatically.
 
+#ifdef bfd_get_section_vma
     bfd_vma sec_addr = bfd_get_section_vma(fobj.handle.get(), section);
+#else
+    bfd_vma sec_addr = bfd_section_vma(section);
+#endif
+#ifdef bfd_get_section_size
     bfd_size_type size = bfd_get_section_size(section);
+#else
+    bfd_size_type size = bfd_section_size(section);
+#endif
 
     // are we in the boundaries of the section?
     if (addr < sec_addr || addr >= sec_addr + size) {
@@ -3360,8 +3406,22 @@ public:
   typedef std::vector<std::pair<unsigned, std::string>> lines_t;
 
   SourceFile() {}
-  SourceFile(const std::string &path)
-      : _file(new std::ifstream(path.c_str())) {}
+  SourceFile(const std::string &path) {
+    // 1. If BACKWARD_CXX_SOURCE_PREFIXES is set then assume it contains
+    //    a colon-separated list of path prefixes.  Try prepending each
+    //    to the given path until a valid file is found.
+    const std::vector<std::string>& prefixes = get_paths_from_env_variable();
+    for (size_t i = 0; i < prefixes.size(); ++i) {
+      // Double slashes (//) should not be a problem.
+      std::string new_path = prefixes[i] + '/' + path;
+      _file.reset(new std::ifstream(new_path.c_str()));
+      if (is_open()) break;
+    }
+    // 2. If no valid file found then fallback to opening the path as-is.
+    if (!_file || !is_open()) {
+      _file.reset(new std::ifstream(path.c_str()));
+    }
+  }
   bool is_open() const { return _file->is_open(); }
 
   lines_t &get_lines(unsigned line_start, unsigned line_count, lines_t &lines) {
@@ -3456,6 +3516,20 @@ public:
 private:
   details::handle<std::ifstream *, details::default_delete<std::ifstream *>>
       _file;
+
+  std::vector<std::string> get_paths_from_env_variable_impl() {
+    std::vector<std::string> paths;
+    const char* prefixes_str = std::getenv("BACKWARD_CXX_SOURCE_PREFIXES");
+    if (prefixes_str && prefixes_str[0]) {
+      paths = details::split_source_prefixes(prefixes_str);
+    }
+    return paths;
+  }
+
+  const std::vector<std::string>& get_paths_from_env_variable() {
+    static std::vector<std::string> paths = get_paths_from_env_variable_impl();
+    return paths;
+  }
 
 #ifdef BACKWARD_ATLEAST_CXX11
   SourceFile(const SourceFile &) = delete;
