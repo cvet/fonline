@@ -39,3 +39,4 @@ Don't forget following code style and make code formatting before request.
 ## Features
 
 If you feel confident enough to add a whole new feature then contact with me by email `cvet@tut.by` and we discuss the best way of how we can achieve it.  
+As start point of needed features and bugfixes you can check at [Work in progress section in main readme](https://fonline.ru/#work-in-progress).
