@@ -14,6 +14,7 @@ parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', hel
 parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
 parser.add_argument('-mapper', dest='mapper', action='store_true', help='generate mapper api')
 parser.add_argument('-markdown', dest='markdown', action='store_true', help='generate api in markdown format')
+parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markdown output')
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='generate angelscript api')
 parser.add_argument('-csharp', dest='csharp', action='store_true', help='generate csharp api')
@@ -173,13 +174,17 @@ def flushFiles():
         os.makedirs(outputPath)
 
     for name, lines in files.items():
-        fpath = os.path.join(outputPath, name)
-        if os.path.isfile(fpath):
-            with open(fpath, 'r') as f:
-                if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
-                    continue
-        with open(fpath, 'w') as f:
-            f.write('\n'.join(lines) + '\n')
+        def writeToDisk(fpath):
+            if os.path.isfile(fpath):
+                with open(fpath, 'r') as f:
+                    if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
+                        return
+            with open(fpath, 'w') as f:
+                f.write('\n'.join(lines) + '\n')
+
+        writeToDisk(os.path.join(outputPath, name))
+        if name[-3:] == '.md' and args.mdpath:
+            writeToDisk(os.path.join(args.mdpath, name))
 
 def genApiMarkdown(target):
     globalMeta = mpMeta if target == 'Multiplayer' else (spMeta if target == 'Singleplayer' else mainMeta)
@@ -419,9 +424,9 @@ def genApiMarkdown(target):
     writeFile('')
     for i in globalMeta.settings:
         ret, name, init, doc = i
-        writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
+        writeFile('* ' + parseType(ret) + ' ' + name)
         writeDoc(doc)
-        writeFile('')
+    writeFile('')
 
     # Enums
     writeFile('## Enums')

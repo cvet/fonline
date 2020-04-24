@@ -13,7 +13,8 @@ set( FONLINE_BUILD_ASCOMPILER OFF CACHE BOOL "Build AngelScript compiler" )
 set( FONLINE_BUILD_BAKER OFF CACHE BOOL "Build Baker binaries" )
 set( FONLINE_UNIT_TESTS OFF CACHE BOOL "Build only binaries for Unit Testing" )
 set( FONLINE_CODE_COVERAGE OFF CACHE BOOL "Build only binaries for Code Coverage reports" )
-set( FONLINE_CMAKE_CONTRIBUTION "" CACHE STRING "CMake contribution file" )
+set( FONLINE_CMAKE_CONTRIBUTION "" CACHE FILEPATH "CMake contribution file" )
+set( FONLINE_INFO_MARKDOWN_OUTPUT "" CACHE PATH "Path where information markdown files will be stored" )
 
 # Quiet all non-error messages instead ourself
 function( message mode )
@@ -49,7 +50,7 @@ set( BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE )
 set( FO_DEV_NAME "Unknown" )
 set( FO_NICE_NAME "Unknown" )
 set( FO_COMPANY_NAME "Unknown" )
-set( FO_VERSION "0.0.1" )
+set( FO_GAME_VERSION "0.0.1" )
 set( FO_ENGINE_VERSION "" )
 set( FO_MULTIPLAYER_SCRIPTING YES )
 set( FO_SINGLEPLAYER_SCRIPTING YES )
@@ -369,7 +370,7 @@ macro( ResolveContributedFiles fileList )
 endmacro()
 
 macro( SetupGame )
-	set( allowedCommands "DEV_NAME" "NICE_NAME" "COMPANY_NAME" "VERSION" "ENGINE_VERSION"
+	set( allowedCommands "DEV_NAME" "NICE_NAME" "COMPANY_NAME" "GAME_VERSION" "ENGINE_VERSION"
 		"MULTIPLAYER_SCRIPTING" "SINGLEPLAYER_SCRIPTING" "NATIVE_SCRIPTING" "ANGELSCRIPT_SCRIPTING" "MONO_SCRIPTING" )
 	unset( opt )
 	foreach( arg ${ARGN} )
@@ -1237,6 +1238,7 @@ endif()
 
 # Scripts
 set( genScriptApi "" )
+set( compileNativeScripts "" )
 set( compileASScripts "" )
 set( compileMonoScripts "" )
 set( genApiDepends "" )
@@ -1279,6 +1281,10 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	set( genApiCommands -meta "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
 
 	list( APPEND genApiCommands -markdown )
+	if( FONLINE_INFO_MARKDOWN_OUTPUT )
+		list( APPEND genApiCommands -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
+	endif()
+
 	if( FO_NATIVE_SCRIPTING )
 		list( APPEND genApiCommands -native )
 	endif()
@@ -1359,6 +1365,19 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		COMMENT "Generate script API" )
 	list( APPEND FO_COMMANDS_GROUP "GenerateScriptApi" )
 
+	# Compile Native scripts
+	if( FO_NATIVE_SCRIPTING )
+		set( compileNativeScripts "" )
+		add_custom_target( CompileNativeScripts
+			COMMAND ${genScriptApi}
+			COMMAND ${compileNativeScripts}
+			DEPENDS ${genApiDepends}
+			# SOURCES ${FO_NATIVE_SOURCE}
+			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
+			COMMENT "Compile Native scripts" )
+		list( APPEND FO_COMMANDS_GROUP "CompileNativeScripts" )
+	endif()
+
 	# Compile AngelScript scripts
 	if( FO_ANGELSCRIPT_SCRIPTING )
 		set( compileASScripts FOnlineASCompiler
@@ -1405,6 +1424,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	# Compile all scripts
 	add_custom_target( CompileAllScripts
 		COMMAND ${genScriptApi}
+		COMMAND ${compileNativeScripts}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
 		DEPENDS ${genApiDepends}
@@ -1448,6 +1468,7 @@ list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 if( FO_PACKAGES )
 	add_custom_target( MakeAllPackages
 		COMMAND ${genScriptApi}
+		COMMAND ${compileNativeScripts}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
 		COMMAND ${bakeContent}
@@ -1462,6 +1483,7 @@ if( FO_PACKAGES )
 	foreach( package ${FO_PACKAGES} )
 		add_custom_target( MakePackage-${package}
 			COMMAND ${genScriptApi}
+			COMMAND ${compileNativeScripts}
 			COMMAND ${compileASScripts}
 			COMMAND ${compileMonoScripts}
 			COMMAND ${bakeContent}

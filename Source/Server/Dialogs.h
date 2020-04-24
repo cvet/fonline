@@ -112,7 +112,7 @@ struct DialogPack : public NonCopyable
     string PackName {};
     DialogsVec Dialogs {};
     UIntVec TextsLang {};
-    FOMsgVec Texts {};
+    vector<FOMsg*> Texts {};
     string Comment {};
 };
 

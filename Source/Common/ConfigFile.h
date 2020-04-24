@@ -35,9 +35,7 @@
 
 #include "Common.h"
 
-// DECLARE_EXCEPTION()
-
-class ConfigFile
+class ConfigFile : public NonCopyable
 {
 public:
     ConfigFile(const string& str);

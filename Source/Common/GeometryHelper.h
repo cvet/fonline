@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-#define MAX_HEX_OFFSET (50) // Must be not odd
+constexpr int MAX_HEX_OFFSET = 50; // Must be not odd
 
 class GeometryHelper : public NonCopyable
 {

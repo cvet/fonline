@@ -126,6 +126,17 @@ This is main connection point between engine and game based on it.
 So during development engine source stayed untouched and development processed in separate space.  
 Also you able to disable unnecessary stuff in your game (like AngelScript supporting for new projects or Mono for old) and produce binaries with zero overhead for this stuff.
 
+`FONLINE_INFO_MARKDOWN_OUTPUT (default: *empty*)`
+
+Path where different infrormational files in markdown format will be stored.  
+Actual script API, resources descriptions, package information and etc.  
+No output generated if variable is empty.
+
+Full list of output files:
+- MULTIPLAYER_SCRIPT_API.md
+- SINGLEPLAYER_SCRIPT_API.md
+- MAPPER_SCRIPT_API.md
+
 ### CMake contribution
 
 CMake contributions included to main CMakeLists.txt scope.

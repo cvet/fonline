@@ -38,41 +38,60 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-string TextMsgFileName[TEXTMSG_COUNT] = {
-    "FOTEXT.MSG",
-    "FODLG.MSG",
-    "FOOBJ.MSG",
-    "FOGAME.MSG",
-    "FOGM.MSG",
-    "FOCOMBAT.MSG",
-    "FOQUEST.MSG",
-    "FOHOLO.MSG",
-    "FOINTERNAL.MSG",
-    "FOLOCATIONS.MSG",
+static string TextMsgFileName[TEXTMSG_COUNT] = {
+    "FOTEXT",
+    "FODLG",
+    "FOOBJ",
+    "FOGAME",
+    "FOGM",
+    "FOCOMBAT",
+    "FOQUEST",
+    "FOHOLO",
+    "FOINTERNAL",
+    "FOLOCATIONS",
 };
 
-FOMsg::FOMsg()
+static void HexToStr(uchar hex, char* str)
 {
-    Clear();
+    for (int i = 0; i < 2; i++)
+    {
+        int val = (i == 0 ? hex >> 4 : hex & 0xF);
+        if (val < 10)
+            *str++ = '0' + val;
+        else
+            *str++ = 'A' + val - 10;
+    }
+}
+
+static uchar StrToHex(const char* str)
+{
+    uchar result = 0;
+    for (int i = 0; i < 2; i++)
+    {
+        char c = *str++;
+        if (c < 'A')
+            result |= (c - '0') << (i == 0 ? 4 : 0);
+        else
+            result |= (c - 'A' + 10) << (i == 0 ? 4 : 0);
+    }
+    return result;
 }
 
 FOMsg::FOMsg(const FOMsg& other)
 {
     Clear();
+
     for (auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it)
         AddStr(it->first, it->second);
-}
-
-FOMsg::~FOMsg()
-{
-    Clear();
 }
 
 FOMsg& FOMsg::operator=(const FOMsg& other)
 {
     Clear();
+
     for (auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it)
         AddStr(it->first, it->second);
+
     return *this;
 }
 
@@ -95,10 +114,11 @@ void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
 {
     CharVec str;
     str.resize(len * 2 + 1);
+
     size_t str_cur = 0;
     for (uint i = 0; i < len; i++)
     {
-        Str::HexToStr(binary[i], &str[str_cur]);
+        HexToStr(binary[i], &str[str_cur]);
         str_cur += 2;
     }
 
@@ -113,7 +133,7 @@ string FOMsg::GetStr(uint num)
     switch (str_count)
     {
     case 0:
-        return MSG_ERROR_MESSAGE;
+        return "";
     case 1:
         break;
     default:
@@ -131,7 +151,7 @@ string FOMsg::GetStr(uint num, uint skip)
     auto it = strData.find(num);
 
     if (skip >= str_count)
-        return MSG_ERROR_MESSAGE;
+        return "";
     for (uint i = 0; i < skip; i++)
         ++it;
 
@@ -185,7 +205,7 @@ uint FOMsg::GetBinary(uint num, UCharVec& data)
     uint len = (uint)str.length() / 2;
     data.resize(len);
     for (uint i = 0; i < len; i++)
-        data[i] = Str::StrToHex(&str[i * 2]);
+        data[i] = StrToHex(&str[i * 2]);
     return len;
 }
 
@@ -370,17 +390,12 @@ int FOMsg::GetMsgType(const string& type_name)
     return -1;
 }
 
-LanguagePack::LanguagePack()
-{
-    memzero(NameStr, sizeof(NameStr));
-    IsAllMsgLoaded = false;
-}
-
 void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name)
 {
-    RUNTIME_ASSERT(lang_name.length() == 4);
-    memcpy(NameStr, lang_name.c_str(), 4);
-    NameStr[4] = 0;
+    RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
+    Name = lang_name;
+    NameCode = *(uint*)lang_name.c_str();
+
     bool fail = false;
 
     FileCollection msg_files = file_mngr.FilterFiles("msg");
@@ -394,8 +409,7 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name
         {
             for (int i = 0; i < TEXTMSG_COUNT; i++)
             {
-                string msg_name = _str(TextMsgFileName[i]).eraseFileExtension();
-                if (_str(msg_name).compareIgnoreCase(msg_file.GetName()))
+                if (_str(TextMsgFileName[i]).compareIgnoreCase(msg_file.GetName()))
                 {
                     if (!Msg[i].LoadFromString(msg_file.GetCStr()))
                     {
@@ -416,9 +430,9 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name
 
 void LanguagePack::LoadFromCache(CacheStorage& cache, const string& lang_name)
 {
-    RUNTIME_ASSERT(lang_name.length() == 4);
-    memcpy(NameStr, lang_name.c_str(), 4);
-    NameStr[4] = 0;
+    RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
+    Name = lang_name;
+    NameCode = *(uint*)lang_name.c_str();
 
     int errors = 0;
     for (int i = 0; i < TEXTMSG_COUNT; i++)
@@ -442,12 +456,12 @@ void LanguagePack::LoadFromCache(CacheStorage& cache, const string& lang_name)
     }
 
     if (errors)
-        WriteLog("Cached language '{}' not found.\n", NameStr);
+        WriteLog("Cached language '{}' not found.\n", lang_name);
 
     IsAllMsgLoaded = (errors == 0);
 }
 
 string LanguagePack::GetMsgCacheName(int msg_num)
 {
-    return _str("${}-{}.cache", NameStr, TextMsgFileName[msg_num]);
+    return _str("${}-{}.cache", Name, TextMsgFileName[msg_num]);
 }

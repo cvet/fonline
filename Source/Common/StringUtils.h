@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #define MAX_FOTEXT UTF8_BUF_SIZE(2048)
-#define BIG_BUF_SIZE (0x100000) // 1mb
 
 namespace Str
 {
@@ -46,26 +45,11 @@ namespace Str
     {
         return Copy(to, Size, from);
     }
-    void Append(char* to, size_t size, const char* from);
-    template<int Size>
-    inline void Append(char (&to)[Size], const char* from)
-    {
-        return Append(to, Size, from);
-    }
-
-    char* Duplicate(const string& str);
-    char* Duplicate(const char* str);
-
     bool Compare(const char* str1, const char* str2);
-
-    void HexToStr(uchar hex, char* str); // 2 bytes string
-    uchar StrToHex(const char* str);
 }
 
 class _str
 {
-    string s;
-
 public:
     _str() {}
     _str(const _str& r) : s(r.s) {}
@@ -140,6 +124,9 @@ public:
 
     hash toHash();
     _str& parseHash(hash h);
+
+private:
+    string s {};
 };
 
 namespace utf8

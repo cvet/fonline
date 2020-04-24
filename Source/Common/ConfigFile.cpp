@@ -31,16 +31,9 @@
 // SOFTWARE.
 //
 
-// Todo: improve YAML supporting to config file?
-
 #include "ConfigFile.h"
 #include "StringUtils.h"
 #include "Testing.h"
-
-static bool IsYaml(const string& str)
-{
-    return str.length() >= 3 && str[0] == '-' && str[1] == '-' && str[2] == '-';
-}
 
 ConfigFile::ConfigFile(const string& str)
 {
@@ -54,158 +47,143 @@ void ConfigFile::AppendData(const string& str)
 
 void ConfigFile::ParseStr(const string& str)
 {
-    if (IsYaml(str))
+    StrMap* cur_app;
+    auto it_app = appKeyValues.find("");
+    if (it_app == appKeyValues.end())
     {
-        // ryml::Tree tree = ryml::parse(c4::to_csubstr(str.c_str()));
-        // RUNTIME_ASSERT
+        auto it = appKeyValues.insert(std::make_pair("", StrMap()));
+        appKeyValuesOrder.push_back(it);
+        cur_app = &it->second;
     }
     else
     {
-        StrMap* cur_app;
-        auto it_app = appKeyValues.find("");
-        if (it_app == appKeyValues.end())
+        cur_app = &it_app->second;
+    }
+
+    string app_content;
+    if (collectContent)
+        app_content.reserve(0xFFFF);
+
+    istringstream istr(str);
+    string line;
+    string accum_line;
+    while (std::getline(istr, line, '\n'))
+    {
+        if (!line.empty())
+            line = _str(line).trim();
+
+        // Accumulate line
+        if (!accum_line.empty())
         {
-            auto it = appKeyValues.insert(std::make_pair("", StrMap()));
+            line.insert(0, accum_line);
+            accum_line.clear();
+        }
+
+        if (line.empty())
+            continue;
+
+        if (line.length() >= 2 && line.back() == '\\' &&
+            (line[line.length() - 2] == ' ' || line[line.length() - 2] == '\t'))
+        {
+            line.pop_back();
+            accum_line = _str(line).trim() + " ";
+            continue;
+        }
+
+        // New section
+        if (line[0] == '[')
+        {
+            // Parse name
+            size_t end = line.find(']');
+            if (end == string::npos)
+                continue;
+
+            string buf = _str(line.substr(1, end - 1)).trim();
+            if (buf.empty())
+                continue;
+
+            // Store current section content
+            if (collectContent)
+            {
+                (*cur_app)[""] = app_content;
+                app_content.clear();
+            }
+
+            // Add new section
+            auto it = appKeyValues.insert(std::make_pair(buf, StrMap()));
             appKeyValuesOrder.push_back(it);
             cur_app = &it->second;
         }
+        // Section content
         else
         {
-            cur_app = &it_app->second;
-        }
+            // Store raw content
+            if (collectContent)
+                app_content.append(line).append("\n");
 
-        string app_content;
-        if (collectContent)
-            app_content.reserve(0xFFFF);
-
-        istringstream istr(str);
-        string line;
-        string accum_line;
-        while (std::getline(istr, line, '\n'))
-        {
-            if (!line.empty())
-                line = _str(line).trim();
-
-            // Accumulate line
-            if (!accum_line.empty())
+            // Text format {}{}{}
+            if (line[0] == '{')
             {
-                line.insert(0, accum_line);
-                accum_line.clear();
-            }
-
-            if (line.empty())
-                continue;
-
-            if (line.length() >= 2 && line.back() == '\\' &&
-                (line[line.length() - 2] == ' ' || line[line.length() - 2] == '\t'))
-            {
-                line.pop_back();
-                accum_line = _str(line).trim() + " ";
-                continue;
-            }
-
-            // New section
-            if (line[0] == '[')
-            {
-                // Parse name
-                size_t end = line.find(']');
-                if (end == string::npos)
-                    continue;
-
-                string buf = _str(line.substr(1, end - 1)).trim();
-                if (buf.empty())
-                    continue;
-
-                // Store current section content
-                if (collectContent)
+                uint num = 0;
+                size_t offset = 0;
+                for (int i = 0; i < 3; i++)
                 {
-                    (*cur_app)[""] = app_content;
-                    app_content.clear();
-                }
+                    size_t first = line.find('{', offset);
+                    size_t last = line.find('}', first);
+                    if (first == string::npos || last == string::npos)
+                        break;
 
-                // Add new section
-                auto it = appKeyValues.insert(std::make_pair(buf, StrMap()));
-                appKeyValuesOrder.push_back(it);
-                cur_app = &it->second;
+                    string str = line.substr(first + 1, last - first - 1);
+                    offset = last + 1;
+                    if (i == 0 && !num)
+                        num = (_str(str).isNumber() ? _str(str).toInt() : _str(str).toHash());
+                    else if (i == 1 && num)
+                        num += (!str.empty() ? (_str(str).isNumber() ? _str(str).toInt() : _str(str).toHash()) : 0);
+                    else if (i == 2 && num)
+                        (*cur_app)[_str("{}", num)] = str;
+                }
             }
-            // Section content
             else
             {
-                // Store raw content
-                if (collectContent)
-                    app_content.append(line).append("\n");
+                // Cut comments
+                size_t comment = line.find('#');
+                if (comment != string::npos)
+                    line.erase(comment);
+                if (line.empty())
+                    continue;
 
-                // Text format {}{}{}
-                if (line[0] == '{')
+                // Key value format
+                size_t separator = line.find('=');
+                if (separator != string::npos)
                 {
-                    uint num = 0;
-                    size_t offset = 0;
-                    for (int i = 0; i < 3; i++)
-                    {
-                        size_t first = line.find('{', offset);
-                        size_t last = line.find('}', first);
-                        if (first == string::npos || last == string::npos)
-                            break;
-
-                        string str = line.substr(first + 1, last - first - 1);
-                        offset = last + 1;
-                        if (i == 0 && !num)
-                            num = (_str(str).isNumber() ? _str(str).toInt() : _str(str).toHash());
-                        else if (i == 1 && num)
-                            num += (!str.empty() ? (_str(str).isNumber() ? _str(str).toInt() : _str(str).toHash()) : 0);
-                        else if (i == 2 && num)
-                            (*cur_app)[_str("{}", num)] = str;
-                    }
-                }
-                else
-                {
-                    // Cut comments
-                    size_t comment = line.find('#');
-                    if (comment != string::npos)
-                        line.erase(comment);
-                    if (line.empty())
-                        continue;
-
-                    // Key value format
-                    size_t separator = line.find('=');
-                    if (separator != string::npos)
-                    {
-                        string key = _str(line.substr(0, separator)).trim();
-                        string value = _str(line.substr(separator + 1)).trim();
-                        if (!key.empty())
-                            (*cur_app)[key] = value;
-                    }
+                    string key = _str(line.substr(0, separator)).trim();
+                    string value = _str(line.substr(separator + 1)).trim();
+                    if (!key.empty())
+                        (*cur_app)[key] = value;
                 }
             }
         }
-        RUNTIME_ASSERT(istr.eof());
-
-        // Store current section content
-        if (collectContent)
-            (*cur_app)[""] = app_content;
     }
+    RUNTIME_ASSERT(istr.eof());
+
+    // Store current section content
+    if (collectContent)
+        (*cur_app)[""] = app_content;
 }
 
 string ConfigFile::SerializeData()
 {
     string str;
-    bool to_yaml = false;
-    if (to_yaml)
+    str.reserve(100000);
+    for (auto& app_it : appKeyValuesOrder)
     {
-    }
-    else
-    {
-        str.reserve(100000);
-        for (auto& app_it : appKeyValuesOrder)
-        {
-            auto& app = *app_it;
-            if (!app.first.empty())
-                str += _str("[{}]\n", app.first);
-            for (const auto& kv : app.second)
-                if (!kv.first.empty())
-                    str += _str("{} = {}\n", kv.first, kv.second);
-            str += "\n";
-        }
+        auto& app = *app_it;
+        if (!app.first.empty())
+            str += _str("[{}]\n", app.first);
+        for (const auto& kv : app.second)
+            if (!kv.first.empty())
+                str += _str("{} = {}\n", kv.first, kv.second);
+        str += "\n";
     }
     return str;
 }

@@ -194,11 +194,11 @@ public:
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
 
     // Lang packs
-    LangPackVec LangPacks;
-    bool InitLangPacks(LangPackVec& lang_packs);
-    bool InitLangPacksDialogs(LangPackVec& lang_packs);
-    bool InitLangPacksLocations(LangPackVec& lang_packs);
-    bool InitLangPacksItems(LangPackVec& lang_packs);
+    vector<LanguagePack> LangPacks;
+    bool InitLangPacks(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksDialogs(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksLocations(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksItems(vector<LanguagePack>& lang_packs);
 
     // Init/Finish
     int Run();

@@ -371,7 +371,7 @@ void FOClient::UpdateFilesLoop()
 
                 // Reinitialize data
                 if (UpdateFilesCacheChanged)
-                    CurLang.LoadFromCache(Cache, CurLang.NameStr);
+                    CurLang.LoadFromCache(Cache, CurLang.Name);
                 // if (UpdateFilesFilesChanged)
                 //    Settings.Init(0, {});
                 if (InitCalls >= 2 && (UpdateFilesCacheChanged || UpdateFilesFilesChanged))
@@ -1751,7 +1751,7 @@ void FOClient::Net_SendLogIn()
 
     Bout.Push(name_, sizeof(name_));
     Bout.Push(pass_, sizeof(pass_));
-    Bout << CurLang.Name;
+    Bout << CurLang.NameCode;
 
     AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }

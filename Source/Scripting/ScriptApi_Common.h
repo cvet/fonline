@@ -77,6 +77,13 @@ public:
 };
 #endif
 
+// Settings
+#define SETTING(type, name, ...) FO_API_SETTING(type, name)
+#define VAR_SETTING(type, name, ...) FO_API_SETTING(type, name)
+#define SETTING_GROUP(name, ...)
+#define SETTING_GROUP_END()
+#include "Settings_Include.h"
+
 #ifdef FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...

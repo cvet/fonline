@@ -861,7 +861,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
     }
     else if (cmd == "GetLanguage")
     {
-        FO_API_RETURN(_client->CurLang.NameStr);
+        FO_API_RETURN(_client->CurLang.Name);
     }
     else if (cmd == "SetLanguage" && args.size() >= 2)
     {

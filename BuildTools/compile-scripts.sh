@@ -6,6 +6,8 @@ source $CUR_DIR/setup-env.sh
 TARGET="CompileAllScripts"
 if [ "$1" = "gen-api" ]; then
     TARGET="GenerateScriptApi"
+elif [ "$1" = "native" ]; then
+    TARGET="CompileNativeScripts"
 elif [ "$1" = "angelscript" ]; then
     TARGET="CompileAngelScripts"
 elif [ "$1" = "mono" ]; then

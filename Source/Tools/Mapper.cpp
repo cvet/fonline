@@ -1611,7 +1611,7 @@ void FOMapper::IntDraw()
         if (GetTabIndex() < (uint)(*CurItemProtos).size())
         {
             ProtoItem* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.Name);
+            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.NameCode);
             if (it != proto_item->TextsLang.end())
             {
                 uint index = (uint)std::distance(proto_item->TextsLang.begin(), it);

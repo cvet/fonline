@@ -76,7 +76,7 @@ And two videos to who don't like to google:
 
 Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
 You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 within WSL2 (with Ubuntu-18.04, other distros not tested but should work).  
+Shell scripts targeted for work under Windows 10 within WSL2 and Ubuntu-20.04 as distro.  
 Almost all will be work under native Linuxes but some of scripts (like build.sh win32) must be run only from WSL2 shell because runs Windows binaries.  
 So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.
 
@@ -123,7 +123,9 @@ This script interactively check your system for all requirements and helps to ge
 
 Main point of WSL2 for us that we can run Windows programs from Linux.  
 That feature allows unify almost all our build scripts into one environment.  
-Currently WSL2 available only on Windows Insider distros but in time when engine became from Unusable to Usable state it will be available for all.
+Minimum version of Windows 10 is 2004 build 19041 from May 2020.  
+Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.  
+You may use other distro but there is no guarantee that it will work out of the box.
 
 #### Visual Studio Code
 
@@ -137,7 +139,7 @@ More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIA
 Following Linux packages will help us build our game for target platforms.  
 These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
 * Common:  
-`clang-9` `clang-format-9` `build-essential` `git` `cmake` `python` `wget` `unzip`
+`clang` `clang-format` `build-essential` `git` `cmake` `python` `wget` `unzip`
 * Building for Linux:  
 `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
 * Building for Web:  
@@ -371,7 +373,6 @@ Futher releases:
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
-* ConfigFile: improve YAML supporting to config file?
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
 * KeyCodes_Include: rename DIK_ to Key or something else

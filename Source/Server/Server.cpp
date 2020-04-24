@@ -1841,7 +1841,7 @@ bool FOServer::InitReal()
     return true;
 }
 
-bool FOServer::InitLangPacks(LangPackVec& lang_packs)
+bool FOServer::InitLangPacks(vector<LanguagePack>& lang_packs)
 {
     WriteLog("Load language packs...\n");
 
@@ -1878,7 +1878,7 @@ bool FOServer::InitLangPacks(LangPackVec& lang_packs)
     return cur_lang > 0;
 }
 
-bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
+bool FOServer::InitLangPacksDialogs(vector<LanguagePack>& lang_packs)
 {
     for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
         it->Msg[TEXTMSG_DLG].Clear();
@@ -1892,7 +1892,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
             for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
             {
                 LanguagePack& lang = *it;
-                if (proto->TextsLang[i] != lang.Name)
+                if (proto->TextsLang[i] != lang.NameCode)
                     continue;
 
                 if (lang.Msg[TEXTMSG_DLG].IsIntersects(*proto->Texts[i]))
@@ -1914,7 +1914,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
             for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
             {
                 LanguagePack& lang = *it;
-                if (pack->TextsLang[i] != lang.Name)
+                if (pack->TextsLang[i] != lang.NameCode)
                     continue;
 
                 if (lang.Msg[TEXTMSG_DLG].IsIntersects(*pack->Texts[i]))
@@ -1930,7 +1930,7 @@ bool FOServer::InitLangPacksDialogs(LangPackVec& lang_packs)
     return true;
 }
 
-bool FOServer::InitLangPacksLocations(LangPackVec& lang_packs)
+bool FOServer::InitLangPacksLocations(vector<LanguagePack>& lang_packs)
 {
     for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
         it->Msg[TEXTMSG_LOCATIONS].Clear();
@@ -1944,7 +1944,7 @@ bool FOServer::InitLangPacksLocations(LangPackVec& lang_packs)
             for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
             {
                 LanguagePack& lang = *it;
-                if (ploc->TextsLang[i] != lang.Name)
+                if (ploc->TextsLang[i] != lang.NameCode)
                     continue;
 
                 if (lang.Msg[TEXTMSG_LOCATIONS].IsIntersects(*ploc->Texts[i]))
@@ -1960,7 +1960,7 @@ bool FOServer::InitLangPacksLocations(LangPackVec& lang_packs)
     return true;
 }
 
-bool FOServer::InitLangPacksItems(LangPackVec& lang_packs)
+bool FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs)
 {
     for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
         it->Msg[TEXTMSG_ITEM].Clear();
@@ -1974,7 +1974,7 @@ bool FOServer::InitLangPacksItems(LangPackVec& lang_packs)
             for (auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it)
             {
                 LanguagePack& lang = *it;
-                if (proto->TextsLang[i] != lang.Name)
+                if (proto->TextsLang[i] != lang.NameCode)
                     continue;
 
                 if (lang.Msg[TEXTMSG_ITEM].IsIntersects(*proto->Texts[i]))
@@ -2799,7 +2799,7 @@ void FOServer::Process_LogIn(Client*& cl)
     if (it_l != LangPacks.end())
         cl->LanguageMsg = msg_language;
     else
-        cl->LanguageMsg = (*LangPacks.begin()).Name;
+        cl->LanguageMsg = (*LangPacks.begin()).NameCode;
 
     // If only cache checking than disconnect
     if (!name[0])

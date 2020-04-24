@@ -33,15 +33,9 @@
 
 #if !defined(SETTING) || !defined(VAR_SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
 #error SETTING or VAR_SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
-#include "Common.h"
 #endif
 
-SETTING_GROUP(UserSettings, virtual DummySettings);
-#define FO_API_SETTING SETTING
-#include "ScriptApi.h"
-SETTING_GROUP_END();
-
-SETTING_GROUP(CommonSettings, virtual UserSettings);
+SETTING_GROUP(CommonSettings, virtual DummySettings);
 SETTING(string, WorkDir, "");
 SETTING(string, CommandLine, "");
 SETTING(vector<string>, CommandLineArgs);
@@ -151,7 +145,7 @@ SETTING(bool, WindowCentered, true);
 SETTING(bool, ForceOpenGL, false);
 SETTING(bool, ForceDirect3D, false);
 SETTING(bool, ForceMetal, false);
-SETTING(bool, ForceVulkan, false);
+SETTING(bool, ForceGnm, false);
 SETTING(bool, RenderDebug, false);
 SETTING(uint, Animation3dSmoothTime, 150);
 SETTING(uint, Animation3dFPS, 30);

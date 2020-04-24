@@ -50,19 +50,14 @@
 #define TEXTMSG_INTERNAL (8)
 #define TEXTMSG_LOCATIONS (9)
 #define TEXTMSG_COUNT (10)
-extern string TextMsgFileName[TEXTMSG_COUNT];
-
-#define DEFAULT_LANGUAGE "russ"
-#define MSG_ERROR_MESSAGE "error"
-
-typedef multimap<uint, string> FOMsgMap;
 
 class FOMsg
 {
 public:
-    FOMsg();
+    using MsgMap = multimap<uint, string>;
+
+    FOMsg() = default;
     FOMsg(const FOMsg& other);
-    ~FOMsg();
     FOMsg& operator=(const FOMsg& other);
     FOMsg& operator+=(const FOMsg& other);
 
@@ -87,32 +82,23 @@ public:
     void LoadFromMap(const StrMap& kv);
     void Clear();
 
-private:
-    // String values
-    FOMsgMap strData;
-
-public:
     static int GetMsgType(const string& type_name);
+
+private:
+    MsgMap strData {};
 };
-typedef vector<FOMsg*> FOMsgVec;
 
 class LanguagePack
 {
 public:
-    union
-    {
-        uint Name;
-        char NameStr[5];
-    };
-
-    bool IsAllMsgLoaded;
-    FOMsg Msg[TEXTMSG_COUNT];
-
+    LanguagePack() = default;
+    bool operator==(const uint name_code) { return NameCode == name_code; }
     void LoadFromFiles(FileManager& file_mngr, const string& lang_name);
     void LoadFromCache(CacheStorage& cache, const string& lang_name);
     string GetMsgCacheName(int msg_num);
 
-    LanguagePack();
-    bool operator==(const uint& other) { return Name == other; }
+    string Name {};
+    uint NameCode {};
+    bool IsAllMsgLoaded {};
+    FOMsg Msg[TEXTMSG_COUNT] {};
 };
-using LangPackVec = vector<LanguagePack>;

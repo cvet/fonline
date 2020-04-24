@@ -51,7 +51,7 @@
         {
             "label": "Prepare VSCode Toolset",
             "group": "Service",
-            "command": "BuildTools/update-vscode-toolset.sh"
+            "command": "BuildTools/prepare-vscode-toolset.sh"
         },
         {
             "label": "Update VSCode Toolset",
@@ -59,14 +59,14 @@
             "command": "BuildTools/update-vscode-toolset.sh"
         },
         {
-            "label": "Generate Todo",
+            "label": "Generate Engine Todo",
             "group": "Service",
             "command": "cd BuildTools && python todo-generator.py"
         },
         {
-            "label": "Format Code",
+            "label": "Format Engine code",
             "group": "Service",
-            "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.*"
+            "command": "cd Source && clang-format -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.*"
         },
         {
             "label": "Run unit tests",
@@ -307,6 +307,11 @@
             "label": "Compile all scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh"
+        },
+        {
+            "label": "Compile Native scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh native"
         },
         {
             "label": "Compile AngelScript scripts",

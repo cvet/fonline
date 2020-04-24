@@ -111,7 +111,7 @@ public:
 
     const hash ProtoId;
     UIntVec TextsLang {};
-    FOMsgVec Texts {};
+    vector<FOMsg*> Texts {};
     HashSet Components {};
     string CollectionName {};
 

@@ -16,10 +16,10 @@ function install_common_packages()
     echo "Install common packages"
     sudo apt-get -qq -y update
 
-    echo "Install clang-9"
-    sudo apt-get -qq -y install clang-9
-    echo "Install clang-format-9"
-    sudo apt-get -qq -y install clang-format-9
+    echo "Install clang"
+    sudo apt-get -qq -y install clang
+    echo "Install clang-format"
+    sudo apt-get -qq -y install clang-format
     echo "Install build-essential"
     sudo apt-get -qq -y install build-essential
     echo "Install git"
@@ -32,10 +32,6 @@ function install_common_packages()
     sudo apt-get -qq -y install wget
     echo "Install unzip"
     sudo apt-get -qq -y install unzip
-
-    echo "Set clang-9 as default clang compiler"
-    sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 100
-    sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9 100
 }
 
 function install_linux_packages()

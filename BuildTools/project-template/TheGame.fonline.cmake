@@ -2,7 +2,7 @@
 # - DEV_NAME (default: "Unknown")
 # - NICE_NAME (default: "Unknown")
 # - COMPANY_NAME (default: "Unknown")
-# - VERSION (default: "0.0.1")
+# - GAME_VERSION (default: "0.0.1")
 # - ENGINE_VERSION (default: "")
 # - MULTIPLAYER_SCRIPTING (default: YES)
 # - SINGLEPLAYER_SCRIPTING (default: YES)
@@ -27,7 +27,7 @@
 SetupGame( DEV_NAME "TheGame"
     NICE_NAME "The Game: Beginning"
     COMPANY_NAME "MyCorpLtd"
-    VERSION "0.1.0"
+    GAME_VERSION "0.1.0"
     MULTIPLAYER_SCRIPTING YES
     SINGLEPLAYER_SCRIPTING YES
     NATIVE_SCRIPTING NO )

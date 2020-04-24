@@ -37,14 +37,24 @@
 FO_API_ENUM_GROUP(MessageBoxTextType)
 
 /*******************************************************************************
- * ...
+ * Mouse button types
  ******************************************************************************/
 FO_API_ENUM_GROUP(MouseButton)
+FO_API_ENUM_ENTRY(MouseButton, Left, 0)
+FO_API_ENUM_ENTRY(MouseButton, Right, 1)
+FO_API_ENUM_ENTRY(MouseButton, Middle, 2)
+FO_API_ENUM_ENTRY(MouseButton, Ext0, 5)
+FO_API_ENUM_ENTRY(MouseButton, Ext1, 6)
+FO_API_ENUM_ENTRY(MouseButton, Ext2, 7)
+FO_API_ENUM_ENTRY(MouseButton, Ext3, 8)
+FO_API_ENUM_ENTRY(MouseButton, Ext4, 9)
 
 /*******************************************************************************
- * ...
+ * Keyboard key codes
  ******************************************************************************/
 FO_API_ENUM_GROUP(KeyCode)
+#define KEY_CODE(name, index, code) FO_API_ENUM_ENTRY(KeyCode, name, index)
+#include "KeyCodes_Include.h"
 
 /*******************************************************************************
  * ...

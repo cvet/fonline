@@ -550,84 +550,16 @@ void Str::Copy(char* to, size_t size, const char* from)
     }
 }
 
-void Str::Append(char* to, size_t size, const char* from)
-{
-    RUNTIME_ASSERT(to);
-    RUNTIME_ASSERT(from);
-    RUNTIME_ASSERT(size > 0);
-
-    size_t from_len = strlen(from);
-    if (!from_len)
-        return;
-
-    size_t to_len = strlen(to);
-    if (to_len + 1 >= size)
-        return;
-
-    size_t to_free = size - to_len;
-    char* ptr = to + to_len;
-    if (from_len >= to_free)
-    {
-        memcpy(ptr, from, to_free - 1);
-        to[size - 1] = 0;
-    }
-    else
-    {
-        memcpy(ptr, from, from_len);
-        ptr[from_len] = 0;
-    }
-}
-
-char* Str::Duplicate(const string& str)
-{
-    return Duplicate(str.c_str());
-}
-
-char* Str::Duplicate(const char* str)
-{
-    size_t len = strlen(str);
-    char* dup = new char[len + 1];
-    if (len)
-        memcpy(dup, str, len);
-    dup[len] = 0;
-    return dup;
-}
-
 bool Str::Compare(const char* str1, const char* str2)
 {
     while (*str1 && *str2)
     {
         if (*str1 != *str2)
             return false;
-        str1++, str2++;
+        str1++;
+        str2++;
     }
     return *str1 == 0 && *str2 == 0;
-}
-
-void Str::HexToStr(uchar hex, char* str)
-{
-    for (int i = 0; i < 2; i++)
-    {
-        int val = (i == 0 ? hex >> 4 : hex & 0xF);
-        if (val < 10)
-            *str++ = '0' + val;
-        else
-            *str++ = 'A' + val - 10;
-    }
-}
-
-uchar Str::StrToHex(const char* str)
-{
-    uchar result = 0;
-    for (int i = 0; i < 2; i++)
-    {
-        char c = *str++;
-        if (c < 'A')
-            result |= (c - '0') << (i == 0 ? 4 : 0);
-        else
-            result |= (c - 'A' + 10) << (i == 0 ? 4 : 0);
-    }
-    return result;
 }
 
 bool utf8::IsValid(uint ucs)
