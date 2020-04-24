@@ -1,4 +1,4 @@
-# FOnline Engine Contribution Guildlines
+# FOnline Engine Contribution Guidelines
 
 If you want to contribute to FOnline Engine, there are several ways how you can help out.
 
@@ -34,7 +34,7 @@ All changes in this documentation automatically reflects to all scripting layers
 ## Bugfixes
 
 If you find a bug, and manage to fix it then create a Pull Request.  
-Don't forgot following code style and make code formatting before request.
+Don't forget following code style and make code formatting before request.
 
 ## Features
 
