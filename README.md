@@ -226,9 +226,9 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Rework scripting system *(improve Native C++, AngelScript and C#/Mono scripting layers)*
 * Improve DirectX rendering with Universal Windows Platform
 * Major part of code refactoring *(look at separate section below)*
-* Improve Singleplayer mode (not stable but stable from architectural point of view)
+* Improve Singleplayer mode (at least stable from architectural point of view)
 * Multiplayer mode stabilization
-* Documentation
+* Documentation (all public API, tutorial, but core engine not included)
 * API freezing and continuing development with it's backward compatibility
 
 **Futher releases:**
