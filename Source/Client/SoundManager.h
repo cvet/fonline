@@ -38,7 +38,7 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-class SoundManager : public NonCopyable
+class SoundManager : public NonMovable
 {
 public:
     SoundManager(AudioSettings& sett, FileManager& file_mngr);

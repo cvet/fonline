@@ -39,6 +39,7 @@
 #include "Entity.h"
 #include "ItemView.h"
 #include "ResourceManager.h"
+#include "Timer.h"
 
 class ItemHexView;
 using ItemHexViewVec = vector<ItemHexView*>;
@@ -47,11 +48,12 @@ using ItemHexViewMap = map<uint, ItemHexView*>;
 class ItemHexView : public ItemView
 {
 public:
-    ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr);
-    ItemHexView(
-        uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr);
+    ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr,
+        GameTimer& game_time);
+    ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr,
+        EffectManager& effect_mngr, GameTimer& game_time);
     ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y,
-        ResourceManager& res_mngr, EffectManager& effect_mngr);
+        ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
     bool IsAnimated() { return isAnimated; }
     bool IsDrawContour() { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     bool IsTransparent() { return maxAlpha < 0xFF; }
@@ -99,12 +101,13 @@ public:
     UShortPairVec EffSteps {};
 
 private:
-    ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr);
+    ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
     void AfterConstruction();
     void SetFade(bool fade_up);
 
     ResourceManager& resMngr;
     EffectManager& effectMngr;
+    GameTimer& gameTime;
     int curSpr {};
     int begSpr {};
     int endSpr {};

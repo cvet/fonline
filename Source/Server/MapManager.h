@@ -45,6 +45,7 @@
 #include "Map.h"
 #include "ServerScripting.h"
 #include "Settings.h"
+#include "Timer.h"
 
 DECLARE_EXCEPTION(MapManagerException);
 
@@ -124,11 +125,11 @@ struct PathStep
 };
 using PathStepVec = vector<PathStep>;
 
-class MapManager
+class MapManager : public NonMovable
 {
 public:
     MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr,
-        ItemManager& item_mngr, ServerScriptSystem& script_sys);
+        ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
 
     void LoadStaticMaps(FileManager& file_mngr);
     StaticMap* FindStaticMap(ProtoMap* pmap);
@@ -192,6 +193,7 @@ private:
     CritterManager& crMngr;
     ItemManager& itemMngr;
     ServerScriptSystem& scriptSys;
+    GameTimer& gameTime;
     bool runGarbager {true};
     PathStepVec pathesPool[FPATH_DATA_SIZE] {};
     uint pathNumCur {};

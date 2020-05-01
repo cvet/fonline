@@ -38,6 +38,7 @@
 #include "Application.h"
 #include "FileSystem.h"
 #include "Settings.h"
+#include "Timer.h"
 
 DECLARE_EXCEPTION(EffectManagerException);
 
@@ -81,10 +82,10 @@ struct EffectCollection : public NonCopyable
     RenderEffect* Skinned3dDefault {};
 };
 
-class EffectManager : public Pointable
+class EffectManager : public NonMovable
 {
 public:
-    EffectManager(EffectSettings& sett, FileManager& file_mngr);
+    EffectManager(EffectSettings& sett, FileManager& file_mngr, GameTimer& game_time);
     RenderEffect* LoadEffect(const string& name, const string& defines, const string& base_path = "");
     void LoadMinimalEffects();
     void LoadDefaultEffects();
@@ -97,6 +98,7 @@ private:
 
     EffectSettings& settings;
     FileManager& fileMngr;
+    GameTimer& gameTime;
     vector<unique_ptr<RenderEffect>> loadedEffects {};
     EventUnsubscriber eventUnsubscriber {};
 };

@@ -37,7 +37,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 
 void MeshData::Load(DataReader& reader)
 {
@@ -124,11 +123,12 @@ hash Bone::GetHash(const string& name)
 }
 
 Animation3dManager::Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
-    ClientScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator) :
+    ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator) :
     settings {sett},
     fileMngr {file_mngr},
     effectMngr {effect_mngr},
     scriptSys {script_sys},
+    gameTime {game_time},
     meshTexCreator {mesh_tex_creator}
 {
     RUNTIME_ASSERT(settings.Enable3dRendering);
@@ -821,8 +821,8 @@ float Animation3d::GetSpeed()
 uint Animation3d::GetTick()
 {
     if (useGameTimer)
-        return Timer::GameTick();
-    return Timer::FastTick();
+        return anim3dMngr.gameTime.GameTick();
+    return anim3dMngr.gameTime.FrameTick();
 }
 
 void Animation3d::SetAnimData(AnimParams& data, bool clear)

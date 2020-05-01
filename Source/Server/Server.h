@@ -60,6 +60,8 @@
 
 #include "imgui.h"
 
+DECLARE_EXCEPTION(ServerInitException);
+
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR(client) CHECK_IN_BUFF_ERROR_EXT(client, (void)0, return )
 #define CHECK_IN_BUFF_ERROR_EXT(client, before_disconnect, after_disconnect) \
@@ -74,12 +76,41 @@
 class FOServer : public NonCopyable // Todo: rename FOServer to just Server
 {
 public:
+    struct
+    {
+        ImVec2 DefaultSize = ImVec2(200, 200);
+        ImVec2 MemoryPos = ImVec2(0, 0);
+        ImVec2 PlayersPos = ImVec2(20, 20);
+        ImVec2 LocMapsPos = ImVec2(40, 40);
+        ImVec2 ItemsPos = ImVec2(60, 60);
+        ImVec2 ProfilerPos = ImVec2(80, 80);
+        ImVec2 InfoPos = ImVec2(100, 100);
+        ImVec2 ControlPanelPos = ImVec2(120, 120);
+        ImVec2 ButtonSize = ImVec2(200, 30);
+        ImVec2 LogPos = ImVec2(140, 140);
+        ImVec2 LogSize = ImVec2(800, 600);
+        string CurLog;
+        string WholeLog;
+        string Stats;
+    } Gui;
+
     FOServer(GlobalSettings& sett);
+    ~FOServer();
+    void MainLoop();
+    void DrawGui();
+    bool InitLangPacks(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksDialogs(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksLocations(vector<LanguagePack>& lang_packs);
+    bool InitLangPacksItems(vector<LanguagePack>& lang_packs);
 
 #ifdef FO_SINGLEPLAYER
     void ConnectClient(FOClient* client) {}
-    void MainLoop() {}
 #endif
+
+    EventObserver<> OnWillFinish {};
+    EventObserver<> OnDidFinish {};
+    EventDispatcher<> willFinishDispatcher {OnWillFinish};
+    EventDispatcher<> didFinishDispatcher {OnDidFinish};
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
@@ -93,6 +124,14 @@ public:
     DialogManager DlgMngr;
     GameTimer GameTime;
     GlobalVars* Globals {};
+    DataBase* DbStorage {};
+    DataBase* DbHistory {};
+    std::atomic_bool Started {};
+    UIntMap RegIp {};
+    std::mutex RegIpLocker {};
+    vector<LanguagePack> LangPacks {};
+    uint fpsTick {};
+    uint fpsCounter {};
 
     void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
@@ -172,15 +211,6 @@ public:
     uint Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer);
     void Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
 
-    // Main
-    int UpdateIndex = -1;
-    int UpdateLastIndex = -1;
-    uint UpdateLastTick = 0;
-    bool Active = false;
-    bool ActiveInProcess = false;
-    UIntMap RegIp;
-    std::mutex RegIpLocker;
-
     void DisconnectClient(Client* cl);
     void RemoveClient(Client* cl);
     void Process(Client* cl);
@@ -194,44 +224,6 @@ public:
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
 
     // Lang packs
-    vector<LanguagePack> LangPacks;
-    bool InitLangPacks(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksDialogs(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksLocations(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksItems(vector<LanguagePack>& lang_packs);
-
-    // Init/Finish
-    int Run();
-    bool Init();
-    bool InitReal();
-    void Finish();
-    bool Starting() { return Active && ActiveInProcess; }
-    bool Started() { return Active && !ActiveInProcess; }
-    bool Stopping() { return !Active && ActiveInProcess; }
-    bool Stopped() { return !Active && !ActiveInProcess; }
-    void Stop() { Settings.Quit = true; }
-    void LogicTick();
-
-    // Gui
-    struct
-    {
-        ImVec2 DefaultSize = ImVec2(200, 200);
-        ImVec2 MemoryPos = ImVec2(0, 0);
-        ImVec2 PlayersPos = ImVec2(20, 20);
-        ImVec2 LocMapsPos = ImVec2(40, 40);
-        ImVec2 ItemsPos = ImVec2(60, 60);
-        ImVec2 ProfilerPos = ImVec2(80, 80);
-        ImVec2 InfoPos = ImVec2(100, 100);
-        ImVec2 ControlPanelPos = ImVec2(120, 120);
-        ImVec2 ButtonSize = ImVec2(200, 30);
-        ImVec2 LogPos = ImVec2(140, 140);
-        ImVec2 LogSize = ImVec2(800, 600);
-        string CurLog;
-        string WholeLog;
-        string Stats;
-    } Gui;
-
-    void DrawGui();
 
     // Todo: run network listeners dynamically, without restriction, based on server settings
     NetServerBase* TcpServer {};
@@ -279,24 +271,23 @@ public:
     // Statistics
     struct
     {
-        uint ServerStartTick;
-        uint Uptime;
-        int64 BytesSend;
-        int64 BytesRecv;
-        int64 DataReal;
-        int64 DataCompressed;
-        float CompressRatio;
-        uint MaxOnline;
-        uint CurOnline;
-
-        uint CycleTime;
-        uint FPS;
-        uint LoopTime;
-        uint LoopCycles;
-        uint LoopMin;
-        uint LoopMax;
-        uint LagsCount;
-    } Statistics;
+        uint ServerStartTick {};
+        uint Uptime {};
+        int64 BytesSend {};
+        int64 BytesRecv {};
+        int64 DataReal {1};
+        int64 DataCompressed {1};
+        float CompressRatio {};
+        uint MaxOnline {};
+        uint CurOnline {};
+        uint CycleTime {};
+        uint FPS {};
+        uint LoopTime {};
+        uint LoopCycles {};
+        uint LoopMin {};
+        uint LoopMax {};
+        uint LagsCount {};
+    } Statistics {};
 
     string GetIngamePlayersStatistics();
 };

@@ -33,7 +33,6 @@
 
 #include "EntityManager.h"
 #include "CritterManager.h"
-#include "DataBase.h"
 #include "ItemManager.h"
 #include "Log.h"
 #include "MapManager.h"
@@ -41,9 +40,9 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-EntityManager::EntityManager(
-    MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys) :
-    mapMngr {map_mngr}, crMngr {cr_mngr}, itemMngr {item_mngr}, scriptSys {script_sys}
+EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr,
+    ServerScriptSystem& script_sys, DataBase* db_storage) :
+    mapMngr {map_mngr}, crMngr {cr_mngr}, itemMngr {item_mngr}, scriptSys {script_sys}, dbStorage {db_storage}
 {
 }
 
@@ -93,15 +92,15 @@ void EntityManager::RegisterEntity(Entity* entity)
         doc["_Proto"] = entity->Proto ? entity->Proto->GetName() : "";
 
         if (entity->Type == EntityType::Location)
-            DbStorage->Insert("Locations", id, doc);
+            dbStorage->Insert("Locations", id, doc);
         else if (entity->Type == EntityType::Map)
-            DbStorage->Insert("Maps", id, doc);
+            dbStorage->Insert("Maps", id, doc);
         else if (entity->Type == EntityType::Npc)
-            DbStorage->Insert("Critters", id, doc);
+            dbStorage->Insert("Critters", id, doc);
         else if (entity->Type == EntityType::Item)
-            DbStorage->Insert("Items", id, doc);
+            dbStorage->Insert("Items", id, doc);
         else if (entity->Type == EntityType::Custom)
-            DbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
+            dbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
         else
             throw UnreachablePlaceException(LINE_STR);*/
     }
@@ -119,15 +118,15 @@ void EntityManager::UnregisterEntity(Entity* entity)
     scriptSys.RemoveEntity(entity);
 
     if (entity->Type == EntityType::Location)
-        DbStorage->Delete("Locations", entity->Id);
+        dbStorage->Delete("Locations", entity->Id);
     else if (entity->Type == EntityType::Map)
-        DbStorage->Delete("Maps", entity->Id);
+        dbStorage->Delete("Maps", entity->Id);
     else if (entity->Type == EntityType::Npc)
-        DbStorage->Delete("Critters", entity->Id);
+        dbStorage->Delete("Critters", entity->Id);
     else if (entity->Type == EntityType::Item)
-        DbStorage->Delete("Items", entity->Id);
+        dbStorage->Delete("Items", entity->Id);
     else if (entity->Type == EntityType::Custom)
-        DbStorage->Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
+        dbStorage->Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
 
     entity->SetId(0);
 }
@@ -294,10 +293,10 @@ bool EntityManager::LoadEntities()
         else if (type == EntityType::Custom)
             collection_name = custom_types[custom_index] + "s";
 
-        UIntVec ids = DbStorage->GetAllIds(collection_name);
+        UIntVec ids = dbStorage->GetAllIds(collection_name);
         for (uint id : ids)
         {
-            DataBase::Document doc = DbStorage->Get(collection_name, id);
+            DataBase::Document doc = dbStorage->Get(collection_name, id);
             auto proto_it = doc.find("_Proto");
             RUNTIME_ASSERT(proto_it != doc.end());
             RUNTIME_ASSERT((proto_it->second.index() == DataBase::StringValue));

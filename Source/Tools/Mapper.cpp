@@ -38,34 +38,15 @@
 #include "Log.h"
 #include "MessageBox.h"
 #include "StringUtils.h"
-#include "Testing.h"
-#include "Timer.h"
 #include "Version_Include.h"
 #include "WinApi_Include.h"
 
 #include "sha1.h"
 #include "sha2.h"
 
-#define SCRIPT_ERROR_R(error, ...) \
-    do \
-    { \
-        ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
-        return; \
-    } while (0)
-#define SCRIPT_ERROR_R0(error, ...) \
-    do \
-    { \
-        ScriptSys.RaiseException(_str(error, ##__VA_ARGS__)); \
-        return 0; \
-    } while (0)
-
-FOMapper::IfaceAnim::IfaceAnim(AnyFrames* frm, AtlasType res_type) : Frames(frm), ResType(res_type)
-{
-    LastTick = Timer::FastTick();
-}
-
 FOMapper::FOMapper(GlobalSettings& sett) :
     Settings {sett},
+    GameTime(Settings),
     GeomHelper(Settings),
     IfaceIni(""),
     FileMngr(),
@@ -73,10 +54,10 @@ FOMapper::FOMapper(GlobalSettings& sett) :
     ScriptSys(this, sett, FileMngr),
     Cache("Data/Cache.fobin"),
     ProtoMngr(),
-    EffectMngr(Settings, FileMngr),
-    SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
+    EffectMngr(Settings, FileMngr, GameTime),
+    SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime),
     ResMngr(FileMngr, SprMngr, ScriptSys),
-    HexMngr(true, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
+    HexMngr(true, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys, GameTime),
     Keyb(Settings, SprMngr)
 {
     Animations.resize(10000);
@@ -381,7 +362,7 @@ uint FOMapper::AnimLoad(uint name_hash, AtlasType res_type)
     AnyFrames* anim = ResMngr.GetAnim(name_hash, res_type);
     if (!anim)
         return 0;
-    IfaceAnim* ianim = new IfaceAnim(anim, res_type);
+    IfaceAnim* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
     if (!ianim)
         return 0;
 
@@ -401,7 +382,7 @@ uint FOMapper::AnimLoad(const char* fname, AtlasType res_type)
     AnyFrames* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (!anim)
         return 0;
-    IfaceAnim* ianim = new IfaceAnim(anim, res_type);
+    IfaceAnim* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
     if (!ianim)
         return 0;
 
@@ -482,7 +463,7 @@ void FOMapper::AnimProcess()
 
         if (FLAG(anim->Flags, ANIMRUN_TO_END) || FLAG(anim->Flags, ANIMRUN_FROM_END))
         {
-            uint cur_tick = Timer::FastTick();
+            uint cur_tick = GameTime.FrameTick();
             if (cur_tick - anim->LastTick < anim->Frames->Ticks / anim->Frames->CntFrm)
                 continue;
 
@@ -1107,19 +1088,19 @@ void FOMapper::ParseMouse()
 
 void FOMapper::MainLoop()
 {
-    Timer::UpdateTick();
+    GameTime.FrameAdvance();
 
     // Fixed FPS
-    double start_loop = Timer::AccurateTick();
+    double start_loop = Timer::RealtimeTick();
 
     // FPS counter
-    static uint last_call = Timer::FastTick();
+    static uint last_call = GameTime.FrameTick();
     static uint call_counter = 0;
-    if ((Timer::FastTick() - last_call) >= 1000)
+    if ((GameTime.FrameTick() - last_call) >= 1000)
     {
         Settings.FPS = call_counter;
         call_counter = 0;
-        last_call = Timer::FastTick();
+        last_call = GameTime.FrameTick();
     }
     else
     {
@@ -1246,7 +1227,7 @@ void FOMapper::MainLoop()
         }
 
         // Texts on map
-        uint tick = Timer::FastTick();
+        uint tick = GameTime.FrameTick();
         for (auto it = GameMapTexts.begin(); it != GameMapTexts.end();)
         {
             MapText& t = (*it);
@@ -1290,7 +1271,7 @@ void FOMapper::MainLoop()
         if (Settings.FixedFPS > 0)
         {
             static double balance = 0.0;
-            double elapsed = Timer::AccurateTick() - start_loop;
+            double elapsed = Timer::RealtimeTick() - start_loop;
             double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
             if (need_elapsed > elapsed)
             {
@@ -1462,7 +1443,7 @@ uint FOMapper::GetProtoItemCurSprId(ProtoItem* proto_item)
 
     uint count = end - beg + 1;
     uint ticks = anim->Ticks / anim->CntFrm * count;
-    return anim->Ind[beg + ((Timer::GameTick() % ticks) * 100 / ticks) * count / 100];
+    return anim->Ind[beg + ((GameTime.FrameTick() % ticks) * 100 / ticks) * count / 100];
 }
 
 void FOMapper::IntDraw()
@@ -1602,7 +1583,8 @@ void FOMapper::IntDraw()
             {
                 AnyFrames* anim = ResMngr.GetInvAnim(proto_item->GetPicInv());
                 if (anim)
-                    SprMngr.DrawSpriteSize(anim->GetCurSprId(), x, y + h / 2, w, h / 2, false, true, col);
+                    SprMngr.DrawSpriteSize(
+                        anim->GetCurSprId(GameTime.GameTick()), x, y + h / 2, w, h / 2, false, true, col);
             }
 
             SprMngr.DrawStr(Rect(x, y + h - 15, x + w, y + h), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE);
@@ -1636,7 +1618,7 @@ void FOMapper::IntDraw()
                 anim = ResMngr.ItemHexDefaultAnim;
 
             uint col = (i == (int)GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE);
-            SprMngr.DrawSpriteSize(anim->GetCurSprId(), x, y, w, h / 2, false, true, col);
+            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h / 2, false, true, col);
 
             string& name = (*CurTileNames)[i];
             size_t pos = name.find_last_of('/');
@@ -1704,7 +1686,7 @@ void FOMapper::IntDraw()
             if (child == InContItem)
                 col = COLOR_IFACE_RED;
 
-            SprMngr.DrawSpriteSize(anim->GetCurSprId(), x, y, w, h, false, true, col);
+            SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h, false, true, col);
 
             SprMngr.DrawStr(
                 Rect(x, y + h - 15, x + w, y + h), _str("x{}", child->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE);
@@ -1817,14 +1799,15 @@ void FOMapper::ObjDraw()
         AnyFrames* anim = ResMngr.GetItemAnim(item->GetPicMap());
         if (!anim)
             anim = ResMngr.ItemHexDefaultAnim;
-        SprMngr.DrawSpriteSize(anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true);
+        SprMngr.DrawSpriteSize(
+            anim->GetCurSprId(GameTime.GameTick()), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true);
 
         if (item->GetPicInv())
         {
             AnyFrames* anim = ResMngr.GetInvAnim(item->GetPicInv());
             if (anim)
-                SprMngr.DrawSpriteSize(
-                    anim->GetCurSprId(), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true);
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x + w - ProtoWidth, y + ProtoWidth,
+                    ProtoWidth, ProtoWidth, false, true);
         }
     }
 
@@ -3571,7 +3554,7 @@ void FOMapper::CurDraw()
         AnyFrames* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
         if (anim)
         {
-            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId());
+            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si)
                 SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
         }
@@ -3608,7 +3591,7 @@ void FOMapper::CurDraw()
             if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy))
                 break;
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId());
+            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si)
             {
                 hx -= hx % Settings.MapTileStep;
@@ -3733,12 +3716,13 @@ bool FOMapper::IsCurInRectNoTransp(uint spr_id, Rect& rect, int ax, int ay)
 
 bool FOMapper::IsCurInInterface()
 {
-    if (IntVisible && SubTabsActive && IsCurInRectNoTransp(SubTabsPic->GetCurSprId(), SubTabsRect, SubTabsX, SubTabsY))
+    if (IntVisible && SubTabsActive &&
+        IsCurInRectNoTransp(SubTabsPic->GetCurSprId(GameTime.GameTick()), SubTabsRect, SubTabsX, SubTabsY))
         return true;
-    if (IntVisible && IsCurInRectNoTransp(IntMainPic->GetCurSprId(), IntWMain, IntX, IntY))
+    if (IntVisible && IsCurInRectNoTransp(IntMainPic->GetCurSprId(GameTime.GameTick()), IntWMain, IntX, IntY))
         return true;
     if (ObjVisible && !SelectedEntities.empty() &&
-        IsCurInRectNoTransp(ObjWMainPic->GetCurSprId(), ObjWMain, ObjX, ObjY))
+        IsCurInRectNoTransp(ObjWMainPic->GetCurSprId(GameTime.GameTick()), ObjWMain, ObjX, ObjY))
         return true;
     return false;
 }
@@ -3759,7 +3743,7 @@ void FOMapper::ConsoleDraw()
     if (ConsoleEdit)
     {
         string buf = ConsoleStr;
-        buf.insert(ConsoleCur, Timer::FastTick() % 800 < 400 ? "!" : ".");
+        buf.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
         SprMngr.DrawStr(Rect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY,
                             Settings.ScreenWidth, Settings.ScreenHeight),
             buf, FT_NOBREAK);
@@ -3845,7 +3829,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
         Keyb.GetChar(dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS);
         ConsoleLastKey = dik;
         ConsoleLastKeyText = dik_text;
-        ConsoleKeyTick = Timer::FastTick();
+        ConsoleKeyTick = GameTime.FrameTick();
         ConsoleAccelerate = 1;
         return;
     }
@@ -3862,9 +3846,9 @@ void FOMapper::ConsoleProcess()
     if (ConsoleLastKey == KeyCode::DIK_NONE)
         return;
 
-    if ((int)(Timer::FastTick() - ConsoleKeyTick) >= CONSOLE_KEY_TICK - ConsoleAccelerate)
+    if ((int)(GameTime.FrameTick() - ConsoleKeyTick) >= CONSOLE_KEY_TICK - ConsoleAccelerate)
     {
-        ConsoleKeyTick = Timer::FastTick();
+        ConsoleKeyTick = GameTime.FrameTick();
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
         Keyb.GetChar(
             ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS);

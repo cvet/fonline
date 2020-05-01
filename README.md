@@ -40,7 +40,7 @@
 * Singleplayer mode *(work without distinguish between server and client sides)*
 * Supporting of hexagonal and square map tiling
 * Perendered sprites for environment but with possibility of using 3D models for characters
-* Engine core written in C++17
+* Engine core written in C++ (favored C++17 standard)
 * Flexible scripting system with varies supporting languages:
   + Mono C# (modern and safe scripting)
   + Native C++ (for performance critical places)
@@ -58,8 +58,8 @@
   + Fallout 1/2
   + Fallout Tactics
   + Arcanum
-  + 3D characters in modern graphic formats
-  + and more...
+  + 3D characters in modern graphic formats (FBX)
+  + And common graphics formats like PNG or TGA
 
 Important note: *Not all from described above features are already implemented, for additional information look at 'Work in progress' section below*.
 
@@ -222,19 +222,21 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 
 ### Roadmap
 
-First release version:
+**First release version:**
 
-* Rework scripting system *(Native C++, AngelScript and C#/Mono scripting layers)*
+* Rework scripting system *(improve Native C++, AngelScript and C#/Mono scripting layers)*
 * Improve DirectX rendering with Universal Windows Platform
 * Major part of code refactoring *(look at separate section below)*
-* Improve Singleplayer mode
+* Improve Singleplayer mode (not stable but stable from architectural point of view)
+* Multiplayer mode stabilization
 * Documentation
 * API freezing and continuing development with it's backward compatibility
 
-Futher releases:
+**Futher releases:**
 
 * Finish with code refactoring *(see below)*
 * Particle system
+* Singleplayer mode stabilization
 * Tasks related to Visual Studio Code extension *(see separate section below)*
 * Improve supporting of PlayStation
 * Improve Metal rendering for macOS/iOS
@@ -342,11 +344,11 @@ Futher releases:
 * BakerApp: add dialogs verification during baking
 * ClientApp: fix script system
 * MapperApp: fix script system
+* ServerApp: fix data racing
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
 * 3dStuff: fix AtlasType referencing in 3dStuff
-* Client: remove all memory allocations from client loop
 * Client: handle mouse wheel
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!
@@ -391,13 +393,13 @@ Futher releases:
 * ScriptSystem: rework FONLINE_
 * Settings: exclude server specific settings from client
 * Settings: remove VAR_SETTING must stay only constant values
+* Settings_Include: rework global Quit setting
 * StringUtils: restore hash parsing
 * Testing: restore stack trace dumping in file
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: review RUNTIME_ASSERT(( <- double braces
 * Testing: send client dumps to server
-* Timer: timers to std::chrono
 * WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
 * MonoScripting: get Mono domain user data
@@ -426,9 +428,8 @@ Futher releases:
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
-* Server: restore settings (2)
-* Server: replace return code to exception during initialization
 * Server: restore hashes loading
+* Server: restore settings (2)
 * Server: clients logging may be not thread safe
 * Server: disable look distance caching
 * Server: remove from game (2)

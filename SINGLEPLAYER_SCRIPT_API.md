@@ -82,7 +82,8 @@ You can easily contribute to this API using provided by engine functionality.
 * void RadioMessage(uint16 channel, string text)
 * void RadioMessageMsg(uint16 channel, uint16 textMsg, uint numStr)
 * void RadioMessageMsgLex(uint16 channel, uint16 textMsg, uint numStr, string lexems)
-* uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
+* uint GetFullSecond()
+* uint EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 * void GetGameTime(uint fullSecond, ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second)
 * Location CreateLocation(hash locPid, uint16 wx, uint16 wy, Critter[] critters)
 * void DeleteLocation(Location loc)
@@ -195,7 +196,6 @@ You can easily contribute to this API using provided by engine functionality.
 
 ## Global properties
 
-* const uint16 YearStart
 * const uint16 Year
 * const uint16 Month
 * const uint16 Day
@@ -729,9 +729,7 @@ You can easily contribute to this API using provided by engine functionality.
 * int Brightness
 * uint FPS
 * int FixedFPS
-* uint FullSecondStart
-* uint FullSecond
-* uint GameTimeTick
+* int StartYear
 * string ASServer
 * string ASClient
 * string ASMapper
@@ -810,6 +808,7 @@ You can easily contribute to this API using provided by engine functionality.
 * string DbHistory
 * bool NoStart
 * int GameSleep
+
 ## Enums
 
 ### MessageBoxTextType

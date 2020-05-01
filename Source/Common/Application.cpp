@@ -1755,10 +1755,10 @@ version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", fil
 
     GL(effect_pass.Time = glGetUniformLocation(program, "Time"));
     effect_pass.TimeCurrent = 0.0f;
-    effect_pass.TimeLastTick = Timer::AccurateTick();
+    effect_pass.TimeLastTick = Timer::RealtimeTick();
     GL(effect_pass.TimeGame = glGetUniformLocation(program, "TimeGame"));
     effect_pass.TimeGameCurrent = 0.0f;
-    effect_pass.TimeGameLastTick = Timer::AccurateTick();
+    effect_pass.TimeGameLastTick = Timer::RealtimeTick();
     effect_pass.IsTime = (effect_pass.Time != -1 || effect_pass.TimeGame != -1);
     GL(effect_pass.Random1 = glGetUniformLocation(program, "Random1Effect"));
     GL(effect_pass.Random2 = glGetUniformLocation(program, "Random2Effect"));

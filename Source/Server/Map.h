@@ -40,6 +40,7 @@
 #include "MapLoader.h"
 #include "ServerScripting.h"
 #include "Settings.h"
+#include "Timer.h"
 
 #define FO_API_MAP_HEADER
 #include "ScriptApi.h"
@@ -84,7 +85,7 @@ class Map : public Entity
 
 public:
     Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
-        ServerScriptSystem& script_sys);
+        ServerScriptSystem& script_sys, GameTimer& game_time);
     ~Map();
     StaticMap* GetStaticMap() { return staticMap; }
 
@@ -182,6 +183,7 @@ private:
     MapSettings& settings;
     GeometryHelper geomHelper;
     ServerScriptSystem& scriptSys;
+    GameTimer& gameTime;
     StaticMap* staticMap {};
     uchar* hexFlags {};
     int hexFlagsSize {};

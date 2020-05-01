@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Critter.h"
+#include "DataBase.h"
 #include "Entity.h"
 #include "Item.h"
 #include "Location.h"
@@ -46,11 +47,11 @@ class MapManager;
 class CritterManager;
 class ItemManager;
 
-class EntityManager
+class EntityManager : public NonMovable
 {
 public:
-    EntityManager(
-        MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys);
+    EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys,
+        DataBase* db_storage);
 
     void RegisterEntity(Entity* entity);
     void UnregisterEntity(Entity* entity);
@@ -80,6 +81,7 @@ private:
     CritterManager& crMngr;
     ItemManager& itemMngr;
     ServerScriptSystem& scriptSys;
+    DataBase* dbStorage {};
     EntityMap allEntities {};
     uint entitiesCount[(int)EntityType::Max] {};
 };

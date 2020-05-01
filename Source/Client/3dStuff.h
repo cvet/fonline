@@ -42,6 +42,7 @@
 #include "FileSystem.h"
 #include "GeometryHelper.h"
 #include "Settings.h"
+#include "Timer.h"
 
 #define ANIMATION_STAY (0x01)
 #define ANIMATION_ONE_TIME (0x02)
@@ -162,7 +163,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     Animation3dManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
-        ClientScriptSystem& script_sys, MeshTextureCreator mesh_tex_creator);
+        ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator);
     AnimSet* LoadAnimation(const string& anim_fname, const string& anim_name);
     MeshTexture* LoadTexture(const string& texture_name, const string& model_path);
     void DestroyTextures();
@@ -184,6 +185,7 @@ private:
     FileManager& fileMngr;
     EffectManager& effectMngr;
     ClientScriptSystem& scriptSys;
+    GameTimer& gameTime;
     MeshTextureCreator meshTexCreator {};
     set<hash> processedFiles {};
     vector<unique_ptr<Bone, std::function<void(Bone*)>>> loadedModels {};

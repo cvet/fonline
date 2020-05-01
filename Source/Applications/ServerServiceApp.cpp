@@ -54,7 +54,8 @@ static void SetFOServiceStatus(uint state);
 static void ServerEntry()
 {
     Server = new FOServer(Settings);
-    Server->Run();
+    while (!Settings.Quit)
+        Server->MainLoop();
     FOServer* server = Server;
     Server = nullptr;
     delete server;
@@ -186,10 +187,10 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
     SetFOServiceStatus(SERVICE_START_PENDING);
 
     ServerThread = std::thread(ServerEntry);
-    while (!Server || !Server->Started() || !Server->Stopped())
+    while (!Server || !Server->Started)
         std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
-    if (Server->Started())
+    if (Server->Started)
         SetFOServiceStatus(SERVICE_RUNNING);
     else
         SetFOServiceStatus(SERVICE_STOPPED);

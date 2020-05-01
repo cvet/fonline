@@ -159,10 +159,10 @@ bool SoundManager::ProcessSound(Sound* sound, uchar* output)
         if (!sound->NextPlay)
         {
             // Set next playing time
-            sound->NextPlay = Timer::GameTick() + (sound->RepeatTime > 1 ? sound->RepeatTime : 0);
+            sound->NextPlay = (uint)Timer::RealtimeTick() + (sound->RepeatTime > 1 ? sound->RepeatTime : 0);
         }
 
-        if (Timer::GameTick() >= sound->NextPlay)
+        if ((uint)Timer::RealtimeTick() >= sound->NextPlay)
         {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;

@@ -43,7 +43,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 
 #define FO_API_MAP_IMPL
 #include "ScriptApi.h"
@@ -53,13 +52,14 @@ PROPERTIES_IMPL(Map, "Map", true);
 #include "ScriptApi.h"
 
 Map::Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
-    ServerScriptSystem& script_sys) :
+    ServerScriptSystem& script_sys, GameTimer& game_time) :
     Entity(id, EntityType::Map, PropertiesRegistrator, proto),
     mapLocation {location},
     staticMap {static_map},
     settings {sett},
     geomHelper(settings),
-    scriptSys {script_sys}
+    scriptSys {script_sys},
+    gameTime {game_time}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(staticMap);
@@ -76,7 +76,7 @@ Map::~Map()
 
 void Map::Process()
 {
-    uint tick = Timer::GameTick();
+    uint tick = gameTime.GameTick();
     ProcessLoop(0, GetLoopTime1(), tick);
     ProcessLoop(1, GetLoopTime2(), tick);
     ProcessLoop(2, GetLoopTime3(), tick);

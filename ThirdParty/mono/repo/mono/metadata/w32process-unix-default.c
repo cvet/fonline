@@ -234,7 +234,7 @@ mono_w32process_get_modules (pid_t pid)
 			continue;
 		}
 
-		device = makedev ((int)maj_dev, (int)min_dev);
+		device = 0; //! makedev ((int)maj_dev, (int)min_dev);
 		if ((device == 0) && (inode == 0)) {
 			continue;
 		}

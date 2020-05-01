@@ -228,6 +228,12 @@ static void AdminManager(FOServer* server, ushort port)
 
 static void AdminWork(FOServer* server, Session* session)
 {
+    EventUnsubscriber* event_unsubscriber = new EventUnsubscriber();
+    *event_unsubscriber += server->OnWillFinish += [&server, &event_unsubscriber]() {
+        server = nullptr;
+        event_unsubscriber->Unsubscribe();
+    };
+
     // Data
     string admin_name = "Not authorized";
 
@@ -241,7 +247,7 @@ static void AdminWork(FOServer* server, Session* session)
     }
 
     // Commands loop
-    while (true)
+    while (server)
     {
         // Get command
         char cmd_raw[MAX_FOTEXT];
@@ -321,34 +327,26 @@ static void AdminWork(FOServer* server, Session* session)
         }
         else if (cmd == "stop")
         {
-            if (server && server->Starting())
+            if (!server->Started)
+            {
                 ADMIN_LOG("Server starting, wait.\n");
-            else if (server && server->Stopped())
-                ADMIN_LOG("Server already stopped.\n");
-            else if (server && server->Stopping())
-                ADMIN_LOG("Server already stopping.\n");
+            }
             else
             {
                 ADMIN_LOG("Stopping server.\n");
-                server->Stop();
+                delete server;
             }
         }
         else if (cmd == "state")
         {
-            if (server && server->Starting())
+            if (!server->Started)
                 ADMIN_LOG("Server starting.\n");
-            else if (server && server->Started())
-                ADMIN_LOG("Server started.\n");
-            else if (server && server->Stopping())
-                ADMIN_LOG("Server stopping.\n");
-            else if (server && server->Stopped())
-                ADMIN_LOG("Server stopped.\n");
             else
-                ADMIN_LOG("Unknown state.\n");
+                ADMIN_LOG("Server working.\n");
         }
         else if (!cmd.empty() && cmd[0] == '~')
         {
-            if (server && server->Started())
+            if (server->Started)
             {
                 bool send_fail = false;
                 LogFunc func = [&admin_name, &session, &send_fail](const string& str) {

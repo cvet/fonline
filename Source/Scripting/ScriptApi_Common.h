@@ -259,7 +259,7 @@ FO_API_GLOBAL_COMMON_FUNC(GetTick, FO_API_RET(uint))
 #ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(Timer::FastTick());
+    FO_API_RETURN(_common->GameTime.FrameTick());
 }
 FO_API_EPILOG(0)
 #endif

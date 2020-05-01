@@ -31,13 +31,10 @@
 // SOFTWARE.
 //
 
-// Todo: timers to std::chrono
-
 #pragma once
 
 #include "Common.h"
 
-#include "Entity.h"
 #include "Settings.h"
 
 struct DateTimeStamp
@@ -52,36 +49,40 @@ struct DateTimeStamp
     ushort Milliseconds; // 0 .. 999
 };
 
-class GameTimer : public NonCopyable
+class GameTimer : public NonMovable
 {
 public:
-    GameTimer(TimerSettings& sett, GlobalVars* glob);
-    void Reset();
-    uint GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
+    GameTimer(TimerSettings& sett);
+    void Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier);
+    bool FrameAdvance();
+    uint FrameTick();
+    uint GameTick();
+    uint GetFullSecond();
+    uint EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second);
     DateTimeStamp GetGameTime(uint full_second);
     uint GameTimeMonthDay(ushort year, ushort month);
-    bool ProcessGameTime();
-
-private:
-    TimerSettings& settings;
-    GlobalVars* globals {};
-    uint64 yearStartFullTime {};
-};
-
-namespace Timer
-{
-    void UpdateTick();
-
-    uint FastTick();
-    double AccurateTick();
-
-    uint GameTick();
     void SetGamePause(bool pause);
     bool IsGamePaused();
 
-    void GetCurrentDateTime(DateTimeStamp& dt);
-    void DateTimeToFullTime(const DateTimeStamp& dt, uint64& ft);
-    void FullTimeToDateTime(uint64 ft, DateTimeStamp& dt);
-    int GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2);
-    void ContinueTime(DateTimeStamp& dt, int seconds);
+private:
+    TimerSettings& settings;
+    uint timerTick {};
+    uint64 yearStartFullTime {};
+    int gameTimeMultiplier {};
+    bool isPaused {};
+    uint gameTickBase {};
+    uint gameTickFast {};
+    uint fullSecondBase {};
+    uint fullSecond {};
+};
+
+class Timer : public StaticClass
+{
+public:
+    static double RealtimeTick();
+    static void GetCurrentDateTime(DateTimeStamp& dt);
+    static void DateTimeToFullTime(const DateTimeStamp& dt, uint64& ft);
+    static void FullTimeToDateTime(uint64 ft, DateTimeStamp& dt);
+    static int GetTimeDifference(const DateTimeStamp& dt1, const DateTimeStamp& dt2);
+    static void ContinueTime(DateTimeStamp& dt, int seconds);
 };

@@ -1000,7 +1000,7 @@ bool ScriptSystem::RunPrepared()
     RUNTIME_ASSERT(currentCtx);
     asIScriptContext* ctx = currentCtx;
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
-    uint tick = Timer::FastTick();
+    uint tick = Timer::FrameTick();
     currentCtx = nullptr;
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
@@ -1008,7 +1008,7 @@ bool ScriptSystem::RunPrepared()
     int result = ctx->Execute();
 
 #ifdef SCRIPT_WATCHER
-    uint delta = Timer::FastTick() - tick;
+    uint delta = Timer::FrameTick() - tick;
 #endif
 
     asEContextState state = ctx->GetState();
@@ -1052,7 +1052,7 @@ void ScriptSystem::RunPreparedSuspend()
 
     asIScriptContext* ctx = currentCtx;
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
-    uint tick = Timer::FastTick();
+    uint tick = Timer::FrameTick();
     currentCtx = nullptr;
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
@@ -1068,7 +1068,7 @@ asIScriptContext* ScriptSystem::SuspendCurrentContext(uint time)
 
     ctx->Suspend();
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
-    ctx_data->SuspendEndTick = (time != uint(-1) ? (time ? Timer::FastTick() + time : 0) : uint(-1));
+    ctx_data->SuspendEndTick = (time != uint(-1) ? (time ? Timer::FrameTick() + time : 0) : uint(-1));
     return ctx;
 }
 
@@ -1077,7 +1077,7 @@ void ScriptSystem::ResumeContext(asIScriptContext* ctx)
     RUNTIME_ASSERT(ctx->GetState() == asEXECUTION_SUSPENDED);
     ContextData* ctx_data = (ContextData*)ctx->GetUserData();
     RUNTIME_ASSERT(ctx_data->SuspendEndTick == uint(-1));
-    ctx_data->SuspendEndTick = Timer::FastTick();
+    ctx_data->SuspendEndTick = Timer::FrameTick();
 }
 
 void ScriptSystem::RunSuspended()
@@ -1087,7 +1087,7 @@ void ScriptSystem::RunSuspended()
 
     // Collect contexts to resume
     ContextVec resume_contexts;
-    uint tick = Timer::FastTick();
+    uint tick = Timer::FrameTick();
     for (auto it = busyContexts.begin(), end = busyContexts.end(); it != end; ++it)
     {
         asIScriptContext* ctx = *it;

@@ -44,17 +44,18 @@
 #include "Map.h"
 #include "ServerScripting.h"
 #include "Settings.h"
+#include "Timer.h"
 
 class ProtoManager;
 class EntityManager;
 class MapManager;
 class ItemManager;
 
-class CritterManager
+class CritterManager : public NonMovable
 {
 public:
     CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
-        ItemManager& item_mngr, ServerScriptSystem& script_sys);
+        ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
 
     Npc* CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy);
     bool RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc);
@@ -90,4 +91,5 @@ private:
     MapManager& mapMngr;
     ItemManager& itemMngr;
     ServerScriptSystem& scriptSys;
+    GameTimer& gameTime;
 };

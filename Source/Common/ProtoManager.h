@@ -40,7 +40,7 @@
 
 DECLARE_EXCEPTION(ProtoManagerException);
 
-class ProtoManager : public NonCopyable
+class ProtoManager : public NonMovable
 {
 public:
     void LoadProtosFromFiles(FileManager& file_mngr);

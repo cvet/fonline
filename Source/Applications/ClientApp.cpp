@@ -153,7 +153,7 @@ static int main_disabled(int argc, char** argv)
 #else
     while (!Settings.Quit)
     {
-        double start_loop = Timer::AccurateTick();
+        double start_loop = Timer::RealtimeTick();
 
         ClientEntry(nullptr);
 
@@ -162,7 +162,7 @@ static int main_disabled(int argc, char** argv)
             if (Settings.FixedFPS > 0)
             {
                 static double balance = 0.0;
-                double elapsed = Timer::AccurateTick() - start_loop;
+                double elapsed = Timer::RealtimeTick() - start_loop;
                 double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
                 if (need_elapsed > elapsed)
                 {

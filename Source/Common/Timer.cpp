@@ -32,7 +32,6 @@
 //
 
 #include "Timer.h"
-#include "Entity.h"
 #include "WinApi_Include.h"
 
 #ifdef FO_WINDOWS
@@ -41,15 +40,10 @@
 #include <sys/time.h>
 #endif
 
-static double InitialAccurateTick = 0;
-static uint TimerTick = 0;
-static uint LastGameTick = 0;
-static uint SkipGameTick = 0;
-static bool GameTickPaused = false;
-
+static double InitialRealtimeTick;
 #ifdef FO_WINDOWS
-static int64 QPCStartValue = 0;
-static int64 QPCFrequency = 0;
+static int64 QPCStartValue;
+static int64 QPCFrequency;
 #endif
 
 class TimerInit
@@ -62,61 +56,24 @@ public:
         QueryPerformanceFrequency((LARGE_INTEGER*)&QPCFrequency);
 #endif
 
-        InitialAccurateTick = Timer::AccurateTick();
-        Timer::UpdateTick();
-        LastGameTick = Timer::FastTick();
-        SkipGameTick = LastGameTick;
-        GameTickPaused = false;
+        InitialRealtimeTick = Timer::RealtimeTick();
     }
 };
 static TimerInit CrtTimerInit;
 
-void Timer::UpdateTick()
-{
-    TimerTick = (uint)AccurateTick();
-}
-
-uint Timer::FastTick()
-{
-    return TimerTick;
-}
-
-double Timer::AccurateTick()
+double Timer::RealtimeTick()
 {
 #if defined(FO_WINDOWS)
     int64 qpc_value;
     QueryPerformanceCounter((LARGE_INTEGER*)&qpc_value);
-    return (double)((double)(qpc_value - QPCStartValue) / (double)QPCFrequency * 1000.0) - InitialAccurateTick;
+    return (double)((double)(qpc_value - QPCStartValue) / (double)QPCFrequency * 1000.0) - InitialRealtimeTick;
 #elif defined(FO_WEB)
     return emscripten_get_now();
 #else
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    return (double)(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0 - InitialAccurateTick;
+    return (double)(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0 - InitialRealtimeTick;
 #endif
-}
-
-uint Timer::GameTick()
-{
-    if (GameTickPaused)
-        return LastGameTick - SkipGameTick;
-    return FastTick() - SkipGameTick;
-}
-
-void Timer::SetGamePause(bool pause)
-{
-    if (GameTickPaused == pause)
-        return;
-    if (pause)
-        LastGameTick = FastTick();
-    else
-        SkipGameTick += FastTick() - LastGameTick;
-    GameTickPaused = pause;
-}
-
-bool Timer::IsGamePaused()
-{
-    return GameTickPaused;
 }
 
 void Timer::GetCurrentDateTime(DateTimeStamp& dt)
@@ -239,22 +196,56 @@ void Timer::ContinueTime(DateTimeStamp& td, int seconds)
     FullTimeToDateTime(ft, td);
 }
 
-GameTimer::GameTimer(TimerSettings& sett, GlobalVars* glob) : settings {sett}, globals {glob}
+GameTimer::GameTimer(TimerSettings& sett) : settings {sett}
 {
-    Reset();
+    Reset(settings.StartYear, 1, 1, 0, 0, 0, 0);
 }
 
-void GameTimer::Reset()
+void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)
 {
-    DateTimeStamp dt = {globals->GetYearStart(), 1, 0, 1, 0, 0, 0, 0};
+    isPaused = false;
+    gameTimeMultiplier = multiplier;
+    gameTickBase = gameTickFast = FrameTick();
+    DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     Timer::DateTimeToFullTime(dt, yearStartFullTime);
-    settings.FullSecond = GetFullSecond(globals->GetYear(), globals->GetMonth(), globals->GetDay(), globals->GetHour(),
-        globals->GetMinute(), globals->GetSecond());
-    settings.FullSecondStart = settings.FullSecond;
-    settings.GameTimeTick = Timer::GameTick();
+    fullSecond = fullSecondBase = EvaluateFullSecond(year, month, day, hour, minute, second);
 }
 
-uint GameTimer::GetFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+bool GameTimer::FrameAdvance()
+{
+    timerTick = (uint)Timer::RealtimeTick();
+
+    if (!isPaused)
+    {
+        uint dt = GameTick() - gameTickBase;
+        uint fs = fullSecondBase + (dt / 1000 * gameTimeMultiplier + dt % 1000 * gameTimeMultiplier / 1000);
+        if (fullSecond != fs)
+        {
+            fullSecond = fs;
+            return true;
+        }
+    }
+    return false;
+}
+
+uint GameTimer::FrameTick()
+{
+    return timerTick;
+}
+
+uint GameTimer::GameTick()
+{
+    if (isPaused)
+        return gameTickBase;
+    return gameTickBase + (FrameTick() - gameTickFast);
+}
+
+uint GameTimer::GetFullSecond()
+{
+    return fullSecond;
+}
+
+uint GameTimer::EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
     DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     uint64 ft = 0;
@@ -293,23 +284,17 @@ uint GameTimer::GameTimeMonthDay(ushort year, ushort month)
     return 0;
 }
 
-bool GameTimer::ProcessGameTime()
+void GameTimer::SetGamePause(bool pause)
 {
-    uint tick = Timer::GameTick();
-    uint dt = tick - settings.GameTimeTick;
-    uint delta_second = dt / 1000 * globals->GetTimeMultiplier() + dt % 1000 * globals->GetTimeMultiplier() / 1000;
-    uint fs = settings.FullSecondStart + delta_second;
-    if (settings.FullSecond != fs)
-    {
-        settings.FullSecond = fs;
-        DateTimeStamp st = GetGameTime(settings.FullSecond);
-        globals->SetYear(st.Year);
-        globals->SetMonth(st.Month);
-        globals->SetDay(st.Day);
-        globals->SetHour(st.Hour);
-        globals->SetMinute(st.Minute);
-        globals->SetSecond(st.Second);
-        return true;
-    }
-    return false;
+    if (isPaused == pause)
+        return;
+
+    gameTickBase = GameTick();
+    gameTickFast = FrameTick();
+    isPaused = pause;
+}
+
+bool GameTimer::IsGamePaused()
+{
+    return isPaused;
 }

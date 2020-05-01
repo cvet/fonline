@@ -36,10 +36,10 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 #include "Version_Include.h"
 
-EffectManager::EffectManager(EffectSettings& sett, FileManager& file_mngr) : settings {sett}, fileMngr {file_mngr}
+EffectManager::EffectManager(EffectSettings& sett, FileManager& file_mngr, GameTimer& game_time) :
+    settings {sett}, fileMngr {file_mngr}, gameTime {game_time}
 {
     eventUnsubscriber += App::OnFrameBegin += [this]() {
         for (auto& effect : loadedEffects)
@@ -85,8 +85,8 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect)
 {
     if (effect->TimeBuf)
     {
-        effect->TimeBuf->GameTime = (float)Timer::GameTick();
-        effect->TimeBuf->RealTime = (float)Timer::FastTick();
+        effect->TimeBuf->GameTime = (float)gameTime.GameTick();
+        effect->TimeBuf->RealTime = (float)gameTime.FrameTick();
     }
 
     if (effect->RandomValueBuf)

@@ -36,7 +36,6 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 
 constexpr int SPRITES_BUFFER_SIZE = 10000;
 constexpr int ATLAS_SPRITES_PADDING = 1;
@@ -94,14 +93,14 @@ short AnyFrames::GetNextY(uint num_frm)
     return NextY[num_frm % CntFrm];
 }
 
-uint AnyFrames::GetCurSprId()
+uint AnyFrames::GetCurSprId(uint tick)
 {
-    return CntFrm > 1 ? Ind[((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100] : Ind[0];
+    return CntFrm > 1 ? Ind[((tick % Ticks) * 100 / Ticks) * CntFrm / 100] : Ind[0];
 }
 
-uint AnyFrames::GetCurSprIndex()
+uint AnyFrames::GetCurSprIndex(uint tick)
 {
-    return CntFrm > 1 ? ((Timer::GameTick() % Ticks) * 100 / Ticks) * CntFrm / 100 : 0;
+    return CntFrm > 1 ? ((tick % Ticks) * 100 / Ticks) * CntFrm / 100 : 0;
 }
 
 AnyFrames* AnyFrames::GetDir(int dir)
@@ -109,9 +108,9 @@ AnyFrames* AnyFrames::GetDir(int dir)
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(
-    RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys) :
-    settings {sett}, fileMngr {file_mngr}, effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
+    ClientScriptSystem& script_sys, GameTimer& game_time) :
+    settings {sett}, fileMngr {file_mngr}, effectMngr {effect_mngr}, gameTime {game_time}
 {
     baseColor = COLOR_RGBA(255, 128, 128, 128);
     drawQuadCount = 1024;
@@ -138,7 +137,7 @@ SpriteManager::SpriteManager(
     if (settings.Enable3dRendering)
     {
         anim3dMngr = std::make_unique<Animation3dManager>(
-            settings, fileMngr, effectMngr, script_sys, [this](MeshTexture* mesh_tex) {
+            settings, fileMngr, effectMngr, script_sys, gameTime, [this](MeshTexture* mesh_tex) {
                 PushAtlasType(AtlasType::MeshTextures);
                 AnyFrames* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name);
                 PopAtlasType();
@@ -1229,7 +1228,7 @@ bool SpriteManager::DrawSprite(uint id, int x, int y, uint color)
 bool SpriteManager::DrawSprite(AnyFrames* frames, int x, int y, uint color)
 {
     if (frames && frames != DummyAnimation)
-        return DrawSprite(frames->GetCurSprId(), x, y, color);
+        return DrawSprite(frames->GetCurSprId(gameTime.GameTick()), x, y, color);
     return false;
 }
 
@@ -1241,7 +1240,7 @@ bool SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoo
 bool SpriteManager::DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
 {
     if (frames && frames != DummyAnimation)
-        return DrawSpriteSize(frames->GetCurSprId(), x, y, w, h, zoom_up, center, color);
+        return DrawSpriteSize(frames->GetCurSprId(gameTime.GameTick()), x, y, w, h, zoom_up, center, color);
     return false;
 }
 
@@ -1556,7 +1555,7 @@ bool SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         use_egg = false;
     int ex = eggX + settings.ScrOx;
     int ey = eggY + settings.ScrOy;
-    uint cur_tick = Timer::FastTick();
+    uint cur_tick = gameTime.FrameTick();
 
     for (Sprite* spr = dtree.RootSprite(); spr; spr = spr->ChainChild)
     {

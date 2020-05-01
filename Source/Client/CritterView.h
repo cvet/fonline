@@ -46,6 +46,7 @@
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
+#include "Timer.h"
 
 #define FO_API_CRITTER_VIEW_HEADER
 #include "ScriptApi.h"
@@ -60,7 +61,8 @@ class CritterView : public Entity
 {
 public:
     CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, bool mapper_mode);
+        ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_timer,
+        bool mapper_mode);
     ~CritterView();
     void Init();
     void Finish();
@@ -110,6 +112,7 @@ private:
     ResourceManager& resMngr;
     EffectManager& effectMngr;
     ClientScriptSystem& scriptSys;
+    GameTimer& gameTime;
     bool mapperMode {};
 
     // Items

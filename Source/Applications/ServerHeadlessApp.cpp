@@ -51,5 +51,7 @@ static int main_disabled(int argc, char** argv)
     Settings.ParseArgs(argc, argv);
 
     FOServer* server = new FOServer(Settings);
-    return server->Run();
+    while (Settings.Quit)
+        server->MainLoop();
+    return 0;
 }

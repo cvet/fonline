@@ -48,7 +48,7 @@ class EntityManager;
 class MapManager;
 class CritterManager;
 
-class ItemManager
+class ItemManager : public NonMovable
 {
 public:
     ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr,

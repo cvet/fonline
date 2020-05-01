@@ -46,6 +46,7 @@
 #include "FileSystem.h"
 #include "Settings.h"
 #include "Sprites.h"
+#include "Timer.h"
 
 #define ANY_FRAMES_POOL_SIZE (2000)
 #define MAX_STORED_PIXEL_PICKS (100)
@@ -193,8 +194,8 @@ struct AnyFrames : public NonCopyable
     uint GetSprId(uint num_frm);
     short GetNextX(uint num_frm);
     short GetNextY(uint num_frm);
-    uint GetCurSprId();
-    uint GetCurSprIndex();
+    uint GetCurSprId(uint tick);
+    uint GetCurSprIndex(uint tick);
     AnyFrames* GetDir(int dir);
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
@@ -234,8 +235,8 @@ using DipDataVec = vector<DipData>;
 class SpriteManager : public NonMovable
 {
 public:
-    SpriteManager(
-        RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys);
+    SpriteManager(RenderSettings& sett, FileManager& file_mngr, EffectManager& effect_mngr,
+        ClientScriptSystem& script_sys, GameTimer& game_time);
     ~SpriteManager();
 
     void GetWindowSize(int& w, int& h);
@@ -270,6 +271,7 @@ private:
     RenderSettings& settings;
     FileManager& fileMngr;
     EffectManager& effectMngr;
+    GameTimer& gameTime;
     unique_ptr<Animation3dManager> anim3dMngr {};
     Matrix projectionMatrixCM {};
     RenderTarget* rtMain {};

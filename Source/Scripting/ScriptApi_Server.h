@@ -3672,6 +3672,20 @@ FO_API_EPILOG()
 /*******************************************************************************
  * ...
  *
+ * @return ...
+ ******************************************************************************/
+FO_API_GLOBAL_SERVER_FUNC(GetFullSecond, FO_API_RET(uint))
+#ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
+FO_API_PROLOG()
+{
+    FO_API_RETURN(_server->GameTime.GetFullSecond());
+}
+FO_API_EPILOG(0)
+#endif
+
+/*******************************************************************************
+ * ...
+ *
  * @param year ...
  * @param month ...
  * @param day ...
@@ -3680,36 +3694,44 @@ FO_API_EPILOG()
  * @param second ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
+FO_API_GLOBAL_SERVER_FUNC(EvaluateFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
     FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month) FO_API_ARG_MARSHAL(ushort, day)
         FO_API_ARG_MARSHAL(ushort, hour) FO_API_ARG_MARSHAL(ushort, minute) FO_API_ARG_MARSHAL(ushort, second))
 {
+    if (year && year < _server->Settings.StartYear)
+        throw ScriptException("Invalid year", year);
+    if (year && year > _server->Settings.StartYear + 100)
+        throw ScriptException("Invalid year", year);
+    if (month && month < 1)
+        throw ScriptException("Invalid month", month);
+    if (month && month > 12)
+        throw ScriptException("Invalid month", month);
+
     if (!year)
         year = _server->Globals->GetYear();
-    else
-        year = CLAMP(year, _server->Globals->GetYearStart(), _server->Globals->GetYearStart() + 130);
     if (!month)
         month = _server->Globals->GetMonth();
-    else
-        month = CLAMP(month, 1, 12);
-    if (!day)
-    {
-        day = _server->Globals->GetDay();
-    }
-    else
+
+    if (day)
     {
         uint month_day = _server->GameTime.GameTimeMonthDay(year, month);
-        day = CLAMP(day, 1, month_day);
+        if (day < month_day || day > month_day)
+            throw ScriptException("Invalid day", day, month_day);
     }
+
+    if (!day)
+        day = _server->Globals->GetDay();
+
     if (hour > 23)
-        hour = 23;
+        throw ScriptException("Invalid hour", hour);
     if (minute > 59)
-        minute = 59;
+        throw ScriptException("Invalid minute", minute);
     if (second > 59)
-        second = 59;
-    FO_API_RETURN(_server->GameTime.GetFullSecond(year, month, day, hour, minute, second));
+        throw ScriptException("Invalid second", second);
+
+    FO_API_RETURN(_server->GameTime.EvaluateFullSecond(year, month, day, hour, minute, second));
 }
 FO_API_EPILOG(0)
 #endif
@@ -3857,7 +3879,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     // Check existence
     uint id = MAKE_CLIENT_ID(name);
-    DataBase::Document doc = DbStorage->Get("Players", id);
+    DataBase::Document doc = _server->DbStorage->Get("Players", id);
     if (doc.empty())
         FO_API_RETURN((Critter*)nullptr);
 
@@ -3872,7 +3894,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
     // Load from db
     ProtoCritter* cl_proto = _server->ProtoMngr.GetProtoCritter(_str("Player").toHash());
     RUNTIME_ASSERT(cl_proto);
-    cl = new Client(nullptr, cl_proto, _server->Settings, _server->ScriptSys);
+    cl = new Client(nullptr, cl_proto, _server->Settings, _server->ScriptSys, _server->GameTime);
     cl->SetId(id);
     cl->Name = name;
     if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc, _server->ScriptSys))
@@ -4452,7 +4474,7 @@ FO_API_GLOBAL_SERVER_FUNC(GetRegisteredPlayerIds, FO_API_RET_ARR(uint))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(DbStorage->GetAllIds("Players"));
+    FO_API_RETURN(_server->DbStorage->GetAllIds("Players"));
 }
 FO_API_EPILOG(0)
 #endif

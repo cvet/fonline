@@ -1194,7 +1194,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO
     t.HexY = hy;
     t.Color = (color ? color : COLOR_TEXT);
     t.Fade = fade;
-    t.StartTick = Timer::FastTick();
+    t.StartTick = _mapper->GameTime.FrameTick();
     t.Tick = ms;
     t.Text = text;
     t.Pos = _mapper->HexMngr.GetRectForText(hx, hy);
@@ -1763,7 +1763,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || sprIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
-    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(sprIndex));
+    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(
+        sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si)
         FO_API_RETURN(0);
     FO_API_RETURN(si->Width);
@@ -1785,7 +1786,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || sprIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
-    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(sprIndex));
+    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(
+        sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si)
         FO_API_RETURN(0);
     FO_API_RETURN(si->Height);
@@ -1847,7 +1849,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
 
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     FO_API_RETURN(_mapper->SprMngr.GetPixColor(spr_id_, x, y, false));
 }
 FO_API_EPILOG(0)
@@ -1899,7 +1901,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs)
     {
         SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
@@ -1939,7 +1941,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs)
     {
         SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
@@ -1979,7 +1981,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     AnyFrames* anim = _mapper->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
-    _mapper->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex), x, y, w, h,
+    _mapper->SprMngr.DrawSpritePattern(
+        frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex), x, y, w, h,
         sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
@@ -2128,9 +2131,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
     Sprites& tree = _mapper->HexMngr.GetDrawTree();
     Sprite& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0,
         (_mapper->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_mapper->Settings.MapHexHeight / 2) + mapSpr->OffsY,
-        &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(mapSpr->FrameIndex), nullptr,
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr,
-        mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, nullptr);
+        &f.ScrX, &f.ScrY,
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex),
+        nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr,
+        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr,
+        nullptr, nullptr);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();

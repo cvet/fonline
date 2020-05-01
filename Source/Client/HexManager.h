@@ -51,6 +51,7 @@
 #include "Settings.h"
 #include "SpriteManager.h"
 #include "Sprites.h"
+#include "Timer.h"
 
 constexpr int MAX_FIND_PATH = 600;
 
@@ -130,11 +131,11 @@ struct Field
     uchar Corner {};
 };
 
-class HexManager
+class HexManager : public NonMovable
 {
 public:
     HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-        EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys);
+        EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys, GameTimer& game_time);
     ~HexManager();
 
     void ResizeField(ushort w, ushort h);
@@ -197,6 +198,7 @@ private:
     EffectManager& effectMngr;
     ResourceManager& resMngr;
     ClientScriptSystem& scriptSys;
+    GameTimer& gameTime;
 
     ushort maxHexX {};
     ushort maxHexY {};
@@ -394,6 +396,7 @@ private:
     AnyFrames* picRainFall {};
     AnyFrames* picRainDrop {};
     Sprites roofRainTree;
+    uint rainLastTick {};
 
     int drawCursorX {};
     AnyFrames* cursorPrePic {};

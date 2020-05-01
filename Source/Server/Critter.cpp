@@ -51,20 +51,35 @@ PROPERTIES_IMPL(Critter, "Critter", true);
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
-    Entity(id, type, PropertiesRegistrator, proto), settings {sett}, geomHelper(settings), scriptSys {script_sys}
+Critter::Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
+    GameTimer& game_time) :
+    Entity(id, type, PropertiesRegistrator, proto),
+    settings {sett},
+    geomHelper(settings),
+    scriptSys {script_sys},
+    gameTime {game_time}
 {
+}
+
+bool Critter::IsFree()
+{
+    return gameTime.GameTick() - startBreakTime >= breakTime;
+}
+
+bool Critter::IsBusy()
+{
+    return !IsFree();
 }
 
 void Critter::SetBreakTime(uint ms)
 {
     breakTime = ms;
-    startBreakTime = Timer::GameTick();
+    startBreakTime = gameTime.GameTick();
 }
 
 void Critter::SetBreakTimeDelta(uint ms)
 {
-    uint dt = (Timer::GameTick() - startBreakTime);
+    uint dt = (gameTime.GameTick() - startBreakTime);
     if (dt > breakTime)
         dt -= breakTime;
     else
@@ -72,6 +87,16 @@ void Critter::SetBreakTimeDelta(uint ms)
     if (dt > ms)
         dt = 0;
     SetBreakTime(ms - dt);
+}
+
+void Critter::SetWait(uint ms)
+{
+    waitEndTick = gameTime.GameTick() + ms;
+}
+
+bool Critter::IsWait()
+{
+    return gameTime.GameTick() < waitEndTick;
 }
 
 uint Critter::GetAttackDist(Item* weap, int use)
@@ -865,13 +890,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 
 bool Critter::IsTransferTimeouts(bool send)
 {
-    if (GetTimeoutTransfer() > settings.FullSecond)
+    if (GetTimeoutTransfer() > gameTime.GetFullSecond())
     {
         if (send)
             Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         return true;
     }
-    if (GetTimeoutBattle() > settings.FullSecond)
+    if (GetTimeoutBattle() > gameTime.GetFullSecond())
     {
         if (send)
             Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
@@ -883,7 +908,7 @@ bool Critter::IsTransferTimeouts(bool send)
 void Critter::AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier)
 {
     if (duration)
-        duration += settings.FullSecond;
+        duration += gameTime.GetFullSecond();
 
     /*CScriptArray* te_next_time = GetTE_NextTime();
     CScriptArray* te_func_num = GetTE_FuncNum();
@@ -956,15 +981,16 @@ void Critter::ContinueTimeEvents(int offs_time)
     te_next_time->Release();*/
 }
 
-Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
-    Critter(0, EntityType::Client, proto, sett, script_sys)
+Client::Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
+    GameTimer& game_time) :
+    Critter(0, EntityType::Client, proto, sett, script_sys, game_time)
 {
     Connection = conn;
     CritterIsNpc = false;
     SETFLAG(Flags, FCRIT_PLAYER);
-    pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
-    talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
-    LastActivityTime = Timer::FastTick();
+    pingNextTick = gameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
+    talkNextTick = gameTime.GameTick() + PROCESS_TALK_TICK;
+    LastActivityTime = gameTime.FrameTick();
 }
 
 Client::~Client()
@@ -1011,13 +1037,13 @@ void Client::RemoveFromGame()
 
 uint Client::GetOfflineTime()
 {
-    return Timer::FastTick() - Connection->DisconnectTick;
+    return (uint)Timer::RealtimeTick() - Connection->DisconnectTick;
 }
 
 bool Client::IsToPing()
 {
-    return State == ClientState::Playing && Timer::FastTick() >= pingNextTick &&
-        !(GetTimeoutTransfer() > settings.FullSecond);
+    return State == ClientState::Playing && gameTime.FrameTick() >= pingNextTick &&
+        !(GetTimeoutTransfer() > gameTime.GetFullSecond());
 }
 
 void Client::PingClient()
@@ -1033,14 +1059,14 @@ void Client::PingClient()
     Connection->Bout << (uchar)PING_CLIENT;
     CLIENT_OUTPUT_END(this);
 
-    pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
+    pingNextTick = gameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
     pingOk = false;
 }
 
 void Client::PingOk(uint next_ping)
 {
     pingOk = true;
-    pingNextTick = Timer::FastTick() + next_ping;
+    pingNextTick = gameTime.FrameTick() + next_ping;
 }
 
 void Client::Send_AddCritter(Critter* cr)
@@ -1688,7 +1714,7 @@ void Client::Send_Talk()
         uint talk_time = Talk.TalkTime;
         if (talk_time)
         {
-            uint diff = Timer::GameTick() - Talk.StartTick;
+            uint diff = gameTime.GameTick() - Talk.StartTick;
             talk_time = (diff < talk_time ? talk_time - diff : 1);
         }
 
@@ -2140,8 +2166,8 @@ bool Client::IsTalking()
     return Talk.TalkType != TALK_NONE;
 }
 
-Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys) :
-    Critter(id, EntityType::Npc, proto, sett, script_sys)
+Npc::Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys, GameTimer& game_time) :
+    Critter(id, EntityType::Npc, proto, sett, script_sys, game_time)
 {
     CritterIsNpc = true;
     SETFLAG(Flags, FCRIT_NPC);

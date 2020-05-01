@@ -44,14 +44,15 @@
 #include "Testing.h"
 
 CritterManager::CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys) :
+    MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) :
     settings {sett},
     geomHelper(settings),
     protoMngr {proto_mngr},
     entityMngr {entity_mngr},
     mapMngr {map_mngr},
     itemMngr {item_mngr},
-    scriptSys {script_sys}
+    scriptSys {script_sys},
+    gameTime {game_time}
 {
 }
 
@@ -158,7 +159,7 @@ Npc* CritterManager::CreateNpc(
         hy = hy_;
     }
 
-    Npc* npc = new Npc(0, proto, settings, scriptSys);
+    Npc* npc = new Npc(0, proto, settings, scriptSys, gameTime);
     if (props)
         npc->Props = *props;
 
@@ -201,7 +202,7 @@ bool CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document
         return false;
     }
 
-    Npc* npc = new Npc(id, proto, settings, scriptSys);
+    Npc* npc = new Npc(id, proto, settings, scriptSys, gameTime);
     if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
@@ -392,14 +393,14 @@ Item* CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid)
 
 void CritterManager::ProcessTalk(Client* cl, bool force)
 {
-    if (!force && Timer::GameTick() < cl->talkNextTick)
+    if (!force && gameTime.GameTick() < cl->talkNextTick)
         return;
-    cl->talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
+    cl->talkNextTick = gameTime.GameTick() + PROCESS_TALK_TICK;
     if (cl->Talk.TalkType == TALK_NONE)
         return;
 
     // Check time of talk
-    if (cl->Talk.TalkTime && Timer::GameTick() - cl->Talk.StartTick > cl->Talk.TalkTime)
+    if (cl->Talk.TalkTime && gameTime.GameTick() - cl->Talk.StartTick > cl->Talk.TalkTime)
     {
         CloseTalk(cl);
         return;

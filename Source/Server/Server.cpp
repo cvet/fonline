@@ -44,48 +44,141 @@ FOServer::FOServer(GlobalSettings& sett) :
     GeomHelper(Settings),
     FileMngr(),
     ScriptSys(this, sett, FileMngr),
-    GameTime(Settings, Globals),
+    GameTime(Settings),
     ProtoMngr(),
-    EntityMngr(MapMngr, CrMngr, ItemMngr, ScriptSys),
-    MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr, ScriptSys),
-    CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr, ScriptSys),
+    EntityMngr(MapMngr, CrMngr, ItemMngr, ScriptSys, DbStorage),
+    MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr, ScriptSys, GameTime),
+    CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr, ScriptSys, GameTime),
     ItemMngr(ProtoMngr, EntityMngr, MapMngr, CrMngr, ScriptSys),
     DlgMngr(FileMngr, ScriptSys)
 {
-    Active = true;
-    ActiveInProcess = true;
-}
+    WriteLog("***   Starting initialization   ***\n");
 
-int FOServer::Run()
-{
-    WriteLog("FOnline Server ({:#x}).\n", FO_VERSION);
-    if (!Settings.CommandLine.empty())
-        WriteLog("Command line '{}'.\n", Settings.CommandLine);
+    GameTime.FrameAdvance();
 
+    // Reserve memory
+    ConnectedClients.reserve(10000);
+
+    // Data base
+    DbStorage = GetDataBase(Settings.DbStorage);
+    if (!DbStorage)
+        throw ServerInitException("Can't init storage data base", Settings.DbStorage);
+
+    if (Settings.DbHistory != "None")
+    {
+        DbHistory = GetDataBase(Settings.DbHistory);
+        if (!DbHistory)
+            throw ServerInitException("Can't init histrory data base", Settings.DbHistory);
+    }
+
+    // Start data base changes
+    DbStorage->StartChanges();
+    if (DbHistory)
+        DbHistory->StartChanges();
+
+    // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
+
+    if (!InitLangPacks(LangPacks))
+        throw ServerInitException("Can't init lang packs");
+
+    LoadBans();
+
+    // Managers
+    if (!DlgMngr.LoadDialogs())
+        throw ServerInitException("Can't load dialogs");
+    // if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
+    //    return false;
+
+    // Language packs
+    if (!InitLangPacksDialogs(LangPacks))
+        throw ServerInitException("Can't init dialogs lang packs");
+    if (!InitLangPacksLocations(LangPacks))
+        throw ServerInitException("Can't init locations lang packs");
+    if (!InitLangPacksItems(LangPacks))
+        throw ServerInitException("Can't init items lang packs");
+
+    // Load globals
+    Globals = new GlobalVars();
+    Globals->SetId(1);
+    DataBase::Document globals_doc = DbStorage->Get("Globals", 1);
+    if (globals_doc.empty())
+    {
+        DbStorage->Insert("Globals", Globals->Id, {{"_Proto", string("")}});
+    }
+    else
+    {
+        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, ScriptSys))
+            throw ServerInitException("Failed to load globals document");
+
+        GameTime.Reset(Globals->GetYear(), Globals->GetMonth(), Globals->GetDay(), Globals->GetHour(),
+            Globals->GetMinute(), Globals->GetSecond(), Globals->GetTimeMultiplier());
+    }
+
+    // Todo: restore hashes loading
+    // _str::loadHashes();
+
+    // Deferred calls
+    // if (!ScriptSys.LoadDeferredCalls())
+    //    return false;
+
+    // Update files
+    StrVec resource_names;
+    GenerateUpdateFiles(true, &resource_names);
+
+    // Validate protos resources
+    if (!ProtoMngr.ValidateProtoResources(resource_names))
+        throw ServerInitException("Failed to validate resource names");
+
+    // Initialization script
+    if (ScriptSys.InitEvent())
+        throw ServerInitException("Initialization script failed");
+
+    // Init world
+    if (globals_doc.empty())
+    {
+        // Generate world
+        if (ScriptSys.GenerateWorldEvent())
+            throw ServerInitException("Generate world script failed");
+    }
+    else
+    {
+        // World loading
+        if (!EntityMngr.LoadEntities())
+            throw ServerInitException("Can't load entities");
+    }
+
+    // Start script
+    if (ScriptSys.StartEvent())
+        throw ServerInitException("Start script fail");
+
+    // Commit data base changes
+    DbStorage->CommitChanges();
+    if (DbHistory)
+        DbHistory->CommitChanges();
+
+    Statistics.ServerStartTick = GameTime.FrameTick();
+
+    // Network
+    WriteLog("Starting server on ports {} and {}.\n", Settings.Port, Settings.Port + 1);
+    if (!(TcpServer = NetServerBase::StartTcpServer(
+              Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
+        throw ServerInitException("Can't listen TCP server ports", Settings.Port);
+    if (!(WebSocketsServer = NetServerBase::StartWebSocketsServer(
+              Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
+        throw ServerInitException("Can't listen TCP server ports", Settings.Port + 1);
+
+    // Admin manager
     if (Settings.AdminPanelPort)
         InitAdminManager(this, Settings.AdminPanelPort);
 
-    if (!Init())
-    {
-        WriteLog("Initialization failed!\n");
-        return 1;
-    }
-
-    WriteLog("***   Starting game loop   ***\n");
-
-    while (!Settings.Quit)
-        LogicTick();
-
-    WriteLog("***   Finishing game loop  ***\n");
-
-    Finish();
-    return 0;
+    GameTime.FrameAdvance();
+    fpsTick = GameTime.FrameTick();
+    Started = true;
 }
 
-void FOServer::Finish()
+FOServer::~FOServer()
 {
-    Active = false;
-    ActiveInProcess = true;
+    willFinishDispatcher();
 
     // Finish logic
     DbStorage->StartChanges();
@@ -133,7 +226,261 @@ void FOServer::Finish()
     WriteLog("Max cycle period: {}\n", Statistics.LoopMax);
     WriteLog("Count of lags (>100ms): {}\n", Statistics.LagsCount);
 
-    ActiveInProcess = false;
+    didFinishDispatcher();
+}
+
+void FOServer::MainLoop()
+{
+    if (GameTime.FrameAdvance())
+    {
+        DateTimeStamp st = GameTime.GetGameTime(GameTime.GetFullSecond());
+        Globals->SetYear(st.Year);
+        Globals->SetMonth(st.Month);
+        Globals->SetDay(st.Day);
+        Globals->SetHour(st.Hour);
+        Globals->SetMinute(st.Minute);
+        Globals->SetSecond(st.Second);
+    }
+
+    // Cycle time
+    double frame_begin = Timer::RealtimeTick();
+
+    // Begin data base changes
+    DbStorage->StartChanges();
+    if (DbHistory)
+        DbHistory->StartChanges();
+
+    // Process clients
+    ClientVec clients;
+    {
+        SCOPE_LOCK(ConnectedClientsLocker);
+
+        clients = ConnectedClients;
+        for (Client* cl : clients)
+            cl->AddRef();
+    }
+
+    for (Client* cl : clients)
+    {
+        // Check for removing
+        if (cl->IsOffline())
+        {
+            DisconnectClient(cl);
+
+            {
+                SCOPE_LOCK(ConnectedClientsLocker);
+
+                auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
+                RUNTIME_ASSERT(it != ConnectedClients.end());
+                ConnectedClients.erase(it);
+                Statistics.CurOnline--;
+            }
+
+            cl->Release();
+            continue;
+        }
+
+        // Process network messages
+        Process(cl);
+        cl->Release();
+    }
+
+    // Process critters
+    CritterVec critters;
+    EntityMngr.GetCritters(critters);
+    for (Critter* cr : critters)
+    {
+        // Player specific
+        if (cr->CanBeRemoved)
+            RemoveClient((Client*)cr);
+
+        // Check for removing
+        if (cr->IsDestroyed)
+            continue;
+
+        // Process logic
+        ProcessCritter(cr);
+    }
+
+    // Process maps
+    MapVec maps;
+    EntityMngr.GetMaps(maps);
+    for (Map* map : maps)
+    {
+        // Check for removing
+        if (map->IsDestroyed)
+            continue;
+
+        // Process logic
+        map->Process();
+    }
+
+    // Locations and maps garbage
+    MapMngr.LocationGarbager();
+
+    // Bans
+    ProcessBans();
+
+    // Script game loop
+    ScriptSys.LoopEvent();
+
+    // Commit changed to data base
+    DbStorage->CommitChanges();
+    if (DbHistory)
+        DbHistory->CommitChanges();
+
+    // Fill statistics
+    double frame_time = Timer::RealtimeTick() - frame_begin;
+    uint loop_tick = (uint)frame_time;
+    Statistics.LoopTime += loop_tick;
+    Statistics.LoopCycles++;
+    if (loop_tick > Statistics.LoopMax)
+        Statistics.LoopMax = loop_tick;
+    if (loop_tick < Statistics.LoopMin)
+        Statistics.LoopMin = loop_tick;
+    Statistics.CycleTime = loop_tick;
+    if (loop_tick > 100)
+        Statistics.LagsCount++;
+    Statistics.Uptime = (GameTime.FrameTick() - Statistics.ServerStartTick) / 1000;
+
+    // Calculate fps
+    if (GameTime.FrameTick() - fpsTick >= 1000)
+    {
+        Statistics.FPS = fpsCounter;
+        fpsCounter = 0;
+        fpsTick = GameTime.FrameTick();
+    }
+    else
+    {
+        fpsCounter++;
+    }
+
+    // Sleep
+    if (Settings.GameSleep >= 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(Settings.GameSleep));
+}
+
+void FOServer::DrawGui()
+{
+    // Players
+    ImGui::SetNextWindowPos(Gui.PlayersPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        Gui.Stats =
+            "WIP..........................."; // ( Server && Server->Started ? Server->GetIngamePlayersStatistics() :
+                                              // "Waiting for server start..." );
+        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Locations and maps
+    ImGui::SetNextWindowPos(Gui.LocMapsPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        Gui.Stats =
+            "WIP..........................."; // ( Server && Server->Started ? MapMngr.GetLocationsMapsStatistics() :
+                                              // "Waiting for server start..." );
+        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Items count
+    ImGui::SetNextWindowPos(Gui.ItemsPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        Gui.Stats = (Started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
+        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Profiler
+    ImGui::SetNextWindowPos(Gui.ProfilerPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        Gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Info
+    ImGui::SetNextWindowPos(Gui.InfoPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        Gui.Stats = "";
+        DateTimeStamp st = GameTime.GetGameTime(GameTime.GetFullSecond());
+        Gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour,
+            st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/);
+        Gui.Stats += _str("Connections: {}\n", Statistics.CurOnline);
+        Gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
+        Gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
+        Gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
+        Gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
+        Gui.Stats += _str("Cycles per second: {}\n", Statistics.FPS);
+        Gui.Stats += _str("Cycle time: {}\n", Statistics.CycleTime);
+        uint seconds = Statistics.Uptime;
+        Gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
+        Gui.Stats += _str("KBytes Send: {}\n", Statistics.BytesSend / 1024);
+        Gui.Stats += _str("KBytes Recv: {}\n", Statistics.BytesRecv / 1024);
+        Gui.Stats += _str("Compress ratio: {}",
+            (double)Statistics.DataReal / (Statistics.DataCompressed ? Statistics.DataCompressed : 1));
+        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Control panel
+    ImGui::SetNextWindowPos(Gui.ControlPanelPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        if (Started && !Settings.Quit && ImGui::Button("Stop & Quit", Gui.ButtonSize))
+            Settings.Quit = true;
+        if (ImGui::Button("Quit", Gui.ButtonSize))
+            exit(0);
+        if (ImGui::Button("Create dump", Gui.ButtonSize))
+            CreateDump("ManualDump", "Manual");
+        if (ImGui::Button("Save log", Gui.ButtonSize))
+        {
+            DateTimeStamp dt;
+            Timer::GetCurrentDateTime(dt);
+            string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year,
+                dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+            OutputFile log_file = FileMngr.WriteFile(log_name);
+            log_file.SetStr(Gui.WholeLog);
+            log_file.Save();
+        }
+    }
+    ImGui::End();
+
+    // Log
+    ImGui::SetNextWindowPos(Gui.LogPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(Gui.LogSize, ImGuiCond_Once);
+    if (ImGui::Begin(
+            "Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar))
+    {
+        LogGetBuffer(Gui.CurLog);
+        if (!Gui.CurLog.empty())
+        {
+            Gui.WholeLog += Gui.CurLog;
+            Gui.CurLog.clear();
+            if (Gui.WholeLog.size() > 100000)
+                Gui.WholeLog = Gui.WholeLog.substr(Gui.WholeLog.size() - 100000);
+        }
+
+        if (!Gui.WholeLog.empty())
+            ImGui::TextUnformatted(Gui.WholeLog.c_str(), Gui.WholeLog.c_str() + Gui.WholeLog.size());
+    }
+    ImGui::End();
 }
 
 string FOServer::GetIngamePlayersStatistics()
@@ -246,261 +593,12 @@ void FOServer::RemoveClient(Client* cl)
     }
 }
 
-void FOServer::LogicTick()
-{
-    Timer::UpdateTick();
-
-    // Cycle time
-    double frame_begin = Timer::AccurateTick();
-
-    // Begin data base changes
-    DbStorage->StartChanges();
-    if (DbHistory)
-        DbHistory->StartChanges();
-
-    // Process clients
-    ClientVec clients;
-    {
-        SCOPE_LOCK(ConnectedClientsLocker);
-
-        clients = ConnectedClients;
-        for (Client* cl : clients)
-            cl->AddRef();
-    }
-
-    for (Client* cl : clients)
-    {
-        // Check for removing
-        if (cl->IsOffline())
-        {
-            DisconnectClient(cl);
-
-            {
-                SCOPE_LOCK(ConnectedClientsLocker);
-
-                auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
-                RUNTIME_ASSERT(it != ConnectedClients.end());
-                ConnectedClients.erase(it);
-                Statistics.CurOnline--;
-            }
-
-            cl->Release();
-            continue;
-        }
-
-        // Process network messages
-        Process(cl);
-        cl->Release();
-    }
-
-    // Process critters
-    CritterVec critters;
-    EntityMngr.GetCritters(critters);
-    for (Critter* cr : critters)
-    {
-        // Player specific
-        if (cr->CanBeRemoved)
-            RemoveClient((Client*)cr);
-
-        // Check for removing
-        if (cr->IsDestroyed)
-            continue;
-
-        // Process logic
-        ProcessCritter(cr);
-    }
-
-    // Process maps
-    MapVec maps;
-    EntityMngr.GetMaps(maps);
-    for (Map* map : maps)
-    {
-        // Check for removing
-        if (map->IsDestroyed)
-            continue;
-
-        // Process logic
-        map->Process();
-    }
-
-    // Locations and maps garbage
-    MapMngr.LocationGarbager();
-
-    // Game time
-    GameTime.ProcessGameTime();
-
-    // Bans
-    ProcessBans();
-
-    // Script game loop
-    ScriptSys.LoopEvent();
-
-    // Commit changed to data base
-    DbStorage->CommitChanges();
-    if (DbHistory)
-        DbHistory->CommitChanges();
-
-    // Fill statistics
-    double frame_time = Timer::AccurateTick() - frame_begin;
-    uint loop_tick = (uint)frame_time;
-    Statistics.LoopTime += loop_tick;
-    Statistics.LoopCycles++;
-    if (loop_tick > Statistics.LoopMax)
-        Statistics.LoopMax = loop_tick;
-    if (loop_tick < Statistics.LoopMin)
-        Statistics.LoopMin = loop_tick;
-    Statistics.CycleTime = loop_tick;
-    if (loop_tick > 100)
-        Statistics.LagsCount++;
-    Statistics.Uptime = (Timer::FastTick() - Statistics.ServerStartTick) / 1000;
-
-    // Calculate fps
-    static uint fps = 0;
-    static double fps_tick = Timer::AccurateTick();
-    if (fps_tick >= 1000.0)
-    {
-        Statistics.FPS = fps;
-        fps = 0;
-    }
-    else
-    {
-        fps++;
-    }
-
-    // Sleep
-    if (Settings.GameSleep >= 0)
-        std::this_thread::sleep_for(std::chrono::milliseconds(Settings.GameSleep));
-}
-
-void FOServer::DrawGui()
-{
-    // Players
-    ImGui::SetNextWindowPos(Gui.PlayersPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats =
-            "WIP..........................."; // ( Server && Server->Started() ? Server->GetIngamePlayersStatistics() :
-                                              // "Waiting for server start..." );
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Locations and maps
-    ImGui::SetNextWindowPos(Gui.LocMapsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats =
-            "WIP..........................."; // ( Server && Server->Started() ? MapMngr.GetLocationsMapsStatistics() :
-                                              // "Waiting for server start..." );
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Items count
-    ImGui::SetNextWindowPos(Gui.ItemsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats = (Started() ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Profiler
-    ImGui::SetNextWindowPos(Gui.ProfilerPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Info
-    ImGui::SetNextWindowPos(Gui.InfoPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        Gui.Stats = "";
-        DateTimeStamp st = GameTime.GetGameTime(Settings.FullSecond);
-        Gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour,
-            st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/);
-        Gui.Stats += _str("Connections: {}\n", Statistics.CurOnline);
-        Gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-        Gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
-        Gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-        Gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
-        Gui.Stats += _str("Cycles per second: {}\n", Statistics.FPS);
-        Gui.Stats += _str("Cycle time: {}\n", Statistics.CycleTime);
-        uint seconds = Statistics.Uptime;
-        Gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
-        Gui.Stats += _str("KBytes Send: {}\n", Statistics.BytesSend / 1024);
-        Gui.Stats += _str("KBytes Recv: {}\n", Statistics.BytesRecv / 1024);
-        Gui.Stats += _str("Compress ratio: {}",
-            (double)Statistics.DataReal / (Statistics.DataCompressed ? Statistics.DataCompressed : 1));
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Control panel
-    ImGui::SetNextWindowPos(Gui.ControlPanelPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        if (Started() && !Settings.Quit && ImGui::Button("Stop & Quit", Gui.ButtonSize))
-            Settings.Quit = true;
-        if (!Started() && !Stopping() && ImGui::Button("Quit", Gui.ButtonSize))
-            exit(0);
-        if (ImGui::Button("Create dump", Gui.ButtonSize))
-            CreateDump("ManualDump", "Manual");
-        if (ImGui::Button("Save log", Gui.ButtonSize))
-        {
-            DateTimeStamp dt;
-            Timer::GetCurrentDateTime(dt);
-            string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year,
-                dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-            OutputFile log_file = FileMngr.WriteFile(log_name);
-            log_file.SetStr(Gui.WholeLog);
-            log_file.Save();
-        }
-    }
-    ImGui::End();
-
-    // Log
-    ImGui::SetNextWindowPos(Gui.LogPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.LogSize, ImGuiCond_Once);
-    if (ImGui::Begin(
-            "Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar))
-    {
-        LogGetBuffer(Gui.CurLog);
-        if (!Gui.CurLog.empty())
-        {
-            Gui.WholeLog += Gui.CurLog;
-            Gui.CurLog.clear();
-            if (Gui.WholeLog.size() > 100000)
-                Gui.WholeLog = Gui.WholeLog.substr(Gui.WholeLog.size() - 100000);
-        }
-
-        if (!Gui.WholeLog.empty())
-            ImGui::TextUnformatted(Gui.WholeLog.c_str(), Gui.WholeLog.c_str() + Gui.WholeLog.size());
-    }
-    ImGui::End();
-}
-
 void FOServer::OnNewConnection(NetConnection* connection)
 {
     // Allocate client
     ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter(_str("Player").toHash());
     RUNTIME_ASSERT(cl_proto);
-    Client* cl = new Client(connection, cl_proto, Settings, ScriptSys);
+    Client* cl = new Client(connection, cl_proto, Settings, ScriptSys, GameTime);
 
     // Add to connected collection
     {
@@ -542,7 +640,7 @@ void FOServer::Process(Client* cl)
             uint msg = 0;
             cl->Connection->Bin >> msg;
 
-            uint tick = Timer::FastTick();
+            uint tick = GameTime.FrameTick();
             switch (msg)
             {
             case 0xFFFFFFFF: {
@@ -587,7 +685,7 @@ void FOServer::Process(Client* cl)
                 break;
             }
 
-            cl->LastActivityTime = Timer::FastTick();
+            cl->LastActivityTime = GameTime.FrameTick();
         }
         else
         {
@@ -595,7 +693,7 @@ void FOServer::Process(Client* cl)
         }
 
         if (cl->State == ClientState::Connected && cl->LastActivityTime &&
-            Timer::FastTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME) // Kick bot
+            GameTime.FrameTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME) // Kick bot
         {
             WriteLog("Connection timeout, client kicked, maybe bot. Ip '{}'.\n", cl->GetIpStr());
             cl->Disconnect();
@@ -615,7 +713,7 @@ void FOServer::Process(Client* cl)
             uint msg = 0;
             cl->Connection->Bin >> msg;
 
-            uint tick = Timer::FastTick();
+            uint tick = GameTime.FrameTick();
             switch (msg)
             {
             case NETMSG_PING:
@@ -660,7 +758,7 @@ void FOServer::Process(Client* cl)
             uint msg = 0;
             cl->Connection->Bin >> msg;
 
-            uint tick = Timer::FastTick();
+            uint tick = GameTime.FrameTick();
             switch (msg)
             {
             case NETMSG_PING:
@@ -994,8 +1092,8 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
 
             str = _str(
                 "Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.",
-                ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), Timer::FastTick() / 1000 / 60,
-                (Timer::FastTick() - Statistics.ServerStartTick) / 1000 / 60);
+                ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60,
+                (GameTime.FrameTick() - Statistics.ServerStartTick) / 1000 / 60);
         }
 
         result += str;
@@ -1642,8 +1740,8 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
 void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second)
 {
     RUNTIME_ASSERT((multiplier >= 1 && multiplier <= 50000));
-    RUNTIME_ASSERT(
-        (Globals->GetYearStart() == 0 || (year >= Globals->GetYearStart() && year <= Globals->GetYearStart() + 130)));
+    RUNTIME_ASSERT(year >= Settings.StartYear);
+    RUNTIME_ASSERT(year < Settings.StartYear + 100);
     RUNTIME_ASSERT((month >= 1 && month <= 12));
     RUNTIME_ASSERT((day >= 1 && day <= 31));
     RUNTIME_ASSERT((hour >= 0 && hour <= 23));
@@ -1658,10 +1756,7 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     Globals->SetMinute(minute);
     Globals->SetSecond(second);
 
-    if (Globals->GetYearStart() == 0)
-        Globals->SetYearStart(year);
-
-    GameTime.Reset();
+    GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
     {
         SCOPE_LOCK(ConnectedClientsLocker);
@@ -1673,172 +1768,6 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
                 cl->Send_GameInfo(MapMngr.GetMap(cl->GetMapId()));
         }
     }
-}
-
-bool FOServer::Init()
-{
-    Active = InitReal();
-    ActiveInProcess = false;
-    return Active;
-}
-
-bool FOServer::InitReal()
-{
-    // Todo: replace return code to exception during initialization
-    WriteLog("***   Starting initialization   ***\n");
-
-    // Root data file
-    FileMngr.AddDataSource("./", false);
-
-    // Delete intermediate files if engine have been updated
-    File version_file = FileMngr.ReadFile("Version.txt");
-    if (!version_file || _str("0x{}", version_file.GetCStr()).toInt() != FO_VERSION)
-    {
-        OutputFile out_version_file = FileMngr.WriteFile("Version.txt");
-        out_version_file.SetStr(_str("{:#x}", FO_VERSION));
-        out_version_file.Save();
-        FileMngr.DeleteDir("Update/");
-        FileMngr.DeleteDir("Binaries/");
-    }
-
-    // Generic
-    ConnectedClients.clear();
-    RegIp.clear();
-
-    // Reserve memory
-    ConnectedClients.reserve(10000);
-
-    // Data base
-    WriteLog("Initialize storage data base at '{}'.\n", Settings.DbStorage);
-    DbStorage = GetDataBase(Settings.DbStorage);
-    if (!DbStorage)
-        return false;
-
-    if (Settings.DbHistory != "None")
-    {
-        WriteLog("Initialize history data base at '{}'.\n", Settings.DbHistory);
-        DbHistory = GetDataBase(Settings.DbHistory);
-        if (!DbHistory)
-            return false;
-    }
-
-    // Start data base changes
-    DbStorage->StartChanges();
-    if (DbHistory)
-        DbHistory->StartChanges();
-
-    // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
-
-    if (!InitLangPacks(LangPacks))
-        return false; // Language packs
-
-    LoadBans();
-
-    // Managers
-    if (!DlgMngr.LoadDialogs())
-        return false; // Dialog manager
-    // if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
-    //    return false;
-
-    // Language packs
-    if (!InitLangPacksDialogs(LangPacks))
-        return false; // Create FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
-    if (!InitLangPacksLocations(LangPacks))
-        return false; // Create FOLOCATIONS.MSG, need call after InitLangPacks and MapMngr.LoadLocationsProtos
-    if (!InitLangPacksItems(LangPacks))
-        return false; // Create FOITEM.MSG, need call after InitLangPacks and ItemMngr.LoadProtos
-
-    // Load globals
-    Globals->SetId(1);
-    DataBase::Document globals_doc = DbStorage->Get("Globals", 1);
-    if (globals_doc.empty())
-    {
-        DbStorage->Insert("Globals", Globals->Id, {{"_Proto", string("")}});
-    }
-    else
-    {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, ScriptSys))
-        {
-            WriteLog("Failed to load globals document.\n");
-            return false;
-        }
-
-        GameTime.Reset();
-    }
-
-    // Todo: restore hashes loading
-    // _str::loadHashes();
-
-    // Deferred calls
-    // if (!ScriptSys.LoadDeferredCalls())
-    //    return false;
-
-    // Modules initialization
-    Timer::UpdateTick();
-
-    // Update files
-    StrVec resource_names;
-    GenerateUpdateFiles(true, &resource_names);
-
-    // Validate protos resources
-    if (!ProtoMngr.ValidateProtoResources(resource_names))
-        return false;
-
-    // Initialization script
-    Timer::UpdateTick();
-    if (ScriptSys.InitEvent())
-    {
-        WriteLog("Initialization script failed.\n");
-        return false;
-    }
-
-    // Init world
-    if (globals_doc.empty())
-    {
-        // Generate world
-        if (ScriptSys.GenerateWorldEvent())
-        {
-            WriteLog("Generate world script failed.\n");
-            return false;
-        }
-    }
-    else
-    {
-        // World loading
-        if (!EntityMngr.LoadEntities())
-            return false;
-    }
-
-    // Start script
-    if (ScriptSys.StartEvent())
-    {
-        WriteLog("Start script fail.\n");
-        return false;
-    }
-
-    // Commit data base changes
-    DbStorage->CommitChanges();
-    if (DbHistory)
-        DbHistory->CommitChanges();
-
-    // End of initialization
-    Statistics.BytesSend = 0;
-    Statistics.BytesRecv = 0;
-    Statistics.DataReal = 1;
-    Statistics.DataCompressed = 1;
-    Statistics.ServerStartTick = Timer::FastTick();
-
-    // Net
-    WriteLog("Starting server on ports {} and {}.\n", Settings.Port, Settings.Port + 1);
-    if (!(TcpServer = NetServerBase::StartTcpServer(
-              Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
-        return false;
-    if (!(WebSocketsServer = NetServerBase::StartWebSocketsServer(
-              Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))))
-        return false;
-
-    Active = true;
-    return true;
 }
 
 bool FOServer::InitLangPacks(vector<LanguagePack>& lang_packs)
@@ -2314,7 +2243,7 @@ void FOServer::ProcessCritter(Critter* cr)
 {
     if (cr->CanBeRemoved || cr->IsDestroyed)
         return;
-    if (Timer::IsGamePaused())
+    if (GameTime.IsGamePaused())
         return;
 
     // Moving
@@ -2331,7 +2260,7 @@ void FOServer::ProcessCritter(Critter* cr)
     {
         CScriptArray* te_next_time = cr->GetTE_NextTime();
         uint next_time = *(uint*)te_next_time->At(0);
-        if (!next_time || Settings.FullSecond >= next_time)
+        if (!next_time || GameTime.GetFullSecond() >= next_time)
         {
             CScriptArray* te_func_num = cr->GetTE_FuncNum();
             CScriptArray* te_rate = cr->GetTE_Rate();
@@ -2375,7 +2304,7 @@ void FOServer::ProcessCritter(Critter* cr)
             cl->PingClient();
 
         // Kick from game
-        if (cl->IsOffline() && cl->IsLife() && !(cl->GetTimeoutBattle() > Settings.FullSecond) &&
+        if (cl->IsOffline() && cl->IsLife() && !(cl->GetTimeoutBattle() > GameTime.GetFullSecond()) &&
             !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= Settings.MinimumOfflineTime)
         {
             cl->RemoveFromGame();
@@ -2383,10 +2312,10 @@ void FOServer::ProcessCritter(Critter* cr)
 
         // Cache look distance
         // Todo: disable look distance caching
-        if (Timer::GameTick() >= cl->CacheValuesNextTick)
+        if (GameTime.GameTick() >= cl->CacheValuesNextTick)
         {
             cl->LookCacheValue = cl->GetLookDistance();
-            cl->CacheValuesNextTick = Timer::GameTick() + 3000;
+            cl->CacheValuesNextTick = GameTime.GameTick() + 3000;
         }
     }
 }
@@ -2693,7 +2622,7 @@ void FOServer::Process_CreateClient(Client* cl)
         if (it != RegIp.end())
         {
             uint& last_reg = it->second;
-            uint tick = Timer::FastTick();
+            uint tick = GameTime.FrameTick();
             if (tick - last_reg < reg_tick)
             {
                 cl->Send_TextMsg(cl, STR_NET_REGISTRATION_IP_WAIT, SAY_NETMSG, TEXTMSG_GAME);
@@ -2706,7 +2635,7 @@ void FOServer::Process_CreateClient(Client* cl)
         }
         else
         {
-            RegIp.insert(std::make_pair(ip, Timer::FastTick()));
+            RegIp.insert(std::make_pair(ip, GameTime.FrameTick()));
         }
     }
 
@@ -3130,7 +3059,7 @@ void FOServer::Process_GiveMap(Client* cl)
     cl->Connection->Bin >> hash_scen;
     CHECK_IN_BUFF_ERROR(cl);
 
-    uint tick = Timer::FastTick();
+    uint tick = GameTime.FrameTick();
     if (tick - cl->LastSendedMapTick < Settings.Breaktime * 3)
         cl->SetBreakTime(Settings.Breaktime * 3);
     else
@@ -3260,8 +3189,8 @@ void FOServer::Process_Move(Client* cl)
     bool is_run = FLAG(move_params, MOVE_PARAM_RUN);
     if (is_run)
     {
-        if (cl->GetIsNoRun() || (Settings.RunOnCombat ? false : cl->GetTimeoutBattle() > Settings.FullSecond) ||
-            (Settings.RunOnTransfer ? false : cl->GetTimeoutTransfer() > Settings.FullSecond))
+        if (cl->GetIsNoRun() || (Settings.RunOnCombat ? false : cl->GetTimeoutBattle() > GameTime.GetFullSecond()) ||
+            (Settings.RunOnTransfer ? false : cl->GetTimeoutTransfer() > GameTime.GetFullSecond()))
         {
             // Switch to walk
             move_params ^= MOVE_PARAM_RUN;
@@ -4362,7 +4291,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
 
     cl->Talk.DialogPackId = dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
-    cl->Talk.StartTick = Timer::GameTick();
+    cl->Talk.StartTick = GameTime.GameTick();
     cl->Talk.TalkTime = Settings.DlgTalkMinTime;
     cl->Talk.Barter = false;
     cl->Talk.IgnoreDistance = ignore_distance;
@@ -4517,7 +4446,7 @@ void FOServer::Process_Dialog(Client* cl)
             if (!ScriptSys.CritterBarterEvent(cl, npc, true, npc->GetBarterPlayers() + 1))
             {
                 cl->Talk.Barter = true;
-                cl->Talk.StartTick = Timer::GameTick();
+                cl->Talk.StartTick = GameTime.GameTick();
                 cl->Talk.TalkTime = Settings.DlgBarterMinTime;
             }
             return;
@@ -4596,7 +4525,7 @@ void FOServer::Process_Dialog(Client* cl)
         return;
     }
 
-    cl->Talk.StartTick = Timer::GameTick();
+    cl->Talk.StartTick = GameTime.GameTick();
     cl->Talk.TalkTime = Settings.DlgTalkMinTime;
     cl->Send_Talk();
 }

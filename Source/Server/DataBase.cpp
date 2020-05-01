@@ -52,9 +52,6 @@
 #endif
 #include "bson.h"
 
-DataBase* DbStorage;
-DataBase* DbHistory;
-
 static void ValueToBson(const string& key, const DataBase::Value& value, bson_t* bson)
 {
     size_t value_index = value.index();

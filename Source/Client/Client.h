@@ -43,6 +43,7 @@
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
+#include "FileSystem.h"
 #include "GeometryHelper.h"
 #include "HexManager.h"
 #include "ItemHexView.h"
@@ -153,6 +154,9 @@ public:
     bool IsAutoLogin {};
     MapView* CurMap {};
     LocationView* CurLocation {};
+
+    uint fpsTick {};
+    uint fpsCounter {};
 
     // Offscreen drawing
     vector<RenderEffect*> OffscreenEffects;
@@ -378,28 +382,22 @@ public:
     /************************************************************************/
     /* Animation                                                            */
     /************************************************************************/
-    struct IfaceAnim
-    {
-        AnyFrames* Frames;
-        ushort Flags;
-        uint CurSpr;
-        uint LastTick;
-        AtlasType ResType;
-
-        IfaceAnim(AnyFrames* frm, AtlasType res_type) :
-            Frames(frm), Flags(0), CurSpr(0), LastTick(Timer::GameTick()), ResType(res_type)
-        {
-        }
-    };
-    typedef vector<IfaceAnim*> IfaceAnimVec;
-
 #define ANIMRUN_TO_END (0x0001)
 #define ANIMRUN_FROM_END (0x0002)
 #define ANIMRUN_CYCLE (0x0004)
 #define ANIMRUN_STOP (0x0008)
 #define ANIMRUN_SET_FRM(frm) ((uint(uchar((frm) + 1))) << 16)
 
-    IfaceAnimVec Animations;
+    struct IfaceAnim
+    {
+        AnyFrames* Frames {};
+        AtlasType ResType {};
+        uint LastTick {};
+        ushort Flags {};
+        uint CurSpr {};
+    };
+
+    vector<IfaceAnim*> Animations;
 
     uint AnimLoad(uint name_hash, AtlasType res_type);
     uint AnimLoad(const char* fname, AtlasType res_type);

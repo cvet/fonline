@@ -144,7 +144,6 @@ You can easily contribute to this API using provided by engine functionality.
 
 ## Global properties
 
-* const uint16 YearStart
 * const uint16 Year
 * const uint16 Month
 * const uint16 Day
@@ -444,9 +443,7 @@ You can easily contribute to this API using provided by engine functionality.
 * int Brightness
 * uint FPS
 * int FixedFPS
-* uint FullSecondStart
-* uint FullSecond
-* uint GameTimeTick
+* int StartYear
 * string ASServer
 * string ASClient
 * string ASMapper
@@ -525,6 +522,7 @@ You can easily contribute to this API using provided by engine functionality.
 * string DbHistory
 * bool NoStart
 * int GameSleep
+
 ## Enums
 
 ### MessageBoxTextType

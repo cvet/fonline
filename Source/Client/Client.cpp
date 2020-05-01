@@ -32,8 +32,6 @@
 //
 
 #include "Client.h"
-#include "DiskFileSystem.h"
-#include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "MessageBox.h"
@@ -56,16 +54,16 @@
 FOClient::FOClient(GlobalSettings& sett) :
     Settings {sett},
     GeomHelper(Settings),
-    GameTime(Settings, Globals),
+    GameTime(Settings),
     FileMngr(),
     ScriptSys(this, sett, FileMngr),
     SndMngr(Settings, FileMngr),
     Keyb(Settings, SprMngr),
     ProtoMngr(),
-    EffectMngr(Settings, FileMngr),
-    SprMngr(Settings, FileMngr, EffectMngr, ScriptSys),
+    EffectMngr(Settings, FileMngr, GameTime),
+    SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime),
     ResMngr(FileMngr, SprMngr, ScriptSys),
-    HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys),
+    HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys, GameTime),
     Cache("Data/Cache.fobin"),
     GmapFog(GM__MAXZONEX, GM__MAXZONEY, nullptr)
 {
@@ -78,6 +76,7 @@ FOClient::FOClient(GlobalSettings& sett) :
     LmapZoom = 2;
     ScreenModeMain = SCREEN_WAIT;
     DrawLookBorders = true;
+    fpsTick = GameTime.FrameTick();
 
     int sw = 0, sh = 0;
     SprMngr.GetWindowSize(sw, sh);
@@ -233,7 +232,7 @@ void FOClient::UpdateFilesLoop()
         }
 
         // Running dots
-        int dots = (Timer::FastTick() - UpdateFilesTick) / 100 % 50 + 1;
+        int dots = (GameTime.FrameTick() - UpdateFilesTick) / 100 % 50 + 1;
         string dots_str = "";
         for (int i = 0; i < dots; i++)
             dots_str += ".";
@@ -262,9 +261,9 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesAddText(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
         }
 
-        if (Timer::FastTick() < UpdateFilesConnectTimeout)
+        if (GameTime.FrameTick() < UpdateFilesConnectTimeout)
             return;
-        UpdateFilesConnectTimeout = Timer::FastTick() + 5000;
+        UpdateFilesConnectTimeout = GameTime.FrameTick() + 5000;
 
         // Connect to server
         UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
@@ -292,7 +291,7 @@ void FOClient::UpdateFilesLoop()
             SAFEDEL(UpdateFilesList);
             UpdateFileDownloading = false;
             FileMngr.DeleteFile("Update.fobin");
-            UpdateFilesTick = Timer::FastTick();
+            UpdateFilesTick = GameTime.FrameTick();
 
             Net_SendUpdate();
         }
@@ -436,7 +435,8 @@ void FOClient::AddCritter(CritterView* cr)
     if (cr->IsChosen())
         Chosen = cr;
     HexMngr.AddCritter(cr);
-    cr->FadingTick = Timer::GameTick() + FADING_PERIOD - (fading > Timer::GameTick() ? fading - Timer::GameTick() : 0);
+    cr->FadingTick =
+        GameTime.GameTick() + FADING_PERIOD - (fading > GameTime.GameTick() ? fading - GameTime.GameTick() : 0);
 }
 
 void FOClient::DeleteCritter(uint remid)
@@ -567,22 +567,18 @@ void FOClient::LookBordersPrepare()
 
 void FOClient::MainLoop()
 {
-    // Todo: remove all memory allocations from client loop
-
-    Timer::UpdateTick();
+    bool time_changed = GameTime.FrameAdvance();
 
     // FPS counter
-    static uint last_call = Timer::FastTick();
-    static uint call_counter = 0;
-    if ((Timer::FastTick() - last_call) >= 1000)
+    if (GameTime.FrameTick() - fpsTick >= 1000)
     {
-        Settings.FPS = call_counter;
-        call_counter = 0;
-        last_call = Timer::FastTick();
+        Settings.FPS = fpsCounter;
+        fpsCounter = 0;
+        fpsTick = GameTime.FrameTick();
     }
     else
     {
-        call_counter++;
+        fpsCounter++;
     }
 
     // Poll pending events
@@ -684,8 +680,21 @@ void FOClient::MainLoop()
     AnimProcess();
 
     // Game time
-    if (GameTime.ProcessGameTime())
+    if (time_changed)
+    {
+        if (Globals)
+        {
+            DateTimeStamp st = GameTime.GetGameTime(GameTime.GetFullSecond());
+            Globals->SetYear(st.Year);
+            Globals->SetMonth(st.Month);
+            Globals->SetDay(st.Day);
+            Globals->SetHour(st.Hour);
+            Globals->SetMinute(st.Minute);
+            Globals->SetSecond(st.Second);
+        }
+
         SetDayTime(false);
+    }
 
     if (IsMainScreen(SCREEN_GLOBAL_MAP))
     {
@@ -748,7 +757,7 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
 {
     if (!push_back || ScreenEffects.empty())
     {
-        ScreenEffects.push_back(ScreenEffect(Timer::FastTick(), time, from_color, to_color));
+        ScreenEffects.push_back(ScreenEffect(GameTime.FrameTick(), time, from_color, to_color));
     }
     else
     {
@@ -774,7 +783,7 @@ void FOClient::ScreenQuake(int noise, uint time)
     ScreenOffsStep = fabs(ScreenOffsXf) / (time / 30);
     Settings.ScrOx += ScreenOffsX;
     Settings.ScrOy += ScreenOffsY;
-    ScreenOffsNextTick = Timer::GameTick() + 30;
+    ScreenOffsNextTick = GameTime.GameTick() + 30;
 }
 
 void FOClient::ProcessScreenEffectFading()
@@ -787,14 +796,14 @@ void FOClient::ProcessScreenEffectFading()
     for (auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {
         ScreenEffect& e = (*it);
-        if (Timer::FastTick() >= e.BeginTick + e.Time)
+        if (GameTime.FrameTick() >= e.BeginTick + e.Time)
         {
             it = ScreenEffects.erase(it);
             continue;
         }
-        else if (Timer::FastTick() >= e.BeginTick)
+        else if (GameTime.FrameTick() >= e.BeginTick)
         {
-            int proc = GenericUtils::Procent(e.Time, Timer::FastTick() - e.BeginTick) + 1;
+            int proc = GenericUtils::Procent(e.Time, GameTime.FrameTick() - e.BeginTick) + 1;
             int res[4];
 
             for (int i = 0; i < 4; i++)
@@ -817,7 +826,7 @@ void FOClient::ProcessScreenEffectFading()
 
 void FOClient::ProcessScreenEffectQuake()
 {
-    if ((ScreenOffsX || ScreenOffsY) && Timer::GameTick() >= ScreenOffsNextTick)
+    if ((ScreenOffsX || ScreenOffsY) && GameTime.GameTick() >= ScreenOffsNextTick)
     {
         Settings.ScrOx -= ScreenOffsX;
         Settings.ScrOy -= ScreenOffsY;
@@ -835,7 +844,7 @@ void FOClient::ProcessScreenEffectQuake()
         ScreenOffsY = (int)ScreenOffsYf;
         Settings.ScrOx += ScreenOffsX;
         Settings.ScrOy += ScreenOffsY;
-        ScreenOffsNextTick = Timer::GameTick() + 30;
+        ScreenOffsNextTick = GameTime.GameTick() + 30;
     }
 }
 
@@ -1109,7 +1118,7 @@ bool FOClient::NetConnect(const string& host, ushort port)
                 return false;
             }
 
-            uint tick = Timer::FastTick();
+            uint tick = GameTime.FrameTick();
             while (true)
             {
                 int receive = NetInput(false);
@@ -1122,7 +1131,7 @@ bool FOClient::NetConnect(const string& host, ushort port)
                     return false;
                 }
 
-                if (Timer::FastTick() - tick > 10000)
+                if (GameTime.FrameTick() - tick > 10000)
                 {
                     WriteLog("Proxy answer timeout.\n");
                     return false;
@@ -1361,10 +1370,10 @@ void FOClient::ParseSocket()
         NetProcess();
 
         if (IsConnected && Settings.HelpInfo && Bout.IsEmpty() && !PingTick && Settings.PingPeriod &&
-            Timer::FastTick() >= PingCallTick)
+            GameTime.FrameTick() >= PingCallTick)
         {
             Net_SendPing(PING_PING);
-            PingTick = Timer::FastTick();
+            PingTick = GameTime.FrameTick();
         }
 
         NetOutput();
@@ -2043,7 +2052,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
         RUNTIME_ASSERT(proto);
-        CritterView* cr = new CritterView(crid, proto, Settings, SprMngr, ResMngr, EffectMngr, ScriptSys, false);
+        CritterView* cr =
+            new CritterView(crid, proto, Settings, SprMngr, ResMngr, EffectMngr, ScriptSys, GameTime, false);
         cr->Props.RestoreData(TempPropertiesData);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -2283,7 +2293,7 @@ void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
     t.HexY = hy;
     t.Color = (color ? color : COLOR_TEXT);
     t.Fade = false;
-    t.StartTick = Timer::GameTick();
+    t.StartTick = GameTime.GameTick();
     t.Tick = text_delay;
     t.Text = sstr;
     t.Pos = HexMngr.GetRectForText(hx, hy);
@@ -3121,9 +3131,9 @@ void FOClient::Net_OnPing()
     }
     else if (ping == PING_PING)
     {
-        Settings.Ping = Timer::FastTick() - PingTick;
+        Settings.Ping = GameTime.FrameTick() - PingTick;
         PingTick = 0;
-        PingCallTick = Timer::FastTick() + Settings.PingPeriod;
+        PingCallTick = GameTime.FrameTick() + Settings.PingPeriod;
     }
 }
 
@@ -3363,23 +3373,14 @@ void FOClient::Net_OnGameInfo()
     bool no_log_out;
     int* day_time = HexMngr.GetMapDayTime();
     uchar* day_color = HexMngr.GetMapDayColor();
-    ushort time_var;
-    Bin >> time_var;
-    Globals->SetYearStart(time_var);
-    Bin >> time_var;
-    Globals->SetYear(time_var);
-    Bin >> time_var;
-    Globals->SetMonth(time_var);
-    Bin >> time_var;
-    Globals->SetDay(time_var);
-    Bin >> time_var;
-    Globals->SetHour(time_var);
-    Bin >> time_var;
-    Globals->SetMinute(time_var);
-    Bin >> time_var;
-    Globals->SetSecond(time_var);
-    Bin >> time_var;
-    Globals->SetTimeMultiplier(time_var);
+    ushort year, month, day, hour, minute, second, multiplier;
+    Bin >> year;
+    Bin >> month;
+    Bin >> day;
+    Bin >> hour;
+    Bin >> minute;
+    Bin >> second;
+    Bin >> multiplier;
     Bin >> time;
     Bin >> rain;
     Bin >> no_log_out;
@@ -3388,7 +3389,15 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    GameTime.Reset();
+    GameTime.Reset(year, month, day, hour, minute, second, multiplier);
+    Globals->SetYear(year);
+    Globals->SetMonth(month);
+    Globals->SetDay(day);
+    Globals->SetHour(hour);
+    Globals->SetMinute(minute);
+    Globals->SetSecond(second);
+    Globals->SetTimeMultiplier(multiplier);
+
     HexMngr.SetWeather(time, rain);
     SetDayTime(true);
     NoLogOut = no_log_out;
@@ -4137,7 +4146,7 @@ void FOClient::PlayVideo()
     ShowVideo& video = ShowVideos[0];
     CurVideo = new VideoContext();
     CurVideo->CurFrame = 0;
-    CurVideo->StartTime = Timer::AccurateTick();
+    CurVideo->StartTime = Timer::RealtimeTick();
     CurVideo->AverageRenderTime = 0.0;
 
     // Open file
@@ -4296,7 +4305,7 @@ int FOClient::VideoDecodePacket()
 void FOClient::RenderVideo()
 {
     // Count function call time to interpolate output time
-    double render_time = Timer::AccurateTick();
+    double render_time = Timer::RealtimeTick();
 
     // Calculate next frame
     double cur_second = (render_time - CurVideo->StartTime + CurVideo->AverageRenderTime) / 1000.0;
@@ -4412,7 +4421,7 @@ void FOClient::RenderVideo()
     SprMngr.EndScene();
 
     // Store render time
-    render_time = Timer::AccurateTick() - render_time;
+    render_time = Timer::RealtimeTick() - render_time;
     if (CurVideo->AverageRenderTime > 0.0)
         CurVideo->AverageRenderTime = (CurVideo->AverageRenderTime + render_time) / 2.0;
     else
@@ -4471,19 +4480,20 @@ uint FOClient::AnimLoad(uint name_hash, AtlasType res_type)
     AnyFrames* anim = ResMngr.GetAnim(name_hash, res_type);
     if (!anim)
         return 0;
-    IfaceAnim* ianim = new IfaceAnim(anim, res_type);
-    if (!ianim)
-        return 0;
 
-    uint index = 1;
-    for (uint j = (uint)Animations.size(); index < j; index++)
+    IfaceAnim* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
+
+    size_t index = 1;
+    for (; index < Animations.size(); index++)
         if (!Animations[index])
             break;
-    if (index < (uint)Animations.size())
+
+    if (index < Animations.size())
         Animations[index] = ianim;
     else
         Animations.push_back(ianim);
-    return index;
+
+    return (uint)index;
 }
 
 uint FOClient::AnimLoad(const char* fname, AtlasType res_type)
@@ -4491,19 +4501,20 @@ uint FOClient::AnimLoad(const char* fname, AtlasType res_type)
     AnyFrames* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (!anim)
         return 0;
-    IfaceAnim* ianim = new IfaceAnim(anim, res_type);
-    if (!ianim)
-        return 0;
 
-    uint index = 1;
-    for (uint j = (uint)Animations.size(); index < j; index++)
+    IfaceAnim* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
+
+    size_t index = 1;
+    for (; index < Animations.size(); index++)
         if (!Animations[index])
             break;
-    if (index < (uint)Animations.size())
+
+    if (index < Animations.size())
         Animations[index] = ianim;
     else
         Animations.push_back(ianim);
-    return index;
+
+    return (uint)index;
 }
 
 uint FOClient::AnimGetCurSpr(uint anim_id)
@@ -4557,7 +4568,7 @@ void FOClient::AnimRun(uint anim_id, uint flags)
 
 void FOClient::AnimProcess()
 {
-    uint cur_tick = Timer::GameTick();
+    uint cur_tick = GameTime.GameTick();
     for (auto it = Animations.begin(), end = Animations.end(); it != end; ++it)
     {
         IfaceAnim* anim = *it;
@@ -4767,7 +4778,7 @@ void FOClient::GameDraw()
         it->second->DrawTextOnHead();
 
     // Texts on map
-    uint tick = Timer::GameTick();
+    uint tick = GameTime.GameTick();
     for (auto it = GameMapTexts.begin(); it != GameMapTexts.end();)
     {
         MapText& mt = (*it);
@@ -5095,7 +5106,7 @@ void FOClient::LmapPrepareMap()
         pix_y = 0;
     }
 
-    LmapPrepareNextTick = Timer::FastTick() + MINIMAP_PREPARE_TICK;
+    LmapPrepareNextTick = GameTime.FrameTick() + MINIMAP_PREPARE_TICK;
 }
 
 void FOClient::GmapNullParams()

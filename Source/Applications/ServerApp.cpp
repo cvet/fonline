@@ -54,8 +54,10 @@ static void ServerEntry()
     while (!StartServer)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
+    // Todo: fix data racing
     Server = new FOServer(Settings);
-    Server->Run();
+    while (!Settings.Quit)
+        Server->MainLoop();
     FOServer* server = Server;
     Server = nullptr;
     delete server;
@@ -94,7 +96,7 @@ static int main_disabled(int argc, char** argv)
         if (!AppGui::BeginFrame())
         {
             // Immediate finish
-            if (!StartServer || !Server || (!Server->Started() && !Server->Stopping()))
+            if (!StartServer || !Server || !Server->Started)
                 exit(0);
 
             // Graceful finish

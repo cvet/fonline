@@ -43,7 +43,7 @@ SETTING(uint, MinNameLength, 4);
 SETTING(uint, MaxNameLength, 12);
 SETTING(uint, Breaktime, 1200);
 SETTING(string, Language, "engl");
-VAR_SETTING(bool, Quit, false);
+VAR_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 SETTING_GROUP_END();
 
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
@@ -161,9 +161,7 @@ SETTING(int, FixedFPS, 100);
 SETTING_GROUP_END();
 
 SETTING_GROUP(TimerSettings, virtual DummySettings);
-VAR_SETTING(uint, FullSecondStart, 0);
-VAR_SETTING(uint, FullSecond, 0);
-VAR_SETTING(uint, GameTimeTick, 0);
+SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ScriptSettings, virtual TimerSettings);

@@ -58,6 +58,7 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Testing.h"
+#include "Timer.h"
 
 // Fonts
 #define FONT_FO (0)
@@ -76,6 +77,7 @@ class FOMapper : public NonMovable // Todo: rename FOMapper to just Mapper
 {
 public:
     MapperSettings& Settings;
+    GameTimer GameTime;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
     FileManager ServerFileMngr;
@@ -131,13 +133,11 @@ public:
     // Animations
     struct IfaceAnim
     {
-        IfaceAnim(AnyFrames* frm, AtlasType res_type);
-
         AnyFrames* Frames {};
+        AtlasType ResType {};
+        uint LastTick {};
         ushort Flags {};
         uint CurSpr {};
-        uint LastTick {};
-        AtlasType ResType {};
     };
     using IfaceAnimVec = vector<IfaceAnim*>;
 

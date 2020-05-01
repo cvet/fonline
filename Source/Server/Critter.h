@@ -121,12 +121,12 @@ public:
 
     bool SetScript(const string& func, bool first_time);
 
-    bool IsFree() { return Timer::GameTick() - startBreakTime >= breakTime; }
-    bool IsBusy() { return !IsFree(); }
+    bool IsFree();
+    bool IsBusy();
     void SetBreakTime(uint ms);
     void SetBreakTimeDelta(uint ms);
-    void SetWait(uint ms) { waitEndTick = Timer::GameTick() + ms; }
-    bool IsWait() { return Timer::GameTick() < waitEndTick; }
+    void SetWait(uint ms);
+    bool IsWait();
 
     bool IsSendDisabled() { return DisableSend > 0; }
     void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
@@ -254,11 +254,13 @@ public:
 #include "ScriptApi.h"
 
 protected:
-    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
+    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
+        GameTimer& game_time);
 
     CritterSettings& settings;
     GeometryHelper geomHelper;
     ServerScriptSystem& scriptSys;
+    GameTimer& gameTime;
     ItemVec invItems {};
 
 private:
@@ -273,7 +275,8 @@ class Client : public Critter
     friend class CritterManager;
 
 public:
-    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
+    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
+        GameTimer& game_time);
     ~Client();
 
     uint GetIp();
@@ -360,7 +363,7 @@ class Npc : public Critter
     friend class CritterManager;
 
 public:
-    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys);
+    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys, GameTimer& game_time);
 
     uint GetTalkedPlayers();
     bool IsTalkedPlayers();

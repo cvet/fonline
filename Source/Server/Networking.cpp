@@ -171,7 +171,7 @@ public:
 
         IsDisconnected = true;
         if (!DisconnectTick)
-            DisconnectTick = Timer::FastTick();
+            DisconnectTick = (uint)Timer::RealtimeTick();
 
         DisconnectImpl();
     }

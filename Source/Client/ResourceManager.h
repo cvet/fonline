@@ -44,9 +44,9 @@ struct LoadedAnim
     AtlasType ResType {};
     AnyFrames* Anim {};
 };
-typedef map<hash, LoadedAnim> LoadedAnimMap;
+using LoadedAnimMap = map<hash, LoadedAnim>;
 
-class ResourceManager : public NonCopyable
+class ResourceManager : public NonMovable
 {
 public:
     ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ClientScriptSystem& script_sys);

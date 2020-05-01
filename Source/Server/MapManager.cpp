@@ -46,14 +46,15 @@
 #include "Testing.h"
 
 MapManager::MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys) :
+    CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) :
     settings {sett},
     geomHelper(settings),
     protoMngr {proto_mngr},
     entityMngr {entity_mngr},
     crMngr {cr_mngr},
     itemMngr {item_mngr},
-    scriptSys {script_sys}
+    scriptSys {script_sys},
+    gameTime {game_time}
 {
     for (int i = 1; i < FPATH_DATA_SIZE; i++)
         pathesPool[i].reserve(100);
@@ -72,7 +73,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     MapLoader::Load(
         pmap->GetName(), file_mngr, protoMngr,
         [&static_map, this](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
-            Npc* npc = new Npc(id, proto, settings, scriptSys);
+            Npc* npc = new Npc(id, proto, settings, scriptSys, gameTime);
             if (!npc->Props.LoadFromText(kv))
             {
                 delete npc;
@@ -541,7 +542,7 @@ Map* MapManager::CreateMap(hash proto_id, Location* loc)
     if (it == staticMaps.end())
         throw MapManagerException("Static map not found", proto_id);
 
-    Map* map = new Map(0, proto_map, loc, &it->second, settings, scriptSys);
+    Map* map = new Map(0, proto_map, loc, &it->second, settings, scriptSys, gameTime);
     MapVec& maps = loc->GetMapsRaw();
     map->SetLocId(loc->GetId());
     map->SetLocMapIndex((uint)maps.size());
@@ -564,7 +565,7 @@ bool MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& do
     if (it == staticMaps.end())
         throw MapManagerException("Static map not found", proto_id);
 
-    Map* map = new Map(id, proto_map, nullptr, &it->second, settings, scriptSys);
+    Map* map = new Map(id, proto_map, nullptr, &it->second, settings, scriptSys, gameTime);
     if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, scriptSys))
     {
         WriteLog("Fail to restore properties for map '{}' ({}).\n", _str().parseHash(proto_id), id);
@@ -1616,7 +1617,7 @@ bool MapManager::Transit(
     // Check force
     if (!force)
     {
-        if (cr->GetTimeoutTransfer() > settings.FullSecond || cr->GetTimeoutBattle() > settings.FullSecond)
+        if (cr->GetTimeoutTransfer() > gameTime.GetFullSecond() || cr->GetTimeoutBattle() > gameTime.GetFullSecond())
             return false;
         if (cr->IsDead())
             return false;
@@ -1737,7 +1738,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
     cr->LockMapTransfers++;
 
     cr->SetTimeoutBattle(0);
-    cr->SetTimeoutTransfer(settings.FullSecond + settings.TimeoutTransfer);
+    cr->SetTimeoutTransfer(gameTime.GetFullSecond() + settings.TimeoutTransfer);
 
     if (map)
     {

@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
 
 #define FOREACH_PROTO_ITEM_LINES(lines, hx, hy, maxhx, maxhy, work) \
     int hx__ = hx, hy__ = hy; \
@@ -282,7 +281,7 @@ void Field::UnvalidateSpriteChain()
 }
 
 HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_mngr, SpriteManager& spr_mngr,
-    EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys) :
+    EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys, GameTimer& game_time) :
     settings {sett},
     geomHelper(settings),
     protoMngr {proto_mngr},
@@ -293,7 +292,8 @@ HexManager::HexManager(bool mapper_mode, HexSettings& sett, ProtoManager& proto_
     tilesTree(settings, spr_mngr),
     roofTree(settings, spr_mngr),
     roofRainTree(settings, spr_mngr),
-    scriptSys {script_sys}
+    scriptSys {script_sys},
+    gameTime {game_time}
 {
     mapperMode = mapper_mode;
 
@@ -458,7 +458,7 @@ uint HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
 
     // Parse
     Field& f = GetField(hx, hy);
-    ItemHexView* item = new ItemHexView(id, proto, data, hx, hy, &f.ScrX, &f.ScrY, resMngr, effectMngr);
+    ItemHexView* item = new ItemHexView(id, proto, data, hx, hy, &f.ScrX, &f.ScrY, resMngr, effectMngr, gameTime);
     if (is_added)
         item->SetShowAnim();
     PushItem(item);
@@ -723,7 +723,8 @@ bool HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
     }
 
     Field& f = GetField(from_hx, from_hy);
-    ItemHexView* item = new ItemHexView(0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY, resMngr, effectMngr);
+    ItemHexView* item =
+        new ItemHexView(0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY, resMngr, effectMngr, gameTime);
 
     float sx = 0;
     float sy = 0;
@@ -765,10 +766,11 @@ void HexManager::ProcessRain()
     if (!rainCapacity)
         return;
 
-    static uint last_tick = Timer::GameTick();
-    uint delta = Timer::GameTick() - last_tick;
+    uint delta = gameTime.GameTick() - rainLastTick;
     if (delta < settings.RainTick)
         return;
+
+    rainLastTick = gameTime.GameTick();
 
     for (auto it = rainData.begin(), end = rainData.end(); it != end; ++it)
     {
@@ -791,7 +793,7 @@ void HexManager::ProcessRain()
             cur_drop->DropCnt++;
             if ((uint)cur_drop->DropCnt >= picRainDrop->CntFrm)
             {
-                cur_drop->CurSprId = picRainFall->GetCurSprId();
+                cur_drop->CurSprId = picRainFall->GetCurSprId(gameTime.GameTick());
                 cur_drop->DropCnt = -1;
                 cur_drop->OffsX = GenericUtils::Random(-10, 10);
                 cur_drop->OffsY = -100 - GenericUtils::Random(0, 100);
@@ -802,8 +804,6 @@ void HexManager::ProcessRain()
             }
         }
     }
-
-    last_tick = Timer::GameTick();
 }
 
 void HexManager::SetRainAnimation(const char* fall_anim_name, const char* drop_anim_name)
@@ -962,7 +962,8 @@ void HexManager::RebuildMap(int rx, int ry)
         // Track
         if (isShowTrack && GetHexTrack(nx, ny))
         {
-            uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId());
+            uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId(gameTime.GameTick()) :
+                                                      picTrack2->GetCurSprId(gameTime.GameTick()));
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
             Sprite& spr = mainTree.AddSprite(DRAW_ORDER_TRACK, nx, ny, 0, (settings.MapHexWidth / 2),
                 (settings.MapHexHeight / 2) + (si ? si->Height / 2 : 0), &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr,
@@ -973,7 +974,7 @@ void HexManager::RebuildMap(int rx, int ry)
         // Hex Lines
         if (isShowHex)
         {
-            uint spr_id = picHex[0]->GetCurSprId();
+            uint spr_id = picHex[0]->GetCurSprId(gameTime.GameTick());
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
             Sprite& spr = mainTree.AddSprite(DRAW_ORDER_HEX_GRID, nx, ny, 0, si ? si->Width / 2 : 0,
                 si ? si->Height : 0, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -993,8 +994,8 @@ void HexManager::RebuildMap(int rx, int ry)
             Drop* new_drop = nullptr;
             if (!GetField(rofx, rofy).GetTilesCount(true))
             {
-                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
-                    (short)-GenericUtils::Random(0, 200), 0, -1};
+                new_drop = new Drop {picRainFall->GetCurSprId(gameTime.GameTick()),
+                    (short)GenericUtils::Random(-10, 10), (short)-GenericUtils::Random(0, 200), 0, -1};
                 rainData.push_back(new_drop);
 
                 Sprite& spr = mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
@@ -1005,8 +1006,8 @@ void HexManager::RebuildMap(int rx, int ry)
             }
             else if (!roofSkip || roofSkip != GetField(rofx, rofy).RoofNum)
             {
-                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
-                    (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
+                new_drop = new Drop {picRainFall->GetCurSprId(gameTime.GameTick()),
+                    (short)GenericUtils::Random(-10, 10), (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
                 rainData.push_back(new_drop);
 
                 Sprite& spr = roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
@@ -1208,7 +1209,8 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         // Track
         if (isShowTrack && GetHexTrack(nx, ny))
         {
-            uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId());
+            uint spr_id = (GetHexTrack(nx, ny) == 1 ? picTrack1->GetCurSprId(gameTime.GameTick()) :
+                                                      picTrack2->GetCurSprId(gameTime.GameTick()));
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
             Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_TRACK, nx, ny, 0, (settings.MapHexWidth / 2),
                 (settings.MapHexHeight / 2) + (si ? si->Height / 2 : 0), &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr,
@@ -1219,7 +1221,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         // Hex lines
         if (isShowHex)
         {
-            uint spr_id = picHex[0]->GetCurSprId();
+            uint spr_id = picHex[0]->GetCurSprId(gameTime.GameTick());
             SpriteInfo* si = sprMngr.GetSpriteInfo(spr_id);
             Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_HEX_GRID, nx, ny, 0, si ? si->Width / 2 : 0,
                 si ? si->Height : 0, &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -1239,8 +1241,8 @@ void HexManager::RebuildMapOffset(int ox, int oy)
             Drop* new_drop = nullptr;
             if (!GetField(rofx, rofy).GetTilesCount(true))
             {
-                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
-                    (short)-GenericUtils::Random(0, 200), 0, -1};
+                new_drop = new Drop {picRainFall->GetCurSprId(gameTime.GameTick()),
+                    (short)GenericUtils::Random(-10, 10), (short)-GenericUtils::Random(0, 200), 0, -1};
                 rainData.push_back(new_drop);
 
                 Sprite& spr = mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
@@ -1251,8 +1253,8 @@ void HexManager::RebuildMapOffset(int ox, int oy)
             }
             else if (!roofSkip || roofSkip != GetField(rofx, rofy).RoofNum)
             {
-                new_drop = new Drop {picRainFall->GetCurSprId(), (short)GenericUtils::Random(-10, 10),
-                    (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
+                new_drop = new Drop {picRainFall->GetCurSprId(gameTime.GameTick()),
+                    (short)GenericUtils::Random(-10, 10), (short)(-100 - GenericUtils::Random(0, 100)), -100, -1};
                 rainData.push_back(new_drop);
 
                 Sprite& spr = roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, 0, (settings.MapHexWidth / 2),
@@ -2415,7 +2417,7 @@ void HexManager::DrawMap()
         sprMngr.DrawRenderTarget(rtLight, true, &prerenderedRect);
 
     // Cursor flat
-    DrawCursor(cursorPrePic->GetCurSprId());
+    DrawCursor(cursorPrePic->GetCurSprId(gameTime.GameTick()));
 
     // Sprites
     sprMngr.DrawSprites(mainTree, true, true, DRAW_ORDER_LIGHT, DRAW_ORDER_LAST);
@@ -2436,9 +2438,9 @@ void HexManager::DrawMap()
         sprMngr.DrawRenderTarget(rtFog, true, &prerenderedRect);
 
     // Cursor
-    DrawCursor(cursorPostPic->GetCurSprId());
+    DrawCursor(cursorPostPic->GetCurSprId(gameTime.GameTick()));
     if (drawCursorX < 0)
-        DrawCursor(cursorXPic->GetCurSprId());
+        DrawCursor(cursorXPic->GetCurSprId(gameTime.GameTick()));
     else if (drawCursorX > 0)
         DrawCursor(_str("{}", drawCursorX).c_str());
 
@@ -2496,7 +2498,7 @@ bool HexManager::Scroll()
     float time_k = 1.0f;
     if (settings.ScrollDelay)
     {
-        uint tick = Timer::FastTick();
+        uint tick = gameTime.FrameTick();
         static uint last_tick = tick;
         if (tick - last_tick < settings.ScrollDelay / 2)
             return false;
@@ -4252,7 +4254,7 @@ void HexManager::GenerateItem(uint id, hash proto_id, Properties& props)
     ProtoItem* proto = protoMngr.GetProtoItem(proto_id);
     RUNTIME_ASSERT(proto);
 
-    ItemHexView* scenery = new ItemHexView(id, proto, props, resMngr, effectMngr);
+    ItemHexView* scenery = new ItemHexView(id, proto, props, resMngr, effectMngr, gameTime);
     Field& f = GetField(scenery->GetHexX(), scenery->GetHexY());
     scenery->HexScrX = &f.ScrX;
     scenery->HexScrY = &f.ScrY;

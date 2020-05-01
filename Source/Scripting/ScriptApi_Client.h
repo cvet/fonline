@@ -967,7 +967,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
             _client->LmapWMap[3] = y2;
             _client->LmapPrepareMap();
         }
-        else if (Timer::FastTick() >= _client->LmapPrepareNextTick)
+        else if (_client->GameTime.FrameTick() >= _client->LmapPrepareNextTick)
         {
             _client->LmapPrepareMap();
         }
@@ -1760,7 +1760,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO
     t.HexY = hy;
     t.Color = (color ? color : COLOR_TEXT);
     t.Fade = fade;
-    t.StartTick = Timer::GameTick();
+    t.StartTick = _client->GameTime.GameTick();
     t.Tick = ms;
     t.Text = text;
     t.Pos = _client->HexMngr.GetRectForText(hx, hy);
@@ -2103,6 +2103,22 @@ FO_API_EPILOG()
 /*******************************************************************************
  * ...
  *
+ * @return ...
+ ******************************************************************************/
+FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint))
+#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+FO_API_PROLOG()
+{
+    FO_API_RETURN(_client->GameTime.GetFullSecond());
+}
+FO_API_EPILOG(0)
+#endif
+#endif
+
+#ifdef FO_API_MULTIPLAYER_ONLY
+/*******************************************************************************
+ * ...
+ *
  * @param year ...
  * @param month ...
  * @param day ...
@@ -2111,38 +2127,44 @@ FO_API_EPILOG()
  * @param second ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
+FO_API_GLOBAL_CLIENT_FUNC(EvaluateFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month),
     FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month) FO_API_ARG_MARSHAL(ushort, day)
         FO_API_ARG_MARSHAL(ushort, hour) FO_API_ARG_MARSHAL(ushort, minute) FO_API_ARG_MARSHAL(ushort, second))
 {
+    if (year && year < _client->Settings.StartYear)
+        throw ScriptException("Invalid year", year);
+    if (year && year > _client->Settings.StartYear + 100)
+        throw ScriptException("Invalid year", year);
+    if (month && month < 1)
+        throw ScriptException("Invalid month", month);
+    if (month && month > 12)
+        throw ScriptException("Invalid month", month);
+
     if (!year)
         year = _client->Globals->GetYear();
-    else
-        year = CLAMP(year, _client->Globals->GetYearStart(), _client->Globals->GetYearStart() + 130);
     if (!month)
         month = _client->Globals->GetMonth();
-    else
-        month = CLAMP(month, 1, 12);
-    if (!day)
-    {
-        day = _client->Globals->GetDay();
-    }
-    else
+
+    if (day)
     {
         uint month_day = _client->GameTime.GameTimeMonthDay(year, month);
-        day = CLAMP(day, 1, month_day);
+        if (day < month_day || day > month_day)
+            throw ScriptException("Invalid day", day, month_day);
     }
 
-    if (hour > 23)
-        hour = 23;
-    if (minute > 59)
-        minute = 59;
-    if (second > 59)
-        second = 59;
+    if (!day)
+        day = _client->Globals->GetDay();
 
-    FO_API_RETURN(_client->GameTime.GetFullSecond(year, month, day, hour, minute, second));
+    if (hour > 23)
+        throw ScriptException("Invalid hour", hour);
+    if (minute > 59)
+        throw ScriptException("Invalid minute", minute);
+    if (second > 59)
+        throw ScriptException("Invalid second", second);
+
+    FO_API_RETURN(_client->GameTime.EvaluateFullSecond(year, month, day, hour, minute, second));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2703,7 +2725,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     AnyFrames* anim = _client->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
-    SpriteInfo* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    SpriteInfo* si = _client->SprMngr.GetSpriteInfo(
+        frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si)
         FO_API_RETURN(0);
     FO_API_RETURN(si->Width);
@@ -2725,7 +2748,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     AnyFrames* anim = _client->AnimGetFrames(sprId);
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
-    SpriteInfo* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    SpriteInfo* si = _client->SprMngr.GetSpriteInfo(
+        frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si)
         FO_API_RETURN(0);
     FO_API_RETURN(si->Height);
@@ -2787,7 +2811,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN(0);
 
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     FO_API_RETURN(_client->SprMngr.GetPixColor(spr_id_, x, y, false));
 }
 FO_API_EPILOG(0)
@@ -2843,7 +2867,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
 
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs)
     {
         SpriteInfo* si = _client->SprMngr.GetSpriteInfo(spr_id_);
@@ -2888,7 +2912,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
 
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex));
+    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs)
     {
         SpriteInfo* si = _client->SprMngr.GetSpriteInfo(spr_id_);
@@ -2933,7 +2957,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= (int)anim->CntFrm)
         FO_API_RETURN_VOID();
 
-    _client->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(frameIndex), x, y, w, h,
+    _client->SprMngr.DrawSpritePattern(
+        frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex), x, y, w, h,
         sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
@@ -3087,9 +3112,11 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
     Sprites& tree = _client->HexMngr.GetDrawTree();
     Sprite& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0,
         (_client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_client->Settings.MapHexHeight / 2) + mapSpr->OffsY,
-        &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId(mapSpr->FrameIndex), nullptr,
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr,
-        mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+        &f.ScrX, &f.ScrY,
+        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex),
+        nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr,
+        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr,
+        nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
