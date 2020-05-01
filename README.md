@@ -29,7 +29,6 @@
   * [Code refactoring plans](#code-refactoring-plans)
   * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
 - [Repository structure](#repository-structure)
-- [Contributing](#contributing)
 - [Frequently Asked Questions](frequently-asked-questions)
 - [Help and support](#help-and-support)
 
@@ -455,11 +454,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * [Resources](https://github.com/cvet/fonline/tree/master/Resources) - resources for build applications but not related to code
 * [Source](https://github.com/cvet/fonline/tree/master/Source) - fonline engine specific code
 * [ThirdParty](https://github.com/cvet/fonline/tree/master/ThirdParty) - external dependencies of engine, included to repository
-
-## Contributing
-
-Please refer to this document to know how you can help with engine development:
-* [CONTRIBUTING document](https://fonline.ru/CONTRIBUTING)
 
 ## Frequently Asked Questions
 
