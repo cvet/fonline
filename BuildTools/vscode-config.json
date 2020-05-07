@@ -49,6 +49,11 @@
             "command": "BuildTools/prepare-workspace.sh all"
         },
         {
+            "label": "Open in IDE",
+            "group": "Service",
+            "command": "cd $FO_WORKSPACE/maintenance-env && cmake.exe --open ."
+        },
+        {
             "label": "Prepare VSCode Toolset",
             "group": "Service",
             "command": "BuildTools/prepare-vscode-toolset.sh"

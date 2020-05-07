@@ -12,6 +12,6 @@
     "settings": {
         "window.autoDetectColorScheme": true,
         "fonline.path": "../../",
-        "fonline.cmake": "TheGame.fonline.cmake"
+        "fonline.cmake": "TheGame.cmake"
     }
 }

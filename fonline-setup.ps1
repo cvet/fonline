@@ -143,6 +143,9 @@ while ($True) {
                     $rootPathWsl = $rootPathWsl.Trim().TrimEnd("/")
                     $projectPathWsl = $projectPathWsl.Trim().TrimEnd("/")
                     cmd /C "wsl cd '$projectPathWsl/$projectName'; '$rootPathWsl/BuildTools/generate-project.sh' '$projectName'"
+
+                    Write-Host "Done!"
+                    Invoke-Item "$projectPath\$projectName"
                 }
             }
         } elseif ($answer -Eq "") {
