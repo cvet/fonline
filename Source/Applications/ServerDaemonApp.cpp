@@ -90,5 +90,5 @@ static int main_disabled(int argc, char** argv)
     FOServer server(Settings);
     while (Settings.Quit)
         server.MainLoop();
-    return server.Run();
+    return 0;
 }
