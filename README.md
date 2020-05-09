@@ -467,4 +467,4 @@ Following document contains some issues thats give additional information about 
 * E-Mail: <cvet@tut.by>
 * Forums: [fodev.net](https://fodev.net)
 * Discord: [invite](https://discord.gg/xa6TbqU)
-* Parteon: [fonline](https://www.patreon.com/fonline)
+* Parteon: [visit](https://www.patreon.com/fonline)

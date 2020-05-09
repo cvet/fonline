@@ -94,7 +94,7 @@ public:
     Properties Props;
     const uint Id;
     const EntityType Type;
-    const ProtoEntity* Proto;
+    ProtoEntity* Proto;
     mutable int RefCounter {1};
     bool IsDestroyed {};
     bool IsDestroying {};

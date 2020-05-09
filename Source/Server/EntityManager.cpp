@@ -41,8 +41,13 @@
 #include "Testing.h"
 
 EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr,
-    ServerScriptSystem& script_sys, DataBase* db_storage) :
-    mapMngr {map_mngr}, crMngr {cr_mngr}, itemMngr {item_mngr}, scriptSys {script_sys}, dbStorage {db_storage}
+    ServerScriptSystem& script_sys, DataBase* db_storage, GlobalVars* globs) :
+    mapMngr {map_mngr},
+    crMngr {cr_mngr},
+    itemMngr {item_mngr},
+    scriptSys {script_sys},
+    dbStorage {db_storage},
+    globals {globs}
 {
 }
 
@@ -81,9 +86,9 @@ void EntityManager::RegisterEntity(Entity* entity)
 {
     if (!entity->Id)
     {
-        /*uint id = Globals->GetLastEntityId() + 1;
+        uint id = globals->GetLastEntityId() + 1;
         id = MAX(id, 2);
-        Globals->SetLastEntityId(id);
+        globals->SetLastEntityId(id);
 
         entity->SetId(id);
 
@@ -102,7 +107,7 @@ void EntityManager::RegisterEntity(Entity* entity)
         else if (entity->Type == EntityType::Custom)
             dbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
         else
-            throw UnreachablePlaceException(LINE_STR);*/
+            throw UnreachablePlaceException(LINE_STR);
     }
 
     auto it = allEntities.insert(std::make_pair(entity->Id, entity));

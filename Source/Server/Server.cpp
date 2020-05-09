@@ -46,7 +46,7 @@ FOServer::FOServer(GlobalSettings& sett) :
     ScriptSys(this, sett, FileMngr),
     GameTime(Settings),
     ProtoMngr(),
-    EntityMngr(MapMngr, CrMngr, ItemMngr, ScriptSys, DbStorage),
+    EntityMngr(MapMngr, CrMngr, ItemMngr, ScriptSys, DbStorage, Globals),
     MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr, ScriptSys, GameTime),
     CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr, ScriptSys, GameTime),
     ItemMngr(ProtoMngr, EntityMngr, MapMngr, CrMngr, ScriptSys),

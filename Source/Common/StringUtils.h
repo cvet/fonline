@@ -37,16 +37,17 @@
 
 #define MAX_FOTEXT UTF8_BUF_SIZE(2048)
 
-namespace Str
+class Str : public StaticClass
 {
-    void Copy(char* to, size_t size, const char* from);
+public:
+    static void Copy(char* to, size_t size, const char* from);
     template<int Size>
-    inline void Copy(char (&to)[Size], const char* from)
+    static inline void Copy(char (&to)[Size], const char* from)
     {
         return Copy(to, Size, from);
     }
-    bool Compare(const char* str1, const char* str2);
-}
+    static bool Compare(const char* str1, const char* str2);
+};
 
 class _str
 {

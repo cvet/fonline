@@ -51,7 +51,7 @@ class EntityManager : public NonMovable
 {
 public:
     EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys,
-        DataBase* db_storage);
+        DataBase* db_storage, GlobalVars* globs);
 
     void RegisterEntity(Entity* entity);
     void UnregisterEntity(Entity* entity);
@@ -82,6 +82,7 @@ private:
     ItemManager& itemMngr;
     ServerScriptSystem& scriptSys;
     DataBase* dbStorage {};
+    GlobalVars* globals {};
     EntityMap allEntities {};
     uint entitiesCount[(int)EntityType::Max] {};
 };

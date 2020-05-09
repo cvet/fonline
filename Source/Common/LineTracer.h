@@ -38,7 +38,7 @@
 #include "GeometryHelper.h"
 #include "Settings.h"
 
-class LineTracer
+class LineTracer : public NonCopyable
 {
 public:
     LineTracer(

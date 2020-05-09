@@ -39,7 +39,7 @@
 
 constexpr int MAX_HEX_OFFSET = 50; // Must be not odd
 
-class GeometryHelper : public NonCopyable
+class GeometryHelper : public NonMovable
 {
 public:
     GeometryHelper(GeometrySettings& sett);

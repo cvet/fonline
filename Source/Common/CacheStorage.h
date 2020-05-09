@@ -40,7 +40,7 @@
 
 DECLARE_EXCEPTION(CacheStorageException);
 
-class CacheStorage : public NonCopyable
+class CacheStorage : public NonMovable
 {
 public:
     CacheStorage(const string& real_path);
