@@ -64,7 +64,7 @@ Important note: *Not all from described above features are already implemented, 
 
 ## Media
 
-[![Engine Intro](https://img.youtube.com/vi/Mw4ADjnI5bs/0.jpg)](https://www.youtube.com/watch?v=Mw4ADjnI5bs)
+[![Engine Intro Alt](https://img.youtube.com/vi/Mw4ADjnI5bs/0.jpg)](https://www.youtube.com/watch?v=Mw4ADjnI5bs "Engine Intro")
 
 ## Usage
 
