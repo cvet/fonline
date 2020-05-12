@@ -64,13 +64,7 @@ Important note: *Not all from described above features are already implemented, 
 
 ## Media
 
-Simplest way is:
-* [Ask google about "fonline" in images](https://www.google.com/search?q=fonline&tbm=isch)
-* [Or ask google about "fonline" in videos](https://www.google.com/search?q=fonline&tbm=vid)
-* [Or ask google about "fonline" in common](https://www.google.com/search?q=fonline)
-
-And two videos to who don't like to google:  
-<a href="https://www.youtube.com/watch?feature=player_embedded&v=K_a0g-Lbqm0" target="_blank"><img src="https://img.youtube.com/vi/K_a0g-Lbqm0/0.jpg" alt="FOnline History" width="160" height="120" border="0" /></a> <a href="https://www.youtube.com/watch?feature=player_embedded&v=eY5iqW8ssXg" target="_blank"><img src="https://img.youtube.com/vi/eY5iqW8ssXg/0.jpg" alt="Last Frontier" width="160" height="120" border="0" /></a>
+[![Engine Intro](https://img.youtube.com/vi/Mw4ADjnI5bs/0.jpg)](https://www.youtube.com/watch?v=Mw4ADjnI5bs)
 
 ## Usage
 
