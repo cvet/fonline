@@ -169,7 +169,6 @@ They are located in ThirdParty directory.
 * ACM by Abel - sound file format reader
 * [AngelScript](https://www.angelcode.com/angelscript/) - scripting language
 * [Asio](https://think-async.com/Asio/) - networking library
-* [Assimp](http://www.assimp.org/) - 3d models/animations loading library
 * [backward-cpp](https://github.com/bombela/backward-cpp) - stacktrace obtaining
 * [Catch2](https://github.com/catchorg/Catch2) - test framework
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
@@ -439,8 +438,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Mapper: mapper render iface layer
 * Mapper: add standalone Mapper application
 * Mapper: rename FOMapper to just Mapper
-* ModelBaker: fix assimp, exclude fbxsdk or exclude assimp and leave only fbxsdk
-* ModelBaker: return AssimpLogging on models bakering
   
 ## Repository structure
 

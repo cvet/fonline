@@ -276,7 +276,6 @@ SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSetti
     virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings,
     virtual TimerSettings, virtual ServerGameplaySettings, virtual MapSettings, virtual CritterSettings);
 SETTING(uint, AdminPanelPort, 0);
-SETTING(bool, AssimpLogging, false);
 SETTING(string, DbStorage, "Memory");
 SETTING(string, DbHistory, "None");
 SETTING(bool, NoStart, false);

@@ -517,7 +517,6 @@ You can easily contribute to this API using provided by engine functionality.
 * int StartHexY
 * bool SplitTilesCollection
 * uint AdminPanelPort
-* bool AssimpLogging
 * string DbStorage
 * string DbHistory
 * bool NoStart
