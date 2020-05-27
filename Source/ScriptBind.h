@@ -222,6 +222,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Priority", OFFSET
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Identifier", OFFSETOF( AIDataPlane, Identifier ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint IdentifierExt", OFFSETOF( AIDataPlane, IdentifierExt ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Run", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
+BIND_ASSERT(engine->RegisterObjectProperty("NpcPlane", "uint DelayFullSecond", OFFSETOF(AIDataPlane, Delay)));
+BIND_ASSERT(engine->RegisterObjectProperty("NpcPlane", "bool IsNotProccess", OFFSETOF(AIDataPlane, IsNotProccess)));
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Misc_WaitSecond", OFFSETOF( AIDataPlane, Misc.WaitSecond ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Misc_ScriptId", OFFSETOF( AIDataPlane, Misc.ScriptBindId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Attack_TargId", OFFSETOF( AIDataPlane, Attack.TargId ) ) );

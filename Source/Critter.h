@@ -795,8 +795,18 @@ public:
         AIDataPlane* p = GetCurPlane();
         return p ? p->Type == plane_type : false;
     }
-    AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : NULL; }
-    AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
+	AIDataPlane*    GetCurPlane()
+	{
+		for (size_t i = 0, iend = aiPlanes.size(); i < iend; i++)
+		{
+			AIDataPlane* plane = aiPlanes[i]->GetCurPlane();
+			if (plane->Delay < GameOpt.FullSecond && !plane->IsNotProccess)
+				return plane;
+		}
+		return nullptr;
+	}
+    
+	AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
     void            DropPlanes();
     void            SetBestCurPlane();
     bool            IsNoPlanes() { return aiPlanes.empty(); }

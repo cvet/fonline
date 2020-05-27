@@ -3423,7 +3423,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9360 );
     STATIC_ASSERT( OFFSETOF( GameVar, RefCount ) == 22 );
     STATIC_ASSERT( OFFSETOF( TemplateVar, Flags ) == 68 );
-    STATIC_ASSERT( OFFSETOF( AIDataPlane, RefCounter ) == 88 );
+    STATIC_ASSERT( OFFSETOF( AIDataPlane, RefCounter ) == 96 );
     STATIC_ASSERT( OFFSETOF( GlobalMapGroup, EncounterForce ) == 64 );
     STATIC_ASSERT( OFFSETOF( ProtoMap::MapEntire, Dir ) == 8 );
     STATIC_ASSERT( OFFSETOF( SceneryCl, PicMapHash ) == 24 );

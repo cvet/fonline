@@ -30,6 +30,8 @@ struct AIDataPlane
     uint         IdentifierExt;
     AIDataPlane* ChildPlane;
     bool         IsMove;
+	uint		 Delay;
+	bool		 IsNotProccess;
 
     union
     {
