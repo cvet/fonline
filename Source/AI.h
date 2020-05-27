@@ -127,7 +127,7 @@ struct AIDataPlane
         RefCounter--;
         if( !RefCounter ) delete this;
     }
-    AIDataPlane( uint type, uint priority ): Type( type ), Priority( priority ), Identifier( 0 ), IdentifierExt( 0 ), ChildPlane( NULL ), IsMove( false ), Assigned( false ), RefCounter( 1 )
+    AIDataPlane( uint type, uint priority ): Type( type ), Priority( priority ), Identifier( 0 ), IdentifierExt( 0 ), ChildPlane( NULL ), IsMove( false ), Delay( 0 ), IsNotProccess( false ), Assigned( false ), RefCounter( 1 )
     {
         memzero( &Buffer, sizeof( Buffer ) );
         memzero( &Move, sizeof( Move ) );
