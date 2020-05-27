@@ -112,3 +112,20 @@ bool HexManager_ChangeTile( uint name_hash, ushort hx, ushort hy, short ox, shor
             RebuildTiles();
     }*/
 }
+
+size_t HexMngr_GetAllItems_ScriptArray(ScriptArray* script_array)
+{
+	ItemPtrVec items;
+	ItemHexVec& item_hexes = FOClient::Self->HexMngr.GetItems();
+	for( auto it = item_hexes.begin(), end = item_hexes.end(); it != end; ++it )
+    {
+        ItemHex* item_hex = *it;
+		if( item_hex && !item_hex->IsNotValid && item_hex->IsItem() )
+		{
+			Item* item = item_hex;
+			items.push_back(item);
+		}
+    }
+	Script::AppendVectorToArrayRef< Item* >( items, script_array );
+	return items.size();
+}
