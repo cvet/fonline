@@ -77,7 +77,7 @@ So main point of all of this that you build your game fully from source, there i
 ### Workflow
 
 As described above all what you need to build and package your game in one place for different platforms is WSL2.  
-You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binraies on macOS and rest on native Linux distro) but better do it in one place.
+You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binaries on macOS and rest on native Linux distro) but better do it in one place.
 
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
