@@ -234,20 +234,18 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
             while( Script::PrepareContext( MapperFunctions.CritterAnimation, _FUNC_, "Anim" ) )
             #endif
             {
-                #define ANIM_FLAG_FIRST_FRAME    ( 0x01 )
-                #define ANIM_FLAG_LAST_FRAME     ( 0x02 )
-
                 uint pass = pass_base;
                 uint flags = 0;
-                int ox = 0, oy = 0;
+                int ox = 0, oy = 0, framebegin = 0, frameend = -1;
                 Script::SetArgUInt( anim_type );
                 Script::SetArgUInt( crtype );
                 Script::SetArgUInt( anim1 );
                 Script::SetArgUInt( anim2 );
                 Script::SetArgAddress( &pass );
-                Script::SetArgAddress( &flags );
                 Script::SetArgAddress( &ox );
                 Script::SetArgAddress( &oy );
+				Script::SetArgAddress(&framebegin);
+				Script::SetArgAddress(&frameend);
                 if( Script::RunPrepared() )
                 {
                     ScriptString* str = (ScriptString*) Script::GetReturnedObject();
@@ -261,39 +259,53 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                                 anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA, ANIM_DIR( 0 ) );
                             SprMngr.SurfType = RES_NONE;
 
-                            // Process flags
-                            if( anim && flags )
-                            {
-                                if( FLAG( flags, ANIM_FLAG_FIRST_FRAME ) || FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
-                                {
-                                    bool first = FLAG( flags, ANIM_FLAG_FIRST_FRAME );
+							if (anim)
+							{
+								uint countFrame = anim->CntFrm;
 
-                                    // Append offsets
-                                    if( !first )
-                                    {
-                                        for( uint i = 0; i < anim->CntFrm - 1; i++ )
-                                        {
-                                            anim->NextX[ anim->CntFrm - 1 ] += anim->NextX[ i ];
-                                            anim->NextY[ anim->CntFrm - 1 ] += anim->NextY[ i ];
-                                        }
-                                    }
+								if (frameend < 0)
+									frameend = countFrame + frameend;
 
-                                    // Change size
-                                    uint  spr_id = ( first ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
-                                    short nx = ( first ? anim->NextX[ 0 ] : anim->NextX[ anim->CntFrm - 1 ] );
-                                    short ny = ( first ? anim->NextY[ 0 ] : anim->NextY[ anim->CntFrm - 1 ] );
-                                    delete[] anim->Ind;
-                                    delete[] anim->NextX;
-                                    delete[] anim->NextY;
-                                    anim->Ind = new uint[ 1 ];
-                                    anim->NextX = new short[ 1 ];
-                                    anim->NextY = new short[ 1 ];
-                                    anim->Ind[ 0 ] = spr_id;
-                                    anim->NextX[ 0 ] = nx;
-                                    anim->NextY[ 0 ] = ny;
-                                    anim->CntFrm = 1;
-                                }
-                            }
+								if (framebegin < 0)
+									framebegin = countFrame + framebegin;
+
+								if (framebegin >= countFrame)
+									framebegin = countFrame - 1;
+
+								if (frameend >= countFrame)
+									frameend = countFrame - 1;
+
+								bool isReverse = framebegin > frameend;
+								countFrame = (isReverse ? framebegin - frameend : frameend - framebegin) + 1;
+
+								uint* indxs = new uint[countFrame];
+								short* nextXs = new short[countFrame];
+								short* nextYs = new short[countFrame];
+
+								if(isReverse)
+									for (uint i = 0; i < countFrame; i++)
+									{
+										indxs[i] = anim->Ind[frameend + i];
+										nextXs[i] = anim->NextX[frameend + i];
+										nextYs[i] = anim->NextY[frameend + i];
+									}
+								else
+									for (uint i = 0; i < countFrame; i++)
+									{
+										indxs[i] = anim->Ind[framebegin + i];
+										nextXs[i] = anim->NextX[framebegin + i];
+										nextYs[i] = anim->NextY[framebegin + i];
+									}
+
+								delete[] anim->Ind;
+								delete[] anim->NextX;
+								delete[] anim->NextY;
+								anim->Ind = indxs;
+								anim->NextX = nextXs;
+								anim->NextY = nextYs;
+								anim->CntFrm = countFrame;
+
+							}
 
                             // Add offsets
                             if( anim && ( ox || oy ) && false )
@@ -379,13 +391,15 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
     if( Script::PrepareContext( MapperFunctions.CritterAnimationFallout, _FUNC_, "Anim" ) )
     #endif
     {
-        uint anim1ex = 0, anim2ex = 0, flags = 0;
+        uint anim1ex = 0, anim2ex = 0;
+		int framebegin = 0, frameend = -1;
         Script::SetArgUInt( crtype );
         Script::SetArgAddress( &anim1 );
         Script::SetArgAddress( &anim2 );
         Script::SetArgAddress( &anim1ex );
         Script::SetArgAddress( &anim2ex );
-        Script::SetArgAddress( &flags );
+		Script::SetArgAddress(&framebegin);
+		Script::SetArgAddress(&frameend);
         if( Script::RunPrepared() && Script::GetReturnedBool() )
         {
             // Load
@@ -424,38 +438,50 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
             }
 
             // Clone
-            if( anim )
-            {
-                AnyFrames* anim_ = new AnyFrames();
-                anim_->CntFrm = ( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) ? anim->CntFrm : 1 );
-                anim_->Ticks = anim->Ticks;
-                anim_->Ind = new uint[ anim_->CntFrm ];
-                anim_->NextX = new short[ anim_->CntFrm ];
-                anim_->NextY = new short[ anim_->CntFrm ];
-                if( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) )
-                {
-                    memcpy( anim_->Ind, anim->Ind, anim->CntFrm * sizeof( uint ) );
-                    memcpy( anim_->NextX, anim->NextX, anim->CntFrm * sizeof( short ) );
-                    memcpy( anim_->NextY, anim->NextY, anim->CntFrm * sizeof( short ) );
-                }
-                else
-                {
-                    anim_->Ind[ 0 ] = anim->Ind[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
-                    anim_->NextX[ 0 ] = anim->NextX[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
-                    anim_->NextY[ 0 ] = anim->NextY[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
+			if (anim)
+			{
+				AnyFrames* anim_ = new AnyFrames();
+				anim_->Ticks = anim->Ticks;
+				uint countFrame = anim->CntFrm;
 
-                    // Append offsets
-                    if( FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
-                    {
-                        for( uint i = 0; i < anim->CntFrm - 1; i++ )
-                        {
-                            anim_->NextX[ 0 ] += anim->NextX[ i ];
-                            anim_->NextY[ 0 ] += anim->NextY[ i ];
-                        }
-                    }
-                }
-                anim = anim_;
-            }
+				if (frameend < 0)
+					frameend = countFrame + frameend;
+
+				if (framebegin < 0)
+					framebegin = countFrame + framebegin;
+
+				if (framebegin >= countFrame)
+					framebegin = countFrame - 1;
+
+				if (frameend >= countFrame)
+					frameend = countFrame - 1;
+
+				bool isReverse = framebegin > frameend;
+				countFrame = ( isReverse ? framebegin - frameend : frameend - framebegin ) + 1;
+
+				anim_->Ind = new uint[countFrame];
+				anim_->NextX = new short[countFrame];
+				anim_->NextY = new short[countFrame];
+
+				if(isReverse)
+					for (uint i = 0; i < countFrame; i++)
+					{
+						anim_->Ind[i] = anim->Ind[frameend + i];
+						anim_->NextX[i] = anim->NextX[frameend + i];
+						anim_->NextY[i] = anim->NextY[frameend + i];
+					}
+				else
+					for (uint i = 0; i < countFrame; i++)
+					{
+						anim_->Ind[i] = anim->Ind[framebegin + i];
+						anim_->NextX[i] = anim->NextX[framebegin + i];
+						anim_->NextY[i] = anim->NextY[framebegin + i];
+					}
+
+				anim_->CntFrm = countFrame;
+
+				anim = anim_;
+			}
             return anim;
         }
     }
