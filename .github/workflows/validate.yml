@@ -25,35 +25,35 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat uwp-client
   linux-client:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-client
   android-arm-client:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm-client
   android-arm64-client:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm64-client
   android-x86-client:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-x86-client
   web-client:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -81,7 +81,7 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-server
   linux-server:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -109,35 +109,35 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat uwp-single
   linux-single:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-single
   android-arm-single:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm-single
   android-arm64-single:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-arm64-single
   android-x86-single:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh android-x86-single
   web-single:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -165,7 +165,7 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-mapper
   linux-mapper:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -179,7 +179,7 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-ascompiler
   linux-ascompiler:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -193,21 +193,21 @@ jobs:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-baker
   linux-baker:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-baker
   unit-tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -216,7 +216,7 @@ jobs:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: BuildTools/validate.sh code-coverage
   check-formatting:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
       with:
