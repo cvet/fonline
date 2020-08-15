@@ -1,7 +1,7 @@
 # FOnline Engine Singleplayer Script API
 
 > Document under development, do not rely on this API before the global refactoring complete.  
-> Estimated finishing date is middle of this year.
+> Estimated finishing date is middle of 2021.
 
 ## Table of Content
 

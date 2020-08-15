@@ -1,7 +1,7 @@
 # FOnline Engine FAQ
 
 > Document under development.  
-> Estimated finishing date is middle of this year.
+> Estimated finishing date is middle of 2021.
 
 ## Table of Content
 

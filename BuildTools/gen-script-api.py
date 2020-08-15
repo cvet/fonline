@@ -196,7 +196,7 @@ def genApiMarkdown(target):
     writeFile('# FOnline Engine ' + target + ' Script API')
     writeFile('')
     writeFile('> Document under development, do not rely on this API before the global refactoring complete.  ')
-    writeFile('> Estimated finishing date is middle of this year.')
+    writeFile('> Estimated finishing date is middle of 2021.')
     writeFile('')
     writeFile('## Table of Content')
     writeFile('')
