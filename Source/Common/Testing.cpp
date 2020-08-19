@@ -524,6 +524,214 @@ void CreateDump(const string& appendix, const string& message)
     TopLevelFilterReadableDump(nullptr);
 }
 
+static string GetTraceback()
+{
+    string traceback;
+    traceback.reserve(512);
+    traceback = "Traceback:\n";
+
+    HANDLE process = ::GetCurrentProcess();
+    DWORD thread_id = ::GetCurrentThreadId();
+
+    SetCurrentDirectoryW(_str(DiskFileSystem::GetExePath()).extractDir().toWideChar().c_str());
+    SymInitialize(process, nullptr, TRUE);
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS);
+
+    HANDLE t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, thread_id);
+
+    CONTEXT context;
+    memset(&context, 0, sizeof(context));
+    context.ContextFlags = CONTEXT_FULL;
+
+#ifdef WIN32BIT
+    __asm label : __asm mov[context.Ebp], ebp;
+    __asm mov[context.Esp], esp;
+    __asm mov eax, [label];
+    __asm mov[context.Eip], eax;
+#else
+    RtlCaptureContext(&context);
+#endif
+
+    STACKFRAME64 stack;
+    memset(&stack, 0, sizeof(stack));
+
+#ifdef WIN32BIT
+    DWORD machine_type = IMAGE_FILE_MACHINE_I386;
+    stack.AddrFrame.Mode = AddrModeFlat;
+    stack.AddrFrame.Offset = context.Ebp;
+    stack.AddrPC.Mode = AddrModeFlat;
+    stack.AddrPC.Offset = context.Eip;
+    stack.AddrStack.Mode = AddrModeFlat;
+    stack.AddrStack.Offset = context.Esp;
+#else
+    DWORD machine_type = IMAGE_FILE_MACHINE_AMD64;
+    stack.AddrPC.Offset = context.Rip;
+    stack.AddrPC.Mode = AddrModeFlat;
+    stack.AddrFrame.Offset = context.Rsp;
+    stack.AddrFrame.Mode = AddrModeFlat;
+    stack.AddrStack.Offset = context.Rsp;
+    stack.AddrStack.Mode = AddrModeFlat;
+#endif
+
+#define STACKWALK_MAX_NAMELEN (1024)
+    char symbol_buffer[sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN];
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbol_buffer;
+    memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+    symbol->MaxNameLen = STACKWALK_MAX_NAMELEN;
+
+    struct RPM
+    {
+        static BOOL __stdcall Call(
+            HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead)
+        {
+            SIZE_T st;
+            BOOL bRet = ReadProcessMemory(hProcess, (LPVOID)qwBaseAddress, lpBuffer, nSize, &st);
+            *lpNumberOfBytesRead = (DWORD)st;
+            return bRet;
+        }
+    };
+
+    int frame_num = 0;
+    while (StackWalk64(
+        machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
+    {
+        struct CSE
+        {
+            struct CallstackEntry
+            {
+                DWORD64 offset;
+                CHAR name[STACKWALK_MAX_NAMELEN];
+                CHAR undName[STACKWALK_MAX_NAMELEN];
+                CHAR undFullName[STACKWALK_MAX_NAMELEN];
+                DWORD64 offsetFromSmybol;
+                DWORD offsetFromLine;
+                DWORD lineNumber;
+                CHAR lineFileName[STACKWALK_MAX_NAMELEN];
+                DWORD symType;
+                LPCSTR symTypeString;
+                CHAR moduleName[STACKWALK_MAX_NAMELEN];
+                DWORD64 baseOfImage;
+                CHAR loadedImageName[STACKWALK_MAX_NAMELEN];
+            };
+
+            static void OnCallstackEntry(string& traceback, int frame_num, CallstackEntry& entry)
+            {
+                if (frame_num >= 0 && entry.offset != 0)
+                {
+                    if (entry.name[0] == 0)
+                        strcpy_s(entry.name, "(function-name not available)");
+                    if (entry.undName[0] != 0)
+                        strcpy_s(entry.name, entry.undName);
+                    if (entry.undFullName[0] != 0)
+                        strcpy_s(entry.name, entry.undFullName);
+                    if (entry.moduleName[0] == 0)
+                        strcpy_s(entry.moduleName, "???");
+
+                    traceback += _str("  {}, {}", entry.moduleName, entry.name);
+
+                    if (entry.lineFileName[0] != 0)
+                        traceback += _str(", {} at line {}\n", entry.lineFileName, entry.lineNumber);
+                    else
+                        traceback += _str("+ {}\n", entry.offsetFromSmybol);
+                }
+            }
+        };
+
+        CSE::CallstackEntry callstack;
+        memzero(&callstack, sizeof(callstack));
+        callstack.offset = stack.AddrPC.Offset;
+
+        IMAGEHLP_LINE64 line;
+        memset(&line, 0, sizeof(line));
+        line.SizeOfStruct = sizeof(line);
+
+        if (stack.AddrPC.Offset == stack.AddrReturn.Offset)
+        {
+            traceback += _str("  Endless callstack!\n");
+            break;
+        }
+
+        if (stack.AddrPC.Offset != 0)
+        {
+            if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.offsetFromSmybol, symbol))
+            {
+                strcpy_s(callstack.name, symbol->Name);
+                UnDecorateSymbolName(symbol->Name, callstack.undName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+                UnDecorateSymbolName(symbol->Name, callstack.undFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
+            }
+
+            if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.offsetFromLine, &line))
+            {
+                callstack.lineNumber = line.LineNumber;
+                strcpy_s(callstack.lineFileName, _str(line.FileName).extractFileName().c_str());
+            }
+
+            IMAGEHLP_MODULE64 module;
+            memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
+            module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
+            if (SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) ||
+                (module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V2),
+                    SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)))
+            {
+                switch (module.SymType)
+                {
+                case SymNone:
+                    callstack.symTypeString = "-nosymbols-";
+                    break;
+                case SymCoff:
+                    callstack.symTypeString = "COFF";
+                    break;
+                case SymCv:
+                    callstack.symTypeString = "CV";
+                    break;
+                case SymPdb:
+                    callstack.symTypeString = "PDB";
+                    break;
+                case SymExport:
+                    callstack.symTypeString = "-exported-";
+                    break;
+                case SymDeferred:
+                    callstack.symTypeString = "-deferred-";
+                    break;
+                case SymSym:
+                    callstack.symTypeString = "SYM";
+                    break;
+#if API_VERSION_NUMBER >= 9
+                case SymDia:
+                    callstack.symTypeString = "DIA";
+                    break;
+#endif
+                case SymVirtual:
+                    callstack.symTypeString = "Virtual";
+                    break;
+                default:
+                    callstack.symTypeString = nullptr;
+                    break;
+                }
+
+                strcpy_s(callstack.moduleName, module.ModuleName);
+                callstack.baseOfImage = module.BaseOfImage;
+                strcpy_s(callstack.loadedImageName, module.LoadedImageName);
+            }
+        }
+
+        CSE::OnCallstackEntry(traceback, frame_num, callstack);
+        if (stack.AddrReturn.Offset == 0)
+            break;
+
+        frame_num++;
+    }
+
+    CloseHandle(t);
+    SymCleanup(process);
+    CloseHandle(process);
+
+#undef STACKWALK_MAX_NAMELEN
+
+    return traceback;
+}
+
 #elif !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
 static bool SigactionsSetted = false;
@@ -682,6 +890,17 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     }
 }
 
+static string GetTraceback()
+{
+    backward::StackTrace st;
+    st.load_here(42);
+    backward::Printer st_printer;
+    st_printer.snippet = false;
+    std::stringstream ss;
+    st_printer.print(st, ss);
+    return ss.str();
+}
+
 #else
 // Todo: improve global exceptions handlers for mobile os
 
@@ -695,7 +914,23 @@ void CreateDump(const string& appendix, const string& message)
     //
 }
 
+static string GetTraceback()
+{
+    return "No traceback!";
+}
+
 #endif
+
+string GetStackTrace()
+{
+#ifdef FO_WINDOWS
+    string most_recent = "most recent call first";
+#else
+    string most_recent = "most recent call last";
+#endif
+    string traceback = GetTraceback();
+    return _str("\n\nTraceback ({}):\n{}", most_recent, traceback);
+}
 
 static void DumpAngelScript(DiskFile& file)
 {

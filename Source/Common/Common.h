@@ -285,7 +285,7 @@ using UIntIntPairVecMap = map<uint, IntPairVec>;
 using UIntHashVecMap = map<uint, HashVec>;
 
 // Generic engine exception
-// Todo: rename GenericException to GenericException
+extern string GetStackTrace();
 class GenericException : public std::exception
 {
 public:
@@ -301,10 +301,8 @@ public:
             for (auto& param : exceptionParams)
                 exceptionMessage.append("\n  - ").append(param);
         }
-        exceptionMessage.append("\n  Traceback:");
-        exceptionMessage.append("\n  - (todo)");
-        exceptionMessage.append("\n  - (todo)");
-        exceptionMessage.append("\n  - (todo)");
+        exceptionMessage.append("\n");
+        exceptionMessage.append(GetStackTrace());
     }
     template<typename... Args>
     GenericException(const string& message, Args... args) :
