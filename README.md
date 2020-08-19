@@ -318,7 +318,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: move from 32 bit hashes to 64 bit
 * Common: replace depedency from assimp types (matrix/vector/quaternion/color)
 * Common: remove map/vector/set/pair bindings
-* Common: rename GenericException to GenericException
 * Common: auto expand exception parameters to readable state
 * Common: use NonCopyable as default class specifier
 * Common: set StaticClass class specifier to all static classes
