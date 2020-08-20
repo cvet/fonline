@@ -942,6 +942,15 @@ static void DumpAngelScript(DiskFile& file)
 
 bool RaiseAssert(const string& message, const string& file, int line)
 {
+    // Break into debugger
+#if defined(FO_WINDOWS)
+    if (::IsDebuggerPresent())
+    {
+        ::DebugBreak();
+        return true;
+    }
+#endif
+
     string name = _str(file).extractFileName();
     WriteLog("Runtime assert: {} in {} ({})\n", message, name, line);
 
