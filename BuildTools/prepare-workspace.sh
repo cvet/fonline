@@ -188,22 +188,22 @@ function verify_workspace_part()
     fi
 }
 
-verify_workspace_part common-packages 3 install_common_packages
+verify_workspace_part common-packages 4 install_common_packages
 wait_jobs
 if [ ! -z `check_arg linux all` ]; then
-    verify_workspace_part linux-packages 1 install_linux_packages
+    verify_workspace_part linux-packages 2 install_linux_packages
     wait_jobs
 fi
 if [ ! -z `check_arg web all` ]; then
-    verify_workspace_part web-packages 1 install_web_packages
+    verify_workspace_part web-packages 2 install_web_packages
     wait_jobs
 fi
 if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
-    verify_workspace_part android-packages 1 install_android_packages
+    verify_workspace_part android-packages 2 install_android_packages
     wait_jobs
 fi
 if [ ! -z `check_arg mac ios all` ]; then
-    verify_workspace_part osxcross-packages 1 install_osxcross_packages
+    verify_workspace_part osxcross-packages 2 install_osxcross_packages
     wait_jobs
 fi
 

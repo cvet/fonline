@@ -65,9 +65,6 @@ static const CmdDef CmdList[] = {
     {"changepassword", CMD_CHANGE_PASSWORD},
     {"changepass", CMD_CHANGE_PASSWORD},
     {"log", CMD_LOG},
-    {"exec", CMD_DEV_EXEC},
-    {"func", CMD_DEV_FUNC},
-    {"gvar", CMD_DEV_GVAR},
 };
 
 bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const string&)> logcb, const string& name)
@@ -444,7 +441,7 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
     break;
     case CMD_LOG: {
         string flags;
-        if (!(args_str >> flags))
+        if (!(args_str >> flags) || flags.length() > 2)
         {
             logcb("Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all.");
             break;
@@ -455,20 +452,6 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << msg_len;
         buf << cmd;
         buf << flags;
-    }
-    break;
-    case CMD_DEV_EXEC:
-    case CMD_DEV_FUNC:
-    case CMD_DEV_GVAR: {
-        if (args.empty())
-            break;
-
-        msg_len += NetBuffer::StringLenSize + (uint)args.length();
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << args;
     }
     break;
     default:

@@ -421,7 +421,6 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Networking: catch exceptions in network servers
 * Server: restore hashes loading
 * Server: restore settings (2)
-* Server: clients logging may be not thread safe
 * Server: disable look distance caching
 * Server: remove from game (2)
 * Server: control max size explicitly, add option to property registration

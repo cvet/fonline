@@ -217,8 +217,10 @@ public:
     void ProcessMove(Critter* cr);
 
     // Log to client
-    ClientVec LogClients;
+    ClientVec LogClients {};
+    StrVec LogLines {};
     void LogToClients(const string& str);
+    void DispatchLogToClients();
 
     // Game time
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);

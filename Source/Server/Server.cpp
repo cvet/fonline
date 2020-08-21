@@ -195,8 +195,8 @@ FOServer::~FOServer()
 
     // Logging clients
     LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
-    for (auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it)
-        (*it)->Release();
+    for (auto cl : LogClients)
+        cl->Release();
     LogClients.clear();
 
     // Clients
@@ -328,6 +328,9 @@ void FOServer::MainLoop()
     DbStorage->CommitChanges();
     if (DbHistory)
         DbHistory->CommitChanges();
+
+    // Clients log
+    DispatchLogToClients();
 
     // Fill statistics
     double frame_time = Timer::RealtimeTick() - frame_begin;
@@ -1614,121 +1617,31 @@ void FOServer::Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl_, c
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        int action = -1;
-        if (flags[0] == '-' && flags[1] == '-')
-            action = 2; // Detach all
-        else if (flags[0] == '-')
-            action = 0; // Detach current
-        else if (flags[0] == '+')
-            action = 1; // Attach current
-        else
-        {
-            logcb("Wrong flags. Valid is '+', '-', '--'.");
-            return;
-        }
-
         LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
+
         auto it = std::find(LogClients.begin(), LogClients.end(), cl_);
-        if (action == 0 && it != LogClients.end()) // Detach current
+        if (flags[0] == '-' && flags[1] == '\0' && it != LogClients.end()) // Detach current
         {
             logcb("Detached.");
             cl_->Release();
             LogClients.erase(it);
         }
-        else if (action == 1 && it == LogClients.end()) // Attach current
+        else if (flags[0] == '+' && flags[1] == '\0' && it == LogClients.end()) // Attach current
         {
             logcb("Attached.");
             cl_->AddRef();
             LogClients.push_back(cl_);
         }
-        else if (action == 2) // Detach all
+        else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
         {
             logcb("Detached all.");
-            for (auto it_ = LogClients.begin(); it_ < LogClients.end(); ++it_)
-                (*it_)->Release();
+            for (auto cl : LogClients)
+                cl->Release();
             LogClients.clear();
         }
+
         if (!LogClients.empty())
             LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), true);
-    }
-    break;
-    case CMD_DEV_EXEC:
-    case CMD_DEV_FUNC:
-    case CMD_DEV_GVAR: {
-        /*ushort command_len = 0;
-        char command_raw[MAX_FOTEXT];
-        buf >> command_len;
-        buf.Pop(command_raw, command_len);
-        command_raw[command_len] = 0;
-
-        string command = _str(command_raw).trim();
-        string console_name = _str("DevConsole ({})", cl_ ? cl_->GetName() : admin_panel);
-
-        // Get module
-        asIScriptEngine* engine = ScriptSys.GetEngine();
-        asIScriptModule* mod = engine->GetModule(console_name.c_str());
-        if (!mod)
-        {
-            string base_code;
-            File dev_file = FileMngr.ReadFile("Scripts/__dev.fos");
-            if (dev_file)
-                base_code = dev_file.GetCStr();
-            else
-                base_code = "void Dummy(){}";
-
-            mod = engine->GetModule(console_name.c_str(), asGM_ALWAYS_CREATE);
-            int r = mod->AddScriptSection("DevConsole", base_code.c_str());
-            if (r < 0)
-            {
-                mod->Discard();
-                break;
-            }
-
-            r = mod->Build();
-            if (r < 0)
-            {
-                mod->Discard();
-                break;
-            }
-
-            r = mod->BindAllImportedFunctions();
-            if (r < 0)
-            {
-                mod->Discard();
-                break;
-            }
-        }
-
-        // Execute command
-        if (cmd == CMD_DEV_EXEC)
-        {
-            WriteLog("{} : Execute '{}'.\n", console_name, command);
-
-            string func_code = _str("void Execute(){\n{};\n}", command);
-            asIScriptFunction* func = nullptr;
-            int r = mod->CompileFunction("DevConsole", func_code.c_str(), -1, asCOMP_ADD_TO_MODULE, &func);
-            if (r >= 0)
-            {
-                asIScriptContext* ctx = engine->RequestContext();
-                if (ctx->Prepare(func) >= 0)
-                    ctx->Execute();
-                mod->RemoveFunction(func);
-                func->Release();
-                engine->ReturnContext(ctx);
-            }
-        }
-        else if (cmd == CMD_DEV_FUNC)
-        {
-            WriteLog("{} : Set function '{}'.\n", console_name, command);
-
-            mod->CompileFunction("DevConsole", command.c_str(), 0, asCOMP_ADD_TO_MODULE, nullptr);
-        }
-        else if (cmd == CMD_DEV_GVAR)
-        {
-            WriteLog("{} : Set global var '{}'.\n", console_name, command);
-
-            mod->CompileGlobalVar("DevConsole", command.c_str(), 0);
-        }*/
     }
     break;
     default:
@@ -1919,20 +1832,27 @@ bool FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs)
     return true;
 }
 
-// Todo: clients logging may be not thread safe
 void FOServer::LogToClients(const string& str)
 {
-    string str_fixed = str;
-    if (!str_fixed.empty() && str.back() == '\n')
-        str_fixed.erase(str.length() - 1);
-    if (!str_fixed.empty())
+    if (!str.empty() && str.back() == '\n')
+        LogLines.emplace_back(str, 0, str.length() - 1);
+    else
+        LogLines.emplace_back(str);
+}
+
+void FOServer::DispatchLogToClients()
+{
+    if (LogLines.empty())
+        return;
+
+    for (const string& str : LogLines)
     {
         for (auto it = LogClients.begin(); it < LogClients.end();)
         {
             Client* cl = *it;
-            if (cl->IsOnline())
+            if (!cl->IsDestroyed && cl->IsOnline())
             {
-                cl->Send_TextEx(0, str_fixed, SAY_NETMSG, false);
+                cl->Send_TextEx(0, str, SAY_NETMSG, false);
                 ++it;
             }
             else
@@ -1941,9 +1861,12 @@ void FOServer::LogToClients(const string& str)
                 it = LogClients.erase(it);
             }
         }
-        if (LogClients.empty())
-            LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
     }
+
+    if (LogClients.empty())
+        LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
+
+    LogLines.clear();
 }
 
 FOServer::ClientBanned* FOServer::GetBanByName(const char* name)

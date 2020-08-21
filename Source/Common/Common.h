@@ -936,9 +936,6 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define CMD_DELETE_ACCOUNT (34)
 #define CMD_CHANGE_PASSWORD (35)
 #define CMD_LOG (37)
-#define CMD_DEV_EXEC (38)
-#define CMD_DEV_FUNC (39)
-#define CMD_DEV_GVAR (40)
 
 // Memory pool
 template<int StructSize, int PoolSize>
