@@ -961,8 +961,15 @@ void Script::FinishEngine( asIScriptEngine*& engine )
     {
         EngineData* edata = (EngineData*) engine->SetUserData( NULL );
         delete edata->PragmaCB;
-        for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
+        for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it ) {
+            // Call init function
+            typedef void ( *DllFinish )(bool);
+            DllFinish func = (DllFinish) DLL_GetAddress( ( *it ).second.second, "DllFinish" );
+            if( func )
+                (func) ( LoadLibraryCompiler );
+
             DLL_Free( ( *it ).second.second );
+        }
         delete edata;
         engine->Release();
         engine = NULL;
