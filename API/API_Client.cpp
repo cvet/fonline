@@ -129,3 +129,13 @@ size_t HexMngr_GetAllItems_ScriptArray(ScriptArray* script_array)
 	Script::AppendVectorToArrayRef< Item* >( items, script_array );
 	return items.size();
 }
+
+void HexMngr_GetScreenHexes(int& sx, int& sy)
+{
+	FOClient::Self->HexMngr.GetScreenHexes(sx, sy);
+}
+
+void HexMngr_GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y)
+{
+	FOClient::Self->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
+}
