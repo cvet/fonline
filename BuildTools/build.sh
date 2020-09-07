@@ -64,8 +64,8 @@ if [ "$1" = "win64" ] || [ "$1" = "win32" ] || [ "$1" = "uwp" ]; then
     fi
 
 elif [ "$1" = "linux" ]; then
-    export CC=/usr/bin/clang
-    export CXX=/usr/bin/clang++
+    export CC=/usr/bin/clang-10
+    export CXX=/usr/bin/clang++-10
 
     cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
     cmake --build . --config $CONFIG --parallel
