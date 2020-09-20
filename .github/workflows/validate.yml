@@ -224,4 +224,4 @@ jobs:
     - uses: DoozyX/clang-format-lint-action@v0.5
       with:
         source: ./Source
-        clangFormatVersion: 9
+        clangFormatVersion: 10
