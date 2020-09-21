@@ -4,21 +4,21 @@ on: [push, pull_request]
 
 jobs:
   win32-client:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win32-client
   win64-client:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-client
   uwp-client:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -60,21 +60,21 @@ jobs:
         fetch-depth: 1
     - run: BuildTools/validate.sh web-client
   mac-client:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh mac-client
   ios-client:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh ios-client
   win64-server:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -88,21 +88,21 @@ jobs:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-server
   win32-single:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win32-single
   win64-single:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools\validate.bat win64-single
   uwp-single:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -144,21 +144,21 @@ jobs:
         fetch-depth: 1
     - run: BuildTools/validate.sh web-single
   mac-single:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh mac-single
   ios-single:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
     - run: BuildTools/validate.sh ios-single
   win64-mapper:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -172,7 +172,7 @@ jobs:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-mapper
   win64-ascompiler:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
@@ -186,7 +186,7 @@ jobs:
         fetch-depth: 1
     - run: BuildTools/validate.sh linux-ascompiler
   win64-baker:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
     - uses: actions/checkout@v1
       with:
