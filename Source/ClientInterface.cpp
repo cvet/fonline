@@ -7290,6 +7290,9 @@ void FOClient::ChaDraw( bool is_reg )
     for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
     {
         int offs = i - SKILL_BEGIN;
+		if( i > 217 ) { //SK_OUTDOORSMAN
+		  offs += 4;
+		}
         // Name
         SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
         // Value
@@ -7466,6 +7469,9 @@ label_DrawSpecial:
     for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
     {
         int offs = i - SKILL_BEGIN;
+        if( i > 217 ) { //SK_OUTDOORSMAN
+          offs += 4;
+        }
         if( is_reg && IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
         {
             RegCurTagSkill = i;
