@@ -38,17 +38,19 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
-class AppGui : public StaticClass
+class AppGui final
 {
 public:
-    static bool Init(const string& app_name, bool use_dx, bool docking, bool maximized);
-    static bool BeginFrame();
+    AppGui() = delete;
+
+    static auto Init(const string& app_name, bool use_dx, bool docking, bool maximized) -> bool;
+    static auto BeginFrame() -> bool;
     static void EndFrame();
 
 private:
-#ifdef FO_HAVE_D3D
-    static bool InitDX(const string& app_name, bool docking, bool maximized);
-    static bool BeginFrameDX();
+#ifdef FO_HAVE_DIRECT_3D
+    static auto InitDX(const string& app_name, bool docking, bool maximized) -> bool;
+    static auto BeginFrameDX() -> bool;
     static void EndFrameDX();
 #endif
 };

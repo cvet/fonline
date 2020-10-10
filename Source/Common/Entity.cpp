@@ -33,13 +33,10 @@
 
 #include "Entity.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-Entity::Entity(uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto) :
-    Props {registartor}, Id {id}, Type {type}, Proto {proto}
+Entity::Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto) : Props {registartor}, Id {id}, Type {type}, Proto {proto}
 {
-    if (Proto)
-    {
+    if (Proto != nullptr) {
         Proto->AddRef();
         Props = Proto->Props;
     }
@@ -47,70 +44,75 @@ Entity::Entity(uint id, EntityType type, PropertyRegistrator* registartor, Proto
 
 Entity::~Entity()
 {
-    if (Proto)
+    if (Proto != nullptr) {
         Proto->Release();
+    }
 }
 
-uint Entity::GetId() const
+auto Entity::GetId() const -> uint
 {
     return Id;
 }
 
 void Entity::SetId(uint id)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     const_cast<uint&>(Id) = id;
 }
 
-hash Entity::GetProtoId() const
+auto Entity::GetProtoId() const -> hash
 {
-    return Proto ? Proto->ProtoId : 0;
+    return Proto != nullptr ? Proto->ProtoId : 0;
 }
 
-string Entity::GetName() const
+auto Entity::GetName() const -> string
 {
-    switch (Type)
-    {
+    switch (Type) {
     case EntityType::ItemProto:
+        [[fallthrough]];
     case EntityType::CritterProto:
+        [[fallthrough]];
     case EntityType::MapProto:
+        [[fallthrough]];
     case EntityType::LocationProto:
-        return _str().parseHash(((ProtoEntity*)this)->ProtoId);
+        // return _str().parseHash(const_cast<ProtoEntity*>(this)->ProtoId);
+        return "TODO"; // Todo: fix proto name recognition
     default:
         break;
     }
-    return Proto ? _str().parseHash(Proto->ProtoId) : "Unnamed";
+    // return Proto != nullptr ? _str().parseHash(Proto->ProtoId) : "Unnamed";
+    return "";
 }
 
 void Entity::AddRef() const
 {
-    RefCounter++;
+    ++RefCounter;
 }
 
 void Entity::Release() const
 {
-    if (--RefCounter == 0)
+    if (--RefCounter == 0) {
         delete this;
+    }
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator) :
-    Entity(0, type, registrator, nullptr), ProtoId(proto_id)
+ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator) : Entity(0, type, registrator, nullptr), ProtoId(proto_id)
 {
     RUNTIME_ASSERT(ProtoId);
 }
 
-bool ProtoEntity::HaveComponent(hash name) const
+auto ProtoEntity::HaveComponent(hash name) const -> bool
 {
     return Components.count(name) > 0;
 }
 
-CustomEntity::CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator) :
-    Entity(id, EntityType::Custom, registrator, nullptr), SubType(sub_type)
+CustomEntity::CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator) : Entity(id, EntityType::Custom, registrator, nullptr), SubType(sub_type)
 {
 }
 
 PROPERTIES_IMPL(GlobalVars, "GlobalVars", true);
-#define FO_API_GLOBAL_PROPERTY(access, type, name, ...) \
-    CLASS_PROPERTY_IMPL(GlobalVars, access, type, name, __VA_ARGS__);
+#define FO_API_GLOBAL_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(GlobalVars, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, nullptr)
@@ -126,8 +128,7 @@ ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, EntityType::ItemProto, Propert
 }
 
 PROPERTIES_IMPL(ProtoCritter, "Critter", true);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
-    CLASS_PROPERTY_IMPL(ProtoCritter, access, type, name, __VA_ARGS__);
+#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoCritter, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, EntityType::CritterProto, PropertiesRegistrator)
@@ -143,8 +144,7 @@ ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, Properties
 }
 
 PROPERTIES_IMPL(ProtoLocation, "Location", true);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
-    CLASS_PROPERTY_IMPL(ProtoLocation, access, type, name, __VA_ARGS__);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoLocation, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
 ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, EntityType::LocationProto, PropertiesRegistrator)

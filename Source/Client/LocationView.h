@@ -44,10 +44,10 @@ class LocationView;
 using LocationViewVec = vector<LocationView*>;
 using LocationViewMap = map<uint, LocationView*>;
 
-class LocationView : public Entity
+class LocationView final : public Entity
 {
 public:
-    LocationView(uint id, ProtoLocation* proto);
+    LocationView(uint id, const ProtoLocation* proto);
 
 #define FO_API_LOCATION_VIEW_CLASS
 #include "ScriptApi.h"

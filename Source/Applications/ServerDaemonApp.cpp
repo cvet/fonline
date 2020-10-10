@@ -36,7 +36,7 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 
 #if defined(FO_LINUX) || defined(FO_MAC)
 #include <errno.h>
@@ -45,50 +45,58 @@
 #include <unistd.h>
 #endif
 
-static GlobalSettings Settings {};
-
 #ifndef FO_TESTING
 int main(int argc, char** argv)
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto ServerDaemonApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineServerDaemon", FO_VERSION);
-    LogToFile("FOnlineServerDaemon.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineServerDaemon", FO_VERSION);
+        LogToFile("FOnlineServerDaemon.log");
 
 #if defined(FO_LINUX) || defined(FO_MAC)
-    // Start daemon
-    pid_t parpid = fork();
-    if (parpid < 0)
-    {
-        WriteLog("Create child process (fork) fail, error '{}'.", strerror(errno));
-        return 1;
-    }
-    else if (parpid != 0)
-    {
-        // Close parent process
-        return 0;
-    }
+        // Start daemon
+        pid_t parpid = ::fork();
+        if (parpid < 0) {
+            throw GenericException("Create child process (fork) failed", strerror(errno));
+        }
+        else if (parpid != 0) {
+            // Close parent process
+            return 0;
+        }
 
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
+        ::close(STDIN_FILENO);
+        ::close(STDOUT_FILENO);
+        ::close(STDERR_FILENO);
 
-    if (setsid() < 0)
-    {
-        WriteLog("Generate process index (setsid) failed, error '{}'.\n", strerror(errno));
-        return 1;
-    }
+        if (::setsid() < 0) {
+            throw GenericException("Create child process (fork) failed", strerror(errno));
+        }
 
-    umask(0);
-
-#else
-    RUNTIME_ASSERT(!"Invalid OS");
+        ::umask(0);
 #endif
 
-    FOServer server(Settings);
-    while (Settings.Quit)
-        server.MainLoop();
-    return 0;
+        auto settings = GlobalSettings(argc, argv);
+        auto* server = new FOServer(settings);
+
+        while (settings.Quit) {
+            try {
+                server->MainLoop();
+            }
+            catch (const GenericException& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+
+        delete server;
+        return 0;
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

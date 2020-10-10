@@ -42,71 +42,84 @@ enum class DiskFileSeek
     End = 2,
 };
 
-class DiskFile : public NonCopyable
+class DiskFile final
 {
     friend class DiskFileSystem;
 
 public:
+    DiskFile() = delete;
+    DiskFile(const DiskFile&) = delete;
+    DiskFile(DiskFile&&) noexcept;
+    auto operator=(const DiskFile&) -> DiskFile& = delete;
+    auto operator=(DiskFile &&) -> DiskFile& = delete;
     ~DiskFile();
-    DiskFile(DiskFile&&);
-    operator bool() const;
-    bool Read(void* buf, uint len);
-    bool Write(const void* buf, uint len);
-    bool Write(const string& str);
-    bool SetPos(int offset, DiskFileSeek origin);
-    uint GetPos();
-    uint64 GetWriteTime();
-    uint GetSize();
+
+    explicit operator bool() const;
+
+    auto Read(void* buf, uint len) -> bool;
+    auto Write(const void* buf, uint len) -> bool;
+    auto Write(const string& str) -> bool;
+    auto SetPos(int offset, DiskFileSeek origin) -> bool;
+    [[nodiscard]] auto GetPos() const -> uint;
+    [[nodiscard]] auto GetWriteTime() const -> uint64;
+    [[nodiscard]] auto GetSize() const -> uint;
 
 private:
     DiskFile(const string& fname, bool write, bool write_through);
 
     struct Impl;
-    unique_ptr<Impl> pImpl {};
-    bool openedForWriting {};
+    unique_ptr<Impl> _pImpl {};
+    bool _openedForWriting {};
 };
 
-class DiskFind : public NonCopyable
+class DiskFind final
 {
     friend class DiskFileSystem;
 
 public:
+    DiskFind() = delete;
+    DiskFind(DiskFind&&) noexcept;
+    DiskFind(const DiskFind&) = delete;
+    auto operator=(const DiskFind&) -> DiskFind& = delete;
+    auto operator=(DiskFind &&) -> DiskFind& = delete;
     ~DiskFind();
-    DiskFind(DiskFind&&);
+
     DiskFind& operator++(int);
-    operator bool() const;
-    bool IsDir();
-    string GetPath();
-    uint GetFileSize();
-    uint64 GetWriteTime();
+    explicit operator bool() const;
+
+    [[nodiscard]] auto IsDir() const -> bool;
+    [[nodiscard]] auto GetPath() const -> string;
+    [[nodiscard]] auto GetFileSize() const -> uint;
+    [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 private:
     DiskFind(const string& path, const string& ext);
 
     struct Impl;
-    unique_ptr<Impl> pImpl {};
-    bool findDataValid {};
+    unique_ptr<Impl> _pImpl {};
+    bool _findDataValid {};
 };
 
-class DiskFileSystem : public StaticClass
+class DiskFileSystem final
 {
 public:
-    static const string InitialDir;
+    DiskFileSystem() = delete;
 
-    static DiskFile OpenFile(const string& fname, bool write, bool write_through = false);
-    static DiskFind FindFiles(const string& path, const string& ext);
+    static auto OpenFile(const string& fname, bool write) -> DiskFile;
+    static auto OpenFile(const string& fname, bool write, bool write_through) -> DiskFile;
+    static auto FindFiles(const string& path, const string& ext) -> DiskFind;
 
-    static bool DeleteFile(const string& fname);
-    static bool IsFileExists(const string& fname);
-    static bool CopyFile(const string& fname, const string& copy_fname);
-    static bool RenameFile(const string& fname, const string& new_fname);
+    static auto DeleteFile(const string& fname) -> bool;
+    static auto IsFileExists(const string& fname) -> bool;
+    static auto CopyFile(const string& fname, const string& copy_fname) -> bool;
+    static auto RenameFile(const string& fname, const string& new_fname) -> bool;
 
     static void ResolvePath(string& path);
     static void MakeDirTree(const string& path);
-    static bool DeleteDir(const string& dir);
-    static bool SetCurrentDir(const string& dir);
+    static auto DeleteDir(const string& dir) -> bool;
+    static auto SetCurrentDir(const string& dir) -> bool;
     static void ResetCurDir();
-    static string GetExePath();
+    static auto GetExePath() -> string;
 
     using FileVisitor = std::function<void(const string&, uint, uint64)>;
     static void IterateDir(const string& path, const string& ext, bool include_subdirs, FileVisitor visitor);

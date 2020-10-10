@@ -47,17 +47,24 @@ using ItemViewMap = map<uint, ItemView*>;
 class ItemView : public Entity
 {
 public:
-    ItemView(uint id, ProtoItem* proto);
-    ItemView* Clone();
-    bool IsStatic();
-    bool IsAnyScenery();
-    bool IsScenery();
-    bool IsWall();
-    bool IsColorize();
-    uint GetColor();
-    uchar GetAlpha();
-    uint GetInvColor();
-    uint LightGetHash();
+    ItemView() = delete;
+    ItemView(uint id, const ProtoItem* proto);
+    ItemView(const ItemView&) = delete;
+    ItemView(ItemView&&) noexcept = delete;
+    auto operator=(const ItemView&) = delete;
+    auto operator=(ItemView&&) noexcept = delete;
+    ~ItemView() override = default;
+
+    [[nodiscard]] auto Clone() const -> ItemView*;
+    [[nodiscard]] auto IsStatic() const -> bool;
+    [[nodiscard]] auto IsAnyScenery() const -> bool;
+    [[nodiscard]] auto IsScenery() const -> bool;
+    [[nodiscard]] auto IsWall() const -> bool;
+    [[nodiscard]] auto IsColorize() const -> bool;
+    [[nodiscard]] auto GetColor() const -> uint;
+    [[nodiscard]] auto GetAlpha() const -> uchar;
+    [[nodiscard]] auto GetInvColor() const -> uint;
+    [[nodiscard]] auto LightGetHash() const -> uint;
 
 #define FO_API_ITEM_VIEW_CLASS
 #include "ScriptApi.h"

@@ -42,16 +42,18 @@
  * @param hy ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    AddItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
+FO_API_GLOBAL_MAPPER_FUNC(AddItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
-    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight())
+    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
-    ProtoItem* proto = _mapper->ProtoMngr.GetProtoItem(pid);
-    if (!proto)
+    }
+
+    const auto* proto = _mapper->ProtoMngr.GetProtoItem(pid);
+    if (!proto) {
         throw ScriptException("Invalid item prototype");
+    }
 
     FO_API_RETURN(_mapper->AddItem(pid, hx, hy, nullptr));
 }
@@ -66,16 +68,18 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    AddCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
+FO_API_GLOBAL_MAPPER_FUNC(AddCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
-    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight())
+    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
-    ProtoCritter* proto = _mapper->ProtoMngr.GetProtoCritter(pid);
-    if (!proto)
+    }
+
+    const auto* proto = _mapper->ProtoMngr.GetProtoCritter(pid);
+    if (!proto) {
         throw ScriptException("Invalid critter prototype");
+    }
 
     FO_API_RETURN(_mapper->AddCritter(pid, hx, hy));
 }
@@ -105,7 +109,7 @@ FO_API_EPILOG(0)
  * @param hy ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetItemsByHex, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
+FO_API_GLOBAL_MAPPER_FUNC(GetItemsByHex, FO_API_RET_OBJ_ARR(ItemHexView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
@@ -124,8 +128,7 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetCritterByHex, FO_API_RET_OBJ(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(int, findType))
+FO_API_GLOBAL_MAPPER_FUNC(GetCritterByHex, FO_API_RET_OBJ(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, findType))
 {
@@ -144,8 +147,7 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetCrittersByHex, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx),
-    FO_API_ARG(ushort, hy), FO_API_ARG(int, findType))
+FO_API_GLOBAL_MAPPER_FUNC(GetCrittersByHex, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(int, findType))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, findType))
 {
@@ -163,16 +165,21 @@ FO_API_EPILOG(0)
  * @param hx ...
  * @param hy ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    MoveEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity, entity), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
+FO_API_GLOBAL_MAPPER_FUNC(MoveEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity, entity), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
-    if (hx >= _mapper->HexMngr.GetWidth())
-        hx = _mapper->HexMngr.GetWidth() - 1;
-    if (hy >= _mapper->HexMngr.GetHeight())
-        hy = _mapper->HexMngr.GetHeight() - 1;
-    _mapper->MoveEntity(entity, hx, hy);
+    auto hx_ = hx;
+    auto hy_ = hy;
+
+    if (hx_ >= _mapper->HexMngr.GetWidth()) {
+        hx_ = _mapper->HexMngr.GetWidth() - 1;
+    }
+    if (hy_ >= _mapper->HexMngr.GetHeight()) {
+        hy_ = _mapper->HexMngr.GetHeight() - 1;
+    }
+
+    _mapper->MoveEntity(entity, hx_, hy_);
 }
 FO_API_EPILOG()
 #endif
@@ -200,9 +207,11 @@ FO_API_GLOBAL_MAPPER_FUNC(DeleteEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(E
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities))
 {
-    for (Entity* entity : entities)
-        if (entity && !entity->IsDestroyed)
+    for (auto* entity : entities) {
+        if (entity != nullptr && !entity->IsDestroyed) {
             _mapper->DeleteEntity(entity);
+        }
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -217,13 +226,16 @@ FO_API_GLOBAL_MAPPER_FUNC(SelectEntity, FO_API_RET(void), FO_API_ARG_OBJ(Entity,
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Entity, entity) FO_API_ARG_MARSHAL(bool, set))
 {
-    if (!entity)
+    if (entity == nullptr) {
         throw ScriptException("Entity arg is null");
+    }
 
-    if (set)
+    if (set) {
         _mapper->SelectAdd(entity);
-    else
+    }
+    else {
         _mapper->SelectErase(entity);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -238,14 +250,14 @@ FO_API_GLOBAL_MAPPER_FUNC(SelectEntities, FO_API_RET(void), FO_API_ARG_OBJ_ARR(E
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Entity, entities) FO_API_ARG_MARSHAL(bool, set))
 {
-    for (Entity* entity : entities)
-    {
-        if (entity)
-        {
-            if (set)
+    for (auto* entity : entities) {
+        if (entity != nullptr) {
+            if (set) {
                 _mapper->SelectAdd(entity);
-            else
+            }
+            else {
                 _mapper->SelectErase(entity);
+            }
         }
     }
 }
@@ -261,7 +273,8 @@ FO_API_GLOBAL_MAPPER_FUNC(GetSelectedEntity, FO_API_RET_OBJ(Entity))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(_mapper->SelectedEntities.size() ? _mapper->SelectedEntities[0] : nullptr);
+    auto* entity = (!_mapper->SelectedEntities.empty() ? _mapper->SelectedEntities[0] : nullptr);
+    FO_API_RETURN(entity);
 }
 FO_API_EPILOG(0)
 #endif
@@ -277,8 +290,11 @@ FO_API_PROLOG()
 {
     EntityVec entities;
     entities.reserve(_mapper->SelectedEntities.size());
-    for (uint i = 0, j = (uint)_mapper->SelectedEntities.size(); i < j; i++)
-        entities.push_back(_mapper->SelectedEntities[i]);
+
+    for (auto* entity : _mapper->SelectedEntities) {
+        entities.push_back(entity);
+    }
+
     FO_API_RETURN(entities);
 }
 FO_API_EPILOG(0)
@@ -292,20 +308,22 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    GetTilesCount, FO_API_RET(uint), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof))
+FO_API_GLOBAL_MAPPER_FUNC(GetTilesCount, FO_API_RET(uint), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
+    }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
         throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex y arg");
+    }
 
-    MapTileVec& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
-    FO_API_RETURN((uint)tiles.size());
+    const auto& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
+    FO_API_RETURN(static_cast<uint>(tiles.size()));
 }
 FO_API_EPILOG(0)
 #endif
@@ -318,49 +336,48 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param layer ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DeleteTile, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
+FO_API_GLOBAL_MAPPER_FUNC(DeleteTile, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof)
-        FO_API_ARG_MARSHAL(int, layer))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(int, layer))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
+    }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
         throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex y arg");
+    }
 
-    bool deleted = false;
-    MapTileVec& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
-    Field& f = _mapper->HexMngr.GetField(hx, hy);
-    if (layer < 0)
-    {
+    auto deleted = false;
+    auto& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
+    auto& f = _mapper->HexMngr.GetField(hx, hy);
+    if (layer < 0) {
         deleted = !tiles.empty();
         tiles.clear();
-        while (f.GetTilesCount(roof))
+        while (f.GetTilesCount(roof)) {
             f.EraseTile(0, roof);
+        }
     }
-    else
-    {
-        for (size_t i = 0, j = tiles.size(); i < j; i++)
-        {
-            if (tiles[i].Layer == layer)
-            {
+    else {
+        for (size_t i = 0, j = tiles.size(); i < j; i++) {
+            if (tiles[i].Layer == layer) {
                 tiles.erase(tiles.begin() + i);
-                f.EraseTile((uint)i, roof);
+                f.EraseTile(static_cast<uint>(i), roof);
                 deleted = true;
                 break;
             }
         }
     }
 
-    if (deleted)
-    {
-        if (roof)
+    if (deleted) {
+        if (roof) {
             _mapper->HexMngr.RebuildRoof();
-        else
+        }
+        else {
             _mapper->HexMngr.RebuildTiles();
+        }
     }
 }
 FO_API_EPILOG()
@@ -375,25 +392,27 @@ FO_API_EPILOG()
  * @param layer ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetTileHash, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
+FO_API_GLOBAL_MAPPER_FUNC(GetTileHash, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof)
-        FO_API_ARG_MARSHAL(int, layer))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(int, layer))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
-        throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
-        throw ScriptException("Invalid hex y arg");
-
-    MapTileVec& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
-    for (size_t i = 0, j = tiles.size(); i < j; i++)
-    {
-        if (tiles[i].Layer == layer)
-            FO_API_RETURN(tiles[i].Name);
     }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
+    }
+
+    const auto& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
+    for (const auto i : xrange(tiles)) {
+        if (tiles[i].Layer == layer) {
+            FO_API_RETURN(tiles[i].Name);
+        }
+    }
+
     FO_API_RETURN(0);
 }
 FO_API_EPILOG(0)
@@ -410,26 +429,28 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param picHash ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(AddTileHash, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof), FO_API_ARG(hash, picHash))
+FO_API_GLOBAL_MAPPER_FUNC(AddTileHash, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof), FO_API_ARG(hash, picHash))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, ox)
-        FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(int, layer) FO_API_ARG_MARSHAL(bool, roof)
-            FO_API_ARG_MARSHAL(hash, picHash))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(int, layer) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(hash, picHash))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
+    }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
         throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex y arg");
+    }
 
-    if (!picHash)
+    if (picHash == 0u) {
         FO_API_RETURN_VOID();
+    }
 
-    layer = CLAMP(layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
+    auto layer_ = layer;
+    layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
-    _mapper->HexMngr.SetTile(picHash, hx, hy, ox, oy, layer, roof, false);
+    _mapper->HexMngr.SetTile(picHash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 FO_API_EPILOG()
 #endif
@@ -443,25 +464,27 @@ FO_API_EPILOG()
  * @param layer ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetTileName, FO_API_RET(string), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
+FO_API_GLOBAL_MAPPER_FUNC(GetTileName, FO_API_RET(string), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof)
-        FO_API_ARG_MARSHAL(int, layer))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(int, layer))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
-        throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
-        throw ScriptException("Invalid hex y arg");
-
-    MapTileVec& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
-    for (size_t i = 0, j = tiles.size(); i < j; i++)
-    {
-        if (tiles[i].Layer == layer)
-            FO_API_RETURN(_str().parseHash(tiles[i].Name).str());
     }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
+        throw ScriptException("Invalid hex x arg");
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
+        throw ScriptException("Invalid hex y arg");
+    }
+
+    const auto& tiles = _mapper->HexMngr.GetTiles(hx, hy, roof);
+    for (const auto i : xrange(tiles)) {
+        if (tiles[i].Layer == layer) {
+            FO_API_RETURN(_str().parseHash(tiles[i].Name).str());
+        }
+    }
+
     FO_API_RETURN(string(""));
 }
 FO_API_EPILOG(0)
@@ -478,28 +501,29 @@ FO_API_EPILOG(0)
  * @param roof ...
  * @param picName ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(AddTileName, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof),
-    FO_API_ARG(string, picName))
+FO_API_GLOBAL_MAPPER_FUNC(AddTileName, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(int, layer), FO_API_ARG(bool, roof), FO_API_ARG(string, picName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, ox)
-        FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(int, layer) FO_API_ARG_MARSHAL(bool, roof)
-            FO_API_ARG_MARSHAL(string, picName))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(int, layer) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(string, picName))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (hx >= _mapper->HexMngr.GetWidth())
+    }
+    if (hx >= _mapper->HexMngr.GetWidth()) {
         throw ScriptException("Invalid hex x arg");
-    if (hy >= _mapper->HexMngr.GetHeight())
+    }
+    if (hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex y arg");
+    }
 
-    if (picName.empty())
+    if (picName.empty()) {
         FO_API_RETURN_VOID();
+    }
 
-    layer = CLAMP(layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
+    auto layer_ = layer;
+    layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
-    hash pic_hash = _str(picName).toHash();
-    _mapper->HexMngr.SetTile(pic_hash, hx, hy, ox, oy, layer, roof, false);
+    const auto pic_hash = _str(picName).toHash();
+    _mapper->HexMngr.SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 FO_API_EPILOG()
 #endif
@@ -514,14 +538,15 @@ FO_API_GLOBAL_MAPPER_FUNC(LoadMap, FO_API_RET_OBJ(MapView), FO_API_ARG(string, f
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fileName))
 {
-    ProtoMap* pmap = new ProtoMap(_str(fileName).toHash());
+    auto* pmap = new ProtoMap(_str(fileName).toHash());
     // Todo: need attention!
     // if (!pmap->EditorLoad(_mapper->ServerFileMngr, _mapper->ProtoMngr, _mapper->SprMngr, _mapper->ResMngr))
     //     FO_API_RETURN(nullptr);
 
-    MapView* map = new MapView(0, pmap);
+    auto* map = new MapView(0, pmap);
     _mapper->LoadedMaps.push_back(map);
     _mapper->RunMapLoadScript(map);
+
     FO_API_RETURN(map);
 }
 FO_API_EPILOG(0)
@@ -536,15 +561,16 @@ FO_API_GLOBAL_MAPPER_FUNC(UnloadMap, FO_API_RET(void), FO_API_ARG_OBJ(MapView, m
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
 {
-    if (!map)
+    if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
+    }
 
-    auto it = std::find(_mapper->LoadedMaps.begin(), _mapper->LoadedMaps.end(), map);
-    if (it != _mapper->LoadedMaps.end())
+    const auto it = std::find(_mapper->LoadedMaps.begin(), _mapper->LoadedMaps.end(), map);
+    if (it != _mapper->LoadedMaps.end()) {
         _mapper->LoadedMaps.erase(it);
+    }
 
-    if (map == _mapper->ActiveMap)
-    {
+    if (map == _mapper->ActiveMap) {
         _mapper->HexMngr.UnloadMap();
         _mapper->SelectedEntities.clear();
         _mapper->ActiveMap = nullptr;
@@ -567,8 +593,9 @@ FO_API_GLOBAL_MAPPER_FUNC(SaveMap, FO_API_RET(bool), FO_API_ARG_OBJ(MapView, map
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map) FO_API_ARG_MARSHAL(string, customName))
 {
-    if (!map)
+    if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
+    }
 
     // Todo: need attention!
     //((ProtoMap*)map->Proto)->EditorSave(_mapper->ServerFileMngr, customName);
@@ -588,17 +615,22 @@ FO_API_GLOBAL_MAPPER_FUNC(ShowMap, FO_API_RET(bool), FO_API_ARG_OBJ(MapView, map
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapView, map))
 {
-    if (!map)
+    if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
+    }
 
-    if (_mapper->ActiveMap == map)
+    if (_mapper->ActiveMap == map) {
         FO_API_RETURN(true);
+    }
 
     _mapper->SelectClear();
-    if (!_mapper->HexMngr.SetProtoMap(*(ProtoMap*)map->Proto))
+    if (!_mapper->HexMngr.SetProtoMap(*(ProtoMap*)map->Proto)) {
         FO_API_RETURN(false);
+    }
+
     _mapper->HexMngr.FindSetCenter(map->GetWorkHexX(), map->GetWorkHexY());
     _mapper->ActiveMap = map;
+
     FO_API_RETURN(true);
 }
 FO_API_EPILOG(0)
@@ -615,11 +647,11 @@ FO_API_GLOBAL_MAPPER_FUNC(GetLoadedMaps, FO_API_RET_OBJ_ARR(MapView), FO_API_ARG
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(int, index))
 {
     index = -1;
-    for (int i = 0, j = (int)_mapper->LoadedMaps.size(); i < j; i++)
-    {
-        MapView* map = _mapper->LoadedMaps[i];
-        if (map == _mapper->ActiveMap)
+    for (auto i = 0, j = static_cast<int>(_mapper->LoadedMaps.size()); i < j; i++) {
+        const auto* map = _mapper->LoadedMaps[i];
+        if (map == _mapper->ActiveMap) {
             index = i;
+        }
     }
     FO_API_RETURN(_mapper->LoadedMaps);
 }
@@ -637,13 +669,13 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMapFileNames, FO_API_RET_ARR(string), FO_API_ARG(st
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, dir))
 {
     StrVec names;
-    FileCollection map_files = _mapper->ServerFileMngr.FilterFiles("fomap", dir);
-    while (map_files.MoveNext())
-    {
-        FileHeader file_header = map_files.GetCurFileHeader();
-        string fname = file_header.GetName();
-        names.push_back(fname);
+
+    auto map_files = _mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
+    while (map_files.MoveNext()) {
+        auto file_header = map_files.GetCurFileHeader();
+        names.push_back(file_header.GetName());
     }
+
     FO_API_RETURN(names);
 }
 FO_API_EPILOG(0)
@@ -659,11 +691,12 @@ FO_API_GLOBAL_MAPPER_FUNC(ResizeMap, FO_API_RET(void), FO_API_ARG(ushort, width)
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, width) FO_API_ARG_MARSHAL(ushort, height))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
+    }
 
     RUNTIME_ASSERT(_mapper->ActiveMap);
-    ProtoMap* pmap = (ProtoMap*)_mapper->ActiveMap->Proto;
+    auto* pmap = (ProtoMap*)_mapper->ActiveMap->Proto;
 
     // Unload current
     _mapper->HexMngr.GetProtoMap(*pmap);
@@ -671,22 +704,26 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, width) FO_API_ARG_MARSHAL(ushort, heigh
     _mapper->HexMngr.UnloadMap();
 
     // Check size
-    int maxhx = CLAMP(width, MAXHEX_MIN, MAXHEX_MAX);
-    int maxhy = CLAMP(height, MAXHEX_MIN, MAXHEX_MAX);
-    int old_maxhx = pmap->GetWidth();
-    int old_maxhy = pmap->GetHeight();
-    maxhx = CLAMP(maxhx, MAXHEX_MIN, MAXHEX_MAX);
-    maxhy = CLAMP(maxhy, MAXHEX_MIN, MAXHEX_MAX);
-    if (pmap->GetWorkHexX() >= maxhx)
+    auto maxhx = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);
+    auto maxhy = std::clamp(height, MAXHEX_MIN, MAXHEX_MAX);
+    const auto old_maxhx = pmap->GetWidth();
+    const auto old_maxhy = pmap->GetHeight();
+
+    maxhx = std::clamp(maxhx, MAXHEX_MIN, MAXHEX_MAX);
+    maxhy = std::clamp(maxhy, MAXHEX_MIN, MAXHEX_MAX);
+
+    if (pmap->GetWorkHexX() >= maxhx) {
         pmap->SetWorkHexX(maxhx - 1);
-    if (pmap->GetWorkHexY() >= maxhy)
+    }
+    if (pmap->GetWorkHexY() >= maxhy) {
         pmap->SetWorkHexY(maxhy - 1);
+    }
+
     pmap->SetWidth(maxhx);
     pmap->SetHeight(maxhy);
 
     // Delete truncated entities
-    if (maxhx < old_maxhx || maxhy < old_maxhy)
-    {
+    if (maxhx < old_maxhx || maxhy < old_maxhy) {
         // Todo: need attention!
         /*for (auto it = pmap->AllEntities.begin(); it != pmap->AllEntities.end();)
         {
@@ -708,8 +745,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, width) FO_API_ARG_MARSHAL(ushort, heigh
     }
 
     // Delete truncated tiles
-    if (maxhx < old_maxhx || maxhy < old_maxhy)
-    {
+    if (maxhx < old_maxhx || maxhy < old_maxhy) {
         // Todo: need attention!
         /*for (auto it = pmap->Tiles.begin(); it != pmap->Tiles.end();)
         {
@@ -738,10 +774,11 @@ FO_API_GLOBAL_MAPPER_FUNC(TabGetTileDirs, FO_API_RET_ARR(string), FO_API_ARG(int
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
 
-    FOMapper::TileTab& ttab = _mapper->TabsTiles[tab];
+    auto& ttab = _mapper->TabsTiles[tab];
     // FO_API_RETURN(ttab.TileSubDirs);
     FO_API_RETURN(StrVec());
 }
@@ -759,12 +796,14 @@ FO_API_GLOBAL_MAPPER_FUNC(TabGetItemPids, FO_API_RET_ARR(hash), FO_API_ARG(int, 
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
-    if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
+    }
+    if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab)) {
         FO_API_RETURN(HashVec());
+    }
 
-    FOMapper::SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    auto& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
     // FO_API_RETURN(stab.ItemProtos);
     FO_API_RETURN(HashVec());
 }
@@ -776,19 +815,20 @@ FO_API_EPILOG(0)
  *
  * @param tab ...
  * @param subTab ...
- * @param critterPids ...
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_MAPPER_FUNC(TabGetCritterPids, FO_API_RET_ARR(hash), FO_API_ARG(int, tab), FO_API_ARG(string, subTab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
-    if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab))
+    }
+    if (!subTab.empty() && !_mapper->Tabs[tab].count(subTab)) {
         FO_API_RETURN(HashVec());
+    }
 
-    FOMapper::SubTab& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
+    auto& stab = _mapper->Tabs[tab][!subTab.empty() ? subTab : DEFAULT_SUB_TAB];
     // FO_API_RETURN(stab.NpcProtos);
     FO_API_RETURN(HashVec());
 }
@@ -802,14 +842,13 @@ FO_API_EPILOG(0)
  * @param dirNames ...
  * @param includeSubdirs ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(TabSetTileDirs, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG_ARR(string, dirNames),
-    FO_API_ARG_ARR(bool, includeSubdirs))
+FO_API_GLOBAL_MAPPER_FUNC(TabSetTileDirs, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG_ARR(string, dirNames), FO_API_ARG_ARR(bool, includeSubdirs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(
-    FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_ARR_MARSHAL(string, dirNames) FO_API_ARG_ARR_MARSHAL(bool, includeSubdirs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_ARR_MARSHAL(string, dirNames) FO_API_ARG_ARR_MARSHAL(bool, includeSubdirs))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
     /*if (dirNames && includeSubdirs && dirNames->GetSize() != includeSubdirs->GetSize())
         FO_API_RETURN_VOID();
 
@@ -842,13 +881,13 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param itemPids ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    TabSetItemPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG_ARR(hash, itemPids))
+FO_API_GLOBAL_MAPPER_FUNC(TabSetItemPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG_ARR(hash, itemPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO_API_ARG_ARR_MARSHAL(hash, itemPids))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
     /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
         FO_API_RETURN_VOID();
 
@@ -909,13 +948,13 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param critterPids ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(TabSetCritterPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab),
-    FO_API_ARG_ARR(hash, critterPids))
+FO_API_GLOBAL_MAPPER_FUNC(TabSetCritterPids, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG_ARR(hash, critterPids))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO_API_ARG_ARR_MARSHAL(hash, critterPids))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
     /*if (subTab.empty() || subTab == DEFAULT_SUB_TAB)
         FO_API_RETURN_VOID();
 
@@ -978,8 +1017,9 @@ FO_API_GLOBAL_MAPPER_FUNC(TabDelete, FO_API_RET(void), FO_API_ARG(int, tab))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab))
 {
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
 
     /*_mapper->Tabs[tab].clear();
     SubTab& stab_default = _mapper->Tabs[tab][DEFAULT_SUB_TAB];
@@ -995,23 +1035,26 @@ FO_API_EPILOG()
  * @param subTab ...
  * @param show ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    TabSelect, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG(bool, show))
+FO_API_GLOBAL_MAPPER_FUNC(TabSelect, FO_API_RET(void), FO_API_ARG(int, tab), FO_API_ARG(string, subTab), FO_API_ARG(bool, show))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, subTab) FO_API_ARG_MARSHAL(bool, show))
 {
-    if (tab < 0 || tab >= INT_MODE_COUNT)
+    if (tab < 0 || tab >= INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
 
-    if (show)
+    if (show) {
         _mapper->IntSetMode(tab);
+    }
 
-    if (tab < 0 || tab >= TAB_COUNT)
+    if (tab < 0 || tab >= TAB_COUNT) {
         FO_API_RETURN_VOID();
+    }
 
     auto it = _mapper->Tabs[tab].find(!subTab.empty() ? subTab : DEFAULT_SUB_TAB);
-    if (it != _mapper->Tabs[tab].end())
+    if (it != _mapper->Tabs[tab].end()) {
         _mapper->TabsActive[tab] = &it->second;
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -1026,8 +1069,9 @@ FO_API_GLOBAL_MAPPER_FUNC(TabSetName, FO_API_RET(void), FO_API_ARG(int, tab), FO
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, tab) FO_API_ARG_MARSHAL(string, tabName))
 {
-    if (tab < 0 || tab >= INT_MODE_COUNT)
+    if (tab < 0 || tab >= INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
+    }
 
     _mapper->TabsName[tab] = tabName;
 }
@@ -1042,21 +1086,23 @@ FO_API_EPILOG()
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
+FO_API_GLOBAL_MAPPER_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, speed)
-        FO_API_ARG_MARSHAL(bool, canStop))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, speed) FO_API_ARG_MARSHAL(bool, canStop))
 {
-    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight())
+    if (hx >= _mapper->HexMngr.GetWidth() || hy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
-    if (!_mapper->HexMngr.IsMapLoaded())
+    }
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
+    }
 
-    if (!speed)
+    if (speed == 0u) {
         _mapper->HexMngr.FindSetCenter(hx, hy);
-    else
-        _mapper->HexMngr.ScrollToHex(hx, hy, (float)speed / 1000.0f, canStop);
+    }
+    else {
+        _mapper->HexMngr.ScrollToHex(hx, hy, static_cast<float>(speed) / 1000.0f, canStop);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -1069,16 +1115,15 @@ FO_API_EPILOG()
  * @param speed ...
  * @param canStop ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy),
-    FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
+FO_API_GLOBAL_MAPPER_FUNC(MoveScreenOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(uint, speed)
-        FO_API_ARG_MARSHAL(bool, canStop))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(uint, speed) FO_API_ARG_MARSHAL(bool, canStop))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
+    }
 
-    _mapper->HexMngr.ScrollOffset(ox, oy, (float)speed / 1000.0f, canStop);
+    _mapper->HexMngr.ScrollOffset(ox, oy, static_cast<float>(speed) / 1000.0f, canStop);
 }
 FO_API_EPILOG()
 #endif
@@ -1091,34 +1136,41 @@ FO_API_EPILOG()
  * @param dir ...
  * @param steps ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy),
-    FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
+FO_API_GLOBAL_MAPPER_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uchar, dir)
-        FO_API_ARG_MARSHAL(uint, steps))
+FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(uint, steps))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
-    if (dir >= _mapper->Settings.MapDirCount)
-        throw ScriptException("Invalid dir arg");
-    if (!steps)
-        throw ScriptException("Steps arg is zero");
-    int hx_ = hx, hy_ = hy;
-    if (steps > 1)
-    {
-        for (uint i = 0; i < steps; i++)
-            _mapper->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
     }
-    else
-    {
+    if (dir >= _mapper->Settings.MapDirCount) {
+        throw ScriptException("Invalid dir arg");
+    }
+    if (steps == 0u) {
+        throw ScriptException("Steps arg is zero");
+    }
+
+    auto hx_ = static_cast<int>(hx);
+    auto hy_ = static_cast<int>(hy);
+
+    if (steps > 1) {
+        for (uint i = 0; i < steps; i++) {
+            _mapper->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
+        }
+    }
+    else {
         _mapper->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir);
     }
-    if (hx_ < 0)
+
+    if (hx_ < 0) {
         hx_ = 0;
-    if (hy_ < 0)
+    }
+    if (hy_ < 0) {
         hy_ = 0;
-    hx = hx_;
-    hy = hy_;
+    }
+
+    hx = static_cast<ushort>(hx_);
+    hy = static_cast<ushort>(hy_);
 }
 FO_API_EPILOG()
 #endif
@@ -1162,8 +1214,10 @@ FO_API_GLOBAL_MAPPER_FUNC(MessageMsg, FO_API_RET(void), FO_API_ARG(int, textMsg)
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
+
     _mapper->AddMess(_mapper->CurLang.Msg[textMsg].GetStr(strNum).c_str());
 }
 FO_API_EPILOG()
@@ -1181,28 +1235,27 @@ FO_API_EPILOG()
  * @param ox ...
  * @param oy ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx),
-    FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox),
-    FO_API_ARG(int, oy))
+FO_API_GLOBAL_MAPPER_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox), FO_API_ARG(int, oy))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy)
-        FO_API_ARG_MARSHAL(uint, ms) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, fade)
-            FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, ms) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, fade) FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy))
 {
-    FOMapper::MapText t;
-    t.HexX = hx;
-    t.HexY = hy;
-    t.Color = (color ? color : COLOR_TEXT);
-    t.Fade = fade;
-    t.StartTick = _mapper->GameTime.FrameTick();
-    t.Tick = ms;
-    t.Text = text;
-    t.Pos = _mapper->HexMngr.GetRectForText(hx, hy);
-    t.EndPos = Rect(t.Pos, ox, oy);
-    auto it = std::find(_mapper->GameMapTexts.begin(), _mapper->GameMapTexts.end(), t);
-    if (it != _mapper->GameMapTexts.end())
+    FOMapper::MapText map_text;
+    map_text.HexX = hx;
+    map_text.HexY = hy;
+    map_text.Color = (color != 0u ? color : COLOR_TEXT);
+    map_text.Fade = fade;
+    map_text.StartTick = _mapper->GameTime.FrameTick();
+    map_text.Tick = ms;
+    map_text.Text = text;
+    map_text.Pos = _mapper->HexMngr.GetRectForText(hx, hy);
+    map_text.EndPos = Rect(map_text.Pos, ox, oy);
+
+    const auto it = std::find(_mapper->GameMapTexts.begin(), _mapper->GameMapTexts.end(), map_text);
+    if (it != _mapper->GameMapTexts.end()) {
         _mapper->GameMapTexts.erase(it);
-    _mapper->GameMapTexts.push_back(t);
+    }
+
+    _mapper->GameMapTexts.push_back(map_text);
 }
 FO_API_EPILOG()
 #endif
@@ -1218,8 +1271,9 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMsgStr, FO_API_RET(string), FO_API_ARG(int, textMsg
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].GetStr(strNum));
 }
@@ -1234,13 +1288,13 @@ FO_API_EPILOG(0)
  * @param skipCount ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
+FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrSkip, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) FO_API_ARG_MARSHAL(uint, skipCount))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].GetStr(strNum, skipCount));
 }
@@ -1258,8 +1312,9 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrNumUpper, FO_API_RET(uint), FO_API_ARG(int, t
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].GetStrNumUpper(strNum));
 }
@@ -1277,8 +1332,9 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrNumLower, FO_API_RET(uint), FO_API_ARG(int, t
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].GetStrNumLower(strNum));
 }
@@ -1296,8 +1352,9 @@ FO_API_GLOBAL_MAPPER_FUNC(GetMsgStrCount, FO_API_RET(uint), FO_API_ARG(int, text
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].Count(strNum));
 }
@@ -1315,8 +1372,9 @@ FO_API_GLOBAL_MAPPER_FUNC(IsMsgStr, FO_API_RET(bool), FO_API_ARG(int, textMsg), 
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
-    if (textMsg >= TEXTMSG_COUNT)
+    if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
+    }
 
     FO_API_RETURN(_mapper->CurLang.Msg[textMsg].Count(strNum) > 0);
 }
@@ -1331,14 +1389,15 @@ FO_API_EPILOG(0)
  * @param str ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
+FO_API_GLOBAL_MAPPER_FUNC(ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replace) FO_API_ARG_MARSHAL(string, str))
 {
-    size_t pos = text.find(replace, 0);
-    if (pos == std::string::npos)
+    const auto pos = text.find(replace, 0);
+    if (pos == std::string::npos) {
         FO_API_RETURN(text);
+    }
+
     FO_API_RETURN(string(text).replace(pos, replace.length(), text));
 }
 FO_API_EPILOG(0)
@@ -1352,14 +1411,15 @@ FO_API_EPILOG(0)
  * @param i ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
+FO_API_GLOBAL_MAPPER_FUNC(ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replace) FO_API_ARG_MARSHAL(int, i))
 {
-    size_t pos = text.find(replace, 0);
-    if (pos == std::string::npos)
+    const auto pos = text.find(replace, 0);
+    if (pos == std::string::npos) {
         FO_API_RETURN(text);
+    }
+
     FO_API_RETURN(string(text).replace(pos, replace.length(), _str("{}", i)));
 }
 FO_API_EPILOG(0)
@@ -1375,15 +1435,13 @@ FO_API_EPILOG(0)
  * @param angle ...
  * @param dist ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
-    FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
+FO_API_GLOBAL_MAPPER_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx)
-        FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx) FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
 {
-    UShortPair pre_block, block;
-    _mapper->HexMngr.TraceBullet(
-        fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true);
+    UShortPair pre_block;
+    UShortPair block;
+    _mapper->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
 }
@@ -1400,23 +1458,30 @@ FO_API_EPILOG()
  * @param cut ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy),
-    FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
+FO_API_GLOBAL_MAPPER_FUNC(GetPathLengthHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx)
-        FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
 {
-    if (fromHx >= _mapper->HexMngr.GetWidth() || fromHy >= _mapper->HexMngr.GetHeight())
+    if (fromHx >= _mapper->HexMngr.GetWidth() || fromHy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
-    if (toHx >= _mapper->HexMngr.GetWidth() || toHy >= _mapper->HexMngr.GetHeight())
+    }
+    if (toHx >= _mapper->HexMngr.GetWidth() || toHy >= _mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid to hexes args");
+    }
 
-    if (cut > 0 && !_mapper->HexMngr.CutPath(nullptr, fromHx, fromHy, toHx, toHy, cut))
+    auto to_hx = toHx;
+    auto to_hy = toHy;
+
+    if (cut > 0 && !_mapper->HexMngr.CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
         FO_API_RETURN(0);
+    }
+
     UCharVec steps;
-    if (!_mapper->HexMngr.FindPath(nullptr, fromHx, fromHy, toHx, toHy, steps, -1))
+    if (!_mapper->HexMngr.FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
         FO_API_RETURN(0);
-    FO_API_RETURN((uint)steps.size());
+    }
+
+    FO_API_RETURN(static_cast<uint>(steps.size()));
 }
 FO_API_EPILOG(0)
 #endif
@@ -1430,22 +1495,24 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy),
-    FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
+FO_API_GLOBAL_MAPPER_FUNC(GetHexPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_REF_MARSHAL(int, x)
-        FO_API_ARG_REF_MARSHAL(int, y))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_REF_MARSHAL(int, x) FO_API_ARG_REF_MARSHAL(int, y))
 {
     x = y = 0;
-    if (_mapper->HexMngr.IsMapLoaded() && hx < _mapper->HexMngr.GetWidth() && hy < _mapper->HexMngr.GetHeight())
-    {
+
+    if (_mapper->HexMngr.IsMapLoaded() && hx < _mapper->HexMngr.GetWidth() && hy < _mapper->HexMngr.GetHeight()) {
         _mapper->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
+
         x += _mapper->Settings.ScrOx + (_mapper->Settings.MapHexWidth / 2);
         y += _mapper->Settings.ScrOy + (_mapper->Settings.MapHexHeight / 2);
-        x = (int)(x / _mapper->Settings.SpritesZoom);
-        y = (int)(y / _mapper->Settings.SpritesZoom);
+
+        x = static_cast<int>(static_cast<float>(x) / _mapper->Settings.SpritesZoom);
+        y = static_cast<int>(static_cast<float>(y) / _mapper->Settings.SpritesZoom);
+
         FO_API_RETURN(true);
     }
+
     FO_API_RETURN(false);
 }
 FO_API_EPILOG(0)
@@ -1461,26 +1528,29 @@ FO_API_EPILOG(0)
  * @param ignoreInterface ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y),
-    FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(bool, ignoreInterface))
+FO_API_GLOBAL_MAPPER_FUNC(GetMonitorHex, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(bool, ignoreInterface))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_REF_MARSHAL(ushort, hx)
-        FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, ignoreInterface))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, ignoreInterface))
 {
-    ushort hx_, hy_;
-    int old_x = _mapper->Settings.MouseX;
-    int old_y = _mapper->Settings.MouseY;
+    const auto old_x = _mapper->Settings.MouseX;
+    const auto old_y = _mapper->Settings.MouseY;
+
     _mapper->Settings.MouseX = x;
     _mapper->Settings.MouseY = y;
-    bool result = _mapper->GetCurHex(hx_, hy_, ignoreInterface);
+
+    ushort hx_;
+    ushort hy_;
+    const auto result = _mapper->GetCurHex(hx_, hy_, ignoreInterface);
+
     _mapper->Settings.MouseX = old_x;
     _mapper->Settings.MouseY = old_y;
-    if (result)
-    {
+
+    if (result) {
         hx = hx_;
         hy = hy_;
         FO_API_RETURN(true);
     }
+
     FO_API_RETURN(false);
 }
 FO_API_EPILOG(0)
@@ -1494,26 +1564,30 @@ FO_API_EPILOG(0)
  * @param ignoreInterface ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    GetMonitorObject, FO_API_RET_OBJ(Entity), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(bool, ignoreInterface))
+FO_API_GLOBAL_MAPPER_FUNC(GetMonitorObject, FO_API_RET_OBJ(Entity), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(bool, ignoreInterface))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(bool, ignoreInterface))
 {
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
+    }
 
-    if (!ignoreInterface && _mapper->IsCurInInterface())
-        FO_API_RETURN((Entity*)nullptr);
+    if (!ignoreInterface && _mapper->IsCurInInterface()) {
+        FO_API_RETURN(static_cast<Entity*>(nullptr));
+    }
 
-    ItemHexView* item;
-    CritterView* cr;
+    ItemHexView* item = nullptr;
+    CritterView* cr = nullptr;
     _mapper->HexMngr.GetSmthPixel(_mapper->Settings.MouseX, _mapper->Settings.MouseY, item, cr);
 
     Entity* mobj = nullptr;
-    if (item)
+    if (item != nullptr) {
         mobj = item;
-    else if (cr)
+    }
+    else if (cr != nullptr) {
         mobj = cr;
+    }
+
     FO_API_RETURN(mobj);
 }
 FO_API_EPILOG(0)
@@ -1530,8 +1604,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
 {
     _mapper->FileMngr.AddDataSource(datName, false);
 
-    for (int tab = 0; tab < TAB_COUNT; tab++)
+    for (auto tab = 0; tab < TAB_COUNT; tab++) {
         _mapper->RefreshTiles(tab);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -1541,22 +1616,27 @@ FO_API_EPILOG()
  *
  * @param fontIndex ...
  * @param fontFname ...
- * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(LoadFont, FO_API_RET(bool), FO_API_ARG(int, fontIndex), FO_API_ARG(string, fontFname))
+FO_API_GLOBAL_MAPPER_FUNC(LoadFont, FO_API_RET(void), FO_API_ARG(int, fontIndex), FO_API_ARG(string, fontFname))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, fontFname))
 {
     bool result;
-    if (fontFname.length() > 0 && fontFname[0] == '*')
-        result = _mapper->SprMngr.LoadFontFO(fontIndex, fontFname.c_str() + 1, false);
-    else
-        result = _mapper->SprMngr.LoadFontBMF(fontIndex, fontFname.c_str());
-    if (result)
+    if (fontFname.length() > 0 && fontFname[0] == '*') {
+        result = _mapper->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), false, false);
+    }
+    else {
+        result = _mapper->SprMngr.LoadFontBmf(fontIndex, fontFname);
+    }
+
+    if (result) {
         _mapper->SprMngr.BuildFonts();
-    FO_API_RETURN(result);
+    }
+    else {
+        throw ScriptException("Unable to load font", fontIndex, fontFname);
+    }
 }
-FO_API_EPILOG(0)
+FO_API_EPILOG()
 #endif
 
 /*******************************************************************************
@@ -1638,26 +1718,26 @@ FO_API_EPILOG()
  * @param key1Text ...
  * @param key2Text ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2),
-    FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
+FO_API_GLOBAL_MAPPER_FUNC(KeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2), FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO_API_ARG_MARSHAL(string, key1Text)
-        FO_API_ARG_MARSHAL(string, key2Text))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO_API_ARG_MARSHAL(string, key1Text) FO_API_ARG_MARSHAL(string, key2Text))
 {
-    if (!key1 && !key2)
+    if (key1 == 0u && key2 == 0u) {
         FO_API_RETURN_VOID();
-
-    if (key1)
-        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key1, key1Text})});
-
-    if (key2)
-    {
-        _mapper->ProcessInputEvent({InputEvent::KeyDown({(KeyCode)key2, key2Text})});
-        _mapper->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key2})});
     }
 
-    if (key1)
-        _mapper->ProcessInputEvent({InputEvent::KeyUp({(KeyCode)key1})});
+    if (key1 != 0u) {
+        _mapper->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {static_cast<KeyCode>(key1), key1Text}});
+    }
+
+    if (key2 != 0u) {
+        _mapper->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {static_cast<KeyCode>(key2), key2Text}});
+        _mapper->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {static_cast<KeyCode>(key2)}});
+    }
+
+    if (key1 != 0u) {
+        _mapper->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {static_cast<KeyCode>(key1)}});
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -1668,13 +1748,11 @@ FO_API_EPILOG()
  * @param fallAnimName ...
  * @param dropAnimName ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
+FO_API_GLOBAL_MAPPER_FUNC(SetRainAnimation, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string, dropAnimName))
 {
-    _mapper->HexMngr.SetRainAnimation(
-        !fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
+    _mapper->HexMngr.SetRainAnimation(!fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
 }
 FO_API_EPILOG()
 #endif
@@ -1688,31 +1766,33 @@ FO_API_GLOBAL_MAPPER_FUNC(ChangeZoom, FO_API_RET(void), FO_API_ARG(float, target
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
 {
-    if (targetZoom == _mapper->Settings.SpritesZoom)
+    if (Math::FloatCompare(targetZoom, _mapper->Settings.SpritesZoom)) {
         FO_API_RETURN_VOID();
+    }
 
-    if (targetZoom == 1.0f)
-    {
+    if (targetZoom == 1.0f) {
         _mapper->HexMngr.ChangeZoom(0);
     }
-    else if (targetZoom > _mapper->Settings.SpritesZoom)
-    {
-        while (targetZoom > _mapper->Settings.SpritesZoom)
-        {
-            float old_zoom = _mapper->Settings.SpritesZoom;
+    else if (targetZoom > _mapper->Settings.SpritesZoom) {
+        while (targetZoom > _mapper->Settings.SpritesZoom) {
+            const auto old_zoom = _mapper->Settings.SpritesZoom;
+
             _mapper->HexMngr.ChangeZoom(1);
-            if (_mapper->Settings.SpritesZoom == old_zoom)
+
+            if (Math::FloatCompare(_mapper->Settings.SpritesZoom, old_zoom)) {
                 break;
+            }
         }
     }
-    else if (targetZoom < _mapper->Settings.SpritesZoom)
-    {
-        while (targetZoom < _mapper->Settings.SpritesZoom)
-        {
-            float old_zoom = _mapper->Settings.SpritesZoom;
+    else if (targetZoom < _mapper->Settings.SpritesZoom) {
+        while (targetZoom < _mapper->Settings.SpritesZoom) {
+            const auto old_zoom = _mapper->Settings.SpritesZoom;
+
             _mapper->HexMngr.ChangeZoom(-1);
-            if (_mapper->Settings.SpritesZoom == old_zoom)
+
+            if (Math::FloatCompare(_mapper->Settings.SpritesZoom, old_zoom)) {
                 break;
+            }
         }
     }
 }
@@ -1760,13 +1840,16 @@ FO_API_GLOBAL_MAPPER_FUNC(GetSpriteWidth, FO_API_RET(int), FO_API_ARG(uint, sprI
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
 {
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || sprIndex >= (int)anim->CntFrm)
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || sprIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN(0);
-    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(
-        sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
-    if (!si)
+    }
+
+    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    if (!si) {
         FO_API_RETURN(0);
+    }
+
     FO_API_RETURN(si->Width);
 }
 FO_API_EPILOG(0)
@@ -1783,13 +1866,16 @@ FO_API_GLOBAL_MAPPER_FUNC(GetSpriteHeight, FO_API_RET(int), FO_API_ARG(uint, spr
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
 {
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || sprIndex >= (int)anim->CntFrm)
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || sprIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN(0);
-    SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(
-        sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
-    if (!si)
+    }
+
+    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    if (!si) {
         FO_API_RETURN(0);
+    }
+
     FO_API_RETURN(si->Height);
 }
 FO_API_EPILOG(0)
@@ -1805,7 +1891,7 @@ FO_API_GLOBAL_MAPPER_FUNC(GetSpriteCount, FO_API_RET(uint), FO_API_ARG(uint, spr
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 {
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
+    auto* anim = _mapper->AnimGetFrames(sprId);
     FO_API_RETURN(anim ? anim->CntFrm : 0);
 }
 FO_API_EPILOG(0)
@@ -1821,7 +1907,7 @@ FO_API_GLOBAL_MAPPER_FUNC(GetSpriteTicks, FO_API_RET(uint), FO_API_ARG(uint, spr
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 {
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
+    auto* anim = _mapper->AnimGetFrames(sprId);
     FO_API_RETURN(anim ? anim->Ticks : 0);
 }
 FO_API_EPILOG(0)
@@ -1836,21 +1922,21 @@ FO_API_EPILOG(0)
  * @param y ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
-    FO_API_ARG(int, x), FO_API_ARG(int, y))
+FO_API_GLOBAL_MAPPER_FUNC(GetPixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
-        FO_API_ARG_MARSHAL(int, y))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 {
-    if (!sprId)
+    if (sprId == 0u) {
         FO_API_RETURN(0);
+    }
 
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= (int)anim->CntFrm)
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN(0);
+    }
 
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    FO_API_RETURN(_mapper->SprMngr.GetPixColor(spr_id_, x, y, false));
+    const auto spr_id = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    FO_API_RETURN(_mapper->SprMngr.GetPixColor(spr_id, x, y, false));
 }
 FO_API_EPILOG(0)
 #endif
@@ -1867,15 +1953,11 @@ FO_API_EPILOG(0)
  * @param th ...
  * @param lines ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w),
-    FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th),
-    FO_API_ARG_REF(int, lines))
+FO_API_GLOBAL_MAPPER_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th), FO_API_ARG_REF(int, lines))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h)
-        FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags) FO_API_ARG_REF_MARSHAL(int, tw)
-            FO_API_ARG_REF_MARSHAL(int, th) FO_API_ARG_REF_MARSHAL(int, lines))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags) FO_API_ARG_REF_MARSHAL(int, tw) FO_API_ARG_REF_MARSHAL(int, th) FO_API_ARG_REF_MARSHAL(int, lines))
 {
-    _mapper->SprMngr.GetTextInfo(w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines);
+    _mapper->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines);
 }
 FO_API_EPILOG()
 #endif
@@ -1890,27 +1972,34 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
-    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
+FO_API_GLOBAL_MAPPER_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
-        FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
-    if (!_mapper->SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId) {
         FO_API_RETURN_VOID();
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= (int)anim->CntFrm)
-        FO_API_RETURN_VOID();
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    if (offs)
-    {
-        SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
-        if (!si)
-            FO_API_RETURN_VOID();
-        x += -si->Width / 2 + si->OffsX;
-        y += -si->Height + si->OffsY;
     }
-    _mapper->SprMngr.DrawSprite(spr_id_, x, y, COLOR_SCRIPT_SPRITE(color));
+
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+        FO_API_RETURN_VOID();
+    }
+
+    auto x_ = x;
+    auto y_ = y;
+
+    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    if (offs) {
+        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        if (!si) {
+            FO_API_RETURN_VOID();
+        }
+
+        x_ += -si->Width / 2 + si->OffsX;
+        y_ += -si->Height + si->OffsY;
+    }
+
+    _mapper->SprMngr.DrawSprite(spr_id_, x_, y_, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -1928,29 +2017,34 @@ FO_API_EPILOG()
  * @param color ...
  * @param offs ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
-    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom),
-    FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
+FO_API_GLOBAL_MAPPER_FUNC(DrawSpriteSize, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
-        FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(bool, zoom)
-            FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(bool, zoom) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
-    if (!_mapper->SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId) {
         FO_API_RETURN_VOID();
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= (int)anim->CntFrm)
-        FO_API_RETURN_VOID();
-    uint spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    if (offs)
-    {
-        SpriteInfo* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
-        if (!si)
-            FO_API_RETURN_VOID();
-        x += si->OffsX;
-        y += si->OffsY;
     }
-    _mapper->SprMngr.DrawSpriteSizeExt(spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+        FO_API_RETURN_VOID();
+    }
+
+    auto x_ = x;
+    auto y_ = y;
+
+    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    if (offs) {
+        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        if (!si) {
+            FO_API_RETURN_VOID();
+        }
+
+        x_ += si->OffsX;
+        y_ += si->OffsY;
+    }
+
+    _mapper->SprMngr.DrawSpriteSizeExt(spr_id_, x_, y_, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -1968,22 +2062,20 @@ FO_API_EPILOG()
  * @param sprHeight ...
  * @param color ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex),
-    FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth),
-    FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
+FO_API_GLOBAL_MAPPER_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth), FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x)
-        FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h)
-            FO_API_ARG_MARSHAL(int, sprWidth) FO_API_ARG_MARSHAL(int, sprHeight) FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(int, sprWidth) FO_API_ARG_MARSHAL(int, sprHeight) FO_API_ARG_MARSHAL(uint, color))
 {
-    if (!_mapper->SpritesCanDraw || !sprId)
+    if (!_mapper->SpritesCanDraw || !sprId) {
         FO_API_RETURN_VOID();
-    AnyFrames* anim = _mapper->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= (int)anim->CntFrm)
+    }
+
+    auto* anim = _mapper->AnimGetFrames(sprId);
+    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN_VOID();
-    _mapper->SprMngr.DrawSpritePattern(
-        frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex), x, y, w, h,
-        sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
+    }
+
+    _mapper->SprMngr.DrawSpritePattern(frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex), x, y, w, h, sprWidth, sprHeight, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -2000,22 +2092,32 @@ FO_API_EPILOG()
  * @param font ...
  * @param flags ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y),
-    FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
+FO_API_GLOBAL_MAPPER_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y)
-        FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(uint, color)
-            FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags))
 {
-    if (!_mapper->SpritesCanDraw)
+    if (!_mapper->SpritesCanDraw) {
         FO_API_RETURN_VOID();
-    if (text.length() == 0)
+    }
+    if (text.length() == 0) {
         FO_API_RETURN_VOID();
-    if (w < 0)
-        w = -w, x -= w;
-    if (h < 0)
-        h = -h, y -= h;
-    _mapper->SprMngr.DrawStr(Rect(x, y, x + w, y + h), text.c_str(), flags, COLOR_SCRIPT_TEXT(color), font);
+    }
+
+    auto x_ = x;
+    auto y_ = y;
+    auto w_ = w;
+    auto h_ = h;
+
+    if (w_ < 0) {
+        w_ = -w_;
+        x_ -= w_;
+    }
+    if (h_ < 0) {
+        h_ = -h_;
+        y_ -= h_;
+    }
+
+    _mapper->SprMngr.DrawStr(Rect(x_, y_, x_ + w_, y_ + h_), text, flags, COLOR_SCRIPT_TEXT(color), font);
 }
 FO_API_EPILOG()
 #endif
@@ -2030,12 +2132,12 @@ FO_API_GLOBAL_MAPPER_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primi
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
 {
-    if (!_mapper->SpritesCanDraw || data.empty())
+    if (!_mapper->SpritesCanDraw || data.empty()) {
         FO_API_RETURN_VOID();
+    }
 
     RenderPrimitiveType prim;
-    switch (primitiveType)
-    {
+    switch (primitiveType) {
     case 0:
         prim = RenderPrimitiveType::PointList;
         break;
@@ -2058,13 +2160,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
         FO_API_RETURN_VOID();
     }
 
-    static PointVec points;
-    size_t size = data.size() / 3;
+    const auto size = data.size() / 3;
+    PointVec points;
     points.resize(size);
 
-    for (size_t i = 0; i < size; i++)
-    {
-        PrepPoint& pp = points[i];
+    for (const auto i : xrange(size)) {
+        auto& pp = points[i];
         pp.PointX = data[i * 3];
         pp.PointY = data[i * 3 + 1];
         pp.PointColor = data[i * 3 + 2];
@@ -2072,7 +2173,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
         pp.PointOffsY = nullptr;
     }
 
-    _mapper->SprMngr.DrawPoints(points, prim);
+    _mapper->SprMngr.DrawPoints(points, prim, nullptr, nullptr, nullptr);
 }
 FO_API_EPILOG()
 #endif
@@ -2086,69 +2187,65 @@ FO_API_GLOBAL_MAPPER_FUNC(DrawMapSprite, FO_API_RET(void), FO_API_ARG_OBJ(MapSpr
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 {
-    if (!mapSpr)
+    if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
+    }
 
-    if (!_mapper->HexMngr.IsMapLoaded())
+    if (!_mapper->HexMngr.IsMapLoaded()) {
         FO_API_RETURN_VOID();
-    if (mapSpr->HexX >= _mapper->HexMngr.GetWidth() || mapSpr->HexY >= _mapper->HexMngr.GetHeight())
+    }
+    if (mapSpr->HexX >= _mapper->HexMngr.GetWidth() || mapSpr->HexY >= _mapper->HexMngr.GetHeight()) {
         FO_API_RETURN_VOID();
-    if (!_mapper->HexMngr.IsHexToDraw(mapSpr->HexX, mapSpr->HexY))
+    }
+    if (!_mapper->HexMngr.IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
         FO_API_RETURN_VOID();
+    }
 
-    AnyFrames* anim = _mapper->AnimGetFrames(mapSpr->SprId);
-    if (!anim || mapSpr->FrameIndex >= (int)anim->CntFrm)
+    auto* anim = _mapper->AnimGetFrames(mapSpr->SprId);
+    if (!anim || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN_VOID();
+    }
 
-    uint color = mapSpr->Color;
-    bool is_flat = mapSpr->IsFlat;
-    bool no_light = mapSpr->NoLight;
-    int draw_order = mapSpr->DrawOrder;
-    int draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
-    int corner = mapSpr->Corner;
-    bool disable_egg = mapSpr->DisableEgg;
-    uint contour_color = mapSpr->ContourColor;
+    auto color = mapSpr->Color;
+    auto is_flat = mapSpr->IsFlat;
+    auto no_light = mapSpr->NoLight;
+    auto draw_order = mapSpr->DrawOrder;
+    auto draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
+    auto corner = mapSpr->Corner;
+    auto disable_egg = mapSpr->DisableEgg;
+    auto contour_color = mapSpr->ContourColor;
 
-    if (mapSpr->ProtoId)
-    {
-        ProtoItem* proto_item = _mapper->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
-        if (!proto_item)
+    if (mapSpr->ProtoId != 0u) {
+        const auto* proto_item = _mapper->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        if (!proto_item) {
             FO_API_RETURN_VOID();
+        }
 
         color = (proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0);
         is_flat = proto_item->GetIsFlat();
-        bool is_item = !proto_item->IsAnyScenery();
+        const auto is_item = !proto_item->IsAnyScenery();
         no_light = (is_flat && !is_item);
-        draw_order = (is_flat ? (is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) :
-                                (is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY));
-        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        draw_order = (is_flat ? (is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) : (is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY));
+        draw_order_hy_offset = static_cast<int>(proto_item->GetDrawOrderOffsetHexY());
         corner = proto_item->GetCorner();
         disable_egg = proto_item->GetDisableEgg();
         contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
     }
 
-    Field& f = _mapper->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
-    Sprites& tree = _mapper->HexMngr.GetDrawTree();
-    Sprite& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0,
-        (_mapper->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_mapper->Settings.MapHexHeight / 2) + mapSpr->OffsY,
-        &f.ScrX, &f.ScrY,
-        mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex),
-        nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr,
-        mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr,
-        nullptr, nullptr);
+    auto& f = _mapper->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
+    auto& tree = _mapper->HexMngr.GetDrawTree();
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0, (_mapper->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_mapper->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, nullptr);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
 
-    if (!no_light)
-        spr.SetLight(
-            corner, _mapper->HexMngr.GetLightHex(0, 0), _mapper->HexMngr.GetWidth(), _mapper->HexMngr.GetHeight());
+    if (!no_light) {
+        spr.SetLight(corner, _mapper->HexMngr.GetLightHex(0, 0), _mapper->HexMngr.GetWidth(), _mapper->HexMngr.GetHeight());
+    }
 
-    if (!is_flat && !disable_egg)
-    {
+    if (!is_flat && !disable_egg) {
         int egg_type = 0;
-        switch (corner)
-        {
+        switch (corner) {
         case CORNER_SOUTH:
             egg_type = EGG_X_OR_Y;
             break;
@@ -2166,14 +2263,14 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
         spr.SetEgg(egg_type);
     }
 
-    if (color)
-    {
+    if (color != 0u) {
         spr.SetColor(color & 0xFFFFFF);
         spr.SetFixedAlpha(color >> 24);
     }
 
-    if (contour_color)
+    if (contour_color != 0u) {
         spr.SetContour(CONTOUR_CUSTOM, contour_color);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -2193,27 +2290,23 @@ FO_API_EPILOG()
  * @param center ...
  * @param color ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1),
-    FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r),
-    FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
+FO_API_GLOBAL_MAPPER_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r), FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2)
-        FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(int, l) FO_API_ARG_MARSHAL(int, t) FO_API_ARG_MARSHAL(int, r)
-            FO_API_ARG_MARSHAL(int, b) FO_API_ARG_MARSHAL(bool, scratch) FO_API_ARG_MARSHAL(bool, center)
-                FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(int, l) FO_API_ARG_MARSHAL(int, t) FO_API_ARG_MARSHAL(int, r) FO_API_ARG_MARSHAL(int, b) FO_API_ARG_MARSHAL(bool, scratch) FO_API_ARG_MARSHAL(bool, center) FO_API_ARG_MARSHAL(uint, color))
 {
-    AnyFrames* anim = _mapper->ResMngr.GetCrit2dAnim(modelName, anim1, anim2, dir);
-    if (anim)
+    auto* anim = _mapper->ResMngr.GetCrit2dAnim(modelName, anim1, anim2, dir);
+    if (anim) {
         _mapper->SprMngr.DrawSpriteSize(anim->Ind[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
+    }
 }
 FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-static Animation3dVec DrawCritter3dAnim;
-static UIntVec DrawCritter3dCrType;
-static BoolVec DrawCritter3dFailToLoad;
-static int DrawCritter3dLayers[LAYERS3D_COUNT];
+static Animation3dVec MapperDrawCritter3dAnim;
+static UIntVec MapperDrawCritter3dCrType;
+static BoolVec MapperDrawCritter3dFailToLoad;
+static int MapperDrawCritter3dLayers[LAYERS3D_COUNT];
 #endif
 /*******************************************************************************
  * ...
@@ -2226,80 +2319,82 @@ static int DrawCritter3dLayers[LAYERS3D_COUNT];
  * @param position ...
  * @param color ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName),
-    FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position),
-    FO_API_ARG(uint, color))
+FO_API_GLOBAL_MAPPER_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position), FO_API_ARG(uint, color))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1)
-        FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_ARR_MARSHAL(int, layers) FO_API_ARG_ARR_MARSHAL(float, position)
-            FO_API_ARG_MARSHAL(uint, color))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_ARR_MARSHAL(int, layers) FO_API_ARG_ARR_MARSHAL(float, position) FO_API_ARG_MARSHAL(uint, color))
 {
     // x y
     // rx ry rz
     // sx sy sz
     // speed
     // scissor l t r b
-    if (instance >= DrawCritter3dAnim.size())
-    {
-        DrawCritter3dAnim.resize(instance + 1);
-        DrawCritter3dCrType.resize(instance + 1);
-        DrawCritter3dFailToLoad.resize(instance + 1);
+
+    if (instance >= MapperDrawCritter3dAnim.size()) {
+        MapperDrawCritter3dAnim.resize(instance + 1);
+        MapperDrawCritter3dCrType.resize(instance + 1);
+        MapperDrawCritter3dFailToLoad.resize(instance + 1);
     }
 
-    if (DrawCritter3dFailToLoad[instance] && DrawCritter3dCrType[instance] == modelName)
+    if (MapperDrawCritter3dFailToLoad[instance] && MapperDrawCritter3dCrType[instance] == modelName) {
         FO_API_RETURN_VOID();
+    }
 
-    Animation3d*& anim3d = DrawCritter3dAnim[instance];
-    if (!anim3d || DrawCritter3dCrType[instance] != modelName)
-    {
-        if (anim3d)
+    auto*& anim3d = MapperDrawCritter3dAnim[instance];
+    if (anim3d == nullptr || MapperDrawCritter3dCrType[instance] != modelName) {
+        if (anim3d != nullptr) {
             _mapper->SprMngr.FreePure3dAnimation(anim3d);
-        anim3d = _mapper->SprMngr.LoadPure3dAnimation(_str().parseHash(modelName), false);
-        DrawCritter3dCrType[instance] = modelName;
-        DrawCritter3dFailToLoad[instance] = false;
+        }
 
-        if (!anim3d)
-        {
-            DrawCritter3dFailToLoad[instance] = true;
+        anim3d = _mapper->SprMngr.LoadPure3dAnimation(_str().parseHash(modelName), false);
+
+        MapperDrawCritter3dCrType[instance] = modelName;
+        MapperDrawCritter3dFailToLoad[instance] = false;
+
+        if (anim3d == nullptr) {
+            MapperDrawCritter3dFailToLoad[instance] = true;
             FO_API_RETURN_VOID();
         }
+
         anim3d->EnableShadow(false);
         anim3d->SetTimer(false);
     }
 
-    uint count = (uint)position.size();
-    float x = (count > 0 ? position[0] : 0.0f);
-    float y = (count > 1 ? position[1] : 0.0f);
-    float rx = (count > 2 ? position[2] : 0.0f);
-    float ry = (count > 3 ? position[3] : 0.0f);
-    float rz = (count > 4 ? position[4] : 0.0f);
-    float sx = (count > 5 ? position[5] : 1.0f);
-    float sy = (count > 6 ? position[6] : 1.0f);
-    float sz = (count > 7 ? position[7] : 1.0f);
-    float speed = (count > 8 ? position[8] : 1.0f);
-    float period = (count > 9 ? position[9] : 0.0f);
-    float stl = (count > 10 ? position[10] : 0.0f);
-    float stt = (count > 11 ? position[11] : 0.0f);
-    float str = (count > 12 ? position[12] : 0.0f);
-    float stb = (count > 13 ? position[13] : 0.0f);
-    if (count > 13)
-        _mapper->SprMngr.PushScissor((int)stl, (int)stt, (int)str, (int)stb);
+    const auto count = static_cast<uint>(position.size());
+    const auto x = (count > 0 ? position[0] : 0.0f);
+    const auto y = (count > 1 ? position[1] : 0.0f);
+    const auto rx = (count > 2 ? position[2] : 0.0f);
+    const auto ry = (count > 3 ? position[3] : 0.0f);
+    const auto rz = (count > 4 ? position[4] : 0.0f);
+    const auto sx = (count > 5 ? position[5] : 1.0f);
+    const auto sy = (count > 6 ? position[6] : 1.0f);
+    const auto sz = (count > 7 ? position[7] : 1.0f);
+    const auto speed = (count > 8 ? position[8] : 1.0f);
+    const auto period = (count > 9 ? position[9] : 0.0f);
+    const auto stl = (count > 10 ? position[10] : 0.0f);
+    const auto stt = (count > 11 ? position[11] : 0.0f);
+    const auto str = (count > 12 ? position[12] : 0.0f);
+    const auto stb = (count > 13 ? position[13] : 0.0f);
 
-    memzero(DrawCritter3dLayers, sizeof(DrawCritter3dLayers));
-    for (uint i = 0, j = (uint)layers.size(); i < j && i < LAYERS3D_COUNT; i++)
-        DrawCritter3dLayers[i] = layers[i];
+    if (count > 13) {
+        _mapper->SprMngr.PushScissor(static_cast<int>(stl), static_cast<int>(stt), static_cast<int>(str), static_cast<int>(stb));
+    }
+
+    std::memset(MapperDrawCritter3dLayers, 0, sizeof(MapperDrawCritter3dLayers));
+    for (uint i = 0, j = static_cast<uint>(layers.size()); i < j && i < LAYERS3D_COUNT; i++) {
+        MapperDrawCritter3dLayers[i] = layers[i];
+    }
 
     anim3d->SetDirAngle(0);
-    anim3d->SetRotation(rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f);
+    anim3d->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
     anim3d->SetScale(sx, sy, sz);
     anim3d->SetSpeed(speed);
-    anim3d->SetAnimation(
-        anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD((int)(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    anim3d->SetAnimation(anim1, anim2, MapperDrawCritter3dLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    _mapper->SprMngr.Draw3d((int)x, (int)y, anim3d, COLOR_SCRIPT_SPRITE(color));
+    _mapper->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), anim3d, COLOR_SCRIPT_SPRITE(color));
 
-    if (count > 13)
+    if (count > 13) {
         _mapper->SprMngr.PopScissor();
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -2312,11 +2407,9 @@ FO_API_EPILOG()
  * @param w ...
  * @param h ...
  ******************************************************************************/
-FO_API_GLOBAL_MAPPER_FUNC(
-    PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
+FO_API_GLOBAL_MAPPER_FUNC(PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
 #ifdef FO_API_GLOBAL_MAPPER_FUNC_IMPL
-FO_API_PROLOG(
-    FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h))
 {
     _mapper->SprMngr.PushScissor(x, y, x + w, y + h);
 }

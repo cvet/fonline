@@ -38,7 +38,6 @@
 #include "MapManager.h"
 #include "ProtoManager.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #define FO_API_ITEM_IMPL
 #include "ScriptApi.h"
@@ -47,14 +46,13 @@ PROPERTIES_IMPL(Item, "Item", true);
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-Item::Item(uint id, ProtoItem* proto, ServerScriptSystem& script_sys) :
-    Entity(id, EntityType::Item, PropertiesRegistrator, proto), scriptSys {script_sys}
+Item::Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Item, PropertiesRegistrator, proto), _scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-void Item::SetProto(ProtoItem* proto)
+void Item::SetProto(const ProtoItem* proto)
 {
     RUNTIME_ASSERT(proto);
     proto->AddRef();
@@ -63,7 +61,7 @@ void Item::SetProto(ProtoItem* proto)
     Props = proto->Props;
 }
 
-bool Item::SetScript(string func, bool first_time)
+auto Item::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
     {
@@ -89,14 +87,16 @@ bool Item::SetScript(string func, bool first_time)
 void Item::SetSortValue(ItemVec& items)
 {
     short sort_value = 0;
-    for (auto it = items.begin(), end = items.end(); it != end; ++it)
-    {
-        Item* item = *it;
-        if (item == this)
+    for (auto* item : items) {
+        if (item == this) {
             continue;
-        if (sort_value >= item->GetSortValue())
+        }
+
+        if (sort_value >= item->GetSortValue()) {
             sort_value = item->GetSortValue() - 1;
+        }
     }
+
     SetSortValue(sort_value);
 }
 
@@ -105,20 +105,21 @@ void Item::ChangeCount(int val)
     SetCount(GetCount() + val);
 }
 
-Item* Item::ContGetItem(uint item_id, bool skip_hide)
+auto Item::ContGetItem(uint item_id, bool skip_hide) -> Item*
 {
+    NON_CONST_METHOD_HINT(_childItems);
+
     RUNTIME_ASSERT(item_id);
 
-    if (!childItems)
+    if (_childItems == nullptr) {
         return nullptr;
+    }
 
-    for (auto it = childItems->begin(), end = childItems->end(); it != end; ++it)
-    {
-        Item* item = *it;
-        if (item->GetId() == item_id)
-        {
-            if (skip_hide && item->GetIsHidden())
+    for (auto* item : *_childItems) {
+        if (item->GetId() == item_id) {
+            if (skip_hide && item->GetIsHidden()) {
                 return nullptr;
+            }
             return item;
         }
     }
@@ -127,45 +128,51 @@ Item* Item::ContGetItem(uint item_id, bool skip_hide)
 
 void Item::ContGetAllItems(ItemVec& items, bool skip_hide)
 {
-    if (!childItems)
-        return;
+    NON_CONST_METHOD_HINT(_childItems);
 
-    for (auto it = childItems->begin(), end = childItems->end(); it != end; ++it)
-    {
-        Item* item = *it;
-        if (!skip_hide || !item->GetIsHidden())
+    if (_childItems == nullptr) {
+        return;
+    }
+
+    for (auto* item : *_childItems) {
+        if (!skip_hide || !item->GetIsHidden()) {
             items.push_back(item);
+        }
     }
 }
 
-Item* Item::ContGetItemByPid(hash pid, uint stack_id)
+auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
 {
-    if (!childItems)
-        return nullptr;
+    NON_CONST_METHOD_HINT(_childItems);
 
-    for (auto it = childItems->begin(), end = childItems->end(); it != end; ++it)
-    {
-        Item* item = *it;
-        if (item->GetProtoId() == pid && (stack_id == uint(-1) || item->GetContainerStack() == stack_id))
+    if (_childItems == nullptr) {
+        return nullptr;
+    }
+
+    for (auto* item : *_childItems) {
+        if (item->GetProtoId() == pid && (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id)) {
             return item;
+        }
     }
     return nullptr;
 }
 
 void Item::ContGetItems(ItemVec& items, uint stack_id)
 {
-    if (!childItems)
-        return;
+    NON_CONST_METHOD_HINT(_childItems);
 
-    for (auto it = childItems->begin(), end = childItems->end(); it != end; ++it)
-    {
-        Item* item = *it;
-        if (stack_id == uint(-1) || item->GetContainerStack() == stack_id)
+    if (_childItems == nullptr) {
+        return;
+    }
+
+    for (auto* item : *_childItems) {
+        if (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id) {
             items.push_back(item);
+        }
     }
 }
 
-bool Item::ContIsItems()
+auto Item::ContIsItems() const -> bool
 {
-    return childItems && childItems->size();
+    return _childItems != nullptr && !_childItems->empty();
 }

@@ -45,32 +45,36 @@ class ItemHexView;
 using ItemHexViewVec = vector<ItemHexView*>;
 using ItemHexViewMap = map<uint, ItemHexView*>;
 
-class ItemHexView : public ItemView
+class ItemHexView final : public ItemView
 {
 public:
-    ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr,
-        GameTimer& game_time);
-    ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr,
-        EffectManager& effect_mngr, GameTimer& game_time);
-    ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y,
-        ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
-    bool IsAnimated() { return isAnimated; }
-    bool IsDrawContour() { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    bool IsTransparent() { return maxAlpha < 0xFF; }
-    bool IsFullyTransparent() { return maxAlpha == 0; }
+    ItemHexView() = delete;
+    ItemHexView(uint id, const ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(const ItemHexView&) = delete;
+    ItemHexView(ItemHexView&&) noexcept = delete;
+    auto operator=(const ItemHexView&) = delete;
+    auto operator=(ItemHexView&&) noexcept = delete;
+    ~ItemHexView() override = default;
+
+    auto IsAnimated() const -> bool { return _isAnimated; }
+    auto IsDrawContour() -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
+    auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     void RefreshAnim();
-    void RestoreAlpha() { Alpha = maxAlpha; }
-    void RefreshAlpha() { maxAlpha = (IsColorize() ? GetAlpha() : 0xFF); }
+    void RestoreAlpha() { Alpha = _maxAlpha; }
+    void RefreshAlpha() { _maxAlpha = IsColorize() ? GetAlpha() : 0xFF; }
     void SetSprite(Sprite* spr);
-    int GetEggType();
+    auto GetEggType() -> int;
     void Finish();
-    bool IsFinishing();
-    bool IsFinish();
+    auto IsFinishing() const -> bool;
+    auto IsFinish() const -> bool;
     void StopFinishing();
     void Process();
-    bool IsDynamicEffect() { return isEffect && (effSx || effSy); }
+    auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
     void SetEffect(float sx, float sy, uint dist, int dir);
-    UShortPair GetEffectStep();
+    auto GetEffectStep() -> UShortPair;
     void SkipFade();
     void StartAnimate();
     void StopAnimate();
@@ -101,35 +105,36 @@ public:
     UShortPairVec EffSteps {};
 
 private:
-    ItemHexView(uint id, ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(uint id, const ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+
     void AfterConstruction();
     void SetFade(bool fade_up);
 
-    ResourceManager& resMngr;
-    EffectManager& effectMngr;
-    GameTimer& gameTime;
-    int curSpr {};
-    int begSpr {};
-    int endSpr {};
-    uint animBegSpr {};
-    uint animEndSpr {};
-    uint animTick {};
-    uchar maxAlpha {0xFF};
-    bool isAnimated {};
-    uint animNextTick {};
-    bool finishing {};
-    uint finishingTime {};
-    bool isEffect {};
-    float effSx {};
-    float effSy {};
-    int effStartX {};
-    int effStartY {};
-    float effCurX {};
-    float effCurY;
-    uint effDist {};
-    uint effLastTick {};
-    int effDir {};
-    bool fading {};
-    uint fadingTick {};
-    bool fadeUp {};
+    ResourceManager& _resMngr;
+    EffectManager& _effectMngr;
+    GameTimer& _gameTime;
+    int _curSpr {};
+    int _begSpr {};
+    int _endSpr {};
+    uint _animBegSpr {};
+    uint _animEndSpr {};
+    uint _animTick {};
+    uchar _maxAlpha {0xFF};
+    bool _isAnimated {};
+    uint _animNextTick {};
+    bool _finishing {};
+    uint _finishingTime {};
+    bool _isEffect {};
+    float _effSx {};
+    float _effSy {};
+    int _effStartX {};
+    int _effStartY {};
+    float _effCurX {};
+    float _effCurY {};
+    uint _effDist {};
+    uint _effLastTick {};
+    int _effDir {};
+    bool _fading {};
+    uint _fadingTick {};
+    bool _fadeUp {};
 };

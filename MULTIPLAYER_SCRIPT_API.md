@@ -62,7 +62,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint8 GetHexDirWithOffset(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 * uint GetTick()
 * hash GetStrHash(string text)
-* string GetHashStr(hash h)
+* string GetHashStr(hash value)
 * uint DecodeUTF8(string text, ref uint length)
 * string EncodeUTF8(uint ucs)
 * void Yield(uint time) *(AngelScript only)*
@@ -99,7 +99,7 @@ You can easily contribute to this API using provided by engine functionality.
 * Location CreateLocation(hash locPid, uint16 wx, uint16 wy, Critter[] critters)
 * void DeleteLocation(Location loc)
 * void DeleteLocationById(uint locId)
-* Critter GetCritter(uint crid)
+* Critter GetCritter(uint crId)
 * Critter GetPlayer(string name)
 * Critter[] GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, int findType)
 * Map GetMap(uint mapId)
@@ -132,11 +132,11 @@ You can easily contribute to this API using provided by engine functionality.
 * Critter GetChosen()
 * Item GetItem(uint itemId)
 * Item[] GetVisibleItems()
-* Item[] GetVisibleItemsOnHex(uint16 hx, uint16 hy)
+* ItemHexView[] GetVisibleItemsOnHex(uint16 hx, uint16 hy)
 * int GetCritterDistance(Critter cr1, Critter cr2)
 * Critter GetCritter(uint critterId)
-* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, int findType)
-* Critter[] GetCrittersByPids(hash pid, int findType)
+* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, uint8 findType)
+* Critter[] GetCrittersByPids(hash pid, uint8 findType)
 * Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
 * Critter[] GetCrittersWithBlockInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
 * void GetHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
@@ -328,11 +328,11 @@ You can easily contribute to this API using provided by engine functionality.
 
 * Item AddItem(hash pid, uint count, uint stackId)
 * Item[] GetItems(uint stackId)
-* bool SetScript(callback-Item func)
+* void SetScript(callback-Item func)
 * Map GetMapPos(ref uint16 hx, ref uint16 hy)
 * void ChangeProto(hash pid)
 * void Animate(uint8 fromFrm, uint8 toFrm)
-* bool CallStaticItemFunction(Critter cr, Item item, int param)
+* bool CallStaticItemFunction(Critter cr, Item staticItem, int param)
 
 ### Item client methods
 
@@ -438,7 +438,7 @@ You can easily contribute to this API using provided by engine functionality.
 * void SayMsg(uint8 howSay, uint16 textMsg, uint numStr)
 * void SayMsgLex(uint8 howSay, uint16 textMsg, uint numStr, string lexems)
 * void SetDir(uint8 dir)
-* Critter[] GetCritters(bool lookOnMe, int findType)
+* Critter[] GetCritters(bool lookOnMe, uint8 findType)
 * Critter[] GetTalkedPlayers()
 * bool IsSeeCr(Critter cr)
 * bool IsSeenByCr(Critter cr)
@@ -453,7 +453,7 @@ You can easily contribute to this API using provided by engine functionality.
 * Item[] GetItems()
 * Item[] GetItemsBySlot(int slot)
 * Item[] GetItemsByPredicate(predicate-Item predicate)
-* void ChangeItemSlot(uint itemId, int slot)
+* void ChangeItemSlot(uint itemId, uint8 slot)
 * void SetCondition(int cond)
 * void CloseDialog()
 * void Action(int action, int actionExt, Item item)
@@ -480,7 +480,7 @@ You can easily contribute to this API using provided by engine functionality.
 * void MoveToCritter(Critter target, uint cut, bool isRun)
 * void MoveToHex(uint16 hx, uint16 hy, uint cut, bool isRun)
 * int GetMovingState()
-* void ResetMovingState(ref uint gagId)
+* void ResetMovingState()
 
 ### Critter client methods
 
@@ -498,7 +498,7 @@ You can easily contribute to this API using provided by engine functionality.
 * bool IsAnimPlaying()
 * uint GetAnim1()
 * void Animate(uint anim1, uint anim2)
-* void AnimateExt(uint anim1, uint anim2, Item item)
+* void AnimateExt(uint anim1, uint anim2, Item actionItem)
 * void StopAnim()
 * void Wait(uint ms)
 * uint CountItem(hash protoId)
@@ -561,11 +561,11 @@ You can easily contribute to this API using provided by engine functionality.
 * Item[] GetStaticItems()
 * Critter GetCritter(uint crid)
 * Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, int findType)
-* Critter[] GetCrittersByPids(hash pid, int findType)
+* Critter[] GetCrittersByPids(hash pid, uint8 findType)
 * Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
 * Critter[] GetCrittersWithBlockInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
-* Critter[] GetCrittersWhoViewPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, int findType)
-* Critter[] GetCrittersSeeing(Critter[] critters, bool lookOnThem, int findType)
+* Critter[] GetCrittersWhoViewPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint8 findType)
+* Critter[] GetCrittersSeeing(Critter[] critters, bool lookOnThem, uint8 findType)
 * void GetHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
 * void GetWallHexInPath(uint16 fromHx, uint16 fromHy, ref uint16 toHx, ref uint16 toHy, float angle, uint dist)
 * uint GetPathLengthToHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
@@ -616,8 +616,8 @@ You can easily contribute to this API using provided by engine functionality.
 * Map GetMap(hash mapPid)
 * Map GetMapByIndex(uint index)
 * Map[] GetMaps()
-* void GetEntrance(uint entrance, ref uint mapIndex, ref hash entire)
-* uint GetEntrances(ref int[] mapsIndex, ref hash[] entires)
+* void GetEntrance(uint entranceIndex, ref uint mapIndex, ref hash entrance)
+* uint GetEntrances(ref int[] mapsIndex, ref hash[] entrances)
 * void Regenerate()
 
 ### Location client methods
@@ -737,7 +737,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint GlobalMapWidth
 * uint GlobalMapHeight
 * uint GlobalMapZoneLength
-* int LookChecks
+* uint LookChecks
 * vector<uint> LookDir
 * vector<uint> LookSneakDir
 * uint MinimumOfflineTime
@@ -769,8 +769,8 @@ You can easily contribute to this API using provided by engine functionality.
 * uint Ping
 * bool DebugNet
 * bool DisableAudio
-* int SoundVolume
-* int MusicVolume
+* uint SoundVolume
+* uint MusicVolume
 * int ScreenWidth
 * int ScreenHeight
 * float SpritesZoom
@@ -782,16 +782,16 @@ You can easily contribute to this API using provided by engine functionality.
 * bool ShowSpriteBorders
 * vector<float> EffectValues
 * bool MapHexagonal
-* int MapDirCount
+* uint MapDirCount
 * int MapHexWidth
 * int MapHexHeight
 * int MapHexLineHeight
 * int MapTileOffsX
 * int MapTileOffsY
-* int MapTileStep
+* uint MapTileStep
 * int MapRoofOffsX
 * int MapRoofOffsY
-* int MapRoofSkipSize
+* uint MapRoofSkipSize
 * float MapCameraAngle
 * bool MapSmoothPath
 * string MapDataPrefix
@@ -1063,17 +1063,44 @@ You can easily contribute to this API using provided by engine functionality.
 
 * Default = 0
 
+### EffectType
+
+* GenericSprite = 0x00000001
+* CritterSprite = 0x00000002
+* TileSprite = 0x00000004
+* RoofSprite = 0x00000008
+* RainSprite = 0x00000010
+* SkinnedMesh = 0x00000400
+* Interface = 0x00001000
+* Contour = 0x00002000
+* Font = 0x00010000
+* Primitive = 0x00100000
+* Light = 0x00200000
+* Fog = 0x00400000
+* FlushRenderTarget = 0x01000000
+* FlushRenderTargetMultisampled = 0x02000000
+* FlushPrimitive = 0x04000000
+* FlushMap = 0x08000000
+* FlushLight = 0x10000000
+* FlushFog = 0x20000000
+* Offscreen = 0x40000000
+
 ## Content
 
 ### Item pids
 
+* BaseItem
 
 ### Critter pids
 
+* BaseCritter
+* Player
 
 ### Map pids
 
+* BaseMap
 
 ### Location pids
 
+* BaseLocation
 

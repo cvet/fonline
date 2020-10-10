@@ -34,66 +34,61 @@
 #include "PropertiesSerializator.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-DataBase::Document PropertiesSerializator::SaveToDbDocument(
-    Properties* props, Properties* base, NameResolver& name_resolver)
+auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document
 {
-    RUNTIME_ASSERT((!base || props->registrator == base->registrator));
+    RUNTIME_ASSERT((!base || props->_registrator == base->_registrator));
 
     DataBase::Document doc;
-    for (auto& prop : props->registrator->registeredProperties)
-    {
+    for (auto& prop : props->_registrator->_registeredProperties) {
         // Skip pure virtual properties
-        if (prop->podDataOffset == uint(-1) && prop->complexDataIndex == uint(-1))
+        if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
             continue;
+        }
 
         // Skip temporary properties
-        if (prop->isTemporary)
+        if (prop->_isTemporary) {
             continue;
+        }
 
         // Skip same
-        if (base)
-        {
-            if (prop->podDataOffset != uint(-1))
-            {
-                if (!memcmp(&props->podData[prop->podDataOffset], &base->podData[prop->podDataOffset], prop->baseSize))
+        if (base != nullptr) {
+            if (prop->_podDataOffset != static_cast<uint>(-1)) {
+                if (memcmp(&props->_podData[prop->_podDataOffset], &base->_podData[prop->_podDataOffset], prop->_baseSize) == 0) {
                     continue;
+                }
             }
-            else
-            {
-                if (!props->complexDataSizes[prop->complexDataIndex] && !base->complexDataSizes[prop->complexDataIndex])
+            else {
+                if (props->_complexDataSizes[prop->_complexDataIndex] == 0u && base->_complexDataSizes[prop->_complexDataIndex] == 0u) {
                     continue;
-                if (props->complexDataSizes[prop->complexDataIndex] == base->complexDataSizes[prop->complexDataIndex] &&
-                    !memcmp(props->complexData[prop->complexDataIndex], base->complexData[prop->complexDataIndex],
-                        props->complexDataSizes[prop->complexDataIndex]))
+                }
+                if (props->_complexDataSizes[prop->_complexDataIndex] == base->_complexDataSizes[prop->_complexDataIndex] && memcmp(props->_complexData[prop->_complexDataIndex], base->_complexData[prop->_complexDataIndex], props->_complexDataSizes[prop->_complexDataIndex]) == 0) {
                     continue;
+                }
             }
         }
-        else
-        {
-            if (prop->podDataOffset != uint(-1))
-            {
+        else {
+            if (prop->_podDataOffset != static_cast<uint>(-1)) {
                 uint64 pod_zero = 0;
-                RUNTIME_ASSERT(prop->baseSize <= sizeof(pod_zero));
-                if (!memcmp(&props->podData[prop->podDataOffset], &pod_zero, prop->baseSize))
+                RUNTIME_ASSERT(prop->_baseSize <= sizeof(pod_zero));
+                if (memcmp(&props->_podData[prop->_podDataOffset], &pod_zero, prop->_baseSize) == 0) {
                     continue;
+                }
             }
-            else
-            {
-                if (!props->complexDataSizes[prop->complexDataIndex])
+            else {
+                if (props->_complexDataSizes[prop->_complexDataIndex] == 0u) {
                     continue;
+                }
             }
         }
 
-        doc.insert(std::make_pair(prop->propName, SavePropertyToDbValue(props, prop, name_resolver)));
+        doc.insert(std::make_pair(prop->_propName, SavePropertyToDbValue(props, prop, name_resolver)));
     }
 
     return doc;
 }
 
-bool PropertiesSerializator::LoadFromDbDocument(
-    Properties* props, const DataBase::Document& doc, NameResolver& name_resolver)
+auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const DataBase::Document& /*doc*/, const NameResolver & /*name_resolver*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : doc)
@@ -365,7 +360,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
                     const string& str = std::get<string>(arr[i]);
                     *(uint*)(data + data_pos) = (uint)str.length();
                     if (!str.empty())
-                        memcpy(data + data_pos + sizeof(uint), str.c_str(), str.length());
+                        std::memcpy(data + data_pos + sizeof(uint), str.c_str(), str.length());
                     data_pos += sizeof(uint) + str.length();
                 }
                 RUNTIME_ASSERT(data_pos == data_size);
@@ -613,7 +608,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
                             data_pos += sizeof(uint);
                             if (!str.empty())
                             {
-                                memcpy(data + data_pos, str.c_str(), str.length());
+                                std::memcpy(data + data_pos, str.c_str(), str.length());
                                 data_pos += (uint)str.length();
                             }
                         }
@@ -678,7 +673,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
 
                     if (!str.empty())
                     {
-                        memcpy(data + data_pos, str.c_str(), str.length());
+                        std::memcpy(data + data_pos, str.c_str(), str.length());
                         data_pos += str.length();
                     }
                 }
@@ -752,8 +747,7 @@ bool PropertiesSerializator::LoadFromDbDocument(
     return false;
 }
 
-DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
-    Properties* props, Property* prop, NameResolver& name_resolver)
+auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const NameResolver & /*name_resolver*/) -> DataBase::Value
 {
     /*RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
     RUNTIME_ASSERT(!prop->isTemporary);
@@ -805,14 +799,14 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
             if (data_size)
             {
                 uint arr_size;
-                memcpy(&arr_size, data, sizeof(arr_size));
+                std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(uint);
                 DataBase::Array arr;
                 arr.reserve(arr_size);
                 for (uint i = 0; i < arr_size; i++)
                 {
                     uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
+                    std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
                     string str((char*)data, str_size);
                     arr.push_back(std::move(str));
@@ -921,7 +915,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                     void* key = data;
                     data += key_element_size;
                     uint arr_size;
-                    memcpy(&arr_size, data, sizeof(arr_size));
+                    std::memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(uint);
                     DataBase::Array arr;
                     arr.reserve(arr_size);
@@ -932,7 +926,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                             for (uint i = 0; i < arr_size; i++)
                             {
                                 uint str_size;
-                                memcpy(&str_size, data, sizeof(str_size));
+                                std::memcpy(&str_size, data, sizeof(str_size));
                                 data += sizeof(uint);
                                 string str((char*)data, str_size);
                                 arr.push_back(std::move(str));
@@ -992,7 +986,7 @@ DataBase::Value PropertiesSerializator::SavePropertyToDbValue(
                     void* key = data;
                     data += key_element_size;
                     uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
+                    std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
                     string str((char*)data, str_size);
                     data += str_size;

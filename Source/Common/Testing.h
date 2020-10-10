@@ -38,26 +38,8 @@
 
 #include "Common.h"
 
-#ifdef FO_TESTING
-#define CATCH_CONFIG_PREFIX_ALL
-#include "catch.hpp"
-#undef MessageBox
-#endif
-
-#ifdef FO_TESTING
-#undef RUNTIME_ASSERT
-#undef RUNTIME_ASSERT_STR
-#define RUNTIME_ASSERT(expr) CATCH_REQUIRE(expr)
-#define RUNTIME_ASSERT_STR(expr, str) CATCH_REQUIRE(expr)
-#define TEST_CASE(name) CATCH_TEST_CASE(name)
-#define TEST_SECTION() CATCH_SECTION(LINE_STR)
-#else
-#define TEST_CASE(name) [[maybe_unused]] static void UNIQUE_FUNCTION_NAME(test_case_)
-#define TEST_SECTION() if (!!(__LINE__))
-#endif
-
 extern void CatchExceptions(const string& app_name, int app_ver);
 extern void CreateDump(const string& appendix, const string& message);
-extern bool RaiseAssert(const string& message, const string& file, int line);
-extern void ReportException(const std::exception& ex);
-extern string GetStackTrace();
+extern auto RaiseAssert(const string& message, const string& file, int line) -> bool;
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);

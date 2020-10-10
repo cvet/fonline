@@ -35,16 +35,18 @@
 
 #include "Common.h"
 
+DECLARE_EXCEPTION(DataBaseException);
+
 class DataBase
 {
 public:
-    static const size_t IntValue = 0;
-    static const size_t Int64Value = 1;
-    static const size_t DoubleValue = 2;
-    static const size_t BoolValue = 3;
-    static const size_t StringValue = 4;
-    static const size_t ArrayValue = 5;
-    static const size_t DictValue = 6;
+    static constexpr auto INT_VALUE = 0;
+    static constexpr auto INT64_VALUE = 1;
+    static constexpr auto DOUBLE_VALUE = 2;
+    static constexpr auto BOOL_VALUE = 3;
+    static constexpr auto STRING_VALUE = 4;
+    static constexpr auto ARRAY_VALUE = 5;
+    static constexpr auto DICT_VALUE = 6;
 
     using Array = vector<std::variant<int, int64, double, bool, string>>;
     using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
@@ -54,29 +56,34 @@ public:
     using Collections = map<string, Collection>;
     using RecordsState = map<string, set<uint>>;
 
-private:
-    bool changesStarted;
-    Collections recordChanges;
-    RecordsState newRecords;
-    RecordsState deletedRecords;
-
-protected:
-    virtual Document GetRecord(const string& collection_name, uint id) = 0;
-    virtual void InsertRecord(const string& collection_name, uint id, const Document& doc) = 0;
-    virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) = 0;
-    virtual void DeleteRecord(const string& collection_name, uint id) = 0;
-    virtual void CommitRecords() = 0;
-
-public:
+    DataBase() = default;
+    DataBase(const DataBase&) = delete;
+    DataBase(DataBase&&) noexcept = default;
+    auto operator=(const DataBase&) = delete;
+    auto operator=(DataBase&&) noexcept = delete;
     virtual ~DataBase() = default;
-    virtual UIntVec GetAllIds(const string& collection_name) = 0;
-    Document Get(const string& collection_name, uint id);
+
+    [[nodiscard]] virtual auto GetAllIds(const string& collection_name) -> UIntVec = 0;
+    [[nodiscard]] auto Get(const string& collection_name, uint id) -> Document;
 
     void StartChanges();
     void Insert(const string& collection_name, uint id, const Document& doc);
     void Update(const string& collection_name, uint id, const string& key, const Value& value);
     void Delete(const string& collection_name, uint id);
     void CommitChanges();
+
+protected:
+    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> Document = 0;
+    virtual void InsertRecord(const string& collection_name, uint id, const Document& doc) = 0;
+    virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) = 0;
+    virtual void DeleteRecord(const string& collection_name, uint id) = 0;
+    virtual void CommitRecords() = 0;
+
+private:
+    bool _changesStarted {};
+    Collections _recordChanges {};
+    RecordsState _newRecords {};
+    RecordsState _deletedRecords {};
 };
 
-DataBase* GetDataBase(const string& connection_info);
+extern auto GetDataBase(const string& connection_info) -> DataBase*;

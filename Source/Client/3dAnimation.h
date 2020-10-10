@@ -35,59 +35,68 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-
-class AnimSet : public NonCopyable
+class AnimSet final
 {
     friend class AnimController;
 
 public:
+    AnimSet() = default;
+    AnimSet(const AnimSet&) = delete;
+    AnimSet(AnimSet&&) noexcept = default;
+    auto operator=(const AnimSet&) = delete;
+    auto operator=(AnimSet&&) noexcept = delete;
+    ~AnimSet() = default;
+
     void Load(DataReader& reader);
     void SetData(const string& fname, const string& name, float ticks, float tps);
-    void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt,
-        const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv);
-    const string& GetFileName();
-    const string& GetName();
-    uint GetBoneOutputCount();
-    float GetDuration();
-    HashVecVec& GetBonesHierarchy();
+    void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv);
+    [[nodiscard]] auto GetFileName() const -> const string&;
+    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetBoneOutputCount() const -> uint;
+    [[nodiscard]] auto GetDuration() const -> float;
+    [[nodiscard]] auto GetBonesHierarchy() const -> const HashVecVec&;
 
 private:
     struct BoneOutput
     {
-        hash nameHash {};
-        FloatVec scaleTime {};
-        VectorVec scaleValue {};
-        FloatVec rotationTime {};
-        QuaternionVec rotationValue {};
-        FloatVec translationTime {};
-        VectorVec translationValue {};
+        hash NameHash {};
+        FloatVec ScaleTime {};
+        VectorVec ScaleValue {};
+        FloatVec RotationTime {};
+        QuaternionVec RotationValue {};
+        FloatVec TranslationTime {};
+        VectorVec TranslationValue {};
     };
 
-    string animFileName {};
-    string animName {};
-    float durationTicks {};
-    float ticksPerSecond {};
-    vector<BoneOutput> boneOutputs {};
-    HashVecVec bonesHierarchy {};
+    string _animFileName {};
+    string _animName {};
+    float _durationTicks {};
+    float _ticksPerSecond {};
+    vector<BoneOutput> _boneOutputs {};
+    HashVecVec _bonesHierarchy {};
 };
 
-class AnimController : public NonCopyable
+class AnimController final
 {
 public:
-    AnimController(uint track_count);
+    explicit AnimController(uint track_count);
+    AnimController(const AnimController&) = delete;
+    AnimController(AnimController&&) noexcept = default;
+    auto operator=(const AnimController&) = delete;
+    auto operator=(AnimController&&) noexcept = delete;
     ~AnimController();
-    AnimController* Clone();
-    void RegisterAnimationOutput(hash bone_name_hash, Matrix& output_matrix);
-    void RegisterAnimationSet(AnimSet* animation);
-    AnimSet* GetAnimationSet(uint index);
-    AnimSet* GetAnimationSetByName(const string& name);
-    float GetTrackPosition(uint track);
-    uint GetNumAnimationSets();
+
+    [[nodiscard]] auto Clone() const -> AnimController*;
+    void RegisterAnimationOutput(hash bone_name_hash, Matrix& output_matrix) const;
+    void RegisterAnimationSet(AnimSet* animation) const;
+    [[nodiscard]] auto GetAnimationSet(uint index) const -> AnimSet*;
+    [[nodiscard]] auto GetAnimationSetByName(const string& name) const -> AnimSet*;
+    [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
+    [[nodiscard]] auto GetNumAnimationSets() const -> uint;
     void SetTrackAnimationSet(uint track, AnimSet* anim);
     void ResetBonesTransition(uint skip_track, const HashVec& bone_name_hashes);
     void Reset();
-    float GetTime();
+    [[nodiscard]] auto GetTime() const -> float;
     void AddEventEnable(uint track, bool enable, float start_time);
     void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);
     void AddEventWeight(uint track, float weight, float start_time, float smooth_time);
@@ -99,72 +108,68 @@ public:
 private:
     struct Output
     {
-        hash nameHash {};
-        Matrix* matrix {};
-        BoolVec valid {};
-        FloatVec factor {};
-        VectorVec scale {};
-        QuaternionVec rotation {};
-        VectorVec translation {};
+        hash NameHash {};
+        Matrix* Matrix {};
+        BoolVec Valid {};
+        FloatVec Factor {};
+        VectorVec Scale {};
+        QuaternionVec Rotation {};
+        VectorVec Translation {};
     };
 
     struct Track
     {
-        struct Event
+        enum class EventType
         {
-            enum EType
-            {
-                Enable,
-                Speed,
-                Weight
-            };
-
-            EType type {};
-            float valueTo {};
-            float startTime {};
-            float smoothTime {};
-            float valueFrom {-1.0f};
+            Enable,
+            Speed,
+            Weight
         };
 
-        bool enabled {};
-        float speed {};
-        float weight {};
-        float position {};
-        AnimSet* anim {};
-        vector<Output*> animOutput {};
-        vector<Event> events {};
+        struct Event
+        {
+            EventType Type {};
+            float ValueTo {};
+            float StartTime {};
+            float SmoothTime {};
+            float ValueFrom {-1.0f};
+        };
+
+        bool Enabled {};
+        float Speed {};
+        float Weight {};
+        float Position {};
+        AnimSet* Anim {};
+        vector<Output*> AnimOutput {};
+        vector<Event> Events {};
     };
 
-    void Interpolate(Quaternion& q1, const Quaternion& q2, float factor);
-    void Interpolate(Vector& v1, const Vector& v2, float factor);
+    void Interpolate(Quaternion& q1, const Quaternion& q2, float factor) const;
+    void Interpolate(Vector& v1, const Vector& v2, float factor) const;
 
     template<class T>
-    void FindSRTValue(float time, FloatVec& times, vector<T>& values, T& result)
+    void FindSrtValue(float time, FloatVec& times, vector<T>& values, T& result)
     {
-        for (uint n = 0, m = (uint)times.size(); n < m; n++)
-        {
-            if (n + 1 < m)
-            {
-                if (time >= times[n] && time < times[n + 1])
-                {
+        for (size_t n = 0; n < times.size(); n++) {
+            if (n + 1 < times.size()) {
+                if (time >= times[n] && time < times[n + 1]) {
                     result = values[n];
                     T& value = values[n + 1];
-                    float factor = (time - times[n]) / (times[n + 1] - times[n]);
+                    auto factor = (time - times[n]) / (times[n + 1] - times[n]);
                     Interpolate(result, value, factor);
                     return;
                 }
             }
-            else
-            {
+            else {
                 result = values[n];
             }
         }
     }
 
-    bool cloned {};
-    vector<AnimSet*>* sets {};
-    vector<Output>* outputs {};
-    vector<Track> tracks {};
-    float curTime {};
-    bool interpolationDisabled {};
+    bool _cloned {};
+    vector<AnimSet*>* _sets {};
+    vector<Output>* _outputs {};
+    vector<Track> _tracks {};
+    float _curTime {};
+    bool _interpolationDisabled {};
 };

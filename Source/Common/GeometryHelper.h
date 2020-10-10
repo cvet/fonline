@@ -37,30 +37,37 @@
 
 #include "Settings.h"
 
-constexpr int MAX_HEX_OFFSET = 50; // Must be not odd
+constexpr auto MAX_HEX_OFFSET = 50; // Must be not an odd
 
-class GeometryHelper : public NonMovable
+class GeometryHelper final
 {
 public:
-    GeometryHelper(GeometrySettings& sett);
+    GeometryHelper() = delete;
+    explicit GeometryHelper(GeometrySettings& settings);
+    GeometryHelper(const GeometryHelper&) = delete;
+    GeometryHelper(GeometryHelper&&) = default;
+    auto operator=(const GeometryHelper&) -> GeometryHelper& = delete;
+    auto operator=(GeometryHelper &&) -> GeometryHelper& = delete;
     ~GeometryHelper();
-    uint DistGame(int x1, int y1, int x2, int y2);
-    int GetNearDir(int x1, int y1, int x2, int y2);
-    int GetFarDir(int x1, int y1, int x2, int y2);
-    int GetFarDir(int x1, int y1, int x2, int y2, float offset);
-    bool CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist);
-    int ReverseDir(int dir);
-    bool MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy);
-    void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir);
-    void GetHexOffsets(bool odd, short*& sx, short*& sy);
-    void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y);
+
+    auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
+    auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
+    auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;
+    auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar;
+    auto CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool;
+    auto ReverseDir(uchar dir) const -> uchar;
+    auto MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool;
+    void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const;
+    void GetHexOffsets(bool odd, short*& sx, short*& sy) const;
+    void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y) const;
+    void ForEachBlockLines(const UCharVec& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const;
 
 private:
-    void InitializeHexOffsets();
+    void InitializeHexOffsets() const;
 
-    GeometrySettings& settings;
-    short* sxEven {};
-    short* syEven {};
-    short* sxOdd {};
-    short* syOdd {};
+    GeometrySettings& _settings;
+    mutable short* _sxEven {};
+    mutable short* _syEven {};
+    mutable short* _sxOdd {};
+    mutable short* _syOdd {};
 };

@@ -39,10 +39,12 @@
 #include "Properties.h"
 #include "ScriptSystem.h"
 
-class PropertiesSerializator : public StaticClass
+class PropertiesSerializator final
 {
 public:
-    static DataBase::Document SaveToDbDocument(Properties* props, Properties* base, NameResolver& name_resolver);
-    static bool LoadFromDbDocument(Properties* props, const DataBase::Document& doc, NameResolver& name_resolver);
-    static DataBase::Value SavePropertyToDbValue(Properties* props, Property* prop, NameResolver& name_resolver);
+    PropertiesSerializator() = delete;
+
+    static auto SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document;
+    static auto LoadFromDbDocument(Properties* props, const DataBase::Document& doc, const NameResolver& name_resolver) -> bool;
+    static auto SavePropertyToDbValue(const Properties* props, const Property* prop, const NameResolver& name_resolver) -> DataBase::Value;
 };

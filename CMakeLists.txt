@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.12.4 )
+cmake_minimum_required( VERSION 3.17.0 )
 project( FOnlineProject )
 
 # Options
@@ -130,6 +130,8 @@ set( FO_CLIENT_SOURCE "" )
 set( FO_TOOLS_SOURCE "" )
 set( FO_SCRIPTING_SOURCE "" )
 set( FO_SINGLE_SOURCE "" )
+set( FO_TESTS_SOURCE "" )
+set( FO_LINT_SOURCE "" )
 set( FO_CORE_LIBS_GROUP "" )
 set( FO_COMMANDS_GROUP "" )
 set( FO_APPLICATIONS_GROUP "" )
@@ -546,23 +548,23 @@ endmacro()
 include_directories( "${CMAKE_BINARY_DIR}/GeneratedIncludes" )
 
 # Custom script API
-GenerateInclude( "CustomScriptApi" )
+GenerateInclude( "ScriptApi-Custom" )
 foreach( headerPath ${FO_SCRIPT_API} )
-	AddGeneratedIncludeLine( "CustomScriptApi" "#include \"${headerPath}\"" )
+	AddGeneratedIncludeLine( "ScriptApi-Custom" "#include \"${headerPath}\"" )
 endforeach()
-FinalizeGeneratedInclude( "CustomScriptApi" )
+FinalizeGeneratedInclude( "ScriptApi-Custom" )
 
 # Embedded resources
-GenerateInclude( "EmbeddedResources_Include" )
+GenerateInclude( "EmbeddedResources-Include" )
 file( GLOB bins "Resources/Embedded/*.zipped" )
 foreach( bin ${bins} )
 	string( REGEX MATCH "([^/]+)$" filename ${bin} )
 	string( REGEX REPLACE "\\.| " "_" filename ${filename} )
 	file( READ ${bin} filedata HEX )
 	string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
-	AddGeneratedIncludeLine( "EmbeddedResources_Include" "const unsigned char Resource_${filename}[] = { ${filedata}};" )
+	AddGeneratedIncludeLine( "EmbeddedResources-Include" "const unsigned char Resource_${filename}[] = { ${filedata}};" )
 endforeach()
-FinalizeGeneratedInclude( "EmbeddedResources_Include" )
+FinalizeGeneratedInclude( "EmbeddedResources-Include" )
 
 # Unique hash for build
 if( FO_ENGINE_VERSION STREQUAL "" )
@@ -588,9 +590,9 @@ else()
 	set( FO_VERSION_CONTENT "const int FO_VERSION = 0x${FO_ENGINE_VERSION}; /* Custom version */\nconst bool FO_GITHUB = false;" )
 endif()
 
-GenerateInclude( "Version_Include" )
-AddGeneratedIncludeLine( "Version_Include" "${FO_VERSION_CONTENT}" )
-FinalizeGeneratedInclude( "Version_Include" )
+GenerateInclude( "Version-Include" )
+AddGeneratedIncludeLine( "Version-Include" "${FO_VERSION_CONTENT}" )
+FinalizeGeneratedInclude( "Version-Include" )
 
 # Third-party libs
 StatusMessage( "Third-party libs:" )
@@ -704,16 +706,16 @@ if( YES )
 	DisableLibWarnings( Vorbis )
 
 	# Theora
-	StatusMessage( "+ Theora" )
-	set( FO_THEORA_DIR "ThirdParty/Theora" )
-	file( GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c" )
-	list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c" )
-	list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c" )
-	list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c" )
-	include_directories( "${FO_THEORA_DIR}/include" )
-	add_library( Theora ${FO_THEORA_SOURCE} )
-	list( APPEND FO_CLIENT_LIBS "Theora" )
-	DisableLibWarnings( Theora )
+	# StatusMessage( "+ Theora" )
+	# set( FO_THEORA_DIR "ThirdParty/Theora" )
+	# file( GLOB FO_THEORA_SOURCE "${FO_THEORA_DIR}/lib/*.c" )
+	# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/analyze.c" )
+	# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encode.c" )
+	# list( REMOVE_ITEM FO_THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${FO_THEORA_DIR}/lib/encapiwrapper.c" )
+	# include_directories( "${FO_THEORA_DIR}/include" )
+	# add_library( Theora ${FO_THEORA_SOURCE} )
+	# list( APPEND FO_CLIENT_LIBS "Theora" )
+	# DisableLibWarnings( Theora )
 
 	# Acm
 	StatusMessage( "+ Acm" )
@@ -1029,17 +1031,186 @@ if( FO_MONO_SCRIPTING )
 	DisableLibWarnings( libmono )
 endif()
 
-# Collect sources
-file( GLOB FO_COMMON_SOURCE CONFIGURE_DEPENDS "Source/Common/*.*" )
-list( REMOVE_ITEM FO_COMMON_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/MessageBox.cpp" )
-list( REMOVE_ITEM FO_COMMON_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Common/MessageBoxStub.cpp" )
-file( GLOB FO_SERVER_SOURCE CONFIGURE_DEPENDS "Source/Server/*.*" )
-list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/AppGui.cpp" )
-list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/AppGuiDX.cpp" )
-list( REMOVE_ITEM FO_SERVER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server/AppGuiStub.cpp" )
-file( GLOB FO_CLIENT_SOURCE CONFIGURE_DEPENDS "Source/Client/*.*" )
-file( GLOB FO_TOOLS_SOURCE CONFIGURE_DEPENDS "Source/Tools/*.*" )
-file( GLOB FO_SCRIPTING_SOURCE CONFIGURE_DEPENDS "Source/Scripting/*.*" )
+# Engine sources
+set( FO_COMMON_SOURCE
+	"Source/Common/Application.cpp"
+	"Source/Common/Application.h"
+	"Source/Common/CacheStorage.cpp"
+	"Source/Common/CacheStorage.h"
+	"Source/Common/Common.cpp"
+	"Source/Common/Common.h"
+	"Source/Common/ConfigFile.cpp"
+	"Source/Common/ConfigFile.h"
+	"Source/Common/DataSource.cpp"
+	"Source/Common/DataSource.h"
+	"Source/Common/DiskFileSystem.cpp"
+	"Source/Common/DiskFileSystem.h"
+	"Source/Common/Entity.cpp"
+	"Source/Common/Entity.h"
+	"Source/Common/FileSystem.cpp"
+	"Source/Common/FileSystem.h"
+	"Source/Common/GenericUtils.cpp"
+	"Source/Common/GenericUtils.h"
+	"Source/Common/GeometryHelper.cpp"
+	"Source/Common/GeometryHelper.h"
+	"Source/Common/KeyCodes-Include.h"
+	"Source/Common/LineTracer.cpp"
+	"Source/Common/LineTracer.h"
+	"Source/Common/Log.cpp"
+	"Source/Common/Log.h"
+	"Source/Common/MapLoader.cpp"
+	"Source/Common/MapLoader.h"
+	"Source/Common/MessageBox.cpp"
+	"Source/Common/MessageBox.h"
+	"Source/Common/MessageBoxStub.cpp"
+	"Source/Common/MsgFiles.cpp"
+	"Source/Common/MsgFiles.h"
+	"Source/Common/MsgStr-Include.h"
+	"Source/Common/NetBuffer.cpp"
+	"Source/Common/NetBuffer.h"
+	"Source/Common/NetCommand.cpp"
+	"Source/Common/NetCommand.h"
+	"Source/Common/NetProtocol-Include.h"
+	"Source/Common/Properties.cpp"
+	"Source/Common/Properties.h"
+	"Source/Common/ProtoManager.cpp"
+	"Source/Common/ProtoManager.h"
+	"Source/Common/ScriptSystem.cpp"
+	"Source/Common/ScriptSystem.h"
+	"Source/Common/Settings.cpp"
+	"Source/Common/Settings.h"
+	"Source/Common/Settings-Include.h"
+	"Source/Common/StringUtils.cpp"
+	"Source/Common/StringUtils.h"
+	"Source/Common/Testing.cpp"
+	"Source/Common/Testing.h"
+	"Source/Common/Timer.cpp"
+	"Source/Common/Timer.h"
+	"Source/Common/TwoBitMask.cpp"
+	"Source/Common/TwoBitMask.h"
+	"Source/Common/UcsTables-Include.h"
+	"Source/Common/WinApi-Include.h" )
+
+list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/MessageBox.cpp" )
+list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/MessageBoxStub.cpp" )
+
+set( FO_SERVER_SOURCE
+	"Source/Server/AdminPanel.cpp"
+	"Source/Server/AdminPanel.h"
+	"Source/Server/AppGui.cpp"
+	"Source/Server/AppGui.h"
+	"Source/Server/AppGuiDX.cpp"
+	"Source/Server/AppGuiStub.cpp"
+	"Source/Server/Critter.cpp"
+	"Source/Server/Critter.h"
+	"Source/Server/CritterManager.cpp"
+	"Source/Server/CritterManager.h"
+	"Source/Server/DataBase.cpp"
+	"Source/Server/DataBase.h"
+	"Source/Server/Dialogs.cpp"
+	"Source/Server/Dialogs.h"
+	"Source/Server/EntityManager.cpp"
+	"Source/Server/EntityManager.h"
+	"Source/Server/Item.cpp"
+	"Source/Server/Item.h"
+	"Source/Server/ItemManager.cpp"
+	"Source/Server/ItemManager.h"
+	"Source/Server/Location.cpp"
+	"Source/Server/Location.h"
+	"Source/Server/Map.cpp"
+	"Source/Server/Map.h"
+	"Source/Server/MapManager.cpp"
+	"Source/Server/MapManager.h"
+	"Source/Server/Networking.cpp"
+	"Source/Server/Networking.h"
+	"Source/Server/PropertiesSerializator.cpp"
+	"Source/Server/PropertiesSerializator.h"
+	"Source/Server/Server.cpp"
+	"Source/Server/Server.h"
+	"Source/Server/ServerScripting.h" )
+
+list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGui.cpp" )
+list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiDX.cpp" )
+list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiStub.cpp" )
+
+set( FO_CLIENT_SOURCE
+	"Source/Client/3dAnimation.cpp"
+	"Source/Client/3dAnimation.h"
+	"Source/Client/3dStuff.cpp"
+	"Source/Client/3dStuff.h"
+	"Source/Client/Client.cpp"
+	"Source/Client/Client.h"
+	"Source/Client/ClientScripting.h"
+	"Source/Client/CritterView.cpp"
+	"Source/Client/CritterView.h"
+	"Source/Client/EffectManager.cpp"
+	"Source/Client/EffectManager.h"
+	"Source/Client/HexManager.cpp"
+	"Source/Client/HexManager.h"
+	"Source/Client/ItemHexView.cpp"
+	"Source/Client/ItemHexView.h"
+	"Source/Client/ItemView.cpp"
+	"Source/Client/ItemView.h"
+	"Source/Client/Keyboard.cpp"
+	"Source/Client/Keyboard.h"
+	"Source/Client/LocationView.cpp"
+	"Source/Client/LocationView.h"
+	"Source/Client/MapView.cpp"
+	"Source/Client/MapView.h"
+	"Source/Client/ResourceManager.cpp"
+	"Source/Client/ResourceManager.h"
+	"Source/Client/SoundManager.cpp"
+	"Source/Client/SoundManager.h"
+	"Source/Client/SpriteManager.cpp"
+	"Source/Client/SpriteManager.h"
+	"Source/Client/Sprites.cpp"
+	"Source/Client/Sprites.h" )
+
+set( FO_TOOLS_SOURCE
+	"Source/Tools/EffectBaker.h"
+	"Source/Tools/EffectBaker.cpp"
+	"Source/Tools/F2Palette-Include.h"
+	"Source/Tools/ImageBaker.h"
+	"Source/Tools/ImageBaker.cpp"
+	"Source/Tools/Mapper.h"
+	"Source/Tools/Mapper.cpp"
+	"Source/Tools/MapperScripting.h"
+	"Source/Tools/ModelBaker.h"
+	"Source/Tools/ModelBaker.cpp" )
+
+set( FO_SCRIPTING_SOURCE
+	"Source/Scripting/AngelScriptScripting.cpp"
+	"Source/Scripting/MonoScripting.cpp" 
+	"Source/Scripting/NativeScripting.cpp"
+	"Source/Scripting/ScriptApi.h" )
+
+set( FO_TESTS_SOURCE
+	"Source/Tests/UnitTest1.cpp" )
+
+set( FO_LINT_SOURCE
+	"Source/Scripting/ScriptingLint.cpp"
+	"Source/Scripting/ScriptApi-Client.h"
+	"Source/Scripting/ScriptApi-Common.h"
+	"Source/Scripting/ScriptApi-Enums.h"
+	"Source/Scripting/ScriptApi-Events.h"
+	"Source/Scripting/ScriptApi-Mapper.h"
+	"Source/Scripting/ScriptApi-Properties.h"
+	"Source/Scripting/ScriptApi-Server.h"
+	"${CMAKE_BINARY_DIR}/GeneratedIncludes/ScriptApi-Custom.h" )
+
+# Make copy of scripting API files for correct linting
+function( MirrorHeader fileDir fileName )
+	file( CREATE_LINK "${fileDir}/${fileName}.h" "${CMAKE_BINARY_DIR}/GeneratedIncludes/${fileName}-Mirror.h" COPY_ON_ERROR SYMBOLIC )
+endfunction()
+
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Client" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Common" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Enums" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Events" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Mapper" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Properties" )
+MirrorHeader( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Server" )
+MirrorHeader( "${CMAKE_BINARY_DIR}/GeneratedIncludes" "ScriptApi-Custom" )
 
 # Applications
 StatusMessage( "Applications:" )
@@ -1169,7 +1340,7 @@ endif()
 if( FONLINE_BUILD_BAKER )
 	StatusMessage( "+ FOnlineBaker" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineBaker" )
-	add_executable( FOnlineBaker "Source/Applications/BakerApp.cpp" "Source/Common/MessageBoxStub.cpp" "Source/Tools/ImageBaker.h" "Source/Tools/ImageBaker.cpp" "Source/Tools/ModelBaker.h" "Source/Tools/ModelBaker.cpp" "Source/Tools/EffectBaker.h" "Source/Tools/EffectBaker.cpp" "Source/Tools/F2Palette_Include.h" )
+	add_executable( FOnlineBaker "Source/Applications/BakerApp.cpp" "Source/Common/MessageBoxStub.cpp" "Source/Tools/ImageBaker.h" "Source/Tools/ImageBaker.cpp" "Source/Tools/ModelBaker.h" "Source/Tools/ModelBaker.cpp" "Source/Tools/EffectBaker.h" "Source/Tools/EffectBaker.cpp" "Source/Tools/F2Palette-Include.h" )
 	set_target_properties( FOnlineBaker PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineBaker PROPERTIES OUTPUT_NAME "FOnlineBaker" )
 	set_target_properties( FOnlineBaker PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES}" )
@@ -1198,7 +1369,7 @@ endif()
 if( FONLINE_UNIT_TESTS )
 	StatusMessage( "+ FOnlineUnitTests" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineUnitTests" )
-	add_executable( FOnlineUnitTests ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/MessageBox.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
+	add_executable( FOnlineUnitTests ${FO_LINT_SOURCE} ${FO_TESTS_SOURCE} ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/MessageBox.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
 	set_target_properties( FOnlineUnitTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests" )
 	set_target_properties( FOnlineUnitTests PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_API_MULTIPLAYER_ONLY;FO_TESTING" )
@@ -1208,7 +1379,7 @@ endif()
 if( FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ FOnlineCodeCoverage" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineCodeCoverage" )
-	add_executable( FOnlineCodeCoverage ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/MessageBox.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
+	add_executable( FOnlineCodeCoverage ${FO_TESTS_SOURCE} ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/MessageBox.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage" )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_API_MULTIPLAYER_ONLY;FO_TESTING" )

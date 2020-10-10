@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppMissingIncludeGuard
+
 #if !defined(SETTING) || !defined(VAR_SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
 #error SETTING or VAR_SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
 #endif
@@ -55,7 +57,7 @@ SETTING(uint, TimeoutBattle, 10);
 SETTING(uint, GlobalMapWidth, 28);
 SETTING(uint, GlobalMapHeight, 30);
 SETTING(uint, GlobalMapZoneLength, 50);
-SETTING(int, LookChecks, 0);
+SETTING(uint, LookChecks, 0);
 SETTING(vector<uint>, LookDir, 0, 20, 40, 60, 60);
 SETTING(vector<uint>, LookSneakDir, 90, 60, 30, 0, 0);
 SETTING_GROUP_END();
@@ -102,8 +104,8 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(AudioSettings, virtual DummySettings);
 SETTING(bool, DisableAudio, false);
-VAR_SETTING(int, SoundVolume, 100);
-VAR_SETTING(int, MusicVolume, 100);
+VAR_SETTING(uint, SoundVolume, 100);
+VAR_SETTING(uint, MusicVolume, 100);
 SETTING_GROUP_END();
 
 SETTING_GROUP(ViewSettings, virtual DummySettings);
@@ -124,16 +126,16 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
 SETTING(bool, MapHexagonal, true);
-SETTING(int, MapDirCount);
+SETTING(uint, MapDirCount);
 SETTING(int, MapHexWidth, 32);
 SETTING(int, MapHexHeight, 16);
 SETTING(int, MapHexLineHeight, 12);
 SETTING(int, MapTileOffsX, -8);
 SETTING(int, MapTileOffsY, 32);
-SETTING(int, MapTileStep, 2);
+SETTING(uint, MapTileStep, 2);
 SETTING(int, MapRoofOffsX, -8);
 SETTING(int, MapRoofOffsY, -66);
-SETTING(int, MapRoofSkipSize, 2);
+SETTING(uint, MapRoofSkipSize, 2);
 SETTING(float, MapCameraAngle, 25.7f);
 SETTING(bool, MapSmoothPath, true);
 SETTING(string, MapDataPrefix, "art/geometry/fallout_");
@@ -179,8 +181,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(MapSettings, virtual ServerGameplaySettings, virtual GeometrySettings);
 SETTING_GROUP_END();
 
-SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings,
-    virtual GeometrySettings);
+SETTING_GROUP(CritterSettings, virtual ServerGameplaySettings, virtual TimerSettings, virtual NetworkSettings, virtual GeometrySettings);
 SETTING(vector<bool>, CritterSlotEnabled, true, true, true);
 SETTING(vector<bool>, CritterSlotSendData, true, false, true);
 SETTING_GROUP_END();
@@ -251,10 +252,7 @@ VAR_SETTING(int, MouseX, 0);
 VAR_SETTING(int, MouseY, 0);
 SETTING_GROUP_END();
 
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings,
-    virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings,
-    virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings,
-    virtual InputSettings, virtual CritterViewSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings);
 SETTING(string, AutoLogin, "");
 SETTING(uint, TextDelay, 3000);
 SETTING(bool, WinNotify, true);
@@ -262,9 +260,7 @@ SETTING(bool, SoundNotify, false);
 VAR_SETTING(bool, HelpInfo, false);
 SETTING_GROUP_END();
 
-SETTING_GROUP(MapperSettings, virtual CommonSettings, virtual ScriptSettings, virtual ViewSettings,
-    virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings,
-    virtual PlatformSettings, virtual InputSettings, virtual CritterSettings, virtual CritterViewSettings);
+SETTING_GROUP(MapperSettings, virtual CommonSettings, virtual ScriptSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterSettings, virtual CritterViewSettings);
 SETTING(string, ServerDir, "");
 SETTING(string, StartMap, "");
 SETTING(int, StartHexX, -1);
@@ -272,9 +268,7 @@ SETTING(int, StartHexY, -1);
 SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSettings, virtual ScriptSettings,
-    virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings,
-    virtual TimerSettings, virtual ServerGameplaySettings, virtual MapSettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual MapSettings, virtual CritterSettings);
 SETTING(uint, AdminPanelPort, 0);
 SETTING(string, DbStorage, "Memory");
 SETTING(string, DbHistory, "None");

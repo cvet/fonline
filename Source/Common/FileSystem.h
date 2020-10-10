@@ -41,32 +41,38 @@
 
 DECLARE_EXCEPTION(FileSystemExeption);
 
-class FileHeader : public NonCopyable
+class FileHeader
 {
     friend class FileManager;
     friend class FileCollection;
     friend class File;
 
 public:
-    operator bool() const;
-    const string& GetName();
-    const string& GetPath();
-    uint GetFsize();
-    uint64 GetWriteTime();
+    FileHeader(const FileHeader&) = delete;
+    FileHeader(FileHeader&&) noexcept = default;
+    auto operator=(const FileHeader&) = delete;
+    auto operator=(FileHeader&&) noexcept -> FileHeader& = default;
+    explicit operator bool() const;
+    ~FileHeader() = default;
+
+    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetFsize() const -> uint;
+    [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 protected:
     FileHeader() = default;
-    FileHeader(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds);
+    FileHeader(string name, string path, uint size, uint64 write_time, DataSource* ds);
 
-    bool isLoaded {};
-    string fileName {};
-    string filePath {};
-    uint fileSize {};
-    uint64 writeTime {};
-    DataSource* dataSource {};
+    bool _isLoaded {};
+    string _fileName {};
+    string _filePath {};
+    uint _fileSize {};
+    uint64 _writeTime {};
+    DataSource* _dataSource {};
 };
 
-class File : public FileHeader
+class File final : public FileHeader
 {
     friend class FileManager;
     friend class FileCollection;
@@ -74,94 +80,123 @@ class File : public FileHeader
 public:
     File() = default;
     File(uchar* buf, uint size);
-    const char* GetCStr();
-    uchar* GetBuf();
-    uchar* GetCurBuf();
-    uint GetCurPos();
-    uchar* ReleaseBuffer();
+    File(const File&) = delete;
+    File(File&&) noexcept = default;
+    auto operator=(const File&) = delete;
+    auto operator=(File&&) noexcept -> File& = default;
+    ~File() = default;
+
+    [[nodiscard]] auto GetCStr() const -> const char*;
+    [[nodiscard]] auto GetBuf() const -> const uchar*;
+    [[nodiscard]] auto GetCurBuf() const -> const uchar*;
+    [[nodiscard]] auto GetCurPos() const -> uint;
+    auto ReleaseBuffer() -> uchar*;
     void SetCurPos(uint pos);
     void GoForward(uint offs);
     void GoBack(uint offs);
-    bool FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs);
-    string GetNonEmptyLine();
+    auto FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool;
+    auto GetNonEmptyLine() -> string;
     void CopyMem(void* ptr, uint size);
-    string GetStrNT(); // Null terminated
-    uchar GetUChar();
-    ushort GetBEUShort();
-    short GetBEShort() { return (short)GetBEUShort(); }
-    ushort GetLEUShort();
-    short GetLEShort() { return (short)GetLEUShort(); }
-    uint GetBEUInt();
-    uint GetLEUInt();
-    uint GetLE3UChar();
-    float GetBEFloat();
-    float GetLEFloat();
+    // ReSharper disable CppInconsistentNaming
+    auto GetStrNT() -> string; // Null terminated
+    auto GetUChar() -> uchar;
+    auto GetBEUShort() -> ushort;
+    auto GetBEShort() -> short { return static_cast<short>(GetBEUShort()); }
+    auto GetLEUShort() -> ushort;
+    auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
+    auto GetBEUInt() -> uint;
+    auto GetLEUInt() -> uint;
+    auto GetLE3UChar() -> uint;
+    auto GetBEFloat() -> float;
+    auto GetLEFloat() -> float;
+    // ReSharper restore CppInconsistentNaming
 
 private:
     File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
 
-    unique_ptr<uchar[]> fileBuf {};
-    uint curPos {};
+    unique_ptr<uchar[]> _fileBuf {};
+    uint _curPos {};
 };
 
-class OutputFile : public NonCopyable
+class OutputFile final
 {
     friend class FileManager;
 
 public:
+    OutputFile(const OutputFile&) = delete;
+    OutputFile(OutputFile&&) noexcept = default;
+    auto operator=(const OutputFile&) = delete;
+    auto operator=(OutputFile&&) noexcept = delete;
+    ~OutputFile() = default;
+
     void Save();
-    uchar* GetOutBuf();
-    uint GetOutBufLen();
+    [[nodiscard]] auto GetOutBuf() const -> const uchar*;
+    [[nodiscard]] auto GetOutBufLen() const -> uint;
     void SetData(const void* data, uint len);
     void SetStr(const string& str);
+    // ReSharper disable CppInconsistentNaming
     void SetStrNT(const string& str);
     void SetUChar(uchar data);
     void SetBEUShort(ushort data);
-    void SetBEShort(short data) { SetBEUShort((ushort)data); }
+    void SetBEShort(short data) { SetBEUShort(static_cast<ushort>(data)); }
     void SetLEUShort(ushort data);
     void SetBEUInt(uint data);
     void SetLEUInt(uint data);
+    // ReSharper restore CppInconsistentNaming
 
 private:
-    OutputFile(DiskFile file);
+    explicit OutputFile(DiskFile file);
 
-    DiskFile diskFile;
-    vector<uchar> dataBuf {};
-    DataWriter dataWriter {dataBuf};
+    DiskFile _diskFile;
+    vector<uchar> _dataBuf {};
+    DataWriter _dataWriter {_dataBuf};
 };
 
-class FileCollection : public NonCopyable
+class FileCollection final
 {
     friend class FileManager;
 
 public:
-    const string& GetPath();
-    bool MoveNext();
-    File GetCurFile();
-    FileHeader GetCurFileHeader();
-    File FindFile(const string& name);
-    FileHeader FindFileHeader(const string& name);
-    uint GetFilesCount();
+    FileCollection(const FileCollection&) = delete;
+    FileCollection(FileCollection&&) noexcept = default;
+    auto operator=(const FileCollection&) = delete;
+    auto operator=(FileCollection&&) noexcept = delete;
+    ~FileCollection() = default;
+
+    auto MoveNext() -> bool;
     void ResetCounter();
+    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetCurFile() const -> File;
+    [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
+    [[nodiscard]] auto FindFile(const string& name) const -> File;
+    [[nodiscard]] auto FindFileHeader(const string& name) const -> FileHeader;
+    [[nodiscard]] auto GetFilesCount() const -> uint;
 
 private:
-    FileCollection(const string& path, vector<FileHeader> files);
+    FileCollection(string path, vector<FileHeader> files);
 
-    string filterPath {};
-    vector<FileHeader> allFiles {};
-    int curFileIndex {-1};
+    string _filterPath {};
+    vector<FileHeader> _allFiles {};
+    int _curFileIndex {-1};
 };
 
-class FileManager : public NonCopyable
+class FileManager final
 {
 public:
     FileManager() = default;
+    FileManager(const FileManager&) = delete;
+    FileManager(FileManager&&) noexcept = default;
+    auto operator=(const FileManager&) = delete;
+    auto operator=(FileManager&&) noexcept = delete;
+    ~FileManager() = default;
+
     void AddDataSource(const string& path, bool cache_dirs);
-    FileCollection FilterFiles(const string& ext, const string& dir = "", bool include_subdirs = true);
-    File ReadFile(const string& path);
-    FileHeader ReadFileHeader(const string& path);
-    ConfigFile ReadConfigFile(const string& path);
-    OutputFile WriteFile(const string& path, bool apply = false);
+    [[nodiscard]] auto FilterFiles(const string& ext) -> FileCollection;
+    [[nodiscard]] auto FilterFiles(const string& ext, const string& dir, bool include_subdirs) -> FileCollection;
+    [[nodiscard]] auto ReadFile(const string& path) -> File;
+    [[nodiscard]] auto ReadFileHeader(const string& path) -> FileHeader;
+    [[nodiscard]] auto ReadConfigFile(const string& path) -> ConfigFile;
+    [[nodiscard]] auto WriteFile(const string& path, bool apply) -> OutputFile;
     void DeleteFile(const string& path);
     void DeleteDir(const string& path);
     void RenameFile(const string& from_path, const string& to_path);
@@ -169,7 +204,7 @@ public:
     EventObserver<DataSource*> OnDataSourceAdded {};
 
 private:
-    string rootPath {};
-    vector<DataSource> dataSources {};
-    EventDispatcher<DataSource*> dataSourceAddedDispatcher {OnDataSourceAdded};
+    string _rootPath {};
+    vector<DataSource> _dataSources {};
+    EventDispatcher<DataSource*> _dataSourceAddedDispatcher {OnDataSourceAdded};
 };

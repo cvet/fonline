@@ -48,24 +48,31 @@ class Location;
 using LocationVec = vector<Location*>;
 using LocationMap = map<uint, Location*>;
 
-class Location : public Entity
+class Location final : public Entity
 {
 public:
-    Location(uint id, ProtoLocation* proto, ServerScriptSystem& script_sys);
+    Location() = delete;
+    Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys);
+    Location(const Location&) = delete;
+    Location(Location&&) noexcept = delete;
+    auto operator=(const Location&) = delete;
+    auto operator=(Location&&) noexcept = delete;
+    ~Location() override = default;
+
     void BindScript();
-    ProtoLocation* GetProtoLoc();
-    bool IsLocVisible();
-    MapVec& GetMapsRaw();
-    MapVec GetMaps();
-    uint GetMapsCount();
-    Map* GetMapByIndex(uint index);
-    Map* GetMapByPid(hash map_pid);
-    uint GetMapIndex(hash map_pid);
-    bool IsCanEnter(uint players_count);
-    bool IsNoCrit();
-    bool IsNoPlayer();
-    bool IsNoNpc();
-    bool IsCanDelete();
+    auto GetProtoLoc() const -> const ProtoLocation*;
+    auto IsLocVisible() const -> bool;
+    auto GetMapsRaw() -> MapVec&;
+    auto GetMaps() const -> MapVec;
+    auto GetMapsCount() const -> uint;
+    auto GetMapByIndex(uint index) -> Map*;
+    auto GetMapByPid(hash map_pid) -> Map*;
+    auto GetMapIndex(hash map_pid) -> uint;
+    auto IsCanEnter(uint players_count) -> bool;
+    auto IsNoCrit() -> bool;
+    auto IsNoPlayer() -> bool;
+    auto IsNoNpc() -> bool;
+    auto IsCanDelete() -> bool;
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
@@ -79,6 +86,6 @@ public:
 #include "ScriptApi.h"
 
 private:
-    ServerScriptSystem& scriptSys;
-    MapVec locMaps {};
+    ServerScriptSystem& _scriptSys;
+    MapVec _locMaps {};
 };

@@ -32,18 +32,15 @@
 //
 
 #include "LocationView.h"
-#include "Testing.h"
 
 #define FO_API_LOCATION_VIEW_IMPL
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(LocationView, "Location", false);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
-    CLASS_PROPERTY_IMPL(LocationView, access, type, name, __VA_ARGS__);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(LocationView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-LocationView::LocationView(uint id, ProtoLocation* proto) :
-    Entity(id, EntityType::LocationView, PropertiesRegistrator, proto)
+LocationView::LocationView(uint id, const ProtoLocation* proto) : Entity(id, EntityType::LocationView, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
 }

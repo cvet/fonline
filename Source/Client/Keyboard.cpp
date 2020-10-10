@@ -34,8 +34,9 @@
 #include "Keyboard.h"
 #include "StringUtils.h"
 
-Keyboard::Keyboard(InputSettings& sett, SpriteManager& spr_mngr) : settings {sett}, sprMngr {spr_mngr}
+Keyboard::Keyboard(InputSettings& settings, SpriteManager& spr_mngr) : _settings {settings}, _sprMngr {spr_mngr}
 {
+    UNUSED_VARIABLE(_settings);
 }
 
 void Keyboard::Lost()
@@ -45,163 +46,160 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, int flags)
+void Keyboard::GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const
 {
-    if (AltDwn)
+    if (AltDwn) {
         return;
+    }
 
-    bool ctrl_shift = (CtrlDwn || ShiftDwn);
+    const auto ctrl_shift = CtrlDwn || ShiftDwn;
 
-    uint dik_text_len_utf8 = _str(dik_text).lengthUtf8();
-    uint str_len_utf8 = _str(str).lengthUtf8();
-    uint str_len = (uint)str.length();
+    const auto dik_text_len_utf8 = _str(dik_text).lengthUtf8();
+    const auto str_len_utf8 = _str(str).lengthUtf8();
+    const auto str_len = static_cast<uint>(str.length());
 
-    uint position_dummy = str_len;
-    uint& pos = (position ? *position : position_dummy);
-    if (pos > str_len)
+    auto position_dummy = str_len;
+    auto& pos = [position, &position_dummy]() -> uint& { return position != nullptr ? *position : position_dummy; }();
+    if (pos > str_len) {
         pos = str_len;
+    }
 
-    if (dik == KeyCode::DIK_RIGHT && !ctrl_shift)
-    {
-        if (pos < str_len)
-        {
+    if (dik == KeyCode::DIK_RIGHT && !ctrl_shift) {
+        if (pos < str_len) {
             pos++;
-            while (pos < str_len && (str[pos] & 0xC0) == 0x80)
+            while (pos < str_len && (str[pos] & 0xC0) == 0x80) {
                 pos++;
+            }
         }
     }
-    else if (dik == KeyCode::DIK_LEFT && !ctrl_shift)
-    {
-        if (pos > 0)
-        {
+    else if (dik == KeyCode::DIK_LEFT && !ctrl_shift) {
+        if (pos > 0) {
             pos--;
-            while (pos && (str[pos] & 0xC0) == 0x80)
+            while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
                 pos--;
+            }
         }
     }
-    else if (dik == KeyCode::DIK_BACK && !ctrl_shift)
-    {
-        if (pos > 0)
-        {
+    else if (dik == KeyCode::DIK_BACK && !ctrl_shift) {
+        if (pos > 0) {
             uint letter_len = 1;
             pos--;
-            while (pos && (str[pos] & 0xC0) == 0x80)
-                pos--, letter_len++;
+            while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
+                pos--;
+                letter_len++;
+            }
 
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == KeyCode::DIK_DELETE && !ctrl_shift)
-    {
-        if (pos < str_len)
-        {
+    else if (dik == KeyCode::DIK_DELETE && !ctrl_shift) {
+        if (pos < str_len) {
             uint letter_len = 1;
-            uint pos_ = pos + 1;
-            while (pos_ < str_len && (str[pos_] & 0xC0) == 0x80)
-                pos_++, letter_len++;
+            auto pos_ = pos + 1;
+            while (pos_ < str_len && (str[pos_] & 0xC0) == 0x80) {
+                pos_++;
+                letter_len++;
+            }
 
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == KeyCode::DIK_HOME && !ctrl_shift)
-    {
+    else if (dik == KeyCode::DIK_HOME && !ctrl_shift) {
         pos = 0;
     }
-    else if (dik == KeyCode::DIK_END && !ctrl_shift)
-    {
+    else if (dik == KeyCode::DIK_END && !ctrl_shift) {
         pos = str_len;
     }
-    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::DIK_C || dik == KeyCode::DIK_X))
-    {
-        App::Input::SetClipboardText(str);
-        if (dik == KeyCode::DIK_X)
-        {
+    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::DIK_C || dik == KeyCode::DIK_X)) {
+        App->Input.SetClipboardText(str);
+        if (dik == KeyCode::DIK_X) {
             str.clear();
             pos = 0;
         }
     }
-    else if (CtrlDwn && !ShiftDwn && dik == KeyCode::DIK_V)
-    {
-        string cb_text = App::Input::GetClipboardText();
-        App::Input::PushEvent({InputEvent::KeyDown({KeyCode::DIK_CLIPBOARD_PASTE, cb_text})});
-        App::Input::PushEvent({InputEvent::KeyUp({KeyCode::DIK_CLIPBOARD_PASTE})});
+    else if (CtrlDwn && !ShiftDwn && dik == KeyCode::DIK_V) {
+        const auto cb_text = App->Input.GetClipboardText();
+        App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::DIK_CLIPBOARD_PASTE, cb_text})});
+        App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::DIK_CLIPBOARD_PASTE})});
     }
-    else if (dik == KeyCode::DIK_CLIPBOARD_PASTE)
-    {
-        string text = dik_text;
+    else if (dik == KeyCode::DIK_CLIPBOARD_PASTE) {
+        auto text = dik_text;
         EraseInvalidChars(text, flags);
-        if (!text.empty())
-        {
-            uint text_len_utf8 = _str(text).lengthUtf8();
+        if (!text.empty()) {
+            const auto text_len_utf8 = _str(text).lengthUtf8();
             uint erase_len_utf8 = 0;
-            if (str_len_utf8 + text_len_utf8 > max)
+            if (str_len_utf8 + text_len_utf8 > max) {
                 erase_len_utf8 = str_len_utf8 + text_len_utf8 - max;
+            }
 
-            uint text_pos = (uint)text.length();
-            while (erase_len_utf8)
-            {
+            auto text_pos = static_cast<uint>(text.length());
+            while (erase_len_utf8 != 0u) {
                 text_pos--;
-                while (text_pos && (text[text_pos] & 0xC0) == 0x80)
+                while (text_pos != 0u && (text[text_pos] & 0xC0) == 0x80) {
                     text_pos--;
+                }
                 erase_len_utf8--;
             }
             text.erase(text_pos);
 
             str.insert(pos, text);
-            pos += (uint)text.length();
+            pos += static_cast<uint>(text.length());
         }
     }
-    else
-    {
-        if (dik_text_len_utf8 == 0)
+    else {
+        if (dik_text_len_utf8 == 0) {
             return;
-        if (str_len_utf8 + dik_text_len_utf8 > max)
+        }
+        if (str_len_utf8 + dik_text_len_utf8 > max) {
             return;
-        if (CtrlDwn)
+        }
+        if (CtrlDwn) {
             return;
+        }
 
-        for (size_t i = 0; i < dik_text.length();)
-        {
-            uint length;
-            if (IsInvalidChar(dik_text.c_str() + i, flags, length))
+        for (size_t i = 0; i < dik_text.length();) {
+            uint length = 0;
+            if (IsInvalidChar(dik_text.c_str() + i, flags, length)) {
                 return;
+            }
             i += length;
         }
 
         str.insert(pos, dik_text);
-        pos += (uint)dik_text.length();
+        pos += static_cast<uint>(dik_text.length());
     }
 }
 
-void Keyboard::EraseInvalidChars(string& str, int flags)
+void Keyboard::EraseInvalidChars(string& str, int flags) const
 {
-    for (size_t i = 0; i < str.length();)
-    {
-        uint length;
-        if (IsInvalidChar(str.c_str() + i, flags, length))
+    for (size_t i = 0; i < str.length();) {
+        uint length = 0;
+        if (IsInvalidChar(str.c_str() + i, flags, length)) {
             str.erase(i, length);
-        else
+        }
+        else {
             i += length;
+        }
     }
 }
 
-bool Keyboard::IsInvalidChar(const char* str, uint flags, uint& length)
+auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const -> bool
 {
-    uint ucs = utf8::Decode(str, &length);
-    if (!utf8::IsValid(ucs))
+    const auto ucs = utf8::Decode(str, &length);
+    if (!utf8::IsValid(ucs)) {
         return false;
+    }
 
-    if (length == 1)
-    {
-        if (flags & KIF_NO_SPEC_SYMBOLS && (*str == '\n' || *str == '\r' || *str == '\t'))
+    if (length == 1) {
+        if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str == '\n' || *str == '\r' || *str == '\t')) {
             return true;
-        if (flags & KIF_ONLY_NUMBERS && !(*str >= '0' && *str <= '9'))
+        }
+        if ((flags & KIF_ONLY_NUMBERS) != 0u && !(*str >= '0' && *str <= '9')) {
             return true;
+        }
 
-        if (flags & KIF_FILE_NAME)
-        {
-            switch (*str)
-            {
+        if ((flags & KIF_FILE_NAME) != 0u) {
+            switch (*str) {
             case '\\':
             case '/':
             case ':':
@@ -221,5 +219,5 @@ bool Keyboard::IsInvalidChar(const char* str, uint flags, uint& length)
         }
     }
 
-    return !sprMngr.HaveLetter(-1, ucs);
+    return !_sprMngr.HaveLetter(-1, ucs);
 }

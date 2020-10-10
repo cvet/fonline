@@ -40,27 +40,35 @@
 
 DECLARE_EXCEPTION(ProtoManagerException);
 
-class ProtoManager : public NonMovable
+class ProtoManager final
 {
 public:
+    ProtoManager() = default;
+    ProtoManager(const ProtoManager&) = delete;
+    ProtoManager(ProtoManager&&) noexcept = delete;
+    auto operator=(const ProtoManager&) = delete;
+    auto operator=(ProtoManager&&) noexcept = delete;
+    ~ProtoManager() = default;
+
     void LoadProtosFromFiles(FileManager& file_mngr);
-    UCharVec GetProtosBinaryData();
-    void LoadProtosFromBinaryData(UCharVec& data);
-    bool ValidateProtoResources(StrVec& resource_names);
+    [[nodiscard]] auto GetProtosBinaryData() const -> UCharVec;
+    void LoadProtosFromBinaryData(const UCharVec& data);
+    [[nodiscard]] auto ValidateProtoResources(const StrVec& resource_names) const -> bool;
 
-    ProtoItem* GetProtoItem(hash pid);
-    ProtoCritter* GetProtoCritter(hash pid);
-    ProtoMap* GetProtoMap(hash pid);
-    ProtoLocation* GetProtoLocation(hash pid);
+    [[nodiscard]] auto GetProtoItem(hash pid) -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hash pid) -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hash pid) -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hash pid) -> const ProtoLocation*;
 
-    const ProtoItemMap& GetProtoItems();
-    const ProtoCritterMap& GetProtoCritters();
-    const ProtoMapMap& GetProtoMaps();
-    const ProtoLocationMap& GetProtoLocations();
+    [[nodiscard]] auto GetProtoItems() -> const ProtoItemMap&;
+    [[nodiscard]] auto GetProtoCritters() -> const ProtoCritterMap&;
+    [[nodiscard]] auto GetProtoMaps() -> const ProtoMapMap&;
+    [[nodiscard]] auto GetProtoLocations() -> const ProtoLocationMap&;
 
 private:
-    ProtoItemMap itemProtos {};
-    ProtoCritterMap crProtos {};
-    ProtoMapMap mapProtos {};
-    ProtoLocationMap locProtos {};
+    ProtoItemMap _itemProtos {};
+    ProtoCritterMap _crProtos {};
+    ProtoMapMap _mapProtos {};
+    ProtoLocationMap _locProtos {};
+    int _dummy {};
 };

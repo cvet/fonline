@@ -38,8 +38,6 @@
 
 #include "Common.h"
 
-#include "Testing.h"
-
 DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
@@ -51,7 +49,7 @@ using NativeSendCallback = std::function<void(Entity*, Property*)>;
 using NativeCallback = std::function<void(Entity*, Property*, void*, void*)>;
 using NativeCallbackVec = vector<NativeCallback>;
 
-class Property : public NonCopyable
+class Property final
 {
     friend class PropertyRegistrator;
     friend class Properties;
@@ -83,22 +81,28 @@ public:
         ModifiableMask = 0x2600,
     };
 
-    string GetName();
-    string GetTypeName();
-    uint GetRegIndex();
-    int GetEnumValue();
-    AccessType GetAccess();
-    uint GetBaseSize();
-    bool IsPOD();
-    bool IsDict();
-    bool IsHash();
-    bool IsResource();
-    bool IsEnum();
-    bool IsReadable();
-    bool IsWritable();
-    bool IsConst();
-    bool IsTemporary();
-    bool IsNoHistory();
+    Property(const Property&) = delete;
+    Property(Property&&) noexcept = default;
+    auto operator=(const Property&) = delete;
+    auto operator=(Property&&) noexcept = delete;
+    ~Property() = default;
+
+    [[nodiscard]] auto GetName() const -> string;
+    [[nodiscard]] auto GetTypeName() const -> string;
+    [[nodiscard]] auto GetRegIndex() const -> uint;
+    [[nodiscard]] auto GetEnumValue() const -> int;
+    [[nodiscard]] auto GetAccess() const -> AccessType;
+    [[nodiscard]] auto GetBaseSize() const -> uint;
+    [[nodiscard]] auto IsPOD() const -> bool;
+    [[nodiscard]] auto IsDict() const -> bool;
+    [[nodiscard]] auto IsHash() const -> bool;
+    [[nodiscard]] auto IsResource() const -> bool;
+    [[nodiscard]] auto IsEnum() const -> bool;
+    [[nodiscard]] auto IsReadable() const -> bool;
+    [[nodiscard]] auto IsWritable() const -> bool;
+    [[nodiscard]] auto IsConst() const -> bool;
+    [[nodiscard]] auto IsTemporary() const -> bool;
+    [[nodiscard]] auto IsNoHistory() const -> bool;
 
 private:
     enum DataType
@@ -110,212 +114,210 @@ private:
     };
 
     Property() = default;
-    unique_ptr<void, std::function<void(void*)>> CreateRefValue(uchar* data, uint data_size);
-    uchar* ExpandComplexValueData(void* pvalue, uint& data_size, bool& need_delete);
+    static auto CreateRefValue(uchar* data, uint data_size) -> unique_ptr<void, std::function<void(void*)>>;
+    static auto ExpandComplexValueData(void* pvalue, uint& data_size, bool& need_delete) -> uchar*;
 
-    size_t typeHash {};
-    string propName {};
-    string typeName {};
-    string componentName {};
-    DataType dataType {};
-    bool isHash {};
-    bool isHashSubType0 {};
-    bool isHashSubType1 {};
-    bool isHashSubType2 {};
-    bool isResource {};
-    bool isIntDataType {};
-    bool isSignedIntDataType {};
-    bool isFloatDataType {};
-    bool isBoolDataType {};
-    bool isEnumDataType {};
-    bool isArrayOfString {};
-    bool isDictOfString {};
-    bool isDictOfArray {};
-    bool isDictOfArrayOfString {};
-    AccessType accessType {};
-    bool isConst {};
-    bool isReadable {};
-    bool isWritable {};
-    bool checkMinValue {};
-    bool checkMaxValue {};
-    int64 minValue {};
-    int64 maxValue {};
-    bool isTemporary {};
-    bool isNoHistory {};
-    PropertyRegistrator* registrator {};
-    uint regIndex {};
-    uint getIndex {};
-    int enumValue {};
-    uint podDataOffset {};
-    uint complexDataIndex {};
-    uint baseSize {};
+    size_t _typeHash {};
+    string _propName {};
+    string _typeName {};
+    string _componentName {};
+    DataType _dataType {};
+    bool _isHash {};
+    bool _isHashSubType0 {};
+    bool _isHashSubType1 {};
+    bool _isHashSubType2 {};
+    bool _isResource {};
+    bool _isIntDataType {};
+    bool _isSignedIntDataType {};
+    bool _isFloatDataType {};
+    bool _isBoolDataType {};
+    bool _isEnumDataType {};
+    bool _isArrayOfString {};
+    bool _isDictOfString {};
+    bool _isDictOfArray {};
+    bool _isDictOfArrayOfString {};
+    AccessType _accessType {};
+    bool _isConst {};
+    bool _isReadable {};
+    bool _isWritable {};
+    bool _checkMinValue {};
+    bool _checkMaxValue {};
+    int64 _minValue {};
+    int64 _maxValue {};
+    bool _isTemporary {};
+    bool _isNoHistory {};
+    PropertyRegistrator* _registrator {};
+    uint _regIndex {};
+    uint _getIndex {};
+    int _enumValue {};
+    uint _podDataOffset {};
+    uint _complexDataIndex {};
+    uint _baseSize {};
 };
 
-class Properties
+class Properties final
 {
     friend class PropertyRegistrator;
     friend class Property;
     friend class PropertiesSerializator;
 
 public:
-    Properties(PropertyRegistrator* reg);
+    Properties() = delete;
+    explicit Properties(PropertyRegistrator* reg);
     Properties(const Properties& other);
+    Properties(Properties&&) noexcept = default;
+    auto operator=(const Properties& other) -> Properties&;
+    auto operator=(Properties&&) noexcept = delete;
     ~Properties();
-    Properties& operator=(const Properties& other);
-    Property* FindByEnum(int enum_value);
-    void* FindData(const string& property_name);
-    uint StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes);
+
+    [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
+    [[nodiscard]] auto FindData(const string& property_name) -> void*;
+    auto StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes) const -> uint;
     void RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes);
     void RestoreData(UCharVecVec& all_data);
-    bool LoadFromText(const StrMap& key_values);
-    void SaveToText(StrMap& key_values, Properties* base);
-    bool LoadPropertyFromText(Property* prop, const string& text);
-    string SavePropertyToText(Property* prop);
+    [[nodiscard]] auto LoadFromText(const StrMap& key_values) -> bool;
+    void SaveToText(StrMap& key_values, Properties* base) const;
+    [[nodiscard]] auto LoadPropertyFromText(Property* prop, const string& text) -> bool;
+    [[nodiscard]] auto SavePropertyToText(Property* prop) const -> string;
 
     void SetSendIgnore(Property* prop, Entity* entity);
-    PropertyRegistrator* GetRegistrator() { return registrator; }
+    [[nodiscard]] auto GetRegistrator() const -> PropertyRegistrator* { return _registrator; }
 
-    uint GetRawDataSize(Property* prop);
-    uchar* GetRawData(Property* prop, uint& data_size);
+    [[nodiscard]] auto GetRawDataSize(Property* prop) const -> uint;
+    [[nodiscard]] auto GetRawData(Property* prop, uint& data_size) const -> const uchar*;
+    [[nodiscard]] auto GetRawData(Property* prop, uint& data_size) -> uchar*;
     void SetRawData(Property* prop, uchar* data, uint data_size);
     void SetValueFromData(Property* prop, uchar* data, uint data_size);
-    int GetPODValueAsInt(Property* prop);
+    [[nodiscard]] auto GetPODValueAsInt(Property* prop) const -> int;
     void SetPODValueAsInt(Property* prop, int value);
 
-    int GetValueAsInt(int enum_value);
+    [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
     void SetValueAsInt(int enum_value, int value);
     void SetValueAsIntByName(const string& enum_name, int value);
     void SetValueAsIntProps(int enum_value, int value);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-    T GetValue(Property* prop)
+    [[nodiscard]] auto GetValue(Property* prop) const -> T
     {
-        RUNTIME_ASSERT(sizeof(T) == prop->baseSize);
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::POD);
-        return *reinterpret_cast<T*>(podData[prop->podDataOffset]);
+        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        return *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     void SetValue(Property* prop, T new_value)
     {
-        RUNTIME_ASSERT(sizeof(T) == prop->baseSize);
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::POD);
-        T old_value = *reinterpret_cast<T*>(podData[prop->podDataOffset]);
-        if (new_value != old_value)
-        {
-            *reinterpret_cast<T*>(podData[prop->podDataOffset]) = new_value;
+        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
+        if (new_value != old_value) {
+            *reinterpret_cast<T*>(_podData[prop->_podDataOffset]) = new_value;
             // setCallback(enumValue, old_value)
         }
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
-    T GetValue(Property* prop)
+    [[nodiscard]] auto GetValue(Property* prop) const -> T
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::String);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
-        uint data_size = complexDataSizes[prop->complexDataIndex];
-        return data_size ? string(reinterpret_cast<char*>(podData[prop->complexDataIndex]), data_size) : string();
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        const auto data_size = _complexDataSizes[prop->_complexDataIndex];
+        return data_size ? string(reinterpret_cast<char*>(_podData[prop->_complexDataIndex]), data_size) : string();
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
-    void SetValue(Property* prop, T new_value)
+    void SetValue(Property* prop, T /*new_value*/)
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::String);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
     }
 
-    template<typename Test, template<typename...> class Ref>
-    struct is_specialization : std::false_type
-    {
-    };
-
-    template<template<typename...> class Ref, typename... Args>
-    struct is_specialization<Ref<Args...>, Ref> : std::true_type
-    {
-    };
-
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
-    T GetValue(Property* prop)
+    [[nodiscard]] auto GetValue(Property* prop) const -> T
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
         return {};
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
-    void SetValue(Property* prop, T new_value)
+    void SetValue(Property* prop, T /*new_value*/)
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
-    T GetValue(Property* prop)
+    [[nodiscard]] auto GetValue(Property* prop) const -> T
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
         return {};
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
     void SetValue(Property* prop, T new_value)
     {
-        RUNTIME_ASSERT(prop->dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
     }
 
 private:
-    Properties();
-
-    PropertyRegistrator* registrator {};
-    uchar* podData {};
-    PUCharVec complexData {};
-    UIntVec complexDataSizes {};
-    PUCharVec storeData {};
-    UIntVec storeDataSizes {};
-    UShortVec storeDataComplexIndicies {};
-    Entity* sendIgnoreEntity {};
-    Property* sendIgnoreProperty {};
+    PropertyRegistrator* _registrator {};
+    uchar* _podData {};
+    PUCharVec _complexData {};
+    UIntVec _complexDataSizes {};
+    mutable PUCharVec _storeData {};
+    mutable UIntVec _storeDataSizes {};
+    mutable UShortVec _storeDataComplexIndicies {};
+    Entity* _sendIgnoreEntity {};
+    Property* _sendIgnoreProperty {};
 };
 
-class PropertyRegistrator
+class PropertyRegistrator final
 {
     friend class Properties;
     friend class Property;
     friend class PropertiesSerializator;
 
 public:
-    PropertyRegistrator(bool is_server);
+    PropertyRegistrator() = delete;
+    explicit PropertyRegistrator(bool is_server);
+    PropertyRegistrator(const PropertyRegistrator&) = delete;
+    PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
+    auto operator=(const PropertyRegistrator&) = delete;
+    auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
-    Property* Register(Property::AccessType access, const type_info& type, const string& name);
+
+    auto Register(Property::AccessType access, const type_info& type, const string& name) -> Property*;
     void RegisterComponent(const string& name);
-    string GetClassName();
-    uint GetCount();
-    Property* Find(const string& property_name);
-    Property* FindByEnum(int enum_value);
-    Property* Get(uint property_index);
-    bool IsComponentRegistered(hash component_name);
-    void SetNativeSetCallback(const string& property_name, NativeCallback callback);
-    uint GetWholeDataSize();
+    [[nodiscard]] auto GetClassName() const -> string;
+    [[nodiscard]] auto GetCount() const -> uint;
+    [[nodiscard]] auto Find(const string& property_name) -> Property*;
+    [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
+    [[nodiscard]] auto Get(uint property_index) -> Property*;
+    [[nodiscard]] auto IsComponentRegistered(hash component_name) const -> bool;
+    void SetNativeSetCallback(const string& property_name, const NativeCallback& callback);
+    [[nodiscard]] auto GetWholeDataSize() const -> uint;
 
 private:
-    bool isServer {};
-    string className {};
-    vector<Property*> registeredProperties {};
-    HashSet registeredComponents {};
-    uint getPropertiesCount {};
+    bool _isServer {};
+    string _className {};
+    vector<Property*> _registeredProperties {};
+    HashSet _registeredComponents {};
+    uint _getPropertiesCount {};
 
     // POD info
-    uint wholePodDataSize {};
-    BoolVec publicPodDataSpace {};
-    BoolVec protectedPodDataSpace {};
-    BoolVec privatePodDataSpace {};
-    PUCharVec podDataPool {};
+    uint _wholePodDataSize {};
+    BoolVec _publicPodDataSpace {};
+    BoolVec _protectedPodDataSpace {};
+    BoolVec _privatePodDataSpace {};
+    PUCharVec _podDataPool {};
 
     // Complex types info
-    uint complexPropertiesCount {};
-    UShortVec publicComplexDataProps {};
-    UShortVec protectedComplexDataProps {};
-    UShortVec publicProtectedComplexDataProps {};
-    UShortVec privateComplexDataProps {};
+    uint _complexPropertiesCount {};
+    UShortVec _publicComplexDataProps {};
+    UShortVec _protectedComplexDataProps {};
+    UShortVec _publicProtectedComplexDataProps {};
+    UShortVec _privateComplexDataProps {};
 };

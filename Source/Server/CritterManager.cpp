@@ -41,115 +41,116 @@
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-CritterManager::CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) :
-    settings {sett},
-    geomHelper(settings),
-    protoMngr {proto_mngr},
-    entityMngr {entity_mngr},
-    mapMngr {map_mngr},
-    itemMngr {item_mngr},
-    scriptSys {script_sys},
-    gameTime {game_time}
+CritterManager::CritterManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) : _settings {settings}, _geomHelper(_settings), _protoMngr {proto_mngr}, _entityMngr {entity_mngr}, _mapMngr {map_mngr}, _itemMngr {item_mngr}, _scriptSys {script_sys}, _gameTime {game_time}
 {
 }
 
 void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
 
     // Add
-    if (item->GetStackable())
-    {
-        Item* item_already = cr->GetItemByPid(item->GetProtoId());
-        if (item_already)
-        {
-            uint count = item->GetCount();
-            itemMngr.DeleteItem(item);
+    if (item->GetStackable()) {
+        auto* item_already = cr->GetItemByPid(item->GetProtoId());
+        if (item_already != nullptr) {
+            const auto count = item->GetCount();
+            _itemMngr.DeleteItem(item);
             item = item_already;
             item->ChangeCount(count);
             return;
         }
     }
 
-    item->SetSortValue(cr->invItems);
+    item->SetSortValue(cr->_invItems);
     cr->SetItem(item);
 
     // Send
-    if (send)
-    {
+    if (send) {
         cr->Send_AddItem(item);
-        if (item->GetCritSlot())
+        if (item->GetCritSlot() != 0u) {
             cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
+        }
     }
 
     // Change item
-    scriptSys.CritterMoveItemEvent(cr, item, -1);
+    _scriptSys.CritterMoveItemEvent(cr, item, -1);
 }
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
 
-    auto it = std::find(cr->invItems.begin(), cr->invItems.end(), item);
-    RUNTIME_ASSERT(it != cr->invItems.end());
-    cr->invItems.erase(it);
+    const auto it = std::find(cr->_invItems.begin(), cr->_invItems.end(), item);
+    RUNTIME_ASSERT(it != cr->_invItems.end());
+    cr->_invItems.erase(it);
 
     item->SetAccessory(ITEM_ACCESSORY_NONE);
 
-    if (send)
+    if (send) {
         cr->Send_EraseItem(item);
-    if (item->GetCritSlot())
+    }
+    if (item->GetCritSlot() != 0u) {
         cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
+    }
 
-    scriptSys.CritterMoveItemEvent(cr, item, item->GetCritSlot());
+    _scriptSys.CritterMoveItemEvent(cr, item, item->GetCritSlot());
 }
 
-Npc* CritterManager::CreateNpc(
-    hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy)
+auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(map);
     RUNTIME_ASSERT(proto_id);
     RUNTIME_ASSERT(hx < map->GetWidth());
     RUNTIME_ASSERT(hy < map->GetHeight());
 
-    ProtoCritter* proto = protoMngr.GetProtoCritter(proto_id);
+    const auto* proto = _protoMngr.GetProtoCritter(proto_id);
     RUNTIME_ASSERT(proto);
 
-    uint multihex;
-    if (!props)
+    auto multihex = 0u;
+    if (props == nullptr) {
         multihex = proto->GetMultihex();
-    else
+    }
+    else {
         multihex = props->GetValue<uint>(Critter::PropertyMultihex);
+    }
 
-    if (!map->IsHexesPassed(hx, hy, multihex))
-    {
-        if (accuracy)
+    if (!map->IsHexesPassed(hx, hy, multihex)) {
+        if (accuracy) {
             return nullptr;
+        }
 
         short hx_ = hx;
         short hy_ = hy;
-        short *sx, *sy;
-        geomHelper.GetHexOffsets(hx & 1, sx, sy);
+        short* sx = nullptr;
+        short* sy = nullptr;
+        _geomHelper.GetHexOffsets((hx & 1) != 0, sx, sy);
 
         // Find in 2 hex radius
-        int pos = -1;
-        while (true)
-        {
+        auto pos = -1;
+        while (true) {
             pos++;
-            if (pos >= 18)
+            if (pos >= 18) {
                 return nullptr;
+            }
 
-            if (hx_ + sx[pos] < 0 || hx_ + sx[pos] >= map->GetWidth())
+            if (hx_ + sx[pos] < 0 || hx_ + sx[pos] >= map->GetWidth()) {
                 continue;
-            if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight())
+            }
+            if (hy_ + sy[pos] < 0 || hy_ + sy[pos] >= map->GetHeight()) {
                 continue;
-            if (!map->IsHexesPassed(hx_ + sx[pos], hy_ + sy[pos], multihex))
+            }
+            if (!map->IsHexesPassed(hx_ + sx[pos], hy_ + sy[pos], multihex)) {
                 continue;
+            }
             break;
         }
 
@@ -159,21 +160,23 @@ Npc* CritterManager::CreateNpc(
         hy = hy_;
     }
 
-    Npc* npc = new Npc(0, proto, settings, scriptSys, gameTime);
-    if (props)
+    auto* npc = new Npc(0, proto, _settings, _scriptSys, _gameTime);
+    if (props != nullptr) {
         npc->Props = *props;
+    }
 
-    entityMngr.RegisterEntity(npc);
+    _entityMngr.RegisterEntity(npc);
 
-    npc->SetCond(COND_LIFE);
+    npc->SetCond(COND_ALIVE);
 
-    Location* loc = map->GetLocation();
+    auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
-    if (dir >= settings.MapDirCount)
-        dir = GenericUtils::Random(0, settings.MapDirCount - 1);
-    npc->SetWorldX(loc ? loc->GetWorldX() : 0);
-    npc->SetWorldY(loc ? loc->GetWorldY() : 0);
+    if (dir >= _settings.MapDirCount) {
+        dir = static_cast<uchar>(GenericUtils::Random(0u, _settings.MapDirCount - 1u));
+    }
+    npc->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
+    npc->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
     npc->SetHomeMapId(map->GetId());
     npc->SetHomeHexX(hx);
     npc->SetHomeHexY(hy);
@@ -181,71 +184,75 @@ Npc* CritterManager::CreateNpc(
     npc->SetHexX(hx);
     npc->SetHexY(hy);
 
-    bool can = mapMngr.CanAddCrToMap(npc, map, hx, hy, 0);
+    const auto can = _mapMngr.CanAddCrToMap(npc, map, hx, hy, 0);
     RUNTIME_ASSERT(can);
-    mapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
+    _mapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
-    scriptSys.CritterInitEvent(npc, true);
+    _scriptSys.CritterInitEvent(npc, true);
     npc->SetScript(nullptr, true);
 
-    mapMngr.ProcessVisibleCritters(npc);
-    mapMngr.ProcessVisibleItems(npc);
+    _mapMngr.ProcessVisibleItems(npc);
     return npc;
 }
 
-bool CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc)
+auto CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc) -> bool
 {
-    ProtoCritter* proto = protoMngr.GetProtoCritter(proto_id);
-    if (!proto)
-    {
+    NON_CONST_METHOD_HINT(_dummy);
+
+    const auto* proto = _protoMngr.GetProtoCritter(proto_id);
+    if (proto == nullptr) {
         WriteLog("Proto critter '{}' is not loaded.\n", _str().parseHash(proto_id));
         return false;
     }
 
-    Npc* npc = new Npc(id, proto, settings, scriptSys, gameTime);
-    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, scriptSys))
-    {
+    auto* npc = new Npc(id, proto, _settings, _scriptSys, _gameTime);
+    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, _scriptSys)) {
         WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
         npc->Release();
         return false;
     }
 
-    entityMngr.RegisterEntity(npc);
+    _entityMngr.RegisterEntity(npc);
     return true;
 }
 
 void CritterManager::DeleteNpc(Critter* cr)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(cr->IsNpc());
 
     // Redundant calls
-    if (cr->IsDestroying || cr->IsDestroyed)
+    if (cr->IsDestroying || cr->IsDestroyed) {
         return;
+    }
     cr->IsDestroying = true;
 
     // Finish event
-    scriptSys.CritterFinishEvent(cr);
+    _scriptSys.CritterFinishEvent(cr);
 
     // Tear off from environment
     cr->LockMapTransfers++;
-    while (cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountItems())
-    {
+    while (cr->GetMapId() != 0u || cr->GlobalMapGroup != nullptr || cr->RealCountItems() != 0u) {
         // Delete inventory
         DeleteInventory(cr);
 
         // Delete from maps
-        Map* map = mapMngr.GetMap(cr->GetMapId());
-        if (map)
-            mapMngr.EraseCrFromMap(cr, map);
-        else if (cr->GlobalMapGroup)
-            mapMngr.EraseCrFromMap(cr, nullptr);
-        else if (cr->GetMapId())
+        auto* map = _mapMngr.GetMap(cr->GetMapId());
+        if (map != nullptr) {
+            _mapMngr.EraseCrFromMap(cr, map);
+        }
+        else if (cr->GlobalMapGroup != nullptr) {
+            _mapMngr.EraseCrFromMap(cr, nullptr);
+        }
+        else if (cr->GetMapId() != 0u) {
             cr->SetMapId(0);
+        }
     }
     cr->LockMapTransfers--;
 
     // Erase from main collection
-    entityMngr.UnregisterEntity(cr);
+    _entityMngr.UnregisterEntity(cr);
 
     // Invalidate for use
     cr->IsDestroyed = true;
@@ -254,52 +261,60 @@ void CritterManager::DeleteNpc(Critter* cr)
 
 void CritterManager::DeleteInventory(Critter* cr)
 {
-    while (!cr->invItems.empty())
-        itemMngr.DeleteItem(*cr->invItems.begin());
+    NON_CONST_METHOD_HINT(_dummy);
+
+    while (!cr->_invItems.empty()) {
+        _itemMngr.DeleteItem(*cr->_invItems.begin());
+    }
 }
 
 void CritterManager::GetCritters(CritterVec& critters)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     CritterVec all_critters;
-    entityMngr.GetCritters(all_critters);
+    _entityMngr.GetCritters(all_critters);
 
     CritterVec find_critters;
     find_critters.reserve(all_critters.size());
-    for (auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it)
-        find_critters.push_back(*it);
+    for (auto* cr : all_critters) {
+        find_critters.push_back(cr);
+    }
 
     critters = find_critters;
 }
 
 void CritterManager::GetNpcs(NpcVec& npcs)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     CritterVec all_critters;
-    entityMngr.GetCritters(all_critters);
+    _entityMngr.GetCritters(all_critters);
 
     NpcVec find_npcs;
     find_npcs.reserve(all_critters.size());
-    for (auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it)
-    {
-        Critter* cr = *it;
-        if (cr->IsNpc())
-            find_npcs.push_back((Npc*)cr);
+    for (auto* cr : all_critters) {
+        if (cr->IsNpc()) {
+            find_npcs.push_back(dynamic_cast<Npc*>(cr));
+        }
     }
 
     npcs = find_npcs;
 }
 
-void CritterManager::GetClients(ClientVec& players, bool on_global_map /* = false */)
+void CritterManager::GetClients(ClientVec& players, bool on_global_map)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     CritterVec all_critters;
-    entityMngr.GetCritters(all_critters);
+    _entityMngr.GetCritters(all_critters);
 
     ClientVec find_players;
     find_players.reserve(all_critters.size());
-    for (auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it)
-    {
-        Critter* cr = *it;
-        if (cr->IsPlayer() && (!on_global_map || !cr->GetMapId()))
-            find_players.push_back((Client*)cr);
+    for (auto* cr : all_critters) {
+        if (cr->IsPlayer() && (!on_global_map || cr->GetMapId() == 0u)) {
+            find_players.push_back(dynamic_cast<Client*>(cr));
+        }
     }
 
     players = find_players;
@@ -307,46 +322,51 @@ void CritterManager::GetClients(ClientVec& players, bool on_global_map /* = fals
 
 void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     CritterVec all_critters;
-    entityMngr.GetCritters(all_critters);
+    _entityMngr.GetCritters(all_critters);
 
     CritterVec find_critters;
     find_critters.reserve(all_critters.size());
-    for (auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it)
-    {
-        Critter* cr = *it;
-        if (!cr->GetMapId() && GenericUtils::DistSqrt((int)cr->GetWorldX(), (int)cr->GetWorldY(), wx, wy) <= radius &&
-            cr->CheckFind(find_type))
+    for (auto* cr : all_critters) {
+        if (cr->GetMapId() == 0u && GenericUtils::DistSqrt(static_cast<int>(cr->GetWorldX()), static_cast<int>(cr->GetWorldY()), wx, wy) <= radius && cr->CheckFind(find_type)) {
             find_critters.push_back(cr);
+        }
     }
 
     critters = find_critters;
 }
 
-Critter* CritterManager::GetCritter(uint crid)
+auto CritterManager::GetCritter(uint crid) -> Critter*
 {
-    return entityMngr.GetCritter(crid);
+    NON_CONST_METHOD_HINT(_dummy);
+
+    return _entityMngr.GetCritter(crid);
 }
 
-Client* CritterManager::GetPlayer(uint crid)
+auto CritterManager::GetPlayer(uint crid) -> Client*
 {
-    if (!IS_CLIENT_ID(crid))
+    NON_CONST_METHOD_HINT(_dummy);
+
+    if (!IS_CLIENT_ID(crid)) {
         return nullptr;
+    }
 
-    return (Client*)entityMngr.GetEntity(crid, EntityType::Client);
+    return dynamic_cast<Client*>(_entityMngr.GetEntity(crid, EntityType::Client));
 }
 
-Client* CritterManager::GetPlayer(const char* name)
+auto CritterManager::GetPlayer(const char* name) -> Client*
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     EntityVec entities;
-    entityMngr.GetEntities(EntityType::Client, entities);
+    _entityMngr.GetEntities(EntityType::Client, entities);
 
     Client* cl = nullptr;
-    for (auto it = entities.begin(); it != entities.end(); ++it)
-    {
-        Client* cl_ = (Client*)*it;
-        if (_str(name).compareIgnoreCaseUtf8(cl_->GetName()))
-        {
+    for (auto* entity : entities) {
+        auto* cl_ = dynamic_cast<Client*>(entity);
+        if (_str(name).compareIgnoreCaseUtf8(cl_->GetName())) {
             cl = cl_;
             break;
         }
@@ -354,35 +374,40 @@ Client* CritterManager::GetPlayer(const char* name)
     return cl;
 }
 
-Npc* CritterManager::GetNpc(uint crid)
+auto CritterManager::GetNpc(uint crid) -> Npc*
 {
-    if (IS_CLIENT_ID(crid))
-        return nullptr;
+    NON_CONST_METHOD_HINT(_dummy);
 
-    return (Npc*)entityMngr.GetEntity(crid, EntityType::Npc);
+    if (IS_CLIENT_ID(crid)) {
+        return nullptr;
+    }
+
+    return dynamic_cast<Npc*>(_entityMngr.GetEntity(crid, EntityType::Npc));
 }
 
-Item* CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid)
+auto CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*
 {
-    ProtoItem* proto_item = protoMngr.GetProtoItem(item_pid);
-    if (!proto_item)
-        return nullptr;
+    NON_CONST_METHOD_HINT(_dummy);
 
-    if (proto_item->GetStackable())
-    {
-        for (auto item : cr->invItems)
-            if (item->GetProtoId() == item_pid)
-                return item;
+    const auto* proto_item = _protoMngr.GetProtoItem(item_pid);
+    if (proto_item == nullptr) {
+        return nullptr;
     }
-    else
-    {
+
+    if (proto_item->GetStackable()) {
+        for (auto* item : cr->_invItems) {
+            if (item->GetProtoId() == item_pid) {
+                return item;
+            }
+        }
+    }
+    else {
         Item* another_slot = nullptr;
-        for (auto item : cr->invItems)
-        {
-            if (item->GetProtoId() == item_pid)
-            {
-                if (!item->GetCritSlot())
+        for (auto* item : cr->_invItems) {
+            if (item->GetProtoId() == item_pid) {
+                if (item->GetCritSlot() == 0u) {
                     return item;
+                }
                 another_slot = item;
             }
         }
@@ -393,32 +418,34 @@ Item* CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid)
 
 void CritterManager::ProcessTalk(Client* cl, bool force)
 {
-    if (!force && gameTime.GameTick() < cl->talkNextTick)
+    NON_CONST_METHOD_HINT(_dummy);
+
+    if (!force && _gameTime.GameTick() < cl->_talkNextTick) {
         return;
-    cl->talkNextTick = gameTime.GameTick() + PROCESS_TALK_TICK;
-    if (cl->Talk.TalkType == TALK_NONE)
+    }
+
+    cl->_talkNextTick = _gameTime.GameTick() + PROCESS_TALK_TICK;
+
+    if (cl->Talk.Type == TalkType::None) {
         return;
+    }
 
     // Check time of talk
-    if (cl->Talk.TalkTime && gameTime.GameTick() - cl->Talk.StartTick > cl->Talk.TalkTime)
-    {
+    if (cl->Talk.TalkTime != 0u && _gameTime.GameTick() - cl->Talk.StartTick > cl->Talk.TalkTime) {
         CloseTalk(cl);
         return;
     }
 
     // Check npc
     Npc* npc = nullptr;
-    if (cl->Talk.TalkType == TALK_WITH_NPC)
-    {
+    if (cl->Talk.Type == TalkType::Npc) {
         npc = GetNpc(cl->Talk.TalkNpc);
-        if (!npc)
-        {
+        if (npc == nullptr) {
             CloseTalk(cl);
             return;
         }
 
-        if (!npc->IsLife())
-        {
+        if (!npc->IsAlive()) {
             cl->Send_TextMsg(cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cl);
             return;
@@ -428,29 +455,26 @@ void CritterManager::ProcessTalk(Client* cl, bool force)
     }
 
     // Check distance
-    if (!cl->Talk.IgnoreDistance)
-    {
+    if (!cl->Talk.IgnoreDistance) {
         uint map_id = 0;
-        ushort hx = 0, hy = 0;
+        ushort hx = 0;
+        ushort hy = 0;
         uint talk_distance = 0;
-        if (cl->Talk.TalkType == TALK_WITH_NPC)
-        {
+        if (cl->Talk.Type == TalkType::Npc) {
             map_id = npc->GetMapId();
             hx = npc->GetHexX();
             hy = npc->GetHexY();
             talk_distance = npc->GetTalkDistance();
-            talk_distance = (talk_distance ? talk_distance : settings.TalkDistance) + cl->GetMultihex();
+            talk_distance = (talk_distance != 0u ? talk_distance : _settings.TalkDistance) + cl->GetMultihex();
         }
-        else if (cl->Talk.TalkType == TALK_WITH_HEX)
-        {
+        else if (cl->Talk.Type == TalkType::Hex) {
             map_id = cl->Talk.TalkHexMap;
             hx = cl->Talk.TalkHexX;
             hy = cl->Talk.TalkHexY;
-            talk_distance = settings.TalkDistance + cl->GetMultihex();
+            talk_distance = _settings.TalkDistance + cl->GetMultihex();
         }
 
-        if (cl->GetMapId() != map_id || !geomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, talk_distance))
-        {
+        if (cl->GetMapId() != map_id || !_geomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, talk_distance)) {
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cl);
         }
@@ -459,44 +483,44 @@ void CritterManager::ProcessTalk(Client* cl, bool force)
 
 void CritterManager::CloseTalk(Client* cl)
 {
-    if (cl->Talk.TalkType != TALK_NONE)
-    {
+    NON_CONST_METHOD_HINT(_dummy);
+
+    if (cl->Talk.Type != TalkType::None) {
         Npc* npc = nullptr;
-        if (cl->Talk.TalkType == TALK_WITH_NPC)
-        {
-            cl->Talk.TalkType = TALK_NONE;
+        if (cl->Talk.Type == TalkType::Npc) {
+            cl->Talk.Type = TalkType::None;
+
             npc = GetNpc(cl->Talk.TalkNpc);
-            if (npc)
-            {
-                if (cl->Talk.Barter)
-                    scriptSys.CritterBarterEvent(cl, npc, false, npc->GetBarterPlayers());
-                scriptSys.CritterTalkEvent(cl, npc, false, npc->GetTalkedPlayers());
+            if (npc != nullptr) {
+                if (cl->Talk.Barter) {
+                    _scriptSys.CritterBarterEvent(cl, npc, false, npc->GetBarterPlayers());
+                }
+                _scriptSys.CritterTalkEvent(cl, npc, false, npc->GetTalkedPlayers());
             }
         }
 
-        if (cl->Talk.CurDialog.DlgScriptFunc)
-        {
+        if (cl->Talk.CurDialog.DlgScriptFunc) {
             cl->Talk.Locked = true;
             cl->Talk.CurDialog.DlgScriptFunc(cl, npc);
             cl->Talk.Locked = false;
         }
     }
 
-    cl->Talk = Talking();
+    cl->Talk = TalkData();
     cl->Send_Talk();
 }
 
-uint CritterManager::PlayersInGame()
+auto CritterManager::PlayersInGame() const -> uint
 {
-    return entityMngr.GetEntitiesCount(EntityType::Client);
+    return _entityMngr.GetEntitiesCount(EntityType::Client);
 }
 
-uint CritterManager::NpcInGame()
+auto CritterManager::NpcInGame() const -> uint
 {
-    return entityMngr.GetEntitiesCount(EntityType::Npc);
+    return _entityMngr.GetEntitiesCount(EntityType::Npc);
 }
 
-uint CritterManager::CrittersInGame()
+auto CritterManager::CrittersInGame() const -> uint
 {
     return PlayersInGame() + NpcInGame();
 }

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+
 #pragma once
 
 #include "Common.h"
@@ -46,7 +48,7 @@ class LocationView;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    ClientScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) : ScriptSystem(obj, sett, file_mngr)
+    ClientScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : ScriptSystem(obj, settings, file_mngr)
     {
         InitNativeScripting();
         InitAngelScriptScripting();

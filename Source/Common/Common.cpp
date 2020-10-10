@@ -32,7 +32,24 @@
 //
 
 #include "Common.h"
-#include "Testing.h"
+
+GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
+GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
+int GlobalDataCallbacksCount;
+
+void CreateGlobalData()
+{
+    for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
+        CreateGlobalDataCallbacks[i]();
+    }
+}
+
+void DeleteGlobalData()
+{
+    for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
+        DeleteGlobalDataCallbacks[i]();
+    }
+}
 
 // Dummy symbols for web build to avoid linker errors
 #ifdef FO_WEB
@@ -52,11 +69,13 @@ void SDL_UnloadObject(void* handle)
 }
 #endif
 
-bool Is3dExtensionSupported(const string& ext)
+struct FormatsAppData
 {
-    static const unordered_set<string> supported_formats = {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase",
-        "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh",
-        "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl",
-        "hmp", "ndo", "ac"};
-    return supported_formats.count(ext);
+    unordered_set<string> SupportedFormats {"fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ms3d", "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d", "q3d", "cob", "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo", "ac"};
+};
+GLOBAL_DATA(FormatsAppData, FormatsData);
+
+auto Is3dExtensionSupported(const string& ext) -> bool
+{
+    return FormatsData->SupportedFormats.count(ext) != 0u;
 }

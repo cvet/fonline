@@ -35,78 +35,73 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 
-EffectManager::EffectManager(EffectSettings& sett, FileManager& file_mngr, GameTimer& game_time) :
-    settings {sett}, fileMngr {file_mngr}, gameTime {game_time}
+EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
 {
-    eventUnsubscriber += App::OnFrameBegin += [this]() {
-        for (auto& effect : loadedEffects)
+    _eventUnsubscriber += App->OnFrameBegin += [this]() {
+        for (auto& effect : _loadedEffects) {
             PerFrameEffectUpdate(effect.get());
+        }
     };
 }
 
-RenderEffect* EffectManager::LoadEffect(const string& name, const string& defines, const string& base_path)
+auto EffectManager::LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*
 {
     // Try find already loaded effect
-    for (auto& effect : loadedEffects)
-        if (effect->IsSame(name, defines))
+    for (auto& effect : _loadedEffects) {
+        if (effect->IsSame(name, defines)) {
             return effect.get();
+        }
+    }
 
     // Load new
-    RenderEffect* effect =
-        App::Render::CreateEffect(name, defines, [this, &base_path](const string& path) -> vector<uchar> {
-            File file = fileMngr.ReadFile(_str(base_path).extractDir() + path);
-            if (!file)
-            {
-                file = fileMngr.ReadFile(path);
-                if (!file)
-                {
-                    WriteLog("Effect file '{}' not found.\n", path);
-                    return {};
-                }
+    auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](const string& path) -> vector<uchar> {
+        auto file = _fileMngr.ReadFile(_str(base_path).extractDir() + path);
+        if (!file) {
+            file = _fileMngr.ReadFile(path);
+            if (!file) {
+                WriteLog("Effect file '{}' not found.\n", path);
+                return {};
             }
+        }
 
-            uchar* buf = file.GetBuf();
-            uint len = file.GetFsize();
-            vector<uchar> result(len);
-            memcpy(&result[0], buf, len);
-            return std::move(result);
-        });
+        const auto* buf = file.GetBuf();
+        const auto len = file.GetFsize();
+        vector<uchar> result(len);
+        std::memcpy(&result[0], buf, len);
+        return result;
+    });
 
     PerFrameEffectUpdate(effect);
 
-    loadedEffects.push_back(unique_ptr<RenderEffect>(effect));
+    _loadedEffects.push_back(unique_ptr<RenderEffect>(effect));
     return effect;
 }
 
-void EffectManager::PerFrameEffectUpdate(RenderEffect* effect)
+void EffectManager::PerFrameEffectUpdate(RenderEffect* effect) const
 {
-    if (effect->TimeBuf)
-    {
-        effect->TimeBuf->GameTime = (float)gameTime.GameTick();
-        effect->TimeBuf->RealTime = (float)gameTime.FrameTick();
+    if (effect->TimeBuf) {
+        effect->TimeBuf->GameTime = static_cast<float>(_gameTime.GameTick());
+        effect->TimeBuf->RealTime = static_cast<float>(_gameTime.FrameTick());
     }
 
-    if (effect->RandomValueBuf)
-    {
-        for (int i = 0; i < EFFECT_SCRIPT_VALUES; i++)
-        {
-            float rnd = (float)((double)GenericUtils::Random(0, 2000000000) / (2000000000.0 - 1000.0));
+    if (effect->RandomValueBuf) {
+        for (auto i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
+            const auto rnd = static_cast<float>(static_cast<double>(GenericUtils::Random(0, 2000000000)) / (2000000000.0 - 1000.0));
             effect->RandomValueBuf->Value[i] = rnd;
         }
     }
 
-    if (effect->ScriptValueBuf)
-    {
-        for (int i = 0; i < EFFECT_SCRIPT_VALUES; i++)
-            effect->ScriptValueBuf->Value[i] = settings.EffectValues[i];
+    if (effect->ScriptValueBuf) {
+        for (auto i = 0; i < EFFECT_SCRIPT_VALUES; i++) {
+            effect->ScriptValueBuf->Value[i] = _settings.EffectValues[i];
+        }
     }
 }
 
 #define LOAD_DEFAULT_EFFECT(effect_handle, effect_name) \
-    if (!(effect_handle = effect_handle##Default = LoadEffect(effect_name, "", "Effects/"))) \
+    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_name, "", "Effects/"))) \
     effect_errors++
 
 void EffectManager::LoadMinimalEffects()
@@ -114,8 +109,9 @@ void EffectManager::LoadMinimalEffects()
     uint effect_errors = 0;
     LOAD_DEFAULT_EFFECT(Effects.Font, "Font_Default");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget");
-    if (effect_errors)
+    if (effect_errors != 0u) {
         throw EffectManagerException("Minimal effects not loaded");
+    }
 }
 
 void EffectManager::LoadDefaultEffects()
@@ -136,8 +132,9 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.FlushMap, "Flush_Map");
     LOAD_DEFAULT_EFFECT(Effects.FlushLight, "Flush_Light");
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, "Flush_Fog");
-    if (effect_errors > 0)
+    if (effect_errors > 0) {
         throw EffectManagerException("Default effects not loaded");
+    }
 
     LOAD_DEFAULT_EFFECT(Effects.Contour, "Contour_Default");
 }
@@ -146,8 +143,9 @@ void EffectManager::Load3dEffects()
 {
     uint effect_errors = 0;
     LOAD_DEFAULT_EFFECT(Effects.Skinned3d, "3D_Skinned");
-    if (effect_errors > 0)
+    if (effect_errors > 0) {
         throw EffectManagerException("Default 3D effects not loaded");
+    }
 
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTargetMS, "Flush_RenderTargetMS");
 }

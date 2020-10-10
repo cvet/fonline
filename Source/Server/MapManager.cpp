@@ -43,27 +43,19 @@
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-MapManager::MapManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr,
-    CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) :
-    settings {sett},
-    geomHelper(settings),
-    protoMngr {proto_mngr},
-    entityMngr {entity_mngr},
-    crMngr {cr_mngr},
-    itemMngr {item_mngr},
-    scriptSys {script_sys},
-    gameTime {game_time}
+MapManager::MapManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) : _settings {settings}, _geomHelper(_settings), _protoMngr {proto_mngr}, _entityMngr {entity_mngr}, _crMngr {cr_mngr}, _itemMngr {item_mngr}, _scriptSys {script_sys}, _gameTime {game_time}
 {
-    for (int i = 1; i < FPATH_DATA_SIZE; i++)
-        pathesPool[i].reserve(100);
+    for (auto i = 1; i < FPATH_DATA_SIZE; i++) {
+        _pathesPool[i].reserve(100);
+    }
 }
 
 void MapManager::LoadStaticMaps(FileManager& file_mngr)
 {
-    for (auto& kv : protoMngr.GetProtoMaps())
-        LoadStaticMap(file_mngr, kv.second);
+    for (const auto& [fst, snd] : _protoMngr.GetProtoMaps()) {
+        LoadStaticMap(file_mngr, snd);
+    }
 }
 
 void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
@@ -71,11 +63,10 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     StaticMap static_map {};
 
     MapLoader::Load(
-        pmap->GetName(), file_mngr, protoMngr,
-        [&static_map, this](uint id, ProtoCritter* proto, const StrMap& kv) -> bool {
-            Npc* npc = new Npc(id, proto, settings, scriptSys, gameTime);
-            if (!npc->Props.LoadFromText(kv))
-            {
+        pmap->GetName(), file_mngr, _protoMngr,
+        [&static_map, this](uint id, const ProtoCritter* proto, const StrMap& kv) -> bool {
+            auto* npc = new Npc(id, proto, _settings, _scriptSys, _gameTime);
+            if (!npc->Props.LoadFromText(kv)) {
                 delete npc;
                 return false;
             }
@@ -83,10 +74,9 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             static_map.CrittersVec.push_back(npc);
             return true;
         },
-        [&static_map, this](uint id, ProtoItem* proto, const StrMap& kv) -> bool {
-            Item* item = new Item(id, proto, scriptSys);
-            if (!item->Props.LoadFromText(kv))
-            {
+        [&static_map, this](uint id, const ProtoItem* proto, const StrMap& kv) -> bool {
+            auto* item = new Item(id, proto, _scriptSys);
+            if (!item->Props.LoadFromText(kv)) {
                 delete item;
                 return false;
             }
@@ -94,13 +84,12 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             static_map.AllItemsVec.push_back(item);
             return true;
         },
-        [&static_map](MapTile&& tile) { static_map.Tiles.push_back(std::move(tile)); });
+        [&static_map](MapTile&& tile) { static_map.Tiles.emplace_back(tile); });
 
     // Bind scripts
-    int errors = 0;
+    auto errors = 0;
 
-    if (pmap->GetScriptId())
-    {
+    if (pmap->GetScriptId() != 0u) {
         /*hash func_num =
             scriptSys.BindScriptFuncNumByFuncName(_str().parseHash(pmap->GetScriptId()), "void %s(Map, bool)");
         if (!func_num)
@@ -111,8 +100,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         }*/
     }
 
-    for (auto& cr : static_map.CrittersVec)
-    {
+    for (auto& cr : static_map.CrittersVec) {
         /*if (cr->GetScriptId())
         {
             string func_name = _str().parseHash(cr->GetScriptId());
@@ -125,30 +113,27 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         }*/
     }
 
-    for (auto& item : static_map.AllItemsVec)
-    {
-        if (!item->IsStatic() && item->GetScriptId())
-        {
+    for (auto& item : static_map.AllItemsVec) {
+        if (!item->IsStatic() && item->GetScriptId() != 0u) {
             string func_name = _str().parseHash(item->GetScriptId());
-            auto func = scriptSys.FindFunc<void, Item*, bool>(func_name);
-            if (!func)
-            {
+            auto func = _scriptSys.FindFunc<void, Item*, bool>(func_name);
+            if (!func) {
                 WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
         }
-        else if (item->IsStatic() && item->GetScriptId())
-        {
+        else if (item->IsStatic() && item->GetScriptId() != 0u) {
             string func_name = _str().parseHash(item->GetScriptId());
             ScriptFunc<bool, Critter*, Item*, bool, int> scenery_func;
             ScriptFunc<void, Critter*, Item*, bool, uchar> trigger_func;
-            if (item->GetIsTrigger() || item->GetIsTrap())
-                trigger_func = scriptSys.FindFunc<void, Critter*, Item*, bool, uchar>(func_name);
-            else
-                scenery_func = scriptSys.FindFunc<bool, Critter*, Item*, bool, int>(func_name);
+            if (item->GetIsTrigger() || item->GetIsTrap()) {
+                trigger_func = _scriptSys.FindFunc<void, Critter*, Item*, bool, uchar>(func_name);
+            }
+            else {
+                scenery_func = _scriptSys.FindFunc<bool, Critter*, Item*, bool, int>(func_name);
+            }
 
-            if (!scenery_func && !trigger_func)
-            {
+            if (!scenery_func && !trigger_func) {
                 WriteLog("Map '{}', can't bind static item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
@@ -158,96 +143,90 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
         }
     }
 
-    if (errors)
+    if (errors != 0) {
         throw MapManagerException("Load map failed");
+    }
 
     // Parse objects
-    ushort maxhx = pmap->GetWidth();
-    ushort maxhy = pmap->GetHeight();
+    auto maxhx = pmap->GetWidth();
+    auto maxhy = pmap->GetHeight();
     static_map.HexFlags = new uchar[maxhx * maxhy];
-    memzero(static_map.HexFlags, maxhx * maxhy);
+    std::memset(static_map.HexFlags, 0, maxhx * maxhy);
 
     uint scenery_count = 0;
     UCharVec scenery_data;
-    for (auto& item : static_map.AllItemsVec)
-    {
-        if (!item->IsStatic())
-        {
+    for (auto& item : static_map.AllItemsVec) {
+        if (!item->IsStatic()) {
             item->AddRef();
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX)
+            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
                 static_map.HexItemsVec.push_back(item);
-            else
+            }
+            else {
                 static_map.ChildItemsVec.push_back(item);
+            }
             continue;
         }
 
         RUNTIME_ASSERT(item->GetAccessory() == ITEM_ACCESSORY_HEX);
 
-        ushort hx = item->GetHexX();
-        ushort hy = item->GetHexY();
-        if (hx >= maxhx || hy >= maxhy)
-        {
-            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), pmap->GetName(),
-                hx, hy);
+        auto hx = item->GetHexX();
+        auto hy = item->GetHexY();
+        if (hx >= maxhx || hy >= maxhy) {
+            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), pmap->GetName(), hx, hy);
             continue;
         }
 
-        if (!item->GetIsHiddenInStatic())
-        {
+        if (!item->GetIsHiddenInStatic()) {
             item->AddRef();
             static_map.StaticItemsVec.push_back(item);
         }
 
-        if (!item->GetIsNoBlock())
-            SETFLAG(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
-
-        if (!item->GetIsShootThru())
-        {
-            SETFLAG(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
-            SETFLAG(static_map.HexFlags[hy * maxhx + hx], FH_NOTRAKE);
+        if (!item->GetIsNoBlock()) {
+            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
         }
 
-        if (item->GetIsScrollBlock())
-        {
+        if (!item->GetIsShootThru()) {
+            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
+            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_NOTRAKE);
+        }
+
+        if (item->GetIsScrollBlock()) {
             // Block around
-            for (int k = 0; k < 6; k++)
-            {
-                ushort hx_ = hx, hy_ = hy;
-                geomHelper.MoveHexByDir(hx_, hy_, k, maxhx, maxhy);
-                SETFLAG(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+            for (uchar k = 0; k < 6; k++) {
+                auto hx_ = hx;
+                auto hy_ = hy;
+                _geomHelper.MoveHexByDir(hx_, hy_, k, maxhx, maxhy);
+                SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
             }
         }
 
-        if (item->GetIsTrigger() || item->GetIsTrap())
-        {
+        if (item->GetIsTrigger() || item->GetIsTrap()) {
             item->AddRef();
             static_map.TriggerItemsVec.push_back(item);
 
-            SETFLAG(static_map.HexFlags[hy * maxhx + hx], FH_STATIC_TRIGGER);
+            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_STATIC_TRIGGER);
         }
 
-        if (item->IsNonEmptyBlockLines())
-        {
-            ushort hx_ = hx, hy_ = hy;
-            bool raked = item->GetIsShootThru();
-            // Todo: need attention!
-            // FOREACH_PROTO_ITEM_LINES(
-            //    item->GetBlockLines(), hx_, hy_, maxhx, maxhy, SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
-            //    if (!raked) SETFLAG(HexFlags[hy_ * maxhx + hx_], FH_NOTRAKE););
+        if (item->IsNonEmptyBlockLines()) {
+            auto raked = item->GetIsShootThru();
+            _geomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, maxhy, raked](auto hx2, auto hy2) {
+                SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_BLOCK);
+                if (!raked) {
+                    SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_NOTRAKE);
+                }
+            });
         }
 
         // Data for client
-        if (!item->GetIsHidden())
-        {
+        if (!item->GetIsHidden()) {
             scenery_count++;
             WriteData(scenery_data, item->Id);
             WriteData(scenery_data, item->GetProtoId());
-            PUCharVec* all_data;
-            UIntVec* all_data_sizes;
+            PUCharVec* all_data = nullptr;
+            UIntVec* all_data_sizes = nullptr;
             item->Props.StoreData(false, &all_data, &all_data_sizes);
-            WriteData(scenery_data, (uint)all_data->size());
-            for (size_t i = 0; i < all_data->size(); i++)
-            {
+            WriteData(scenery_data, static_cast<uint>(all_data->size()));
+            for (size_t i = 0; i < all_data->size(); i++) {
                 WriteData(scenery_data, all_data_sizes->at(i));
                 WriteDataArr(scenery_data, all_data->at(i), all_data_sizes->at(i));
             }
@@ -256,18 +235,19 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
 
     static_map.SceneryData.clear();
     WriteData(static_map.SceneryData, scenery_count);
-    if (!scenery_data.empty())
-        WriteDataArr(static_map.SceneryData, &scenery_data[0], (uint)scenery_data.size());
+    if (!scenery_data.empty()) {
+        WriteDataArr(static_map.SceneryData, &scenery_data[0], static_cast<uint>(scenery_data.size()));
+    }
 
     // Generate hashes
     static_map.HashTiles = maxhx * maxhy;
-    if (static_map.Tiles.size())
-        static_map.HashTiles =
-            Hashing::MurmurHash2((uchar*)&static_map.Tiles[0], (uint)static_map.Tiles.size() * sizeof(MapTile));
+    if (!static_map.Tiles.empty()) {
+        static_map.HashTiles = Hashing::MurmurHash2(reinterpret_cast<uchar*>(&static_map.Tiles[0]), static_cast<uint>(static_map.Tiles.size()) * sizeof(MapTile));
+    }
     static_map.HashScen = maxhx * maxhy;
-    if (static_map.SceneryData.size())
-        static_map.HashScen =
-            Hashing::MurmurHash2((uchar*)&static_map.SceneryData[0], (uint)static_map.SceneryData.size());
+    if (!static_map.SceneryData.empty()) {
+        static_map.HashScen = Hashing::MurmurHash2(static_cast<uchar*>(&static_map.SceneryData[0]), static_cast<uint>(static_map.SceneryData.size()));
+    }
 
     // Shrink the vector capacities to fit their contents and reduce memory use
     static_map.SceneryData.shrink_to_fit();
@@ -279,40 +259,37 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     static_map.TriggerItemsVec.shrink_to_fit();
     static_map.Tiles.shrink_to_fit();
 
-    staticMaps.emplace(pmap, std::move(static_map));
+    _staticMaps.emplace(pmap, std::move(static_map));
 }
 
-StaticMap* MapManager::FindStaticMap(ProtoMap* pmap)
+auto MapManager::FindStaticMap(const ProtoMap* proto_map) -> const StaticMap*
 {
-    auto it = staticMaps.find(pmap);
-    return it != staticMaps.end() ? &it->second : nullptr;
+    auto it = _staticMaps.find(proto_map);
+    return it != _staticMaps.end() ? &it->second : nullptr;
 }
 
 void MapManager::GenerateMapContent(Map* map)
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     UIntMap id_map;
 
     // Generate npc
-    for (Critter* base_cr : map->GetStaticMap()->CrittersVec)
-    {
-        // Create npc
-        Npc* npc = crMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->Props, map, base_cr->GetHexX(), base_cr->GetHexY(),
-            base_cr->GetDir(), true);
-        if (!npc)
-        {
+    for (auto* base_cr : map->GetStaticMap()->CrittersVec) {
+        auto* npc = _crMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->Props, map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
+        if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName());
             continue;
         }
+
         id_map.insert(std::make_pair(base_cr->GetId(), npc->GetId()));
 
         // Check condition
-        if (npc->GetCond() != COND_LIFE)
-        {
-            if (npc->GetCond() == COND_DEAD)
-            {
-                npc->SetCurrentHp(settings.DeadHitPoints - 1);
+        if (npc->GetCond() != COND_ALIVE) {
+            if (npc->GetCond() == COND_DEAD) {
+                npc->SetCurrentHp(_settings.DeadHitPoints - 1);
 
-                uint multihex = npc->GetMultihex();
+                const auto multihex = npc->GetMultihex();
                 map->UnsetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, false);
                 map->SetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, true);
             }
@@ -320,74 +297,70 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Generate hex items
-    for (Item* base_item : map->GetStaticMap()->HexItemsVec)
-    {
+    for (const auto* base_item : map->GetStaticMap()->HexItemsVec) {
         // Create item
-        Item* item = itemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
-        if (!item)
-        {
+        auto* item = _itemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
+        if (item == nullptr) {
             WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
             continue;
         }
         id_map.insert(std::make_pair(base_item->GetId(), item->GetId()));
 
         // Other values
-        if (item->GetIsCanOpen() && item->GetOpened())
+        if (item->GetIsCanOpen() && item->GetOpened()) {
             item->SetIsLightThru(true);
+        }
 
-        if (!map->AddItem(item, item->GetHexX(), item->GetHexY()))
-        {
+        if (!map->AddItem(item, item->GetHexX(), item->GetHexY())) {
             WriteLog("Add item '{}' to map '{}' failure, continue generate.\n", item->GetName(), map->GetName());
-            itemMngr.DeleteItem(item);
+            _itemMngr.DeleteItem(item);
         }
     }
 
     // Add children items
-    for (Item* base_item : map->GetStaticMap()->ChildItemsVec)
-    {
+    for (auto* base_item : map->GetStaticMap()->ChildItemsVec) {
         // Map id
         uint parent_id = 0;
-        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER)
+        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
             parent_id = base_item->GetCritId();
-        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
+        }
+        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
             parent_id = base_item->GetContainerId();
-        else
+        }
+        else {
             throw UnreachablePlaceException(LINE_STR);
+        }
 
-        if (!id_map.count(parent_id))
+        if (id_map.count(parent_id) == 0u) {
             continue;
+        }
         parent_id = id_map[parent_id];
 
         // Create item
-        Item* item = itemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
-        if (!item)
-        {
+        auto* item = _itemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
+        if (item == nullptr) {
             WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
             continue;
         }
 
         // Add to parent
-        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER)
-        {
-            Critter* cr_cont = map->GetCritter(parent_id);
+        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+            auto* cr_cont = map->GetCritter(parent_id);
             RUNTIME_ASSERT(cr_cont);
-            crMngr.AddItemToCritter(cr_cont, item, false);
+            _crMngr.AddItemToCritter(cr_cont, item, false);
         }
-        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
-        {
-            Item* item_cont = map->GetItem(parent_id);
+        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+            auto* item_cont = map->GetItem(parent_id);
             RUNTIME_ASSERT(item_cont);
-            itemMngr.AddItemToContainer(item_cont, item, 0);
+            _itemMngr.AddItemToContainer(item_cont, item, 0);
         }
-        else
-        {
+        else {
             throw UnreachablePlaceException(LINE_STR);
         }
     }
 
     // Visible
-    for (Npc* npc : map->GetNpcs())
-    {
+    for (auto* npc : map->GetNpcs()) {
         ProcessVisibleCritters(npc);
         ProcessVisibleItems(npc);
     }
@@ -398,75 +371,68 @@ void MapManager::GenerateMapContent(Map* map)
 
 void MapManager::DeleteMapContent(Map* map)
 {
-    while (!map->mapCritters.empty() || !map->mapItems.empty())
-    {
+    while (!map->_mapCritters.empty() || !map->_mapItems.empty()) {
         // Transit players to global map
         KickPlayersToGlobalMap(map);
 
         // Delete npc
-        NpcVec del_npcs = map->mapNpcs;
-        for (Npc* del_npc : del_npcs)
-            crMngr.DeleteNpc(del_npc);
+        auto del_npcs = map->_mapNpcs;
+        for (auto* del_npc : del_npcs) {
+            _crMngr.DeleteNpc(del_npc);
+        }
 
         // Delete items
-        ItemVec del_items = map->mapItems;
-        for (Item* del_item : del_items)
-            itemMngr.DeleteItem(del_item);
+        auto del_items = map->_mapItems;
+        for (auto* del_item : del_items) {
+            _itemMngr.DeleteItem(del_item);
+        }
     }
 
-    RUNTIME_ASSERT(map->mapItemsById.empty());
-    RUNTIME_ASSERT(map->mapItemsByHex.empty());
-    RUNTIME_ASSERT(map->mapBlockLinesByHex.empty());
+    RUNTIME_ASSERT(map->_mapItemsById.empty());
+    RUNTIME_ASSERT(map->_mapItemsByHex.empty());
+    RUNTIME_ASSERT(map->_mapBlockLinesByHex.empty());
 }
 
-bool MapManager::RestoreLocation(uint id, hash proto_id, const DataBase::Document& doc)
+auto MapManager::RestoreLocation(uint id, hash proto_id, const DataBase::Document& doc) -> bool
 {
-    ProtoLocation* proto = protoMngr.GetProtoLocation(proto_id);
-    if (!proto)
-    {
+    const auto* proto = _protoMngr.GetProtoLocation(proto_id);
+    if (proto == nullptr) {
         WriteLog("Location proto '{}' is not loaded.\n", _str().parseHash(proto_id));
         return false;
     }
 
-    Location* loc = new Location(id, proto, scriptSys);
-    if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, scriptSys))
-    {
+    auto* loc = new Location(id, proto, _scriptSys);
+    if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, _scriptSys)) {
         WriteLog("Fail to restore properties for location '{}' ({}).\n", _str().parseHash(proto_id), id);
         loc->Release();
         return false;
     }
 
     loc->BindScript();
-    entityMngr.RegisterEntity(loc);
+    _entityMngr.RegisterEntity(loc);
     return true;
 }
 
-string MapManager::GetLocationsMapsStatistics()
+auto MapManager::GetLocationsMapsStatistics() const -> string
 {
     EntityVec locations;
-    entityMngr.GetEntities(EntityType::Location, locations);
+    _entityMngr.GetEntities(EntityType::Location, locations);
     EntityVec maps;
-    entityMngr.GetEntities(EntityType::Map, maps);
+    _entityMngr.GetEntities(EntityType::Map, maps);
 
-    string result = _str("Locations count: {}\n", (uint)locations.size());
-    result += _str("Maps count: {}\n", (uint)maps.size());
-    result +=
-        "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
+    string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
+    result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
+    result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
-    for (auto it = locations.begin(), end = locations.end(); it != end; ++it)
-    {
-        Location* loc = (Location*)*it;
-        result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(),
-            loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(),
-            loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount,
-            loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
+    for (auto* loc_entity : locations) {
+        auto* loc = dynamic_cast<Location*>(loc_entity);
+
+        result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
 
         uint map_index = 0;
-        for (Map* map : loc->GetMaps())
-        {
-            result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(),
-                map->GetCurDayTime(), map->GetRainCapacity());
-            result += map->GetScriptId() ? _str().parseHash(map->GetScriptId()) : "";
+        for (auto* map : loc->GetMaps()) {
+            result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
+            result += map->GetScriptId() != 0u ? _str().parseHash(map->GetScriptId()).str() : "";
             result += "\n";
             map_index++;
         }
@@ -474,224 +440,224 @@ string MapManager::GetLocationsMapsStatistics()
     return result;
 }
 
-Location* MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy)
+auto MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location*
 {
-    ProtoLocation* proto = protoMngr.GetProtoLocation(proto_id);
-    if (!proto)
-    {
+    const auto* proto = _protoMngr.GetProtoLocation(proto_id);
+    if (proto == nullptr) {
         WriteLog("Location proto '{}' is not loaded.\n", _str().parseHash(proto_id));
         return nullptr;
     }
 
-    if (wx >= GM__MAXZONEX * settings.GlobalMapZoneLength || wy >= GM__MAXZONEY * settings.GlobalMapZoneLength)
-    {
+    if (wx >= GM_MAXZONEX * _settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _settings.GlobalMapZoneLength) {
         WriteLog("Invalid location '{}' coordinates.\n", _str().parseHash(proto_id));
         return nullptr;
     }
 
-    Location* loc = new Location(0, proto, scriptSys);
+    auto* loc = new Location(0, proto, _scriptSys);
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
-    for (hash map_pid : loc->GetMapProtos())
-    {
-        Map* map = CreateMap(map_pid, loc);
-        if (!map)
-        {
-            WriteLog(
-                "Create map '{}' for location '{}' fail.\n", _str().parseHash(map_pid), _str().parseHash(proto_id));
-            for (auto& map : loc->GetMapsRaw())
-                map->Release();
+
+    for (auto map_pid : loc->GetMapProtos()) {
+        auto* map = CreateMap(map_pid, loc);
+        if (map == nullptr) {
+            WriteLog("Create map '{}' for location '{}' failed.\n", _str().parseHash(map_pid), _str().parseHash(proto_id));
+            for (auto* map2 : loc->GetMapsRaw()) {
+                map2->Release();
+            }
             loc->Release();
             return nullptr;
         }
     }
+
     loc->BindScript();
 
-    entityMngr.RegisterEntity(loc);
+    _entityMngr.RegisterEntity(loc);
 
     // Generate location maps
-    MapVec maps = loc->GetMaps();
-    for (Map* map : maps)
-    {
+    auto maps = loc->GetMaps();
+    for (auto* map : maps) {
         map->SetLocId(loc->GetId());
         GenerateMapContent(map);
     }
 
     // Init scripts
-    for (Map* map : maps)
-    {
-        for (Item* item : map->GetItems())
-            scriptSys.ItemInitEvent(item, true);
-        scriptSys.MapInitEvent(map, true);
+    for (auto* map : maps) {
+        for (auto* item : map->GetItems()) {
+            _scriptSys.ItemInitEvent(item, true);
+        }
+        _scriptSys.MapInitEvent(map, true);
     }
-    scriptSys.LocationInitEvent(loc, true);
+    _scriptSys.LocationInitEvent(loc, true);
 
     return loc;
 }
 
-Map* MapManager::CreateMap(hash proto_id, Location* loc)
+auto MapManager::CreateMap(hash proto_id, Location* loc) -> Map*
 {
-    ProtoMap* proto_map = protoMngr.GetProtoMap(proto_id);
-    if (!proto_map)
-    {
+    const auto* proto_map = _protoMngr.GetProtoMap(proto_id);
+    if (proto_map == nullptr) {
         WriteLog("Proto map '{}' is not loaded.\n", _str().parseHash(proto_id));
         return nullptr;
     }
 
-    auto it = staticMaps.find(proto_map);
-    if (it == staticMaps.end())
+    auto it = _staticMaps.find(proto_map);
+    if (it == _staticMaps.end()) {
         throw MapManagerException("Static map not found", proto_id);
+    }
 
-    Map* map = new Map(0, proto_map, loc, &it->second, settings, scriptSys, gameTime);
-    MapVec& maps = loc->GetMapsRaw();
+    auto* map = new Map(0, proto_map, loc, &it->second, _settings, _scriptSys, _gameTime);
     map->SetLocId(loc->GetId());
-    map->SetLocMapIndex((uint)maps.size());
+
+    auto& maps = loc->GetMapsRaw();
+    map->SetLocMapIndex(static_cast<uint>(maps.size()));
     maps.push_back(map);
 
-    entityMngr.RegisterEntity(map);
+    _entityMngr.RegisterEntity(map);
     return map;
 }
 
-bool MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& doc)
+auto MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& doc) -> bool
 {
-    ProtoMap* proto_map = protoMngr.GetProtoMap(proto_id);
-    if (!proto_map)
-    {
+    const auto* proto_map = _protoMngr.GetProtoMap(proto_id);
+    if (proto_map == nullptr) {
         WriteLog("Map proto '{}' is not loaded.\n", _str().parseHash(proto_id));
         return false;
     }
 
-    auto it = staticMaps.find(proto_map);
-    if (it == staticMaps.end())
+    auto it = _staticMaps.find(proto_map);
+    if (it == _staticMaps.end()) {
         throw MapManagerException("Static map not found", proto_id);
+    }
 
-    Map* map = new Map(id, proto_map, nullptr, &it->second, settings, scriptSys, gameTime);
-    if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, scriptSys))
-    {
+    auto* map = new Map(id, proto_map, nullptr, &it->second, _settings, _scriptSys, _gameTime);
+    if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, _scriptSys)) {
         WriteLog("Fail to restore properties for map '{}' ({}).\n", _str().parseHash(proto_id), id);
         map->Release();
         return false;
     }
 
-    entityMngr.RegisterEntity(map);
+    _entityMngr.RegisterEntity(map);
     return true;
 }
 
 void MapManager::RegenerateMap(Map* map)
 {
-    scriptSys.MapFinishEvent(map);
+    _scriptSys.MapFinishEvent(map);
+
     DeleteMapContent(map);
     GenerateMapContent(map);
-    for (auto item : map->GetItems())
-        scriptSys.ItemInitEvent(item, true);
-    scriptSys.MapInitEvent(map, true);
+
+    for (auto* item : map->GetItems()) {
+        _scriptSys.ItemInitEvent(item, true);
+    }
+    _scriptSys.MapInitEvent(map, true);
 }
 
-Map* MapManager::GetMap(uint map_id)
+auto MapManager::GetMap(uint map_id) -> Map*
 {
-    if (!map_id)
+    if (map_id == 0u) {
         return nullptr;
-    return (Map*)entityMngr.GetEntity(map_id, EntityType::Map);
+    }
+    return dynamic_cast<Map*>(_entityMngr.GetEntity(map_id, EntityType::Map));
 }
 
-Map* MapManager::GetMapByPid(hash map_pid, uint skip_count)
+auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
 {
-    if (!map_pid)
+    if (map_pid == 0u) {
         return nullptr;
-    return entityMngr.GetMapByPid(map_pid, skip_count);
+    }
+    return _entityMngr.GetMapByPid(map_pid, skip_count);
 }
 
 void MapManager::GetMaps(MapVec& maps)
 {
-    entityMngr.GetMaps(maps);
+    _entityMngr.GetMaps(maps);
 }
 
-uint MapManager::GetMapsCount()
+auto MapManager::GetMapsCount() const -> uint
 {
-    return entityMngr.GetEntitiesCount(EntityType::Map);
+    return _entityMngr.GetEntitiesCount(EntityType::Map);
 }
 
-Location* MapManager::GetLocationByMap(uint map_id)
+auto MapManager::GetLocationByMap(uint map_id) -> Location*
 {
-    Map* map = GetMap(map_id);
-    if (!map)
+    auto* map = GetMap(map_id);
+    if (map == nullptr) {
         return nullptr;
+    }
     return map->GetLocation();
 }
 
-Location* MapManager::GetLocation(uint loc_id)
+auto MapManager::GetLocation(uint loc_id) -> Location*
 {
-    if (!loc_id)
+    if (loc_id == 0u) {
         return nullptr;
-    return (Location*)entityMngr.GetEntity(loc_id, EntityType::Location);
+    }
+    return dynamic_cast<Location*>(_entityMngr.GetEntity(loc_id, EntityType::Location));
 }
 
-Location* MapManager::GetLocationByPid(hash loc_pid, uint skip_count)
+auto MapManager::GetLocationByPid(hash loc_pid, uint skip_count) -> Location*
 {
-    if (!loc_pid)
+    if (loc_pid == 0u) {
         return nullptr;
-    return (Location*)entityMngr.GetLocationByPid(loc_pid, skip_count);
+    }
+    return _entityMngr.GetLocationByPid(loc_pid, skip_count);
 }
 
-bool MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones)
+auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool
 {
-    int zl = settings.GlobalMapZoneLength;
-    Rect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones,
-        (wy1 + w1_radius) / zl + zones);
-    Rect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
+    const int zl = _settings.GlobalMapZoneLength;
+    const Rect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
+    const Rect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
     return r1.L <= r2.R && r2.L <= r1.R && r1.T <= r2.B && r2.T <= r1.B;
 }
 
 void MapManager::GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_ids)
 {
     LocationVec locs;
-    entityMngr.GetLocations(locs);
-    int wx = zx * settings.GlobalMapZoneLength;
-    int wy = zy * settings.GlobalMapZoneLength;
-    for (auto it = locs.begin(), end = locs.end(); it != end; ++it)
-    {
-        Location* loc = *it;
-        if (loc->IsLocVisible() &&
-            IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius))
+    _entityMngr.GetLocations(locs);
+
+    const auto wx = zx * static_cast<int>(_settings.GlobalMapZoneLength);
+    const auto wy = zy * static_cast<int>(_settings.GlobalMapZoneLength);
+
+    for (auto* loc : locs) {
+        if (loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
             loc_ids.push_back(loc->GetId());
+        }
     }
 }
 
 void MapManager::KickPlayersToGlobalMap(Map* map)
 {
-    for (Client* player : map->GetPlayers())
-        TransitToGlobal(player, 0, true);
+    for (auto* cl : map->GetPlayers()) {
+        TransitToGlobal(cl, 0, true);
+    }
 }
 
 void MapManager::GetLocations(LocationVec& locs)
 {
-    entityMngr.GetLocations(locs);
+    _entityMngr.GetLocations(locs);
 }
 
-uint MapManager::GetLocationsCount()
+auto MapManager::GetLocationsCount() const -> uint
 {
-    return entityMngr.GetEntitiesCount(EntityType::Location);
+    return _entityMngr.GetEntitiesCount(EntityType::Location);
 }
 
 void MapManager::LocationGarbager()
 {
-    if (runGarbager)
-    {
-        runGarbager = false;
+    if (_runGarbager) {
+        _runGarbager = false;
 
         LocationVec locs;
-        entityMngr.GetLocations(locs);
+        _entityMngr.GetLocations(locs);
 
         ClientVec* gmap_players = nullptr;
         ClientVec players;
-        for (auto it = locs.begin(); it != locs.end(); ++it)
-        {
-            Location* loc = *it;
-            if (loc->GetAutoGarbage() && loc->IsCanDelete())
-            {
-                if (!gmap_players)
-                {
-                    crMngr.GetClients(players, true);
+        for (auto* loc : locs) {
+            if (loc->GetAutoGarbage() && loc->IsCanDelete()) {
+                if (gmap_players == nullptr) {
+                    _crMngr.GetClients(players, true);
                     gmap_players = &players;
                 }
                 DeleteLocation(loc, gmap_players);
@@ -703,131 +669,132 @@ void MapManager::LocationGarbager()
 void MapManager::DeleteLocation(Location* loc, ClientVec* gmap_players)
 {
     // Start deleting
-    MapVec maps = loc->GetMaps();
+    auto maps = loc->GetMaps();
 
     // Redundant calls
-    if (loc->IsDestroying || loc->IsDestroyed)
+    if (loc->IsDestroying || loc->IsDestroyed) {
         return;
+    }
 
     loc->IsDestroying = true;
-    for (auto it = maps.begin(); it != maps.end(); ++it)
-        (*it)->IsDestroying = true;
+    for (auto& map : maps) {
+        map->IsDestroying = true;
+    }
 
     // Finish events
-    scriptSys.LocationFinishEvent(loc);
-    for (auto it = maps.begin(); it != maps.end(); ++it)
-        scriptSys.MapFinishEvent(*it);
+    _scriptSys.LocationFinishEvent(loc);
+    for (auto& map : maps) {
+        _scriptSys.MapFinishEvent(map);
+    }
 
     // Send players on global map about this
     ClientVec players;
-    if (!gmap_players)
-    {
-        crMngr.GetClients(players, true);
+    if (gmap_players == nullptr) {
+        _crMngr.GetClients(players, true);
         gmap_players = &players;
     }
 
-    for (Client* cl : *gmap_players)
-        if (CheckKnownLocById(cl, loc->GetId()))
+    for (auto* cl : *gmap_players) {
+        if (CheckKnownLocById(cl, loc->GetId())) {
             cl->Send_GlobalLocation(loc, false);
+        }
+    }
 
     // Delete maps
-    for (Map* map : maps)
+    for (auto* map : maps) {
         DeleteMapContent(map);
+    }
     loc->GetMapsRaw().clear();
 
     // Erase from main collections
-    entityMngr.UnregisterEntity(loc);
-    for (auto it = maps.begin(); it != maps.end(); ++it)
-        entityMngr.UnregisterEntity(*it);
+    _entityMngr.UnregisterEntity(loc);
+    for (auto* map : maps) {
+        _entityMngr.UnregisterEntity(map);
+    }
 
     // Invalidate for use
     loc->IsDestroyed = true;
-    for (auto it = maps.begin(); it != maps.end(); ++it)
-        (*it)->IsDestroyed = true;
+    for (auto* map : maps) {
+        map->IsDestroyed = true;
+    }
 
     // Release after some time
-    for (auto it = maps.begin(); it != maps.end(); ++it)
-        (*it)->Release();
+    for (auto* map : maps) {
+        map->Release();
+    }
     loc->Release();
 }
 
-void MapManager::TraceBullet(TraceData& trace)
+void MapManager::TraceBullet(TraceData& trace) const
 {
-    Map* map = trace.TraceMap;
-    ushort maxhx = map->GetWidth();
-    ushort maxhy = map->GetHeight();
-    ushort hx = trace.BeginHx;
-    ushort hy = trace.BeginHy;
-    ushort tx = trace.EndHx;
-    ushort ty = trace.EndHy;
+    auto* map = trace.TraceMap;
+    const auto maxhx = map->GetWidth();
+    const auto maxhy = map->GetHeight();
+    const auto hx = trace.BeginHx;
+    const auto hy = trace.BeginHy;
+    const auto tx = trace.EndHx;
+    const auto ty = trace.EndHy;
 
-    uint dist = trace.Dist;
-    if (!dist)
-        dist = geomHelper.DistGame(hx, hy, tx, ty);
+    auto dist = trace.Dist;
+    if (dist == 0u) {
+        dist = _geomHelper.DistGame(hx, hy, tx, ty);
+    }
 
-    ushort cx = hx;
-    ushort cy = hy;
-    ushort old_cx = cx;
-    ushort old_cy = cy;
-    uchar dir;
+    auto cx = hx;
+    auto cy = hy;
+    auto old_cx = cx;
+    auto old_cy = cy;
 
-    LineTracer line_tracer(settings, hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
+    LineTracer line_tracer(_settings, hx, hy, tx, ty, maxhx, maxhy, trace.Angle);
 
     trace.IsFullTrace = false;
     trace.IsCritterFounded = false;
     trace.IsHaveLastPassed = false;
-    bool last_passed_ok = false;
-    for (uint i = 0;; i++)
-    {
-        if (i >= dist)
-        {
+    auto last_passed_ok = false;
+    for (uint i = 0;; i++) {
+        if (i >= dist) {
             trace.IsFullTrace = true;
             break;
         }
 
-        if (settings.MapHexagonal)
-        {
+        uchar dir = 0;
+        if (_settings.MapHexagonal) {
             dir = line_tracer.GetNextHex(cx, cy);
         }
-        else
-        {
+        else {
             line_tracer.GetNextSquare(cx, cy);
-            dir = geomHelper.GetNearDir(old_cx, old_cy, cx, cy);
+            dir = _geomHelper.GetNearDir(old_cx, old_cy, cx, cy);
         }
 
-        if (trace.HexCallback)
-        {
+        if (trace.HexCallback != nullptr) {
             trace.HexCallback(map, trace.FindCr, old_cx, old_cy, cx, cy, dir);
             old_cx = cx;
             old_cy = cy;
             continue;
         }
 
-        if (trace.LastPassed && !last_passed_ok)
-        {
-            if (map->IsHexPassed(cx, cy))
-            {
+        if (trace.LastPassed != nullptr && !last_passed_ok) {
+            if (map->IsHexPassed(cx, cy)) {
                 (*trace.LastPassed).first = cx;
                 (*trace.LastPassed).second = cy;
                 trace.IsHaveLastPassed = true;
             }
-            else if (!map->IsHexCritter(cx, cy) || !trace.LastPassedSkipCritters)
-            {
+            else if (!map->IsHexCritter(cx, cy) || !trace.LastPassedSkipCritters) {
                 last_passed_ok = true;
             }
         }
 
-        if (!map->IsHexRaked(cx, cy))
+        if (!map->IsHexRaked(cx, cy)) {
             break;
+        }
 
-        if (trace.Critters != nullptr && map->IsHexCritter(cx, cy))
+        if (trace.Critters != nullptr && map->IsHexCritter(cx, cy)) {
             map->GetCrittersHex(cx, cy, 0, trace.FindType, *trace.Critters);
+        }
 
-        if (trace.FindCr && map->IsFlagCritter(cx, cy, false))
-        {
-            Critter* cr = map->GetHexCritter(cx, cy, false);
-            if (cr == trace.FindCr)
-            {
+        if (trace.FindCr != nullptr && map->IsFlagCritter(cx, cy, false)) {
+            const auto* cr = map->GetHexCritter(cx, cy, false);
+            if (cr == trace.FindCr) {
                 trace.IsCritterFounded = true;
                 break;
             }
@@ -837,84 +804,89 @@ void MapManager::TraceBullet(TraceData& trace)
         old_cy = cy;
     }
 
-    if (trace.PreBlock)
-    {
+    if (trace.PreBlock != nullptr) {
         (*trace.PreBlock).first = old_cx;
         (*trace.PreBlock).second = old_cy;
     }
-    if (trace.Block)
-    {
+    if (trace.Block != nullptr) {
         (*trace.Block).first = cx;
         (*trace.Block).second = cy;
     }
 }
 
-int thread_local MapGridOffsX = 0;
-int thread_local MapGridOffsY = 0;
+static thread_local int MapGridOffsX = 0;
+static thread_local int MapGridOffsY = 0;
 static thread_local short* Grid = nullptr;
-#define GRID(x, y) \
-    Grid[((FPATH_MAX_PATH + 1) + (y)-MapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + \
-        ((FPATH_MAX_PATH + 1) + (x)-MapGridOffsX)]
-int MapManager::FindPath(PathFindData& pfd)
+#define GRID(x, y) Grid[((FPATH_MAX_PATH + 1) + (y)-MapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + (x)-MapGridOffsX)]
+
+auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
 {
     // Allocate temporary grid
-    if (!Grid)
+    if (Grid == nullptr) {
         Grid = new short[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
+    }
 
     // Data
-    uint map_id = pfd.MapId;
-    ushort from_hx = pfd.FromX;
-    ushort from_hy = pfd.FromY;
-    ushort to_hx = pfd.ToX;
-    ushort to_hy = pfd.ToY;
-    uint multihex = pfd.Multihex;
-    uint cut = pfd.Cut;
-    uint trace = pfd.Trace;
-    bool is_run = pfd.IsRun;
-    bool check_cr = pfd.CheckCrit;
-    bool check_gag_items = pfd.CheckGagItems;
-    int dirs_count = settings.MapDirCount;
+    auto map_id = pfd.MapId;
+    auto from_hx = pfd.FromX;
+    auto from_hy = pfd.FromY;
+    auto to_hx = pfd.ToX;
+    auto to_hy = pfd.ToY;
+    auto multihex = pfd.Multihex;
+    auto cut = pfd.Cut;
+    auto trace = pfd.Trace;
+    auto is_run = pfd.IsRun;
+    auto check_cr = pfd.CheckCrit;
+    auto check_gag_items = pfd.CheckGagItems;
+    auto dirs_count = _settings.MapDirCount;
 
     // Checks
-    if (trace && !pfd.TraceCr)
-        return FPATH_TRACE_TARG_NULL_PTR;
+    if (trace != 0u && pfd.TraceCr == nullptr) {
+        return FindPathResult::TraceTargetNullptr;
+    }
 
-    Map* map = GetMap(map_id);
-    if (!map)
-        return FPATH_MAP_NOT_FOUND;
-    ushort maxhx = map->GetWidth();
-    ushort maxhy = map->GetHeight();
+    auto* map = GetMap(map_id);
+    if (map == nullptr) {
+        return FindPathResult::MapNotFound;
+    }
 
-    if (from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy)
-        return FPATH_INVALID_HEXES;
+    const auto maxhx = map->GetWidth();
+    const auto maxhy = map->GetHeight();
 
-    if (geomHelper.CheckDist(from_hx, from_hy, to_hx, to_hy, cut))
-        return FPATH_ALREADY_HERE;
-    if (!cut && FLAG(map->GetHexFlags(to_hx, to_hy), FH_NOWAY))
-        return FPATH_HEX_BUSY;
+    if (from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy) {
+        return FindPathResult::InvalidHexes;
+    }
+    if (_geomHelper.CheckDist(from_hx, from_hy, to_hx, to_hy, cut)) {
+        return FindPathResult::AlreadyHere;
+    }
+    if (cut == 0u && IsBitSet(map->GetHexFlags(to_hx, to_hy), FH_NOWAY)) {
+        return FindPathResult::HexBusy;
+    }
 
     // Ring check
-    if (cut <= 1 && !multihex)
-    {
-        short *rsx, *rsy;
-        geomHelper.GetHexOffsets(to_hx & 1, rsx, rsy);
+    if (cut <= 1 && multihex == 0u) {
+        short* rsx = nullptr;
+        short* rsy = nullptr;
+        _geomHelper.GetHexOffsets((to_hx & 1) != 0, rsx, rsy);
 
-        int i = 0;
-        for (; i < dirs_count; i++, rsx++, rsy++)
-        {
-            short xx = to_hx + *rsx;
-            short yy = to_hy + *rsy;
-            if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy)
-            {
-                ushort flags = map->GetHexFlags(xx, yy);
-                if (FLAG(flags, FH_GAG_ITEM << 8))
+        auto i = 0;
+        for (; i < dirs_count; i++, rsx++, rsy++) {
+            const auto xx = static_cast<int>(to_hx + *rsx);
+            const auto yy = static_cast<int>(to_hy + *rsy);
+            if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy) {
+                const auto flags = map->GetHexFlags(static_cast<ushort>(xx), static_cast<ushort>(yy));
+                if (IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
                     break;
-                if (!FLAG(flags, FH_NOWAY))
+                }
+                if (!IsBitSet(flags, FH_NOWAY)) {
                     break;
+                }
             }
         }
-        if (i == dirs_count)
-            return FPATH_HEX_BUSY_RING;
+
+        if (i == dirs_count) {
+            return FindPathResult::HexBusyRing;
+        }
     }
 
     // Parse previous move params
@@ -936,13 +908,16 @@ int MapManager::FindPath(PathFindData& pfd)
        }*/
 
     // Prepare
-    int numindex = 1;
-    memzero(Grid, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
     MapGridOffsX = from_hx;
     MapGridOffsY = from_hy;
+
+    short numindex = 1;
+    std::memset(Grid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
     GRID(from_hx, from_hy) = numindex;
 
-    UShortPairVec coords, cr_coords, gag_coords;
+    UShortPairVec coords;
+    UShortPairVec cr_coords;
+    UShortPairVec gag_coords;
     coords.reserve(10000);
     cr_coords.reserve(100);
     gag_coords.reserve(100);
@@ -951,60 +926,58 @@ int MapManager::FindPath(PathFindData& pfd)
     coords.push_back(std::make_pair(from_hx, from_hy));
 
     // Begin search
-    int p = 0, p_togo = 1;
-    ushort cx, cy;
-    while (true)
-    {
-        for (int i = 0; i < p_togo; i++, p++)
-        {
+    auto p = 0;
+    auto p_togo = 1;
+    ushort cx = 0;
+    ushort cy = 0;
+    while (true) {
+        for (auto i = 0; i < p_togo; i++, p++) {
             cx = coords[p].first;
             cy = coords[p].second;
             numindex = GRID(cx, cy);
 
-            if (geomHelper.CheckDist(cx, cy, to_hx, to_hy, cut))
+            if (_geomHelper.CheckDist(cx, cy, to_hx, to_hy, cut)) {
                 goto label_FindOk;
-            if (++numindex > FPATH_MAX_PATH)
-                return FPATH_TOOFAR;
+            }
+            if (++numindex > FPATH_MAX_PATH) {
+                return FindPathResult::TooFar;
+            }
 
-            short *sx, *sy;
-            geomHelper.GetHexOffsets(cx & 1, sx, sy);
+            short* sx = nullptr;
+            short* sy = nullptr;
+            _geomHelper.GetHexOffsets((cx & 1) != 0, sx, sy);
 
-            for (int j = 0; j < dirs_count; j++)
-            {
-                short nx = (short)cx + sx[j];
-                short ny = (short)cy + sy[j];
-                if (nx < 0 || ny < 0 || nx >= maxhx || ny >= maxhy)
+            for (auto j = 0; j < dirs_count; j++) {
+                short nx = static_cast<short>(cx) + sx[j];
+                short ny = static_cast<short>(cy) + sy[j];
+                if (nx < 0 || ny < 0 || nx >= maxhx || ny >= maxhy) {
                     continue;
+                }
 
-                short& g = GRID(nx, ny);
-                if (g)
+                auto& g = GRID(nx, ny);
+                if (g != 0) {
                     continue;
+                }
 
-                if (!multihex)
-                {
-                    ushort flags = map->GetHexFlags(nx, ny);
-                    if (!FLAG(flags, FH_NOWAY))
-                    {
+                if (multihex == 0u) {
+                    auto flags = map->GetHexFlags(nx, ny);
+                    if (!IsBitSet(flags, FH_NOWAY)) {
                         coords.push_back(std::make_pair(nx, ny));
                         g = numindex;
                     }
-                    else if (check_gag_items && FLAG(flags, FH_GAG_ITEM << 8))
-                    {
+                    else if (check_gag_items && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
                         gag_coords.push_back(std::make_pair(nx, ny));
                         g = numindex | 0x4000;
                     }
-                    else if (check_cr && FLAG(flags, FH_CRITTER << 8))
-                    {
+                    else if (check_cr && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
                         cr_coords.push_back(std::make_pair(nx, ny));
                         g = numindex | 0x8000;
                     }
-                    else
-                    {
+                    else {
                         g = -1;
                     }
                 }
-                else
-                {
+                else {
                     /*
                        // Multihex
                        // Base hex
@@ -1036,13 +1009,11 @@ int MapManager::FindPath(PathFindData& pfd)
                        }
                      */
 
-                    if (map->IsMovePassed(nx, ny, j, multihex))
-                    {
+                    if (map->IsMovePassed(nx, ny, j, multihex)) {
                         coords.push_back(std::make_pair(nx, ny));
                         g = numindex;
                     }
-                    else
-                    {
+                    else {
                         g = -1;
                     }
                 }
@@ -1050,13 +1021,11 @@ int MapManager::FindPath(PathFindData& pfd)
         }
 
         // Add gag hex after some distance
-        if (gag_coords.size())
-        {
-            short last_index = GRID(coords.back().first, coords.back().second);
-            UShortPair& xy = gag_coords.front();
+        if (!gag_coords.empty()) {
+            auto last_index = GRID(coords.back().first, coords.back().second);
+            auto& xy = gag_coords.front();
             short gag_index = GRID(xy.first, xy.second) ^ 0x4000;
-            if (gag_index + 10 <
-                last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
+            if (gag_index + 10 < last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
             {
                 GRID(xy.first, xy.second) = gag_index;
                 coords.push_back(xy);
@@ -1065,20 +1034,17 @@ int MapManager::FindPath(PathFindData& pfd)
         }
 
         // Add gag and critters hexes
-        p_togo = (int)coords.size() - p;
-        if (!p_togo)
-        {
-            if (gag_coords.size())
-            {
-                UShortPair& xy = gag_coords.front();
+        p_togo = static_cast<int>(coords.size()) - p;
+        if (p_togo == 0) {
+            if (!gag_coords.empty()) {
+                auto& xy = gag_coords.front();
                 GRID(xy.first, xy.second) ^= 0x4000;
                 coords.push_back(xy);
                 gag_coords.erase(gag_coords.begin());
                 p_togo++;
             }
-            else if (cr_coords.size())
-            {
-                UShortPair& xy = cr_coords.front();
+            else if (!cr_coords.empty()) {
+                auto& xy = cr_coords.front();
                 GRID(xy.first, xy.second) ^= 0x8000;
                 coords.push_back(xy);
                 cr_coords.erase(cr_coords.begin());
@@ -1086,93 +1052,98 @@ int MapManager::FindPath(PathFindData& pfd)
             }
         }
 
-        if (!p_togo)
-            return FPATH_DEADLOCK;
+        if (p_togo == 0) {
+            return FindPathResult::DeadLock;
+        }
     }
 
 label_FindOk:
-    if (++pathNumCur >= FPATH_DATA_SIZE)
-        pathNumCur = 1;
-    PathStepVec& path = pathesPool[pathNumCur];
+    if (++_pathNumCur >= FPATH_DATA_SIZE) {
+        _pathNumCur = 1;
+    }
+    auto& path = _pathesPool[_pathNumCur];
     path.resize(numindex - 1);
 
     // Smooth data
-    if (!settings.MapSmoothPath)
-        smoothSwitcher = false;
-
-    int smooth_count = 0, smooth_iteration = 0;
-    if (settings.MapSmoothPath && !settings.MapHexagonal)
-    {
-        int x1 = cx, y1 = cy;
-        int x2 = from_hx, y2 = from_hy;
-        int dx = abs(x1 - x2);
-        int dy = abs(y1 - y2);
-        int d = MAX(dx, dy);
-        int h1 = abs(dx - dy);
-        int h2 = d - h1;
-        if (dy < dx)
-            std::swap(h1, h2);
-        smooth_count = ((h1 && h2) ? h1 / h2 + 1 : 3);
-        if (smooth_count < 3)
-            smooth_count = 3;
-
-        smooth_count = ((h1 && h2) ? MAX(h1, h2) / MIN(h1, h2) + 1 : 0);
-        if (h1 && h2 && smooth_count < 2)
-            smooth_count = 2;
-        smooth_iteration = ((h1 && h2) ? MIN(h1, h2) % MAX(h1, h2) : 0);
+    if (!_settings.MapSmoothPath) {
+        _smoothSwitcher = false;
     }
 
-    while (numindex > 1)
-    {
-        if (settings.MapSmoothPath)
-        {
-            if (settings.MapHexagonal)
-            {
-                if (numindex & 1)
-                    smoothSwitcher = !smoothSwitcher;
+    auto smooth_count = 0;
+    auto smooth_iteration = 0;
+    if (_settings.MapSmoothPath && !_settings.MapHexagonal) {
+        int x1 = cx;
+        int y1 = cy;
+        int x2 = from_hx;
+        int y2 = from_hy;
+        auto dx = abs(x1 - x2);
+        auto dy = abs(y1 - y2);
+        auto d = std::max(dx, dy);
+        auto h1 = abs(dx - dy);
+        auto h2 = d - h1;
+        if (dy < dx) {
+            std::swap(h1, h2);
+        }
+        smooth_count = h1 != 0 && h2 != 0 ? h1 / h2 + 1 : 3;
+        if (smooth_count < 3) {
+            smooth_count = 3;
+        }
+
+        smooth_count = h1 != 0 && h2 != 0 ? std::max(h1, h2) / std::min(h1, h2) + 1 : 0;
+        if (h1 != 0 && h2 != 0 && smooth_count < 2) {
+            smooth_count = 2;
+        }
+        smooth_iteration = h1 != 0 && h2 != 0 ? std::min(h1, h2) % std::max(h1, h2) : 0;
+    }
+
+    while (numindex > 1) {
+        if (_settings.MapSmoothPath) {
+            if (_settings.MapHexagonal) {
+                if ((numindex & 1) != 0) {
+                    _smoothSwitcher = !_smoothSwitcher;
+                }
             }
-            else
-            {
-                smoothSwitcher = (smooth_count < 2 || smooth_iteration % smooth_count);
+            else {
+                _smoothSwitcher = smooth_count < 2 || smooth_iteration % smooth_count != 0;
             }
         }
 
         numindex--;
-        PathStep& ps = path[numindex - 1];
+        auto& ps = path[numindex - 1];
         ps.HexX = cx;
         ps.HexY = cy;
-        int dir = FindPathGrid(cx, cy, numindex, smoothSwitcher);
-        if (dir == -1)
-            return FPATH_ERROR;
+        auto dir = FindPathGrid(cx, cy, numindex, _smoothSwitcher);
+        if (dir == -1) {
+            return FindPathResult::InternalError;
+        }
         ps.Dir = dir;
 
         smooth_iteration++;
     }
 
     // Check for closed door and critter
-    if (check_cr || check_gag_items)
-    {
-        for (int i = 0, j = (int)path.size(); i < j; i++)
-        {
-            PathStep& ps = path[i];
-            if (map->IsHexPassed(ps.HexX, ps.HexY))
+    if (check_cr || check_gag_items) {
+        for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
+            auto& ps = path[i];
+            if (map->IsHexPassed(ps.HexX, ps.HexY)) {
                 continue;
+            }
 
-            if (check_gag_items && map->IsHexGag(ps.HexX, ps.HexY))
-            {
-                Item* item = map->GetItemGag(ps.HexX, ps.HexY);
-                if (!item)
+            if (check_gag_items && map->IsHexGag(ps.HexX, ps.HexY)) {
+                auto* item = map->GetItemGag(ps.HexX, ps.HexY);
+                if (item == nullptr) {
                     continue;
+                }
                 pfd.GagItem = item;
                 path.resize(i);
                 break;
             }
 
-            if (check_cr && map->IsFlagCritter(ps.HexX, ps.HexY, false))
-            {
-                Critter* cr = map->GetHexCritter(ps.HexX, ps.HexY, false);
-                if (!cr || cr == pfd.FromCritter)
+            if (check_cr && map->IsFlagCritter(ps.HexX, ps.HexY, false)) {
+                auto* cr = map->GetHexCritter(ps.HexX, ps.HexY, false);
+                if (cr == nullptr || cr == pfd.FromCritter) {
                     continue;
+                }
                 pfd.GagCritter = cr;
                 path.resize(i);
                 break;
@@ -1181,19 +1152,16 @@ label_FindOk:
     }
 
     // Trace
-    if (trace)
-    {
+    if (trace != 0u) {
         IntVec trace_seq;
-        ushort targ_hx = pfd.TraceCr->GetHexX();
-        ushort targ_hy = pfd.TraceCr->GetHexY();
-        bool trace_ok = false;
+        auto targ_hx = pfd.TraceCr->GetHexX();
+        auto targ_hy = pfd.TraceCr->GetHexY();
+        auto trace_ok = false;
 
         trace_seq.resize(path.size() + 4);
-        for (int i = 0, j = (int)path.size(); i < j; i++)
-        {
-            PathStep& ps = path[i];
-            if (map->IsHexGag(ps.HexX, ps.HexY))
-            {
+        for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
+            auto& ps = path[i];
+            if (map->IsHexGag(ps.HexX, ps.HexY)) {
                 trace_seq[i + 2 - 2] += 1;
                 trace_seq[i + 2 - 1] += 2;
                 trace_seq[i + 2 - 0] += 3;
@@ -1207,25 +1175,25 @@ label_FindOk:
         trace_.EndHx = targ_hx;
         trace_.EndHy = targ_hy;
         trace_.FindCr = pfd.TraceCr;
-        for (int k = 0; k < 5; k++)
-        {
-            for (int i = 0, j = (int)path.size(); i < j; i++)
-            {
-                if (k < 4 && trace_seq[i + 2] != k)
+        for (auto k = 0; k < 5; k++) {
+            for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
+                if (k < 4 && trace_seq[i + 2] != k) {
                     continue;
-                if (k == 4 && trace_seq[i + 2] < 4)
+                }
+                if (k == 4 && trace_seq[i + 2] < 4) {
                     continue;
+                }
 
-                PathStep& ps = path[i];
+                auto& ps = path[i];
 
-                if (!geomHelper.CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace))
+                if (!_geomHelper.CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace)) {
                     continue;
+                }
 
                 trace_.BeginHx = ps.HexX;
                 trace_.BeginHy = ps.HexY;
                 TraceBullet(trace_);
-                if (trace_.IsCritterFounded)
-                {
+                if (trace_.IsCritterFounded) {
                     trace_ok = true;
                     path.resize(i + 1);
                     goto label_TraceOk;
@@ -1233,11 +1201,11 @@ label_FindOk:
             }
         }
 
-        if (!trace_ok && !pfd.GagItem && !pfd.GagCritter)
-            return FPATH_TRACE_FAIL;
+        if (!trace_ok && pfd.GagItem == nullptr && pfd.GagCritter == nullptr) {
+            return FindPathResult::TraceFailed;
+        }
     label_TraceOk:
-        if (trace_ok)
-        {
+        if (trace_ok) {
             pfd.GagItem = nullptr;
             pfd.GagCritter = nullptr;
         }
@@ -1247,163 +1215,133 @@ label_FindOk:
     PathSetMoveParams(path, is_run);
 
     // Number of path
-    if (path.empty())
-        return FPATH_ALREADY_HERE;
-    pfd.PathNum = pathNumCur;
+    if (path.empty()) {
+        return FindPathResult::AlreadyHere;
+    }
+    pfd.PathNum = _pathNumCur;
 
     // New X,Y
-    PathStep& ps = path[path.size() - 1];
+    auto& ps = path[path.size() - 1];
     pfd.NewToX = ps.HexX;
     pfd.NewToY = ps.HexY;
-    return FPATH_OK;
+    return FindPathResult::Ok;
 }
 
-int MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher)
+auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) -> int
 {
     // Hexagonal
-    if (settings.MapHexagonal)
-    {
-        if (smooth_switcher)
-        {
-            if (hx & 1)
-            {
-                if (GRID(hx - 1, hy - 1) == index)
-                {
+    if (_settings.MapHexagonal) {
+        if (smooth_switcher) {
+            if ((hx & 1) != 0) {
+                if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
                     return 3;
                 } // 0
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 2;
                 } // 5
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 5;
                 } // 2
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 0;
                 } // 3
-                if (GRID(hx - 1, hy) == index)
-                {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 4;
                 } // 1
-                if (GRID(hx + 1, hy - 1) == index)
-                {
+                if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
                     return 1;
                 } // 4
             }
-            else
-            {
-                if (GRID(hx - 1, hy) == index)
-                {
+            else {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 3;
                 } // 0
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 2;
                 } // 5
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 5;
                 } // 2
-                if (GRID(hx + 1, hy + 1) == index)
-                {
+                if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
                     return 0;
                 } // 3
-                if (GRID(hx - 1, hy + 1) == index)
-                {
+                if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
                     return 4;
                 } // 1
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 1;
                 } // 4
             }
         }
-        else
-        {
-            if (hx & 1)
-            {
-                if (GRID(hx - 1, hy) == index)
-                {
+        else {
+            if ((hx & 1) != 0) {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 4;
                 } // 1
-                if (GRID(hx + 1, hy - 1) == index)
-                {
+                if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
                     return 1;
                 } // 4
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 2;
                 } // 5
-                if (GRID(hx - 1, hy - 1) == index)
-                {
+                if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
                     return 3;
                 } // 0
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 0;
                 } // 3
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 5;
                 } // 2
             }
-            else
-            {
-                if (GRID(hx - 1, hy + 1) == index)
-                {
+            else {
+                if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
                     return 4;
                 } // 1
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 1;
                 } // 4
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 2;
                 } // 5
-                if (GRID(hx - 1, hy) == index)
-                {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 3;
                 } // 0
-                if (GRID(hx + 1, hy + 1) == index)
-                {
+                if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
                     return 0;
                 } // 3
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 5;
                 } // 2
@@ -1411,148 +1349,119 @@ int MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swit
         }
     }
     // Square
-    else
-    {
+    else {
         // Without smoothing
-        if (!settings.MapSmoothPath)
-        {
-            if (GRID(hx - 1, hy) == index)
-            {
+        if (!_settings.MapSmoothPath) {
+            if (GRID(hx - 1, hy) == index) {
                 hx--;
                 return 0;
             } // 0
-            if (GRID(hx, hy - 1) == index)
-            {
+            if (GRID(hx, hy - 1) == index) {
                 hy--;
                 return 6;
             } // 6
-            if (GRID(hx, hy + 1) == index)
-            {
+            if (GRID(hx, hy + 1) == index) {
                 hy++;
                 return 2;
             } // 2
-            if (GRID(hx + 1, hy) == index)
-            {
+            if (GRID(hx + 1, hy) == index) {
                 hx++;
                 return 4;
             } // 4
-            if (GRID(hx - 1, hy + 1) == index)
-            {
+            if (GRID(hx - 1, hy + 1) == index) {
                 hx--;
                 hy++;
                 return 1;
             } // 1
-            if (GRID(hx + 1, hy - 1) == index)
-            {
+            if (GRID(hx + 1, hy - 1) == index) {
                 hx++;
                 hy--;
                 return 5;
             } // 5
-            if (GRID(hx + 1, hy + 1) == index)
-            {
+            if (GRID(hx + 1, hy + 1) == index) {
                 hx++;
                 hy++;
                 return 3;
             } // 3
-            if (GRID(hx - 1, hy - 1) == index)
-            {
+            if (GRID(hx - 1, hy - 1) == index) {
                 hx--;
                 hy--;
                 return 7;
             } // 7
         }
         // With smoothing
-        else
-        {
-            if (smooth_switcher)
-            {
-                if (GRID(hx - 1, hy) == index)
-                {
+        else {
+            if (smooth_switcher) {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 0;
                 } // 0
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 2;
                 } // 2
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 4;
                 } // 4
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 6;
                 } // 6
-                if (GRID(hx + 1, hy + 1) == index)
-                {
+                if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
                     return 3;
                 } // 3
-                if (GRID(hx - 1, hy - 1) == index)
-                {
+                if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
                     return 7;
                 } // 7
-                if (GRID(hx - 1, hy + 1) == index)
-                {
+                if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
                     return 1;
                 } // 1
-                if (GRID(hx + 1, hy - 1) == index)
-                {
+                if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
                     return 5;
                 } // 5
             }
-            else
-            {
-                if (GRID(hx + 1, hy + 1) == index)
-                {
+            else {
+                if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
                     return 3;
                 } // 3
-                if (GRID(hx - 1, hy - 1) == index)
-                {
+                if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
                     return 7;
                 } // 7
-                if (GRID(hx - 1, hy) == index)
-                {
+                if (GRID(hx - 1, hy) == index) {
                     hx--;
                     return 0;
                 } // 0
-                if (GRID(hx, hy + 1) == index)
-                {
+                if (GRID(hx, hy + 1) == index) {
                     hy++;
                     return 2;
                 } // 2
-                if (GRID(hx + 1, hy) == index)
-                {
+                if (GRID(hx + 1, hy) == index) {
                     hx++;
                     return 4;
                 } // 4
-                if (GRID(hx, hy - 1) == index)
-                {
+                if (GRID(hx, hy - 1) == index) {
                     hy--;
                     return 6;
                 } // 6
-                if (GRID(hx - 1, hy + 1) == index)
-                {
+                if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
                     return 1;
                 } // 1
-                if (GRID(hx + 1, hy - 1) == index)
-                {
+                if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
                     return 5;
@@ -1564,31 +1473,32 @@ int MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swit
     return -1;
 }
 
-void MapManager::PathSetMoveParams(PathStepVec& path, bool is_run)
+void MapManager::PathSetMoveParams(vector<PathStep>& path, bool is_run)
 {
     uint move_params = 0; // Base parameters
-    for (int i = (int)path.size() - 1; i >= 0; i--) // From end to beginning
+    for (auto i = static_cast<int>(path.size()) - 1; i >= 0; i--) // From end to beginning
     {
-        PathStep& ps = path[i];
+        auto& ps = path[i];
 
         // Walk flags
-        if (is_run)
-            SETFLAG(move_params, MOVE_PARAM_RUN);
-        else
-            UNSETFLAG(move_params, MOVE_PARAM_RUN);
+        if (is_run) {
+            SetBit(move_params, MOVE_PARAM_RUN);
+        }
+        else {
+            UnsetBit(move_params, MOVE_PARAM_RUN);
+        }
 
         // Store
         ps.MoveParams = move_params;
 
         // Add dir to sequence
-        move_params = (move_params << MOVE_PARAM_STEP_BITS) | ps.Dir | MOVE_PARAM_STEP_ALLOW;
+        move_params = move_params << MOVE_PARAM_STEP_BITS | ps.Dir | MOVE_PARAM_STEP_ALLOW;
     }
 }
 
-bool MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force)
+auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
 {
-    if (cr->LockMapTransfers)
-    {
+    if (cr->LockMapTransfers != 0) {
         WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
         return false;
     }
@@ -1596,70 +1506,71 @@ bool MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force)
     return Transit(cr, nullptr, 0, 0, 0, 0, leader_id, force);
 }
 
-bool MapManager::Transit(
-    Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force)
+auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool
 {
     // Check location deletion
-    Location* loc = (map ? map->GetLocation() : nullptr);
-    if (loc && loc->GetToGarbage())
-    {
+    auto* loc = map != nullptr ? map->GetLocation() : nullptr;
+    if (loc != nullptr && loc->GetToGarbage()) {
         WriteLog("Transfer to deleted location, critter '{}'.\n", cr->GetName());
         return false;
     }
 
     // Maybe critter already in transfer
-    if (cr->LockMapTransfers)
-    {
+    if (cr->LockMapTransfers != 0) {
         WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
         return false;
     }
 
     // Check force
-    if (!force)
-    {
-        if (cr->GetTimeoutTransfer() > gameTime.GetFullSecond() || cr->GetTimeoutBattle() > gameTime.GetFullSecond())
+    if (!force) {
+        if (cr->GetTimeoutTransfer() > _gameTime.GetFullSecond() || cr->GetTimeoutBattle() > _gameTime.GetFullSecond()) {
             return false;
-        if (cr->IsDead())
+        }
+        if (cr->IsDead()) {
             return false;
-        if (cr->IsKnockout())
+        }
+        if (cr->IsKnockout()) {
             return false;
-        if (loc && !loc->IsCanEnter(1))
+        }
+        if (loc != nullptr && !loc->IsCanEnter(1)) {
             return false;
+        }
     }
 
-    uint map_id = (map ? map->GetId() : 0);
-    uint old_map_id = cr->GetMapId();
-    Map* old_map = GetMap(old_map_id);
+    const auto map_id = map != nullptr ? map->GetId() : 0;
+    const auto old_map_id = cr->GetMapId();
+    auto* old_map = GetMap(old_map_id);
 
     // Recheck after synchronization
-    if (cr->GetMapId() != old_map_id)
+    if (cr->GetMapId() != old_map_id) {
         return false;
+    }
 
-    if (old_map_id == map_id)
-    {
+    if (old_map_id == map_id) {
         // One map
-        if (!map_id)
-        {
+        if (map_id == 0u) {
             // Todo: check group
             return true;
         }
 
-        if (!map || hx >= map->GetWidth() || hy >= map->GetHeight())
+        if (map == nullptr || hx >= map->GetWidth() || hy >= map->GetHeight()) {
             return false;
+        }
 
-        uint multihex = cr->GetMultihex();
-        if (!map->FindStartHex(hx, hy, multihex, radius, true) && !map->FindStartHex(hx, hy, multihex, radius, false))
+        const auto multihex = cr->GetMultihex();
+        if (!map->FindStartHex(hx, hy, multihex, radius, true) && !map->FindStartHex(hx, hy, multihex, radius, false)) {
             return false;
+        }
 
         cr->LockMapTransfers++;
 
-        cr->SetDir(dir >= settings.MapDirCount ? 0 : dir);
+        cr->SetDir(dir >= _settings.MapDirCount ? 0 : dir);
         map->UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, cr->IsDead());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         map->SetFlagCritter(hx, hy, multihex, cr->IsDead());
         cr->SetBreakTime(0);
-        cr->Send_CustomCommand(cr, OTHER_TELEPORT, (cr->GetHexX() << 16) | (cr->GetHexY()));
+        cr->Send_CustomCommand(cr, OTHER_TELEPORT, cr->GetHexX() << 16 | cr->GetHexY());
         cr->ClearVisible();
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
@@ -1667,23 +1578,23 @@ bool MapManager::Transit(
 
         cr->LockMapTransfers--;
     }
-    else
-    {
+    else {
         // Different maps
-        if (map)
-        {
-            uint multihex = cr->GetMultihex();
-            if (!map->FindStartHex(hx, hy, multihex, radius, true) &&
-                !map->FindStartHex(hx, hy, multihex, radius, false))
+        if (map != nullptr) {
+            const auto multihex = cr->GetMultihex();
+            if (!map->FindStartHex(hx, hy, multihex, radius, true) && !map->FindStartHex(hx, hy, multihex, radius, false)) {
                 return false;
+            }
         }
-        if (!CanAddCrToMap(cr, map, hx, hy, leader_id))
+        if (!CanAddCrToMap(cr, map, hx, hy, leader_id)) {
             return false;
+        }
 
         cr->LockMapTransfers++;
 
-        if (!old_map_id || old_map)
+        if (old_map_id == 0u || old_map != nullptr) {
             EraseCrFromMap(cr, old_map);
+        }
 
         cr->SetLastMapHexX(cr->GetHexX());
         cr->SetLastMapHexY(cr->GetHexY());
@@ -1704,30 +1615,22 @@ bool MapManager::Transit(
     return true;
 }
 
-bool MapManager::FindPlaceOnMap(Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius)
+auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool
 {
-    uint multihex = cr->GetMultihex();
-    if (!map->FindStartHex(hx, hy, multihex, radius, true) && !map->FindStartHex(hx, hy, multihex, radius, false))
-        return false;
-    return true;
-}
-
-bool MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id)
-{
-    if (map)
-    {
-        if (hx >= map->GetWidth() || hy >= map->GetHeight())
+    if (map != nullptr) {
+        if (hx >= map->GetWidth() || hy >= map->GetHeight()) {
             return false;
-        if (!map->IsHexesPassed(hx, hy, cr->GetMultihex()))
+        }
+        if (!map->IsHexesPassed(hx, hy, cr->GetMultihex())) {
             return false;
+        }
     }
-    else
-    {
-        if (leader_id && leader_id != cr->GetId())
-        {
-            Critter* leader = crMngr.GetCritter(leader_id);
-            if (!leader || leader->GetMapId())
+    else {
+        if (leader_id != 0u && leader_id != cr->GetId()) {
+            auto* leader = _crMngr.GetCritter(leader_id);
+            if (leader == nullptr || leader->GetMapId() != 0u) {
                 return false;
+            }
         }
     }
     return true;
@@ -1735,34 +1638,33 @@ bool MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
 
 void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id)
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     cr->LockMapTransfers++;
 
     cr->SetTimeoutBattle(0);
-    cr->SetTimeoutTransfer(gameTime.GetFullSecond() + settings.TimeoutTransfer);
+    cr->SetTimeoutTransfer(_gameTime.GetFullSecond() + _settings.TimeoutTransfer);
 
-    if (map)
-    {
+    if (map != nullptr) {
         RUNTIME_ASSERT((hx < map->GetWidth() && hy < map->GetHeight()));
 
         cr->SetMapId(map->GetId());
         cr->SetRefMapId(map->GetId());
         cr->SetRefMapPid(map->GetProtoId());
-        cr->SetRefLocationId(map->GetLocation() ? map->GetLocation()->GetId() : 0);
-        cr->SetRefLocationPid(map->GetLocation() ? map->GetLocation()->GetProtoId() : 0);
+        cr->SetRefLocationId(map->GetLocation() != nullptr ? map->GetLocation()->GetId() : 0);
+        cr->SetRefLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : 0);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         cr->SetDir(dir);
 
         map->AddCritter(cr);
 
-        scriptSys.MapCritterInEvent(map, cr);
+        _scriptSys.MapCritterInEvent(map, cr);
     }
-    else
-    {
+    else {
         RUNTIME_ASSERT(!cr->GlobalMapGroup);
 
-        if (!leader_id || leader_id == cr->GetId())
-        {
+        if (leader_id == 0u || leader_id == cr->GetId()) {
             cr->SetGlobalMapLeaderId(cr->GetId());
             cr->SetRefGlobalMapLeaderId(cr->GetId());
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
@@ -1771,9 +1673,8 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->GlobalMapGroup = new CritterVec();
             cr->GlobalMapGroup->push_back(cr);
         }
-        else
-        {
-            Critter* leader = crMngr.GetCritter(leader_id);
+        else {
+            auto* leader = _crMngr.GetCritter(leader_id);
             RUNTIME_ASSERT(leader);
             RUNTIME_ASSERT(!leader->GetMapId());
 
@@ -1783,14 +1684,15 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->SetRefGlobalMapLeaderId(leader_id);
             cr->SetGlobalMapTripId(leader->GetGlobalMapTripId());
 
-            for (auto it = leader->GlobalMapGroup->begin(), end = leader->GlobalMapGroup->end(); it != end; ++it)
-                (*it)->Send_AddCritter(cr);
+            for (auto& it : *leader->GlobalMapGroup) {
+                it->Send_AddCritter(cr);
+            }
 
             cr->GlobalMapGroup = leader->GlobalMapGroup;
             cr->GlobalMapGroup->push_back(cr);
         }
 
-        scriptSys.GlobalMapCritterInEvent(cr);
+        _scriptSys.GlobalMapCritterInEvent(cr);
     }
 
     cr->LockMapTransfers--;
@@ -1800,13 +1702,13 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 {
     cr->LockMapTransfers++;
 
-    if (map)
-    {
-        scriptSys.MapCritterOutEvent(map, cr);
+    if (map != nullptr) {
+        _scriptSys.MapCritterOutEvent(map, cr);
 
-        CritterVec critters = cr->VisCr;
-        for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
-            scriptSys.CritterHideEvent(*it, cr);
+        auto critters = cr->VisCr;
+        for (auto& critter : critters) {
+            _scriptSys.CritterHideEvent(critter, cr);
+        }
 
         cr->ClearVisible();
         map->EraseCritter(cr);
@@ -1814,31 +1716,28 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
         cr->SetMapId(0);
 
-        runGarbager = true;
+        _runGarbager = true;
     }
-    else
-    {
+    else {
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        scriptSys.GlobalMapCritterOutEvent(cr);
+        _scriptSys.GlobalMapCritterOutEvent(cr);
 
-        auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
+        const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
         cr->GlobalMapGroup->erase(it);
 
-        if (!cr->GlobalMapGroup->empty())
-        {
-            Critter* new_leader = *cr->GlobalMapGroup->begin();
-            for (auto group_cr : *cr->GlobalMapGroup)
-            {
+        if (!cr->GlobalMapGroup->empty()) {
+            auto* new_leader = *cr->GlobalMapGroup->begin();
+            for (auto* group_cr : *cr->GlobalMapGroup) {
                 group_cr->SetGlobalMapLeaderId(new_leader->Id);
                 group_cr->SetRefGlobalMapLeaderId(new_leader->Id);
                 group_cr->Send_RemoveCritter(cr);
             }
             cr->GlobalMapGroup = nullptr;
         }
-        else
-        {
-            SAFEDEL(cr->GlobalMapGroup);
+        else {
+            delete cr->GlobalMapGroup;
+            cr->GlobalMapGroup = nullptr;
         }
 
         cr->SetGlobalMapLeaderId(0);
@@ -1849,29 +1748,27 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
 void MapManager::ProcessVisibleCritters(Critter* view_cr)
 {
-    if (view_cr->IsDestroyed)
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
+    if (view_cr->IsDestroyed) {
         return;
+    }
 
     // Global map
-    if (!view_cr->GetMapId())
-    {
+    if (view_cr->GetMapId() == 0u) {
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
-        if (view_cr->IsPlayer())
-        {
-            Client* cl = (Client*)view_cr;
-            for (auto it = view_cr->GlobalMapGroup->begin(), end = view_cr->GlobalMapGroup->end(); it != end; ++it)
-            {
-                Critter* cr = *it;
-                if (view_cr == cr)
-                {
-                    SETFLAG(view_cr->Flags, FCRIT_CHOSEN);
+        if (view_cr->IsPlayer()) {
+            auto* cl = dynamic_cast<Client*>(view_cr);
+            for (auto it = view_cr->GlobalMapGroup->begin(), end = view_cr->GlobalMapGroup->end(); it != end; ++it) {
+                auto* cr = *it;
+                if (view_cr == cr) {
+                    SetBit(view_cr->Flags, FCRIT_CHOSEN);
                     cl->Send_AddCritter(view_cr);
-                    UNSETFLAG(view_cr->Flags, FCRIT_CHOSEN);
+                    UnsetBit(view_cr->Flags, FCRIT_CHOSEN);
                     cl->Send_AddAllItems();
                 }
-                else
-                {
+                else {
                     cl->Send_AddCritter(cr);
                 }
             }
@@ -1881,185 +1778,170 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     }
 
     // Local map
-    Map* map = GetMap(view_cr->GetMapId());
+    auto* map = GetMap(view_cr->GetMapId());
     RUNTIME_ASSERT(map);
 
-    int vis;
-    int look_base_self = view_cr->GetLookDistance();
-    int dir_self = view_cr->GetDir();
-    int dirs_count = settings.MapDirCount;
-    uint show_cr_dist1 = view_cr->GetShowCritterDist1();
-    uint show_cr_dist2 = view_cr->GetShowCritterDist2();
-    uint show_cr_dist3 = view_cr->GetShowCritterDist3();
-    bool show_cr1 = (show_cr_dist1 > 0);
-    bool show_cr2 = (show_cr_dist2 > 0);
-    bool show_cr3 = (show_cr_dist3 > 0);
+    auto vis = 0;
+    const int look_base_self = view_cr->GetLookDistance();
+    const int dir_self = view_cr->GetDir();
+    const auto dirs_count = _settings.MapDirCount;
+    const auto show_cr_dist1 = view_cr->GetShowCritterDist1();
+    const auto show_cr_dist2 = view_cr->GetShowCritterDist2();
+    const auto show_cr_dist3 = view_cr->GetShowCritterDist3();
+    const auto show_cr1 = show_cr_dist1 > 0;
+    const auto show_cr2 = show_cr_dist2 > 0;
+    const auto show_cr3 = show_cr_dist3 > 0;
 
-    bool show_cr = (show_cr1 || show_cr2 || show_cr3);
+    const auto show_cr = show_cr1 || show_cr2 || show_cr3;
     // Sneak self
-    int sneak_base_self = view_cr->GetSneakCoefficient();
+    const auto sneak_base_self = view_cr->GetSneakCoefficient();
 
-    for (Critter* cr : map->GetCritters())
-    {
-        if (cr == view_cr || cr->IsDestroyed)
+    for (auto* cr : map->GetCritters()) {
+        if (cr == view_cr || cr->IsDestroyed) {
             continue;
+        }
 
-        int dist = geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+        int dist = _geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
 
-        if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
-        {
-            bool allow_self = scriptSys.MapCheckLookEvent(map, view_cr, cr);
-            bool allow_opp = scriptSys.MapCheckLookEvent(map, cr, view_cr);
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SCRIPT)) {
+            const auto allow_self = _scriptSys.MapCheckLookEvent(map, view_cr, cr);
+            const auto allow_opp = _scriptSys.MapCheckLookEvent(map, cr, view_cr);
 
-            if (allow_self)
-            {
-                if (cr->AddCrIntoVisVec(view_cr))
-                {
+            if (allow_self) {
+                if (cr->AddCrIntoVisVec(view_cr)) {
                     view_cr->Send_AddCritter(cr);
-                    scriptSys.CritterShowEvent(view_cr, cr);
+                    _scriptSys.CritterShowEvent(view_cr, cr);
                 }
             }
-            else
-            {
-                if (cr->DelCrFromVisVec(view_cr))
-                {
+            else {
+                if (cr->DelCrFromVisVec(view_cr)) {
                     view_cr->Send_RemoveCritter(cr);
-                    scriptSys.CritterHideEvent(view_cr, cr);
+                    _scriptSys.CritterHideEvent(view_cr, cr);
                 }
             }
 
-            if (allow_opp)
-            {
-                if (view_cr->AddCrIntoVisVec(cr))
-                {
+            if (allow_opp) {
+                if (view_cr->AddCrIntoVisVec(cr)) {
                     cr->Send_AddCritter(view_cr);
-                    scriptSys.CritterShowEvent(cr, view_cr);
+                    _scriptSys.CritterShowEvent(cr, view_cr);
                 }
             }
-            else
-            {
-                if (view_cr->DelCrFromVisVec(cr))
-                {
+            else {
+                if (view_cr->DelCrFromVisVec(cr)) {
                     cr->Send_RemoveCritter(view_cr);
-                    scriptSys.CritterHideEvent(cr, view_cr);
+                    _scriptSys.CritterHideEvent(cr, view_cr);
                 }
             }
 
-            if (show_cr)
-            {
-                if (show_cr1)
-                {
-                    if ((int)show_cr_dist1 >= dist)
-                    {
-                        if (view_cr->AddCrIntoVisSet1(cr->GetId()))
-                            scriptSys.CritterShowDist1Event(view_cr, cr);
+            if (show_cr) {
+                if (show_cr1) {
+                    if (static_cast<int>(show_cr_dist1) >= dist) {
+                        if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
+                            _scriptSys.CritterShowDist1Event(view_cr, cr);
+                        }
                     }
-                    else
-                    {
-                        if (view_cr->DelCrFromVisSet1(cr->GetId()))
-                            scriptSys.CritterHideDist1Event(view_cr, cr);
+                    else {
+                        if (view_cr->DelCrFromVisSet1(cr->GetId())) {
+                            _scriptSys.CritterHideDist1Event(view_cr, cr);
+                        }
                     }
                 }
-                if (show_cr2)
-                {
-                    if ((int)show_cr_dist2 >= dist)
-                    {
-                        if (view_cr->AddCrIntoVisSet2(cr->GetId()))
-                            scriptSys.CritterShowDist2Event(view_cr, cr);
+                if (show_cr2) {
+                    if (static_cast<int>(show_cr_dist2) >= dist) {
+                        if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
+                            _scriptSys.CritterShowDist2Event(view_cr, cr);
+                        }
                     }
-                    else
-                    {
-                        if (view_cr->DelCrFromVisSet2(cr->GetId()))
-                            scriptSys.CritterHideDist2Event(view_cr, cr);
+                    else {
+                        if (view_cr->DelCrFromVisSet2(cr->GetId())) {
+                            _scriptSys.CritterHideDist2Event(view_cr, cr);
+                        }
                     }
                 }
-                if (show_cr3)
-                {
-                    if ((int)show_cr_dist3 >= dist)
-                    {
-                        if (view_cr->AddCrIntoVisSet3(cr->GetId()))
-                            scriptSys.CritterShowDist3Event(view_cr, cr);
+                if (show_cr3) {
+                    if (static_cast<int>(show_cr_dist3) >= dist) {
+                        if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
+                            _scriptSys.CritterShowDist3Event(view_cr, cr);
+                        }
                     }
-                    else
-                    {
-                        if (view_cr->DelCrFromVisSet3(cr->GetId()))
-                            scriptSys.CritterHideDist3Event(view_cr, cr);
+                    else {
+                        if (view_cr->DelCrFromVisSet3(cr->GetId())) {
+                            _scriptSys.CritterHideDist3Event(view_cr, cr);
+                        }
                     }
                 }
             }
 
-            uint cr_dist = cr->GetShowCritterDist1();
-            if (cr_dist)
-            {
-                if ((int)cr_dist >= dist)
-                {
-                    if (cr->AddCrIntoVisSet1(view_cr->GetId()))
-                        scriptSys.CritterShowDist1Event(cr, view_cr);
+            auto cr_dist = cr->GetShowCritterDist1();
+            if (cr_dist != 0u) {
+                if (static_cast<int>(cr_dist) >= dist) {
+                    if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
+                        _scriptSys.CritterShowDist1Event(cr, view_cr);
+                    }
                 }
-                else
-                {
-                    if (cr->DelCrFromVisSet1(view_cr->GetId()))
-                        scriptSys.CritterHideDist1Event(cr, view_cr);
+                else {
+                    if (cr->DelCrFromVisSet1(view_cr->GetId())) {
+                        _scriptSys.CritterHideDist1Event(cr, view_cr);
+                    }
                 }
             }
             cr_dist = cr->GetShowCritterDist2();
-            if (cr_dist)
-            {
-                if ((int)cr_dist >= dist)
-                {
-                    if (cr->AddCrIntoVisSet2(view_cr->GetId()))
-                        scriptSys.CritterShowDist2Event(cr, view_cr);
+            if (cr_dist != 0u) {
+                if (static_cast<int>(cr_dist) >= dist) {
+                    if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
+                        _scriptSys.CritterShowDist2Event(cr, view_cr);
+                    }
                 }
-                else
-                {
-                    if (cr->DelCrFromVisSet2(view_cr->GetId()))
-                        scriptSys.CritterHideDist2Event(cr, view_cr);
+                else {
+                    if (cr->DelCrFromVisSet2(view_cr->GetId())) {
+                        _scriptSys.CritterHideDist2Event(cr, view_cr);
+                    }
                 }
             }
             cr_dist = cr->GetShowCritterDist3();
-            if (cr_dist)
-            {
-                if ((int)cr_dist >= dist)
-                {
-                    if (cr->AddCrIntoVisSet3(view_cr->GetId()))
-                        scriptSys.CritterShowDist1Event(cr, view_cr);
+            if (cr_dist != 0u) {
+                if (static_cast<int>(cr_dist) >= dist) {
+                    if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
+                        _scriptSys.CritterShowDist1Event(cr, view_cr);
+                    }
                 }
-                else
-                {
-                    if (cr->DelCrFromVisSet3(view_cr->GetId()))
-                        scriptSys.CritterHideDist3Event(cr, view_cr);
+                else {
+                    if (cr->DelCrFromVisSet3(view_cr->GetId())) {
+                        _scriptSys.CritterHideDist3Event(cr, view_cr);
+                    }
                 }
             }
             continue;
         }
 
-        int look_self = look_base_self;
+        auto look_self = look_base_self;
         int look_opp = cr->GetLookDistance();
 
         // Dir modifier
-        if (FLAG(settings.LookChecks, LOOK_CHECK_DIR))
-        {
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_DIR)) {
             // Self
-            int real_dir = geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
-            int i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
-            if (i > dirs_count / 2)
+            auto real_dir = _geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+            auto i = dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self;
+            if (i > dirs_count / 2) {
                 i = dirs_count - i;
-            look_self -= look_self * settings.LookDir[i] / 100;
+            }
+            look_self -= look_self * _settings.LookDir[i] / 100;
             // Opponent
-            int dir_opp = cr->GetDir();
-            real_dir = ((real_dir + dirs_count / 2) % dirs_count);
-            i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
-            if (i > dirs_count / 2)
+            const int dir_opp = cr->GetDir();
+            real_dir = (real_dir + dirs_count / 2) % dirs_count;
+            i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
+            if (i > dirs_count / 2) {
                 i = dirs_count - i;
-            look_opp -= look_opp * settings.LookDir[i] / 100;
+            }
+            look_opp -= look_opp * _settings.LookDir[i] / 100;
         }
 
-        if (dist > look_self && dist > look_opp)
-            dist = MAX_INT;
+        if (dist > look_self && dist > look_opp) {
+            dist = std::numeric_limits<int>::max();
+        }
 
         // Trace
-        if (FLAG(settings.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
-        {
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<int>::max()) {
             TraceData trace;
             trace.TraceMap = map;
             trace.BeginHx = view_cr->GetHexX();
@@ -2067,175 +1949,160 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             trace.EndHx = cr->GetHexX();
             trace.EndHy = cr->GetHexY();
             TraceBullet(trace);
-            if (!trace.IsFullTrace)
-                dist = MAX_INT;
+            if (!trace.IsFullTrace) {
+                dist = std::numeric_limits<int>::max();
+            }
         }
 
         // Self
-        if (cr->GetIsHide() && dist != MAX_INT)
-        {
-            int sneak_opp = cr->GetSneakCoefficient();
-            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
-            {
-                int real_dir =
-                    geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
-                int i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
-                if (i > dirs_count / 2)
+        if (cr->GetIsHide() && dist != std::numeric_limits<int>::max()) {
+            auto sneak_opp = cr->GetSneakCoefficient();
+            if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
+                const auto real_dir = _geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+                auto i = dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self;
+                if (i > dirs_count / 2) {
                     i = dirs_count - i;
-                sneak_opp -= sneak_opp * settings.LookSneakDir[i] / 100;
+                }
+                sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;
             }
-            sneak_opp /= (int)settings.SneakDivider;
-            if (sneak_opp < 0)
+            sneak_opp /= static_cast<int>(_settings.SneakDivider);
+            if (sneak_opp < 0) {
                 sneak_opp = 0;
+            }
             vis = look_self - sneak_opp;
         }
-        else
-        {
+        else {
             vis = look_self;
         }
-        if (vis < (int)settings.LookMinimum)
-            vis = settings.LookMinimum;
+        if (vis < static_cast<int>(_settings.LookMinimum)) {
+            vis = _settings.LookMinimum;
+        }
 
-        if (vis >= dist)
-        {
-            if (cr->AddCrIntoVisVec(view_cr))
-            {
+        if (vis >= dist) {
+            if (cr->AddCrIntoVisVec(view_cr)) {
                 view_cr->Send_AddCritter(cr);
-                scriptSys.CritterShowEvent(view_cr, cr);
+                _scriptSys.CritterShowEvent(view_cr, cr);
             }
         }
-        else
-        {
-            if (cr->DelCrFromVisVec(view_cr))
-            {
+        else {
+            if (cr->DelCrFromVisVec(view_cr)) {
                 view_cr->Send_RemoveCritter(cr);
-                scriptSys.CritterHideEvent(view_cr, cr);
+                _scriptSys.CritterHideEvent(view_cr, cr);
             }
         }
 
-        if (show_cr1)
-        {
-            if ((int)show_cr_dist1 >= dist)
-            {
-                if (view_cr->AddCrIntoVisSet1(cr->GetId()))
-                    scriptSys.CritterShowDist1Event(view_cr, cr);
+        if (show_cr1) {
+            if (static_cast<int>(show_cr_dist1) >= dist) {
+                if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
+                    _scriptSys.CritterShowDist1Event(view_cr, cr);
+                }
             }
-            else
-            {
-                if (view_cr->DelCrFromVisSet1(cr->GetId()))
-                    scriptSys.CritterHideDist1Event(view_cr, cr);
-            }
-        }
-        if (show_cr2)
-        {
-            if ((int)show_cr_dist2 >= dist)
-            {
-                if (view_cr->AddCrIntoVisSet2(cr->GetId()))
-                    scriptSys.CritterShowDist2Event(view_cr, cr);
-            }
-            else
-            {
-                if (view_cr->DelCrFromVisSet2(cr->GetId()))
-                    scriptSys.CritterHideDist2Event(view_cr, cr);
+            else {
+                if (view_cr->DelCrFromVisSet1(cr->GetId())) {
+                    _scriptSys.CritterHideDist1Event(view_cr, cr);
+                }
             }
         }
-        if (show_cr3)
-        {
-            if ((int)show_cr_dist3 >= dist)
-            {
-                if (view_cr->AddCrIntoVisSet3(cr->GetId()))
-                    scriptSys.CritterShowDist3Event(view_cr, cr);
+        if (show_cr2) {
+            if (static_cast<int>(show_cr_dist2) >= dist) {
+                if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
+                    _scriptSys.CritterShowDist2Event(view_cr, cr);
+                }
             }
-            else
-            {
-                if (view_cr->DelCrFromVisSet3(cr->GetId()))
-                    scriptSys.CritterHideDist3Event(view_cr, cr);
+            else {
+                if (view_cr->DelCrFromVisSet2(cr->GetId())) {
+                    _scriptSys.CritterHideDist2Event(view_cr, cr);
+                }
+            }
+        }
+        if (show_cr3) {
+            if (static_cast<int>(show_cr_dist3) >= dist) {
+                if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
+                    _scriptSys.CritterShowDist3Event(view_cr, cr);
+                }
+            }
+            else {
+                if (view_cr->DelCrFromVisSet3(cr->GetId())) {
+                    _scriptSys.CritterHideDist3Event(view_cr, cr);
+                }
             }
         }
 
         // Opponent
-        if (view_cr->GetIsHide() && dist != MAX_INT)
-        {
-            int sneak_self = sneak_base_self;
-            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
-            {
-                int dir_opp = cr->GetDir();
-                int real_dir =
-                    geomHelper.GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
-                int i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
-                if (i > dirs_count / 2)
+        if (view_cr->GetIsHide() && dist != std::numeric_limits<int>::max()) {
+            auto sneak_self = sneak_base_self;
+            if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
+                const auto dir_opp = cr->GetDir();
+                const auto real_dir = _geomHelper.GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
+                auto i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
+                if (i > dirs_count / 2) {
                     i = dirs_count - i;
-                sneak_self -= sneak_self * settings.LookSneakDir[i] / 100;
+                }
+                sneak_self -= sneak_self * _settings.LookSneakDir[i] / 100;
             }
-            sneak_self /= (int)settings.SneakDivider;
-            if (sneak_self < 0)
+            sneak_self /= static_cast<int>(_settings.SneakDivider);
+            if (sneak_self < 0) {
                 sneak_self = 0;
+            }
             vis = look_opp - sneak_self;
         }
-        else
-        {
+        else {
             vis = look_opp;
         }
-        if (vis < (int)settings.LookMinimum)
-            vis = settings.LookMinimum;
+        if (vis < static_cast<int>(_settings.LookMinimum)) {
+            vis = _settings.LookMinimum;
+        }
 
-        if (vis >= dist)
-        {
-            if (view_cr->AddCrIntoVisVec(cr))
-            {
+        if (vis >= dist) {
+            if (view_cr->AddCrIntoVisVec(cr)) {
                 cr->Send_AddCritter(view_cr);
-                scriptSys.CritterShowEvent(cr, view_cr);
+                _scriptSys.CritterShowEvent(cr, view_cr);
             }
         }
-        else
-        {
-            if (view_cr->DelCrFromVisVec(cr))
-            {
+        else {
+            if (view_cr->DelCrFromVisVec(cr)) {
                 cr->Send_RemoveCritter(view_cr);
-                scriptSys.CritterHideEvent(cr, view_cr);
+                _scriptSys.CritterHideEvent(cr, view_cr);
             }
         }
 
-        uint cr_dist = cr->GetShowCritterDist1();
-        if (cr_dist)
-        {
-            if ((int)cr_dist >= dist)
-            {
-                if (cr->AddCrIntoVisSet1(view_cr->GetId()))
-                    scriptSys.CritterShowDist1Event(cr, view_cr);
+        auto cr_dist = cr->GetShowCritterDist1();
+        if (cr_dist != 0u) {
+            if (static_cast<int>(cr_dist) >= dist) {
+                if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
+                    _scriptSys.CritterShowDist1Event(cr, view_cr);
+                }
             }
-            else
-            {
-                if (cr->DelCrFromVisSet1(view_cr->GetId()))
-                    scriptSys.CritterHideDist1Event(cr, view_cr);
+            else {
+                if (cr->DelCrFromVisSet1(view_cr->GetId())) {
+                    _scriptSys.CritterHideDist1Event(cr, view_cr);
+                }
             }
         }
         cr_dist = cr->GetShowCritterDist2();
-        if (cr_dist)
-        {
-            if ((int)cr_dist >= dist)
-            {
-                if (cr->AddCrIntoVisSet2(view_cr->GetId()))
-                    scriptSys.CritterShowDist2Event(cr, view_cr);
+        if (cr_dist != 0u) {
+            if (static_cast<int>(cr_dist) >= dist) {
+                if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
+                    _scriptSys.CritterShowDist2Event(cr, view_cr);
+                }
             }
-            else
-            {
-                if (cr->DelCrFromVisSet2(view_cr->GetId()))
-                    scriptSys.CritterHideDist2Event(cr, view_cr);
+            else {
+                if (cr->DelCrFromVisSet2(view_cr->GetId())) {
+                    _scriptSys.CritterHideDist2Event(cr, view_cr);
+                }
             }
         }
         cr_dist = cr->GetShowCritterDist3();
-        if (cr_dist)
-        {
-            if ((int)cr_dist >= dist)
-            {
-                if (cr->AddCrIntoVisSet3(view_cr->GetId()))
-                    scriptSys.CritterShowDist3Event(cr, view_cr);
+        if (cr_dist != 0u) {
+            if (static_cast<int>(cr_dist) >= dist) {
+                if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
+                    _scriptSys.CritterShowDist3Event(cr, view_cr);
+                }
             }
-            else
-            {
-                if (cr->DelCrFromVisSet3(view_cr->GetId()))
-                    scriptSys.CritterHideDist3Event(cr, view_cr);
+            else {
+                if (cr->DelCrFromVisSet3(view_cr->GetId())) {
+                    _scriptSys.CritterHideDist3Event(cr, view_cr);
+                }
             }
         }
     }
@@ -2243,61 +2110,54 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
 void MapManager::ProcessVisibleItems(Critter* view_cr)
 {
-    if (view_cr->IsDestroyed)
-        return;
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
 
-    uint map_id = view_cr->GetMapId();
-    if (!map_id)
+    if (view_cr->IsDestroyed) {
         return;
+    }
 
-    Map* map = GetMap(map_id);
+    const auto map_id = view_cr->GetMapId();
+    if (map_id == 0u) {
+        return;
+    }
+
+    auto* map = GetMap(map_id);
     RUNTIME_ASSERT(map);
 
-    int look = view_cr->GetLookDistance();
-    for (Item* item : map->GetItems())
-    {
-        if (item->GetIsHidden())
-        {
+    const int look = view_cr->GetLookDistance();
+    for (auto* item : map->GetItems()) {
+        if (item->GetIsHidden()) {
             continue;
         }
-        else if (item->GetIsAlwaysView())
-        {
-            if (view_cr->AddIdVisItem(item->GetId()))
-            {
+        if (item->GetIsAlwaysView()) {
+            if (view_cr->AddIdVisItem(item->GetId())) {
                 view_cr->Send_AddItemOnMap(item);
-                scriptSys.CritterShowItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                _scriptSys.CritterShowItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
             }
         }
-        else
-        {
-            bool allowed = false;
-            if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
-            {
-                allowed = scriptSys.MapCheckTrapLookEvent(map, view_cr, item);
+        else {
+            bool allowed;
+            if (item->GetIsTrap() && IsBitSet(_settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
+                allowed = _scriptSys.MapCheckTrapLookEvent(map, view_cr, item);
             }
-            else
-            {
-                int dist =
-                    geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
-                if (item->GetIsTrap())
+            else {
+                int dist = _geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
+                }
                 allowed = look >= dist;
             }
 
-            if (allowed)
-            {
-                if (view_cr->AddIdVisItem(item->GetId()))
-                {
+            if (allowed) {
+                if (view_cr->AddIdVisItem(item->GetId())) {
                     view_cr->Send_AddItemOnMap(item);
-                    scriptSys.CritterShowItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    _scriptSys.CritterShowItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
-            else
-            {
-                if (view_cr->DelIdVisItem(item->GetId()))
-                {
+            else {
+                if (view_cr->DelIdVisItem(item->GetId())) {
                     view_cr->Send_EraseItemFromMap(item);
-                    scriptSys.CritterHideItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    _scriptSys.CritterHideItemOnMapEvent(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
         }
@@ -2306,45 +2166,47 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 
 void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir)
 {
-    if (view_cr->IsDestroyed)
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
+    if (view_cr->IsDestroyed) {
         return;
+    }
 
     view_cr->Send_GameInfo(map);
 
     // Critters
-    int dirs_count = settings.MapDirCount;
-    int vis;
-    for (Critter* cr : map->GetCritters())
-    {
-        if (cr == view_cr || cr->IsDestroyed)
-            continue;
-
-        if (FLAG(settings.LookChecks, LOOK_CHECK_SCRIPT))
-        {
-            if (scriptSys.MapCheckLookEvent(map, view_cr, cr))
-                view_cr->Send_AddCritter(cr);
+    const auto dirs_count = _settings.MapDirCount;
+    for (auto* cr : map->GetCritters()) {
+        if (cr == view_cr || cr->IsDestroyed) {
             continue;
         }
 
-        int dist = geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
-        int look_self = look;
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SCRIPT)) {
+            if (_scriptSys.MapCheckLookEvent(map, view_cr, cr)) {
+                view_cr->Send_AddCritter(cr);
+            }
+            continue;
+        }
+
+        const int dist = _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
+        auto look_self = look;
 
         // Dir modifier
-        if (FLAG(settings.LookChecks, LOOK_CHECK_DIR))
-        {
-            int real_dir = geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
-            int i = (dir > real_dir ? dir - real_dir : real_dir - dir);
-            if (i > dirs_count / 2)
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_DIR)) {
+            const auto real_dir = _geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+            auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
+            if (i > dirs_count / 2) {
                 i = dirs_count - i;
-            look_self -= look_self * settings.LookDir[i] / 100;
+            }
+            look_self -= look_self * _settings.LookDir[i] / 100;
         }
 
-        if (dist > look_self)
+        if (dist > look_self) {
             continue;
+        }
 
         // Trace
-        if (FLAG(settings.LookChecks, LOOK_CHECK_TRACE) && dist != MAX_INT)
-        {
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<int>::max()) {
             TraceData trace;
             trace.TraceMap = map;
             trace.BeginHx = hx;
@@ -2352,105 +2214,108 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
             trace.EndHx = cr->GetHexX();
             trace.EndHy = cr->GetHexY();
             TraceBullet(trace);
-            if (!trace.IsFullTrace)
+            if (!trace.IsFullTrace) {
                 continue;
+            }
         }
 
         // Hide modifier
-        if (cr->GetIsHide())
-        {
-            int sneak_opp = cr->GetSneakCoefficient();
-            if (FLAG(settings.LookChecks, LOOK_CHECK_SNEAK_DIR))
-            {
-                int real_dir = geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
-                int i = (dir > real_dir ? dir - real_dir : real_dir - dir);
-                if (i > dirs_count / 2)
+        int vis = 0;
+        if (cr->GetIsHide()) {
+            auto sneak_opp = cr->GetSneakCoefficient();
+            if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
+                const auto real_dir = _geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
+                auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
+                if (i > dirs_count / 2) {
                     i = dirs_count - i;
-                sneak_opp -= sneak_opp * settings.LookSneakDir[i] / 100;
+                }
+                sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;
             }
-            sneak_opp /= (int)settings.SneakDivider;
-            if (sneak_opp < 0)
+            sneak_opp /= static_cast<int>(_settings.SneakDivider);
+            if (sneak_opp < 0) {
                 sneak_opp = 0;
+            }
             vis = look_self - sneak_opp;
         }
-        else
-        {
+        else {
             vis = look_self;
         }
-        if (vis < (int)settings.LookMinimum)
-            vis = settings.LookMinimum;
-        if (vis >= dist)
+
+        if (vis < static_cast<int>(_settings.LookMinimum)) {
+            vis = _settings.LookMinimum;
+        }
+        if (vis >= dist) {
             view_cr->Send_AddCritter(cr);
+        }
     }
 
     // Items
-    for (Item* item : map->GetItems())
-    {
-        if (item->GetIsHidden())
-        {
+    for (auto* item : map->GetItems()) {
+        if (item->GetIsHidden()) {
             continue;
         }
-        else if (item->GetIsAlwaysView())
-        {
+        if (item->GetIsAlwaysView()) {
             view_cr->Send_AddItemOnMap(item);
         }
-        else
-        {
-            bool allowed = false;
-            if (item->GetIsTrap() && FLAG(settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT))
-            {
-                allowed = scriptSys.MapCheckTrapLookEvent(map, view_cr, item);
+        else {
+            bool allowed;
+            if (item->GetIsTrap() && IsBitSet(_settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
+                allowed = _scriptSys.MapCheckTrapLookEvent(map, view_cr, item);
             }
-            else
-            {
-                int dist = geomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
-                if (item->GetIsTrap())
+            else {
+                int dist = _geomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
+                if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
+                }
                 allowed = look >= dist;
             }
 
-            if (allowed)
+            if (allowed) {
                 view_cr->Send_AddItemOnMap(item);
+            }
         }
     }
 }
 
-bool MapManager::CheckKnownLocById(Critter* cr, uint loc_id)
+auto MapManager::CheckKnownLocById(Critter* cr, uint loc_id) const -> bool
 {
-    for (uint known_loc_id : cr->GetKnownLocations())
-        if (known_loc_id == loc_id)
+    for (auto known_loc_id : cr->GetKnownLocations()) {
+        if (known_loc_id == loc_id) {
             return true;
+        }
+    }
     return false;
 }
 
-bool MapManager::CheckKnownLocByPid(Critter* cr, hash loc_pid)
+auto MapManager::CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool
 {
-    for (uint known_loc_id : cr->GetKnownLocations())
-    {
-        Location* loc = GetLocation(known_loc_id);
-        if (loc && loc->GetProtoId() == loc_pid)
+    for (auto known_loc_id : cr->GetKnownLocations()) {
+        const auto* loc = const_cast<MapManager*>(this)->GetLocation(known_loc_id);
+        if (loc != nullptr && loc->GetProtoId() == loc_pid) {
             return true;
+        }
     }
     return false;
 }
 
 void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
 {
-    if (CheckKnownLocById(cr, loc_id))
-        return;
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
 
-    UIntVec known_locs = cr->GetKnownLocations();
+    if (CheckKnownLocById(cr, loc_id)) {
+        return;
+    }
+
+    auto known_locs = cr->GetKnownLocations();
     known_locs.push_back(loc_id);
     cr->SetKnownLocations(known_locs);
 }
 
 void MapManager::EraseKnownLoc(Critter* cr, uint loc_id)
 {
-    UIntVec known_locs = cr->GetKnownLocations();
-    for (size_t i = 0; i < known_locs.size(); i++)
-    {
-        if (known_locs[i] == loc_id)
-        {
+    auto known_locs = cr->GetKnownLocations();
+    for (size_t i = 0; i < known_locs.size(); i++) {
+        if (known_locs[i] == loc_id) {
             known_locs.erase(known_locs.begin() + i);
             cr->SetKnownLocations(known_locs);
             break;

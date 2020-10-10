@@ -131,8 +131,7 @@ FO_API_SERVER_EVENT(MapCritterOut, FO_API_ARG_OBJ(Map, map), FO_API_ARG_OBJ(Crit
  * @param critter ...
  * @param target ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    MapCheckLook, FO_API_ARG_OBJ(Map, map), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, target))
+FO_API_SERVER_EVENT(MapCheckLook, FO_API_ARG_OBJ(Map, map), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, target))
 
 /*******************************************************************************
  * ...
@@ -141,8 +140,7 @@ FO_API_SERVER_EVENT(
  * @param critter ...
  * @param item ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    MapCheckTrapLook, FO_API_ARG_OBJ(Map, map), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item))
+FO_API_SERVER_EVENT(MapCheckTrapLook, FO_API_ARG_OBJ(Map, map), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item))
 
 /*******************************************************************************
  * ...
@@ -180,8 +178,7 @@ FO_API_SERVER_EVENT(CritterGlobalMapIdle, FO_API_ARG_OBJ(Critter, critter))
  * @param item ...
  * @param toSlot ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    CritterCheckMoveItem, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, toSlot))
+FO_API_SERVER_EVENT(CritterCheckMoveItem, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, toSlot))
 
 /*******************************************************************************
  * ...
@@ -190,8 +187,7 @@ FO_API_SERVER_EVENT(
  * @param item ...
  * @param fromSlot ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    CritterMoveItem, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, fromSlot))
+FO_API_SERVER_EVENT(CritterMoveItem, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, fromSlot))
 
 /*******************************************************************************
  * ...
@@ -265,8 +261,7 @@ FO_API_SERVER_EVENT(CritterHideDist3, FO_API_ARG_OBJ(Critter, critter), FO_API_A
  * @param added ...
  * @param fromCritter ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterShowItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item),
-    FO_API_ARG(bool, added), FO_API_ARG_OBJ(Critter, fromCritter))
+FO_API_SERVER_EVENT(CritterShowItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(bool, added), FO_API_ARG_OBJ(Critter, fromCritter))
 
 /*******************************************************************************
  * ...
@@ -276,8 +271,7 @@ FO_API_SERVER_EVENT(CritterShowItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO_A
  * @param removed ...
  * @param toCritter ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterHideItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item),
-    FO_API_ARG(bool, removed), FO_API_ARG_OBJ(Critter, toCritter))
+FO_API_SERVER_EVENT(CritterHideItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(bool, removed), FO_API_ARG_OBJ(Critter, toCritter))
 
 /*******************************************************************************
  * ...
@@ -295,8 +289,7 @@ FO_API_SERVER_EVENT(CritterChangeItemOnMap, FO_API_ARG_OBJ(Critter, critter), FO
  * @param num ...
  * @param value ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterMessage, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, receiver),
-    FO_API_ARG(int, num), FO_API_ARG(int, value))
+FO_API_SERVER_EVENT(CritterMessage, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, receiver), FO_API_ARG(int, num), FO_API_ARG(int, value))
 
 /*******************************************************************************
  * ...
@@ -306,8 +299,7 @@ FO_API_SERVER_EVENT(CritterMessage, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG
  * @param begin ...
  * @param talkers ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterTalk, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, who),
-    FO_API_ARG(bool, begin), FO_API_ARG(uint, talkers))
+FO_API_SERVER_EVENT(CritterTalk, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Critter, who), FO_API_ARG(bool, begin), FO_API_ARG(uint, talkers))
 
 /*******************************************************************************
  * ...
@@ -317,8 +309,7 @@ FO_API_SERVER_EVENT(CritterTalk, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OB
  * @param begin ...
  * @param barterCount ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterBarter, FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Critter, trader),
-    FO_API_ARG(bool, begin), FO_API_ARG(uint, barterCount))
+FO_API_SERVER_EVENT(CritterBarter, FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Critter, trader), FO_API_ARG(bool, begin), FO_API_ARG(uint, barterCount))
 
 /*******************************************************************************
  * ...
@@ -328,8 +319,7 @@ FO_API_SERVER_EVENT(CritterBarter, FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(C
  * @param itemMode ...
  * @param dist ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item),
-    FO_API_ARG(uchar, itemMode), FO_API_ARG_REF(uint, dist))
+FO_API_SERVER_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, itemMode), FO_API_ARG_REF(uint, dist))
 
 #ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
@@ -341,8 +331,7 @@ FO_API_SERVER_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(Critter, critter)
  * @param disallowStrNum ...
  * @param disallowLex ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(PlayerRegistration, FO_API_ARG(uint, ip), FO_API_ARG(string, name),
-    FO_API_ARG_REF(uint, disallowMsgNum), FO_API_ARG_REF(uint, disallowStrNum), FO_API_ARG_REF(string, disallowLex))
+FO_API_SERVER_EVENT(PlayerRegistration, FO_API_ARG(uint, ip), FO_API_ARG(string, name), FO_API_ARG_REF(uint, disallowMsgNum), FO_API_ARG_REF(uint, disallowStrNum), FO_API_ARG_REF(string, disallowLex))
 #endif
 
 #ifdef FO_API_MULTIPLAYER_ONLY
@@ -356,8 +345,7 @@ FO_API_SERVER_EVENT(PlayerRegistration, FO_API_ARG(uint, ip), FO_API_ARG(string,
  * @param disallowStrNum ...
  * @param disallowLex ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(PlayerLogin, FO_API_ARG(uint, ip), FO_API_ARG(string, name), FO_API_ARG(uint, id),
-    FO_API_ARG_REF(uint, disallowMsgNum), FO_API_ARG_REF(uint, disallowStrNum), FO_API_ARG_REF(string, disallowLex))
+FO_API_SERVER_EVENT(PlayerLogin, FO_API_ARG(uint, ip), FO_API_ARG(string, name), FO_API_ARG(uint, id), FO_API_ARG_REF(uint, disallowMsgNum), FO_API_ARG_REF(uint, disallowStrNum), FO_API_ARG_REF(string, disallowLex))
 #endif
 
 /*******************************************************************************
@@ -367,8 +355,7 @@ FO_API_SERVER_EVENT(PlayerLogin, FO_API_ARG(uint, ip), FO_API_ARG(string, name),
  * @param arg1 ...
  * @param arg2 ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    PlayerGetAccess, FO_API_ARG_OBJ(Critter, player), FO_API_ARG(int, arg1), FO_API_ARG_REF(string, arg2))
+FO_API_SERVER_EVENT(PlayerGetAccess, FO_API_ARG_OBJ(Critter, player), FO_API_ARG(int, arg1), FO_API_ARG_REF(string, arg2))
 
 /*******************************************************************************
  * ...
@@ -377,8 +364,7 @@ FO_API_SERVER_EVENT(
  * @param arg1 ...
  * @param arg2 ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(
-    PlayerAllowCommand, FO_API_ARG_OBJ(Critter, player), FO_API_ARG(string, arg1), FO_API_ARG(uchar, arg2))
+FO_API_SERVER_EVENT(PlayerAllowCommand, FO_API_ARG_OBJ(Critter, player), FO_API_ARG(string, arg1), FO_API_ARG(uchar, arg2))
 
 #ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
@@ -412,8 +398,7 @@ FO_API_SERVER_EVENT(ItemFinish, FO_API_ARG_OBJ(Item, item))
  * @param isIn ...
  * @param dir ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(ItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG(bool, isIn),
-    FO_API_ARG(uchar, dir))
+FO_API_SERVER_EVENT(ItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG(bool, isIn), FO_API_ARG(uchar, dir))
 
 /*******************************************************************************
  * ...
@@ -423,8 +408,7 @@ FO_API_SERVER_EVENT(ItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter
  * @param from ...
  * @param to ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(ItemCheckMove, FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Entity, from),
-    FO_API_ARG_OBJ(Entity, to))
+FO_API_SERVER_EVENT(ItemCheckMove, FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Entity, from), FO_API_ARG_OBJ(Entity, to))
 
 /*******************************************************************************
  * ...
@@ -434,8 +418,7 @@ FO_API_SERVER_EVENT(ItemCheckMove, FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, 
  * @param isIn ...
  * @param dir ...
  ******************************************************************************/
-FO_API_SERVER_EVENT(StaticItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter, critter),
-    FO_API_ARG(bool, isIn), FO_API_ARG(uchar, dir))
+FO_API_SERVER_EVENT(StaticItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG(bool, isIn), FO_API_ARG(uchar, dir))
 
 #ifdef FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
@@ -634,8 +617,7 @@ FO_API_CLIENT_EVENT(ReceiveItems, FO_API_ARG_OBJ_ARR(ItemView, items), FO_API_AR
  * @param color ...
  * @param delay ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(MapMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(ushort, hexX),
-    FO_API_ARG_REF(ushort, hexY), FO_API_ARG_REF(uint, color), FO_API_ARG_REF(uint, delay))
+FO_API_CLIENT_EVENT(MapMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(ushort, hexX), FO_API_ARG_REF(ushort, hexY), FO_API_ARG_REF(uint, color), FO_API_ARG_REF(uint, delay))
 
 /*******************************************************************************
  * ...
@@ -645,8 +627,7 @@ FO_API_CLIENT_EVENT(MapMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(ush
  * @param critterId ...
  * @param delay ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(InMessage, FO_API_ARG(string, text), FO_API_ARG_REF(int, sayType), FO_API_ARG_REF(uint, critterId),
-    FO_API_ARG_REF(uint, delay))
+FO_API_CLIENT_EVENT(InMessage, FO_API_ARG(string, text), FO_API_ARG_REF(int, sayType), FO_API_ARG_REF(uint, critterId), FO_API_ARG_REF(uint, delay))
 
 /*******************************************************************************
  * ...
@@ -663,8 +644,7 @@ FO_API_CLIENT_EVENT(OutMessage, FO_API_ARG_REF(string, text), FO_API_ARG_REF(int
  * @param type ...
  * @param scriptCall ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(
-    MessageBox, FO_API_ARG(string, text), FO_API_ARG_ENUM(MessageBoxTextType, type), FO_API_ARG(bool, scriptCall))
+FO_API_CLIENT_EVENT(MessageBox, FO_API_ARG(string, text), FO_API_ARG_ENUM(MessageBoxTextType, type), FO_API_ARG(bool, scriptCall))
 
 /*******************************************************************************
  * ...
@@ -681,8 +661,7 @@ FO_API_CLIENT_EVENT(CombatResult, FO_API_ARG_ARR(uint, result))
  * @param from ...
  * @param to ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(ItemCheckMove, FO_API_ARG_OBJ(ItemView, item), FO_API_ARG(uint, count),
-    FO_API_ARG_OBJ(Entity, from), FO_API_ARG_OBJ(Entity, to))
+FO_API_CLIENT_EVENT(ItemCheckMove, FO_API_ARG_OBJ(ItemView, item), FO_API_ARG(uint, count), FO_API_ARG_OBJ(Entity, from), FO_API_ARG_OBJ(Entity, to))
 
 /*******************************************************************************
  * ...
@@ -693,8 +672,7 @@ FO_API_CLIENT_EVENT(ItemCheckMove, FO_API_ARG_OBJ(ItemView, item), FO_API_ARG(ui
  * @param actionExt ...
  * @param actionItem ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterAction, FO_API_ARG(bool, localCall), FO_API_ARG_OBJ(CritterView, critter),
-    FO_API_ARG(int, action), FO_API_ARG(int, actionExt), FO_API_ARG_OBJ(ItemView, actionItem))
+FO_API_CLIENT_EVENT(CritterAction, FO_API_ARG(bool, localCall), FO_API_ARG_OBJ(CritterView, critter), FO_API_ARG(int, action), FO_API_ARG(int, actionExt), FO_API_ARG_OBJ(ItemView, actionItem))
 
 /*******************************************************************************
  * ...
@@ -705,8 +683,7 @@ FO_API_CLIENT_EVENT(CritterAction, FO_API_ARG(bool, localCall), FO_API_ARG_OBJ(C
  * @param arg4 ...
  * @param arg5 ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(Animation2dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(CritterView, arg2),
-    FO_API_ARG(uint, arg3), FO_API_ARG(uint, arg4), FO_API_ARG_OBJ(ItemView, arg5))
+FO_API_CLIENT_EVENT(Animation2dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(CritterView, arg2), FO_API_ARG(uint, arg3), FO_API_ARG(uint, arg4), FO_API_ARG_OBJ(ItemView, arg5))
 
 /*******************************************************************************
  * ...
@@ -717,8 +694,7 @@ FO_API_CLIENT_EVENT(Animation2dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(C
  * @param arg4 ...
  * @param arg5 ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(Animation3dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(CritterView, arg2),
-    FO_API_ARG(uint, arg3), FO_API_ARG(uint, arg4), FO_API_ARG_OBJ(ItemView, arg5))
+FO_API_CLIENT_EVENT(Animation3dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(CritterView, arg2), FO_API_ARG(uint, arg3), FO_API_ARG(uint, arg4), FO_API_ARG_OBJ(ItemView, arg5))
 
 /*******************************************************************************
  * ...
@@ -732,9 +708,7 @@ FO_API_CLIENT_EVENT(Animation3dProcess, FO_API_ARG(bool, arg1), FO_API_ARG_OBJ(C
  * @param arg7 ...
  * @param arg8 ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterAnimation, FO_API_ARG(hash, arg1), FO_API_ARG(uint, arg2), FO_API_ARG(uint, arg3),
-    FO_API_ARG_REF(uint, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(int, arg6), FO_API_ARG_REF(int, arg7),
-    FO_API_ARG_REF(string, arg8))
+FO_API_CLIENT_EVENT(CritterAnimation, FO_API_ARG(hash, arg1), FO_API_ARG(uint, arg2), FO_API_ARG(uint, arg3), FO_API_ARG_REF(uint, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(int, arg6), FO_API_ARG_REF(int, arg7), FO_API_ARG_REF(string, arg8))
 
 /*******************************************************************************
  * ...
@@ -746,8 +720,7 @@ FO_API_CLIENT_EVENT(CritterAnimation, FO_API_ARG(hash, arg1), FO_API_ARG(uint, a
  * @param arg5 ...
  * @param arg6 ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterAnimationSubstitute, FO_API_ARG(hash, arg1), FO_API_ARG(uint, arg2), FO_API_ARG(uint, arg3),
-    FO_API_ARG_REF(hash, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(uint, arg6))
+FO_API_CLIENT_EVENT(CritterAnimationSubstitute, FO_API_ARG(hash, arg1), FO_API_ARG(uint, arg2), FO_API_ARG(uint, arg3), FO_API_ARG_REF(hash, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(uint, arg6))
 
 /*******************************************************************************
  * ...
@@ -759,8 +732,7 @@ FO_API_CLIENT_EVENT(CritterAnimationSubstitute, FO_API_ARG(hash, arg1), FO_API_A
  * @param arg5 ...
  * @param arg6 ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterAnimationFallout, FO_API_ARG(hash, arg1), FO_API_ARG_REF(uint, arg2),
-    FO_API_ARG_REF(uint, arg3), FO_API_ARG_REF(uint, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(uint, arg6))
+FO_API_CLIENT_EVENT(CritterAnimationFallout, FO_API_ARG(hash, arg1), FO_API_ARG_REF(uint, arg2), FO_API_ARG_REF(uint, arg3), FO_API_ARG_REF(uint, arg4), FO_API_ARG_REF(uint, arg5), FO_API_ARG_REF(uint, arg6))
 
 /*******************************************************************************
  * ...
@@ -769,8 +741,7 @@ FO_API_CLIENT_EVENT(CritterAnimationFallout, FO_API_ARG(hash, arg1), FO_API_ARG_
  * @param item ...
  * @param toSlot ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterCheckMoveItem, FO_API_ARG_OBJ(CritterView, critter), FO_API_ARG_OBJ(ItemView, item),
-    FO_API_ARG(uchar, toSlot))
+FO_API_CLIENT_EVENT(CritterCheckMoveItem, FO_API_ARG_OBJ(CritterView, critter), FO_API_ARG_OBJ(ItemView, item), FO_API_ARG(uchar, toSlot))
 
 /*******************************************************************************
  * ...
@@ -780,8 +751,7 @@ FO_API_CLIENT_EVENT(CritterCheckMoveItem, FO_API_ARG_OBJ(CritterView, critter), 
  * @param itemMode ...
  * @param dist ...
  ******************************************************************************/
-FO_API_CLIENT_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(CritterView, critter), FO_API_ARG_OBJ(ItemView, item),
-    FO_API_ARG(uchar, itemMode), FO_API_ARG_REF(uint, dist))
+FO_API_CLIENT_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(CritterView, critter), FO_API_ARG_OBJ(ItemView, item), FO_API_ARG(uchar, itemMode), FO_API_ARG_REF(uint, dist))
 
 /*******************************************************************************
  * ...

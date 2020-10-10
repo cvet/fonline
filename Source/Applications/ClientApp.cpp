@@ -37,15 +37,26 @@
 #include "Client.h"
 #include "Keyboard.h"
 #include "Log.h"
+#include "MessageBox.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 #ifdef FO_SINGLEPLAYER
 #include "Server.h"
 #endif
 
 #include "SDL_main.h"
+
+struct ClientAppData
+{
+    GlobalSettings* Settings {};
+    FOClient* Client {};
+#ifdef FO_SINGLEPLAYER
+    FOServer* Server {};
+#endif
+};
+GLOBAL_DATA(ClientAppData, Data);
 
 #ifdef FO_SINGLEPLAYER
 NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback)
@@ -67,129 +78,124 @@ void ClientScriptSystem::InitMonoScripting()
 }
 #endif
 
-static GlobalSettings Settings;
-
 static void ClientEntry(void*)
 {
-    static FOClient* client;
-#ifdef FO_SINGLEPLAYER
-    static FOServer* server;
-#endif
-    if (!client)
-    {
+    try {
+        if (Data->Client == nullptr) {
 #ifdef FO_WEB
-        // Wait file system synchronization
-        if (EM_ASM_INT(return Module.syncfsDone) != 1)
-            return;
+            // Wait file system synchronization
+            if (EM_ASM_INT(return Module.syncfsDone) != 1)
+                return;
 #endif
 
-        BEGIN_ROOT_EXCEPTION_BLOCK();
+            try {
 #ifdef FO_SINGLEPLAYER
-        server = new FOServer(Settings);
+                Data->Server = new FOServer(*Data->Settings);
 #endif
-        client = new FOClient(Settings);
+                Data->Client = new FOClient(*Data->Settings);
 #ifdef FO_SINGLEPLAYER
-        server->ConnectClient(client);
+                Data->Server->ConnectClient(Data->Client);
 #endif
-        CATCH_EXCEPTION(GenericException);
-        WriteLog("Something going wrong...");
-        exit(1);
-        END_ROOT_EXCEPTION_BLOCK();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+
+        try {
+            App->BeginFrame();
+#ifdef FO_SINGLEPLAYER
+            Data->Server->MainLoop();
+#endif
+            Data->Client->MainLoop();
+            App->EndFrame();
+        }
+        catch (const GenericException& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
     }
-
-    BEGIN_ROOT_EXCEPTION_BLOCK();
-    App::BeginFrame();
-#ifdef FO_SINGLEPLAYER
-    server->MainLoop();
-#endif
-    client->MainLoop();
-    App::EndFrame();
-    CATCH_EXCEPTION(GenericException);
-    WriteLog("Something going wrong...");
-    exit(1);
-    END_ROOT_EXCEPTION_BLOCK();
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }
 
 #ifndef FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnline", FO_VERSION);
-    LogToFile("FOnline.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnline", FO_VERSION);
+        LogToFile("FOnline.log");
 
-    // Hard restart, need wait before lock event dissapeared
+        WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
+
+        Data->Settings = new GlobalSettings(argc, argv);
+        InitApplication(*Data->Settings);
+
+        // Hard restart, need wait before lock event dissapeared
 #ifdef FO_WINDOWS
-    if (wcsstr(::GetCommandLineW(), L"--restart"))
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        if (::wcsstr(GetCommandLineW(), L"--restart") != nullptr) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
 #endif
 
-    // Start message
-    WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
-
-    // Init graphic
-    App::Init(Settings);
-
-    // Loop
 #if defined(FO_IOS)
-    ClientEntry(nullptr);
-    SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, ClientEntry, nullptr);
-    return 0;
+        ClientEntry(nullptr);
+        SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, ClientEntry, nullptr);
+        return 0;
 
 #elif defined(FO_WEB)
-    EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
-        true, function(err) {
-            assert(!err);
-            Module.syncfsDone = 1;
-        }););
-    emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
+        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
+            true, function(err) {
+                assert(!err);
+                Module.syncfsDone = 1;
+            }););
+        emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
 
 #elif defined(FO_ANDROID)
-    while (!Settings.Quit)
-        ClientEntry(nullptr);
+        while (!Settings->Quit) {
+            ClientEntry(nullptr);
+        }
 
 #else
-    while (!Settings.Quit)
-    {
-        double start_loop = Timer::RealtimeTick();
+        while (!Data->Settings->Quit) {
+            const auto start_loop = Timer::RealtimeTick();
 
-        ClientEntry(nullptr);
+            ClientEntry(nullptr);
 
-        if (!Settings.VSync && Settings.FixedFPS)
-        {
-            if (Settings.FixedFPS > 0)
-            {
-                static double balance = 0.0;
-                double elapsed = Timer::RealtimeTick() - start_loop;
-                double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
-                if (need_elapsed > elapsed)
-                {
-                    double sleep = need_elapsed - elapsed + balance;
-                    balance = fmod(sleep, 1.0);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+            if (!Data->Settings->VSync && Data->Settings->FixedFPS != 0) {
+                if (Data->Settings->FixedFPS > 0) {
+                    static auto balance = 0.0;
+                    const auto elapsed = Timer::RealtimeTick() - start_loop;
+                    const auto need_elapsed = 1000.0 / static_cast<double>(Data->Settings->FixedFPS);
+                    if (need_elapsed > elapsed) {
+                        const auto sleep = need_elapsed - elapsed + balance;
+                        balance = fmod(sleep, 1.0);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+                    }
+                }
+                else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(-Data->Settings->FixedFPS));
                 }
             }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
-            }
         }
-    }
 #endif
 
-    // Finish script
-    // Todo: fix script system
-    /*if (Script::GetEngine())
-    {
-        Script::RunMandatorySuspended();
-        Script::RaiseInternalEvent(ClientFunctions.Finish);
-    }*/
+        WriteLog("Exit from game.\n");
 
-    // Just kill process
-    // System automatically clean up all resources
-    WriteLog("Exit from game.\n");
-
-    return 0;
+#ifdef FO_SINGLEPLAYER
+        delete Data->Server;
+#endif
+        delete Data->Client;
+        return 0;
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

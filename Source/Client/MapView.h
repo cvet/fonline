@@ -44,10 +44,10 @@ class MapView;
 using MapViewVec = vector<MapView*>;
 using MapViewMap = map<uint, MapView*>;
 
-class MapView : public Entity
+class MapView final : public Entity
 {
 public:
-    MapView(uint id, ProtoMap* proto);
+    MapView(uint id, const ProtoMap* proto);
 
 #define FO_API_MAP_VIEW_CLASS
 #include "ScriptApi.h"

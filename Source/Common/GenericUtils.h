@@ -35,44 +35,59 @@
 
 #include "Common.h"
 
-class Hashing : public StaticClass
+class Math final
 {
 public:
-    static hash MurmurHash2(const uchar* data, uint len);
-    static uint64 MurmurHash2_64(const uchar* data, uint len);
+    Math() = delete;
+
+    [[nodiscard]] static auto FloatCompare(float f1, float f2) -> bool;
+};
+
+class Hashing final
+{
+public:
+    Hashing() = delete;
+
+    [[nodiscard]] static auto MurmurHash2(const uchar* data, uint len) -> hash;
+    [[nodiscard]] static auto MurmurHash2_64(const uchar* data, uint len) -> uint64;
     static void XOR(uchar* data, uint len, const uchar* xor_key, uint xor_len);
-    static string ClientPassHash(const string& name, const string& pass);
+    static auto ClientPassHash(const string& name, const string& pass) -> string;
 };
 
-class Compressor : public StaticClass
+class Compressor final
 {
 public:
-    static uchar* Compress(const uchar* data, uint& data_len);
-    static bool Compress(UCharVec& data);
-    static uchar* Uncompress(const uchar* data, uint& data_len, uint mul_approx);
-    static bool Uncompress(UCharVec& data, uint mul_approx);
+    Compressor() = delete;
+
+    static auto Compress(const uchar* data, uint& data_len) -> uchar*;
+    static auto Compress(UCharVec& data) -> bool;
+    static auto Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*;
+    static auto Uncompress(UCharVec& data, uint mul_approx) -> bool;
 };
 
-class GenericUtils : public StaticClass
+class GenericUtils final
 {
 public:
-    static int Random(int minimum, int maximum);
-    static int Procent(int full, int peace);
-    static uint NumericalNumber(uint num);
-    static bool IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2);
-    static int ConvertParamValue(const string& str, bool& fail);
-    static uint GetColorDay(int* day_time, uchar* colors, int game_time, int* light);
-    static uint DistSqrt(int x1, int y1, int x2, int y2);
+    GenericUtils() = delete;
+
+    [[nodiscard]] static auto Random(int minimum, int maximum) -> int;
+    [[nodiscard]] static auto Random(uint minimum, uint maximum) -> uint;
+    [[nodiscard]] static auto Percent(int full, int peace) -> int;
+    [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
+    [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
+    [[nodiscard]] static auto ConvertParamValue(const string& str, bool& fail) -> int;
+    [[nodiscard]] static auto GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint;
+    [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
     static void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
     static void ChangeStepsXY(float& sx, float& sy, float deq);
 };
 
-class MatrixHelper : public StaticClass
+class MatrixHelper final
 {
 public:
+    MatrixHelper() = delete;
+
     static void MatrixOrtho(float* matrix, float left, float right, float bottom, float top, float nearp, float farp);
-    static bool MatrixProject(float objx, float objy, float objz, const float model_matrix[16],
-        const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz);
-    static bool MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16],
-        const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz);
+    static auto MatrixProject(float objx, float objy, float objz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* winx, float* winy, float* winz) -> bool;
+    static auto MatrixUnproject(float winx, float winy, float winz, const float model_matrix[16], const float proj_matrix[16], const int viewport[4], float* objx, float* objy, float* objz) -> bool;
 };

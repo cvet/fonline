@@ -33,15 +33,13 @@
 
 #include "CacheStorage.h"
 #include "DiskFileSystem.h"
-#include "FileSystem.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-#ifndef FO_WEB
+#if 0
 #include "unqlite.h"
 #endif
 
-#ifndef FO_WEB
+#if 0
 struct CacheStorage::Impl
 {
     unqlite* Db {};
@@ -49,211 +47,196 @@ struct CacheStorage::Impl
 
 CacheStorage::CacheStorage(const string& real_path)
 {
-    workPath = real_path;
-    DiskFileSystem::ResolvePath(workPath);
-    DiskFileSystem::MakeDirTree(workPath);
+    _workPath = real_path;
+
+    DiskFileSystem::ResolvePath(_workPath);
+    DiskFileSystem::MakeDirTree(_workPath);
 
     unqlite* db = nullptr;
-    if (unqlite_open(&db, workPath.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK)
-        throw CacheStorageException("Can't open unqlite db", workPath);
+    if (unqlite_open(&db, _workPath.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING) != UNQLITE_OK) {
+        throw CacheStorageException("Can't open unqlite db", _workPath);
+    }
 
-    pImpl = std::make_unique<Impl>();
-    pImpl->Db = db;
+    _pImpl = std::make_unique<Impl>();
+    _pImpl->Db = db;
 
     uint ping = 42;
-    if (unqlite_kv_store(pImpl->Db, &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK)
-        throw CacheStorageException("Can't store ping unqlite db", workPath);
+    if (unqlite_kv_store(_pImpl->Db, &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
+        throw CacheStorageException("Can't store ping unqlite db", _workPath);
+    }
 
-    if (unqlite_commit(pImpl->Db) != UNQLITE_OK)
-        throw CacheStorageException("Can't commit ping unqlite db", workPath);
+    if (unqlite_commit(_pImpl->Db) != UNQLITE_OK) {
+        throw CacheStorageException("Can't commit ping unqlite db", _workPath);
+    }
 }
 
 CacheStorage::~CacheStorage()
 {
-    if (pImpl)
-        unqlite_close(pImpl->Db);
+    if (_pImpl) {
+        unqlite_close(_pImpl->Db);
+    }
 }
 
-CacheStorage::CacheStorage(CacheStorage&&)
-{
-}
+CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
 
-bool CacheStorage::IsCache(const string& data_name)
+auto CacheStorage::HasEntry(const string& data_name) const -> bool
 {
-    int r = unqlite_kv_fetch_callback(
-        pImpl->Db, data_name.c_str(), (int)data_name.length(),
-        [](const void*, unsigned int, void*) { return UNQLITE_OK; }, nullptr);
-    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND)
+    const auto r = unqlite_kv_fetch_callback(
+        _pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), [](const void* , unsigned int , void* ) { return UNQLITE_OK; }, nullptr);
+    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         throw CacheStorageException("Can't fetch cache entry", data_name);
+    }
 
     return r == UNQLITE_OK;
 }
 
-void CacheStorage::EraseCache(const string& data_name)
+void CacheStorage::EraseEntry(const string& data_name)
 {
-    int r = unqlite_kv_delete(pImpl->Db, data_name.c_str(), (int)data_name.length());
-    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND)
-        throw CacheStorageException("Can't delete cache entry", data_name);
+    NON_CONST_METHOD_HINT(_workPath);
 
-    if (r == UNQLITE_OK)
-    {
-        r = unqlite_commit(pImpl->Db);
-        if (r != UNQLITE_OK)
+    auto r = unqlite_kv_delete(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()));
+    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
+        throw CacheStorageException("Can't delete cache entry", data_name);
+    }
+
+    if (r == UNQLITE_OK) {
+        r = unqlite_commit(_pImpl->Db);
+        if (r != UNQLITE_OK) {
             throw CacheStorageException("Can't commit deleted cache entry", data_name);
+        }
     }
 }
 
-void CacheStorage::SetCache(const string& data_name, const uchar* data, uint data_len)
+void CacheStorage::SetRawData(const string& data_name, const uchar* data, uint data_len)
 {
-    int r = unqlite_kv_store(pImpl->Db, data_name.c_str(), (int)data_name.length(), data, data_len);
-    if (r != UNQLITE_OK)
+    NON_CONST_METHOD_HINT(_workPath);
+
+    auto r = unqlite_kv_store(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), data, data_len);
+    if (r != UNQLITE_OK) {
         throw CacheStorageException("Can't store cache entry", data_name);
+    }
 
-    r = unqlite_commit(pImpl->Db);
-    if (r != UNQLITE_OK)
+    r = unqlite_commit(_pImpl->Db);
+    if (r != UNQLITE_OK) {
         throw CacheStorageException("Can't commit stored cache entry", data_name);
+    }
 }
 
-void CacheStorage::SetCache(const string& data_name, const string& str)
+void CacheStorage::SetRawData(const string& data_name, const string& str)
 {
-    SetCache(data_name, !str.empty() ? (uchar*)str.c_str() : (uchar*)"", (uint)str.length());
+    SetRawData(data_name, !str.empty() ? reinterpret_cast<const uchar*>(str.c_str()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
 }
 
-void CacheStorage::SetCache(const string& data_name, UCharVec& data)
+void CacheStorage::SetRawData(const string& data_name, const UCharVec& data)
 {
-    SetCache(data_name, !data.empty() ? (uchar*)&data[0] : (uchar*)"", (uint)data.size());
+    SetRawData(data_name, !data.empty() ? &data[0] : reinterpret_cast<const uchar*>(""), static_cast<uint>(data.size()));
 }
 
-uchar* CacheStorage::GetCache(const string& data_name, uint& data_len)
+auto CacheStorage::GetData(const string& data_name, uint& data_len) const -> uchar*
 {
-    unqlite_int64 size;
-    int r = unqlite_kv_fetch(pImpl->Db, data_name.c_str(), (int)data_name.length(), nullptr, &size);
-    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND)
+    unqlite_int64 size = 0;
+    auto r = unqlite_kv_fetch(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), nullptr, &size);
+    if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
         throw CacheStorageException("Can't fetch cache entry", data_name);
-
-    if (r == UNQLITE_NOTFOUND)
+    }
+    if (r == UNQLITE_NOTFOUND) {
         return nullptr;
+    }
 
-    uchar* data = new uchar[(uint)size];
-    r = unqlite_kv_fetch(pImpl->Db, data_name.c_str(), (int)data_name.length(), data, &size);
-    if (r != UNQLITE_OK)
+    auto* data = new uchar[static_cast<size_t>(size)];
+    r = unqlite_kv_fetch(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), data, &size);
+    if (r != UNQLITE_OK) {
         throw CacheStorageException("Can't fetch cache entry", data_name);
+    }
 
-    data_len = (uint)size;
+    data_len = static_cast<uint>(size);
     return data;
 }
 
-string CacheStorage::GetCache(const string& data_name)
+auto CacheStorage::GetData(const string& data_name) const -> string
 {
-    uint result_len;
-    uchar* result = GetCache(data_name, result_len);
-    if (!result)
+    uint result_len = 0;
+    auto* result = GetData(data_name, result_len);
+    if (result == nullptr) {
         return "";
+    }
 
     string str;
-    if (result_len)
-    {
+    if (result_len != 0u) {
         str.resize(result_len);
-        memcpy(&str[0], result, result_len);
+        std::memcpy(&str[0], result, result_len);
     }
+
     delete[] result;
     return str;
 }
 
-bool CacheStorage::GetCache(const string& data_name, UCharVec& data)
+auto CacheStorage::GetData(const string& data_name, UCharVec& data) const -> bool
 {
     data.clear();
-    uint result_len;
-    uchar* result = GetCache(data_name, result_len);
-    if (!result)
+
+    uint result_len = 0;
+    const auto* result = GetData(data_name, result_len);
+    if (result == nullptr) {
         return false;
+    }
 
     data.resize(result_len);
-    if (result_len)
-        memcpy(&data[0], result, result_len);
+    if (result_len != 0u) {
+        std::memcpy(&data[0], result, result_len);
+    }
+
     delete[] result;
     return true;
 }
+#endif
 
-#else
 struct CacheStorage::Impl
 {
 };
 
-static string MakeCacheEntryPath(const string& work_path, const string& data_name)
+static auto MakeCacheEntryPath(const string& work_path, const string& data_name) -> string
 {
     return _str("{}{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 CacheStorage::CacheStorage(const string& real_path)
 {
-    workPath = _str(real_path).eraseFileExtension() + "/";
-    DiskFileSystem::ResolvePath(workPath);
-    DiskFileSystem::MakeDirTree(workPath);
+    _workPath = _str(real_path).eraseFileExtension() + "/";
 
-    DiskFile file = DiskFileSystem::OpenFile(workPath + "Ping.txt", true);
-    if (!file)
-        throw CacheStorageException("Can't init ping file", workPath);
+    DiskFileSystem::ResolvePath(_workPath);
+    DiskFileSystem::MakeDirTree(_workPath);
 
-    if (!file.Write("Ping", 4))
-        throw CacheStorageException("Can't write ping file", workPath);
-}
+    auto file = DiskFileSystem::OpenFile(_workPath + "Ping.txt", true);
+    if (!file) {
+        throw CacheStorageException("Can't init ping file", _workPath);
+    }
 
-CacheStorage::~CacheStorage()
-{
-}
-
-CacheStorage::CacheStorage(CacheStorage&&)
-{
-}
-
-bool CacheStorage::IsCache(const string& data_name)
-{
-    string path = MakeCacheEntryPath(workPath, data_name);
-    return !!DiskFileSystem::OpenFile(path, false);
-}
-
-void CacheStorage::EraseCache(const string& data_name)
-{
-    string path = MakeCacheEntryPath(workPath, data_name);
-    DiskFileSystem::DeleteFile(path);
-}
-
-void CacheStorage::SetCache(const string& data_name, const uchar* data, uint data_len)
-{
-    string path = MakeCacheEntryPath(workPath, data_name);
-    DiskFile file = DiskFileSystem::OpenFile(path, true);
-    if (!file)
-        throw CacheStorageException("Can't write cache", path);
-
-    if (!file.Write(data, data_len))
-    {
-        DiskFileSystem::DeleteFile(path);
-        throw CacheStorageException("Can't write cache", path);
+    if (!file.Write("Ping", 4)) {
+        throw CacheStorageException("Can't write ping file", _workPath);
     }
 }
 
-void CacheStorage::SetCache(const string& data_name, const string& str)
+CacheStorage::~CacheStorage() = default;
+CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
+
+auto CacheStorage::HasEntry(const string& entry_name) const -> bool
 {
-    SetCache(data_name, !str.empty() ? (uchar*)str.c_str() : (uchar*)"", (uint)str.length());
+    const auto path = MakeCacheEntryPath(_workPath, entry_name);
+    return !!DiskFileSystem::OpenFile(path, false);
 }
 
-void CacheStorage::SetCache(const string& data_name, UCharVec& data)
+auto CacheStorage::GetRawData(const string& entry_name, uint& data_len) const -> uchar*
 {
-    SetCache(data_name, !data.empty() ? (uchar*)&data[0] : (uchar*)"", (uint)data.size());
-}
-
-uchar* CacheStorage::GetCache(const string& data_name, uint& data_len)
-{
-    string path = MakeCacheEntryPath(workPath, data_name);
-    DiskFile file = DiskFileSystem::OpenFile(path, false);
-    if (!file)
+    const auto path = MakeCacheEntryPath(_workPath, entry_name);
+    auto file = DiskFileSystem::OpenFile(path, false);
+    if (!file) {
         return nullptr;
+    }
 
     data_len = file.GetSize();
-    uchar* data = new uchar[data_len];
-    if (!file.Read(data, data_len))
-    {
+    auto* data = new uchar[data_len];
+    if (!file.Read(data, data_len)) {
         delete[] data;
         data_len = 0;
         throw CacheStorageException("Can't read cache", path);
@@ -262,35 +245,73 @@ uchar* CacheStorage::GetCache(const string& data_name, uint& data_len)
     return data;
 }
 
-string CacheStorage::GetCache(const string& data_name)
+auto CacheStorage::GetString(const string& entry_name) const -> string
 {
-    uint result_len;
-    uchar* result = GetCache(data_name, result_len);
-    if (!result)
+    auto result_len = 0u;
+    auto* result = GetRawData(entry_name, result_len);
+    if (result == nullptr) {
         return "";
+    }
 
     string str;
-    if (result_len)
-    {
+    if (result_len != 0u) {
         str.resize(result_len);
-        memcpy(&str[0], result, result_len);
+        std::memcpy(&str[0], result, result_len);
     }
+
     delete[] result;
     return str;
 }
 
-bool CacheStorage::GetCache(const string& data_name, UCharVec& data)
+auto CacheStorage::GetData(const string& entry_name) const -> UCharVec
 {
-    data.clear();
-    uint result_len;
-    uchar* result = GetCache(data_name, result_len);
-    if (!result)
-        return false;
+    UCharVec data;
 
-    data.resize(result_len);
-    if (result_len)
-        memcpy(&data[0], result, result_len);
+    auto result_len = 0u;
+    auto* result = GetRawData(entry_name, result_len);
+    if (result == nullptr) {
+        return data;
+    }
+
+    if (result_len != 0u) {
+        data.resize(result_len);
+        std::memcpy(&data[0], result, result_len);
+    }
+
     delete[] result;
-    return true;
+    return data;
 }
-#endif
+
+void CacheStorage::SetRawData(const string& entry_name, const uchar* data, uint data_len)
+{
+    NON_CONST_METHOD_HINT(_workPath);
+
+    const auto path = MakeCacheEntryPath(_workPath, entry_name);
+    auto file = DiskFileSystem::OpenFile(path, true);
+    if (!file) {
+        throw CacheStorageException("Can't write cache", path);
+    }
+
+    if (!file.Write(data, data_len)) {
+        DiskFileSystem::DeleteFile(path);
+        throw CacheStorageException("Can't write cache", path);
+    }
+}
+
+void CacheStorage::SetString(const string& entry_name, const string& str)
+{
+    SetRawData(entry_name, !str.empty() ? reinterpret_cast<const uchar*>(str.c_str()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
+}
+
+void CacheStorage::SetData(const string& entry_name, const UCharVec& data)
+{
+    SetRawData(entry_name, !data.empty() ? &data[0] : reinterpret_cast<const uchar*>(""), static_cast<uint>(data.size()));
+}
+
+void CacheStorage::EraseEntry(const string& entry_name)
+{
+    NON_CONST_METHOD_HINT(_workPath);
+
+    const auto path = MakeCacheEntryPath(_workPath, entry_name);
+    DiskFileSystem::DeleteFile(path);
+}

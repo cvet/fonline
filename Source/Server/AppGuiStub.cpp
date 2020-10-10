@@ -33,12 +33,12 @@
 
 #include "AppGui.h"
 
-bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximized)
+auto AppGui::Init(const string&, bool, bool, bool) -> bool
 {
     return true;
 }
 
-bool AppGui::BeginFrame()
+auto AppGui::BeginFrame() -> bool
 {
     return true;
 }
@@ -47,13 +47,13 @@ void AppGui::EndFrame()
 {
 }
 
-#ifdef FO_HAVE_D3D
-bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
+#ifdef FO_HAVE_DIRECT_3D
+auto AppGui::InitDX(const string&, bool, bool) -> bool
 {
     return true;
 }
 
-bool AppGui::BeginFrameDX()
+auto AppGui::BeginFrameDX() -> bool
 {
     return true;
 }

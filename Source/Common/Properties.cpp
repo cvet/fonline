@@ -36,7 +36,7 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
-unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* data, uint data_size)
+auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr<void, std::function<void(void*)>>
 {
     /*if (dataType == Property::Array)
     {
@@ -45,14 +45,14 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
             if (data_size)
             {
                 uint arr_size;
-                memcpy(&arr_size, data, sizeof(arr_size));
+                std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(uint);
                 CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
                 RUNTIME_ASSERT(arr);
                 for (uint i = 0; i < arr_size; i++)
                 {
                     uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
+                    std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
                     string str((char*)data, str_size);
                     arr->SetValue(i, &str);
@@ -74,7 +74,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
             CScriptArray* arr = CScriptArray::Create(asObjType, arr_size);
             RUNTIME_ASSERT(arr);
             if (arr_size)
-                memcpy(arr->At(0), data, arr_size * element_size);
+                std::memcpy(arr->At(0), data, arr_size * element_size);
             return arr;
         }
     }
@@ -95,7 +95,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
                     void* key = data;
                     data += key_element_size;
                     uint arr_size;
-                    memcpy(&arr_size, data, sizeof(arr_size));
+                    std::memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(uint);
                     CScriptArray* arr = CScriptArray::Create(arr_type, arr_size);
                     RUNTIME_ASSERT(arr);
@@ -106,7 +106,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
                             for (uint i = 0; i < arr_size; i++)
                             {
                                 uint str_size;
-                                memcpy(&str_size, data, sizeof(str_size));
+                                std::memcpy(&str_size, data, sizeof(str_size));
                                 data += sizeof(uint);
                                 string str((char*)data, str_size);
                                 arr->SetValue(i, &str);
@@ -115,7 +115,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
                         }
                         else
                         {
-                            memcpy(arr->At(0), data, arr_size * arr_element_size);
+                            std::memcpy(arr->At(0), data, arr_size * arr_element_size);
                             data += arr_size * arr_element_size;
                         }
                     }
@@ -131,7 +131,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
                     void* key = data;
                     data += key_element_size;
                     uint str_size;
-                    memcpy(&str_size, data, sizeof(str_size));
+                    std::memcpy(&str_size, data, sizeof(str_size));
                     data += sizeof(uint);
                     string str((char*)data, str_size);
                     dict->Set(key, &str);
@@ -156,7 +156,7 @@ unique_ptr<void, std::function<void(void*)>> Property::CreateRefValue(uchar* dat
     return nullptr;
 }
 
-uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need_delete)
+auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool & /*need_delete*/) -> uchar*
 {
     /*need_delete = false;
     if (dataType == Property::String)
@@ -187,17 +187,17 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
                 // Make buffer
                 uchar* init_buf = new uchar[data_size];
                 uchar* buf = init_buf;
-                memcpy(buf, &arr_size, sizeof(uint));
+                std::memcpy(buf, &arr_size, sizeof(uint));
                 buf += sizeof(uint);
                 for (uint i = 0; i < arr_size; i++)
                 {
                     string& str = *(string*)arr->At(i);
                     uint str_size = (uint)str.length();
-                    memcpy(buf, &str_size, sizeof(uint));
+                    std::memcpy(buf, &str_size, sizeof(uint));
                     buf += sizeof(uint);
                     if (str_size)
                     {
-                        memcpy(buf, str.c_str(), str_size);
+                        std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
                 }
@@ -260,10 +260,10 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
                 for (const auto& kv : dict_map)
                 {
                     CScriptArray* arr = *(CScriptArray**)kv.second;
-                    memcpy(buf, kv.first, key_element_size);
+                    std::memcpy(buf, kv.first, key_element_size);
                     buf += key_element_size;
                     uint arr_size = (arr ? arr->GetSize() : 0);
-                    memcpy(buf, &arr_size, sizeof(uint));
+                    std::memcpy(buf, &arr_size, sizeof(uint));
                     buf += sizeof(uint);
                     if (arr_size)
                     {
@@ -273,18 +273,18 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
                             {
                                 string& str = *(string*)arr->At(i);
                                 uint str_size = (uint)str.length();
-                                memcpy(buf, &str_size, sizeof(uint));
+                                std::memcpy(buf, &str_size, sizeof(uint));
                                 buf += sizeof(uint);
                                 if (str_size)
                                 {
-                                    memcpy(buf, str.c_str(), str_size);
+                                    std::memcpy(buf, str.c_str(), str_size);
                                     buf += arr_size;
                                 }
                             }
                         }
                         else
                         {
-                            memcpy(buf, arr->At(0), arr_size * arr_element_size);
+                            std::memcpy(buf, arr->At(0), arr_size * arr_element_size);
                             buf += arr_size * arr_element_size;
                         }
                     }
@@ -317,14 +317,14 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
                 for (const auto& kv : dict_map)
                 {
                     string& str = *(string*)kv.second;
-                    memcpy(buf, kv.first, key_element_size);
+                    std::memcpy(buf, kv.first, key_element_size);
                     buf += key_element_size;
                     uint str_size = (uint)str.length();
-                    memcpy(buf, &str_size, sizeof(uint));
+                    std::memcpy(buf, &str_size, sizeof(uint));
                     buf += sizeof(uint);
                     if (str_size)
                     {
-                        memcpy(buf, str.c_str(), str_size);
+                        std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
                 }
@@ -346,9 +346,9 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
                 dict->GetMap(dict_map);
                 for (const auto& kv : dict_map)
                 {
-                    memcpy(buf, kv.first, key_element_size);
+                    std::memcpy(buf, kv.first, key_element_size);
                     buf += key_element_size;
-                    memcpy(buf, kv.second, value_element_size);
+                    std::memcpy(buf, kv.second, value_element_size);
                     buf += value_element_size;
                 }
                 return init_buf;
@@ -363,234 +363,236 @@ uchar* Property::ExpandComplexValueData(void* value, uint& data_size, bool& need
     return nullptr;
 }
 
-string Property::GetName()
+auto Property::GetName() const -> string
 {
-    return propName;
+    return _propName;
 }
 
-string Property::GetTypeName()
+auto Property::GetTypeName() const -> string
 {
-    return typeName;
+    return _typeName;
 }
 
-uint Property::GetRegIndex()
+auto Property::GetRegIndex() const -> uint
 {
-    return regIndex;
+    return _regIndex;
 }
 
-int Property::GetEnumValue()
+auto Property::GetEnumValue() const -> int
 {
-    return enumValue;
+    return _enumValue;
 }
 
-Property::AccessType Property::GetAccess()
+auto Property::GetAccess() const -> AccessType
 {
-    return accessType;
+    return _accessType;
 }
 
-uint Property::GetBaseSize()
+auto Property::GetBaseSize() const -> uint
 {
-    return baseSize;
+    return _baseSize;
 }
 
-bool Property::IsPOD()
+auto Property::IsPOD() const -> bool
 {
-    return dataType == Property::POD;
+    return _dataType == POD;
 }
 
-bool Property::IsDict()
+auto Property::IsDict() const -> bool
 {
-    return dataType == Property::Dict;
+    return _dataType == Dict;
 }
 
-bool Property::IsHash()
+auto Property::IsHash() const -> bool
 {
-    return isHash;
+    return _isHash;
 }
 
-bool Property::IsResource()
+auto Property::IsResource() const -> bool
 {
-    return isResource;
+    return _isResource;
 }
 
-bool Property::IsEnum()
+auto Property::IsEnum() const -> bool
 {
-    return isEnumDataType;
+    return _isEnumDataType;
 }
 
-bool Property::IsReadable()
+auto Property::IsReadable() const -> bool
 {
-    return isReadable;
+    return _isReadable;
 }
 
-bool Property::IsWritable()
+auto Property::IsWritable() const -> bool
 {
-    return isWritable;
+    return _isWritable;
 }
 
-bool Property::IsConst()
+auto Property::IsConst() const -> bool
 {
-    return isConst;
+    return _isConst;
 }
 
-bool Property::IsTemporary()
+auto Property::IsTemporary() const -> bool
 {
-    return isTemporary;
+    return _isTemporary;
 }
 
-bool Property::IsNoHistory()
+auto Property::IsNoHistory() const -> bool
 {
-    return isNoHistory;
+    return _isNoHistory;
 }
 
 Properties::Properties(PropertyRegistrator* reg)
 {
-    registrator = reg;
-    RUNTIME_ASSERT(registrator);
+    _registrator = reg;
+    RUNTIME_ASSERT(_registrator);
 
-    sendIgnoreEntity = nullptr;
-    sendIgnoreProperty = nullptr;
+    _sendIgnoreEntity = nullptr;
+    _sendIgnoreProperty = nullptr;
 
     // Allocate POD data
-    if (!registrator->podDataPool.empty())
-    {
-        podData = registrator->podDataPool.back();
-        registrator->podDataPool.pop_back();
+    if (!_registrator->_podDataPool.empty()) {
+        _podData = _registrator->_podDataPool.back();
+        _registrator->_podDataPool.pop_back();
     }
-    else
-    {
-        podData = new uchar[registrator->wholePodDataSize];
+    else {
+        _podData = new uchar[_registrator->_wholePodDataSize];
     }
-    memzero(podData, registrator->wholePodDataSize);
+
+    std::memset(_podData, 0, _registrator->_wholePodDataSize);
 
     // Complex data
-    complexData.resize(registrator->complexPropertiesCount);
-    complexDataSizes.resize(registrator->complexPropertiesCount);
+    _complexData.resize(_registrator->_complexPropertiesCount);
+    _complexDataSizes.resize(_registrator->_complexPropertiesCount);
 }
 
-Properties::Properties(const Properties& other) : Properties(other.registrator)
+Properties::Properties(const Properties& other) : Properties(other._registrator)
 {
     // Copy POD data
-    memcpy(&podData[0], &other.podData[0], registrator->wholePodDataSize);
+    std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
-    for (size_t i = 0; i < other.complexData.size(); i++)
-    {
-        uint size = other.complexDataSizes[i];
-        complexDataSizes[i] = size;
-        complexData[i] = (size ? new uchar[size] : NULL);
-        if (size)
-            memcpy(complexData[i], other.complexData[i], size);
+    for (size_t i = 0; i < other._complexData.size(); i++) {
+        const auto size = other._complexDataSizes[i];
+        _complexDataSizes[i] = size;
+        _complexData[i] = size != 0u ? new uchar[size] : nullptr;
+        if (size != 0u) {
+            std::memcpy(_complexData[i], other._complexData[i], size);
+        }
     }
 }
 
 Properties::~Properties()
 {
-    registrator->podDataPool.push_back(podData);
+    _registrator->_podDataPool.push_back(_podData);
 
-    for (size_t i = 0; i < complexData.size(); i++)
-        SAFEDELA(complexData[i]);
+    for (auto& cd : _complexData) {
+        delete[] cd;
+    }
 }
 
-Properties& Properties::operator=(const Properties& other)
+auto Properties::operator=(const Properties& other) -> Properties&
 {
-    RUNTIME_ASSERT(registrator == other.registrator);
+    RUNTIME_ASSERT(_registrator == other._registrator);
 
     // Copy POD data
-    memcpy(&podData[0], &other.podData[0], registrator->wholePodDataSize);
+    std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
-    for (size_t i = 0; i < registrator->registeredProperties.size(); i++)
-    {
-        Property* prop = registrator->registeredProperties[i];
-        if (prop->complexDataIndex != uint(-1))
-            SetRawData(prop, other.complexData[prop->complexDataIndex], other.complexDataSizes[prop->complexDataIndex]);
+    for (auto* prop : _registrator->_registeredProperties) {
+        if (prop->_complexDataIndex != static_cast<uint>(-1)) {
+            SetRawData(prop, other._complexData[prop->_complexDataIndex], other._complexDataSizes[prop->_complexDataIndex]);
+        }
     }
 
     return *this;
 }
 
-Property* Properties::FindByEnum(int enum_value)
+auto Properties::FindByEnum(int enum_value) -> Property*
 {
-    return registrator->FindByEnum(enum_value);
+    NON_CONST_METHOD_HINT(_registrator);
+
+    return _registrator->FindByEnum(enum_value);
 }
 
-void* Properties::FindData(const string& property_name)
+auto Properties::FindData(const string& property_name) -> void*
 {
-    Property* prop = registrator->Find(property_name);
+    NON_CONST_METHOD_HINT(_registrator);
+
+    const auto* prop = _registrator->Find(property_name);
     RUNTIME_ASSERT(prop);
-    RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
-    return prop ? &podData[prop->podDataOffset] : nullptr;
+    RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
+
+    return prop != nullptr ? &_podData[prop->_podDataOffset] : nullptr;
 }
 
-uint Properties::StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes)
+auto Properties::StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes) const -> uint
 {
     uint whole_size = 0;
-    *all_data = &storeData;
-    *all_data_sizes = &storeDataSizes;
-    storeData.resize(0);
-    storeDataSizes.resize(0);
+    *all_data = &_storeData;
+    *all_data_sizes = &_storeDataSizes;
+    _storeData.resize(0);
+    _storeDataSizes.resize(0);
 
     // Store POD properties data
-    storeData.push_back(podData);
-    storeDataSizes.push_back((uint)registrator->publicPodDataSpace.size() +
-        (with_protected ? (uint)registrator->protectedPodDataSpace.size() : 0));
-    whole_size += storeDataSizes.back();
+    _storeData.push_back(_podData);
+    _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
+    whole_size += _storeDataSizes.back();
 
     // Calculate complex data to send
-    storeDataComplexIndicies =
-        (with_protected ? registrator->publicProtectedComplexDataProps : registrator->publicComplexDataProps);
-    for (size_t i = 0; i < storeDataComplexIndicies.size();)
-    {
-        Property* prop = registrator->registeredProperties[storeDataComplexIndicies[i]];
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
-        if (!complexDataSizes[prop->complexDataIndex])
-            storeDataComplexIndicies.erase(storeDataComplexIndicies.begin() + i);
-        else
+    _storeDataComplexIndicies = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+    for (size_t i = 0; i < _storeDataComplexIndicies.size();) {
+        auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
+            _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + i);
+        }
+        else {
             i++;
+        }
     }
 
     // Store complex properties data
-    if (!storeDataComplexIndicies.empty())
-    {
-        storeData.push_back((uchar*)&storeDataComplexIndicies[0]);
-        storeDataSizes.push_back((uint)storeDataComplexIndicies.size() * sizeof(short));
-        whole_size += storeDataSizes.back();
-        for (size_t i = 0; i < storeDataComplexIndicies.size(); i++)
-        {
-            Property* prop = registrator->registeredProperties[storeDataComplexIndicies[i]];
-            storeData.push_back(complexData[prop->complexDataIndex]);
-            storeDataSizes.push_back(complexDataSizes[prop->complexDataIndex]);
-            whole_size += storeDataSizes.back();
+    if (!_storeDataComplexIndicies.empty()) {
+        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndicies[0]));
+        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
+        whole_size += _storeDataSizes.back();
+
+        for (auto index : _storeDataComplexIndicies) {
+            auto* prop = _registrator->_registeredProperties[index];
+            _storeData.push_back(_complexData[prop->_complexDataIndex]);
+            _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
+            whole_size += _storeDataSizes.back();
         }
     }
+
     return whole_size;
 }
 
 void Properties::RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes)
 {
     // Restore POD data
-    uint publicSize = (uint)registrator->publicPodDataSpace.size();
-    uint protectedSize = (uint)registrator->protectedPodDataSpace.size();
-    RUNTIME_ASSERT((all_data_sizes[0] == publicSize || all_data_sizes[0] == publicSize + protectedSize));
-    if (all_data_sizes[0])
-        memcpy(podData, all_data[0], all_data_sizes[0]);
+    const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
+    const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
+    RUNTIME_ASSERT((all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size));
+    if (all_data_sizes[0] != 0u) {
+        std::memcpy(_podData, all_data[0], all_data_sizes[0]);
+    }
 
     // Restore complex data
-    if (all_data.size() > 1)
-    {
-        uint comlplex_data_count = all_data_sizes[1] / sizeof(ushort);
+    if (all_data.size() > 1) {
+        const uint comlplex_data_count = all_data_sizes[1] / sizeof(ushort);
         RUNTIME_ASSERT(comlplex_data_count > 0);
         UShortVec complex_indicies(comlplex_data_count);
-        memcpy(&complex_indicies[0], all_data[1], all_data_sizes[1]);
+        std::memcpy(&complex_indicies[0], all_data[1], all_data_sizes[1]);
 
-        for (size_t i = 0; i < complex_indicies.size(); i++)
-        {
-            RUNTIME_ASSERT(complex_indicies[i] < registrator->registeredProperties.size());
-            Property* prop = registrator->registeredProperties[complex_indicies[i]];
-            RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
-            uint data_size = all_data_sizes[2 + i];
-            uchar* data = all_data[2 + i];
+        for (size_t i = 0; i < complex_indicies.size(); i++) {
+            RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
+            auto* prop = _registrator->_registeredProperties[complex_indicies[i]];
+            RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+            const auto data_size = all_data_sizes[2 + i];
+            auto* data = all_data[2 + i];
             SetRawData(prop, data, data_size);
         }
     }
@@ -600,118 +602,109 @@ void Properties::RestoreData(UCharVecVec& all_data)
 {
     PUCharVec all_data_ext(all_data.size());
     UIntVec all_data_sizes(all_data.size());
-    for (size_t i = 0; i < all_data.size(); i++)
-    {
-        all_data_ext[i] = (!all_data[i].empty() ? &all_data[i][0] : nullptr);
-        all_data_sizes[i] = (uint)all_data[i].size();
+    for (size_t i = 0; i < all_data.size(); i++) {
+        all_data_ext[i] = !all_data[i].empty() ? &all_data[i][0] : nullptr;
+        all_data_sizes[i] = static_cast<uint>(all_data[i].size());
     }
     RestoreData(all_data_ext, all_data_sizes);
 }
 
-static const char* ReadToken(const char* str, string& result)
+static auto ReadToken(const char* str, string& result) -> const char*
 {
-    if (!*str)
+    if (*str == 0) {
         return nullptr;
+    }
 
-    const char* begin;
-    const char* s = str;
+    const char* begin = nullptr;
+    const auto* s = str;
 
-    uint length;
+    uint length = 0;
     utf8::Decode(s, &length);
-    while (length == 1 && (*s == ' ' || *s == '\t'))
+    while (length == 1 && (*s == ' ' || *s == '\t')) {
         utf8::Decode(++s, &length);
+    }
 
-    if (!*s)
+    if (*s == 0) {
         return nullptr;
+    }
 
-    if (length == 1 && *s == '{')
-    {
+    if (length == 1 && *s == '{') {
         s++;
         begin = s;
 
-        int braces = 1;
-        while (*s)
-        {
-            if (length == 1 && *s == '\\')
-            {
+        auto braces = 1;
+        while (*s != 0) {
+            if (length == 1 && *s == '\\') {
                 ++s;
-                if (*s)
-                {
+                if (*s != 0) {
                     utf8::Decode(s, &length);
                     s += length;
                 }
             }
-            else if (length == 1 && *s == '{')
-            {
+            else if (length == 1 && *s == '{') {
                 braces++;
                 s++;
             }
-            else if (length == 1 && *s == '}')
-            {
+            else if (length == 1 && *s == '}') {
                 braces--;
-                if (braces == 0)
+                if (braces == 0) {
                     break;
+                }
                 s++;
             }
-            else
-            {
+            else {
                 s += length;
             }
             utf8::Decode(s, &length);
         }
     }
-    else
-    {
+    else {
         begin = s;
-        while (*s)
-        {
-            if (length == 1 && *s == '\\')
-            {
+        while (*s != 0) {
+            if (length == 1 && *s == '\\') {
                 utf8::Decode(++s, &length);
                 s += length;
             }
-            else if (length == 1 && (*s == ' ' || *s == '\t'))
-            {
+            else if (length == 1 && (*s == ' ' || *s == '\t')) {
                 break;
             }
-            else
-            {
+            else {
                 s += length;
             }
             utf8::Decode(s, &length);
         }
     }
 
-    result.assign(begin, (uint)(s - begin));
-    return *s ? s + 1 : s;
+    result.assign(begin, static_cast<uint>(s - begin));
+    return *s != 0 ? s + 1 : s;
 }
 
-static string CodeString(const string& str, int deep)
+static auto CodeString(const string& str, int deep) -> string
 {
-    bool need_braces = false;
-    if (deep > 0 && (str.empty() || str.find_first_of(" \t") != string::npos))
+    auto need_braces = false;
+    if (deep > 0 && (str.empty() || str.find_first_of(" \t") != string::npos)) {
         need_braces = true;
-    if (!need_braces && deep == 0 && !str.empty() &&
-        (str.find_first_of(" \t") == 0 || str.find_last_of(" \t") == str.length() - 1))
+    }
+    if (!need_braces && deep == 0 && !str.empty() && (str.find_first_of(" \t") == 0 || str.find_last_of(" \t") == str.length() - 1)) {
         need_braces = true;
-    if (!need_braces && str.length() >= 2 && str.back() == '\\' && str[str.length() - 2] == ' ')
+    }
+    if (!need_braces && str.length() >= 2 && str.back() == '\\' && str[str.length() - 2] == ' ') {
         need_braces = true;
+    }
 
     string result;
     result.reserve(str.length() * 2);
 
-    if (need_braces)
+    if (need_braces) {
         result.append("{");
+    }
 
-    const char* s = str.c_str();
-    uint length;
-    while (*s)
-    {
+    const auto* s = str.c_str();
+    uint length = 0;
+    while (*s != 0) {
         utf8::Decode(s, &length);
-        if (length == 1)
-        {
-            switch (*s)
-            {
+        if (length == 1) {
+            switch (*s) {
             case '\r':
                 break;
             case '\n':
@@ -731,45 +724,44 @@ static string CodeString(const string& str, int deep)
                 break;
             }
         }
-        else
-        {
+        else {
             result.append(s, length);
         }
 
         s += length;
     }
 
-    if (need_braces)
+    if (need_braces) {
         result.append("}");
+    }
 
     return result;
 }
 
-static string DecodeString(const string& str)
+static auto DecodeString(const string& str) -> string
 {
-    if (str.empty())
+    if (str.empty()) {
         return str;
+    }
 
     string result;
     result.reserve(str.length());
 
-    const char* s = str.c_str();
-    uint length;
+    const auto* s = str.c_str();
+    uint length = 0;
 
     utf8::Decode(s, &length);
-    bool is_braces = (length == 1 && *s == '{');
-    if (is_braces)
+    const auto is_braces = length == 1 && *s == '{';
+    if (is_braces) {
         s++;
+    }
 
-    while (*s)
-    {
+    while (*s != 0) {
         utf8::Decode(s, &length);
-        if (length == 1 && *s == '\\')
-        {
+        if (length == 1 && *s == '\\') {
             utf8::Decode(++s, &length);
 
-            switch (*s)
-            {
+            switch (*s) {
             case 'n':
                 result.append("\n");
                 break;
@@ -788,16 +780,16 @@ static string DecodeString(const string& str)
                 break;
             }
         }
-        else
-        {
+        else {
             result.append(s, length);
         }
 
         s += length;
     }
 
-    if (is_braces && length == 1 && result.back() == '}')
+    if (is_braces && length == 1 && result.back() == '}') {
         result.pop_back();
+    }
 
     return result;
 }
@@ -904,7 +896,7 @@ void* ReadValue(
     if (type_id == astype) \
     { \
         ctype v = (ctype)_str(value).ato(); \
-        memcpy(pod_buf, &v, sizeof(ctype)); \
+        std::memcpy(pod_buf, &v, sizeof(ctype)); \
         return pod_buf; \
     }
 
@@ -912,7 +904,7 @@ void* ReadValue(
         {
             RUNTIME_ASSERT(type_id == asTYPEID_UINT32);
             hash v = _str(DecodeString(value)).toHash();
-            memcpy(pod_buf, &v, sizeof(v));
+            std::memcpy(pod_buf, &v, sizeof(v));
             return pod_buf;
         }
 
@@ -929,7 +921,7 @@ void* ReadValue(
         CHECK_PRIMITIVE(asTYPEID_FLOAT, float, toFloat);
 
         // int v = Script::GetEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
-        // memcpy(pod_buf, &v, sizeof(v));
+        // std::memcpy(pod_buf, &v, sizeof(v));
         // return pod_buf;
         return 0;
 
@@ -984,7 +976,7 @@ void* ReadValue(
     return nullptr;
 }*/
 
-bool Properties::LoadFromText(const StrMap& key_values)
+auto Properties::LoadFromText(const StrMap & /*key_values*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : key_values)
@@ -1017,60 +1009,58 @@ bool Properties::LoadFromText(const StrMap& key_values)
     return false;
 }
 
-void Properties::SaveToText(StrMap& key_values, Properties* base)
+void Properties::SaveToText(StrMap& key_values, Properties* base) const
 {
-    RUNTIME_ASSERT((!base || registrator == base->registrator));
+    RUNTIME_ASSERT((!base || _registrator == base->_registrator));
 
-    for (auto& prop : registrator->registeredProperties)
-    {
+    for (auto& prop : _registrator->_registeredProperties) {
         // Skip pure virtual properties
-        if (prop->podDataOffset == uint(-1) && prop->complexDataIndex == uint(-1))
+        if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
             continue;
+        }
 
         // Skip temporary properties
-        if (prop->isTemporary)
+        if (prop->_isTemporary) {
             continue;
+        }
 
         // Skip same
-        if (base)
-        {
-            if (prop->podDataOffset != uint(-1))
-            {
-                if (!memcmp(&podData[prop->podDataOffset], &base->podData[prop->podDataOffset], prop->baseSize))
+        if (base != nullptr) {
+            if (prop->_podDataOffset != static_cast<uint>(-1)) {
+                if (memcmp(&_podData[prop->_podDataOffset], &base->_podData[prop->_podDataOffset], prop->_baseSize) == 0) {
                     continue;
+                }
             }
-            else
-            {
-                if (!complexDataSizes[prop->complexDataIndex] && !base->complexDataSizes[prop->complexDataIndex])
+            else {
+                if (_complexDataSizes[prop->_complexDataIndex] == 0u && base->_complexDataSizes[prop->_complexDataIndex] == 0u) {
                     continue;
-                if (complexDataSizes[prop->complexDataIndex] == base->complexDataSizes[prop->complexDataIndex] &&
-                    !memcmp(complexData[prop->complexDataIndex], base->complexData[prop->complexDataIndex],
-                        complexDataSizes[prop->complexDataIndex]))
+                }
+                if (_complexDataSizes[prop->_complexDataIndex] == base->_complexDataSizes[prop->_complexDataIndex] && memcmp(_complexData[prop->_complexDataIndex], base->_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]) == 0) {
                     continue;
+                }
             }
         }
-        else
-        {
-            if (prop->podDataOffset != uint(-1))
-            {
+        else {
+            if (prop->_podDataOffset != static_cast<uint>(-1)) {
                 uint64 pod_zero = 0;
-                RUNTIME_ASSERT(prop->baseSize <= sizeof(pod_zero));
-                if (!memcmp(&podData[prop->podDataOffset], &pod_zero, prop->baseSize))
+                RUNTIME_ASSERT(prop->_baseSize <= sizeof(pod_zero));
+                if (memcmp(&_podData[prop->_podDataOffset], &pod_zero, prop->_baseSize) == 0) {
                     continue;
+                }
             }
-            else
-            {
-                if (!complexDataSizes[prop->complexDataIndex])
+            else {
+                if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
                     continue;
+                }
             }
         }
 
         // Serialize to text and store in map
-        key_values.insert(std::make_pair(prop->propName, SavePropertyToText(prop)));
+        key_values.insert(std::make_pair(prop->_propName, SavePropertyToText(prop)));
     }
 }
 
-bool Properties::LoadPropertyFromText(Property* prop, const string& text)
+auto Properties::LoadPropertyFromText(Property* /*prop*/, const string & /*text*/) -> bool
 {
     /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
@@ -1104,14 +1094,14 @@ bool Properties::LoadPropertyFromText(Property* prop, const string& text)
     return false;
 }
 
-string Properties::SavePropertyToText(Property* prop)
+auto Properties::SavePropertyToText(Property* prop) const -> string
 {
     RUNTIME_ASSERT(prop);
-    RUNTIME_ASSERT(registrator == prop->registrator);
-    RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
+    RUNTIME_ASSERT(_registrator == prop->_registrator);
+    RUNTIME_ASSERT((prop->_podDataOffset != uint(-1) || prop->_complexDataIndex != uint(-1)));
 
-    uint data_size;
-    void* data = GetRawData(prop, data_size);
+    uint data_size = 0;
+    // void* data = GetRawData(prop, data_size);
 
     /*void* value = data;
     string str;
@@ -1139,62 +1129,67 @@ string Properties::SavePropertyToText(Property* prop)
 
 void Properties::SetSendIgnore(Property* prop, Entity* entity)
 {
-    if (prop)
-    {
-        RUNTIME_ASSERT(sendIgnoreEntity == nullptr);
-        RUNTIME_ASSERT(sendIgnoreProperty == nullptr);
+    if (prop != nullptr) {
+        RUNTIME_ASSERT(_sendIgnoreEntity == nullptr);
+        RUNTIME_ASSERT(_sendIgnoreProperty == nullptr);
     }
-    else
-    {
-        RUNTIME_ASSERT(sendIgnoreEntity != nullptr);
-        RUNTIME_ASSERT(sendIgnoreProperty != nullptr);
+    else {
+        RUNTIME_ASSERT(_sendIgnoreEntity != nullptr);
+        RUNTIME_ASSERT(_sendIgnoreProperty != nullptr);
     }
 
-    sendIgnoreEntity = entity;
-    sendIgnoreProperty = prop;
+    _sendIgnoreEntity = entity;
+    _sendIgnoreProperty = prop;
 }
 
-uint Properties::GetRawDataSize(Property* prop)
+auto Properties::GetRawDataSize(Property* prop) const -> uint
 {
     uint data_size = 0;
-    GetRawData(prop, data_size);
+    const auto* data = GetRawData(prop, data_size);
+    UNUSED_VARIABLE(data);
     return data_size;
 }
 
-uchar* Properties::GetRawData(Property* prop, uint& data_size)
+auto Properties::GetRawData(Property* prop, uint& data_size) const -> const uchar*
 {
-    if (prop->dataType == Property::POD)
-    {
-        RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
-        data_size = prop->baseSize;
-        return &podData[prop->podDataOffset];
+    if (prop->_dataType == Property::POD) {
+        RUNTIME_ASSERT(prop->_podDataOffset != uint(-1));
+        data_size = prop->_baseSize;
+        return &_podData[prop->_podDataOffset];
     }
 
-    RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
-    data_size = complexDataSizes[prop->complexDataIndex];
-    return complexData[prop->complexDataIndex];
+    RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+    data_size = _complexDataSizes[prop->_complexDataIndex];
+    return _complexData[prop->_complexDataIndex];
+}
+
+auto Properties::GetRawData(Property* prop, uint& data_size) -> uchar*
+{
+    return const_cast<uchar*>(const_cast<const Properties*>(this)->GetRawData(prop, data_size));
 }
 
 void Properties::SetRawData(Property* prop, uchar* data, uint data_size)
 {
-    if (prop->IsPOD())
-    {
-        RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
-        RUNTIME_ASSERT(prop->baseSize == data_size);
-        memcpy(&podData[prop->podDataOffset], data, data_size);
+    if (prop->IsPOD()) {
+        RUNTIME_ASSERT(prop->_podDataOffset != uint(-1));
+        RUNTIME_ASSERT(prop->_baseSize == data_size);
+
+        std::memcpy(&_podData[prop->_podDataOffset], data, data_size);
     }
-    else
-    {
-        RUNTIME_ASSERT(prop->complexDataIndex != uint(-1));
-        if (data_size != complexDataSizes[prop->complexDataIndex])
-        {
-            complexDataSizes[prop->complexDataIndex] = data_size;
-            SAFEDELA(complexData[prop->complexDataIndex]);
-            if (data_size)
-                complexData[prop->complexDataIndex] = new uchar[data_size];
+    else {
+        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+
+        if (data_size != _complexDataSizes[prop->_complexDataIndex]) {
+            _complexDataSizes[prop->_complexDataIndex] = data_size;
+            delete[] _complexData[prop->_complexDataIndex];
+            if (data_size != 0u) {
+                _complexData[prop->_complexDataIndex] = new uchar[data_size];
+            }
         }
-        if (data_size)
-            memcpy(complexData[prop->complexDataIndex], data, data_size);
+
+        if (data_size != 0u) {
+            std::memcpy(_complexData[prop->_complexDataIndex], data, data_size);
+        }
     }
 }
 
@@ -1223,42 +1218,48 @@ void Properties::SetValueFromData(Property* prop, uchar* data, uint data_size)
     }*/
 }
 
-int Properties::GetPODValueAsInt(Property* prop)
+auto Properties::GetPODValueAsInt(Property* prop) const -> int
 {
-    RUNTIME_ASSERT(prop->dataType == Property::POD);
+    RUNTIME_ASSERT(prop->_dataType == Property::POD);
 
-    if (prop->isBoolDataType)
-    {
+    if (prop->_isBoolDataType) {
         return GetValue<bool>(prop) ? 1 : 0;
     }
-    else if (prop->isFloatDataType)
-    {
-        if (prop->baseSize == 4)
-            return (int)GetValue<float>(prop);
-        else if (prop->baseSize == 8)
-            return (int)GetValue<double>(prop);
+    if (prop->_isFloatDataType) {
+        if (prop->_baseSize == 4) {
+            return static_cast<int>(GetValue<float>(prop));
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<int>(GetValue<double>(prop));
+        }
     }
-    else if (prop->isSignedIntDataType)
-    {
-        if (prop->baseSize == 1)
-            return (int)GetValue<char>(prop);
-        if (prop->baseSize == 2)
-            return (int)GetValue<short>(prop);
-        if (prop->baseSize == 4)
-            return (int)GetValue<int>(prop);
-        if (prop->baseSize == 8)
-            return (int)GetValue<int64>(prop);
+    else if (prop->_isSignedIntDataType) {
+        if (prop->_baseSize == 1) {
+            return static_cast<int>(GetValue<char>(prop));
+        }
+        if (prop->_baseSize == 2) {
+            return static_cast<int>(GetValue<short>(prop));
+        }
+        if (prop->_baseSize == 4) {
+            return static_cast<int>(GetValue<int>(prop));
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<int>(GetValue<int64>(prop));
+        }
     }
-    else
-    {
-        if (prop->baseSize == 1)
-            return (int)GetValue<uchar>(prop);
-        if (prop->baseSize == 2)
-            return (int)GetValue<ushort>(prop);
-        if (prop->baseSize == 4)
-            return (int)GetValue<uint>(prop);
-        if (prop->baseSize == 8)
-            return (int)GetValue<uint64>(prop);
+    else {
+        if (prop->_baseSize == 1) {
+            return static_cast<int>(GetValue<uchar>(prop));
+        }
+        if (prop->_baseSize == 2) {
+            return static_cast<int>(GetValue<ushort>(prop));
+        }
+        if (prop->_baseSize == 4) {
+            return static_cast<int>(GetValue<uint>(prop));
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<int>(GetValue<uint64>(prop));
+        }
     }
 
     throw UnreachablePlaceException(LINE_STR);
@@ -1266,200 +1267,226 @@ int Properties::GetPODValueAsInt(Property* prop)
 
 void Properties::SetPODValueAsInt(Property* prop, int value)
 {
-    RUNTIME_ASSERT(prop->dataType == Property::POD);
+    RUNTIME_ASSERT(prop->_dataType == Property::POD);
 
-    if (prop->isBoolDataType)
-    {
+    if (prop->_isBoolDataType) {
         SetValue<bool>(prop, value != 0);
     }
-    else if (prop->isFloatDataType)
-    {
-        if (prop->baseSize == 4)
-            SetValue<float>(prop, (float)value);
-        else if (prop->baseSize == 8)
-            SetValue<double>(prop, (double)value);
+    else if (prop->_isFloatDataType) {
+        if (prop->_baseSize == 4) {
+            SetValue<float>(prop, static_cast<float>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<double>(prop, static_cast<double>(value));
+        }
     }
-    else if (prop->isSignedIntDataType)
-    {
-        if (prop->baseSize == 1)
-            SetValue<char>(prop, (char)value);
-        else if (prop->baseSize == 2)
-            SetValue<short>(prop, (short)value);
-        else if (prop->baseSize == 4)
-            SetValue<int>(prop, (int)value);
-        else if (prop->baseSize == 8)
-            SetValue<int64>(prop, (int64)value);
+    else if (prop->_isSignedIntDataType) {
+        if (prop->_baseSize == 1) {
+            SetValue<char>(prop, static_cast<char>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<short>(prop, static_cast<short>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, value);
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<int64>(prop, static_cast<int64>(value));
+        }
     }
-    else
-    {
-        if (prop->baseSize == 1)
-            SetValue<uchar>(prop, (uchar)value);
-        else if (prop->baseSize == 2)
-            SetValue<ushort>(prop, (ushort)value);
-        else if (prop->baseSize == 4)
-            SetValue<uint>(prop, (uint)value);
-        else if (prop->baseSize == 8)
-            SetValue<uint64>(prop, (uint64)value);
+    else {
+        if (prop->_baseSize == 1) {
+            SetValue<uchar>(prop, static_cast<uchar>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<ushort>(prop, static_cast<ushort>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<uint>(prop, static_cast<uint>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<uint64>(prop, static_cast<uint64>(value));
+        }
     }
 }
 
-int Properties::GetValueAsInt(int enum_value)
+auto Properties::GetValueAsInt(int enum_value) const -> int
 {
-    Property* prop = registrator->FindByEnum(enum_value);
-    if (!prop)
+    auto* prop = _registrator->FindByEnum(enum_value);
+    if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
-    if (!prop->IsPOD())
+    }
+    if (!prop->IsPOD()) {
         throw PropertiesException("Can't retreive integer value from non POD property", prop->GetName());
-    if (!prop->IsReadable())
+    }
+    if (!prop->IsReadable()) {
         throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    }
 
     return GetPODValueAsInt(prop);
 }
 
 void Properties::SetValueAsInt(int enum_value, int value)
 {
-    Property* prop = registrator->FindByEnum(enum_value);
-    if (!prop)
+    auto* prop = _registrator->FindByEnum(enum_value);
+    if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
-    if (!prop->IsPOD())
+    }
+    if (!prop->IsPOD()) {
         throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
-    if (!prop->IsWritable())
+    }
+    if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    }
 
     SetPODValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntByName(const string& enum_name, int value)
 {
-    Property* prop = registrator->Find(enum_name);
-    if (!prop)
+    auto* prop = _registrator->Find(enum_name);
+    if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_name);
-    if (!prop->IsPOD())
+    }
+    if (!prop->IsPOD()) {
         throw PropertiesException("Can't set by name integer value from non POD property", prop->GetName());
-    if (!prop->IsWritable())
+    }
+    if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    }
 
     SetPODValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntProps(int enum_value, int value)
 {
-    Property* prop = registrator->FindByEnum(enum_value);
-    if (!prop)
+    auto* prop = _registrator->FindByEnum(enum_value);
+    if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
-    if (!prop->IsPOD())
+    }
+    if (!prop->IsPOD()) {
         throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
-    if (!prop->IsWritable())
+    }
+    if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
-    if (prop->accessType & Property::VirtualMask)
+    }
+    if ((prop->_accessType & Property::VirtualMask) != 0) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
+    }
 
-    if (prop->isBoolDataType)
-    {
+    if (prop->_isBoolDataType) {
         SetValue<bool>(prop, value != 0);
     }
-    else if (prop->isFloatDataType)
-    {
-        if (prop->baseSize == 4)
-            SetValue<float>(prop, (float)value);
-        else if (prop->baseSize == 8)
-            SetValue<double>(prop, (double)value);
+    else if (prop->_isFloatDataType) {
+        if (prop->_baseSize == 4) {
+            SetValue<float>(prop, static_cast<float>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<double>(prop, static_cast<double>(value));
+        }
     }
-    else if (prop->isSignedIntDataType)
-    {
-        if (prop->baseSize == 1)
-            SetValue<char>(prop, (char)value);
-        else if (prop->baseSize == 2)
-            SetValue<short>(prop, (short)value);
-        else if (prop->baseSize == 4)
-            SetValue<int>(prop, (int)value);
-        else if (prop->baseSize == 8)
-            SetValue<int64>(prop, (int64)value);
+    else if (prop->_isSignedIntDataType) {
+        if (prop->_baseSize == 1) {
+            SetValue<char>(prop, static_cast<char>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<short>(prop, static_cast<short>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, value);
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<int64>(prop, static_cast<int64>(value));
+        }
     }
-    else
-    {
-        if (prop->baseSize == 1)
-            SetValue<uchar>(prop, (uchar)value);
-        else if (prop->baseSize == 2)
-            SetValue<ushort>(prop, (ushort)value);
-        else if (prop->baseSize == 4)
-            SetValue<uint>(prop, (uint)value);
-        else if (prop->baseSize == 8)
-            SetValue<uint64>(prop, (uint64)value);
+    else {
+        if (prop->_baseSize == 1) {
+            SetValue<uchar>(prop, static_cast<uchar>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<ushort>(prop, static_cast<ushort>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<uint>(prop, static_cast<uint>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<uint64>(prop, static_cast<uint64>(value));
+        }
     }
 }
 
 PropertyRegistrator::PropertyRegistrator(bool is_server)
 {
-    isServer = is_server;
+    _isServer = is_server;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
 {
-    for (size_t i = 0; i < registeredProperties.size(); i++)
-        delete registeredProperties[i];
-    for (size_t i = 0; i < podDataPool.size(); i++)
-        delete[] podDataPool[i];
+    for (auto& prop : _registeredProperties) {
+        delete prop;
+    }
+    for (auto& data : _podDataPool) {
+        delete[] data;
+    }
 }
 
-Property* PropertyRegistrator::Register(Property::AccessType access, const type_info& type, const string& name)
+auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, const string& name) -> Property*
 {
 #define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
 
-    Property::DataType data_type = Property::DataType::POD;
+    auto data_type = Property::DataType::POD;
     uint data_size = 0;
-    bool is_int_data_type = false;
-    bool is_signed_int_data_type = false;
-    bool is_float_data_type = false;
-    bool is_bool_data_type = false;
-    bool is_enum_data_type = false;
-    bool is_array_of_string = false;
-    bool is_dict_of_string = false;
-    bool is_dict_of_array = false;
-    bool is_dict_of_array_of_string = false;
-    bool is_hash_sub0 = false;
-    bool is_hash_sub1 = false;
-    bool is_hash_sub2 = false;
+    auto is_int_data_type = false;
+    auto is_signed_int_data_type = false;
+    auto is_float_data_type = false;
+    auto is_bool_data_type = false;
+    const auto is_enum_data_type = false;
+    auto is_array_of_string = false;
+    const auto is_dict_of_string = false;
+    const auto is_dict_of_array = false;
+    const auto is_dict_of_array_of_string = false;
+    auto is_hash_sub0 = false;
+    const auto is_hash_sub1 = false;
+    const auto is_hash_sub2 = false;
 
-    if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) ||
-        ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(float) || ISTYPE(double) || ISTYPE(bool))
-    {
+    if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(float) || ISTYPE(double) || ISTYPE(bool)) {
         data_type = Property::POD;
 
-        if (ISTYPE(char) || ISTYPE(uchar) || ISTYPE(bool))
+        if (ISTYPE(char) || ISTYPE(uchar) || ISTYPE(bool)) {
             data_size = 1;
-        else if (ISTYPE(short) || ISTYPE(ushort))
+        }
+        else if (ISTYPE(short) || ISTYPE(ushort)) {
             data_size = 2;
-        else if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(float))
+        }
+        else if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(float)) {
             data_size = 4;
-        else if (ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(double))
+        }
+        else if (ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(double)) {
             data_size = 8;
-        else
+        }
+        else {
             throw UnreachablePlaceException(LINE_STR);
+        }
 
-        is_int_data_type = (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) ||
-            ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64));
-        is_signed_int_data_type = (ISTYPE(int) || ISTYPE(char) || ISTYPE(short) || ISTYPE(int64));
-        is_float_data_type = (ISTYPE(float) || ISTYPE(double));
+        is_int_data_type = ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64);
+        is_signed_int_data_type = ISTYPE(int) || ISTYPE(char) || ISTYPE(short) || ISTYPE(int64);
+        is_float_data_type = ISTYPE(float) || ISTYPE(double);
         is_bool_data_type = ISTYPE(bool);
         // is_enum_data_type = (type_id > asTYPEID_DOUBLE);
     }
-    else if (ISTYPE(string))
-    {
+    else if (ISTYPE(string)) {
         data_type = Property::String;
         data_size = sizeof(string);
     }
-    else if (ISTYPE(vector<int>))
-    {
+    else if (ISTYPE(vector<int>)) {
         data_type = Property::Array;
         data_size = sizeof(void*);
 
-        bool is_array_of_pod = (ISTYPE(vector<int>));
+        auto is_array_of_pod = ISTYPE(vector<int>);
         is_array_of_string = ISTYPE(vector<string>);
         is_hash_sub0 = ISTYPE(vector<hash>);
     }
-    else if (ISTYPE(vector<int>))
-    {
+    else if (ISTYPE(vector<int>)) {
         data_type = Property::Dict;
         data_size = sizeof(void*);
 
@@ -1493,140 +1520,133 @@ Property* PropertyRegistrator::Register(Property::AccessType access, const type_
         is_hash_sub2 =
             (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && is_dict_of_array);*/
     }
-    else
-    {
+    else {
         // WriteLog("Invalid property type '{}'.\n", type_name);
         // return nullptr;
     }
 
     // Allocate property
-    Property* prop = new Property();
-    uint reg_index = (uint)registeredProperties.size();
+    auto* prop = new Property();
+    const auto reg_index = static_cast<uint>(_registeredProperties.size());
 
     // Disallow set or get accessors
-    bool disable_get = false;
-    bool disable_set = false;
-    if (isServer && (access & Property::ClientOnlyMask))
+    auto disable_get = false;
+    auto disable_set = false;
+    if (_isServer && (access & Property::ClientOnlyMask) != 0) {
         disable_get = disable_set = true;
-    if (!isServer && (access & Property::ServerOnlyMask))
+    }
+    if (!_isServer && (access & Property::ServerOnlyMask) != 0) {
         disable_get = disable_set = true;
-    if (!isServer && ((access & Property::PublicMask) || (access & Property::ProtectedMask)) &&
-        !(access & Property::ModifiableMask))
+    }
+    if (!_isServer && ((access & Property::PublicMask) != 0 || (access & Property::ProtectedMask) != 0) && (access & Property::ModifiableMask) == 0) {
         disable_set = true;
+    }
     // if (is_const)
     //    disable_set = true;
 
     disable_get = false;
 
     // Register default getter
-    if (disable_get)
+    if (disable_get) {
         return nullptr;
+    }
 
     // Register setter
-    if (!disable_set)
-    {
+    if (!disable_set) {
     }
 
     // POD property data offset
-    uint data_base_offset = uint(-1);
-    if (data_type == Property::POD && !disable_get && !(access & Property::VirtualMask))
-    {
-        bool is_public = (access & Property::PublicMask) != 0;
-        bool is_protected = (access & Property::ProtectedMask) != 0;
-        BoolVec& space =
-            (is_public ? publicPodDataSpace : (is_protected ? protectedPodDataSpace : privatePodDataSpace));
+    auto data_base_offset = static_cast<uint>(-1);
+    if (data_type == Property::POD && !disable_get && (access & Property::VirtualMask) == 0) {
+        const auto is_public = (access & Property::PublicMask) != 0;
+        const auto is_protected = (access & Property::ProtectedMask) != 0;
+        auto& space = is_public ? _publicPodDataSpace : is_protected ? _protectedPodDataSpace : _privatePodDataSpace;
 
-        uint space_size = (uint)space.size();
+        const auto space_size = static_cast<uint>(space.size());
         uint space_pos = 0;
-        while (space_pos + data_size <= space_size)
-        {
-            bool fail = false;
-            for (uint i = 0; i < data_size; i++)
-            {
-                if (space[space_pos + i])
-                {
+        while (space_pos + data_size <= space_size) {
+            auto fail = false;
+            for (uint i = 0; i < data_size; i++) {
+                if (space[space_pos + i]) {
                     fail = true;
                     break;
                 }
             }
-            if (!fail)
+            if (!fail) {
                 break;
+            }
             space_pos += data_size;
         }
 
-        uint new_size = space_pos + data_size;
+        auto new_size = space_pos + data_size;
         new_size += 8 - new_size % 8;
-        if (new_size > (uint)space.size())
+        if (new_size > static_cast<uint>(space.size())) {
             space.resize(new_size);
+        }
 
-        for (uint i = 0; i < data_size; i++)
+        for (uint i = 0; i < data_size; i++) {
             space[space_pos + i] = true;
+        }
 
         data_base_offset = space_pos;
 
-        wholePodDataSize =
-            (uint)(publicPodDataSpace.size() + protectedPodDataSpace.size() + privatePodDataSpace.size());
+        _wholePodDataSize = static_cast<uint>(_publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size());
         // RUNTIME_ASSERT((wholePodDataSize % 8) == 0);
     }
 
     // Complex property data index
-    uint complex_data_index = uint(-1);
-    if (data_type != Property::POD && (!disable_get || !disable_set) && !(access & Property::VirtualMask))
-    {
-        complex_data_index = complexPropertiesCount++;
-        if (access & Property::PublicMask)
-        {
-            publicComplexDataProps.push_back((ushort)reg_index);
-            publicProtectedComplexDataProps.push_back((ushort)reg_index);
+    auto complex_data_index = static_cast<uint>(-1);
+    if (data_type != Property::POD && (!disable_get || !disable_set) && (access & Property::VirtualMask) == 0) {
+        complex_data_index = _complexPropertiesCount++;
+        if ((access & Property::PublicMask) != 0) {
+            _publicComplexDataProps.push_back(static_cast<ushort>(reg_index));
+            _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
-        else if (access & Property::ProtectedMask)
-        {
-            protectedComplexDataProps.push_back((ushort)reg_index);
-            publicProtectedComplexDataProps.push_back((ushort)reg_index);
+        else if ((access & Property::ProtectedMask) != 0) {
+            _protectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
+            _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
-        else if (access & Property::PrivateMask)
-        {
-            privateComplexDataProps.push_back((ushort)reg_index);
+        else if ((access & Property::PrivateMask) != 0) {
+            _privateComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
-        else
-        {
+        else {
             throw UnreachablePlaceException(LINE_STR);
         }
     }
 
     // Make entry
-    prop->registrator = this;
-    prop->regIndex = reg_index;
-    prop->getIndex = (!disable_get ? getPropertiesCount++ : uint(-1));
+    prop->_registrator = this;
+    prop->_regIndex = reg_index;
+    prop->_getIndex = !disable_get ? _getPropertiesCount++ : static_cast<uint>(-1);
     // prop->enumValue = enum_value;
-    prop->complexDataIndex = complex_data_index;
-    prop->podDataOffset = data_base_offset;
-    prop->baseSize = data_size;
+    prop->_complexDataIndex = complex_data_index;
+    prop->_podDataOffset = data_base_offset;
+    prop->_baseSize = data_size;
 
-    prop->propName = _str(name).replace('.', '_');
+    prop->_propName = _str(name).replace('.', '_');
     // prop->typeName = type_name;
     // prop->componentName = component_name;
-    prop->dataType = data_type;
-    prop->accessType = access;
+    prop->_dataType = data_type;
+    prop->_accessType = access;
     // prop->isConst = is_const;
     // prop->asObjTypeId = type_id;
     // prop->asObjType = as_obj_type;
     // prop->isHash = type_name == "hash";
-    prop->isHashSubType0 = is_hash_sub0;
-    prop->isHashSubType1 = is_hash_sub1;
-    prop->isHashSubType2 = is_hash_sub2;
+    prop->_isHashSubType0 = is_hash_sub0;
+    prop->_isHashSubType1 = is_hash_sub1;
+    prop->_isHashSubType2 = is_hash_sub2;
     // prop->isResource = type_name == "resource";
-    prop->isIntDataType = is_int_data_type;
-    prop->isSignedIntDataType = is_signed_int_data_type;
-    prop->isFloatDataType = is_float_data_type;
-    prop->isEnumDataType = is_enum_data_type;
-    prop->isBoolDataType = is_bool_data_type;
-    prop->isArrayOfString = is_array_of_string;
-    prop->isDictOfString = is_dict_of_string;
-    prop->isDictOfArray = is_dict_of_array;
-    prop->isDictOfArrayOfString = is_dict_of_array_of_string;
-    prop->isReadable = !disable_get;
-    prop->isWritable = !disable_set;
+    prop->_isIntDataType = is_int_data_type;
+    prop->_isSignedIntDataType = is_signed_int_data_type;
+    prop->_isFloatDataType = is_float_data_type;
+    prop->_isEnumDataType = is_enum_data_type;
+    prop->_isBoolDataType = is_bool_data_type;
+    prop->_isArrayOfString = is_array_of_string;
+    prop->_isDictOfString = is_dict_of_string;
+    prop->_isDictOfArray = is_dict_of_array;
+    prop->_isDictOfArrayOfString = is_dict_of_array_of_string;
+    prop->_isReadable = !disable_get;
+    prop->_isWritable = !disable_set;
     // prop->isTemporary = (defaultTemporary || is_temporary);
     // prop->isNoHistory = (defaultNoHistory || is_no_history);
     // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
@@ -1634,19 +1654,20 @@ Property* PropertyRegistrator::Register(Property::AccessType access, const type_
     // prop->minValue = (min_value ? *min_value : 0);
     // prop->maxValue = (max_value ? *max_value : 0);
 
-    registeredProperties.push_back(prop);
+    _registeredProperties.push_back(prop);
 
     // Fix POD data offsets
-    for (size_t i = 0, j = registeredProperties.size(); i < j; i++)
-    {
-        Property* prop = registeredProperties[i];
-        if (prop->podDataOffset == uint(-1))
+    for (auto* prop : _registeredProperties) {
+        if (prop->_podDataOffset == static_cast<uint>(-1)) {
             continue;
+        }
 
-        if (prop->accessType & Property::ProtectedMask)
-            prop->podDataOffset += (uint)publicPodDataSpace.size();
-        else if (prop->accessType & Property::PrivateMask)
-            prop->podDataOffset += (uint)publicPodDataSpace.size() + (uint)protectedPodDataSpace.size();
+        if ((prop->_accessType & Property::ProtectedMask) != 0) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        }
+        else if ((prop->_accessType & Property::PrivateMask) != 0) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+        }
     }
 
     return prop;
@@ -1654,61 +1675,67 @@ Property* PropertyRegistrator::Register(Property::AccessType access, const type_
 
 void PropertyRegistrator::RegisterComponent(const string& name)
 {
-    hash name_hash = _str(name).toHash();
-    RUNTIME_ASSERT(!registeredComponents.count(name_hash));
-    registeredComponents.insert(name_hash);
+    const auto name_hash = _str(name).toHash();
+    RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
+    _registeredComponents.insert(name_hash);
 }
 
-string PropertyRegistrator::GetClassName()
+auto PropertyRegistrator::GetClassName() const -> string
 {
-    return className;
+    return _className;
 }
 
-uint PropertyRegistrator::GetCount()
+auto PropertyRegistrator::GetCount() const -> uint
 {
-    return (uint)registeredProperties.size();
+    return static_cast<uint>(_registeredProperties.size());
 }
 
-Property* PropertyRegistrator::Get(uint property_index)
+auto PropertyRegistrator::Get(uint property_index) -> Property*
 {
-    if (property_index < (uint)registeredProperties.size())
-        return registeredProperties[property_index];
+    if (property_index < static_cast<uint>(_registeredProperties.size())) {
+        return _registeredProperties[property_index];
+    }
     return nullptr;
 }
 
-Property* PropertyRegistrator::Find(const string& property_name)
+auto PropertyRegistrator::Find(const string& property_name) -> Property*
 {
-    string key = property_name;
-    size_t separator = key.find('.');
-    if (separator != string::npos)
+    auto key = property_name;
+    const auto separator = key.find('.');
+    if (separator != string::npos) {
         key[separator] = '_';
+    }
 
-    for (auto& prop : registeredProperties)
-        if (prop->propName == key)
+    for (auto& prop : _registeredProperties) {
+        if (prop->_propName == key) {
             return prop;
+        }
+    }
     return nullptr;
 }
 
-Property* PropertyRegistrator::FindByEnum(int enum_value)
+auto PropertyRegistrator::FindByEnum(int enum_value) -> Property*
 {
-    for (auto& prop : registeredProperties)
-        if (prop->enumValue == enum_value)
+    for (auto& prop : _registeredProperties) {
+        if (prop->_enumValue == enum_value) {
             return prop;
+        }
+    }
     return nullptr;
 }
 
-bool PropertyRegistrator::IsComponentRegistered(hash component_name)
+auto PropertyRegistrator::IsComponentRegistered(hash component_name) const -> bool
 {
-    return registeredComponents.count(component_name) > 0;
+    return _registeredComponents.count(component_name) > 0;
 }
 
-void PropertyRegistrator::SetNativeSetCallback(const string& property_name, NativeCallback callback)
+void PropertyRegistrator::SetNativeSetCallback(const string& property_name, const NativeCallback& /*callback*/)
 {
     RUNTIME_ASSERT(!property_name.empty());
     // Find(property_name)->nativeSetCallback = callback;
 }
 
-uint PropertyRegistrator::GetWholeDataSize()
+auto PropertyRegistrator::GetWholeDataSize() const -> uint
 {
-    return wholePodDataSize;
+    return _wholePodDataSize;
 }

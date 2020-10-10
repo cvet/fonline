@@ -38,181 +38,150 @@
 #include "MapManager.h"
 #include "PropertiesSerializator.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr,
-    ServerScriptSystem& script_sys, DataBase* db_storage, GlobalVars* globs) :
-    mapMngr {map_mngr},
-    crMngr {cr_mngr},
-    itemMngr {item_mngr},
-    scriptSys {script_sys},
-    dbStorage {db_storage},
-    globals {globs}
+EntityManager::EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, DataBase* db_storage, GlobalVars* globs) : _mapMngr {map_mngr}, _crMngr {cr_mngr}, _itemMngr {item_mngr}, _scriptSys {script_sys}, _dbStorage {db_storage}, _globals {globs}
 {
-}
-
-static const char* GetEntityTypeMonoName(EntityType type)
-{
-    if (type == EntityType::Global)
-        return "Global";
-    else if (type == EntityType::Custom)
-        return "Custom";
-    else if (type == EntityType::Item)
-        return "Item";
-    else if (type == EntityType::Client)
-        return "Critter";
-    else if (type == EntityType::Npc)
-        return "Critter";
-    else if (type == EntityType::Location)
-        return "Location";
-    else if (type == EntityType::Map)
-        return "Map";
-    else if (type == EntityType::ItemView)
-        return "Item";
-    else if (type == EntityType::CritterView)
-        return "Critter";
-    else if (type == EntityType::ItemHexView)
-        return "Item";
-    else if (type == EntityType::LocationView)
-        return "Location";
-    else if (type == EntityType::MapView)
-        return "Map";
-
-    throw UnreachablePlaceException(LINE_STR);
-    return nullptr;
 }
 
 void EntityManager::RegisterEntity(Entity* entity)
 {
-    if (!entity->Id)
-    {
-        uint id = globals->GetLastEntityId() + 1;
-        id = MAX(id, 2);
-        globals->SetLastEntityId(id);
+    if (entity->Id == 0u) {
+        auto id = _globals->GetLastEntityId() + 1;
+        id = std::max(id, 2u);
+        _globals->SetLastEntityId(id);
 
         entity->SetId(id);
 
-        DataBase::Document doc = PropertiesSerializator::SaveToDbDocument(
-            &entity->Props, entity->Proto ? &entity->Proto->Props : nullptr, scriptSys);
-        doc["_Proto"] = entity->Proto ? entity->Proto->GetName() : "";
+        auto doc = PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto != nullptr ? &entity->Proto->Props : nullptr, _scriptSys);
+        doc["_Proto"] = entity->Proto != nullptr ? entity->Proto->GetName() : "";
 
-        if (entity->Type == EntityType::Location)
-            dbStorage->Insert("Locations", id, doc);
-        else if (entity->Type == EntityType::Map)
-            dbStorage->Insert("Maps", id, doc);
-        else if (entity->Type == EntityType::Npc)
-            dbStorage->Insert("Critters", id, doc);
-        else if (entity->Type == EntityType::Item)
-            dbStorage->Insert("Items", id, doc);
-        else if (entity->Type == EntityType::Custom)
-            dbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
-        else
+        if (entity->Type == EntityType::Location) {
+            _dbStorage->Insert("Locations", id, doc);
+        }
+        else if (entity->Type == EntityType::Map) {
+            _dbStorage->Insert("Maps", id, doc);
+        }
+        else if (entity->Type == EntityType::Npc) {
+            _dbStorage->Insert("Critters", id, doc);
+        }
+        else if (entity->Type == EntityType::Item) {
+            _dbStorage->Insert("Items", id, doc);
+        }
+        else if (entity->Type == EntityType::Custom) {
+            _dbStorage->Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
+        }
+        else {
             throw UnreachablePlaceException(LINE_STR);
+        }
     }
 
-    auto it = allEntities.insert(std::make_pair(entity->Id, entity));
-    RUNTIME_ASSERT(it.second);
+    const auto [it, inserted] = _allEntities.insert(std::make_pair(entity->Id, entity));
+    RUNTIME_ASSERT(inserted);
 }
 
 void EntityManager::UnregisterEntity(Entity* entity)
 {
-    auto it = allEntities.find(entity->Id);
-    RUNTIME_ASSERT(it != allEntities.end());
-    allEntities.erase(it);
+    const auto it = _allEntities.find(entity->Id);
+    RUNTIME_ASSERT(it != _allEntities.end());
+    _allEntities.erase(it);
 
-    scriptSys.RemoveEntity(entity);
+    _scriptSys.RemoveEntity(entity);
 
-    if (entity->Type == EntityType::Location)
-        dbStorage->Delete("Locations", entity->Id);
-    else if (entity->Type == EntityType::Map)
-        dbStorage->Delete("Maps", entity->Id);
-    else if (entity->Type == EntityType::Npc)
-        dbStorage->Delete("Critters", entity->Id);
-    else if (entity->Type == EntityType::Item)
-        dbStorage->Delete("Items", entity->Id);
-    else if (entity->Type == EntityType::Custom)
-        dbStorage->Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
+    if (entity->Type == EntityType::Location) {
+        _dbStorage->Delete("Locations", entity->Id);
+    }
+    else if (entity->Type == EntityType::Map) {
+        _dbStorage->Delete("Maps", entity->Id);
+    }
+    else if (entity->Type == EntityType::Npc) {
+        _dbStorage->Delete("Critters", entity->Id);
+    }
+    else if (entity->Type == EntityType::Item) {
+        _dbStorage->Delete("Items", entity->Id);
+    }
+    else if (entity->Type == EntityType::Custom) {
+        _dbStorage->Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
+    }
 
     entity->SetId(0);
 }
 
-Entity* EntityManager::GetEntity(uint id, EntityType type)
+auto EntityManager::GetEntity(uint id, EntityType type) -> Entity*
 {
-    auto it = allEntities.find(id);
-    if (it != allEntities.end() && it->second->Type == type)
+    const auto it = _allEntities.find(id);
+    if (it != _allEntities.end() && it->second->Type == type) {
         return it->second;
+    }
     return nullptr;
 }
 
 void EntityManager::GetEntities(EntityType type, EntityVec& entities)
 {
-    entities.reserve(entities.size() + entitiesCount[(int)type]);
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == type)
-            entities.push_back(it->second);
+    entities.reserve(entities.size() + _entitiesCount[static_cast<int>(type)]);
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == type) {
+            entities.push_back(entity);
+        }
     }
 }
 
-uint EntityManager::GetEntitiesCount(EntityType type)
+auto EntityManager::GetEntitiesCount(EntityType type) const -> uint
 {
-    return entitiesCount[(int)type];
+    return _entitiesCount[static_cast<int>(type)];
 }
 
 void EntityManager::GetItems(ItemVec& items)
 {
-    items.reserve(items.size() + entitiesCount[(int)EntityType::Item]);
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Item)
-            items.push_back((Item*)it->second);
+    items.reserve(items.size() + _entitiesCount[static_cast<int>(EntityType::Item)]);
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Item) {
+            items.push_back(dynamic_cast<Item*>(entity));
+        }
     }
 }
 
 void EntityManager::GetCritterItems(uint crid, ItemVec& items)
 {
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Item)
-        {
-            Item* item = (Item*)it->second;
-            if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == crid)
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Item) {
+            auto* item = dynamic_cast<Item*>(entity);
+            if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == crid) {
                 items.push_back(item);
+            }
         }
     }
 }
 
-Critter* EntityManager::GetCritter(uint id)
+auto EntityManager::GetCritter(uint id) -> Critter*
 {
-    auto it = allEntities.find(id);
-    if (it != allEntities.end() && (it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client))
-        return (Critter*)it->second;
+    const auto it = _allEntities.find(id);
+    if (it != _allEntities.end() && (it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client)) {
+        return dynamic_cast<Critter*>(it->second);
+    }
     return nullptr;
 }
 
 void EntityManager::GetCritters(CritterVec& critters)
 {
-    critters.reserve(critters.size() + entitiesCount[(int)EntityType::Npc] + entitiesCount[(int)EntityType::Client]);
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client)
-            critters.push_back((Critter*)it->second);
+    critters.reserve(critters.size() + _entitiesCount[static_cast<int>(EntityType::Npc)] + _entitiesCount[static_cast<int>(EntityType::Client)]);
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Npc || entity->Type == EntityType::Client) {
+            critters.push_back(dynamic_cast<Critter*>(entity));
+        }
     }
 }
 
-Map* EntityManager::GetMapByPid(hash pid, uint skip_count)
+auto EntityManager::GetMapByPid(hash pid, uint skip_count) -> Map*
 {
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Map)
-        {
-            Map* map = (Map*)it->second;
-            if (map->GetProtoId() == pid)
-            {
-                if (!skip_count)
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Map) {
+            auto* map = dynamic_cast<Map*>(entity);
+            if (map->GetProtoId() == pid) {
+                if (skip_count == 0u) {
                     return map;
-                else
-                    skip_count--;
+                }
+
+                skip_count--;
             }
         }
     }
@@ -221,27 +190,25 @@ Map* EntityManager::GetMapByPid(hash pid, uint skip_count)
 
 void EntityManager::GetMaps(MapVec& maps)
 {
-    maps.reserve(maps.size() + entitiesCount[(int)EntityType::Map]);
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Map)
-            maps.push_back((Map*)it->second);
+    maps.reserve(maps.size() + _entitiesCount[static_cast<int>(EntityType::Map)]);
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Map) {
+            maps.push_back(dynamic_cast<Map*>(entity));
+        }
     }
 }
 
-Location* EntityManager::GetLocationByPid(hash pid, uint skip_count)
+auto EntityManager::GetLocationByPid(hash pid, uint skip_count) -> Location*
 {
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Location)
-        {
-            Location* loc = (Location*)it->second;
-            if (loc->GetProtoId() == pid)
-            {
-                if (!skip_count)
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Location) {
+            auto* loc = dynamic_cast<Location*>(entity);
+            if (loc->GetProtoId() == pid) {
+                if (skip_count == 0u) {
                     return loc;
-                else
-                    skip_count--;
+                }
+
+                skip_count--;
             }
         }
     }
@@ -250,16 +217,18 @@ Location* EntityManager::GetLocationByPid(hash pid, uint skip_count)
 
 void EntityManager::GetLocations(LocationVec& locs)
 {
-    locs.reserve(locs.size() + entitiesCount[(int)EntityType::Location]);
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        if (it->second->Type == EntityType::Location)
-            locs.push_back((Location*)it->second);
+    locs.reserve(locs.size() + _entitiesCount[static_cast<int>(EntityType::Location)]);
+    for (auto& [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Location) {
+            locs.push_back(dynamic_cast<Location*>(entity));
+        }
     }
 }
 
-bool EntityManager::LoadEntities()
+auto EntityManager::LoadEntities() -> bool
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     WriteLog("Load entities...\n");
 
     EntityType query[] = {
@@ -271,86 +240,74 @@ bool EntityManager::LoadEntities()
     };
 
     StrVec custom_types; // = scriptSys.GetCustomEntityTypes();
-    int custom_index = -1;
+    auto custom_index = -1;
 
-    for (int q = 0; q < 5; q++)
-    {
-        EntityType type = query[q];
+    for (auto q = 0; q < 5; q++) {
+        const auto type = query[q];
 
-        if (type == EntityType::Custom)
-        {
+        if (type == EntityType::Custom) {
             custom_index++;
-            if (custom_index >= (int)custom_types.size())
+            if (custom_index >= static_cast<int>(custom_types.size())) {
                 break;
+            }
 
             q--;
         }
 
         string collection_name;
-        if (type == EntityType::Location)
+        if (type == EntityType::Location) {
             collection_name = "Locations";
-        else if (type == EntityType::Map)
+        }
+        else if (type == EntityType::Map) {
             collection_name = "Maps";
-        else if (type == EntityType::Npc)
+        }
+        else if (type == EntityType::Npc) {
             collection_name = "Critters";
-        else if (type == EntityType::Item)
+        }
+        else if (type == EntityType::Item) {
             collection_name = "Items";
-        else if (type == EntityType::Custom)
+        }
+        else if (type == EntityType::Custom) {
             collection_name = custom_types[custom_index] + "s";
+        }
 
-        UIntVec ids = dbStorage->GetAllIds(collection_name);
-        for (uint id : ids)
-        {
-            DataBase::Document doc = dbStorage->Get(collection_name, id);
+        auto ids = _dbStorage->GetAllIds(collection_name);
+        for (auto id : ids) {
+            auto doc = _dbStorage->Get(collection_name, id);
             auto proto_it = doc.find("_Proto");
             RUNTIME_ASSERT(proto_it != doc.end());
-            RUNTIME_ASSERT((proto_it->second.index() == DataBase::StringValue));
+            RUNTIME_ASSERT((proto_it->second.index() == DataBase::STRING_VALUE));
 
-            hash proto_id =
-                (!std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : 0);
+            const auto proto_id = !std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : 0;
 
-            if (type == EntityType::Location)
-            {
-                if (!mapMngr.RestoreLocation(id, proto_id, doc))
-                {
+            if (type == EntityType::Location) {
+                if (!_mapMngr.RestoreLocation(id, proto_id, doc)) {
                     WriteLog("Fail to restore location {}.\n", id);
-                    continue;
                 }
             }
-            else if (type == EntityType::Map)
-            {
-                if (!mapMngr.RestoreMap(id, proto_id, doc))
-                {
+            else if (type == EntityType::Map) {
+                if (!_mapMngr.RestoreMap(id, proto_id, doc)) {
                     WriteLog("Fail to restore map {}.\n", id);
-                    continue;
                 }
             }
-            else if (type == EntityType::Npc)
-            {
-                if (!crMngr.RestoreNpc(id, proto_id, doc))
-                {
+            else if (type == EntityType::Npc) {
+                if (!_crMngr.RestoreNpc(id, proto_id, doc)) {
                     WriteLog("Fail to restore npc {}.\n", id);
-                    continue;
                 }
             }
-            else if (type == EntityType::Item)
-            {
-                if (!itemMngr.RestoreItem(id, proto_id, doc))
-                {
+            else if (type == EntityType::Item) {
+                if (!_itemMngr.RestoreItem(id, proto_id, doc)) {
                     WriteLog("Fail to restore item {}.\n", id);
-                    continue;
                 }
             }
-            else if (type == EntityType::Custom)
-            {
+            else if (type == EntityType::Custom) {
                 /*if (!scriptSys.RestoreCustomEntity(custom_types[custom_index], id, doc))
                 {
                     WriteLog("Fail to restore entity {} of type {}.\n", id, custom_types[custom_index]);
                     continue;
                 }*/
             }
-            else
-            {
+            else {
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
@@ -358,56 +315,58 @@ bool EntityManager::LoadEntities()
 
     WriteLog("Load entities complete.\n");
 
-    if (!LinkMaps())
+    if (!LinkMaps()) {
         return false;
-    if (!LinkNpc())
+    }
+    if (!LinkNpc()) {
         return false;
-    if (!LinkItems())
+    }
+    if (!LinkItems()) {
         return false;
+    }
     InitAfterLoad();
     return true;
 }
 
-bool EntityManager::LinkMaps()
+auto EntityManager::LinkMaps() -> bool
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     WriteLog("Link maps...\n");
 
     // Link maps to locations
-    int errors = 0;
+    auto errors = 0;
     MapVec maps;
-    mapMngr.GetMaps(maps);
-    for (auto& map : maps)
-    {
-        uint loc_id = map->GetLocId();
-        uint loc_map_index = map->GetLocMapIndex();
-        Location* loc = mapMngr.GetLocation(loc_id);
-        if (!loc)
-        {
+    _mapMngr.GetMaps(maps);
+    for (auto& map : maps) {
+        const auto loc_id = map->GetLocId();
+        const auto loc_map_index = map->GetLocMapIndex();
+
+        auto* loc = _mapMngr.GetLocation(loc_id);
+        if (loc == nullptr) {
             WriteLog("Location {} for map '{}' ({}) not found.\n", loc_id, map->GetName(), map->Id);
             errors++;
             continue;
         }
 
-        MapVec& maps = loc->GetMapsRaw();
-        if (loc_map_index >= (uint)maps.size())
-            maps.resize(loc_map_index + 1);
-        maps[loc_map_index] = map;
+        auto& loc_maps = loc->GetMapsRaw();
+        if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
+            loc_maps.resize(loc_map_index + 1);
+        }
+
+        loc_maps[loc_map_index] = map;
         map->SetLocation(loc);
     }
 
     // Verify linkage result
     LocationVec locs;
-    mapMngr.GetLocations(locs);
-    for (auto& loc : locs)
-    {
-        MapVec& maps = loc->GetMapsRaw();
-        for (size_t i = 0; i < maps.size(); i++)
-        {
-            if (!maps[i])
-            {
+    _mapMngr.GetLocations(locs);
+    for (auto& loc : locs) {
+        auto& loc_maps = loc->GetMapsRaw();
+        for (size_t i = 0; i < loc_maps.size(); i++) {
+            if (loc_maps[i] == nullptr) {
                 WriteLog("Location '{}' ({}) map index {} is empty.\n", loc->GetName(), loc->Id, i);
                 errors++;
-                continue;
             }
         }
     }
@@ -416,139 +375,121 @@ bool EntityManager::LinkMaps()
     return errors == 0;
 }
 
-bool EntityManager::LinkNpc()
+auto EntityManager::LinkNpc() -> bool
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     WriteLog("Link npc...\n");
 
-    int errors = 0;
+    auto errors = 0;
     CritterVec critters;
-    crMngr.GetCritters(critters);
+    _crMngr.GetCritters(critters);
     CritterVec critters_groups;
     critters_groups.reserve(critters.size());
 
     // Move all critters to local maps and global map leaders
-    for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
-    {
-        Critter* cr = *it;
-        if (!cr->GetMapId() && cr->GetGlobalMapLeaderId() && cr->GetGlobalMapLeaderId() != cr->Id)
-        {
+    for (auto* cr : critters) {
+        if (cr->GetMapId() == 0u && cr->GetGlobalMapLeaderId() != 0u && cr->GetGlobalMapLeaderId() != cr->Id) {
             critters_groups.push_back(cr);
             continue;
         }
 
-        Map* map = mapMngr.GetMap(cr->GetMapId());
-        if (cr->GetMapId() && !map)
-        {
-            WriteLog("Map {} not found, critter '{}', hx {}, hy {}.\n", cr->GetMapId(), cr->GetName(), cr->GetHexX(),
-                cr->GetHexY());
+        auto* map = _mapMngr.GetMap(cr->GetMapId());
+        if (cr->GetMapId() != 0u && map == nullptr) {
+            WriteLog("Map {} not found, critter '{}', hx {}, hy {}.\n", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
             errors++;
             continue;
         }
 
-        if (!mapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), 0))
-        {
-            WriteLog("Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->Id, cr->GetMapId(),
-                cr->GetHexX(), cr->GetHexY());
+        if (!_mapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), 0)) {
+            WriteLog("Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->Id, cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
             errors++;
             continue;
         }
-        mapMngr.AddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0);
 
-        if (!map)
+        _mapMngr.AddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0);
+
+        if (map == nullptr) {
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() - 1);
+        }
     }
 
     // Move critters to global groups
-    for (auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it)
-    {
-        Critter* cr = *it;
-        if (!mapMngr.CanAddCrToMap(cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId()))
-        {
-            WriteLog("Error parsing npc to global group, critter '{}', rule id {}.\n", cr->GetName(),
-                cr->GetGlobalMapLeaderId());
+    for (auto* cr : critters_groups) {
+        if (!_mapMngr.CanAddCrToMap(cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId())) {
+            WriteLog("Error parsing npc to global group, critter '{}', rule id {}.\n", cr->GetName(), cr->GetGlobalMapLeaderId());
             errors++;
             continue;
         }
-        mapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
+        _mapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
     }
 
     WriteLog("Link npc complete.\n");
     return errors == 0;
 }
 
-bool EntityManager::LinkItems()
+auto EntityManager::LinkItems() -> bool
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     WriteLog("Link items...\n");
 
-    int errors = 0;
+    auto errors = 0;
     CritterVec critters;
-    crMngr.GetCritters(critters);
+    _crMngr.GetCritters(critters);
     ItemVec game_items;
-    itemMngr.GetGameItems(game_items);
-    for (auto& item : game_items)
-    {
-        if (item->IsStatic())
-        {
+    _itemMngr.GetGameItems(game_items);
+    for (auto& item : game_items) {
+        if (item->IsStatic()) {
             WriteLog("Item '{}' ({}) is static.\n", item->GetName(), item->Id);
             errors++;
             continue;
         }
 
-        switch (item->GetAccessory())
-        {
+        switch (item->GetAccessory()) {
         case ITEM_ACCESSORY_CRITTER: {
-            if (IS_CLIENT_ID(item->GetCritId()))
+            if (IS_CLIENT_ID(item->GetCritId())) {
                 continue; // Skip player
+            }
 
-            Critter* npc = crMngr.GetNpc(item->GetCritId());
-            if (!npc)
-            {
+            Critter* npc = _crMngr.GetNpc(item->GetCritId());
+            if (npc == nullptr) {
                 WriteLog("Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->Id, item->GetCritId());
                 errors++;
                 continue;
             }
 
             npc->SetItem(item);
-        }
-        break;
+        } break;
         case ITEM_ACCESSORY_HEX: {
-            Map* map = mapMngr.GetMap(item->GetMapId());
-            if (!map)
-            {
-                WriteLog("Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->Id,
-                    item->GetMapId(), item->GetHexX(), item->GetHexY());
+            auto* map = _mapMngr.GetMap(item->GetMapId());
+            if (map == nullptr) {
+                WriteLog("Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetMapId(), item->GetHexX(), item->GetHexY());
                 errors++;
                 continue;
             }
 
-            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight())
-            {
-                WriteLog("Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->Id,
-                    item->GetHexX(), item->GetHexY());
+            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
+                WriteLog("Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetHexX(), item->GetHexY());
                 errors++;
                 continue;
             }
 
             map->SetItem(item, item->GetHexX(), item->GetHexY());
-        }
-        break;
+        } break;
         case ITEM_ACCESSORY_CONTAINER: {
-            Item* cont = itemMngr.GetItem(item->GetContainerId());
-            if (!cont)
-            {
-                WriteLog("Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->Id,
-                    item->GetContainerId());
+            auto* cont = _itemMngr.GetItem(item->GetContainerId());
+            if (cont == nullptr) {
+                WriteLog("Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->Id, item->GetContainerId());
                 errors++;
                 continue;
             }
 
-            itemMngr.SetItemToContainer(cont, item);
-        }
-        break;
+            _itemMngr.SetItemToContainer(cont, item);
+        } break;
         default:
             WriteLog("Unknown accessory id '{}' ({}), acc {}.\n", item->GetName(), item->Id, item->GetAccessory());
             errors++;
-            continue;
         }
     }
 
@@ -558,59 +499,59 @@ bool EntityManager::LinkItems()
 
 void EntityManager::InitAfterLoad()
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     WriteLog("Init entities after load...\n");
 
     // Process visible
     CritterVec critters;
-    crMngr.GetCritters(critters);
-    for (auto& cr : critters)
-    {
-        mapMngr.ProcessVisibleCritters(cr);
-        mapMngr.ProcessVisibleItems(cr);
+    _crMngr.GetCritters(critters);
+    for (auto& cr : critters) {
+        _mapMngr.ProcessVisibleCritters(cr);
+        _mapMngr.ProcessVisibleItems(cr);
     }
 
     // Other initialization
-    EntityMap entities = allEntities;
-    for (auto it = entities.begin(); it != entities.end(); ++it)
-        it->second->AddRef();
+    auto entities = _allEntities;
+    for (auto& [id, entity] : entities) {
+        entity->AddRef();
+    }
 
-    for (auto it = entities.begin(); it != entities.end(); ++it)
-    {
-        Entity* entity = it->second;
-        if (entity->IsDestroyed)
-        {
+    for (auto& [id, entity] : entities) {
+        if (entity->IsDestroyed) {
             entity->Release();
             continue;
         }
 
-        if (entity->Type == EntityType::Location)
-        {
-            Location* loc = (Location*)entity;
-            scriptSys.LocationInitEvent(loc, false);
+        if (entity->Type == EntityType::Location) {
+            auto* loc = dynamic_cast<Location*>(entity);
+            _scriptSys.LocationInitEvent(loc, false);
         }
-        else if (entity->Type == EntityType::Map)
-        {
-            Map* map = (Map*)entity;
-            scriptSys.MapInitEvent(map, false);
-            if (!map->IsDestroyed && map->GetScriptId())
+        else if (entity->Type == EntityType::Map) {
+            auto* map = dynamic_cast<Map*>(entity);
+            _scriptSys.MapInitEvent(map, false);
+            if (!map->IsDestroyed && map->GetScriptId() != 0u) {
                 map->SetScript(nullptr, false);
+            }
         }
-        else if (entity->Type == EntityType::Npc)
-        {
-            Npc* npc = (Npc*)entity;
-            scriptSys.CritterInitEvent(npc, false);
-            if (!npc->IsDestroyed && npc->GetScriptId())
+        else if (entity->Type == EntityType::Npc) {
+            auto* npc = dynamic_cast<Npc*>(entity);
+            _scriptSys.CritterInitEvent(npc, false);
+            if (!npc->IsDestroyed && npc->GetScriptId() != 0u) {
                 npc->SetScript(nullptr, false);
+            }
         }
-        else if (entity->Type == EntityType::Item)
-        {
-            Item* item = (Item*)entity;
-            if (item->GetIsRadio())
-                itemMngr.RadioRegister(item, true);
-            if (!item->IsDestroyed)
-                scriptSys.ItemInitEvent(item, false);
-            if (!item->IsDestroyed && item->GetScriptId())
+        else if (entity->Type == EntityType::Item) {
+            auto* item = dynamic_cast<Item*>(entity);
+            if (item->GetIsRadio()) {
+                _itemMngr.RadioRegister(item, true);
+            }
+            if (!item->IsDestroyed) {
+                _scriptSys.ItemInitEvent(item, false);
+            }
+            if (!item->IsDestroyed && item->GetScriptId() != 0u) {
                 item->SetScript(nullptr, false);
+            }
         }
 
         entity->Release();
@@ -621,15 +562,15 @@ void EntityManager::InitAfterLoad()
 
 void EntityManager::ClearEntities()
 {
-    for (auto it = allEntities.begin(); it != allEntities.end(); ++it)
-    {
-        it->second->IsDestroyed = true;
-        scriptSys.RemoveEntity(it->second);
-        entitiesCount[(int)it->second->Type]--;
-        SAFEREL(it->second);
+    for (auto& [id, entity] : _allEntities) {
+        entity->IsDestroyed = true;
+        _scriptSys.RemoveEntity(entity);
+        _entitiesCount[static_cast<int>(entity->Type)]--;
+        entity->Release();
     }
-    allEntities.clear();
+    _allEntities.clear();
 
-    for (int i = 0; i < (int)EntityType::Max; i++)
-        RUNTIME_ASSERT(entitiesCount[i] == 0);
+    for (auto& i : _entitiesCount) {
+        RUNTIME_ASSERT(i == 0);
+    }
 }

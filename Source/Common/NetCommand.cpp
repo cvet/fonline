@@ -67,49 +67,47 @@ static const CmdDef CmdList[] = {
     {"log", CMD_LOG},
 };
 
-bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const string&)> logcb, const string& name)
+auto PackNetCommand(const string& str, NetBuffer* pbuf, const std::function<void(const string&)>& logcb, const string& name) -> bool
 {
     string args = _str(str).trim();
-    string cmd_str = args;
-    size_t space = cmd_str.find(' ');
-    if (space != string::npos)
-    {
+    auto cmd_str = args;
+    auto space = cmd_str.find(' ');
+    if (space != string::npos) {
         cmd_str = args.substr(0, space);
         args.erase(0, cmd_str.length());
     }
     istringstream args_str(args);
 
     uchar cmd = 0;
-    for (uint cur_cmd = 0; cur_cmd < sizeof(CmdList) / sizeof(CmdDef); cur_cmd++)
-        if (_str(cmd_str).compareIgnoreCase(CmdList[cur_cmd].Name))
-            cmd = CmdList[cur_cmd].Id;
-    if (!cmd)
+    for (const auto& cur_cmd : CmdList) {
+        if (_str(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
+            cmd = cur_cmd.Id;
+        }
+    }
+    if (cmd == 0u) {
         return false;
+    }
 
-    uint msg = NETMSG_SEND_COMMAND;
+    auto msg = NETMSG_SEND_COMMAND;
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(cmd);
 
     RUNTIME_ASSERT(pbuf);
-    NetBuffer& buf = *pbuf;
+    auto& buf = *pbuf;
 
-    switch (cmd)
-    {
+    switch (cmd) {
     case CMD_EXIT: {
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
+    } break;
     case CMD_MYINFO: {
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
+    } break;
     case CMD_GAMEINFO: {
-        int type;
-        if (!(args_str >> type))
-        {
+        auto type = 0;
+        if (!(args_str >> type)) {
             logcb("Invalid arguments. Example: gameinfo type.");
             break;
         }
@@ -119,29 +117,25 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << msg_len;
         buf << cmd;
         buf << type;
-    }
-    break;
+    } break;
     case CMD_CRITID: {
         string name;
-        if (!(args_str >> name))
-        {
+        if (!(args_str >> name)) {
             logcb("Invalid arguments. Example: id name.");
             break;
         }
-        msg_len += NetBuffer::StringLenSize;
+        msg_len += NetBuffer::STRING_LEN_SIZE;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf << name;
-    }
-    break;
+    } break;
     case CMD_MOVECRIT: {
-        uint crid;
-        ushort hex_x;
-        ushort hex_y;
-        if (!(args_str >> crid >> hex_x >> hex_y))
-        {
+        uint crid = 0;
+        ushort hex_x = 0;
+        ushort hex_y = 0;
+        if (!(args_str >> crid >> hex_x >> hex_y)) {
             logcb("Invalid arguments. Example: move crid hx hy.");
             break;
         }
@@ -153,12 +147,10 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << crid;
         buf << hex_x;
         buf << hex_y;
-    }
-    break;
+    } break;
     case CMD_DISCONCRIT: {
-        uint crid;
-        if (!(args_str >> crid))
-        {
+        uint crid = 0;
+        if (!(args_str >> crid)) {
             logcb("Invalid arguments. Example: disconnect crid.");
             break;
         }
@@ -168,24 +160,21 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << msg_len;
         buf << cmd;
         buf << crid;
-    }
-    break;
+    } break;
     case CMD_TOGLOBAL: {
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
+    } break;
     case CMD_PROPERTY: {
-        uint crid;
+        uint crid = 0;
         string property_name;
-        int property_value;
-        if (!(args_str >> crid >> property_name >> property_value))
-        {
+        auto property_value = 0;
+        if (!(args_str >> crid >> property_name >> property_value)) {
             logcb("Invalid arguments. Example: prop crid prop_name value.");
             break;
         }
-        msg_len += sizeof(uint) + NetBuffer::StringLenSize + (uint)property_name.length() + sizeof(int);
+        msg_len += sizeof(uint) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(property_name.length()) + sizeof(int);
 
         buf << msg;
         buf << msg_len;
@@ -193,37 +182,33 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << crid;
         buf << property_name;
         buf << property_value;
-    }
-    break;
+    } break;
     case CMD_GETACCESS: {
         string name_access;
         string pasw_access;
-        if (!(args_str >> name_access >> pasw_access))
-        {
+        if (!(args_str >> name_access >> pasw_access)) {
             logcb("Invalid arguments. Example: getaccess name password.");
             break;
         }
         name_access = _str(name_access).replace('*', ' ');
         pasw_access = _str(pasw_access).replace('*', ' ');
-        msg_len += NetBuffer::StringLenSize * 2 + (uint)(name_access.length() + pasw_access.length());
+        msg_len += NetBuffer::STRING_LEN_SIZE * 2 + static_cast<uint>(name_access.length() + pasw_access.length());
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf << name_access;
         buf << pasw_access;
-    }
-    break;
+    } break;
     case CMD_ADDITEM: {
-        ushort hex_x;
-        ushort hex_y;
+        ushort hex_x = 0;
+        ushort hex_y = 0;
         string proto_name;
-        uint count;
-        if (!(args_str >> hex_x >> hex_y >> proto_name >> count))
-        {
+        uint count = 0;
+        if (!(args_str >> hex_x >> hex_y >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additem hx hy name count.");
             break;
         }
-        hash pid = _str(proto_name).toHash();
+        auto pid = _str(proto_name).toHash();
         msg_len += sizeof(hex_x) + sizeof(hex_y) + sizeof(pid) + sizeof(count);
 
         buf << msg;
@@ -233,17 +218,15 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << hex_y;
         buf << pid;
         buf << count;
-    }
-    break;
+    } break;
     case CMD_ADDITEM_SELF: {
         string proto_name;
-        uint count;
-        if (!(args_str >> proto_name >> count))
-        {
+        uint count = 0;
+        if (!(args_str >> proto_name >> count)) {
             logcb("Invalid arguments. Example: additemself name count.");
             break;
         }
-        hash pid = _str(proto_name).toHash();
+        auto pid = _str(proto_name).toHash();
         msg_len += sizeof(pid) + sizeof(count);
 
         buf << msg;
@@ -251,19 +234,17 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << cmd;
         buf << pid;
         buf << count;
-    }
-    break;
+    } break;
     case CMD_ADDNPC: {
-        ushort hex_x;
-        ushort hex_y;
-        uchar dir;
+        ushort hex_x = 0;
+        ushort hex_y = 0;
+        uchar dir = 0;
         string proto_name;
-        if (!(args_str >> hex_x >> hex_y >> dir >> proto_name))
-        {
+        if (!(args_str >> hex_x >> hex_y >> dir >> proto_name)) {
             logcb("Invalid arguments. Example: addnpc hx hy dir name.");
             break;
         }
-        hash pid = _str(proto_name).toHash();
+        auto pid = _str(proto_name).toHash();
         msg_len += sizeof(hex_x) + sizeof(hex_y) + sizeof(dir) + sizeof(pid);
 
         buf << msg;
@@ -273,18 +254,16 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << hex_y;
         buf << dir;
         buf << pid;
-    }
-    break;
+    } break;
     case CMD_ADDLOCATION: {
-        ushort wx;
-        ushort wy;
+        ushort wx = 0;
+        ushort wy = 0;
         string proto_name;
-        if (!(args_str >> wx >> wy >> proto_name))
-        {
+        if (!(args_str >> wx >> wy >> proto_name)) {
             logcb("Invalid arguments. Example: addloc wx wy name.");
             break;
         }
-        hash pid = _str(proto_name).toHash();
+        auto pid = _str(proto_name).toHash();
         msg_len += sizeof(wx) + sizeof(wy) + sizeof(pid);
 
         buf << msg;
@@ -293,17 +272,17 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << wx;
         buf << wy;
         buf << pid;
-    }
-    break;
+    } break;
     case CMD_RUNSCRIPT: {
         string func_name;
-        uint param0, param1, param2;
-        if (!(args_str >> func_name >> param0 >> param1 >> param2))
-        {
+        uint param0 = 0;
+        uint param1 = 0;
+        uint param2 = 0;
+        if (!(args_str >> func_name >> param0 >> param1 >> param2)) {
             logcb("Invalid arguments. Example: runscript module::func param0 param1 param2.");
             break;
         }
-        msg_len += NetBuffer::StringLenSize + (uint)func_name.length() + sizeof(uint) * 3;
+        msg_len += NetBuffer::STRING_LEN_SIZE + static_cast<uint>(func_name.length()) + sizeof(uint) * 3;
 
         buf << msg;
         buf << msg_len;
@@ -312,29 +291,25 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << param0;
         buf << param1;
         buf << param2;
-    }
-    break;
+    } break;
     case CMD_REGENMAP: {
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
+    } break;
     case CMD_SETTIME: {
-        int multiplier;
-        int year;
-        int month;
-        int day;
-        int hour;
-        int minute;
-        int second;
-        if (!(args_str >> multiplier >> year >> month >> day >> hour >> minute >> second))
-        {
+        auto multiplier = 0;
+        auto year = 0;
+        auto month = 0;
+        auto day = 0;
+        auto hour = 0;
+        auto minute = 0;
+        auto second = 0;
+        if (!(args_str >> multiplier >> year >> month >> day >> hour >> minute >> second)) {
             logcb("Invalid arguments. Example: settime tmul year month day hour minute second.");
             break;
         }
-        msg_len += sizeof(multiplier) + sizeof(year) + sizeof(month) + sizeof(day) + sizeof(hour) + sizeof(minute) +
-            sizeof(second);
+        msg_len += sizeof(multiplier) + sizeof(year) + sizeof(month) + sizeof(day) + sizeof(hour) + sizeof(minute) + sizeof(second);
 
         buf << msg;
         buf << msg_len;
@@ -346,30 +321,29 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << hour;
         buf << minute;
         buf << second;
-    }
-    break;
+    } break;
     case CMD_BAN: {
         string params;
         string name;
-        uint ban_hours;
+        uint ban_hours = 0;
         string info;
         args_str >> params;
-        if (!args_str.fail())
+        if (!args_str.fail()) {
             args_str >> name;
-        if (!args_str.fail())
+        }
+        if (!args_str.fail()) {
             args_str >> ban_hours;
-        if (!args_str.fail())
+        }
+        if (!args_str.fail()) {
             info = args_str.str();
-        if (!_str(params).compareIgnoreCase("add") && !_str(params).compareIgnoreCase("add+") &&
-            !_str(params).compareIgnoreCase("delete") && !_str(params).compareIgnoreCase("list"))
-        {
+        }
+        if (!_str(params).compareIgnoreCase("add") && !_str(params).compareIgnoreCase("add+") && !_str(params).compareIgnoreCase("delete") && !_str(params).compareIgnoreCase("list")) {
             logcb("Invalid arguments. Example: ban [add,add+,delete,list] [user] [hours] [comment].");
             break;
         }
         name = _str(name).replace('*', ' ').trim();
         info = _str(info).replace('$', '*').trim();
-        msg_len +=
-            NetBuffer::StringLenSize * 3 + (uint)(name.length() + params.length() + info.length()) + sizeof(ban_hours);
+        msg_len += NetBuffer::STRING_LEN_SIZE * 3 + static_cast<uint>(name.length() + params.length() + info.length()) + sizeof(ban_hours);
 
         buf << msg;
         buf << msg_len;
@@ -378,58 +352,51 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << params;
         buf << ban_hours;
         buf << info;
-    }
-    break;
+    } break;
     case CMD_DELETE_ACCOUNT: {
-        if (name.empty())
-        {
+        if (name.empty()) {
             logcb("Can't execute this command.");
             break;
         }
 
         string pass;
-        if (!(args_str >> pass))
-        {
+        if (!(args_str >> pass)) {
             logcb("Invalid arguments. Example: deleteself user_password.");
             break;
         }
         pass = _str(pass).replace('*', ' ');
-        string pass_hash = Hashing::ClientPassHash(name, pass);
+        auto pass_hash = Hashing::ClientPassHash(name, pass);
         msg_len += PASS_HASH_SIZE;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
-    }
-    break;
+    } break;
     case CMD_CHANGE_PASSWORD: {
-        if (name.empty())
-        {
+        if (name.empty()) {
             logcb("Can't execute this command.");
             break;
         }
 
         string pass;
         string new_pass;
-        if (!(args_str >> pass >> new_pass))
-        {
+        if (!(args_str >> pass >> new_pass)) {
             logcb("Invalid arguments. Example: changepassword current_password new_password.");
             break;
         }
         pass = _str(pass).replace('*', ' ');
 
         // Check the new password's validity
-        uint pass_len = _str(new_pass).lengthUtf8();
-        if (pass_len < MIN_NAME || pass_len > MAX_NAME)
-        {
+        auto pass_len = _str(new_pass).lengthUtf8();
+        if (pass_len < MIN_NAME || pass_len > MAX_NAME) {
             logcb("Invalid new password.");
             break;
         }
 
-        string pass_hash = Hashing::ClientPassHash(name, pass);
+        auto pass_hash = Hashing::ClientPassHash(name, pass);
         new_pass = _str(new_pass).replace('*', ' ');
-        string new_pass_hash = Hashing::ClientPassHash(name, new_pass);
+        auto new_pass_hash = Hashing::ClientPassHash(name, new_pass);
         msg_len += PASS_HASH_SIZE * 2;
 
         buf << msg;
@@ -437,23 +404,20 @@ bool PackNetCommand(const string& str, NetBuffer* pbuf, std::function<void(const
         buf << cmd;
         buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
         buf.Push(new_pass_hash.c_str(), PASS_HASH_SIZE);
-    }
-    break;
+    } break;
     case CMD_LOG: {
         string flags;
-        if (!(args_str >> flags) || flags.length() > 2)
-        {
+        if (!(args_str >> flags) || flags.length() > 2) {
             logcb("Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all.");
             break;
         }
-        msg_len += NetBuffer::StringLenSize + (uint)flags.length();
+        msg_len += NetBuffer::STRING_LEN_SIZE + static_cast<uint>(flags.length());
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf << flags;
-    }
-    break;
+    } break;
     default:
         return false;
     }

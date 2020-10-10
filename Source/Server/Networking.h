@@ -41,7 +41,13 @@
 class NetConnection
 {
 public:
+    NetConnection() = default;
+    NetConnection(const NetConnection&) = delete;
+    NetConnection(NetConnection&&) noexcept = delete;
+    auto operator=(const NetConnection&) = delete;
+    auto operator=(NetConnection&&) noexcept = delete;
     virtual ~NetConnection() = default;
+
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;
     virtual void Disconnect() = 0;
@@ -62,8 +68,14 @@ class NetServerBase
 public:
     using ConnectionCallback = std::function<void(NetConnection*)>;
 
-    static NetServerBase* StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback);
-    static NetServerBase* StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback);
-
+    NetServerBase() = default;
+    NetServerBase(const NetServerBase&) = delete;
+    NetServerBase(NetServerBase&&) noexcept = delete;
+    auto operator=(const NetServerBase&) = delete;
+    auto operator=(NetServerBase&&) noexcept = delete;
     virtual ~NetServerBase() = default;
+    virtual void Shutdown() = 0;
+
+    static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
 };

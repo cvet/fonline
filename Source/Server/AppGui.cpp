@@ -36,7 +36,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "WinApi_Include.h"
+#include "WinApi-Include.h"
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -112,8 +112,7 @@ static bool Platform_GetWindowFocus(ImGuiViewport* viewport);
 static bool Platform_GetWindowMinimized(ImGuiViewport* viewport);
 static void Platform_RenderWindow(ImGuiViewport* viewport, void*);
 static void Platform_SwapBuffers(ImGuiViewport* viewport, void*);
-static int Platform_CreateVkSurface(
-    ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface);
+static int Platform_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface);
 static void Renderer_RenderWindow(ImGuiViewport* viewport, void*);
 
 bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximized)
@@ -122,11 +121,11 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     InitCalled = true;
 
     // DirectX backend
-    if (use_dx)
-    {
-#ifdef FO_HAVE_D3D
-        if (!InitDX(app_name, docking, maximized))
+    if (use_dx) {
+#ifdef FO_HAVE_DIRECT_3D
+        if (!InitDX(app_name, docking, maximized)) {
             return false;
+        }
 
         UseDirectX = true;
         return true;
@@ -137,8 +136,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     }
 
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
-    {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         WriteLog("SDL2 init error: {}\n", SDL_GetError());
         return false;
     }
@@ -153,10 +151,8 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
 
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (maximized ? SDL_WINDOW_MAXIMIZED : 0));
-    SDL_Window* window =
-        SDL_CreateWindow(app_name.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, window_flags);
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (maximized ? SDL_WINDOW_MAXIMIZED : 0));
+    SDL_Window* window = SDL_CreateWindow(app_name.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(0);
@@ -169,8 +165,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     GLenum glew_result = glewInit();
     RUNTIME_ASSERT(glew_result == GLEW_OK);
 #ifndef FO_WINDOWS
-    if (!GLEW_VERSION_2_0 || !GLEW_ARB_vertex_buffer_object)
-    {
+    if (!GLEW_VERSION_2_0 || !GLEW_ARB_vertex_buffer_object) {
         WriteLog("Minimum OpenGL 2.0 required.\n");
         return false;
     }
@@ -207,8 +202,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     GL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 #endif
 
-    if (!FixedPipeline)
-    {
+    if (!FixedPipeline) {
         const GLchar* vertex_shader = "#version 110\n"
                                       "uniform mat4 ProjMtx;\n"
                                       "attribute vec2 Position;\n"
@@ -278,8 +272,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     io.IniFilename = nullptr;
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    if (docking)
-    {
+    if (docking) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
@@ -344,8 +337,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
         main_viewport->PlatformHandleRaw = info.info.win.window;
 #endif
 
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
         platform_io.Platform_CreateWindow = Platform_CreateWindow;
         platform_io.Platform_DestroyWindow = Platform_DestroyWindow;
@@ -369,8 +361,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
         // Update monitors
         platform_io.Monitors.resize(0);
         int display_count = SDL_GetNumVideoDisplays();
-        for (int n = 0; n < display_count; n++)
-        {
+        for (int n = 0; n < display_count; n++) {
             ImGuiPlatformMonitor monitor;
             SDL_Rect r;
             SDL_GetDisplayBounds(n, &r);
@@ -420,7 +411,7 @@ bool AppGui::BeginFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_D3D
+#ifdef FO_HAVE_DIRECT_3D
     if (UseDirectX)
         return BeginFrameDX();
 #endif
@@ -430,10 +421,8 @@ bool AppGui::BeginFrame()
     // Poll and handle events
     SDL_Event event;
     bool quit = false;
-    while (SDL_PollEvent(&event))
-    {
-        switch (event.type)
-        {
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
         case SDL_MOUSEWHEEL: {
             if (event.wheel.x > 0)
                 io.MouseWheelH += 1;
@@ -472,12 +461,8 @@ bool AppGui::BeginFrame()
         }
         case SDL_WINDOWEVENT:
             Uint8 window_event = event.window.event;
-            if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED ||
-                window_event == SDL_WINDOWEVENT_RESIZED)
-            {
-                if (ImGuiViewport* viewport =
-                        ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID)))
-                {
+            if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED || window_event == SDL_WINDOWEVENT_RESIZED) {
+                if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID))) {
                     if (window_event == SDL_WINDOWEVENT_CLOSE)
                         viewport->PlatformRequestClose = true;
                     if (window_event == SDL_WINDOWEVENT_MOVED)
@@ -491,8 +476,7 @@ bool AppGui::BeginFrame()
 
         if (event.type == SDL_QUIT)
             quit = true;
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-            event.window.windowID == SDL_GetWindowID(SdlWindow))
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(SdlWindow))
             quit = true;
     }
 
@@ -514,15 +498,13 @@ bool AppGui::BeginFrame()
     // Mouse state
     io.MouseHoveredViewport = 0;
 
-    if (io.WantSetMousePos)
-    {
+    if (io.WantSetMousePos) {
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             SDL_WarpMouseGlobal((int)io.MousePos.x, (int)io.MousePos.y);
         else
             SDL_WarpMouseInWindow(SdlWindow, (int)io.MousePos.x, (int)io.MousePos.y);
     }
-    else
-    {
+    else {
         io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
     }
 
@@ -537,16 +519,13 @@ bool AppGui::BeginFrame()
     int mouse_x_global, mouse_y_global;
     SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
 
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         if (SDL_Window* focused_window = SDL_GetKeyboardFocus())
             if (ImGui::FindViewportByPlatformHandle((void*)focused_window) != nullptr)
                 io.MousePos = ImVec2((float)mouse_x_global, (float)mouse_y_global);
     }
-    else
-    {
-        if (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS)
-        {
+    else {
+        if (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) {
             int window_x, window_y;
             SDL_GetWindowPosition(SdlWindow, &window_x, &window_y);
             io.MousePos = ImVec2((float)(mouse_x_global - window_x), (float)(mouse_y_global - window_y));
@@ -562,12 +541,10 @@ bool AppGui::BeginFrame()
 #endif
 
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None)
-    {
+    if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None) {
         SDL_ShowCursor(SDL_FALSE);
     }
-    else
-    {
+    else {
         SDL_SetCursor(MouseCursors[imgui_cursor] ? MouseCursors[imgui_cursor] : MouseCursors[ImGuiMouseCursor_Arrow]);
         SDL_ShowCursor(SDL_TRUE);
     }
@@ -581,9 +558,8 @@ void AppGui::EndFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_D3D
-    if (UseDirectX)
-    {
+#ifdef FO_HAVE_DIRECT_3D
+    if (UseDirectX) {
         EndFrameDX();
         return;
     }
@@ -599,8 +575,7 @@ void AppGui::EndFrame()
 
     RenderDrawData(ImGui::GetDrawData());
 
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
         SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
         ImGui::UpdatePlatformWindows();
@@ -610,8 +585,7 @@ void AppGui::EndFrame()
 
     GL(glDisable(GL_SCISSOR_TEST));
     GL(glBindTexture(GL_TEXTURE_2D, 0));
-    if (!FixedPipeline)
-    {
+    if (!FixedPipeline) {
         if (IsVertexArraySupported)
             GL(glBindVertexArray(0));
         GL(glUseProgram(0));
@@ -640,15 +614,16 @@ static void RenderDrawData(ImDrawData* draw_data)
     // Avoid rendering when minimized
     int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
     int fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-    if (fb_width == 0 || fb_height == 0)
+    if (fb_width == 0 || fb_height == 0) {
         return;
+    }
 
     // Setup GL state
     GLuint vao = 0;
-    if (!FixedPipeline)
-    {
-        if (IsVertexArraySupported)
+    if (!FixedPipeline) {
+        if (IsVertexArraySupported) {
             GL(glGenVertexArrays(1, &vao));
+        }
     }
     SetupRenderState(draw_data, fb_width, fb_height, vao);
 
@@ -657,72 +632,52 @@ static void RenderDrawData(ImDrawData* draw_data)
     ImVec2 clip_scale = draw_data->FramebufferScale;
 
     // Render command lists
-    for (int n = 0; n < draw_data->CmdListsCount; n++)
-    {
+    for (int n = 0; n < draw_data->CmdListsCount; n++) {
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
         const ImDrawVert* vtx_buffer = cmd_list->VtxBuffer.Data;
         const ImDrawIdx* idx_buffer = cmd_list->IdxBuffer.Data;
 
-        if (FixedPipeline)
-        {
+        if (FixedPipeline) {
 #ifndef FO_OPENGL_ES
-            GL(glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert),
-                (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos))));
-            GL(glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert),
-                (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv))));
-            GL(glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert),
-                (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col))));
+            GL(glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos))));
+            GL(glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv))));
+            GL(glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col))));
 #endif
         }
-        else
-        {
-            GL(glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)cmd_list->VtxBuffer.Size * sizeof(ImDrawVert),
-                (const GLvoid*)vtx_buffer, GL_STREAM_DRAW));
-            GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx),
-                (const GLvoid*)idx_buffer, GL_STREAM_DRAW));
+        else {
+            GL(glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)cmd_list->VtxBuffer.Size * sizeof(ImDrawVert), (const GLvoid*)vtx_buffer, GL_STREAM_DRAW));
+            GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx), (const GLvoid*)idx_buffer, GL_STREAM_DRAW));
         }
 
-        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
-        {
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-            if (pcmd->UserCallback)
-            {
+            if (pcmd->UserCallback) {
                 if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
                     SetupRenderState(draw_data, fb_width, fb_height, vao);
                 else
                     pcmd->UserCallback(cmd_list, pcmd);
             }
-            else
-            {
+            else {
                 ImVec4 clip_rect;
                 clip_rect.x = (pcmd->ClipRect.x - clip_off.x) * clip_scale.x;
                 clip_rect.y = (pcmd->ClipRect.y - clip_off.y) * clip_scale.y;
                 clip_rect.z = (pcmd->ClipRect.z - clip_off.x) * clip_scale.x;
                 clip_rect.w = (pcmd->ClipRect.w - clip_off.y) * clip_scale.y;
 
-                if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f)
-                {
-                    GL(glScissor((int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x),
-                        (int)(clip_rect.w - clip_rect.y)));
+                if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f) {
+                    GL(glScissor((int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x), (int)(clip_rect.w - clip_rect.y)));
                     GL(glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)pcmd->TextureId));
 
-                    if (!FixedPipeline)
-                    {
+                    if (!FixedPipeline) {
 #ifndef FO_OPENGL_ES
-                        GL(glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)pcmd->ElemCount,
-                            sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                            (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx)), (GLint)pcmd->VtxOffset));
+                        GL(glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx)), (GLint)pcmd->VtxOffset));
 #else
-                        GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount,
-                            sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                            (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx))));
+                        GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx))));
 #endif
                     }
-                    else
-                    {
+                    else {
 #ifndef FO_OPENGL_ES
-                        GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount,
-                            sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer));
+                        GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer));
 #endif
                     }
                 }
@@ -733,8 +688,7 @@ static void RenderDrawData(ImDrawData* draw_data)
         }
     }
 
-    if (!FixedPipeline)
-    {
+    if (!FixedPipeline) {
         if (IsVertexArraySupported)
             GL(glDeleteVertexArrays(1, &vao));
     }
@@ -744,8 +698,7 @@ static void SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height,
 {
     GL(glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height));
 
-    if (!FixedPipeline)
-    {
+    if (!FixedPipeline) {
         float l = draw_data->DisplayPos.x;
         float r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
         float t = draw_data->DisplayPos.y;
@@ -772,15 +725,11 @@ static void SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height,
         GL(glEnableVertexAttribArray(AttribLocationVtxPos));
         GL(glEnableVertexAttribArray(AttribLocationVtxUV));
         GL(glEnableVertexAttribArray(AttribLocationVtxColor));
-        GL(glVertexAttribPointer(
-            AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, pos)));
-        GL(glVertexAttribPointer(
-            AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, uv)));
-        GL(glVertexAttribPointer(AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert),
-            (GLvoid*)IM_OFFSETOF(ImDrawVert, col)));
+        GL(glVertexAttribPointer(AttribLocationVtxPos, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, pos)));
+        GL(glVertexAttribPointer(AttribLocationVtxUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, uv)));
+        GL(glVertexAttribPointer(AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, col)));
     }
-    else
-    {
+    else {
 #ifndef FO_OPENGL_ES
         GL(glEnableClientState(GL_VERTEX_ARRAY));
         GL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
@@ -789,8 +738,7 @@ static void SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height,
         GL(glLoadIdentity());
         GL(glMatrixMode(GL_PROJECTION));
         GL(glLoadIdentity());
-        GL(glOrtho(draw_data->DisplayPos.x, draw_data->DisplayPos.x + draw_data->DisplaySize.x,
-            draw_data->DisplayPos.y + draw_data->DisplaySize.y, draw_data->DisplayPos.y, -1.0f, 1.0f));
+        GL(glOrtho(draw_data->DisplayPos.x, draw_data->DisplayPos.x + draw_data->DisplaySize.x, draw_data->DisplayPos.y + draw_data->DisplaySize.y, draw_data->DisplayPos.y, -1.0f, 1.0f));
 #endif
     }
 }
@@ -806,8 +754,7 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
     // Share GL resources with main context
     bool use_opengl = (main_viewport_data->GLContext != nullptr);
     SDL_GLContext backup_context = nullptr;
-    if (use_opengl)
-    {
+    if (use_opengl) {
         backup_context = SDL_GL_GetCurrentContext();
         SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
         SDL_GL_MakeCurrent(main_viewport_data->Window, main_viewport_data->GLContext);
@@ -821,11 +768,9 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? 0 : SDL_WINDOW_RESIZABLE;
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_TopMost) ? SDL_WINDOW_ALWAYS_ON_TOP : 0;
 
-    data->Window = SDL_CreateWindow("No Title Yet", (int)viewport->Pos.x, (int)viewport->Pos.y, (int)viewport->Size.x,
-        (int)viewport->Size.y, sdl_flags);
+    data->Window = SDL_CreateWindow("No Title Yet", (int)viewport->Pos.x, (int)viewport->Pos.y, (int)viewport->Size.x, (int)viewport->Size.y, sdl_flags);
     data->WindowOwned = true;
-    if (use_opengl)
-    {
+    if (use_opengl) {
         data->GLContext = SDL_GL_CreateContext(data->Window);
         SDL_GL_SetSwapInterval(0);
     }
@@ -844,8 +789,7 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
 
 static void Platform_DestroyWindow(ImGuiViewport* viewport)
 {
-    if (ImGuiViewportDataSDL2* data = (ImGuiViewportDataSDL2*)viewport->PlatformUserData)
-    {
+    if (ImGuiViewportDataSDL2* data = (ImGuiViewportDataSDL2*)viewport->PlatformUserData) {
         if (data->GLContext && data->WindowOwned)
             SDL_GL_DeleteContext(data->GLContext);
         if (data->Window && data->WindowOwned)
@@ -865,8 +809,7 @@ static void Platform_ShowWindow(ImGuiViewport* viewport)
     HWND hwnd = (HWND)viewport->PlatformHandleRaw;
 
     // Hide icon from task bar
-    if (viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon)
-    {
+    if (viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon) {
         LONG ex_style = GetWindowLong(hwnd, GWL_EXSTYLE);
         ex_style &= ~WS_EX_APPWINDOW;
         ex_style |= WS_EX_TOOLWINDOW;
@@ -874,8 +817,7 @@ static void Platform_ShowWindow(ImGuiViewport* viewport)
     }
 
     // SDL always activate/focus windows
-    if (viewport->Flags & ImGuiViewportFlags_NoFocusOnAppearing)
-    {
+    if (viewport->Flags & ImGuiViewportFlags_NoFocusOnAppearing) {
         ShowWindow(hwnd, SW_SHOWNA);
         return;
     }
@@ -952,15 +894,13 @@ static void Platform_RenderWindow(ImGuiViewport* viewport, void*)
 static void Platform_SwapBuffers(ImGuiViewport* viewport, void*)
 {
     ImGuiViewportDataSDL2* data = (ImGuiViewportDataSDL2*)viewport->PlatformUserData;
-    if (data->GLContext)
-    {
+    if (data->GLContext) {
         SDL_GL_MakeCurrent(data->Window, data->GLContext);
         SDL_GL_SwapWindow(data->Window);
     }
 }
 
-static int Platform_CreateVkSurface(
-    ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface)
+static int Platform_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface)
 {
     ImGuiViewportDataSDL2* data = (ImGuiViewportDataSDL2*)viewport->PlatformUserData;
     UNUSED_VARIABLE(vk_allocator);
@@ -970,8 +910,7 @@ static int Platform_CreateVkSurface(
 
 static void Renderer_RenderWindow(ImGuiViewport* viewport, void*)
 {
-    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-    {
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear)) {
         ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
         GL(glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w));
         GL(glClear(GL_COLOR_BUFFER_BIT));

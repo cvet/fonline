@@ -53,13 +53,14 @@ struct MapTile
 };
 using MapTileVec = vector<MapTile>;
 
-class MapLoader : public StaticClass
+class MapLoader final
 {
 public:
-    using CrLoadFunc = std::function<bool(uint id, ProtoCritter* proto, const StrMap& kv)>;
-    using ItemLoadFunc = std::function<bool(uint id, ProtoItem* proto, const StrMap& kv)>;
+    using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const StrMap& kv)>;
+    using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const StrMap& kv)>;
     using TileLoadFunc = std::function<void(MapTile&& tile)>;
 
-    static void Load(const string& name, FileManager& file_mngr, ProtoManager& proto_mngr, CrLoadFunc cr_load,
-        ItemLoadFunc item_load, TileLoadFunc tile_load);
+    MapLoader() = delete;
+
+    static void Load(const string& name, FileManager& file_mngr, ProtoManager& proto_mngr, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
 };

@@ -33,9 +33,11 @@
 
 #ifdef FO_TESTING
 #define CATCH_CONFIG_RUNNER
+#include "catch.hpp"
 #endif
 
 #include "Testing.h"
+
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -43,15 +45,15 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 #include "Timer.h"
-#include "Version_Include.h"
-#include "WinApi_Include.h"
+#include "Version-Include.h"
+#include "WinApi-Include.h"
 
 #if defined(FO_WINDOWS) && !defined(WINRT)
 #pragma warning(disable : 4091)
 #pragma warning(disable : 4996)
 #include <DbgHelp.h>
 #include <Psapi.h>
-#include <tlhelp32.h>
+#include <TlHelp32.h>
 #endif
 #if !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
 #ifdef FO_LINUX
@@ -67,14 +69,21 @@
 #include "SDL_main.h"
 #endif
 
-static string AppName;
-static string AppVer;
-static string ManualDumpAppendix;
-static string ManualDumpMessage;
+struct TestingData
+{
+    string AppName {};
+    string AppVer {};
+    string ManualDumpAppendix {};
+    string ManualDumpMessage {};
+};
+GLOBAL_DATA(TestingData, Data);
 
 #ifdef FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 {
+    CreateGlobalData();
+    CatchExceptions("FOnlineTesting", FO_VERSION);
+    LogToFile("FOnlineTesting.log");
     return Catch::Session().run(argc, argv);
 }
 #endif
@@ -85,12 +94,13 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #pragma warning(disable : 4748)
 #endif
 
-static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except);
+constexpr auto STACKWALK_MAX_NAMELEN = 1024;
 
+static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except);
 static void DumpAngelScript(DiskFile& file);
 
 // Old version of the structure, used before Vista
-typedef struct _IMAGEHLP_MODULE64_V2
+typedef struct ImagehlpModule64V2
 {
     DWORD SizeOfStruct; // set to sizeof(IMAGEHLP_MODULE64)
     DWORD64 BaseOfImage; // base load address of module
@@ -102,67 +112,61 @@ typedef struct _IMAGEHLP_MODULE64_V2
     CHAR ModuleName[32]; // module name
     CHAR ImageName[256]; // image name
     CHAR LoadedImageName[256]; // symbol file name
-} IMAGEHLP_MODULE64_V2;
+} imagehlp_module64_v2;
 
 void CatchExceptions(const string& app_name, int app_ver)
 {
-    AppName = app_name;
-    AppVer = _str("{:#x}", app_ver);
+    Data->AppName = app_name;
+    Data->AppVer = _str("{:#x}", app_ver);
 
-    if (!app_name.empty())
+    if (!app_name.empty()) {
         SetUnhandledExceptionFilter(TopLevelFilterReadableDump);
-    else
+    }
+    else {
         SetUnhandledExceptionFilter(nullptr);
+    }
 }
 
 static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 {
-    LONG retval = EXCEPTION_CONTINUE_SEARCH;
     string message;
     string traceback;
 
     DiskFileSystem::ResetCurDir();
-    DateTimeStamp dt;
-    Timer::GetCurrentDateTime(dt);
-    string dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, AppName, AppVer, dt.Year,
-        dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const auto dt = Timer::GetCurrentDateTime();
+    auto dump_str = except != nullptr ? "CrashDump" : Data->ManualDumpAppendix;
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, Data->AppName, Data->AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::MakeDirTree(dump_path);
-    DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
-    if (file)
-    {
-        if (!except)
-            message = ManualDumpMessage;
-        else
+    if (auto file = DiskFileSystem::OpenFile(dump_path, true)) {
+        if (except == nullptr) {
+            message = Data->ManualDumpMessage;
+        }
+        else {
             message = "Exception";
+        }
 
         // Generic info
         file.Write(_str("Message\n"));
         file.Write(_str("{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", AppName));
-        file.Write(_str("\tVersion     {}\n", AppVer));
+        file.Write(_str("\tName        {}\n", Data->AppName));
+        file.Write(_str("\tVersion     {}\n", Data->AppVer));
         OSVERSIONINFOW ver;
-        memset(&ver, 0, sizeof(OSVERSIONINFOW));
+        std::memset(&ver, 0, sizeof(OSVERSIONINFOW));
         ver.dwOSVersionInfoSize = sizeof(ver);
-        if (GetVersionExW((OSVERSIONINFOW*)&ver))
-        {
-            file.Write(_str("\tOS          {}.{}.{} ({})\n", ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber,
-                _str().parseWideChar(ver.szCSDVersion)));
+        if (::GetVersionExW(&ver) != 0) {
+            file.Write(_str("\tOS          {}.{}.{} ({})\n", ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, _str().parseWideChar(ver.szCSDVersion)));
         }
-        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour,
-            dt.Minute, dt.Second));
+        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
         file.Write(_str("\n"));
 
         // Exception information
-        if (except)
-        {
+        if (except != nullptr) {
             file.Write(_str("Exception\n"));
             file.Write(_str("\tCode      "));
-            switch (except->ExceptionRecord->ExceptionCode)
-            {
+            switch (except->ExceptionRecord->ExceptionCode) {
 #define CASE_EXCEPTION(e) \
     case e: \
         file.Write(#e); \
@@ -203,27 +207,26 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
             file.Write(_str("\n"));
             file.Write(_str("\tAddress   {}\n", except->ExceptionRecord->ExceptionAddress));
             file.Write(_str("\tFlags     {}\n", except->ExceptionRecord->ExceptionFlags));
-            if (except->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION ||
-                except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR)
-            {
-                int readWrite = (int)except->ExceptionRecord->ExceptionInformation[0];
-                if (readWrite == 0)
-                    file.Write(_str("\tInfo      Attempted to read to an {}",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
-                else if (readWrite == 1)
-                    file.Write(_str("\tInfo      Attempted to write to an {}",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
-                else if (readWrite == 8)
-                    file.Write(_str("\tInfo      Data execution prevention to an {}",
-                        (void*)except->ExceptionRecord->ExceptionInformation[1]));
-                if (except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR)
-                    file.Write(_str(", NTSTATUS {}", (void*)except->ExceptionRecord->ExceptionInformation[2]));
+            if (except->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
+                auto read_write = static_cast<int>(except->ExceptionRecord->ExceptionInformation[0]);
+                if (read_write == 0) {
+                    file.Write(_str("\tInfo      Attempted to read to an {}", reinterpret_cast<void*>(except->ExceptionRecord->ExceptionInformation[1])));
+                }
+                else if (read_write == 1) {
+                    file.Write(_str("\tInfo      Attempted to write to an {}", reinterpret_cast<void*>(except->ExceptionRecord->ExceptionInformation[1])));
+                }
+                else if (read_write == 8) {
+                    file.Write(_str("\tInfo      Data execution prevention to an {}", reinterpret_cast<void*>(except->ExceptionRecord->ExceptionInformation[1])));
+                }
+                if (except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
+                    file.Write(_str(", NTSTATUS {}", reinterpret_cast<void*>(except->ExceptionRecord->ExceptionInformation[2])));
+                }
                 file.Write(_str("\n"));
             }
-            else
-            {
-                for (DWORD i = 0; i < except->ExceptionRecord->NumberParameters; i++)
-                    file.Write(_str("\tInfo {}    {}\n", i, (void*)except->ExceptionRecord->ExceptionInformation[i]));
+            else {
+                for (DWORD i = 0; i < except->ExceptionRecord->NumberParameters; i++) {
+                    file.Write(_str("\tInfo {}    {}\n", i, reinterpret_cast<void*>(except->ExceptionRecord->ExceptionInformation[i])));
+                }
             }
             file.Write(_str("\n"));
         }
@@ -232,32 +235,28 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         DumpAngelScript(file);
 
         // Collect current threads
-        HANDLE process = GetCurrentProcess();
+        auto* process = GetCurrentProcess();
         DWORD threads_ids[1024] = {GetCurrentThreadId()};
         uint threads_ids_count = 1;
-        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-        if (snapshot != INVALID_HANDLE_VALUE)
-        {
+        if (auto* snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0); snapshot != INVALID_HANDLE_VALUE) {
             THREADENTRY32 te;
             te.dwSize = sizeof(te);
-            if (Thread32First(snapshot, &te))
-            {
-                while (true)
-                {
-                    if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID))
-                    {
-                        if (te.th32OwnerProcessID == GetCurrentProcessId() && te.th32ThreadID != threads_ids[0])
+            if (Thread32First(snapshot, &te) != 0) {
+                while (true) {
+                    if (te.dwSize >= FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID)) {
+                        if (te.th32OwnerProcessID == GetCurrentProcessId() && te.th32ThreadID != threads_ids[0]) {
                             threads_ids[threads_ids_count++] = te.th32ThreadID;
+                        }
                     }
                     te.dwSize = sizeof(te);
-                    if (!Thread32Next(snapshot, &te))
+                    if (Thread32Next(snapshot, &te) == 0) {
                         break;
+                    }
                 }
             }
             CloseHandle(snapshot);
         }
-        else
-        {
+        else {
             file.Write("CreateToolhelp32Snapshot fail\n");
         }
 
@@ -269,24 +268,20 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS);
 
         // Print information about each thread
-        for (uint i = 0; i < threads_ids_count; i++)
-        {
-            DWORD tid = threads_ids[i];
-            HANDLE t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid);
+        for (uint i = 0; i < threads_ids_count; i++) {
+            auto tid = threads_ids[i];
+            auto* t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid);
             file.Write(_str("Thread {}\n", tid));
 
             CONTEXT context;
-            memset(&context, 0, sizeof(context));
+            std::memset(&context, 0, sizeof(context));
             context.ContextFlags = CONTEXT_FULL;
 
-            if (tid == GetCurrentThreadId())
-            {
-                if (except)
-                {
-                    memcpy(&context, except->ContextRecord, sizeof(CONTEXT));
+            if (tid == GetCurrentThreadId()) {
+                if (except != nullptr) {
+                    std::memcpy(&context, except->ContextRecord, sizeof(CONTEXT));
                 }
-                else
-                {
+                else {
 #ifdef WIN32BIT
                     __asm label : __asm mov[context.Ebp], ebp;
                     __asm mov[context.Esp], esp;
@@ -297,15 +292,14 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 #endif
                 }
             }
-            else
-            {
+            else {
                 SuspendThread(t); // -V720
                 GetThreadContext(t, &context);
                 ResumeThread(t);
             }
 
             STACKFRAME64 stack;
-            memset(&stack, 0, sizeof(stack));
+            std::memset(&stack, 0, sizeof(stack));
 
 #ifdef WIN32BIT
             DWORD machine_type = IMAGE_FILE_MACHINE_I386;
@@ -325,163 +319,154 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
             stack.AddrStack.Mode = AddrModeFlat;
 #endif
 
-#define STACKWALK_MAX_NAMELEN (1024)
             char symbol_buffer[sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN];
-            SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbol_buffer;
-            memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
+            auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
+            std::memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
             symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
             symbol->MaxNameLen = STACKWALK_MAX_NAMELEN;
 
-            struct RPM
+            struct Rpm
             {
-                static BOOL __stdcall Call(
-                    HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead)
+                static BOOL __stdcall Call(HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead)
                 {
-                    SIZE_T st;
-                    BOOL bRet = ReadProcessMemory(hProcess, (LPVOID)qwBaseAddress, lpBuffer, nSize, &st);
-                    *lpNumberOfBytesRead = (DWORD)st;
-                    return bRet;
+                    SIZE_T st = 0;
+                    const auto ret = ReadProcessMemory(hProcess, reinterpret_cast<LPVOID>(qwBaseAddress), lpBuffer, nSize, &st);
+                    *lpNumberOfBytesRead = static_cast<DWORD>(st);
+                    return ret;
                 }
             };
 
-            int frame_num = 0;
-            while (StackWalk64(machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64,
-                SymGetModuleBase64, nullptr))
-            {
-                struct CSE
+            auto frame_num = 0;
+            while (StackWalk64(machine_type, process, t, &stack, &context, Rpm::Call, SymFunctionTableAccess64, SymGetModuleBase64, nullptr) != 0) {
+                struct Callstack
                 {
                     struct CallstackEntry
                     {
-                        DWORD64 offset;
-                        CHAR name[STACKWALK_MAX_NAMELEN];
-                        CHAR undName[STACKWALK_MAX_NAMELEN];
-                        CHAR undFullName[STACKWALK_MAX_NAMELEN];
-                        DWORD64 offsetFromSmybol;
-                        DWORD offsetFromLine;
-                        DWORD lineNumber;
-                        CHAR lineFileName[STACKWALK_MAX_NAMELEN];
-                        DWORD symType;
-                        LPCSTR symTypeString;
-                        CHAR moduleName[STACKWALK_MAX_NAMELEN];
-                        DWORD64 baseOfImage;
-                        CHAR loadedImageName[STACKWALK_MAX_NAMELEN];
+                        DWORD64 Offset {};
+                        CHAR Name[STACKWALK_MAX_NAMELEN] {};
+                        CHAR UndName[STACKWALK_MAX_NAMELEN] {};
+                        CHAR UndFullName[STACKWALK_MAX_NAMELEN] {};
+                        DWORD64 OffsetFromSmybol {};
+                        DWORD OffsetFromLine {};
+                        DWORD LineNumber {};
+                        CHAR LineFileName[STACKWALK_MAX_NAMELEN] {};
+                        DWORD SymType {};
+                        LPCSTR SymTypeString {};
+                        CHAR ModuleName[STACKWALK_MAX_NAMELEN] {};
+                        DWORD64 BaseOfImage {};
+                        CHAR LoadedImageName[STACKWALK_MAX_NAMELEN] {};
                     };
 
-                    static void OnCallstackEntry(
-                        bool is_current_thread, string& traceback, DiskFile& file, int frame_num, CallstackEntry& entry)
+                    static void OnCallstackEntry(bool is_current_thread, string& traceback, DiskFile& file, int frame_num, CallstackEntry& entry)
                     {
-                        if (frame_num >= 0 && entry.offset != 0)
-                        {
-                            if (entry.name[0] == 0)
-                                strcpy_s(entry.name, "(function-name not available)");
-                            if (entry.undName[0] != 0)
-                                strcpy_s(entry.name, entry.undName);
-                            if (entry.undFullName[0] != 0)
-                                strcpy_s(entry.name, entry.undFullName);
-                            if (entry.moduleName[0] == 0)
-                                strcpy_s(entry.moduleName, "???");
-
-                            file.Write(_str("\t{}, {} + {}", entry.moduleName, entry.name, entry.offsetFromSmybol));
-                            if (is_current_thread)
-                                traceback += _str("    {}, {}", entry.moduleName, entry.name);
-                            if (entry.lineFileName[0] != 0)
-                            {
-                                file.Write(_str(", {} (line {})\n", entry.lineFileName, entry.lineNumber));
-                                if (is_current_thread)
-                                    traceback += _str(", {} at line {}\n", entry.lineFileName, entry.lineNumber);
+                        if (frame_num >= 0 && entry.Offset != 0) {
+                            if (entry.Name[0] == 0) {
+                                strcpy_s(entry.Name, "(function-name not available)");
                             }
-                            else
-                            {
+                            if (entry.UndName[0] != 0) {
+                                strcpy_s(entry.Name, entry.UndName);
+                            }
+                            if (entry.UndFullName[0] != 0) {
+                                strcpy_s(entry.Name, entry.UndFullName);
+                            }
+                            if (entry.ModuleName[0] == 0) {
+                                strcpy_s(entry.ModuleName, "???");
+                            }
+
+                            file.Write(_str("\t{}, {} + {}", entry.ModuleName, entry.Name, entry.OffsetFromSmybol));
+                            if (is_current_thread) {
+                                traceback += _str("    {}, {}", entry.ModuleName, entry.Name);
+                            }
+                            if (entry.LineFileName[0] != 0) {
+                                file.Write(_str(", {} (line {})\n", entry.LineFileName, entry.LineNumber));
+                                if (is_current_thread) {
+                                    traceback += _str(", {} at line {}\n", entry.LineFileName, entry.LineNumber);
+                                }
+                            }
+                            else {
                                 file.Write(_str("\n"));
-                                if (is_current_thread)
-                                    traceback += _str("+ {}\n", entry.offsetFromSmybol);
+                                if (is_current_thread) {
+                                    traceback += _str("+ {}\n", entry.OffsetFromSmybol);
+                                }
                             }
                         }
                     }
                 };
 
-                CSE::CallstackEntry callstack;
-                memzero(&callstack, sizeof(callstack));
-                callstack.offset = stack.AddrPC.Offset;
+                Callstack::CallstackEntry callstack;
+                std::memset(&callstack, 0, sizeof(callstack));
+                callstack.Offset = stack.AddrPC.Offset;
 
                 IMAGEHLP_LINE64 line;
-                memset(&line, 0, sizeof(line));
+                std::memset(&line, 0, sizeof(line));
                 line.SizeOfStruct = sizeof(line);
 
-                if (stack.AddrPC.Offset == stack.AddrReturn.Offset)
-                {
+                if (stack.AddrPC.Offset == stack.AddrReturn.Offset) {
                     file.Write(_str("\tEndless callstack!\n"));
                     break;
                 }
 
-                if (stack.AddrPC.Offset != 0)
-                {
-                    if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.offsetFromSmybol, symbol))
-                    {
-                        strcpy_s(callstack.name, symbol->Name);
-                        UnDecorateSymbolName(symbol->Name, callstack.undName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-                        UnDecorateSymbolName(
-                            symbol->Name, callstack.undFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
+                if (stack.AddrPC.Offset != 0) {
+                    if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.OffsetFromSmybol, symbol) != 0) {
+                        strcpy_s(callstack.Name, symbol->Name);
+                        UnDecorateSymbolName(symbol->Name, callstack.UndName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+                        UnDecorateSymbolName(symbol->Name, callstack.UndFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
                     }
 
-                    if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.offsetFromLine, &line))
-                    {
-                        callstack.lineNumber = line.LineNumber;
-                        strcpy_s(callstack.lineFileName, _str(line.FileName).extractFileName().c_str());
+                    if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.OffsetFromLine, &line) != 0) {
+                        callstack.LineNumber = line.LineNumber;
+                        strcpy_s(callstack.LineFileName, _str(line.FileName).extractFileName().c_str());
                     }
 
                     IMAGEHLP_MODULE64 module;
-                    memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
+                    std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
                     module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-                    if (SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) ||
-                        (module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V2),
-                            SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)))
-                    {
-                        switch (module.SymType)
-                        {
+                    if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(imagehlp_module64_v2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
+                        switch (module.SymType) {
                         case SymNone:
-                            callstack.symTypeString = "-nosymbols-";
+                            callstack.SymTypeString = "-nosymbols-";
                             break;
                         case SymCoff:
-                            callstack.symTypeString = "COFF";
+                            callstack.SymTypeString = "COFF";
                             break;
                         case SymCv:
-                            callstack.symTypeString = "CV";
+                            callstack.SymTypeString = "CV";
                             break;
                         case SymPdb:
-                            callstack.symTypeString = "PDB";
+                            callstack.SymTypeString = "PDB";
                             break;
                         case SymExport:
-                            callstack.symTypeString = "-exported-";
+                            callstack.SymTypeString = "-exported-";
                             break;
                         case SymDeferred:
-                            callstack.symTypeString = "-deferred-";
+                            callstack.SymTypeString = "-deferred-";
                             break;
                         case SymSym:
-                            callstack.symTypeString = "SYM";
+                            callstack.SymTypeString = "SYM";
                             break;
 #if API_VERSION_NUMBER >= 9
                         case SymDia:
-                            callstack.symTypeString = "DIA";
+                            callstack.SymTypeString = "DIA";
                             break;
 #endif
                         case SymVirtual:
-                            callstack.symTypeString = "Virtual";
+                            callstack.SymTypeString = "Virtual";
                             break;
                         default:
-                            callstack.symTypeString = nullptr;
+                            callstack.SymTypeString = nullptr;
                             break;
                         }
 
-                        strcpy_s(callstack.moduleName, module.ModuleName);
-                        callstack.baseOfImage = module.BaseOfImage;
-                        strcpy_s(callstack.loadedImageName, module.LoadedImageName);
+                        strcpy_s(callstack.ModuleName, module.ModuleName);
+                        callstack.BaseOfImage = module.BaseOfImage;
+                        strcpy_s(callstack.LoadedImageName, module.LoadedImageName);
                     }
                 }
 
-                CSE::OnCallstackEntry(i == 0, traceback, file, frame_num, callstack);
-                if (stack.AddrReturn.Offset == 0)
+                Callstack::OnCallstackEntry(i == 0, traceback, file, frame_num, callstack);
+                if (stack.AddrReturn.Offset == 0) {
                     break;
+                }
 
                 frame_num++;
             }
@@ -492,17 +477,17 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 
         // Print modules
         HMODULE modules[1024];
-        DWORD needed;
+        DWORD needed = 0;
         file.Write(_str("Loaded modules\n"));
-        if (EnumProcessModules(process, modules, sizeof(modules), &needed))
-        {
-            for (int i = 0; i < (int)(needed / sizeof(HMODULE)); i++)
-            {
+        if (EnumProcessModules(process, modules, sizeof(modules), &needed)) {
+            for (auto i = 0; i < static_cast<int>(needed / sizeof(HMODULE)); i++) {
                 wchar_t module_name[MAX_PATH] = {0};
-                if (GetModuleFileNameExW(process, modules[i], module_name, sizeof(module_name)))
-                    file.Write(_str("\t{} ({})\n", _str().parseWideChar(module_name).c_str(), (void*)modules[i]));
-                else
+                if (GetModuleFileNameExW(process, modules[i], module_name, sizeof(module_name) / sizeof(wchar_t))) {
+                    file.Write(_str("\t{} ({})\n", _str().parseWideChar(module_name).c_str(), static_cast<void*>(modules[i])));
+                }
+                else {
                     file.Write(_str("\tGetModuleFileNameExW fail\n"));
+                }
             }
         }
 
@@ -510,37 +495,38 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         CloseHandle(process);
     }
 
-    if (except)
+    if (except != nullptr) {
         MessageBox::ShowErrorMessage(message, traceback);
+    }
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
 void CreateDump(const string& appendix, const string& message)
 {
-    ManualDumpAppendix = appendix;
-    ManualDumpMessage = message;
+    Data->ManualDumpAppendix = appendix;
+    Data->ManualDumpMessage = message;
 
     TopLevelFilterReadableDump(nullptr);
 }
 
-static string GetTraceback()
+static auto GetTraceback() -> string
 {
     string traceback;
     traceback.reserve(512);
     traceback = "Traceback:\n";
 
-    HANDLE process = ::GetCurrentProcess();
-    DWORD thread_id = ::GetCurrentThreadId();
+    auto* process = ::GetCurrentProcess();
+    auto thread_id = ::GetCurrentThreadId();
 
     SetCurrentDirectoryW(_str(DiskFileSystem::GetExePath()).extractDir().toWideChar().c_str());
     SymInitialize(process, nullptr, TRUE);
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS);
 
-    HANDLE t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, thread_id);
+    auto* t = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, thread_id);
 
     CONTEXT context;
-    memset(&context, 0, sizeof(context));
+    std::memset(&context, 0, sizeof(context));
     context.ContextFlags = CONTEXT_FULL;
 
 #ifdef WIN32BIT
@@ -553,7 +539,7 @@ static string GetTraceback()
 #endif
 
     STACKFRAME64 stack;
-    memset(&stack, 0, sizeof(stack));
+    std::memset(&stack, 0, sizeof(stack));
 
 #ifdef WIN32BIT
     DWORD machine_type = IMAGE_FILE_MACHINE_I386;
@@ -573,152 +559,146 @@ static string GetTraceback()
     stack.AddrStack.Mode = AddrModeFlat;
 #endif
 
-#define STACKWALK_MAX_NAMELEN (1024)
     char symbol_buffer[sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN];
-    SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbol_buffer;
-    memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
+    auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
+    std::memset(symbol, 0, sizeof(SYMBOL_INFO) + STACKWALK_MAX_NAMELEN);
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     symbol->MaxNameLen = STACKWALK_MAX_NAMELEN;
 
-    struct RPM
+    struct Rpm
     {
-        static BOOL __stdcall Call(
-            HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead)
+        static BOOL __stdcall Call(HANDLE hProcess, DWORD64 qwBaseAddress, PVOID lpBuffer, DWORD nSize, LPDWORD lpNumberOfBytesRead)
         {
-            SIZE_T st;
-            BOOL bRet = ReadProcessMemory(hProcess, (LPVOID)qwBaseAddress, lpBuffer, nSize, &st);
-            *lpNumberOfBytesRead = (DWORD)st;
-            return bRet;
+            SIZE_T st = 0;
+            const auto ret = ReadProcessMemory(hProcess, reinterpret_cast<LPVOID>(qwBaseAddress), lpBuffer, nSize, &st);
+            *lpNumberOfBytesRead = static_cast<DWORD>(st);
+            return ret;
         }
     };
 
-    int frame_num = 0;
-    while (StackWalk64(
-        machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
-    {
-        struct CSE
+    auto frame_num = 0;
+    while (StackWalk64(machine_type, process, t, &stack, &context, Rpm::Call, SymFunctionTableAccess64, SymGetModuleBase64, nullptr) != 0) {
+        struct Callstack
         {
             struct CallstackEntry
             {
-                DWORD64 offset;
-                CHAR name[STACKWALK_MAX_NAMELEN];
-                CHAR undName[STACKWALK_MAX_NAMELEN];
-                CHAR undFullName[STACKWALK_MAX_NAMELEN];
-                DWORD64 offsetFromSmybol;
-                DWORD offsetFromLine;
-                DWORD lineNumber;
-                CHAR lineFileName[STACKWALK_MAX_NAMELEN];
-                DWORD symType;
-                LPCSTR symTypeString;
-                CHAR moduleName[STACKWALK_MAX_NAMELEN];
-                DWORD64 baseOfImage;
-                CHAR loadedImageName[STACKWALK_MAX_NAMELEN];
+                DWORD64 Offset;
+                CHAR Name[STACKWALK_MAX_NAMELEN];
+                CHAR UndName[STACKWALK_MAX_NAMELEN];
+                CHAR UndFullName[STACKWALK_MAX_NAMELEN];
+                DWORD64 OffsetFromSmybol;
+                DWORD OffsetFromLine;
+                DWORD LineNumber;
+                CHAR LineFileName[STACKWALK_MAX_NAMELEN];
+                DWORD SymType;
+                LPCSTR SymTypeString;
+                CHAR ModuleName[STACKWALK_MAX_NAMELEN];
+                DWORD64 BaseOfImage;
+                CHAR LoadedImageName[STACKWALK_MAX_NAMELEN];
             };
 
             static void OnCallstackEntry(string& traceback, int frame_num, CallstackEntry& entry)
             {
-                if (frame_num >= 0 && entry.offset != 0)
-                {
-                    if (entry.name[0] == 0)
-                        strcpy_s(entry.name, "(function-name not available)");
-                    if (entry.undName[0] != 0)
-                        strcpy_s(entry.name, entry.undName);
-                    if (entry.undFullName[0] != 0)
-                        strcpy_s(entry.name, entry.undFullName);
-                    if (entry.moduleName[0] == 0)
-                        strcpy_s(entry.moduleName, "???");
+                if (frame_num >= 0 && entry.Offset != 0) {
+                    if (entry.Name[0] == 0) {
+                        strcpy_s(entry.Name, "(function-name not available)");
+                    }
+                    if (entry.UndName[0] != 0) {
+                        strcpy_s(entry.Name, entry.UndName);
+                    }
+                    if (entry.UndFullName[0] != 0) {
+                        strcpy_s(entry.Name, entry.UndFullName);
+                    }
+                    if (entry.ModuleName[0] == 0) {
+                        strcpy_s(entry.ModuleName, "???");
+                    }
 
-                    traceback += _str("  {}, {}", entry.moduleName, entry.name);
+                    traceback += _str("  {}, {}", entry.ModuleName, entry.Name);
 
-                    if (entry.lineFileName[0] != 0)
-                        traceback += _str(", {} at line {}\n", entry.lineFileName, entry.lineNumber);
-                    else
-                        traceback += _str("+ {}\n", entry.offsetFromSmybol);
+                    if (entry.LineFileName[0] != 0) {
+                        traceback += _str(", {} at line {}\n", entry.LineFileName, entry.LineNumber);
+                    }
+                    else {
+                        traceback += _str("+ {}\n", entry.OffsetFromSmybol);
+                    }
                 }
             }
         };
 
-        CSE::CallstackEntry callstack;
-        memzero(&callstack, sizeof(callstack));
-        callstack.offset = stack.AddrPC.Offset;
+        Callstack::CallstackEntry callstack {};
+        std::memset(&callstack, 0, sizeof(callstack));
+        callstack.Offset = stack.AddrPC.Offset;
 
         IMAGEHLP_LINE64 line;
-        memset(&line, 0, sizeof(line));
+        std::memset(&line, 0, sizeof(line));
         line.SizeOfStruct = sizeof(line);
 
-        if (stack.AddrPC.Offset == stack.AddrReturn.Offset)
-        {
+        if (stack.AddrPC.Offset == stack.AddrReturn.Offset) {
             traceback += _str("  Endless callstack!\n");
             break;
         }
 
-        if (stack.AddrPC.Offset != 0)
-        {
-            if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.offsetFromSmybol, symbol))
-            {
-                strcpy_s(callstack.name, symbol->Name);
-                UnDecorateSymbolName(symbol->Name, callstack.undName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-                UnDecorateSymbolName(symbol->Name, callstack.undFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
+        if (stack.AddrPC.Offset != 0) {
+            if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.OffsetFromSmybol, symbol) != 0) {
+                strcpy_s(callstack.Name, symbol->Name);
+                UnDecorateSymbolName(symbol->Name, callstack.UndName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+                UnDecorateSymbolName(symbol->Name, callstack.UndFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
             }
 
-            if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.offsetFromLine, &line))
-            {
-                callstack.lineNumber = line.LineNumber;
-                strcpy_s(callstack.lineFileName, _str(line.FileName).extractFileName().c_str());
+            if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.OffsetFromLine, &line) != 0) {
+                callstack.LineNumber = line.LineNumber;
+                strcpy_s(callstack.LineFileName, _str(line.FileName).extractFileName().c_str());
             }
 
             IMAGEHLP_MODULE64 module;
-            memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
+            std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
             module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-            if (SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) ||
-                (module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V2),
-                    SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)))
-            {
-                switch (module.SymType)
-                {
+            if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(imagehlp_module64_v2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
+                switch (module.SymType) {
                 case SymNone:
-                    callstack.symTypeString = "-nosymbols-";
+                    callstack.SymTypeString = "-nosymbols-";
                     break;
                 case SymCoff:
-                    callstack.symTypeString = "COFF";
+                    callstack.SymTypeString = "COFF";
                     break;
                 case SymCv:
-                    callstack.symTypeString = "CV";
+                    callstack.SymTypeString = "CV";
                     break;
                 case SymPdb:
-                    callstack.symTypeString = "PDB";
+                    callstack.SymTypeString = "PDB";
                     break;
                 case SymExport:
-                    callstack.symTypeString = "-exported-";
+                    callstack.SymTypeString = "-exported-";
                     break;
                 case SymDeferred:
-                    callstack.symTypeString = "-deferred-";
+                    callstack.SymTypeString = "-deferred-";
                     break;
                 case SymSym:
-                    callstack.symTypeString = "SYM";
+                    callstack.SymTypeString = "SYM";
                     break;
 #if API_VERSION_NUMBER >= 9
                 case SymDia:
-                    callstack.symTypeString = "DIA";
+                    callstack.SymTypeString = "DIA";
                     break;
 #endif
                 case SymVirtual:
-                    callstack.symTypeString = "Virtual";
+                    callstack.SymTypeString = "Virtual";
                     break;
                 default:
-                    callstack.symTypeString = nullptr;
+                    callstack.SymTypeString = nullptr;
                     break;
                 }
 
-                strcpy_s(callstack.moduleName, module.ModuleName);
-                callstack.baseOfImage = module.BaseOfImage;
-                strcpy_s(callstack.loadedImageName, module.LoadedImageName);
+                strcpy_s(callstack.ModuleName, module.ModuleName);
+                callstack.BaseOfImage = module.BaseOfImage;
+                strcpy_s(callstack.LoadedImageName, module.LoadedImageName);
             }
         }
 
-        CSE::OnCallstackEntry(traceback, frame_num, callstack);
-        if (stack.AddrReturn.Offset == 0)
+        Callstack::OnCallstackEntry(traceback, frame_num, callstack);
+        if (stack.AddrReturn.Offset == 0) {
             break;
+        }
 
         frame_num++;
     }
@@ -726,8 +706,6 @@ static string GetTraceback()
     CloseHandle(t);
     SymCleanup(process);
     CloseHandle(process);
-
-#undef STACKWALK_MAX_NAMELEN
 
     return traceback;
 }
@@ -742,11 +720,10 @@ static void DumpAngelScript(DiskFile& file);
 
 void CatchExceptions(const string& app_name, int app_ver)
 {
-    AppName = app_name;
-    AppVer = _str("{:#x}", app_ver);
+    Data->AppName = app_name;
+    Data->AppVer = _str("{:#x}", app_ver);
 
-    if (!app_name.empty() && !SigactionsSetted)
-    {
+    if (!app_name.empty() && !SigactionsSetted) {
         // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
         // CTRL-C - sends SIGINT which default action is to terminate the application.
         // CTRL-\ - sends SIGQUIT which default action is to terminate the application dumping core.
@@ -757,7 +734,7 @@ void CatchExceptions(const string& app_name, int app_ver)
         // SIGSEGV
         // Description     Invalid memory reference
         // Default action  Abnormal termination of the process
-        memset(&act, 0, sizeof(act));
+        std::memset(&act, 0, sizeof(act));
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
         sigaction(SIGSEGV, &act, &OldSIGSEGV);
@@ -765,15 +742,14 @@ void CatchExceptions(const string& app_name, int app_ver)
         // SIGFPE
         // Description     Erroneous arithmetic operation
         // Default action  bnormal termination of the process
-        memset(&act, 0, sizeof(act));
+        std::memset(&act, 0, sizeof(act));
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
         sigaction(SIGFPE, &act, &OldSIGFPE);
 
         SigactionsSetted = true;
     }
-    else if (app_name.empty() && SigactionsSetted)
-    {
+    else if (app_name.empty() && SigactionsSetted) {
         sigaction(SIGSEGV, &OldSIGSEGV, nullptr);
         sigaction(SIGFPE, &OldSIGFPE, nullptr);
 
@@ -783,8 +759,8 @@ void CatchExceptions(const string& app_name, int app_ver)
 
 void CreateDump(const string& appendix, const string& message)
 {
-    ManualDumpAppendix = appendix;
-    ManualDumpMessage = message;
+    Data->ManualDumpAppendix = appendix;
+    Data->ManualDumpMessage = message;
 
     TerminationHandler(0, nullptr, nullptr);
 }
@@ -811,8 +787,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     };
 
     const char* sig_desc = nullptr;
-    if (siginfo)
-    {
+    if (siginfo) {
         if (siginfo->si_signo == SIGSEGV && siginfo->si_code >= 0 && siginfo->si_code < 2)
             sig_desc = str_SIGSEGV[siginfo->si_code];
         if (siginfo->si_signo == SIGFPE && siginfo->si_code >= 0 && siginfo->si_code < 8)
@@ -820,15 +795,13 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     }
 
     // Format message
-    if (siginfo)
-    {
+    if (siginfo) {
         message = strsignal(siginfo->si_signo);
         if (sig_desc)
             message += _str(" ({})", sig_desc);
     }
-    else
-    {
-        message = ManualDumpMessage;
+    else {
+        message = Data->ManualDumpMessage;
     }
 
     // Obtain traceback
@@ -843,31 +816,27 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     // Dump file
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
-    string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, AppName, AppVer, dt.Year,
-        dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    string dump_str = (siginfo ? "CrashDump" : Data->ManualDumpAppendix);
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, Data->AppName, Data->AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::ResetCurDir();
     DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
-    if (file)
-    {
+    if (file) {
         // Generic info
         file.Write(_str("Message\n"));
         file.Write(_str("\t{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", AppName));
-        file.Write(_str("\tVersion     {}\n", AppVer));
+        file.Write(_str("\tName        {}\n", Data->AppName));
+        file.Write(_str("\tVersion     {}\n", Data->AppVer));
         struct utsname ver;
         uname(&ver);
         file.Write(_str("\tOS          {} / {} / {}\n", ver.sysname, ver.release, ver.version));
-        file.Write(_str("\tTimestamp   {:02}.{:02}.{:04} {:02}:{:02}:{:02}\n", dt.Day, dt.Month, dt.Year, dt.Hour,
-            dt.Minute, dt.Second));
+        file.Write(_str("\tTimestamp   {:02}.{:02}.{:04} {:02}:{:02}:{:02}\n", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second));
         file.Write(_str("\n"));
 
         // Exception information
-        if (siginfo)
-        {
+        if (siginfo) {
             file.Write(_str("Exception\n"));
             file.Write(_str("\tSigno   {} ({})\n", strsignal(siginfo->si_signo), siginfo->si_signo));
             file.Write(_str("\tCode    {} ({})\n", sig_desc ? sig_desc : "No description", siginfo->si_code));
@@ -883,8 +852,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
         // st_printer.print(st, f); // Todo: restore stack trace dumping in file
     }
 
-    if (siginfo)
-    {
+    if (siginfo) {
         MessageBox::ShowErrorMessage(message, traceback);
         exit(1);
     }
@@ -921,14 +889,14 @@ static string GetTraceback()
 
 #endif
 
-string GetStackTrace()
+auto GetStackTrace() -> string
 {
 #ifdef FO_WINDOWS
-    string most_recent = "most recent call first";
+    const string most_recent = "most recent call first";
 #else
     string most_recent = "most recent call last";
 #endif
-    string traceback = GetTraceback();
+    const auto traceback = GetTraceback();
     return _str("\n\nTraceback ({}):\n{}", most_recent, traceback);
 }
 
@@ -940,18 +908,17 @@ static void DumpAngelScript(DiskFile& file)
     //    file.Write(_str("AngelScript\n{}", tb));
 }
 
-bool RaiseAssert(const string& message, const string& file, int line)
+auto RaiseAssert(const string& message, const string& file, int line) -> bool
 {
     // Break into debugger
 #if defined(FO_WINDOWS)
-    if (::IsDebuggerPresent())
-    {
+    if (::IsDebuggerPresent() != 0) {
         ::DebugBreak();
         return true;
     }
 #endif
 
-    string name = _str(file).extractFileName();
+    const string name = _str(file).extractFileName();
     WriteLog("Runtime assert: {} in {} ({})\n", message, name, line);
 
 #if defined(FO_WINDOWS) || defined(FO_LINUX) || defined(FO_MAC)
@@ -959,7 +926,7 @@ bool RaiseAssert(const string& message, const string& file, int line)
     CreateDump(_str("AssertFailed_{:#x}_{}({})", FO_VERSION, name, line), message);
 
     // Show message
-    string traceback = "";
+    string traceback;
 #if defined(FO_LINUX) || defined(FO_MAC)
     backward::StackTrace st;
     st.load_here(42);
@@ -968,32 +935,24 @@ bool RaiseAssert(const string& message, const string& file, int line)
     std::stringstream ss;
     st_printer.print(st, ss);
     traceback = ss.str();
+#else
+    traceback = "";
 #endif
 
-    MessageBox::ShowErrorMessage(
-        _str("Assert failed!\nVersion: {:#x}\nFile: {} ({})\n\n{}", FO_VERSION, name, line, message), traceback);
+    MessageBox::ShowErrorMessage(_str("Assert failed!\nVersion: {:#x}\nFile: {} ({})\n\n{}", FO_VERSION, name, line, message), traceback);
 #endif
 
     // Shut down
-    exit(1);
-    return true;
+    std::exit(1);
 }
 
-void ReportException(const std::exception& ex)
+void ReportExceptionAndExit(const std::exception& ex)
 {
     WriteLog("{}\n", ex.what());
+    std::exit(1);
 }
 
-TEST_CASE("Dummy 1")
+void ReportExceptionAndContinue(const std::exception& ex)
 {
-    RUNTIME_ASSERT(1 == 1);
-
-    TEST_SECTION() { RUNTIME_ASSERT(2 == 2); }
-}
-
-TEST_CASE("Dummy 2")
-{
-    RUNTIME_ASSERT(1 == 1);
-
-    TEST_SECTION() { RUNTIME_ASSERT(2 == 2); }
+    WriteLog("{}\n", ex.what());
 }

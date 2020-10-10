@@ -48,10 +48,10 @@
 
 #define CLIENT_OUTPUT_BEGIN(cl) \
     { \
-        SCOPE_LOCK(cl->Connection->BoutLocker)
+        SCOPE_LOCK((cl)->Connection->BoutLocker)
 #define CLIENT_OUTPUT_END(cl) \
     } \
-    cl->Connection->Dispatch()
+    (cl)->Connection->Dispatch()
 
 enum class ClientState
 {
@@ -86,49 +86,56 @@ class Critter : public Entity
     friend class CritterManager;
 
 public:
+    Critter() = delete;
+    Critter(const Critter&) = delete;
+    Critter(Critter&&) noexcept = delete;
+    auto operator=(const Critter&) = delete;
+    auto operator=(Critter&&) noexcept = delete;
+    ~Critter() override = default;
+
     void ClearVisible();
 
-    Critter* GetCritSelf(uint crid);
-    void GetCrFromVisCr(CritterVec& critters, int find_type, bool vis_cr_self);
-    Critter* GetGlobalMapCritter(uint cr_id);
+    [[nodiscard]] auto GetCritSelf(uint crid) -> Critter*;
+    void GetCrFromVisCr(CritterVec& critters, uchar find_type, bool vis_cr_self);
+    [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
 
-    bool AddCrIntoVisVec(Critter* add_cr);
-    bool DelCrFromVisVec(Critter* del_cr);
+    auto AddCrIntoVisVec(Critter* add_cr) -> bool;
+    auto DelCrFromVisVec(Critter* del_cr) -> bool;
 
-    bool AddCrIntoVisSet1(uint crid);
-    bool AddCrIntoVisSet2(uint crid);
-    bool AddCrIntoVisSet3(uint crid);
-    bool DelCrFromVisSet1(uint crid);
-    bool DelCrFromVisSet2(uint crid);
-    bool DelCrFromVisSet3(uint crid);
+    auto AddCrIntoVisSet1(uint crid) -> bool;
+    auto AddCrIntoVisSet2(uint crid) -> bool;
+    auto AddCrIntoVisSet3(uint crid) -> bool;
+    auto DelCrFromVisSet1(uint crid) -> bool;
+    auto DelCrFromVisSet2(uint crid) -> bool;
+    auto DelCrFromVisSet3(uint crid) -> bool;
 
-    bool AddIdVisItem(uint item_id);
-    bool DelIdVisItem(uint item_id);
-    bool CountIdVisItem(uint item_id);
+    auto AddIdVisItem(uint item_id) -> bool;
+    auto DelIdVisItem(uint item_id) -> bool;
+    auto CountIdVisItem(uint item_id) const -> bool;
 
     void SetItem(Item* item);
-    Item* GetItem(uint item_id, bool skip_hide);
-    ItemVec& GetItemsNoLock() { return invItems; }
-    Item* GetItemByPid(hash item_pid);
-    Item* GetItemByPidSlot(hash item_pid, int slot);
-    Item* GetItemSlot(int slot);
+    [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetItemsNoLock() -> ItemVec& { return _invItems; }
+    [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
+    [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
     void GetItemsSlot(int slot, ItemVec& items);
-    uint CountItemPid(hash item_pid);
-    uint RealCountItems() { return (uint)invItems.size(); }
-    uint CountItems();
-    ItemVec& GetInventory();
-    bool IsHaveGeckItem();
+    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
+    [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
+    [[nodiscard]] auto CountItems() -> uint;
+    [[nodiscard]] auto GetInventory() -> ItemVec&;
+    [[nodiscard]] auto IsHaveGeckItem() -> bool;
 
-    bool SetScript(const string& func, bool first_time);
+    auto SetScript(const string& func, bool first_time) -> bool;
 
-    bool IsFree();
-    bool IsBusy();
+    [[nodiscard]] auto IsFree() const -> bool;
+    [[nodiscard]] auto IsBusy() const -> bool;
     void SetBreakTime(uint ms);
     void SetBreakTimeDelta(uint ms);
     void SetWait(uint ms);
-    bool IsWait();
+    [[nodiscard]] auto IsWait() const -> bool;
 
-    bool IsSendDisabled() { return DisableSend > 0; }
+    auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
@@ -161,8 +168,7 @@ public:
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(
-        hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, const string& sound_name);
 
     // Send all
@@ -184,20 +190,20 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo(MapManager& map_mngr);
 
-    bool IsPlayer() { return !CritterIsNpc; }
-    bool IsNpc() { return CritterIsNpc; }
+    [[nodiscard]] auto IsPlayer() const -> bool { return !CritterIsNpc; }
+    [[nodiscard]] auto IsNpc() const -> bool { return CritterIsNpc; }
     void SendMessage(int num, int val, int to, MapManager& map_mngr);
-    uint GetAttackDist(Item* weap, int use);
-    bool IsLife();
-    bool IsDead();
-    bool IsKnockout();
-    bool CheckFind(int find_type);
+    [[nodiscard]] auto GetAttackDist(Item* weap, uchar use) -> uint;
+    [[nodiscard]] auto IsAlive() const -> bool;
+    [[nodiscard]] auto IsDead() const -> bool;
+    [[nodiscard]] auto IsKnockout() const -> bool;
+    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
 
     // Timeouts
-    bool IsTransferTimeouts(bool send);
+    [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
 
     // Time events
-    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier);
+    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier) const;
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
@@ -254,90 +260,91 @@ public:
 #include "ScriptApi.h"
 
 protected:
-    Critter(uint id, EntityType type, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
-        GameTimer& game_time);
+    Critter(uint id, EntityType type, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
 
-    CritterSettings& settings;
-    GeometryHelper geomHelper;
-    ServerScriptSystem& scriptSys;
-    GameTimer& gameTime;
-    ItemVec invItems {};
+    CritterSettings& _settings;
+    GeometryHelper _geomHelper;
+    ServerScriptSystem& _scriptSys;
+    GameTimer& _gameTime;
+    ItemVec _invItems {};
 
 private:
-    uint startBreakTime {};
-    uint breakTime {};
-    uint waitEndTick {};
+    uint _startBreakTime {};
+    uint _breakTime {};
+    uint _waitEndTick {};
 };
 
 // Todo: rework Client class to ClientConnection
-class Client : public Critter
+class Client final : public Critter
 {
     friend class CritterManager;
 
 public:
-    Client(NetConnection* conn, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys,
-        GameTimer& game_time);
-    ~Client();
+    Client() = delete;
+    Client(NetConnection* conn, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Client(const Client&) = delete;
+    Client(Client&&) noexcept = delete;
+    auto operator=(const Client&) = delete;
+    auto operator=(Client&&) noexcept = delete;
+    ~Client() override;
 
-    uint GetIp();
-    const char* GetIpStr();
-    ushort GetPort();
-    bool IsOnline();
-    bool IsOffline();
-    void Disconnect();
+    [[nodiscard]] auto GetIp() const -> uint;
+    [[nodiscard]] auto GetIpStr() const -> const char*;
+    [[nodiscard]] auto GetPort() const -> ushort;
+    [[nodiscard]] auto IsOnline() const -> bool;
+    [[nodiscard]] auto IsOffline() const -> bool;
+    void Disconnect() const;
     void RemoveFromGame();
-    uint GetOfflineTime();
+    [[nodiscard]] auto GetOfflineTime() const -> uint;
 
-    bool IsToPing();
+    [[nodiscard]] auto IsToPing() const -> bool;
     void PingClient();
     void PingOk(uint next_ping);
 
     void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
-    void Send_Move(Critter* from_cr, uint move_params);
-    void Send_Dir(Critter* from_cr);
+    void Send_Move(Critter* from_cr, uint move_params) const;
+    void Send_Dir(Critter* from_cr) const;
     void Send_AddCritter(Critter* cr);
-    void Send_RemoveCritter(Critter* cr);
+    void Send_RemoveCritter(Critter* cr) const;
     void Send_LoadMap(Map* map, MapManager& map_mngr);
-    void Send_XY(Critter* cr);
-    void Send_AddItemOnMap(Item* item);
-    void Send_EraseItemFromMap(Item* item);
-    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
-    void Send_AddItem(Item* item);
-    void Send_EraseItem(Item* item);
-    void Send_SomeItems(ItemVec* items, int param);
+    void Send_XY(Critter* cr) const;
+    void Send_AddItemOnMap(Item* item) const;
+    void Send_EraseItemFromMap(Item* item) const;
+    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) const;
+    void Send_AddItem(Item* item) const;
+    void Send_EraseItem(Item* item) const;
+    void Send_SomeItems(const ItemVec* items, int param) const;
     void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
-    void Send_GlobalLocation(Location* loc, bool add);
-    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val);
+    void Send_GlobalLocation(Location* loc, bool add) const;
+    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) const;
+    void Send_CustomCommand(Critter* cr, ushort cmd, int val) const;
     void Send_AllProperties();
     void Send_Talk();
-    void Send_GameInfo(Map* map);
-    void Send_Text(Critter* from_cr, const string& text, uchar how_say);
-    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text);
-    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
-    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
-    void Send_CombatResult(uint* combat_res, uint len);
-    void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(
-        hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    void Send_PlaySound(uint crid_synchronize, const string& sound_name);
-    void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
-    void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
-    void Send_MapTextMsgLex(
-        ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len);
-    void Send_ViewMap();
-    void Send_SomeItem(Item* item); // Without checks
-    void Send_CustomMessage(uint msg);
-    void Send_CustomMessage(uint msg, uchar* data, uint data_size);
+    void Send_GameInfo(Map* map) const;
+    void Send_Text(Critter* from_cr, const string& text, uchar how_say) const;
+    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text) const;
+    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg) const;
+    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg) const;
+    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const;
+    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const;
+    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item) const;
+    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot) const;
+    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play) const;
+    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) const;
+    void Send_CombatResult(uint* combat_res, uint len) const;
+    void Send_AutomapsInfo(void* locs_vec, Location* loc) const;
+    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) const;
+    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) const;
+    void Send_PlaySound(uint crid_synchronize, const string& sound_name) const;
+    void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text) const;
+    void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str) const;
+    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len) const;
+    void Send_ViewMap() const;
+    void Send_SomeItem(Item* item) const; // Without checks
+    void Send_CustomMessage(uint msg) const;
+    void Send_CustomMessage(uint msg, uchar* data, uint data_size) const;
 
-    bool IsTalking();
+    [[nodiscard]] auto IsTalking() const -> bool;
 
     NetConnection* Connection {};
     uchar Access {ACCESS_DEFAULT};
@@ -350,23 +357,29 @@ public:
     uint RadioMessageSended {};
     int UpdateFileIndex {-1};
     uint UpdateFilePortion {};
-    Talking Talk {};
+    TalkData Talk {};
 
 private:
-    uint pingNextTick {};
-    bool pingOk {true};
-    uint talkNextTick {};
+    uint _pingNextTick {};
+    bool _pingOk {true};
+    uint _talkNextTick {};
 };
 
-class Npc : public Critter
+class Npc final : public Critter
 {
     friend class CritterManager;
 
 public:
-    Npc(uint id, ProtoCritter* proto, CritterSettings& sett, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Npc() = delete;
+    Npc(uint id, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Npc(const Npc&) = delete;
+    Npc(Npc&&) noexcept = delete;
+    auto operator=(const Npc&) = delete;
+    auto operator=(Npc&&) noexcept = delete;
+    ~Npc() override = default;
 
-    uint GetTalkedPlayers();
-    bool IsTalkedPlayers();
-    uint GetBarterPlayers();
-    bool IsFreeToTalk();
+    [[nodiscard]] auto GetTalkedPlayers() const -> uint;
+    [[nodiscard]] auto IsTalkedPlayers() const -> bool;
+    [[nodiscard]] auto GetBarterPlayers() const -> uint;
+    [[nodiscard]] auto IsFreeToTalk() const -> bool;
 };

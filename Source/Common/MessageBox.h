@@ -35,8 +35,10 @@
 
 #include "Common.h"
 
-class MessageBox : public StaticClass
+class MessageBox final
 {
 public:
+    MessageBox() = delete;
+
     static void ShowErrorMessage(const string& message, const string& traceback);
 };

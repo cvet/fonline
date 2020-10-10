@@ -40,111 +40,112 @@
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 
 #include "SDL_main.h"
 
-static GlobalSettings Settings;
+struct MapperAppData
+{
+    GlobalSettings* Settings {};
+    FOMapper* Mapper {};
+};
+GLOBAL_DATA(MapperAppData, Data);
 
 static void MapperEntry(void*)
 {
-    static FOMapper* mapper = nullptr;
-    if (!mapper)
-    {
+    try {
+        if (Data->Mapper == nullptr) {
 #ifdef FO_WEB
-        // Wait file system synchronization
-        if (EM_ASM_INT(return Module.syncfsDone) != 1)
-            return;
+            // Wait file system synchronization
+            if (EM_ASM_INT(return Module.syncfsDone) != 1)
+                return;
 #endif
 
-        BEGIN_ROOT_EXCEPTION_BLOCK();
-        mapper = new FOMapper(Settings);
-        CATCH_EXCEPTION(GenericException);
-        WriteLog("Something going wrong...");
-        exit(1);
-        END_ROOT_EXCEPTION_BLOCK();
-    }
+            try {
+                Data->Mapper = new FOMapper(*Data->Settings);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
 
-    BEGIN_ROOT_EXCEPTION_BLOCK();
-    App::BeginFrame();
-    mapper->MainLoop();
-    App::EndFrame();
-    CATCH_EXCEPTION(GenericException);
-    WriteLog("Something going wrong...");
-    exit(1);
-    END_ROOT_EXCEPTION_BLOCK();
+        try {
+            App->BeginFrame();
+            Data->Mapper->MainLoop();
+            App->EndFrame();
+        }
+        catch (const GenericException& ex) {
+            ReportExceptionAndContinue(ex);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }
 
 #ifndef FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineMapper", FO_VERSION);
-    LogToFile("FOnlineMapper.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineMapper", FO_VERSION);
+        LogToFile("FOnlineMapper.log");
 
-    // Start message
-    WriteLog("Starting Mapper ({:#x})...\n", FO_VERSION);
+        WriteLog("Starting Mapper ({:#x})...\n", FO_VERSION);
 
-    // Init graphic
-    App::Init(Settings);
+        Data->Settings = new GlobalSettings(argc, argv);
+        InitApplication(*Data->Settings);
 
-    // Loop
 #if defined(FO_IOS)
-    MapperEntry(nullptr);
-    SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, MapperEntry, nullptr);
-    return 0;
+        MapperEntry(nullptr);
+        SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, MapperEntry, nullptr);
+        return 0;
 
 #elif defined(FO_WEB)
-    EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
-        true, function(err) {
-            assert(!err);
-            Module.syncfsDone = 1;
-        }););
-    emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
+        EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
+            true, function(err) {
+                assert(!err);
+                Module.syncfsDone = 1;
+            }););
+        emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif defined(FO_ANDROID)
-    while (!Settings.Quit)
-        MapperEntry(nullptr);
+        while (!Data->Settings.Quit) {
+            MapperEntry(nullptr);
+        }
 
 #else
-    while (!Settings.Quit)
-    {
-        double start_loop = Timer::RealtimeTick();
+        while (!Data->Settings->Quit) {
+            const auto start_loop = Timer::RealtimeTick();
 
-        MapperEntry(nullptr);
+            MapperEntry(nullptr);
 
-        if (!Settings.VSync && Settings.FixedFPS)
-        {
-            if (Settings.FixedFPS > 0)
-            {
-                static double balance = 0.0;
-                double elapsed = Timer::RealtimeTick() - start_loop;
-                double need_elapsed = 1000.0 / (double)Settings.FixedFPS;
-                if (need_elapsed > elapsed)
-                {
-                    double sleep = need_elapsed - elapsed + balance;
-                    balance = fmod(sleep, 1.0);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+            if (!Data->Settings->VSync && Data->Settings->FixedFPS != 0) {
+                if (Data->Settings->FixedFPS > 0) {
+                    static auto balance = 0.0;
+                    const auto elapsed = Timer::RealtimeTick() - start_loop;
+                    const auto need_elapsed = 1000.0 / static_cast<double>(Data->Settings->FixedFPS);
+                    if (need_elapsed > elapsed) {
+                        const auto sleep = need_elapsed - elapsed + balance;
+                        balance = fmod(sleep, 1.0);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
+                    }
+                }
+                else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(-Data->Settings->FixedFPS));
                 }
             }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
-            }
         }
-    }
 #endif
-
-    // Finish script
-    // Todo: fix script system
-    /*if (Script::GetEngine())
-    {
-        Script::RunMandatorySuspended();
-        Script::RaiseInternalEvent(ClientFunctions.Finish);
-    }*/
-
-    return 0;
+        return 0;
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

@@ -44,34 +44,31 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Version_Include.h"
-
-static GlobalSettings Settings;
+#include "Version-Include.h"
 
 #ifndef FO_TESTING
 int main(int argc, char** argv)
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineBaker", FO_VERSION);
-    LogToFile("FOnlineBaker.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineBaker", FO_VERSION);
+        LogToFile("FOnlineBaker.log");
 
-    try
-    {
-        DiskFileSystem::MakeDirTree(Settings.ResourcesOutput);
-        bool set_res_dir_ok = DiskFileSystem::SetCurrentDir(Settings.ResourcesOutput);
+        auto settings = GlobalSettings(argc, argv);
+
+        DiskFileSystem::MakeDirTree(settings.ResourcesOutput);
+        auto set_res_dir_ok = DiskFileSystem::SetCurrentDir(settings.ResourcesOutput);
         RUNTIME_ASSERT(set_res_dir_ok);
 
         // Content
-        if (!Settings.ContentEntry.empty())
-        {
+        if (!settings.ContentEntry.empty()) {
             WriteLog("Bake content.\n");
 
             FileManager content_files;
-            for (const string& dir : Settings.ContentEntry)
-            {
+            for (const auto& dir : settings.ContentEntry) {
                 WriteLog("Add content entry '{}'.\n", dir);
                 content_files.AddDataSource(dir, true);
             }
@@ -79,24 +76,23 @@ static int main_disabled(int argc, char** argv)
             // Protos
             ProtoManager proto_mngr;
             proto_mngr.LoadProtosFromFiles(content_files);
-            UCharVec data = proto_mngr.GetProtosBinaryData();
+            auto data = proto_mngr.GetProtosBinaryData();
             RUNTIME_ASSERT(!data.empty());
-            DiskFile protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
+            auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
             RUNTIME_ASSERT(protos_file);
-            bool protos_write_ok = protos_file.Write(data.data(), (uint)data.size());
+            auto protos_write_ok = protos_file.Write(data.data(), static_cast<uint>(data.size()));
             RUNTIME_ASSERT(protos_write_ok);
 
             // Dialogs
             // Todo: add dialogs verification during baking
-            bool del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
+            auto del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
             RUNTIME_ASSERT(del_dialogs_ok);
-            FileCollection dialogs = content_files.FilterFiles("fodlg");
-            while (dialogs.MoveNext())
-            {
-                File file = dialogs.GetCurFile();
-                DiskFile dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
+            auto dialogs = content_files.FilterFiles("fodlg");
+            while (dialogs.MoveNext()) {
+                auto file = dialogs.GetCurFile();
+                auto dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
                 RUNTIME_ASSERT(dlg_file);
-                bool dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetFsize());
+                auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetFsize());
                 RUNTIME_ASSERT(dlg_file_write_ok);
             }
 
@@ -108,39 +104,32 @@ static int main_disabled(int argc, char** argv)
         }
 
         // Resources
-        if (!Settings.ResourcesEntry.empty())
-        {
+        if (!settings.ResourcesEntry.empty()) {
             WriteLog("Bake resources.\n");
 
             map<string, vector<string>> res_packs;
-            for (const string& re : Settings.ResourcesEntry)
-            {
-                StrVec re_splitted = _str(re).split(',');
+            for (const auto& re : settings.ResourcesEntry) {
+                auto re_splitted = _str(re).split(',');
                 RUNTIME_ASSERT(re_splitted.size() == 2);
                 res_packs[re_splitted[0]].push_back(re_splitted[1]);
             }
 
-            for (const auto& kv : res_packs)
-            {
-                const string& pack_name = kv.first;
-
+            for (const auto& [pack_name, paths] : res_packs) {
                 FileManager res_files;
-                for (const string& path : kv.second)
-                {
+                for (const auto& path : paths) {
                     WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
                     res_files.AddDataSource(path, true);
                 }
 
-                FileCollection resources = res_files.FilterFiles("");
+                auto resources = res_files.FilterFiles("");
 
-                if (pack_name != "_Raw")
-                {
+                if (pack_name != "_Raw") {
                     WriteLog("Create resources '{}' from files {}...\n", pack_name, resources.GetFilesCount());
 
                     // Bake files
                     map<string, UCharVec> baked_files;
                     {
-                        ImageBaker image_baker(Settings, resources);
+                        ImageBaker image_baker(settings, resources);
                         ModelBaker model_baker(resources);
                         EffectBaker effect_baker(resources);
                         image_baker.AutoBakeImages();
@@ -152,41 +141,36 @@ static int main_disabled(int argc, char** argv)
                     }
 
                     // Write to disk
-                    bool del_res_ok = DiskFileSystem::DeleteDir(_str("Pack_{}", pack_name));
+                    const auto del_res_ok = DiskFileSystem::DeleteDir(_str("Pack_{}", pack_name));
                     RUNTIME_ASSERT(del_res_ok);
 
-                    for (const auto& kv : baked_files)
-                    {
-                        DiskFile res_file = DiskFileSystem::OpenFile(_str("Pack_{}/{}", pack_name, kv.first), true);
+                    for (const auto& [name, data] : baked_files) {
+                        auto res_file = DiskFileSystem::OpenFile(_str("Pack_{}/{}", pack_name, name), true);
                         RUNTIME_ASSERT(res_file);
-                        bool res_file_write_ok = res_file.Write(kv.second.data(), (uint)kv.second.size());
+                        auto res_file_write_ok = res_file.Write(data.data(), static_cast<uint>(data.size()));
                         RUNTIME_ASSERT(res_file_write_ok);
                     }
                 }
-                else
-                {
+                else {
                     WriteLog("Copy raw resource files {}...\n", resources.GetFilesCount());
 
-                    bool del_raw_ok = DiskFileSystem::DeleteDir("Raw");
+                    auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
                     RUNTIME_ASSERT(del_raw_ok);
 
-                    while (resources.MoveNext())
-                    {
-                        File file = resources.GetCurFile();
-                        DiskFile raw_file = DiskFileSystem::OpenFile(_str("Raw/{}", file.GetPath()), true);
+                    while (resources.MoveNext()) {
+                        auto file = resources.GetCurFile();
+                        auto raw_file = DiskFileSystem::OpenFile(_str("Raw/{}", file.GetPath()), true);
                         RUNTIME_ASSERT(raw_file);
-                        bool raw_file_write_ok = raw_file.Write(file.GetBuf(), file.GetFsize());
+                        auto raw_file_write_ok = raw_file.Write(file.GetBuf(), file.GetFsize());
                         RUNTIME_ASSERT(raw_file_write_ok);
                     }
                 }
             }
         }
-    }
-    catch (std::exception& ex)
-    {
-        ReportException(ex);
-        return 1;
-    }
 
-    return 0;
+        return 0;
+    }
+    catch (std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

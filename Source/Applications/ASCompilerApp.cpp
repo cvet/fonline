@@ -38,11 +38,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 
 #include "minizip/zip.h"
-
-static GlobalSettings Settings;
 
 struct ServerScriptSystem
 {
@@ -62,56 +60,53 @@ struct MapperScriptSystem
 #ifndef FO_TESTING
 int main(int argc, char** argv)
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineASCompiler", FO_VERSION);
-    LogToFile("FOnlineASCompiler.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineASCompiler", FO_VERSION);
+        LogToFile("FOnlineASCompiler.log");
 
-    int errors = 0;
+        auto settings = GlobalSettings(argc, argv);
+        int errors = 0;
 
-    if (!Settings.ASServer.empty())
-    {
-        try
-        {
-            ServerScriptSystem().InitAngelScriptScripting(Settings.ASServer);
+        if (!settings.ASServer.empty()) {
+            try {
+                ServerScriptSystem().InitAngelScriptScripting(Settings.ASServer);
+            }
+            catch (std::exception& ex) {
+                WriteLog("Server scripts compilation failed!\n");
+                WriteLog("{}\n", ex.what());
+                errors++;
+            }
         }
-        catch (std::exception& ex)
-        {
-            WriteLog("Server scripts compilation failed!\n");
-            ReportException(ex);
-            errors++;
+
+        if (!settings.ASClient.empty()) {
+            try {
+                ClientScriptSystem().InitAngelScriptScripting(Settings.ASClient);
+            }
+            catch (std::exception& ex) {
+                WriteLog("Client scripts compilation failed!\n");
+                WriteLog("{}\n", ex.what());
+                errors++;
+            }
         }
+
+        if (!settings.ASMapper.empty()) {
+            try {
+                MapperScriptSystem().InitAngelScriptScripting(Settings.ASMapper);
+            }
+            catch (std::exception& ex) {
+                WriteLog("Mapper scripts compilation failed!\n");
+                WriteLog("{}\n", ex.what());
+                errors++;
+            }
+        }
+
+        return errors;
     }
-
-    if (!Settings.ASClient.empty())
-    {
-        try
-        {
-            ClientScriptSystem().InitAngelScriptScripting(Settings.ASClient);
-        }
-        catch (std::exception& ex)
-        {
-            WriteLog("Client scripts compilation failed!\n");
-            ReportException(ex);
-            errors++;
-        }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
     }
-
-    if (!Settings.ASMapper.empty())
-    {
-        try
-        {
-            MapperScriptSystem().InitAngelScriptScripting(Settings.ASMapper);
-        }
-        catch (std::exception& ex)
-        {
-            WriteLog("Mapper scripts compilation failed!\n");
-            ReportException(ex);
-            errors++;
-        }
-    }
-
-    return errors;
 }

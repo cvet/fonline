@@ -1,8 +1,6 @@
 ---
 Language: Cpp
-# Standard: c++17
-Standard: Cpp11
-# BasedOnStyle:
+Standard: c++17
 AccessModifierOffset: -4
 AlignAfterOpenBracket: DontAlign
 AlignConsecutiveAssignments: false
@@ -14,8 +12,7 @@ AlignTrailingComments: false
 AllowAllArgumentsOnNextLine: false
 AllowAllConstructorInitializersOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: false
-# AllowShortBlocksOnASingleLine: Never
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: Never
@@ -27,10 +24,10 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: true
 BinPackParameters: true
-BraceWrapping: 
+BraceWrapping:
+  AfterCaseLabel: false
   AfterClass: true
-# AfterControlStatement: Always
-  AfterControlStatement: true
+  AfterControlStatement: Never
   AfterEnum: true
   AfterFunction: true
   AfterNamespace: true
@@ -51,14 +48,14 @@ BreakBeforeTernaryOperators: false
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
 BreakStringLiterals: false
-ColumnLimit: 120
+ColumnLimit: 1000
 CommentPragmas: '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
-# DeriveLineEnding: true
+DeriveLineEnding: true
 DerivePointerAlignment: false
 DisableFormat: false
 ExperimentalAutoDetectBinPacking: false
@@ -71,18 +68,18 @@ IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: '^"(llvm|llvm-c|clang|clang-c)/'
     Priority: 2
-#   SortPriority: 2
+    SortPriority: 2
   - Regex: '^(<|"(gtest|gmock|isl|json)/)'
     Priority: 3
   - Regex: '<[[:alnum:].]+>'
     Priority: 4
   - Regex: '.*'
     Priority: 1
-#   SortPriority: 0
+    SortPriority: 0
 IncludeIsMainRegex: '(Test)?$'
 # IncludeIsMainSourceRegex:
 IndentCaseLabels: false
-# IndentGotoLabels: true
+IndentGotoLabels: true
 IndentPPDirectives: None
 IndentWidth: 4
 IndentWrappedFunctionNames: false
@@ -121,13 +118,13 @@ SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
-# SpaceBeforeSquareBrackets: false
-# SpaceInEmptyBlock: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: true
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 1
 SpacesInAngles: false
 SpacesInCStyleCastParentheses: false
-# SpacesInConditionalStatement: false
+SpacesInConditionalStatement: false
 SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false

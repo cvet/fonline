@@ -258,15 +258,19 @@
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #endif
 
-#include "ScriptApi_Client.h"
-#include "ScriptApi_Common.h"
-#include "ScriptApi_Enums.h"
-#include "ScriptApi_Events.h"
-#include "ScriptApi_Mapper.h"
-#include "ScriptApi_Properties.h"
-#include "ScriptApi_Server.h"
+#include "ScriptApi-Enums-Mirror.h"
 
-#include "CustomScriptApi.h" // Automatically generated include
+#include "ScriptApi-Events-Mirror.h"
+
+#include "ScriptApi-Properties-Mirror.h"
+
+#include "ScriptApi-Common-Mirror.h"
+
+#include "ScriptApi-Client-Mirror.h"
+#include "ScriptApi-Mapper-Mirror.h"
+#include "ScriptApi-Server-Mirror.h"
+
+#include "ScriptApi-Custom-Mirror.h"
 
 #undef FO_API_COMMON_IMPL
 #undef FO_API_SERVER_IMPL

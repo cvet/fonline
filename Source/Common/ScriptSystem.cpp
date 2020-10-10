@@ -34,11 +34,9 @@
 #include "ScriptSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
 #include "Timer.h"
 
-ScriptSystem::ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) :
-    mainObj {obj}, settings {sett}, fileMngr {file_mngr}
+ScriptSystem::ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : _mainObj {obj}, _settings {settings}, _fileMngr {file_mngr}
 {
 }
 
@@ -439,7 +437,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
             if (rootScript)
             {
                 data.resize(rootScript->length());
-                memcpy(&data[0], rootScript->c_str(), rootScript->length());
+                std::memcpy(&data[0], rootScript->c_str(), rootScript->length());
                 rootScript = nullptr;
                 file_path = "(Root)";
                 return true;
@@ -451,7 +449,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
             if (includeDeep == 1 && !includeScripts.empty())
             {
                 data.resize(includeScripts.front().Content.length());
-                memcpy(&data[0], includeScripts.front().Content.c_str(), includeScripts.front().Content.length());
+                std::memcpy(&data[0], includeScripts.front().Content.c_str(), includeScripts.front().Content.length());
                 file_path = includeScripts.front().Name;
                 includeScripts.erase(includeScripts.begin());
                 return true;
@@ -532,7 +530,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
         {
             if (!obj_type)
             {
-                memcpy(ptr, value, asEngine->GetSizeOfPrimitiveType(type_id));
+                std::memcpy(ptr, value, asEngine->GetSizeOfPrimitiveType(type_id));
             }
             else if (type_id & asTYPEID_OBJHANDLE)
             {

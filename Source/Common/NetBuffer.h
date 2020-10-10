@@ -35,63 +35,70 @@
 
 #include "Common.h"
 
-#include "NetProtocol_Include.h"
+#include "NetProtocol-Include.h"
 
-class NetBuffer : public NonCopyable
+class NetBuffer final
 {
 public:
-    static constexpr uint DefaultBufSize = 4096;
-    static constexpr int CryptKeysCount = 50;
-    static constexpr int StringLenSize = sizeof(ushort);
+    static constexpr uint DEFAULT_BUF_SIZE = 4096;
+    static constexpr int CRYPT_KEYS_COUNT = 50;
+    static constexpr int STRING_LEN_SIZE = sizeof(ushort);
 
     NetBuffer();
+    NetBuffer(const NetBuffer&) = delete;
+    NetBuffer(NetBuffer&&) noexcept = default;
+    auto operator=(const NetBuffer&) = delete;
+    auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
+    ~NetBuffer() = default;
+
     void SetEncryptKey(uint seed);
     void Refresh();
     void Reset();
-    void Push(const void* buf, uint len, bool no_crypt = false);
+    void Push(const void* buf, uint len);
+    void Push(const void* buf, uint len, bool no_crypt);
     void Pop(void* buf, uint len);
     void Cut(uint len);
     void GrowBuf(uint len);
-    uchar* GetData() { return bufData.get(); }
-    uchar* GetCurData() { return bufData.get() + bufReadPos; }
-    uint GetLen() { return bufLen; }
-    uint GetCurPos() { return bufReadPos; }
-    void SetEndPos(uint pos) { bufEndPos = pos; }
-    uint GetEndPos() { return bufEndPos; }
+    [[nodiscard]] auto GetData() -> uchar*;
+    [[nodiscard]] auto GetCurData() -> uchar*;
+    [[nodiscard]] auto GetLen() const -> uint { return _bufLen; }
+    [[nodiscard]] auto GetCurPos() const -> uint { return _bufReadPos; }
+    void SetEndPos(uint pos) { _bufEndPos = pos; }
+    [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
     void MoveReadPos(int val);
-    bool IsError() { return isError; }
-    void SetError(bool value) { isError = value; }
-    bool IsEmpty() { return bufReadPos >= bufEndPos; }
-    bool IsHaveSize(uint size) { return bufReadPos + size <= bufEndPos; }
-    bool NeedProcess();
+    [[nodiscard]] auto IsError() const -> bool { return _isError; }
+    void SetError(bool value) { _isError = value; }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _bufReadPos >= _bufEndPos; }
+    [[nodiscard]] auto IsHaveSize(uint size) const -> bool { return _bufReadPos + size <= _bufEndPos; }
+    auto NeedProcess() -> bool; // Todo: make NeedProcess const
     void SkipMsg(uint msg);
 
     // Generic specification
     template<typename T>
-    NetBuffer& operator<<(const T& i)
+    auto operator<<(const T& i) -> NetBuffer&
     {
         Push(&i, sizeof(T));
         return *this;
     }
 
     template<typename T>
-    NetBuffer& operator>>(T& i)
+    auto operator>>(T& i) -> NetBuffer&
     {
         Pop(&i, sizeof(T));
         return *this;
     }
 
     // String specification
-    NetBuffer& operator<<(const string& i)
+    auto operator<<(const string& i) -> NetBuffer&
     {
         RUNTIME_ASSERT(i.length() <= 65535);
-        ushort len = (ushort)i.length();
-        Push(&len, sizeof(len));
-        Push(i.c_str(), len);
+        auto len = static_cast<ushort>(i.length());
+        Push(&len, sizeof(len), false);
+        Push(i.c_str(), len, false);
         return *this;
     }
 
-    NetBuffer& operator>>(string& i)
+    auto operator>>(string& i) -> NetBuffer&
     {
         ushort len = 0;
         Pop(&len, sizeof(len));
@@ -102,23 +109,23 @@ public:
 
     // Disable transferring of some types
     // Todo: allow transferring of any type and add safe transferring of floats
-    NetBuffer& operator<<(const uint64& i) = delete;
-    NetBuffer& operator>>(uint64& i) = delete;
-    NetBuffer& operator<<(const float& i) = delete;
-    NetBuffer& operator>>(float& i) = delete;
-    NetBuffer& operator<<(const double& i) = delete;
-    NetBuffer& operator>>(double& i) = delete;
+    auto operator<<(const uint64& i) -> NetBuffer& = delete;
+    auto operator>>(uint64& i) -> NetBuffer& = delete;
+    auto operator<<(const float& i) -> NetBuffer& = delete;
+    auto operator>>(float& i) -> NetBuffer& = delete;
+    auto operator<<(const double& i) -> NetBuffer& = delete;
+    auto operator>>(double& i) -> NetBuffer& = delete;
 
 private:
-    uchar EncryptKey(int move);
-    void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
+    auto EncryptKey(int move) -> uchar;
+    static void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
 
-    bool isError {};
-    unique_ptr<uchar[]> bufData {};
-    uint bufLen {};
-    uint bufEndPos {};
-    uint bufReadPos {};
-    bool encryptActive {};
-    int encryptKeyPos {};
-    uchar encryptKeys[CryptKeysCount] {};
+    bool _isError {};
+    unique_ptr<uchar[]> _bufData {};
+    uint _bufLen {};
+    uint _bufEndPos {};
+    uint _bufReadPos {};
+    bool _encryptActive {};
+    int _encryptKeyPos {};
+    uchar _encryptKeys[CRYPT_KEYS_COUNT] {};
 };

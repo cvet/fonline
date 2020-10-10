@@ -40,12 +40,10 @@
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(Location, "Location", true);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
-    CLASS_PROPERTY_IMPL(Location, access, type, name, __VA_ARGS__);
+#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Location, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-Location::Location(uint id, ProtoLocation* proto, ServerScriptSystem& script_sys) :
-    Entity(id, EntityType::Location, PropertiesRegistrator, proto), scriptSys {script_sys}
+Location::Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Location, PropertiesRegistrator, proto), _scriptSys {script_sys}
 {
     RUNTIME_ASSERT(proto);
 }
@@ -54,126 +52,134 @@ void Location::BindScript()
 {
     EntranceScriptBindId = 0;
 
-    if (GetEntranceScript())
-    {
+    if (GetEntranceScript() != 0u) {
         string func_name = _str().parseHash(GetEntranceScript());
         /*EntranceScriptBindId =
             scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
 }
 
-ProtoLocation* Location::GetProtoLoc()
+auto Location::GetProtoLoc() const -> const ProtoLocation*
 {
-    return (ProtoLocation*)Proto;
+    return dynamic_cast<const ProtoLocation*>(Proto);
 }
 
-bool Location::IsLocVisible()
+auto Location::IsLocVisible() const -> bool
 {
-    return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
+    return !GetHidden() || GetGeckVisible() && GeckCount > 0;
 }
 
-MapVec& Location::GetMapsRaw()
+auto Location::GetMapsRaw() -> MapVec&
 {
-    return locMaps;
+    return _locMaps;
 };
 
-MapVec Location::GetMaps()
+auto Location::GetMaps() const -> MapVec
 {
-    return locMaps;
+    return _locMaps;
 }
 
-uint Location::GetMapsCount()
+auto Location::GetMapsCount() const -> uint
 {
-    return (uint)locMaps.size();
+    return static_cast<uint>(_locMaps.size());
 }
 
-Map* Location::GetMapByIndex(uint index)
+auto Location::GetMapByIndex(uint index) -> Map*
 {
-    if (index >= locMaps.size())
+    if (index >= _locMaps.size()) {
         return nullptr;
-    return locMaps[index];
+    }
+    return _locMaps[index];
 }
 
-Map* Location::GetMapByPid(hash map_pid)
+auto Location::GetMapByPid(hash map_pid) -> Map*
 {
-    for (Map* map : locMaps)
-    {
-        if (map->GetProtoId() == map_pid)
+    for (auto* map : _locMaps) {
+        if (map->GetProtoId() == map_pid) {
             return map;
+        }
     }
     return nullptr;
 }
 
-uint Location::GetMapIndex(hash map_pid)
+auto Location::GetMapIndex(hash map_pid) -> uint
 {
     uint index = 0;
-    for (Map* map : locMaps)
-    {
-        if (map->GetProtoId() == map_pid)
+    for (auto* map : _locMaps) {
+        if (map->GetProtoId() == map_pid) {
             return index;
+        }
         index++;
     }
-    return uint(-1);
+    return static_cast<uint>(-1);
 }
 
-bool Location::IsCanEnter(uint players_count)
+auto Location::IsCanEnter(uint players_count) -> bool
 {
-    uint max_palyers = GetMaxPlayers();
-    if (!max_palyers)
+    const auto max_palyers = GetMaxPlayers();
+    if (max_palyers == 0u) {
         return true;
+    }
 
-    for (Map* map : locMaps)
-    {
+    for (auto* map : _locMaps) {
         players_count += map->GetPlayersCount();
-        if (players_count >= max_palyers)
+        if (players_count >= max_palyers) {
             return false;
+        }
     }
     return true;
 }
 
-bool Location::IsNoCrit()
+auto Location::IsNoCrit() -> bool
 {
-    for (Map* map : locMaps)
-        if (map->GetCrittersCount())
+    for (auto* map : _locMaps) {
+        if (map->GetCrittersCount() != 0u) {
             return false;
+        }
+    }
     return true;
 }
 
-bool Location::IsNoPlayer()
+auto Location::IsNoPlayer() -> bool
 {
-    for (Map* map : locMaps)
-        if (map->GetPlayersCount())
+    for (auto* map : _locMaps) {
+        if (map->GetPlayersCount() != 0u) {
             return false;
+        }
+    }
     return true;
 }
 
-bool Location::IsNoNpc()
+auto Location::IsNoNpc() -> bool
 {
-    for (Map* map : locMaps)
-        if (map->GetNpcsCount())
+    for (auto* map : _locMaps) {
+        if (map->GetNpcsCount() != 0u) {
             return false;
+        }
+    }
     return true;
 }
 
-bool Location::IsCanDelete()
+auto Location::IsCanDelete() -> bool
 {
-    if (GeckCount > 0)
+    if (GeckCount > 0) {
         return false;
+    }
 
     // Check for players
-    for (Map* map : locMaps)
-        if (map->GetPlayersCount())
+    for (auto* map : _locMaps) {
+        if (map->GetPlayersCount() != 0u) {
             return false;
+        }
+    }
 
     // Check for npc
-    MapVec maps = locMaps;
-    for (Map* map : maps)
-    {
-        for (Npc* npc : map->GetNpcs())
-        {
-            if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) ||
-                npc->IsHaveGeckItem())
+    auto maps = _locMaps;
+    for (auto* map : maps) {
+        for (auto* npc : map->GetNpcs()) {
+            if (npc->GetIsGeck() || !npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId() || npc->IsHaveGeckItem()) {
                 return false;
+            }
         }
     }
     return true;

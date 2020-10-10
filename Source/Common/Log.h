@@ -40,7 +40,7 @@ using LogFunc = std::function<void(const string&)>;
 // Write formatted text
 extern void WriteLogMessage(const string& message);
 template<typename... Args>
-inline void WriteLog(const string& message, Args... args)
+void WriteLog(const string& message, Args... args)
 {
     WriteLogMessage(fmt::format(message, std::forward<Args>(args)...));
 }
@@ -48,6 +48,6 @@ inline void WriteLog(const string& message, Args... args)
 // Control
 extern void LogWithoutTimestamp();
 extern void LogToFile(const string& fname);
-extern void LogToFunc(const string& key, LogFunc func, bool enable);
+extern void LogToFunc(const string& key, const LogFunc& func, bool enable);
 extern void LogToBuffer(bool enable);
 extern void LogGetBuffer(string& buf);

@@ -64,7 +64,7 @@ class Location;
 using LocationVec = vector<Location*>;
 using LocationMap = map<uint, Location*>;
 
-struct StaticMap : public NonCopyable
+struct StaticMap
 {
     UCharVec SceneryData {};
     hash HashTiles {};
@@ -79,95 +79,99 @@ struct StaticMap : public NonCopyable
     vector<MapTile> Tiles {};
 };
 
-class Map : public Entity
+class Map final : public Entity
 {
     friend class MapManager;
 
 public:
-    Map(uint id, ProtoMap* proto, Location* location, StaticMap* static_map, MapSettings& sett,
-        ServerScriptSystem& script_sys, GameTimer& game_time);
-    ~Map();
-    StaticMap* GetStaticMap() { return staticMap; }
+    Map() = delete;
+    Map(uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map, MapSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Map(const Map&) = delete;
+    Map(Map&&) noexcept = delete;
+    auto operator=(const Map&) = delete;
+    auto operator=(Map&&) noexcept = delete;
+    ~Map() override;
 
+    [[nodiscard]] auto GetStaticMap() const -> const StaticMap* { return _staticMap; }
+
+    [[nodiscard]] auto IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool;
     void PlaceItemBlocks(ushort hx, ushort hy, Item* item);
     void RemoveItemBlocks(ushort hx, ushort hy, Item* item);
 
     void Process();
     void ProcessLoop(int index, uint time, uint tick);
 
-    ProtoMap* GetProtoMap();
-    Location* GetLocation();
+    [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
+    [[nodiscard]] auto GetLocation() -> Location*;
     void SetLocation(Location* loc);
 
     void SetText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
     void SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str);
-    void SetTextMsgLex(
-        ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len);
+    void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len);
 
-    bool FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe);
+    auto FindStartHex(ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> bool;
+    auto FindPlaceOnMap(Critter* cr, ushort& hx, ushort& hy, uint radius) const -> bool;
 
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
 
-    bool AddItem(Item* item, ushort hx, ushort hy);
+    auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
     void SetItem(Item* item, ushort hx, ushort hy);
     void EraseItem(uint item_id);
     void SendProperty(NetProperty::Type type, Property* prop, Entity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
 
-    Item* GetItem(uint item_id);
-    Item* GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker);
-    Item* GetItemGag(ushort hx, ushort hy);
+    [[nodiscard]] auto GetItem(uint item_id) -> Item*;
+    [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*;
+    [[nodiscard]] auto GetItemGag(ushort hx, ushort hy) -> Item*;
 
-    ItemVec GetItems();
+    [[nodiscard]] auto GetItems() -> ItemVec;
     void GetItemsHex(ushort hx, ushort hy, ItemVec& items);
     void GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items);
     void GetItemsPid(hash pid, ItemVec& items);
-    void GetItemsTrigger(ushort hx, ushort hy, ItemVec& items);
+    void GetItemsTrigger(ushort hx, ushort hy, ItemVec& traps);
 
-    bool IsPlaceForProtoItem(ushort hx, ushort hy, ProtoItem* proto_item);
     void RecacheHexFlags(ushort hx, ushort hy);
-    ushort GetHexFlags(ushort hx, ushort hy);
+    [[nodiscard]] auto GetHexFlags(ushort hx, ushort hy) const -> ushort;
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
 
-    bool IsHexPassed(ushort hx, ushort hy);
-    bool IsHexRaked(ushort hx, ushort hy);
-    bool IsHexesPassed(ushort hx, ushort hy, uint radius);
-    bool IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex);
-    bool IsHexTrigger(ushort hx, ushort hy);
-    bool IsHexCritter(ushort hx, ushort hy);
-    bool IsHexGag(ushort hx, ushort hy);
-    bool IsHexStaticTrigger(ushort hx, ushort hy);
+    [[nodiscard]] auto IsHexPassed(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexRaked(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool;
+    [[nodiscard]] auto IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> bool;
+    [[nodiscard]] auto IsHexTrigger(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexCritter(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
 
-    bool IsFlagCritter(ushort hx, ushort hy, bool dead);
+    [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
-    uint GetNpcCount(int npc_role, int find_type);
-    Critter* GetCritter(uint crid);
-    Critter* GetNpc(int npc_role, int find_type, uint skip_count);
-    Critter* GetHexCritter(ushort hx, ushort hy, bool dead);
+    [[nodiscard]] auto GetNpcCount(hash npc_role, int find_type) const -> uint;
+    [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
+    [[nodiscard]] auto GetNpc(hash npc_role, int find_type, uint skip_count) -> Critter*;
+    [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
     void GetCrittersHex(ushort hx, ushort hy, uint radius, int find_type, CritterVec& critters);
 
-    CritterVec GetCritters();
-    ClientVec GetPlayers();
-    NpcVec GetNpcs();
-    CritterVec& GetCrittersRaw();
-    ClientVec& GetPlayersRaw();
-    NpcVec& GetNpcsRaw();
-    uint GetCrittersCount();
-    uint GetPlayersCount();
-    uint GetNpcsCount();
+    [[nodiscard]] auto GetCritters() -> CritterVec;
+    [[nodiscard]] auto GetPlayers() -> ClientVec;
+    [[nodiscard]] auto GetNpcs() -> NpcVec;
+    [[nodiscard]] auto GetCrittersRaw() -> CritterVec&;
+    [[nodiscard]] auto GetPlayersRaw() -> ClientVec&;
+    [[nodiscard]] auto GetNpcsRaw() -> NpcVec&;
+    [[nodiscard]] auto GetCrittersCount() const -> uint;
+    [[nodiscard]] auto GetPlayersCount() const -> uint;
+    [[nodiscard]] auto GetNpcsCount() const -> uint;
 
     void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void SendFlyEffect(
-        hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
 
-    bool SetScript(string func, bool first_time);
+    auto SetScript(const string& func, bool first_time) -> bool;
 
     void GetStaticItemTriggers(ushort hx, ushort hy, ItemVec& triggers);
-    Item* GetStaticItem(ushort hx, ushort hy, hash pid);
+    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*;
     void GetStaticItemsHex(ushort hx, ushort hy, ItemVec& items);
     void GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid, ItemVec& items);
     void GetStaticItemsByPid(hash pid, ItemVec& items);
@@ -180,20 +184,20 @@ public:
 #include "ScriptApi.h"
 
 private:
-    MapSettings& settings;
-    GeometryHelper geomHelper;
-    ServerScriptSystem& scriptSys;
-    GameTimer& gameTime;
-    StaticMap* staticMap {};
-    uchar* hexFlags {};
-    int hexFlagsSize {};
-    CritterVec mapCritters {};
-    ClientVec mapPlayers {};
-    NpcVec mapNpcs {};
-    ItemVec mapItems {};
-    ItemMap mapItemsById {};
-    map<uint, ItemVec> mapItemsByHex {};
-    map<uint, ItemVec> mapBlockLinesByHex {};
-    Location* mapLocation {};
-    uint loopLastTick[5] {};
+    MapSettings& _settings;
+    GeometryHelper _geomHelper;
+    ServerScriptSystem& _scriptSys;
+    GameTimer& _gameTime;
+    const StaticMap* _staticMap {};
+    uchar* _hexFlags {};
+    int _hexFlagsSize {};
+    CritterVec _mapCritters {};
+    ClientVec _mapPlayers {};
+    NpcVec _mapNpcs {};
+    ItemVec _mapItems {};
+    ItemMap _mapItemsById {};
+    map<uint, ItemVec> _mapItemsByHex {};
+    map<uint, ItemVec> _mapBlockLinesByHex {};
+    Location* _mapLocation {};
+    uint _loopLastTick[5] {};
 };

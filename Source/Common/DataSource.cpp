@@ -33,73 +33,89 @@
 
 #include "DataSource.h"
 #include "DiskFileSystem.h"
-#include "EmbeddedResources_Include.h"
+#include "EmbeddedResources-Include.h"
 #include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #include "minizip/unzip.h"
 
-class DataSource::Impl : public NonCopyable
+class DataSource::Impl
 {
 public:
+    Impl() = default;
+    Impl(const Impl&) = delete;
+    Impl(Impl&&) noexcept = default;
+    auto operator=(const Impl&) = delete;
+    auto operator=(Impl&&) noexcept = delete;
     virtual ~Impl() = default;
-    virtual bool IsDiskDir() = 0;
-    virtual const string& GetPackName() = 0;
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) = 0;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) = 0;
+
+    [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
+    [[nodiscard]] virtual auto GetPackName() const -> const string& = 0;
+    [[nodiscard]] virtual auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool = 0;
+    [[nodiscard]] virtual auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* = 0;
+    [[nodiscard]] virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const = 0;
 };
 
 using FileNameVec = vector<pair<string, string>>;
 
-static void GetFileNamesGeneric(
-    const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result)
+static void GetFileNamesGeneric(const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result)
 {
     string path_fixed = _str(path).lower().normalizePathSlashes();
-    if (!path_fixed.empty() && path_fixed.back() != '/')
+    if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
-    size_t len = path_fixed.length();
+    }
 
-    for (auto& fname : fnames)
-    {
-        bool add = false;
-        if (!fname.first.compare(0, len, path_fixed) &&
-            (include_subdirs || (len > 0 && fname.first.find_last_of('/') < len) ||
-                (len == 0 && fname.first.find_last_of('/') == string::npos)))
-        {
-            if (ext.empty() || _str(fname.first).getFileExtension() == ext)
+    const auto len = path_fixed.length();
+
+    for (const auto& [fst, snd] : fnames) {
+        auto add = false;
+        if (fst.compare(0, len, path_fixed) == 0 && (include_subdirs || len > 0 && fst.find_last_of('/') < len || len == 0 && fst.find_last_of('/') == string::npos)) {
+            if (ext.empty() || _str(fst).getFileExtension() == ext) {
                 add = true;
+            }
         }
-        if (add && std::find(result.begin(), result.end(), fname.second) == result.end())
-            result.push_back(fname.second);
+        if (add && std::find(result.begin(), result.end(), snd) == result.end()) {
+            result.push_back(snd);
+        }
     }
 }
 
-class NonCachedDir : public DataSource::Impl
+class NonCachedDir final : public DataSource::Impl
 {
 public:
-    NonCachedDir(const string& fname);
-    virtual bool IsDiskDir() override { return true; }
-    virtual const string& GetPackName() override { return basePath; }
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) override;
+    explicit NonCachedDir(const string& fname);
+    NonCachedDir(const NonCachedDir&) = delete;
+    NonCachedDir(NonCachedDir&&) noexcept = default;
+    auto operator=(const NonCachedDir&) = delete;
+    auto operator=(NonCachedDir&&) noexcept = delete;
+    ~NonCachedDir() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
+    [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
+    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
 
 private:
-    string basePath {};
+    string _basePath {};
 };
 
-class CachedDir : public DataSource::Impl
+class CachedDir final : public DataSource::Impl
 {
 public:
-    CachedDir(const string& fname);
-    virtual bool IsDiskDir() override { return true; }
-    virtual const string& GetPackName() override { return basePath; }
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) override;
+    explicit CachedDir(const string& fname);
+    CachedDir(const CachedDir&) = delete;
+    CachedDir(CachedDir&&) noexcept = default;
+    auto operator=(const CachedDir&) = delete;
+    auto operator=(CachedDir&&) noexcept = delete;
+    ~CachedDir() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
+    [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
+    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
 
 private:
     struct FileEntry
@@ -110,52 +126,58 @@ private:
     };
     using IndexMap = unordered_map<string, FileEntry>;
 
-    IndexMap filesTree {};
-    FileNameVec filesTreeNames {};
-    string basePath {};
+    IndexMap _filesTree {};
+    FileNameVec _filesTreeNames {};
+    string _basePath {};
 };
 
-class FalloutDat : public DataSource::Impl
+class FalloutDat final : public DataSource::Impl
 {
 public:
-    FalloutDat(const string& fname);
-    virtual ~FalloutDat() override;
-    virtual bool IsDiskDir() override { return false; }
-    virtual const string& GetPackName() override { return fileName; }
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) override
-    {
-        GetFileNamesGeneric(filesTreeNames, path, include_subdirs, ext, result);
-    }
+    explicit FalloutDat(const string& fname);
+    FalloutDat(const FalloutDat&) = delete;
+    FalloutDat(FalloutDat&&) noexcept = default;
+    auto operator=(const FalloutDat&) = delete;
+    auto operator=(FalloutDat&&) noexcept = delete;
+    ~FalloutDat() override;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
+
+    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override { GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result); }
 
 private:
     using IndexMap = unordered_map<string, uchar*>;
 
-    bool ReadTree();
+    auto ReadTree() -> bool;
 
-    IndexMap filesTree;
-    FileNameVec filesTreeNames;
-    string fileName;
-    uchar* memTree;
-    DiskFile datFile;
-    uint64 writeTime;
-    UCharVec readBuf;
+    mutable DiskFile _datFile;
+    IndexMap _filesTree {};
+    FileNameVec _filesTreeNames {};
+    string _fileName {};
+    uchar* _memTree {};
+    uint64 _writeTime {};
+    mutable UCharVec _readBuf {};
 };
 
-class ZipFile : public DataSource::Impl
+class ZipFile final : public DataSource::Impl
 {
 public:
-    ZipFile(const string& fname);
-    virtual ~ZipFile() override;
-    virtual bool IsDiskDir() override { return false; }
-    virtual const string& GetPackName() override { return fileName; }
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) override
-    {
-        GetFileNamesGeneric(filesTreeNames, path, include_subdirs, ext, result);
-    }
+    explicit ZipFile(const string& fname);
+    ZipFile(const ZipFile&) = delete;
+    ZipFile(ZipFile&&) noexcept = default;
+    auto operator=(const ZipFile&) = delete;
+    auto operator=(ZipFile&&) noexcept = delete;
+    ~ZipFile() override;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
+
+    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override { GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result); }
 
 private:
     struct ZipFileInfo
@@ -165,24 +187,30 @@ private:
     };
     using IndexMap = unordered_map<string, ZipFileInfo>;
 
-    bool ReadTree();
+    auto ReadTree() -> bool;
 
-    IndexMap filesTree {};
-    FileNameVec filesTreeNames {};
-    string fileName {};
-    unzFile zipHandle {};
-    uint64 writeTime {};
+    IndexMap _filesTree {};
+    FileNameVec _filesTreeNames {};
+    string _fileName {};
+    unzFile _zipHandle {};
+    uint64 _writeTime {};
 };
 
-class AndroidAssets : public DataSource::Impl
+class AndroidAssets final : public DataSource::Impl
 {
 public:
     AndroidAssets();
-    virtual bool IsDiskDir() override { return false; }
-    virtual const string& GetPackName() override { return packName; }
-    virtual bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) override;
-    virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) override;
+    AndroidAssets(const AndroidAssets&) = delete;
+    AndroidAssets(AndroidAssets&&) noexcept = default;
+    auto operator=(const AndroidAssets&) = delete;
+    auto operator=(AndroidAssets&&) noexcept = delete;
+    ~AndroidAssets() override = default;
+
+    [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
+    [[nodiscard]] auto GetPackName() const -> const string& override { return _packName; }
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
+    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
 
 private:
     struct FileEntry
@@ -193,363 +221,395 @@ private:
     };
     using IndexMap = unordered_map<string, FileEntry>;
 
-    string packName {"$AndroidAssets"};
-    IndexMap filesTree {};
-    FileNameVec filesTreeNames {};
+    string _packName {"$AndroidAssets"};
+    IndexMap _filesTree {};
+    FileNameVec _filesTreeNames {};
 };
 
 DataSource::DataSource(const string& path, bool cache_dirs)
 {
-    string ext = _str(path).getFileExtension();
-    if (path == "$AndroidAssets")
-        pImpl = std::make_unique<AndroidAssets>();
-    else if (ext == "dat")
-        pImpl = std::make_unique<FalloutDat>(path);
-    else if (ext == "zip" || ext == "bos" || path[0] == '$')
-        pImpl = std::make_unique<ZipFile>(path);
-    else if (!cache_dirs)
-        pImpl = std::make_unique<NonCachedDir>(path);
-    else
-        pImpl = std::make_unique<CachedDir>(path);
+    const string ext = _str(path).getFileExtension();
+    if (path == "$AndroidAssets") {
+        _pImpl = std::make_unique<AndroidAssets>();
+    }
+    else if (ext == "dat") {
+        _pImpl = std::make_unique<FalloutDat>(path);
+    }
+    else if (ext == "zip" || ext == "bos" || path[0] == '$') {
+        _pImpl = std::make_unique<ZipFile>(path);
+    }
+    else if (!cache_dirs) {
+        _pImpl = std::make_unique<NonCachedDir>(path);
+    }
+    else {
+        _pImpl = std::make_unique<CachedDir>(path);
+    }
 }
 
 DataSource::~DataSource() = default;
 DataSource::DataSource(DataSource&&) noexcept = default;
 
-bool DataSource::IsDiskDir()
+auto DataSource::IsDiskDir() const -> bool
 {
-    return pImpl->IsDiskDir();
+    return _pImpl->IsDiskDir();
 }
 
-const string& DataSource::GetPackName()
+auto DataSource::GetPackName() const -> const string&
 {
-    return pImpl->GetPackName();
+    return _pImpl->GetPackName();
 }
 
-bool DataSource::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto DataSource::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool
 {
-    return pImpl->IsFilePresent(path, path_lower, size, write_time);
+    return _pImpl->IsFilePresent(path, path_lower, size, write_time);
 }
 
-uchar* DataSource::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto DataSource::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*
 {
-    return pImpl->OpenFile(path, path_lower, size, write_time);
+    return _pImpl->OpenFile(path, path_lower, size, write_time);
 }
 
-void DataSource::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
+void DataSource::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
 {
-    return pImpl->GetFileNames(path, include_subdirs, ext, result);
+    return _pImpl->GetFileNames(path, include_subdirs, ext, result);
 }
 
 NonCachedDir::NonCachedDir(const string& fname)
 {
-    basePath = fname;
-    DiskFileSystem::ResolvePath(basePath);
-    basePath += "/";
+    _basePath = fname;
+    DiskFileSystem::ResolvePath(_basePath);
+    _basePath += "/";
 }
 
-bool NonCachedDir::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto NonCachedDir::IsFilePresent(const string& path, const string& /*path_lower*/, uint& size, uint64& write_time) const -> bool
 {
-    DiskFile file = DiskFileSystem::OpenFile(basePath + path, false);
-    if (!file)
+    const auto file = DiskFileSystem::OpenFile(_basePath + path, false);
+    if (!file) {
         return false;
+    }
 
     size = file.GetSize();
     write_time = file.GetWriteTime();
     return true;
 }
 
-uchar* NonCachedDir::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto NonCachedDir::OpenFile(const string& path, const string& /*path_lower*/, uint& size, uint64& write_time) const -> uchar*
 {
-    DiskFile file = DiskFileSystem::OpenFile(basePath + path, false);
-    if (!file)
+    auto file = DiskFileSystem::OpenFile(_basePath + path, false);
+    if (!file) {
         return nullptr;
+    }
 
     size = file.GetSize();
-    uchar* buf = new uchar[size + 1];
-    if (!file.Read(buf, size))
-    {
+    auto* buf = new uchar[static_cast<size_t>(size) + 1];
+    if (!file.Read(buf, size)) {
         delete[] buf;
-        throw DataSourceException("Can't read file from non cached dir", basePath + path);
+        throw DataSourceException("Can't read file from non cached dir", _basePath + path);
     }
+
     write_time = file.GetWriteTime();
     buf[size] = 0;
     return buf;
 }
 
-void NonCachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
+void NonCachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
 {
     FileNameVec fnames;
-    DiskFileSystem::IterateDir(
-        basePath + path, "", include_subdirs, [&fnames](const string& fname, uint fsize, uint64 write_time) {
-            string name_lower = _str(fname).lower();
-            fnames.push_back(std::make_pair(name_lower, fname));
-        });
+    DiskFileSystem::IterateDir(_basePath + path, "", include_subdirs, [&fnames](const string& fname, uint fsize, uint64 write_time) {
+        string name_lower = _str(fname).lower();
+        fnames.push_back(std::make_pair(name_lower, fname));
+    });
 
     StrVec filtered;
     GetFileNamesGeneric(fnames, path, include_subdirs, ext, filtered);
-    if (!filtered.empty())
+    if (!filtered.empty()) {
         result.insert(result.begin(), filtered.begin(), filtered.end());
+    }
 }
 
 CachedDir::CachedDir(const string& fname)
 {
-    basePath = fname;
-    DiskFileSystem::ResolvePath(basePath);
-    basePath += "/";
+    _basePath = fname;
+    DiskFileSystem::ResolvePath(_basePath);
+    _basePath += "/";
 
-    DiskFileSystem::IterateDir(basePath, "", true, [this](const string& fname, uint fsize, uint64 write_time) {
+    DiskFileSystem::IterateDir(_basePath, "", true, [this](const string& fname2, uint fsize, uint64 write_time) {
         FileEntry fe;
-        fe.FileName = basePath + fname;
+        fe.FileName = _basePath + fname2;
         fe.FileSize = fsize;
         fe.WriteTime = write_time;
 
-        string name_lower = _str(fname).lower();
-        filesTree.insert(std::make_pair(name_lower, fe));
-        filesTreeNames.push_back(std::make_pair(name_lower, fname));
+        string name_lower = _str(fname2).lower();
+        _filesTree.insert(std::make_pair(name_lower, fe));
+        _filesTreeNames.push_back(std::make_pair(name_lower, fname2));
     });
 }
 
-bool CachedDir::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto CachedDir::IsFilePresent(const string& /*path*/, const string& path_lower, uint& size, uint64& write_time) const -> bool
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return false;
+    }
 
-    FileEntry& fe = it->second;
+    const auto& fe = it->second;
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
 }
 
-uchar* CachedDir::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto CachedDir::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return nullptr;
+    }
 
-    FileEntry& fe = it->second;
-    DiskFile file = DiskFileSystem::OpenFile(fe.FileName, false);
-    if (!file)
-        throw DataSourceException("Can't read file from cached dir", basePath + path);
+    const auto& fe = it->second;
+    auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+    if (!file) {
+        throw DataSourceException("Can't read file from cached dir", _basePath + path);
+    }
 
     size = fe.FileSize;
-    uchar* buf = new uchar[size + 1];
-    if (!file.Read(buf, size))
-    {
+    auto* buf = new uchar[static_cast<size_t>(size) + 1];
+    if (!file.Read(buf, size)) {
         delete[] buf;
         return nullptr;
     }
+
     buf[size] = 0;
     write_time = fe.WriteTime;
     return buf;
 }
 
-void CachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
+void CachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
 {
     StrVec result_;
-    GetFileNamesGeneric(filesTreeNames, path, include_subdirs, ext, result_);
-    if (!result_.empty())
+    GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result_);
+    if (!result_.empty()) {
         result.insert(result.begin(), result_.begin(), result_.end());
+    }
 }
 
-FalloutDat::FalloutDat(const string& fname) : datFile {DiskFileSystem::OpenFile(fname, false)}
+FalloutDat::FalloutDat(const string& fname) : _datFile {DiskFileSystem::OpenFile(fname, false)}
 {
-    fileName = fname;
-    readBuf.resize(0x40000);
+    _fileName = fname;
+    _readBuf.resize(0x40000);
 
-    if (!datFile)
+    if (!_datFile) {
         throw DataSourceException("Cannot open fallout dat file", fname);
+    }
 
-    writeTime = datFile.GetWriteTime();
+    _writeTime = _datFile.GetWriteTime();
 
-    if (!ReadTree())
+    if (!ReadTree()) {
         throw DataSourceException("Read fallout dat file tree fail");
+    }
 }
 
 FalloutDat::~FalloutDat()
 {
-    SAFEDELA(memTree);
+    delete[] _memTree;
 }
 
-bool FalloutDat::ReadTree()
+auto FalloutDat::ReadTree() -> bool
 {
-    uint version;
-    if (!datFile.SetPos(-12, DiskFileSeek::End))
+    uint version = 0;
+    if (!_datFile.SetPos(-12, DiskFileSeek::End)) {
         return false;
-    if (!datFile.Read(&version, 4))
+    }
+    if (!_datFile.Read(&version, 4)) {
         return false;
+    }
 
     // DAT 2.1 Arcanum
     if (version == 0x44415431) // 1TAD
     {
-        // Readed data
-        uint files_total;
-        uint tree_size;
+        if (!_datFile.SetPos(-4, DiskFileSeek::End)) {
+            return false;
+        }
 
-        // Read info
-        if (!datFile.SetPos(-4, DiskFileSeek::End))
+        uint tree_size = 0;
+        if (!_datFile.Read(&tree_size, 4)) {
             return false;
-        if (!datFile.Read(&tree_size, 4))
-            return false;
+        }
 
         // Read tree
-        if (!datFile.SetPos(-(int)tree_size, DiskFileSeek::End))
+        if (!_datFile.SetPos(-static_cast<int>(tree_size), DiskFileSeek::End)) {
             return false;
-        if (!datFile.Read(&files_total, 4))
+        }
+
+        uint files_total = 0;
+        if (!_datFile.Read(&files_total, 4)) {
             return false;
+        }
+
         tree_size -= 28 + 4; // Subtract information block and files total
-        memTree = new uchar[tree_size];
-        memzero(memTree, tree_size);
-        if (!datFile.Read(memTree, tree_size))
+        _memTree = new uchar[tree_size];
+        std::memset(_memTree, 0, tree_size);
+        if (!_datFile.Read(_memTree, tree_size)) {
             return false;
+        }
 
         // Indexing tree
-        uchar* ptr = memTree;
-        uchar* end_ptr = memTree + tree_size;
-        while (true)
-        {
-            uint fnsz; // Include zero
-            memcpy(&fnsz, ptr, sizeof(fnsz));
-            uint type;
-            memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
+        auto* ptr = _memTree;
+        const auto* end_ptr = _memTree + tree_size;
 
-            if (fnsz > 1 && type != 0x400) // Not folder
+        while (ptr < end_ptr) {
+            uint fnsz = 0;
+            std::memcpy(&fnsz, ptr, sizeof(fnsz));
+            uint type = 0;
+            std::memcpy(&type, ptr + 4 + fnsz + 4, sizeof(type));
+
+            if (fnsz != 0u && type != 0x400) // Not folder
             {
-                string name = _str(string((const char*)ptr + 4, fnsz)).normalizePathSlashes();
+                string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
                 string name_lower = _str(name).lower();
 
-                if (type == 2)
+                if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
-                filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz + 7));
-                filesTreeNames.push_back(std::make_pair(name_lower, name));
+                }
+
+                _filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz + 7));
+                _filesTreeNames.push_back(std::make_pair(name_lower, name));
             }
 
-            if (ptr + fnsz + 24 >= end_ptr)
-                break;
-            ptr += fnsz + 24;
+            ptr += static_cast<size_t>(fnsz) + 24;
         }
 
         return true;
     }
 
     // DAT 2.0 Fallout2
-    // Readed data
-    uint dir_count, dat_size, files_total, tree_size;
+    if (!_datFile.SetPos(-8, DiskFileSeek::End)) {
+        return false;
+    }
 
-    // Read info
-    if (!datFile.SetPos(-8, DiskFileSeek::End))
+    uint tree_size = 0;
+    if (!_datFile.Read(&tree_size, 4)) {
         return false;
-    if (!datFile.Read(&tree_size, 4))
+    }
+
+    uint dat_size = 0;
+    if (!_datFile.Read(&dat_size, 4)) {
         return false;
-    if (!datFile.Read(&dat_size, 4))
-        return false;
+    }
 
     // Check for DAT1.0 Fallout1 dat file
-    if (!datFile.SetPos(0, DiskFileSeek::Set))
+    if (!_datFile.SetPos(0, DiskFileSeek::Set)) {
         return false;
-    if (!datFile.Read(&dir_count, 4))
+    }
+
+    uint dir_count = 0;
+    if (!_datFile.Read(&dir_count, 4)) {
         return false;
+    }
+
     dir_count >>= 24;
-    if (dir_count == 0x01 || dir_count == 0x33)
+    if (dir_count == 0x01 || dir_count == 0x33) {
         return false;
+    }
 
     // Check for truncated
-    if (datFile.GetSize() != dat_size)
+    if (_datFile.GetSize() != dat_size) {
         return false;
+    }
 
     // Read tree
-    if (!datFile.SetPos(-((int)tree_size + 8), DiskFileSeek::End))
+    if (!_datFile.SetPos(-(static_cast<int>(tree_size) + 8), DiskFileSeek::End)) {
         return false;
-    if (!datFile.Read(&files_total, 4))
+    }
+
+    uint files_total = 0;
+    if (!_datFile.Read(&files_total, 4)) {
         return false;
+    }
+
     tree_size -= 4;
-    memTree = new uchar[tree_size];
-    memzero(memTree, tree_size);
-    if (!datFile.Read(memTree, tree_size))
+    _memTree = new uchar[tree_size];
+    if (!_datFile.Read(_memTree, tree_size)) {
         return false;
+    }
 
     // Indexing tree
-    uchar* ptr = memTree;
-    uchar* end_ptr = memTree + tree_size;
-    while (true)
-    {
-        uint fnsz;
-        memcpy(&fnsz, ptr, sizeof(fnsz));
+    auto* ptr = _memTree;
+    const auto* end_ptr = _memTree + tree_size;
 
-        if (fnsz)
-        {
-            string name = _str(string((const char*)ptr + 4, fnsz)).normalizePathSlashes();
+    while (ptr < end_ptr) {
+        uint fnsz = 0;
+        std::memcpy(&fnsz, ptr, sizeof(fnsz));
+
+        if (fnsz != 0u) {
+            string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
             string name_lower = _str(name).lower();
 
-            filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz));
-            filesTreeNames.push_back(std::make_pair(name_lower, name));
+            _filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz));
+            _filesTreeNames.push_back(std::make_pair(name_lower, name));
         }
 
-        if (ptr + fnsz + 17 >= end_ptr)
-            break;
-        ptr += fnsz + 17;
+        ptr += static_cast<size_t>(fnsz) + 17;
     }
 
     return true;
 }
 
-bool FalloutDat::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto FalloutDat::IsFilePresent(const string& /*path*/, const string& path_lower, uint& size, uint64& write_time) const -> bool
 {
-    if (!datFile)
+    if (!_datFile) {
         return false;
+    }
 
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return false;
+    }
 
-    memcpy(&size, it->second + 1, sizeof(size));
-    write_time = writeTime;
+    std::memcpy(&size, it->second + 1, sizeof(size));
+    write_time = _writeTime;
     return true;
 }
 
-uchar* FalloutDat::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto FalloutDat::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return nullptr;
+    }
 
-    uchar* ptr = it->second;
-    uchar type;
-    memcpy(&type, ptr, sizeof(type));
-    uint real_size;
-    memcpy(&real_size, ptr + 1, sizeof(real_size));
-    uint packed_size;
-    memcpy(&packed_size, ptr + 5, sizeof(packed_size));
-    uint offset;
-    memcpy(&offset, ptr + 9, sizeof(offset));
+    const auto* ptr = it->second;
+    uchar type = 0;
+    std::memcpy(&type, ptr, sizeof(type));
+    uint real_size = 0;
+    std::memcpy(&real_size, ptr + 1, sizeof(real_size));
+    uint packed_size = 0;
+    std::memcpy(&packed_size, ptr + 5, sizeof(packed_size));
+    uint offset = 0;
+    std::memcpy(&offset, ptr + 9, sizeof(offset));
 
-    if (!datFile.SetPos(offset, DiskFileSeek::Set))
+    if (!_datFile.SetPos(offset, DiskFileSeek::Set)) {
         throw DataSourceException("Can't read file from fallout dat (1)", path);
+    }
 
     size = real_size;
-    uchar* buf = new uchar[size + 1];
+    auto* buf = new uchar[static_cast<size_t>(size) + 1];
 
-    if (!type)
-    {
+    if (type == 0u) {
         // Plane data
-        if (!datFile.Read(buf, size))
-        {
+        if (!_datFile.Read(buf, size)) {
             delete[] buf;
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
-    else
-    {
+    else {
         // Packed data
         z_stream stream;
-        stream.zalloc = Z_NULL;
-        stream.zfree = Z_NULL;
-        stream.opaque = Z_NULL;
-        stream.next_in = Z_NULL;
+        stream.zalloc = nullptr;
+        stream.zfree = nullptr;
+        stream.opaque = nullptr;
+        stream.next_in = nullptr;
         stream.avail_in = 0;
-        if (inflateInit(&stream) != Z_OK)
-        {
+        if (inflateInit(&stream) != Z_OK) {
             delete[] buf;
             throw DataSourceException("Can't read file from fallout dat (3)", path);
         }
@@ -557,15 +617,12 @@ uchar* FalloutDat::OpenFile(const string& path, const string& path_lower, uint& 
         stream.next_out = buf;
         stream.avail_out = real_size;
 
-        uint left = packed_size;
-        while (stream.avail_out)
-        {
-            if (!stream.avail_in && left > 0)
-            {
-                stream.next_in = &readBuf[0];
-                uint len = MIN(left, (uint)readBuf.size());
-                if (!datFile.Read(&readBuf[0], len))
-                {
+        auto left = packed_size;
+        while (stream.avail_out != 0u) {
+            if (stream.avail_in == 0u && left > 0) {
+                stream.next_in = &_readBuf[0];
+                const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
+                if (!_datFile.Read(&_readBuf[0], len)) {
                     delete[] buf;
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
@@ -573,55 +630,52 @@ uchar* FalloutDat::OpenFile(const string& path, const string& path_lower, uint& 
                 left -= len;
             }
 
-            int r = inflate(&stream, Z_NO_FLUSH);
-            if (r != Z_OK && r != Z_STREAM_END)
-            {
+            const auto r = inflate(&stream, Z_NO_FLUSH);
+            if (r != Z_OK && r != Z_STREAM_END) {
                 delete[] buf;
                 throw DataSourceException("Can't read file from fallout dat (5)", path);
             }
-            if (r == Z_STREAM_END)
+            if (r == Z_STREAM_END) {
                 break;
+            }
         }
 
         inflateEnd(&stream);
     }
 
-    write_time = writeTime;
+    write_time = _writeTime;
     buf[size] = 0;
     return buf;
 }
 
 ZipFile::ZipFile(const string& fname)
 {
-    fileName = fname;
-    zipHandle = nullptr;
+    _fileName = fname;
+    _zipHandle = nullptr;
 
     zlib_filefunc_def ffunc;
-    if (fname[0] != '$')
-    {
-        DiskFile* file = new DiskFile {DiskFileSystem::OpenFile(fname, false)};
-        if (!*file)
-        {
-            delete file;
+    if (fname[0] != '$') {
+        auto* p_file = new DiskFile {DiskFileSystem::OpenFile(fname, false)};
+        if (!*p_file) {
+            delete p_file;
             throw DataSourceException("Can't open zip file", fname);
         }
 
-        writeTime = file->GetWriteTime();
+        _writeTime = p_file->GetWriteTime();
 
-        ffunc.zopen_file = [](voidpf opaque, const char* filename, int mode) -> voidpf { return opaque; };
-        ffunc.zread_file = [](voidpf opaque, voidpf stream, void* buf, uLong size) -> uLong {
-            DiskFile* file = (DiskFile*)stream;
+        ffunc.zopen_file = [](voidpf opaque, const char*, int) -> voidpf { return opaque; };
+        ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
+            auto* file = static_cast<DiskFile*>(stream);
             return file->Read(buf, size) ? size : 0;
         };
-        ffunc.zwrite_file = [](voidpf opaque, voidpf stream, const void* buf, uLong size) -> uLong { return 0; };
-        ffunc.ztell_file = [](voidpf opaque, voidpf stream) -> long {
-            DiskFile* file = (DiskFile*)stream;
-            return (long)file->GetPos();
+        ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
+        ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
+            auto* file = static_cast<DiskFile*>(stream);
+            return static_cast<long>(file->GetPos());
         };
-        ffunc.zseek_file = [](voidpf opaque, voidpf stream, uLong offset, int origin) -> long {
-            DiskFile* file = (DiskFile*)stream;
-            switch (origin)
-            {
+        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
+            auto* file = static_cast<DiskFile*>(stream);
+            switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
                 file->SetPos(offset, DiskFileSeek::Set);
                 break;
@@ -636,21 +690,21 @@ ZipFile::ZipFile(const string& fname)
             }
             return 0;
         };
-        ffunc.zclose_file = [](voidpf opaque, voidpf stream) -> int {
-            DiskFile* file = (DiskFile*)stream;
+        ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
+            auto* file = static_cast<DiskFile*>(stream);
             delete file;
             return 0;
         };
-        ffunc.zerror_file = [](voidpf opaque, voidpf stream) -> int {
-            if (stream == nullptr)
+        ffunc.zerror_file = [](voidpf, voidpf stream) -> int {
+            if (stream == nullptr) {
                 return 1;
+            }
             return 0;
         };
-        ffunc.opaque = file;
+        ffunc.opaque = p_file;
     }
-    else
-    {
-        writeTime = 0;
+    else {
+        _writeTime = 0;
 
         struct MemStream
         {
@@ -659,37 +713,35 @@ ZipFile::ZipFile(const string& fname)
             uint Pos;
         };
 
-        ffunc.zopen_file = [](voidpf opaque, const char* filename, int mode) -> voidpf {
-            if (Str::Compare(filename, "$Basic"))
-            {
-                MemStream* mem_stream = new MemStream();
+        ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
+            if (Str::Compare(filename, "$Basic")) {
+                auto* mem_stream = new MemStream();
                 mem_stream->Buf = Resource_Basic_zipped;
                 mem_stream->Length = sizeof(Resource_Basic_zipped);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
-            return 0;
+            return nullptr;
         };
-        ffunc.zread_file = [](voidpf opaque, voidpf stream, void* buf, uLong size) -> uLong {
-            MemStream* mem_stream = (MemStream*)stream;
-            memcpy(buf, mem_stream->Buf + mem_stream->Pos, size);
-            mem_stream->Pos += (uint)size;
+        ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
+            auto* mem_stream = static_cast<MemStream*>(stream);
+            std::memcpy(buf, mem_stream->Buf + mem_stream->Pos, size);
+            mem_stream->Pos += static_cast<uint>(size);
             return size;
         };
-        ffunc.zwrite_file = [](voidpf opaque, voidpf stream, const void* buf, uLong size) -> uLong { return 0; };
-        ffunc.ztell_file = [](voidpf opaque, voidpf stream) -> long {
-            MemStream* mem_stream = (MemStream*)stream;
-            return (long)mem_stream->Pos;
+        ffunc.zwrite_file = [](voidpf, voidpf, const void* buf, uLong size) -> uLong { return 0; };
+        ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
+            auto* mem_stream = static_cast<MemStream*>(stream);
+            return static_cast<long>(mem_stream->Pos);
         };
-        ffunc.zseek_file = [](voidpf opaque, voidpf stream, uLong offset, int origin) -> long {
-            MemStream* mem_stream = (MemStream*)stream;
-            switch (origin)
-            {
+        ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
+            auto* mem_stream = static_cast<MemStream*>(stream);
+            switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                mem_stream->Pos = (uint)offset;
+                mem_stream->Pos = static_cast<uint>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                mem_stream->Pos += (uint)offset;
+                mem_stream->Pos += static_cast<uint>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
                 mem_stream->Pos = mem_stream->Length + offset;
@@ -699,104 +751,114 @@ ZipFile::ZipFile(const string& fname)
             }
             return 0;
         };
-        ffunc.zclose_file = [](voidpf opaque, voidpf stream) -> int {
-            MemStream* mem_stream = (MemStream*)stream;
+        ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
+            auto* mem_stream = static_cast<MemStream*>(stream);
             delete mem_stream;
             return 0;
         };
-        ffunc.zerror_file = [](voidpf opaque, voidpf stream) -> int {
-            if (stream == nullptr)
+        ffunc.zerror_file = [](voidpf, voidpf stream) -> int {
+            if (stream == nullptr) {
                 return 1;
+            }
             return 0;
         };
         ffunc.opaque = nullptr;
     }
 
-    zipHandle = unzOpen2(fname.c_str(), &ffunc);
-    if (!zipHandle)
+    _zipHandle = unzOpen2(fname.c_str(), &ffunc);
+    if (_zipHandle == nullptr) {
         throw DataSourceException("Can't read zip file", fname);
+    }
 
-    if (!ReadTree())
+    if (!ReadTree()) {
         throw DataSourceException("Read zip file tree fail", fname);
+    }
 }
 
 ZipFile::~ZipFile()
 {
-    if (zipHandle)
-        unzClose(zipHandle);
+    if (_zipHandle != nullptr) {
+        unzClose(_zipHandle);
+    }
 }
 
-bool ZipFile::ReadTree()
+auto ZipFile::ReadTree() -> bool
 {
     unz_global_info gi;
-    if (unzGetGlobalInfo(zipHandle, &gi) != UNZ_OK || gi.number_entry == 0)
+    if (unzGetGlobalInfo(_zipHandle, &gi) != UNZ_OK || gi.number_entry == 0) {
         return false;
+    }
 
     ZipFileInfo zip_info;
     unz_file_pos pos;
     unz_file_info info;
-    for (uLong i = 0; i < gi.number_entry; i++)
-    {
-        if (unzGetFilePos(zipHandle, &pos) != UNZ_OK)
+    for (uLong i = 0; i < gi.number_entry; i++) {
+        if (unzGetFilePos(_zipHandle, &pos) != UNZ_OK) {
             return false;
+        }
 
-        char buf[MAX_FOPATH];
-        if (unzGetCurrentFileInfo(zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK)
+        char buf[TEMP_BUF_SIZE];
+        if (unzGetCurrentFileInfo(_zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             return false;
+        }
 
-        if (!(info.external_fa & 0x10)) // Not folder
+        if ((info.external_fa & 0x10) == 0u) // Not folder
         {
             string name = _str(buf).normalizePathSlashes();
             string name_lower = _str(name).lower();
 
             zip_info.Pos = pos;
-            zip_info.UncompressedSize = (int)info.uncompressed_size;
-            filesTree.insert(std::make_pair(name_lower, zip_info));
-            filesTreeNames.push_back(std::make_pair(name_lower, name));
+            zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
+            _filesTree.insert(std::make_pair(name_lower, zip_info));
+            _filesTreeNames.push_back(std::make_pair(name_lower, name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(zipHandle) != UNZ_OK)
+        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle) != UNZ_OK) {
             return false;
+        }
     }
 
     return true;
 }
 
-bool ZipFile::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto ZipFile::IsFilePresent(const string& /*path*/, const string& path_lower, uint& size, uint64& write_time) const -> bool
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return false;
+    }
 
-    ZipFileInfo& info = it->second;
-    write_time = writeTime;
+    const auto& info = it->second;
+    write_time = _writeTime;
     size = info.UncompressedSize;
     return true;
 }
 
-uchar* ZipFile::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto ZipFile::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return nullptr;
+    }
 
-    ZipFileInfo& info = it->second;
+    const auto& info = it->second;
+    auto pos = info.Pos;
 
-    if (unzGoToFilePos(zipHandle, &info.Pos) != UNZ_OK)
+    if (unzGoToFilePos(_zipHandle, &pos) != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (1)", path);
-
-    if (unzOpenCurrentFile(zipHandle) != UNZ_OK)
+    }
+    if (unzOpenCurrentFile(_zipHandle) != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (2)", path);
+    }
 
-    uchar* buf = new uchar[info.UncompressedSize + 1];
-    int read = unzReadCurrentFile(zipHandle, buf, info.UncompressedSize);
-    if (unzCloseCurrentFile(zipHandle) != UNZ_OK || read != info.UncompressedSize)
-    {
+    auto* buf = new uchar[static_cast<size_t>(info.UncompressedSize) + 1];
+    const auto read = unzReadCurrentFile(_zipHandle, buf, info.UncompressedSize);
+    if (unzCloseCurrentFile(_zipHandle) != UNZ_OK || read != info.UncompressedSize) {
         delete[] buf;
         throw DataSourceException("Can't read file from zip (3)", path);
     }
 
-    write_time = writeTime;
+    write_time = _writeTime;
     size = info.UncompressedSize;
     buf[size] = 0;
     return buf;
@@ -804,33 +866,33 @@ uchar* ZipFile::OpenFile(const string& path, const string& path_lower, uint& siz
 
 AndroidAssets::AndroidAssets()
 {
-    filesTree.clear();
-    filesTreeNames.clear();
+    _filesTree.clear();
+    _filesTreeNames.clear();
 
     // Read tree
-    DiskFile file_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
-    if (!file_tree)
+    auto file_tree = DiskFileSystem::OpenFile("FilesTree.txt", false);
+    if (!file_tree) {
         throw DataSourceException("Can't open 'FilesTree.txt' in android assets");
+    }
 
-    uint len = file_tree.GetSize() + 1;
-    char* buf = new char[len];
+    const auto len = file_tree.GetSize() + 1;
+    auto* buf = new char[len];
     buf[len - 1] = 0;
 
-    if (!file_tree.Read(buf, len))
-    {
+    if (!file_tree.Read(buf, len)) {
         delete[] buf;
         throw DataSourceException("Can't read 'FilesTree.txt' in android assets");
     }
 
-    StrVec names = _str(buf).normalizeLineEndings().split('\n');
+    auto names = _str(buf).normalizeLineEndings().split('\n');
     delete[] buf;
 
     // Parse
-    for (const string& name : names)
-    {
-        DiskFile file = DiskFileSystem::OpenFile(name, false);
-        if (!file)
+    for (const auto& name : names) {
+        auto file = DiskFileSystem::OpenFile(name, false);
+        if (!file) {
             throw DataSourceException("Can't open file in android assets", name);
+        }
 
         FileEntry fe;
         fe.FileName = name;
@@ -838,50 +900,54 @@ AndroidAssets::AndroidAssets()
         fe.WriteTime = file.GetWriteTime();
 
         string name_lower = _str(name).lower();
-        filesTree.insert(std::make_pair(name_lower, fe));
-        filesTreeNames.push_back(std::make_pair(name_lower, name));
+        _filesTree.insert(std::make_pair(name_lower, fe));
+        _filesTreeNames.push_back(std::make_pair(name_lower, name));
     }
 }
 
-bool AndroidAssets::IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto AndroidAssets::IsFilePresent(const string& /*path*/, const string& path_lower, uint& size, uint64& write_time) const -> bool
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return false;
+    }
 
-    FileEntry& fe = it->second;
+    const auto& fe = it->second;
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
 }
 
-uchar* AndroidAssets::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time)
+auto AndroidAssets::OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*
 {
-    auto it = filesTree.find(path_lower);
-    if (it == filesTree.end())
+    const auto it = _filesTree.find(path_lower);
+    if (it == _filesTree.end()) {
         return nullptr;
+    }
 
-    FileEntry& fe = it->second;
-    DiskFile file = DiskFileSystem::OpenFile(fe.FileName, false);
-    if (!file)
+    const auto& fe = it->second;
+    auto file = DiskFileSystem::OpenFile(fe.FileName, false);
+    if (!file) {
         throw DataSourceException("Can't open file in android assets", path);
+    }
 
     size = fe.FileSize;
-    uchar* buf = new uchar[size + 1];
-    if (!file.Read(buf, size))
-    {
+    auto* buf = new uchar[static_cast<size_t>(size) + 1];
+    if (!file.Read(buf, size)) {
         delete[] buf;
         throw DataSourceException("Can't read file in android assets", path);
     }
+
     buf[size] = 0;
     write_time = fe.WriteTime;
     return buf;
 }
 
-void AndroidAssets::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result)
+void AndroidAssets::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
 {
     StrVec result_;
-    GetFileNamesGeneric(filesTreeNames, path, include_subdirs, ext, result_);
-    if (!result_.empty())
+    GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result_);
+    if (!result_.empty()) {
         result.insert(result.begin(), result_.begin(), result_.end());
+    }
 }

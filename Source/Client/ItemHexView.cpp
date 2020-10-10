@@ -35,44 +35,40 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Sprites.h"
-#include "Testing.h"
 
-ItemHexView::ItemHexView(
-    uint id, ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) :
-    ItemView(id, proto), resMngr {res_mngr}, effectMngr {effect_mngr}, gameTime {game_time}
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemView(id, proto), _resMngr {res_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}
 {
     const_cast<EntityType&>(Type) = EntityType::ItemHexView;
-    DrawEffect = effectMngr.Effects.Generic;
+    DrawEffect = _effectMngr.Effects.Generic;
 }
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, Properties& props, ResourceManager& res_mngr,
-    EffectManager& effect_mngr, GameTimer& game_time) :
-    ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
 {
     Props = props;
+
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr,
-    EffectManager& effect_mngr, GameTimer& game_time) :
-    ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
 {
     RUNTIME_ASSERT(props_data);
     Props.RestoreData(*props_data);
+
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x,
-    int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) :
-    ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
 {
-    if (props_data)
+    if (props_data != nullptr) {
         Props.RestoreData(*props_data);
+    }
+
     SetHexX(hx);
     SetHexY(hy);
     SetAccessory(ITEM_ACCESSORY_HEX);
     HexScrX = hex_scr_x;
     HexScrY = hex_scr_y;
+
     AfterConstruction();
 }
 
@@ -83,10 +79,11 @@ void ItemHexView::AfterConstruction()
     RefreshAnim();
     RefreshAlpha();
 
-    if (GetIsShowAnim())
-        isAnimated = true;
+    if (GetIsShowAnim()) {
+        _isAnimated = true;
+    }
 
-    animNextTick = gameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    _animNextTick = _gameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
 
     SetFade(true);
 }
@@ -95,26 +92,27 @@ void ItemHexView::Finish()
 {
     SetFade(false);
 
-    finishing = true;
-    finishingTime = fadingTick;
+    _finishing = true;
+    _finishingTime = _fadingTick;
 
-    if (isEffect)
-        finishingTime = gameTime.GameTick();
+    if (_isEffect) {
+        _finishingTime = _gameTime.GameTick();
+    }
 }
 
-bool ItemHexView::IsFinishing()
+auto ItemHexView::IsFinishing() const -> bool
 {
-    return finishing;
+    return _finishing;
 }
 
-bool ItemHexView::IsFinish()
+auto ItemHexView::IsFinish() const -> bool
 {
-    return finishing && gameTime.GameTick() > finishingTime;
+    return _finishing && _gameTime.GameTick() > _finishingTime;
 }
 
 void ItemHexView::StopFinishing()
 {
-    finishing = false;
+    _finishing = false;
     SetFade(true);
     RefreshAnim();
 }
@@ -122,175 +120,179 @@ void ItemHexView::StopFinishing()
 void ItemHexView::Process()
 {
     // Animation
-    if (begSpr != endSpr)
-    {
-        int anim_proc = GenericUtils::Procent(Anim->Ticks, gameTime.GameTick() - animTick);
-        if (anim_proc >= 100)
-        {
-            begSpr = animEndSpr;
-            SetSpr(endSpr);
-            animNextTick = gameTime.GameTick() + GetAnimWaitBase() * 10 +
-                GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    if (_begSpr != _endSpr) {
+        const auto anim_proc = GenericUtils::Percent(Anim->Ticks, _gameTime.GameTick() - _animTick);
+        if (anim_proc >= 100) {
+            _begSpr = _animEndSpr;
+            SetSpr(_endSpr);
+            _animNextTick = _gameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
         }
-        else
-        {
-            int cur_spr = begSpr + ((endSpr - begSpr + (begSpr < endSpr ? 1 : -1)) * anim_proc) / 100;
-            if (curSpr != cur_spr)
+        else {
+            const auto cur_spr = _begSpr + (_endSpr - _begSpr + (_begSpr < _endSpr ? 1 : -1)) * anim_proc / 100;
+            if (_curSpr != cur_spr) {
                 SetSpr(cur_spr);
+            }
         }
     }
-    else if (isEffect && !IsFinishing())
-    {
-        if (IsDynamicEffect())
+    else if (_isEffect && !IsFinishing()) {
+        if (IsDynamicEffect()) {
             SetAnimFromStart();
-        else
+        }
+        else {
             Finish();
+        }
     }
-    else if (IsAnimated() && gameTime.GameTick() - animTick >= Anim->Ticks)
-    {
-        if (gameTime.GameTick() >= animNextTick)
+    else if (IsAnimated() && _gameTime.GameTick() - _animTick >= Anim->Ticks) {
+        if (_gameTime.GameTick() >= _animNextTick) {
             SetStayAnim();
+        }
     }
 
     // Effect
-    if (IsDynamicEffect() && !IsFinishing())
-    {
-        float dt = (float)(gameTime.GameTick() - effLastTick);
-        if (dt > 0)
-        {
-            float speed = GetFlyEffectSpeed();
-            if (speed == 0)
+    if (IsDynamicEffect() && !IsFinishing()) {
+        const auto dt = static_cast<float>(_gameTime.GameTick() - _effLastTick);
+        if (dt > 0) {
+            auto speed = GetFlyEffectSpeed();
+            if (speed == 0.0f) {
                 speed = 1.0f;
+            }
 
-            EffOffsX += effSx * dt * speed;
-            EffOffsY += effSy * dt * speed;
-            effCurX += effSx * dt * speed;
-            effCurY += effSy * dt * speed;
+            EffOffsX += _effSx * dt * speed;
+            EffOffsY += _effSy * dt * speed;
+            _effCurX += _effSx * dt * speed;
+            _effCurY += _effSy * dt * speed;
 
             SetAnimOffs();
-            effLastTick = gameTime.GameTick();
+            _effLastTick = _gameTime.GameTick();
 
-            if (GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY) >= effDist)
+            if (GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY) >= _effDist) {
                 Finish();
+            }
         }
     }
 
     // Fading
-    if (fading)
-    {
-        int fading_proc = 100 - GenericUtils::Procent(FADING_PERIOD, fadingTick - gameTime.GameTick());
-        fading_proc = CLAMP(fading_proc, 0, 100);
-        if (fading_proc >= 100)
-        {
+    if (_fading) {
+        auto fading_proc = 100 - GenericUtils::Percent(FADING_PERIOD, _fadingTick - _gameTime.GameTick());
+        fading_proc = std::clamp(fading_proc, 0, 100);
+        if (fading_proc >= 100) {
             fading_proc = 100;
-            fading = false;
+            _fading = false;
         }
 
-        Alpha = (fadeUp == true ? (fading_proc * 0xFF) / 100 : ((100 - fading_proc) * 0xFF) / 100);
-        if (Alpha > maxAlpha)
-            Alpha = maxAlpha;
+        Alpha = _fadeUp ? fading_proc * 0xFF / 100 : (100 - fading_proc) * 0xFF / 100;
+        if (Alpha > _maxAlpha) {
+            Alpha = _maxAlpha;
+        }
     }
 }
 
 void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
 {
     // Init effect
-    effSx = sx;
-    effSy = sy;
-    effDist = dist;
-    effStartX = ScrX;
-    effStartY = ScrY;
-    effCurX = ScrX;
-    effCurY = ScrY;
-    effDir = dir;
-    effLastTick = gameTime.GameTick();
-    isEffect = true;
+    _effSx = sx;
+    _effSy = sy;
+    _effDist = dist;
+    _effStartX = ScrX;
+    _effStartY = ScrY;
+    _effCurX = ScrX;
+    _effCurY = ScrY;
+    _effDir = dir;
+    _effLastTick = _gameTime.GameTick();
+    _isEffect = true;
 
     // Check off fade
-    fading = false;
-    Alpha = maxAlpha;
+    _fading = false;
+    Alpha = _maxAlpha;
 
     // Refresh effect animation dir
     RefreshAnim();
 }
 
-UShortPair ItemHexView::GetEffectStep()
+auto ItemHexView::GetEffectStep() -> UShortPair
 {
-    uint dist = GenericUtils::DistSqrt((int)effCurX, (int)effCurY, effStartX, effStartY);
-    if (dist > effDist)
-        dist = effDist;
+    auto dist = GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY);
+    if (dist > _effDist) {
+        dist = _effDist;
+    }
 
-    int proc = GenericUtils::Procent(effDist, dist);
-    if (proc > 99)
+    auto proc = GenericUtils::Percent(_effDist, dist);
+    if (proc > 99) {
         proc = 99;
+    }
 
     return EffSteps[EffSteps.size() * proc / 100];
 }
 
 void ItemHexView::SetFade(bool fade_up)
 {
-    uint tick = gameTime.GameTick();
-    fadingTick = tick + FADING_PERIOD - (fadingTick > tick ? fadingTick - tick : 0);
-    fadeUp = fade_up;
-    fading = true;
+    const auto tick = _gameTime.GameTick();
+    _fadingTick = tick + FADING_PERIOD - (_fadingTick > tick ? _fadingTick - tick : 0);
+    _fadeUp = fade_up;
+    _fading = true;
 }
 
 void ItemHexView::SkipFade()
 {
-    if (fading)
-    {
-        fading = false;
-        Alpha = (fadeUp ? maxAlpha : 0);
+    if (_fading) {
+        _fading = false;
+        Alpha = _fadeUp ? _maxAlpha : 0;
     }
 }
 
 void ItemHexView::RefreshAnim()
 {
     Anim = nullptr;
-    hash name_hash = GetPicMap();
-    if (name_hash)
-        Anim = resMngr.GetItemAnim(name_hash);
-    if (name_hash && !Anim)
+    const auto name_hash = GetPicMap();
+    if (name_hash != 0u) {
+        Anim = _resMngr.GetItemAnim(name_hash);
+    }
+    if (name_hash != 0u && Anim == nullptr) {
         WriteLog("PicMap for item '{}' not found.\n", GetName());
-    if (Anim && isEffect)
-        Anim = Anim->GetDir(effDir);
-    if (!Anim)
-        Anim = resMngr.ItemHexDefaultAnim;
+    }
+    if (Anim != nullptr && _isEffect) {
+        Anim = Anim->GetDir(_effDir);
+    }
+    if (Anim == nullptr) {
+        Anim = _resMngr.ItemHexDefaultAnim;
+    }
 
     SetStayAnim();
-    animBegSpr = begSpr;
-    animEndSpr = endSpr;
+    _animBegSpr = _begSpr;
+    _animEndSpr = _endSpr;
 
-    if (GetIsCanOpen())
-    {
-        if (GetOpened())
+    if (GetIsCanOpen()) {
+        if (GetOpened()) {
             SetSprEnd();
-        else
+        }
+        else {
             SetSprStart();
+        }
     }
 }
 
 void ItemHexView::SetSprite(Sprite* spr)
 {
-    if (spr)
+    if (spr != nullptr) {
         SprDraw = spr;
+    }
 
-    if (SprDrawValid)
-    {
+    if (SprDrawValid) {
         SprDraw->SetColor(IsColorize() ? GetColor() : 0);
         SprDraw->SetEgg(GetEggType());
-        if (GetIsBadItem())
+        if (GetIsBadItem()) {
             SprDraw->SetContour(CONTOUR_RED);
+        }
     }
 }
 
-int ItemHexView::GetEggType()
+auto ItemHexView::GetEggType() -> int
 {
-    if (GetDisableEgg() || GetIsFlat())
+    if (GetDisableEgg() || GetIsFlat()) {
         return 0;
+    }
 
-    switch (GetCorner())
-    {
+    switch (GetCorner()) {
     case CORNER_SOUTH:
         return EGG_X_OR_Y;
     case CORNER_NORTH:
@@ -307,66 +309,67 @@ int ItemHexView::GetEggType()
 void ItemHexView::StartAnimate()
 {
     SetStayAnim();
-    animNextTick = gameTime.GameTick() + GetAnimWaitBase() * 10 +
-        GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
-    isAnimated = true;
+    _animNextTick = _gameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    _isAnimated = true;
 }
 
 void ItemHexView::StopAnimate()
 {
-    SetSpr(animBegSpr);
-    begSpr = animBegSpr;
-    endSpr = animBegSpr;
-    isAnimated = false;
+    SetSpr(_animBegSpr);
+    _begSpr = _animBegSpr;
+    _endSpr = _animBegSpr;
+    _isAnimated = false;
 }
 
 void ItemHexView::SetAnimFromEnd()
 {
-    begSpr = animEndSpr;
-    endSpr = animBegSpr;
-    SetSpr(begSpr);
-    animTick = gameTime.GameTick();
+    _begSpr = _animEndSpr;
+    _endSpr = _animBegSpr;
+    SetSpr(_begSpr);
+    _animTick = _gameTime.GameTick();
 }
 
 void ItemHexView::SetAnimFromStart()
 {
-    begSpr = animBegSpr;
-    endSpr = animEndSpr;
-    SetSpr(begSpr);
-    animTick = gameTime.GameTick();
+    _begSpr = _animBegSpr;
+    _endSpr = _animEndSpr;
+    SetSpr(_begSpr);
+    _animTick = _gameTime.GameTick();
 }
 
 void ItemHexView::SetAnim(uint beg, uint end)
 {
-    if (beg > Anim->CntFrm - 1)
+    if (beg > Anim->CntFrm - 1) {
         beg = Anim->CntFrm - 1;
-    if (end > Anim->CntFrm - 1)
+    }
+    if (end > Anim->CntFrm - 1) {
         end = Anim->CntFrm - 1;
+    }
 
-    begSpr = beg;
-    endSpr = end;
-    SetSpr(begSpr);
-    animTick = gameTime.GameTick();
+    _begSpr = beg;
+    _endSpr = end;
+    SetSpr(_begSpr);
+    _animTick = _gameTime.GameTick();
 }
 
 void ItemHexView::SetSprStart()
 {
-    SetSpr(animBegSpr);
-    begSpr = curSpr;
-    endSpr = curSpr;
+    SetSpr(_animBegSpr);
+    _begSpr = _curSpr;
+    _endSpr = _curSpr;
 }
 
 void ItemHexView::SetSprEnd()
 {
-    SetSpr(animEndSpr);
-    begSpr = curSpr;
-    endSpr = curSpr;
+    SetSpr(_animEndSpr);
+    _begSpr = _curSpr;
+    _endSpr = _curSpr;
 }
 
 void ItemHexView::SetSpr(uint num_spr)
 {
-    curSpr = num_spr;
-    SprId = Anim->GetSprId(curSpr);
+    _curSpr = num_spr;
+    SprId = Anim->GetSprId(_curSpr);
     SetAnimOffs();
 }
 
@@ -375,47 +378,47 @@ void ItemHexView::SetAnimOffs()
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
 
-    for (int i = 1; i <= curSpr; i++)
-    {
+    for (auto i = 1; i <= _curSpr; i++) {
         ScrX += Anim->NextX[i];
         ScrY += Anim->NextY[i];
     }
 
-    if (IsDynamicEffect())
-    {
-        ScrX += (int)EffOffsX;
-        ScrY += (int)EffOffsY;
+    if (IsDynamicEffect()) {
+        ScrX += static_cast<int>(EffOffsX);
+        ScrY += static_cast<int>(EffOffsY);
     }
 }
 
 void ItemHexView::SetStayAnim()
 {
-    if (GetIsShowAnimExt())
+    if (GetIsShowAnimExt()) {
         SetAnim(GetAnimStay0(), GetAnimStay1());
-    else
+    }
+    else {
         SetAnim(0, Anim->CntFrm - 1);
+    }
 }
 
 void ItemHexView::SetShowAnim()
 {
-    if (GetIsShowAnimExt())
+    if (GetIsShowAnimExt()) {
         SetAnim(GetAnimShow0(), GetAnimShow1());
-    else
+    }
+    else {
         SetAnim(0, Anim->CntFrm - 1);
+    }
 }
 
 void ItemHexView::SetHideAnim()
 {
-    if (GetIsShowAnimExt())
-    {
+    if (GetIsShowAnimExt()) {
         SetAnim(GetAnimHide0(), GetAnimHide1());
-        animBegSpr = (GetAnimHide1());
-        animEndSpr = (GetAnimHide1());
+        _animBegSpr = GetAnimHide1();
+        _animEndSpr = GetAnimHide1();
     }
-    else
-    {
+    else {
         SetAnim(0, Anim->CntFrm - 1);
-        animBegSpr = Anim->CntFrm - 1;
-        animEndSpr = Anim->CntFrm - 1;
+        _animBegSpr = Anim->CntFrm - 1;
+        _animEndSpr = Anim->CntFrm - 1;
     }
 }

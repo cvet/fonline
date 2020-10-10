@@ -70,7 +70,6 @@
 
 #ifdef FO_MONO_SCRIPTING
 #include "Log.h"
-#include "Testing.h"
 
 #include <mono/dis/meta.h>
 #include <mono/metadata/assembly.h>
@@ -78,6 +77,9 @@
 #include <mono/metadata/exception.h>
 #include <mono/metadata/mono-config.h>
 #include <mono/mini/jit.h>
+
+#define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
+#include "ScriptApi.h"
 
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T Marshal(T value)
@@ -229,8 +231,7 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #define FO_API_PROLOG(...) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             CONTEXT_ARG; \
             THIS_ARG; \
             __VA_ARGS__
@@ -244,15 +245,13 @@ inline void* GetDomainUserData(MonoDomain* domain)
     }
 
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Item* _this = (Item*)_thisPtr
-#define FO_API_ITEM_METHOD(name, ret, ...) \
-    static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG Item* _item = (Item*)_thisPtr
+#define FO_API_ITEM_METHOD(name, ret, ...) static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
 #define ITEM_CLASS Item
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG ItemView* _this = (ItemView*)_thisPtr
-#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
-    static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG ItemView* _itemView = (ItemView*)_thisPtr
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_ITEM_VIEW_METHOD_IMPL
 #define ITEM_CLASS ItemView
 #elif defined(FO_MAPPER_SCRIPTING)
@@ -262,12 +261,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static type MonoItem_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             return MarshalBack(((ITEM_CLASS*)_thisPtr)->Get##name()); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
@@ -277,12 +274,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static void MonoItem_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             ((ITEM_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((ITEM_CLASS*)_thisPtr)->Get##name())>(value)); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
         } \
     }
@@ -291,15 +286,13 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef ITEM_CLASS
 
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Critter* _this = (Critter*)_thisPtr
-#define FO_API_CRITTER_METHOD(name, ret, ...) \
-    static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG Critter* _critter = (Critter*)_thisPtr
+#define FO_API_CRITTER_METHOD(name, ret, ...) static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
 #define CRITTER_CLASS Critter
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG CritterView* _this = (CritterView*)_thisPtr
-#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
-    static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG CritterView* _critterView = (CritterView*)_thisPtr
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_CRITTER_VIEW_METHOD_IMPL
 #define CRITTER_CLASS CritterView
 #elif defined(FO_MAPPER_SCRIPTING)
@@ -309,12 +302,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static type MonoCritter_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             return MarshalBack(((CRITTER_CLASS*)_thisPtr)->Get##name()); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
@@ -324,12 +315,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static void MonoCritter_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             ((CRITTER_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((CRITTER_CLASS*)_thisPtr)->Get##name())>(value)); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
         } \
     }
@@ -338,15 +327,13 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef CRITTER_CLASS
 
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Map* _this = (Map*)_thisPtr
-#define FO_API_MAP_METHOD(name, ret, ...) \
-    static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG Map* _map = (Map*)_thisPtr
+#define FO_API_MAP_METHOD(name, ret, ...) static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
 #define MAP_CLASS Map
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG MapView* _this = (MapView*)_thisPtr
-#define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
-    static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG MapView* _mapView = (MapView*)_thisPtr
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_MAP_VIEW_METHOD_IMPL
 #define MAP_CLASS MapView
 #elif defined(FO_MAPPER_SCRIPTING)
@@ -356,12 +343,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static type MonoMap_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             return MarshalBack(((MAP_CLASS*)_thisPtr)->Get##name()); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
@@ -371,12 +356,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static void MonoMap_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             ((MAP_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((MAP_CLASS*)_thisPtr)->Get##name())>(value)); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
         } \
     }
@@ -385,15 +368,13 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef MAP_CLASS
 
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Location* _this = (Location*)_thisPtr
-#define FO_API_LOCATION_METHOD(name, ret, ...) \
-    static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG Location* _location = (Location*)_thisPtr
+#define FO_API_LOCATION_METHOD(name, ret, ...) static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
 #define LOCATION_CLASS Location
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG LocationView* _this = (LocationView*)_thisPtr
-#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
-    static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define THIS_ARG LocationView* _locationView = (LocationView*)_thisPtr
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_LOCATION_VIEW_METHOD_IMPL
 #define LOCATION_CLASS LocationView
 #elif defined(FO_MAPPER_SCRIPTING)
@@ -403,12 +384,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static type MonoLocation_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
+        try { \
             return MarshalBack(((LOCATION_CLASS*)_thisPtr)->Get##name()); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
             return 0; \
         } \
@@ -418,13 +397,10 @@ inline void* GetDomainUserData(MonoDomain* domain)
     static void MonoLocation_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
     { \
         *_ex = nullptr; \
-        try \
-        { \
-            ((LOCATION_CLASS*)_thisPtr) \
-                ->Set##name(Marshal<decltype(((LOCATION_CLASS*)_thisPtr)->Get##name())>(value)); \
+        try { \
+            ((LOCATION_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((LOCATION_CLASS*)_thisPtr)->Get##name())>(value)); \
         } \
-        catch (std::exception & ex) \
-        { \
+        catch (std::exception & ex) { \
             *_ex = ReportException(_domain, ex); \
         } \
     }
@@ -433,20 +409,16 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef LOCATION_CLASS
 
 #define THIS_ARG (void)0
-#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_COMMON_FUNC_IMPL
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_SERVER_FUNC_IMPL
 #elif defined(FO_CLIENT_SCRIPTING)
-#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_CLIENT_FUNC_IMPL
 #elif defined(FO_MAPPER_SCRIPTING)
-#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
-    static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
+#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
 #define FO_API_GLOBAL_MAPPER_FUNC_IMPL
 #endif
 #include "ScriptApi.h"
@@ -467,7 +439,7 @@ struct ScriptSystem::MonoImpl
 
 void SCRIPTING_CLASS::InitMonoScripting()
 {
-    pMonoImpl = std::make_unique<MonoImpl>();
+    _pMonoImpl = std::make_unique<MonoImpl>();
 
     g_set_print_handler([](const gchar* str) { WriteLog("{}", str); });
     g_set_printerr_handler([](const gchar* str) { WriteLog("{}", str); });
@@ -538,7 +510,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
     MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
     RUNTIME_ASSERT(domain);
 
-    SetDomainUserData(domain, mainObj);
+    SetDomainUserData(domain, _mainObj);
 
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
@@ -547,24 +519,14 @@ void SCRIPTING_CLASS::InitMonoScripting()
 #define FO_API_LOCATION_METHOD(name, ret, ...) mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
 #elif defined(FO_CLIENT_SCRIPTING)
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
-#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
-    mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
-#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
-    mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
 #endif
 #include "ScriptApi.h"
 
-#define CHECK_GETTER(access) \
-    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
-        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || \
-        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
-#define CHECK_SETTER(access) \
-    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
-        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && \
-            ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || \
-                (Property::AccessType::access & Property::AccessType::ModifiableMask))) || \
-        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_GETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_SETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || (Property::AccessType::access & Property::AccessType::ModifiableMask))) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \

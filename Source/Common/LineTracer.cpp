@@ -33,135 +33,137 @@
 
 #include "LineTracer.h"
 
-LineTracer::LineTracer(
-    GeometrySettings& sett, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) :
-    settings {sett}, geomHelper(settings)
-{
-    maxHx = maxhx;
-    maxHy = maxhy;
+constexpr auto BIAS_FLOAT = 0.02f;
 
-    if (!settings.MapHexagonal)
-    {
-        dir = atan2((float)(ty - hy), (float)(tx - hx)) + angle;
-        dx = cos(dir);
-        dy = sin(dir);
-        if (fabs(dx) > fabs(dy))
-        {
-            dy /= fabs(dx);
-            dx = (dx > 0 ? 1.0f : -1.0f);
+LineTracer::LineTracer(GeometrySettings& settings, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _settings {settings}, _geomHelper(_settings)
+{
+    _maxHx = maxhx;
+    _maxHy = maxhy;
+
+    if (!_settings.MapHexagonal) {
+        _dir = atan2(static_cast<float>(ty - hy), static_cast<float>(tx - hx)) + angle;
+        _dx = cos(_dir);
+        _dy = sin(_dir);
+
+        if (fabs(_dx) > fabs(_dy)) {
+            _dy /= fabs(_dx);
+            _dx = _dx > 0 ? 1.0f : -1.0f;
         }
-        else
-        {
-            dx /= fabs(dy);
-            dy = (dy > 0 ? 1.0f : -1.0f);
+        else {
+            _dx /= fabs(_dy);
+            _dy = _dy > 0 ? 1.0f : -1.0f;
         }
-        x1 = (float)hx + 0.5f;
-        y1 = (float)hy + 0.5f;
+
+        _x1 = static_cast<float>(hx) + 0.5f;
+        _y1 = static_cast<float>(hy) + 0.5f;
     }
-    else
-    {
-        float nx = 3.0f * (float(tx) - float(hx));
-        float ny = (float(ty) - float(hy)) * SQRT3T2_FLOAT - (float(tx & 1) - float(hx & 1)) * SQRT3_FLOAT;
-        this->dir = 180.0f + RAD2DEG * atan2f(ny, nx);
-        if (angle != 0.0f)
-        {
-            this->dir += angle;
+    else {
+        const auto nx = 3.0f * (static_cast<float>(tx) - static_cast<float>(hx));
+        const auto ny = (static_cast<float>(ty) - static_cast<float>(hy)) * SQRT3_X2_FLOAT - (static_cast<float>(tx & 1) - static_cast<float>(hx & 1)) * SQRT3_FLOAT;
+
+        _dir = 180.0f + RAD_TO_DEG_FLOAT * atan2f(ny, nx);
+
+        if (angle != 0.0f) {
+            _dir += angle;
             NormalizeDir();
         }
 
-        if (dir >= 30.0f && dir < 90.0f)
-        {
-            dir1 = 5;
-            dir2 = 0;
+        if (_dir >= 30.0f && _dir < 90.0f) {
+            _dir1 = 5;
+            _dir2 = 0;
         }
-        else if (dir >= 90.0f && dir < 150.0f)
-        {
-            dir1 = 4;
-            dir2 = 5;
+        else if (_dir >= 90.0f && _dir < 150.0f) {
+            _dir1 = 4;
+            _dir2 = 5;
         }
-        else if (dir >= 150.0f && dir < 210.0f)
-        {
-            dir1 = 3;
-            dir2 = 4;
+        else if (_dir >= 150.0f && _dir < 210.0f) {
+            _dir1 = 3;
+            _dir2 = 4;
         }
-        else if (dir >= 210.0f && dir < 270.0f)
-        {
-            dir1 = 2;
-            dir2 = 3;
+        else if (_dir >= 210.0f && _dir < 270.0f) {
+            _dir1 = 2;
+            _dir2 = 3;
         }
-        else if (dir >= 270.0f && dir < 330.0f)
-        {
-            dir1 = 1;
-            dir2 = 2;
+        else if (_dir >= 270.0f && _dir < 330.0f) {
+            _dir1 = 1;
+            _dir2 = 2;
         }
-        else
-        {
-            dir1 = 0;
-            dir2 = 1;
+        else {
+            _dir1 = 0;
+            _dir2 = 1;
         }
 
-        x1 = 3.0f * float(hx) + BIAS_FLOAT;
-        y1 = SQRT3T2_FLOAT * float(hy) - SQRT3_FLOAT * (float(hx & 1)) + BIAS_FLOAT;
-        x2 = 3.0f * float(tx) + BIAS_FLOAT + BIAS_FLOAT;
-        y2 = SQRT3T2_FLOAT * float(ty) - SQRT3_FLOAT * (float(tx & 1)) + BIAS_FLOAT;
-        if (angle != 0.0f)
-        {
-            x2 -= x1;
-            y2 -= y1;
-            float xp = cos(angle / RAD2DEG) * x2 - sin(angle / RAD2DEG) * y2;
-            float yp = sin(angle / RAD2DEG) * x2 + cos(angle / RAD2DEG) * y2;
-            x2 = x1 + xp;
-            y2 = y1 + yp;
+        _x1 = 3.0f * static_cast<float>(hx) + BIAS_FLOAT;
+        _y1 = SQRT3_X2_FLOAT * static_cast<float>(hy) - SQRT3_FLOAT * static_cast<float>(hx & 1) + BIAS_FLOAT;
+        _x2 = 3.0f * static_cast<float>(tx) + BIAS_FLOAT + BIAS_FLOAT;
+        _y2 = SQRT3_X2_FLOAT * static_cast<float>(ty) - SQRT3_FLOAT * static_cast<float>(tx & 1) + BIAS_FLOAT;
+
+        if (angle != 0.0f) {
+            _x2 -= _x1;
+            _y2 -= _y1;
+
+            const auto xp = cos(angle / RAD_TO_DEG_FLOAT) * _x2 - sin(angle / RAD_TO_DEG_FLOAT) * _y2;
+            const auto yp = sin(angle / RAD_TO_DEG_FLOAT) * _x2 + cos(angle / RAD_TO_DEG_FLOAT) * _y2;
+
+            _x2 = _x1 + xp;
+            _y2 = _y1 + yp;
         }
-        dx = x2 - x1;
-        dy = y2 - y1;
+
+        _dx = _x2 - _x1;
+        _dy = _y2 - _y1;
     }
 }
 
-uchar LineTracer::GetNextHex(ushort& cx, ushort& cy)
+auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
 {
-    ushort t1x = cx;
-    ushort t2x = cx;
-    ushort t1y = cy;
-    ushort t2y = cy;
-    geomHelper.MoveHexByDir(t1x, t1y, dir1, maxHx, maxHy);
-    geomHelper.MoveHexByDir(t2x, t2y, dir2, maxHx, maxHy);
-    float dist1 =
-        dx * (y1 - (SQRT3T2_FLOAT * float(t1y) - (float(t1x & 1)) * SQRT3_FLOAT)) - dy * (x1 - 3 * float(t1x));
-    float dist2 =
-        dx * (y1 - (SQRT3T2_FLOAT * float(t2y) - (float(t2x & 1)) * SQRT3_FLOAT)) - dy * (x1 - 3 * float(t2x));
-    dist1 = (dist1 > 0 ? dist1 : -dist1);
-    dist2 = (dist2 > 0 ? dist2 : -dist2);
+    auto t1_x = cx;
+    auto t2_x = cx;
+    auto t1_y = cy;
+    auto t2_y = cy;
+
+    _geomHelper.MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
+    _geomHelper.MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
+
+    auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_y) - static_cast<float>(t1_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_x));
+    auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_y) - static_cast<float>(t2_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_x));
+
+    dist1 = dist1 > 0 ? dist1 : -dist1;
+    dist2 = dist2 > 0 ? dist2 : -dist2;
+
     if (dist1 <= dist2) // Left hand biased
     {
-        cx = t1x;
-        cy = t1y;
-        return dir1;
+        cx = t1_x;
+        cy = t1_y;
+        return _dir1;
     }
-    else
-    {
-        cx = t2x;
-        cy = t2y;
-        return dir2;
-    }
+
+    cx = t2_x;
+    cy = t2_y;
+    return _dir2;
 }
 
 void LineTracer::GetNextSquare(ushort& cx, ushort& cy)
 {
-    x1 += dx;
-    y1 += dy;
-    cx = (ushort)floor(x1);
-    cy = (ushort)floor(y1);
-    if (cx >= maxHx)
-        cx = maxHx - 1;
-    if (cy >= maxHy)
-        cy = maxHy - 1;
+    _x1 += _dx;
+    _y1 += _dy;
+
+    cx = static_cast<ushort>(floor(_x1));
+    cy = static_cast<ushort>(floor(_y1));
+
+    if (cx >= _maxHx) {
+        cx = _maxHx - 1;
+    }
+    if (cy >= _maxHy) {
+        cy = _maxHy - 1;
+    }
 }
 
 void LineTracer::NormalizeDir()
 {
-    if (dir <= 0.0f)
-        dir = 360.0f - fmod(-dir, 360.0f);
-    else if (dir >= 0.0f)
-        dir = fmod(dir, 360.0f);
+    if (_dir <= 0.0f) {
+        _dir = 360.0f - fmod(-_dir, 360.0f);
+    }
+    else if (_dir >= 0.0f) {
+        _dir = fmod(_dir, 360.0f);
+    }
 }

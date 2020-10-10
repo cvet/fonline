@@ -210,8 +210,6 @@ Please follow these instructions to understand how to use this engine by design:
 
 ## Work in progress
 
-Bugs, performance cases and feature requests you can discuss at [Issues page](https://github.com/cvet/fonline/issues).
-
 ### Roadmap
 
 **First release version:**
@@ -298,8 +296,8 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: organize class members as public, protected, private; methods, fields
 * Common: prefer this construction if(auto i = do(); i < 0) i... else i...
 * Common: improve std::to_string or fmt::format to string conversions
-* Common: casts between int types via NumericCast<to>()
-* Common: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
+* Common: cast between numeric types via numeric_cast<to>(from)
+* Common: minimize platform specific API (ifdef FO_os, WinApi-Include.h...)
 * Common: clang debug builds with sanitiziers
 * Common: time ticks to uint64
 * Common: improve custom exceptions for every subsustem
@@ -307,39 +305,42 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Common: research about Steam integration
 * Common: speed up content loading from server
 * Common: temporary entities, disable writing to data base
+* Common: #ifdef to #if defined
+* Common: RUNTIME_ASSERT to assert
+* Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
+* Common: remove dynamic_cast?
 * Common: detect OS automatically not from passed constant from build system
+* Common: split meanings if int8 and char in code
+* Common: move from 32 bit hashes to 64 bit
 * Common: rename uchar to uint8 and use uint8_t as alias
 * Common: rename ushort to uint16 and use uint16_t as alias
 * Common: rename uint to uint32 and use uint32_t as alias
 * Common: rename char to int8 and use int8_t as alias
-* Common: split meanings if int8 and char in code
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
-* Common: move from 32 bit hashes to 64 bit
 * Common: replace depedency from assimp types (matrix/vector/quaternion/color)
 * Common: remove map/vector/set/pair bindings
 * Common: auto expand exception parameters to readable state
-* Common: use NonCopyable as default class specifier
-* Common: set StaticClass class specifier to all static classes
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
 * Common: add _hash c-string literal helper
-* Common: remove SAFEREL/SAFEDEL/SAFEDELA macro
-* Common: move MIN/MAX to std::min/std::max
+* Common: move WriteData/ReadData to DataWriter/DataReader
+* Common: move NetProperty to more proper place
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
-* Common: move WriteData/ReadData to DataWriter/DataReader
-* Common: find something from STL instead TwoBitMask
-* Common: move NetProperty to more proper place
+* Common: remove all id masks after moving to 64-bit hashes
+* Common: remove critter flags
 * BakerApp: sound and video preprocessing move to baker
 * BakerApp: add dialogs verification during baking
-* ClientApp: fix script system
-* MapperApp: fix script system
 * ServerApp: fix data racing
+* ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
+* 3dStuff: check scale precision
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
+* 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
+* Client: remove CHECK_IN_BUFF_ERROR();
 * Client: handle mouse wheel
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!
@@ -349,9 +350,10 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * CritterView: migrate critter on head text moving in scripts
 * CritterView: do same for 2d animations
 * HexManager: optimize lighting rebuilding to skip unvisible lights
-* HexManager: need attention! (2)
+* HexManager: need attention! (3)
 * HexManager: move HexManager to MapView?
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
+* ResourceManager: why I disable offset adding?
 * SpriteManager: restore texture saving
 * SpriteManager: finish rendering
 * SpriteManager: improve DirectX rendering
@@ -361,39 +363,52 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * SpriteManager: move fonts stuff to separate module
 * Sprites: exclude sprite cut system?
 * Sprites: MapSprite releasing
+* Sprites: : incapsulate all sprite data
 * Application: move different renderers to separate modules
+* Application: remove GLEW and bind OpenGL functions manually
 * Application: map all framebuffer ext functions
-* Application: reasearch about std::quick_exit
+* Application: recognize tablet mode for Windows 10
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* Entity: fix proto name recognition
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
-* KeyCodes_Include: rename DIK_ to Key or something else
+* KeyCodes-Include: rename DIK_ to Key or something else
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
+* MessageBox: fix workaround for strange behaviour of button focus
+* MsgFiles: move loading to constructors
+* NetBuffer: make NeedProcess const
 * NetBuffer: allow transferring of any type and add safe transferring of floats
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * ScriptSystem: rework FONLINE_
 * ScriptSystem: fill settings to scripts
 * ScriptSystem: rework FONLINE_
+* Settings-Include: rework global Quit setting
 * Settings: exclude server specific settings from client
-* Settings: remove VAR_SETTING must stay only constant values
-* Settings_Include: rework global Quit setting
+* Settings: remove VAR_SETTING; must stay only constant values
 * StringUtils: restore hash parsing
+* StringUtils: make isNumber const
 * Testing: restore stack trace dumping in file
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: review RUNTIME_ASSERT(( <- double braces
 * Testing: send client dumps to server
-* WinApi_Include: move WinApi to separate module because it's give too much garbage in global namespace
+* WinApi-Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
 * MonoScripting: get Mono domain user data
+* ScriptApi-Client: solve recursion in GetMapPos
+* ScriptApi-Client: need attention!
+* ScriptApi-Common: fix script system
+* ScriptApi-Mapper: need attention! (4)
+* ScriptApi-Server: fix ITEM_ACCESSORY_CONTAINER recursion
+* ScriptApi-Server: need attention!
 * ScriptApi: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
 * ScriptApi: add supporting of components for properties
 * ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
@@ -404,18 +419,11 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * ScriptApi: add ImGui bindings
 * ScriptApi: hex coords to single structure (hx, hy -> coord)
 * ScriptApi: remove for better portability (2)
-* ScriptApi_Client: need attention!
-* ScriptApi_Common: fix script system
-* ScriptApi_Mapper: need attention! (4)
-* ScriptApi_Server: need attention!
 * AdminPanel: admin panel network to Asio
 * Critter: rework Client class to ClientConnection
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
-* DataBase: restore mongodb (linux segfault and linking errors)
 * Dialogs: check item name on DR_ITEM
 * Location: encapsulate Location data
-* Map: rework FOREACH_PROTO_ITEM_LINES (3)
-* MapManager: need attention!
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
@@ -432,7 +440,8 @@ Bugs, performance cases and feature requests you can discuss at [Issues page](ht
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * ImageBaker: add supporting of APNG file format
-* Mapper: need attention! (20)
+* ImageBaker: swap colors of fo palette once in header
+* Mapper: need attention! (24)
 * Mapper: mapper render iface layer
 * Mapper: add standalone Mapper application
 * Mapper: rename FOMapper to just Mapper
@@ -454,6 +463,3 @@ Following document contains some issues thats give additional information about 
 * Site: [fonline.ru](https://fonline.ru)
 * GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)
 * E-Mail: <cvet@tut.by>
-* Forums: [fodev.net](https://fodev.net)
-* Discord: [invite](https://discord.gg/xa6TbqU)
-* Parteon: [visit](https://www.patreon.com/fonline)

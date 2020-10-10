@@ -38,28 +38,34 @@
 #include "GeometryHelper.h"
 #include "Settings.h"
 
-class LineTracer : public NonCopyable
+class LineTracer final
 {
 public:
-    LineTracer(
-        GeometrySettings& sett, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle);
-    uchar GetNextHex(ushort& cx, ushort& cy);
+    LineTracer() = delete;
+    LineTracer(GeometrySettings& settings, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle);
+    LineTracer(const LineTracer&) = delete;
+    LineTracer(LineTracer&&) noexcept = default;
+    auto operator=(const LineTracer&) -> LineTracer& = delete;
+    auto operator=(LineTracer&&) noexcept -> LineTracer& = delete;
+    ~LineTracer() = default;
+
+    auto GetNextHex(ushort& cx, ushort& cy) const -> uchar;
     void GetNextSquare(ushort& cx, ushort& cy);
 
 private:
     void NormalizeDir();
 
-    GeometrySettings& settings;
-    GeometryHelper geomHelper;
-    ushort maxHx {};
-    ushort maxHy {};
-    float x1 {};
-    float y1 {};
-    float x2 {};
-    float y2 {};
-    float dir {};
-    uchar dir1 {};
-    uchar dir2 {};
-    float dx {};
-    float dy {};
+    GeometrySettings& _settings;
+    GeometryHelper _geomHelper;
+    ushort _maxHx {};
+    ushort _maxHy {};
+    float _x1 {};
+    float _y1 {};
+    float _x2 {};
+    float _y2 {};
+    float _dir {};
+    uchar _dir1 {};
+    uchar _dir2 {};
+    float _dx {};
+    float _dy {};
 };

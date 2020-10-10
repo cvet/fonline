@@ -42,17 +42,24 @@
 #include "SpriteManager.h"
 
 // Keyboard input flags
-#define KIF_NO_SPEC_SYMBOLS (1) // Ignore \n \r \t
-#define KIF_ONLY_NUMBERS (2) // Only 0..9
-#define KIF_FILE_NAME (4) // Ignore \/:*?\"<>|
+static constexpr uint KIF_NO_SPEC_SYMBOLS = 1; // Ignore \n \r \t
+static constexpr uint KIF_ONLY_NUMBERS = 2; // Only 0..9
+static constexpr uint KIF_FILE_NAME = 4; // Ignore \/:*?\"<>|
 
-class Keyboard : public NonCopyable
+class Keyboard final
 {
 public:
-    Keyboard(InputSettings& sett, SpriteManager& spr_mngr);
+    Keyboard() = delete;
+    explicit Keyboard(InputSettings& settings, SpriteManager& spr_mngr);
+    Keyboard(const Keyboard&) = delete;
+    Keyboard(Keyboard&&) noexcept = delete;
+    auto operator=(const Keyboard&) = delete;
+    auto operator=(Keyboard&&) noexcept = delete;
+    ~Keyboard() = default;
+
     void Lost();
-    void GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, int flags);
-    void EraseInvalidChars(string& str, int flags);
+    void GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const;
+    void EraseInvalidChars(string& str, int flags) const;
 
     bool ShiftDwn {};
     bool CtrlDwn {};
@@ -60,8 +67,8 @@ public:
     bool KeyPressed[0x100] {};
 
 private:
-    bool IsInvalidChar(const char* str, uint flags, uint& length);
+    auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
 
-    InputSettings& settings;
-    SpriteManager& sprMngr;
+    InputSettings& _settings;
+    SpriteManager& _sprMngr;
 };

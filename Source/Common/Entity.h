@@ -40,18 +40,15 @@
 
 #define PROPERTIES_HEADER() static PropertyRegistrator* PropertiesRegistrator
 
-#define PROPERTIES_IMPL(class_name, script_name, is_server) \
-    PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
+#define PROPERTIES_IMPL(class_name, script_name, is_server) PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
 
 #define CLASS_PROPERTY(access_type, prop_type, prop, ...) \
     static Property* Property##prop; \
-    inline prop_type Get##prop() { return Props.GetValue<prop_type>(Property##prop); } \
+    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
     inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
-    inline bool IsNonEmpty##prop() { return Props.GetRawDataSize(Property##prop) > 0; }
+    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
 
-#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) \
-    Property* class_name::Property##prop = \
-        class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
+#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
 
 enum class EntityType
 {
@@ -81,33 +78,42 @@ class ProtoEntity;
 using ProtoEntityVec = vector<ProtoEntity*>;
 using ProtoEntityMap = map<hash, ProtoEntity*>;
 
-class Entity : public NonCopyable
+class Entity
 {
 public:
-    uint GetId() const;
+    Entity() = delete;
+    Entity(const Entity&) = delete;
+    Entity(Entity&&) noexcept = default;
+    auto operator=(const Entity&) = delete;
+    auto operator=(Entity&&) noexcept = delete;
+
+    [[nodiscard]] auto GetId() const -> uint;
     void SetId(uint id);
-    hash GetProtoId() const;
-    string GetName() const;
+    [[nodiscard]] auto GetProtoId() const -> hash;
+    [[nodiscard]] auto GetName() const -> string;
     void AddRef() const;
     void Release() const;
 
     Properties Props;
     const uint Id;
     const EntityType Type;
-    ProtoEntity* Proto;
+    const ProtoEntity* Proto;
     mutable int RefCounter {1};
     bool IsDestroyed {};
     bool IsDestroying {};
 
 protected:
-    Entity(uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto);
+    Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto);
     virtual ~Entity();
+
+private:
+    int _dummy {};
 };
 
 class ProtoEntity : public Entity
 {
 public:
-    bool HaveComponent(hash name) const;
+    [[nodiscard]] auto HaveComponent(hash name) const -> bool;
 
     const hash ProtoId;
     UIntVec TextsLang {};
@@ -119,7 +125,7 @@ protected:
     ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator);
 };
 
-class CustomEntity : public Entity
+class CustomEntity final : public Entity
 {
 public:
     CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator);
@@ -127,7 +133,7 @@ public:
     const uint SubType;
 };
 
-class GlobalVars : public Entity
+class GlobalVars final : public Entity
 {
 public:
     GlobalVars();
@@ -137,16 +143,17 @@ public:
 #include "ScriptApi.h"
 };
 
-class ProtoItem : public ProtoEntity
+class ProtoItem final : public ProtoEntity
 {
 public:
-    ProtoItem(hash pid);
-    bool IsStatic() { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery() { return GetIsScenery(); }
-    bool IsWall() { return GetIsWall(); }
+    explicit ProtoItem(hash pid);
 
-    int64 InstanceCount {};
+    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
+    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
+    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
+    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
+
+    mutable int64 InstanceCount {};
 
     PROPERTIES_HEADER();
 #define FO_API_ITEM_PROPERTY CLASS_PROPERTY
@@ -155,10 +162,10 @@ public:
 using ProtoItemVec = vector<ProtoItem*>;
 using ProtoItemMap = map<hash, ProtoItem*>;
 
-class ProtoCritter : public ProtoEntity
+class ProtoCritter final : public ProtoEntity
 {
 public:
-    ProtoCritter(hash pid);
+    explicit ProtoCritter(hash pid);
 
     PROPERTIES_HEADER();
 #define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
@@ -167,10 +174,10 @@ public:
 using ProtoCritterMap = map<hash, ProtoCritter*>;
 using ProtoCritterVec = vector<ProtoCritter*>;
 
-class ProtoMap : public ProtoEntity
+class ProtoMap final : public ProtoEntity
 {
 public:
-    ProtoMap(hash pid);
+    explicit ProtoMap(hash pid);
 
     PROPERTIES_HEADER();
 #define FO_API_MAP_PROPERTY CLASS_PROPERTY
@@ -179,10 +186,10 @@ public:
 using ProtoMapVec = vector<ProtoMap*>;
 using ProtoMapMap = map<hash, ProtoMap*>;
 
-class ProtoLocation : public ProtoEntity
+class ProtoLocation final : public ProtoEntity
 {
 public:
-    ProtoLocation(hash pid);
+    explicit ProtoLocation(hash pid);
 
     PROPERTIES_HEADER();
 #define FO_API_LOCATION_PROPERTY CLASS_PROPERTY

@@ -40,97 +40,133 @@
 #include "StringUtils.h"
 #include "Testing.h"
 #include "Timer.h"
-#include "Version_Include.h"
+#include "Version-Include.h"
 
 #include "SDL_main.h"
 
-static GlobalSettings Settings;
-static FOServer* Server;
-static std::thread ServerThread;
-static std::atomic_bool StartServer;
+struct ServerAppData
+{
+    GlobalSettings* Settings {};
+    FOServer* Server {};
+    std::thread ServerThread {};
+    std::atomic_bool StartServer {};
+};
+GLOBAL_DATA(ServerAppData, Data);
 
 static void ServerEntry()
 {
-    while (!StartServer)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
     // Todo: fix data racing
-    Server = new FOServer(Settings);
-    while (!Settings.Quit)
-        Server->MainLoop();
-    FOServer* server = Server;
-    Server = nullptr;
-    delete server;
+    try {
+        try {
+            while (!Data->StartServer) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+
+            Data->Server = new FOServer(*Data->Settings);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
+
+        while (!Data->Settings->Quit) {
+            try {
+                Data->Server->MainLoop();
+            }
+            catch (const GenericException& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+
+        try {
+            auto* server = Data->Server;
+            Data->Server = nullptr;
+            delete server;
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndExit(ex);
+        }
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }
 
 #ifndef FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineServer", FO_VERSION);
-    LogToFile("FOnlineServer.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineServer", FO_VERSION);
+        LogToFile("FOnlineServer.log");
 
-#ifdef FO_HAVE_D3D
-    bool use_dx = !Settings.ForceOpenGL;
+        Data->Settings = new GlobalSettings(argc, argv);
+
+#ifdef FO_HAVE_DIRECT_3D
+        const auto use_dx = !Data->Settings->ForceOpenGL;
 #else
-    bool use_dx = false;
+        bool use_dx = false;
 #endif
-    if (!AppGui::Init("FOnline Server", use_dx, false, false))
-        return -1;
-
-    // Autostart
-    if (!Settings.NoStart)
-        StartServer = true;
-
-    // Server loop in separate thread
-    ServerThread = std::thread(ServerEntry);
-    while (StartServer && !Server)
-        std::this_thread::sleep_for(std::chrono::milliseconds(0));
-
-    // Gui loop
-    while (!StartServer || Server)
-    {
-        if (!AppGui::BeginFrame())
-        {
-            // Immediate finish
-            if (!StartServer || !Server || !Server->Started)
-                exit(0);
-
-            // Graceful finish
-            Settings.Quit = true;
+        if (!AppGui::Init("FOnline Server", use_dx, false, false)) {
+            return -1;
         }
 
-        if (!StartServer)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            ImGui::SetNextWindowPos(
-                ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            if (ImGui::Begin("---", nullptr,
-                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
-            {
-                if (ImGui::Button("Start server", ImVec2(200, 30)))
-                {
-                    StartServer = true;
-                    while (!Server)
-                        std::this_thread::sleep_for(std::chrono::milliseconds(0));
+        // Autostart
+        if (!Data->Settings->NoStart) {
+            Data->StartServer = true;
+        }
+
+        // Server loop in separate thread
+        Data->ServerThread = std::thread(ServerEntry);
+        while (Data->StartServer && Data->Server == nullptr) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+        }
+
+        // Gui loop
+        while (!Data->StartServer || Data->Server != nullptr) {
+            if (!AppGui::BeginFrame()) {
+                // Immediate finish
+                if (!Data->StartServer || Data->Server == nullptr || !Data->Server->Started) {
+                    return 0;
                 }
+
+                // Graceful finish
+                Data->Settings->Quit = true;
             }
-            ImGui::End();
-        }
-        else
-        {
-            Server->DrawGui();
+
+            if (!Data->StartServer) {
+                auto& io = ImGui::GetIO();
+                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                if (ImGui::Begin("---", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+                    if (ImGui::Button("Start server", ImVec2(200, 30))) {
+                        Data->StartServer = true;
+                        while (Data->Server == nullptr) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(0));
+                        }
+                    }
+                }
+                ImGui::End();
+            }
+            else {
+                Data->Server->DrawGui();
+            }
+
+            AppGui::EndFrame();
         }
 
-        AppGui::EndFrame();
+        // Wait server finish
+        if (Data->ServerThread.joinable()) {
+            Data->ServerThread.join();
+        }
+
+        return 0;
     }
-
-    // Wait server finish
-    if (ServerThread.joinable())
-        ServerThread.join();
-
-    return 0;
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

@@ -45,97 +45,103 @@ DECLARE_EXCEPTION(ScriptException);
 class NameResolver
 {
 public:
-    virtual int GetEnumValue(const string& enum_value_name, bool& fail) = 0;
-    virtual int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) = 0;
-    virtual string GetEnumValueName(const string& enum_name, int value) = 0;
+    [[nodiscard]] virtual auto GetEnumValue(const string& enum_value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto GetEnumValue(const string& enum_name, const string& value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto GetEnumValueName(const string& enum_name, int value) const -> string = 0;
 };
 
 template<typename... Args>
-class ScriptEvent : public NonCopyable
+class ScriptEvent final
 {
 public:
     using Callback = std::function<bool(Args...)>;
 
     ScriptEvent() = default;
 
-    ScriptEvent& operator+=(Callback cb)
+    auto operator+=(Callback cb) -> ScriptEvent&
     {
-        callbacks.push_back(cb);
+        _callbacks.push_back(cb);
         return *this;
     }
 
-    bool operator()(Args... args)
+    auto operator()(Args... args) -> bool
     {
-        for (auto& cb : callbacks)
+        for (auto& cb : _callbacks)
             if (cb(std::forward<Args>(args)...))
                 return true;
         return false;
     }
 
 private:
-    vector<Callback> callbacks {};
+    vector<Callback> _callbacks {};
 };
 
 template<typename TRet, typename... Args>
-class ScriptFunc
+class ScriptFunc final
 {
 public:
     using Func = std::function<bool(Args..., TRet&)>;
 
     ScriptFunc() = default;
-    ScriptFunc(Func f) : func {f} {}
-    operator bool() { return !!func; }
-    bool operator()(Args... args) { return func(std::forward<Args>(args)..., ret); }
-    TRet GetResult() { return ret; }
+    explicit ScriptFunc(Func f) : _func {f} { }
+    explicit operator bool() { return !!_func; }
+    auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)..., _ret); }
+    auto GetResult() -> TRet { return _ret; }
 
 private:
-    Func func {};
-    TRet ret {};
+    Func _func {};
+    TRet _ret {};
 };
 
 template<typename... Args>
-class ScriptFunc<void, Args...>
+class ScriptFunc<void, Args...> final
 {
 public:
     using Func = std::function<bool(Args...)>;
 
     ScriptFunc() = default;
-    ScriptFunc(Func f) : func {f} {}
-    operator bool() { return !!func; }
-    bool operator()(Args... args) { return func(std::forward<Args>(args)...); }
+    explicit ScriptFunc(Func f) : _func {f} { }
+    explicit operator bool() { return !!_func; }
+    auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)...); }
 
 private:
-    Func func {};
+    Func _func {};
 };
 
-class ScriptSystem : public NameResolver, public NonMovable
+class ScriptSystem : public NameResolver
 {
 public:
-    ScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr);
+    ScriptSystem() = delete;
+    ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr);
+    ScriptSystem(const ScriptSystem&) = delete;
+    ScriptSystem(ScriptSystem&&) noexcept = delete;
+    auto operator=(const ScriptSystem&) = delete;
+    auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
-    int GetEnumValue(const string& enum_value_name, bool& fail) { return 0; }
-    int GetEnumValue(const string& enum_name, const string& value_name, bool& fail) { return 0; }
-    string GetEnumValueName(const string& enum_name, int value) { return ""; }
-    void RemoveEntity(Entity* entity) {}
+
+    [[nodiscard]] auto GetEnumValue(const string& /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto GetEnumValue(const string& /*enum_name*/, const string& /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto GetEnumValueName(const string& /*enum_name*/, int /*value*/) const -> string override { return ""; }
+
+    void RemoveEntity(Entity* entity) { }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    ScriptFunc<TRet, Args...> FindFunc(const string& func_name)
+    auto FindFunc(const string& func_name) -> ScriptFunc<TRet, Args...>
     {
         return ScriptFunc<TRet, Args...>();
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    ScriptFunc<void, Args...> FindFunc(const string& func_name)
+    auto FindFunc(const string& func_name) -> ScriptFunc<void, Args...>
     {
         return ScriptFunc<void, Args...>();
     }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    bool CallFunc(const string& func_name, Args... args, TRet& ret)
+    auto CallFunc(const string& func_name, Args... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
-        if (func && func(args...))
-        {
+        if (func && func(args...)) {
             ret = func.GetResult();
             return true;
         }
@@ -143,23 +149,23 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    bool CallFunc(const string& func_name, Args... args)
+    auto CallFunc(const string& func_name, Args... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
     }
 
 protected:
-    void* mainObj;
-    GlobalSettings& settings;
-    FileManager& fileMngr;
+    void* _mainObj;
+    GlobalSettings& _settings;
+    FileManager& _fileMngr;
 
     struct NativeImpl;
-    shared_ptr<NativeImpl> pNativeImpl {};
+    shared_ptr<NativeImpl> _pNativeImpl {};
     struct AngelScriptImpl;
-    shared_ptr<AngelScriptImpl> pAngelScriptImpl {};
+    shared_ptr<AngelScriptImpl> _pAngelScriptImpl {};
     struct MonoImpl;
-    shared_ptr<MonoImpl> pMonoImpl {};
+    shared_ptr<MonoImpl> _pMonoImpl {};
 
     /*
 public:

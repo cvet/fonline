@@ -37,20 +37,25 @@
 
 DECLARE_EXCEPTION(DataSourceException);
 
-class DataSource : public NonCopyable
+class DataSource final
 {
 public:
     class Impl;
 
+    DataSource() = delete;
     DataSource(const string& path, bool cache_dirs);
-    ~DataSource();
+    DataSource(const DataSource&) = delete;
     DataSource(DataSource&&) noexcept;
-    bool IsDiskDir();
-    const string& GetPackName();
-    bool IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time);
-    uchar* OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time);
-    void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result);
+    auto operator=(const DataSource&) = delete;
+    auto operator=(DataSource&&) noexcept = delete;
+    ~DataSource();
+
+    [[nodiscard]] auto IsDiskDir() const -> bool;
+    [[nodiscard]] auto GetPackName() const -> const string&;
+    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool;
+    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*;
+    void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const;
 
 private:
-    unique_ptr<Impl> pImpl {};
+    unique_ptr<Impl> _pImpl {};
 };

@@ -64,8 +64,8 @@
 // Todo: organize class members as public, protected, private; methods, fields
 // Todo: prefer this construction if(auto i = do(); i < 0) i... else i...
 // Todo: improve std::to_string or fmt::format to string conversions
-// Todo: casts between int types via NumericCast<to>()
-// Todo: minimize platform specific API (ifdef FO_os, WinApi_Include.h...)
+// Todo: cast between numeric types via numeric_cast<to>(from)
+// Todo: minimize platform specific API (ifdef FO_os, WinApi-Include.h...)
 // Todo: clang debug builds with sanitiziers
 // Todo: time ticks to uint64
 // Todo: improve custom exceptions for every subsustem
@@ -73,11 +73,17 @@
 // Todo: research about Steam integration
 // Todo: speed up content loading from server
 // Todo: temporary entities, disable writing to data base
+// Todo: #ifdef to #if defined
+// Todo: RUNTIME_ASSERT to assert
+// Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
+// Todo: remove dynamic_cast?
+
+// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 
 #pragma once
 
-#ifndef PRECOMPILED_HEADER_GUARD
-#define PRECOMPILED_HEADER_GUARD
+#ifndef FO_PRECOMPILED_HEADER_GUARD
+#define FO_PRECOMPILED_HEADER_GUARD
 
 // Operating system (passed outside)
 // Todo: detect OS automatically not from passed constant from build system
@@ -96,7 +102,7 @@
 #endif
 #endif
 #if defined(FO_WINDOWS)
-#define FO_HAVE_D3D
+#define FO_HAVE_DIRECT_3D
 #endif
 #if defined(FO_MAC) || defined(FO_IOS)
 // #define FO_HAVE_METAL
@@ -109,7 +115,9 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <chrono>
+#include <climits>
 #include <clocale>
 #include <cmath>
 #include <cstdarg>
@@ -135,6 +143,7 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -151,14 +160,15 @@
 #include "fmt/format.h"
 
 // Base types
+// Todo: split meanings if int8 and char in code
+// Todo: move from 32 bit hashes to 64 bit
 // Todo: rename uchar to uint8 and use uint8_t as alias
 // Todo: rename ushort to uint16 and use uint16_t as alias
 // Todo: rename uint to uint32 and use uint32_t as alias
 // Todo: rename char to int8 and use int8_t as alias
-// Todo: split meanings if int8 and char in code
 // Todo: rename short to int16 and use int16_t as alias
 // Todo: rename int to int32 and use int32_t as alias
-// Todo: move from 32 bit hashes to 64 bit
+
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
@@ -177,7 +187,7 @@ static_assert(sizeof(ushort) == 2);
 static_assert(sizeof(uint) == 4);
 static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
-static_assert(sizeof(void*) >= 4);
+static_assert(sizeof(void*) == 4 || sizeof(void*) == 8);
 static_assert(sizeof(void*) == sizeof(size_t));
 
 // Bind to global scope frequently used types
@@ -284,38 +294,45 @@ using UIntUIntPairMap = map<uint, UIntPair>;
 using UIntIntPairVecMap = map<uint, IntPairVec>;
 using UIntHashVecMap = map<uint, HashVec>;
 
-// Generic engine exception
-extern string GetStackTrace();
+extern auto GetStackTrace() -> string;
+extern auto Is3dExtensionSupported(const string& ext) -> bool;
+
+// Engine exception handling
 class GenericException : public std::exception
 {
 public:
+    GenericException() = delete;
+    GenericException(const GenericException&) = delete;
+    GenericException(GenericException&&) = default;
+    auto operator=(const GenericException&) = delete;
+    auto operator=(GenericException&&) noexcept = delete;
+    ~GenericException() override = default;
+
     template<typename... Args>
-    GenericException(const char* message, Args... args) :
-        exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+    explicit GenericException(const char* message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
     {
-        exceptionMessage = "Exception: ";
-        exceptionMessage.append(message);
-        if (!exceptionParams.empty())
-        {
-            exceptionMessage.append("\n  Context args:");
-            for (auto& param : exceptionParams)
-                exceptionMessage.append("\n  - ").append(param);
+        _exceptionMessage = "Exception: ";
+        _exceptionMessage.append(message);
+        if (!_exceptionParams.empty()) {
+            _exceptionMessage.append("\n  Context args:");
+            for (auto& param : _exceptionParams)
+                _exceptionMessage.append("\n  - ").append(param);
         }
-        exceptionMessage.append("\n");
-        exceptionMessage.append(GetStackTrace());
+        _exceptionMessage.append("\n");
+        _exceptionMessage.append(GetStackTrace());
     }
+
     template<typename... Args>
-    GenericException(const string& message, Args... args) :
-        GenericException(message.c_str(), std::forward<Args>(args)...)
+    explicit GenericException(const string& message, Args... args) : GenericException(message.c_str(), std::forward<Args>(args)...)
     {
     }
-    ~GenericException() noexcept = default;
-    const char* what() const noexcept override { return exceptionMessage.c_str(); }
+
+    [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); }
 
 private:
-    string exceptionMessage {};
+    string _exceptionMessage {};
     // Todo: auto expand exception parameters to readable state
-    vector<string> exceptionParams {};
+    vector<string> _exceptionParams {};
 };
 
 #define DECLARE_EXCEPTION(exception_name) \
@@ -326,23 +343,14 @@ private:
         exception_name(Args... args) : GenericException(std::forward<Args>(args)...) \
         { \
         } \
+        exception_name() = delete; \
+        exception_name(const exception_name&) = delete; \
+        exception_name(exception_name&&) = default; \
+        auto operator=(const exception_name&) = delete; \
+        auto operator=(exception_name&&) noexcept = delete; \
+        ~exception_name() override = default; \
     }
-#define BEGIN_ROOT_EXCEPTION_BLOCK() \
-    try \
-    {
-#define END_ROOT_EXCEPTION_BLOCK() \
-    } \
-    catch (...) { throw; }
-#define BEGIN_EXCEPTION_BLOCK() \
-    try \
-    {
-#define END_EXCEPTION_BLOCK() \
-    } \
-    catch (GenericException & ex) { throw; }
-#define CATCH_EXCEPTION(ex_type) \
-    } \
-    catch (ex_type & ex) \
-    {
+
 #define RUNTIME_ASSERT(expr) \
     if (!(expr)) \
     throw AssertationException(#expr, __FILE__, __LINE__)
@@ -350,84 +358,66 @@ private:
     if (!(expr)) \
     throw AssertationException(str, __FILE__, __LINE__)
 
+// Common exceptions
 DECLARE_EXCEPTION(AssertationException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 
-// Non copyable (but movable) class decorator
-class NonCopyable // Todo: use NonCopyable as default class specifier
-{
-public:
-    NonCopyable() = default;
-    NonCopyable(const NonCopyable&) = delete;
-    NonCopyable& operator=(const NonCopyable&) = delete;
-    NonCopyable(NonCopyable&&) = default;
-    NonCopyable& operator=(NonCopyable&&) = default;
-};
-
-// Non movable (and copyable) class decorator
-class NonMovable
-{
-public:
-    NonMovable() = default;
-    NonMovable(const NonMovable&) = delete;
-    NonMovable& operator=(const NonMovable&) = delete;
-    NonMovable(NonMovable&&) = delete;
-    NonMovable& operator=(NonMovable&&) = delete;
-};
-
-// Static class decorator
-class StaticClass // Todo: set StaticClass class specifier to all static classes
-{
-public:
-    StaticClass() = delete;
-    StaticClass(const StaticClass&) = delete;
-    StaticClass& operator=(const StaticClass&) = delete;
-    StaticClass(StaticClass&&) = delete;
-    StaticClass& operator=(StaticClass&&) = delete;
-};
-
 // Event system
-class EventUnsubscriberCallback : public NonCopyable
+class EventUnsubscriberCallback final
 {
     template<typename...>
     friend class EventObserver;
     friend class EventUnsubscriber;
 
+public:
+    EventUnsubscriberCallback() = delete;
+    EventUnsubscriberCallback(const EventUnsubscriberCallback&) = delete;
+    EventUnsubscriberCallback(EventUnsubscriberCallback&&) = default;
+    auto operator=(const EventUnsubscriberCallback&) = delete;
+    auto operator=(EventUnsubscriberCallback&&) noexcept -> EventUnsubscriberCallback& = default;
+    ~EventUnsubscriberCallback() = default;
+
 private:
     using Callback = std::function<void()>;
-    EventUnsubscriberCallback(Callback cb) : unsubscribeCallback {cb} {}
-    Callback unsubscribeCallback {};
+    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(std::move(cb))} { }
+    Callback _unsubscribeCallback {};
 };
 
-class EventUnsubscriber : public NonCopyable
+class EventUnsubscriber final
 {
     template<typename...>
     friend class EventObserver;
 
 public:
     EventUnsubscriber() = default;
+    EventUnsubscriber(const EventUnsubscriber&) = delete;
     EventUnsubscriber(EventUnsubscriber&&) = default;
+    auto operator=(const EventUnsubscriber&) = delete;
+    auto operator=(EventUnsubscriber&&) noexcept -> EventUnsubscriber& = default;
     ~EventUnsubscriber() { Unsubscribe(); }
-    EventUnsubscriber& operator+=(EventUnsubscriberCallback&& cb)
+
+    auto operator+=(EventUnsubscriberCallback&& cb) -> EventUnsubscriber&
     {
-        unsubscribeCallbacks.push_back(std::move(cb));
+        _unsubscribeCallbacks.push_back(std::move(cb));
         return *this;
     }
+
     void Unsubscribe()
     {
-        for (auto& cb : unsubscribeCallbacks)
-            cb.unsubscribeCallback();
-        unsubscribeCallbacks.clear();
+        for (auto& cb : _unsubscribeCallbacks) {
+            cb._unsubscribeCallback();
+        }
+        _unsubscribeCallbacks.clear();
     }
 
 private:
     using Callback = std::function<void()>;
-    EventUnsubscriber(EventUnsubscriberCallback cb) { unsubscribeCallbacks.push_back(std::move(cb)); }
-    vector<EventUnsubscriberCallback> unsubscribeCallbacks {};
+    explicit EventUnsubscriber(EventUnsubscriberCallback cb) { _unsubscribeCallbacks.push_back(std::move(cb)); }
+    vector<EventUnsubscriberCallback> _unsubscribeCallbacks {};
 };
 
 template<typename... Args>
-class EventObserver : public NonCopyable, public NonMovable
+class EventObserver final
 {
     template<typename...>
     friend class EventDispatcher;
@@ -436,12 +426,16 @@ public:
     using Callback = std::function<void(Args...)>;
 
     EventObserver() = default;
-    EventObserver(EventObserver&&) = default;
+    EventObserver(const EventObserver&) = delete;
+    EventObserver(EventObserver&&) noexcept = default;
+    auto operator=(const EventObserver&) = delete;
+    auto operator=(EventObserver&&) noexcept = delete;
     ~EventObserver() { ThrowException(); }
-    [[nodiscard]] EventUnsubscriberCallback operator+=(Callback cb)
+
+    [[nodiscard]] auto operator+=(Callback cb) -> EventUnsubscriberCallback
     {
-        auto it = subscriberCallbacks.insert(subscriberCallbacks.end(), cb);
-        return EventUnsubscriberCallback([this, it]() { subscriberCallbacks.erase(it); });
+        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), cb);
+        return EventUnsubscriberCallback([this, it]() { _subscriberCallbacks.erase(it); });
     }
 
 private:
@@ -453,40 +447,55 @@ private:
 #endif
     }
 
-    list<Callback> subscriberCallbacks {};
+    list<Callback> _subscriberCallbacks {};
 };
 
 template<typename... Args>
-class EventDispatcher : public NonCopyable
+class EventDispatcher final
 {
 public:
     using ObserverType = EventObserver<Args...>;
-    EventDispatcher(ObserverType& obs) : observer {obs} {}
-    EventDispatcher& operator()(Args... args)
+
+    EventDispatcher() = delete;
+    explicit EventDispatcher(ObserverType& obs) : _observer {obs} { }
+    EventDispatcher(const EventDispatcher&) = delete;
+    EventDispatcher(EventDispatcher&&) noexcept = default;
+    auto operator=(const EventDispatcher&) = delete;
+    auto operator=(EventDispatcher&&) noexcept -> EventDispatcher& = default;
+    ~EventDispatcher() = default;
+
+    auto operator()(Args... args) -> EventDispatcher&
     {
         // Todo: recursion guard for EventDispatcher
-        if (!observer.subscriberCallbacks.empty())
-            for (auto& cb : observer.subscriberCallbacks)
+        if (!_observer._subscriberCallbacks.empty())
+            for (auto& cb : _observer._subscriberCallbacks)
                 cb(std::forward<Args>(args)...);
         return *this;
     }
 
 private:
-    ObserverType& observer;
+    ObserverType& _observer;
 };
 
 // Raw pointer observation
 // Todo: improve ptr<> system for leng term pointer observing
-class Pointable : public NonMovable
+class RefCounter
 {
     template<typename>
     friend class ptr;
 
 public:
-    virtual ~Pointable()
+    RefCounter() = default;
+    RefCounter(const RefCounter&) = delete;
+    RefCounter(RefCounter&&) = delete;
+    auto operator=(const RefCounter&) -> RefCounter& = delete;
+    auto operator=(RefCounter &&) -> RefCounter& = delete;
+
+    virtual ~RefCounter()
     {
-        if (ptrCounter)
+        if (_ptrCounter != 0) {
             ThrowException();
+        }
     }
 
 private:
@@ -498,69 +507,83 @@ private:
 #endif
     }
 
-    std::atomic_int ptrCounter {};
+    std::atomic_int _ptrCounter {};
 };
 
 template<typename T>
-class ptr
+// ReSharper disable once CppInconsistentNaming
+class ptr final
 {
-    static_assert(std::is_base_of<Pointable, T>::value, "T must inherit from Pointable");
+    static_assert(std::is_base_of<RefCounter, T>::value, "T must inherit from RefCounter");
     using type = ptr<T>;
 
 public:
     ptr() = default;
-    ptr(T* p) : value {p}
+
+    explicit ptr(T* p) : _value {p}
     {
-        if (value)
-            value->ptrCounter++;
+        if (_value)
+            ++_value->ptrCounter;
     }
+
     ptr(const type& other)
     {
-        value = other.value;
-        value->ptrCounter++;
+        _value = other._value;
+        ++_value->ptrCounter;
     }
-    ptr& operator=(const type& other)
+
+    auto operator=(const type& other) -> ptr&
     {
-        if (value)
-            value->ptrCounter--;
-        value = other.value;
-        if (value)
-            value->ptrCounter++;
+        if (this != &other) {
+            if (_value)
+                --_value->ptrCounter;
+            _value = other._value;
+            if (_value)
+                ++_value->ptrCounter;
+        }
+        return *this;
     }
-    ptr(type&& other)
+
+    ptr(type&& other) noexcept
     {
-        value = other.value;
-        other.value = nullptr;
+        _value = other._value;
+        other._value = nullptr;
     }
-    ptr&& operator=(type&& other)
+
+    auto operator=(type&& other) noexcept -> ptr&&
     {
-        if (value)
-            value->ptrCounter--;
-        value = other.value;
-        other.value = nullptr;
+        if (this != &other) {
+            if (_value)
+                --_value->ptrCounter;
+            _value = other._value;
+            other._value = nullptr;
+        }
+        return *this;
     }
+
     ~ptr()
     {
-        if (value)
-            value->ptrCounter--;
+        if (_value)
+            --_value->ptrCounter;
     }
-    T* operator->() { return value; }
-    T& operator*() { return *value; }
-    operator bool() { return !!value; }
-    bool operator==(const T* other) { return value == other; }
-    bool operator==(const type& other) { return value == other.value; }
-    bool operator!=(const T* other) { return value != other; }
-    bool operator!=(const type& other) { return value != other.value; }
-    // T* operator&() { return value; }
-    // T* get() { return value; }
+
+    auto operator->() -> T* { return _value; }
+    auto operator*() -> T& { return *_value; }
+    explicit operator bool() { return !!_value; }
+    auto operator==(const T* other) -> bool { return _value == other; }
+    auto operator==(const type& other) -> bool { return _value == other._value; }
+    auto operator!=(const T* other) -> bool { return _value != other; }
+    auto operator!=(const type& other) -> bool { return _value != other._value; }
+    // ReSharper disable once CppInconsistentNaming
+    auto get() -> T* { return _value; }
 
 private:
-    T* value {};
+    T* _value {};
 };
 
 // C-strings literal helpers
 // Todo: add _hash c-string literal helper
-size_t constexpr operator"" _len(const char* str, size_t size)
+auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
 {
     return size;
 }
@@ -585,9 +608,8 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define STRINGIFY2(x) #x
 #define LINE_STR STRINGIFY(__LINE__)
 #define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
-#define OFFSETOF(s, m) ((int)(size_t)(&reinterpret_cast<s*>(100000)->m) - 100000)
 #define UNUSED_VARIABLE(x) (void)(x)
-#define memzero(ptr, size) memset(ptr, 0, size)
+#define NON_CONST_METHOD_HINT(some_field) some_field = some_field
 #define UNIQUE_FUNCTION_NAME(name, ...) UNIQUE_FUNCTION_NAME2(MERGE_ARGS(name, __COUNTER__), __VA_ARGS__)
 #define UNIQUE_FUNCTION_NAME2(name, ...) name(__VA_ARGS__)
 #define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)
@@ -596,85 +618,360 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
 
-// Todo: remove SAFEREL/SAFEDEL/SAFEDELA macro
-#define SAFEREL(x) \
-    { \
-        if (x) \
-            (x)->Release(); \
-        (x) = nullptr; \
-    }
-#define SAFEDEL(x) \
-    { \
-        if (x) \
-            delete (x); \
-        (x) = nullptr; \
-    }
-#define SAFEDELA(x) \
-    { \
-        if (x) \
-            delete[](x); \
-        (x) = nullptr; \
-    }
-
-#define MAX(a, b) (((a) > (b)) ? (a) : (b)) // Todo: move MIN/MAX to std::min/std::max
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#define PACKUINT64(u32hi, u32lo) (((uint64)u32hi << 32) | ((uint64)u32lo))
-#define MAKEUINT(ch0, ch1, ch2, ch3) \
-    ((uint)(uchar)(ch0) | ((uint)(uchar)(ch1) << 8) | ((uint)(uchar)(ch2) << 16) | ((uint)(uchar)(ch3) << 24))
-
-// Floats
-#define PI_VALUE (3.14159265f)
-#define PI_FLOAT (3.14159265f)
-#define SQRT3T2_FLOAT (3.4641016151f)
-#define SQRT3_FLOAT (1.732050807568877f)
-#define BIAS_FLOAT (0.02f)
-#define RAD2DEG (57.29577951f)
-#define RAD(deg) ((deg)*3.141592654f / 180.0f)
-#define MAX_INT (0x7FFFFFFF)
-
 // Bits
-#define BIN__N(x) (x) | x >> 3 | x >> 6 | x >> 9
-#define BIN__B(x) (x) & 0xf | (x) >> 12 & 0xf0
-#define BIN8(v) (BIN__B(BIN__N(0x##v)))
+#define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
+#define BIN_B(x) ((x)&0xf | (x) >> 12 & 0xf0)
+#define BIN8(v) (BIN_B(BIN_N(0x##v)))
 #define BIN16(bin16, bin8) ((BIN8(bin16) << 8) | (BIN8(bin8)))
 #define BIN32(bin32, bin24, bin16, bin8) ((BIN8(bin32) << 24) | (BIN8(bin24) << 16) | (BIN8(bin16) << 8) | (BIN8(bin8)))
 
-// Flags
-#define FLAG(x, y) (((x) & (y)) != 0)
-#define FLAGS(x, y) (((x) & (y)) == y)
-#define SETFLAG(x, y) ((x) = (x) | (y))
-#define UNSETFLAG(x, y) ((x) = ((x) | (y)) ^ (y))
+template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+constexpr auto IsBitSet(T x, T y) -> bool
+{
+    return (x & y) != 0;
+}
+
+template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+constexpr void SetBit(T& x, T y)
+{
+    x = x | y;
+}
+
+template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+constexpr void UnsetBit(T& x, T y)
+{
+    x = (x | y) ^ y;
+}
+
+// Float constants
+constexpr auto PI_FLOAT = 3.14159265f;
+constexpr auto SQRT3_X2_FLOAT = 3.4641016151f;
+constexpr auto SQRT3_FLOAT = 1.732050807f;
+constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
+constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
+
+// Memory pool
+template<int StructSize, int PoolSize>
+class MemoryPool final
+{
+public:
+    MemoryPool() { Grow(); }
+    MemoryPool(const MemoryPool&) = delete;
+    MemoryPool(MemoryPool&&) noexcept = default;
+    auto operator=(const MemoryPool&) = delete;
+    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+
+    ~MemoryPool()
+    {
+        for (auto it = _allocatedData.begin(); it != _allocatedData.end(); ++it)
+            delete[] * it;
+        _allocatedData.clear();
+    }
+
+    auto Get() -> void*
+    {
+        if (_allocatedData.empty())
+            Grow();
+        void* result = _allocatedData.back();
+        _allocatedData.pop_back();
+        return result;
+    }
+
+    void Put(void* t) { _allocatedData.push_back(static_cast<char*>(t)); }
+
+private:
+    void Grow()
+    {
+        _allocatedData.reserve(_allocatedData.size() + PoolSize);
+        for (auto i = 0; i < PoolSize; i++)
+            _allocatedData.push_back(new char[StructSize]);
+    }
+
+    vector<char*> _allocatedData;
+};
+
+// Data serialization helpers
+class DataReader
+{
+public:
+    explicit DataReader(const uchar* buf) : _dataBuf {buf} { }
+    explicit DataReader(const UCharVec& buf) : _dataBuf {!buf.empty() ? &buf[0] : nullptr} { }
+
+    template<class T>
+    auto Read() -> T
+    {
+        T data;
+        std::memcpy(&data, &_dataBuf[_readPos], sizeof(T));
+        _readPos += sizeof(T);
+        return data;
+    }
+
+    template<class T>
+    auto ReadPtr(size_t size) -> const T*
+    {
+        _readPos += size;
+        return size ? &_dataBuf[_readPos - size] : nullptr;
+    }
+
+    template<class T>
+    void ReadPtr(T* ptr, size_t size)
+    {
+        _readPos += size;
+        if (size)
+            std::memcpy(ptr, &_dataBuf[_readPos - size], size);
+    }
+
+private:
+    const uchar* _dataBuf;
+    size_t _readPos {};
+};
+
+class DataWriter
+{
+public:
+    explicit DataWriter(UCharVec& buf) : _dataBuf {buf} { }
+
+    template<class T>
+    void Write(T data)
+    {
+        const auto cur = _dataBuf.size();
+        _dataBuf.resize(cur + sizeof(data));
+        std::memcpy(&_dataBuf[cur], &data, sizeof(data));
+    }
+
+    template<class T>
+    void WritePtr(T* data, size_t size)
+    {
+        if (!size)
+            return;
+
+        const auto cur = _dataBuf.size();
+        _dataBuf.resize(cur + size);
+        std::memcpy(&_dataBuf[cur], data, size);
+    }
+
+private:
+    UCharVec& _dataBuf;
+};
+
+// Todo: move WriteData/ReadData to DataWriter/DataReader
+template<class T>
+void WriteData(UCharVec& vec, T data)
+{
+    const auto cur = vec.size();
+    vec.resize(cur + sizeof(data));
+    std::memcpy(&vec[cur], &data, sizeof(data));
+}
+
+template<class T>
+void WriteDataArr(UCharVec& vec, T* data, uint size)
+{
+    if (size) {
+        const auto cur = static_cast<uint>(vec.size());
+        vec.resize(cur + size);
+        std::memcpy(&vec[cur], data, size);
+    }
+}
+
+template<class T>
+auto ReadData(UCharVec& vec, uint& pos) -> T
+{
+    T data;
+    std::memcpy(&data, &vec[pos], sizeof(T));
+    pos += sizeof(T);
+    return data;
+}
+
+template<class T>
+auto ReadDataArr(UCharVec& vec, uint size, uint& pos) -> T*
+{
+    pos += size;
+    return size ? &vec[pos - size] : nullptr;
+}
+
+// Flex rect
+template<typename Ty>
+struct FlexRect
+{
+    FlexRect() : L(0), T(0), R(0), B(0) { }
+    template<typename Ty2>
+    FlexRect(const FlexRect<Ty2>& fr) : L(static_cast<Ty>(fr.L)), T(static_cast<Ty>(fr.T)), R(static_cast<Ty>(fr.R)), B(static_cast<Ty>(fr.B))
+    {
+    }
+    FlexRect(Ty l, Ty t, Ty r, Ty b) : L(l), T(t), R(r), B(b) { }
+    FlexRect(Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy) : L(l + ox), T(t + oy), R(r + ox), B(b + oy) { }
+    FlexRect(const FlexRect& fr, Ty ox, Ty oy) : L(fr.L + ox), T(fr.T + oy), R(fr.R + ox), B(fr.B + oy) { }
+
+    template<typename Ty2>
+    auto operator=(const FlexRect<Ty2>& fr) -> FlexRect&
+    {
+        L = static_cast<Ty>(fr.L);
+        T = static_cast<Ty>(fr.T);
+        R = static_cast<Ty>(fr.R);
+        B = static_cast<Ty>(fr.B);
+        return *this;
+    }
+
+    void Clear()
+    {
+        L = 0;
+        T = 0;
+        R = 0;
+        B = 0;
+    }
+
+    [[nodiscard]] auto IsZero() const -> bool { return !L && !T && !R && !B; }
+    [[nodiscard]] auto Width() const -> Ty { return R - L + 1; }
+    [[nodiscard]] auto Height() const -> Ty { return B - T + 1; }
+    [[nodiscard]] auto CenterX() const -> Ty { return L + Width() / 2; }
+    [[nodiscard]] auto CenterY() const -> Ty { return T + Height() / 2; }
+
+    [[nodiscard]] auto operator[](int index) -> Ty&
+    {
+        switch (index) {
+        case 0:
+            return L;
+        case 1:
+            return T;
+        case 2:
+            return R;
+        case 3:
+            return B;
+        default:
+            break;
+        }
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    auto operator()(Ty l, Ty t, Ty r, Ty b) -> FlexRect&
+    {
+        L = l;
+        T = t;
+        R = r;
+        B = b;
+        return *this;
+    }
+
+    auto operator()(Ty ox, Ty oy) -> FlexRect&
+    {
+        L += ox;
+        T += oy;
+        R += ox;
+        B += oy;
+        return *this;
+    }
+
+    auto Interpolate(const FlexRect<Ty>& to, int procent) -> FlexRect<Ty>
+    {
+        FlexRect<Ty> result(L, T, R, B);
+        result.L += static_cast<Ty>(static_cast<int>(to.L - L) * procent / 100);
+        result.T += static_cast<Ty>(static_cast<int>(to.T - T) * procent / 100);
+        result.R += static_cast<Ty>(static_cast<int>(to.R - R) * procent / 100);
+        result.B += static_cast<Ty>(static_cast<int>(to.B - B) * procent / 100);
+        return result;
+    }
+
+    Ty L {};
+    Ty T {};
+    Ty R {};
+    Ty B {};
+};
+using Rect = FlexRect<int>;
+using RectF = FlexRect<float>;
+using IntRectVec = std::vector<Rect>;
+using FltRectVec = std::vector<RectF>;
+
+template<typename Ty>
+struct FlexPoint
+{
+    FlexPoint() : X(0), Y(0) { }
+    template<typename Ty2>
+    FlexPoint(const FlexPoint<Ty2>& r) : X(static_cast<Ty>(r.X)), Y(static_cast<Ty>(r.Y))
+    {
+    }
+    FlexPoint(Ty x, Ty y) : X(x), Y(y) { }
+    FlexPoint(const FlexPoint& fp, Ty ox, Ty oy) : X(fp.X + ox), Y(fp.Y + oy) { }
+
+    template<typename Ty2>
+    auto operator=(const FlexPoint<Ty2>& fp) -> FlexPoint&
+    {
+        X = static_cast<Ty>(fp.X);
+        Y = static_cast<Ty>(fp.Y);
+        return *this;
+    }
+
+    void Clear()
+    {
+        X = 0;
+        Y = 0;
+    }
+
+    auto IsZero() -> bool { return !X && !Y; }
+
+    auto operator[](int index) -> Ty&
+    {
+        switch (index) {
+        case 0:
+            return X;
+        case 1:
+            return Y;
+        default:
+            break;
+        }
+        return X;
+    }
+
+    auto operator()(Ty x, Ty y) -> FlexPoint&
+    {
+        X = x;
+        Y = y;
+        return *this;
+    }
+
+    Ty X {};
+    Ty Y {};
+};
+using Point = FlexPoint<int>;
+using PointF = FlexPoint<float>;
+
+// Todo: move NetProperty to more proper place
+class NetProperty
+{
+public:
+    enum Type
+    {
+        None = 0,
+        Global, // 0
+        Critter, // 1 cr_id
+        Chosen, // 0
+        MapItem, // 1 item_id
+        CritterItem, // 2 cr_id item_id
+        ChosenItem, // 1 item_id
+        Map, // 0
+        Location, // 0
+    };
+};
 
 // Generic constants
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
+// ReSharper disable CppInconsistentNaming
 #define CONFIG_NAME "FOnline.cfg"
-#define WORLD_START_TIME "07:00 30:10:2246 x00"
-#define TEMP_BUF_SIZE (8192)
+static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
+static constexpr auto TEMP_BUF_SIZE = 8192;
 #define UTF8_BUF_SIZE(count) ((count)*4)
-#define MAX_FOPATH UTF8_BUF_SIZE(2048)
-#define MAX_HOLO_INFO (250)
+static constexpr auto MAX_HOLO_INFO = 250;
 #define IS_DIR_CORNER(dir) (((dir)&1) != 0) // 1, 3, 5, 7
-#define AGGRESSOR_TICK (60000)
-#define MAX_ENEMY_STACK (30)
-#define CRITTER_INV_VOLUME (1000)
-#define CLIENT_MAP_FORMAT_VER (10)
-#define MAX_ANSWERS (100)
-#define PROCESS_TALK_TICK (1000)
-#define TURN_BASED_TIMEOUT (1000)
-#define FADING_PERIOD (1000)
-#define RESPOWN_TIME_PLAYER (3)
-#define RESPOWN_TIME_NPC (120)
-#define RESPOWN_TIME_INFINITY (4 * 24 * 60 * 60000)
-#define AP_DIVIDER (100)
-#define MAX_ADDED_NOGROUP_ITEMS (30)
-#define LAYERS3D_COUNT (30)
-#define DEFAULT_DRAW_SIZE (128)
-#define MIN_ZOOM (0.1f)
-#define MAX_ZOOM (20.0f)
+static constexpr auto PROCESS_TALK_TICK = 1000;
+static constexpr auto FADING_PERIOD = 1000;
+static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
+static constexpr auto LAYERS3D_COUNT = 30;
+static constexpr auto DEFAULT_DRAW_SIZE = 128;
+static constexpr float MIN_ZOOM = 0.1f;
+static constexpr float MAX_ZOOM = 20.0f;
 
 // Id helpers
+// Todo: remove all id masks after moving to 64-bit hashes
 #define MAKE_CLIENT_ID(name) ((1 << 31) | _str(name).toHash())
 #define IS_CLIENT_ID(id) (((id) >> 31) != 0)
 #define DLGID_MASK (0xFFFFC000)
@@ -687,12 +984,12 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
 // Critter find types
-#define FIND_LIFE (0x01)
-#define FIND_KO (0x02)
-#define FIND_DEAD (0x04)
-#define FIND_ONLY_PLAYERS (0x10)
-#define FIND_ONLY_NPC (0x20)
-#define FIND_ALL (0x0F)
+static constexpr uchar FIND_LIFE = 0x01;
+static constexpr uchar FIND_KO = 0x02;
+static constexpr uchar FIND_DEAD = 0x04;
+static constexpr uchar FIND_ONLY_PLAYERS = 0x10;
+static constexpr uchar FIND_ONLY_NPC = 0x20;
+static constexpr uchar FIND_ALL = 0x0F;
 
 // Ping
 #define PING_PING (0)
@@ -722,58 +1019,49 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define TARGET_ITEM (3)
 
 // Global map
-#define GM__MAXZONEX (100)
-#define GM__MAXZONEY (100)
-#define GM_ZONES_FOG_SIZE (((GM__MAXZONEX / 4) + ((GM__MAXZONEX % 4) ? 1 : 0)) * GM__MAXZONEY)
-#define GM_FOG_FULL (0)
-#define GM_FOG_HALF (1)
-#define GM_FOG_HALF_EX (2)
-#define GM_FOG_NONE (3)
-#define GM_ANSWER_WAIT_TIME (20000)
-#define GM_LIGHT_TIME (5000)
-#define GM_ENTRANCES_SEND_TIME (60000)
-#define GM_TRACE_TIME (1000)
+static constexpr auto GM_MAXZONEX = 100;
+static constexpr auto GM_MAXZONEY = 100;
+static constexpr auto GM_ZONES_FOG_SIZE = ((GM_MAXZONEX / 4) + ((GM_MAXZONEX % 4) != 0 ? 1 : 0)) * GM_MAXZONEY;
+static constexpr uchar GM_FOG_FULL = 0;
+static constexpr uchar GM_FOG_HALF = 1;
+static constexpr uchar GM_FOG_NONE = 3;
 
 // GM Info
-#define GM_INFO_LOCATIONS (0x01)
-#define GM_INFO_CRITTERS (0x02)
-#define GM_INFO_ZONES_FOG (0x08)
-#define GM_INFO_ALL (0x0F)
-#define GM_INFO_FOG (0x10)
-#define GM_INFO_LOCATION (0x20)
+static constexpr uchar GM_INFO_LOCATIONS = 0x01;
+static constexpr uchar GM_INFO_CRITTERS = 0x02;
+static constexpr uchar GM_INFO_ZONES_FOG = 0x08;
+static constexpr uchar GM_INFO_ALL = 0x0F;
+static constexpr uchar GM_INFO_FOG = 0x10;
+static constexpr uchar GM_INFO_LOCATION = 0x20;
 
 // Proto map hex flags
-#define FH_BLOCK BIN8(00000001)
-#define FH_NOTRAKE BIN8(00000010)
-#define FH_STATIC_TRIGGER BIN8(00100000)
+static constexpr uchar FH_BLOCK = BIN8(00000001);
+static constexpr uchar FH_NOTRAKE = BIN8(00000010);
+static constexpr uchar FH_STATIC_TRIGGER = BIN8(00100000);
 
 // Map instance hex flags
-#define FH_CRITTER BIN8(00000001)
-#define FH_DEAD_CRITTER BIN8(00000010)
-#define FH_DOOR BIN8(00001000)
-#define FH_BLOCK_ITEM BIN8(00010000)
-#define FH_NRAKE_ITEM BIN8(00100000)
-#define FH_TRIGGER BIN8(01000000)
-#define FH_GAG_ITEM BIN8(10000000)
+static constexpr uchar FH_CRITTER = BIN8(00000001);
+static constexpr uchar FH_DEAD_CRITTER = BIN8(00000010);
+static constexpr uchar FH_DOOR = BIN8(00001000);
+static constexpr uchar FH_BLOCK_ITEM = BIN8(00010000);
+static constexpr uchar FH_NRAKE_ITEM = BIN8(00100000);
+static constexpr uchar FH_TRIGGER = BIN8(01000000);
+static constexpr uchar FH_GAG_ITEM = BIN8(10000000);
 
 // Both proto map and map instance flags
-#define FH_NOWAY BIN16(00010001, 00000001)
-#define FH_NOSHOOT BIN16(00100000, 00000010)
+static constexpr ushort FH_NOWAY = BIN16(00010001, 00000001);
+static constexpr ushort FH_NOSHOOT = BIN16(00100000, 00000010);
 
 // Coordinates
-#define MAXHEX_DEF (200)
-#define MAXHEX_MIN (10)
-#define MAXHEX_MAX (4000)
+static constexpr ushort MAXHEX_DEFAULT = 200;
+static constexpr ushort MAXHEX_MIN = 10;
+static constexpr ushort MAXHEX_MAX = 4000;
 
 // Client parameters
 #define MAX_NAME (30)
 #define MIN_NAME (1)
 #define MAX_CHAT_MESSAGE (100)
-#define MAX_SCENERY (5000)
-#define MAX_DIALOG_TEXT (MAX_FOTEXT)
-#define MAX_DLG_LEN_IN_BYTES (64 * 1024)
 #define MAX_DLG_LEXEMS_TEXT (1000)
-#define MAX_BUF_LEN (4096)
 #define PASS_HASH_SIZE (32)
 #define FILE_UPDATE_PORTION (16384)
 
@@ -783,15 +1071,16 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define ANSWER_BARTER (0xF2)
 
 // Crit conditions
-#define COND_LIFE (1)
+#define COND_ALIVE (1)
 #define COND_KNOCKOUT (2)
 #define COND_DEAD (3)
 
 // Run-time critters flags
-#define FCRIT_PLAYER (0x00010000)
-#define FCRIT_NPC (0x00020000)
-#define FCRIT_DISCONNECT (0x00080000)
-#define FCRIT_CHOSEN (0x00100000)
+// Todo: remove critter flags
+static constexpr uint FCRIT_PLAYER = 0x00010000;
+static constexpr uint FCRIT_NPC = 0x00020000;
+static constexpr uint FCRIT_DISCONNECT = 0x00080000;
+static constexpr uint FCRIT_CHOSEN = 0x00100000;
 
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
@@ -835,11 +1124,11 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define ACTION_REFRESH (23) // s
 
 // Look checks
-#define LOOK_CHECK_DIR (0x01)
-#define LOOK_CHECK_SNEAK_DIR (0x02)
-#define LOOK_CHECK_TRACE (0x08)
-#define LOOK_CHECK_SCRIPT (0x10)
-#define LOOK_CHECK_ITEM_SCRIPT (0x20)
+static constexpr uint LOOK_CHECK_DIR = 0x01;
+static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;
+static constexpr uint LOOK_CHECK_TRACE = 0x08;
+static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
+static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 
 // SendMessage types
 #define MESSAGE_TO_VISIBLE_ME (0)
@@ -863,12 +1152,12 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 // Move params
 // 6 next steps (each 5 bit) + stop bit + run bit
 // Step bits: 012 - dir, 3 - allow, 4 - disallow
-#define MOVE_PARAM_STEP_COUNT (6)
-#define MOVE_PARAM_STEP_BITS (5)
-#define MOVE_PARAM_STEP_DIR (0x7)
-#define MOVE_PARAM_STEP_ALLOW (0x8)
-#define MOVE_PARAM_STEP_DISALLOW (0x10)
-#define MOVE_PARAM_RUN (0x80000000)
+static constexpr uint MOVE_PARAM_STEP_COUNT = 6;
+static constexpr uint MOVE_PARAM_STEP_BITS = 5;
+static constexpr uint MOVE_PARAM_STEP_DIR = 0x7;
+static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
+static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
+static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
 // Corner type
 #define CORNER_NORTH_SOUTH (0)
@@ -895,18 +1184,24 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define MAKE_ITEM_MODE(use, aim) ((((aim) << 4) | ((use)&0xF)) & 0xFF)
 
 // Radio
-#define RADIO_DISABLE_SEND (0x01)
-#define RADIO_DISABLE_RECV (0x02)
-#define RADIO_BROADCAST_WORLD (0)
-#define RADIO_BROADCAST_MAP (20)
-#define RADIO_BROADCAST_LOCATION (40)
-#define RADIO_BROADCAST_ZONE(x) (100 + CLAMP(x, 1, 100)) // 1..100
-#define RADIO_BROADCAST_FORCE_ALL (250)
+static constexpr ushort RADIO_DISABLE_SEND = 0x01;
+static constexpr ushort RADIO_DISABLE_RECV = 0x02;
+static constexpr uchar RADIO_BROADCAST_WORLD = 0;
+static constexpr uchar RADIO_BROADCAST_MAP = 20;
+static constexpr uchar RADIO_BROADCAST_LOCATION = 40;
+static constexpr auto RADIO_BROADCAST_ZONE(int x) -> uchar
+{
+    return static_cast<uchar>(100 + std::clamp(x, 1, 100));
+}
+static constexpr uchar RADIO_BROADCAST_FORCE_ALL = 250;
 
 // Light
-#define LIGHT_DISABLE_DIR(dir) (1 << CLAMP(dir, 0, 5))
-#define LIGHT_GLOBAL (0x40)
-#define LIGHT_INVERSE (0x80)
+static constexpr auto LIGHT_DISABLE_DIR(int dir) -> uchar
+{
+    return static_cast<uchar>(1u << std::clamp(dir, 0, 5));
+}
+static constexpr uchar LIGHT_GLOBAL = 0x40;
+static constexpr uchar LIGHT_INVERSE = 0x80;
 
 // Access
 #define ACCESS_CLIENT (0)
@@ -937,379 +1232,121 @@ size_t constexpr operator"" _len(const char* str, size_t size)
 #define CMD_CHANGE_PASSWORD (35)
 #define CMD_LOG (37)
 
-// Memory pool
-template<int StructSize, int PoolSize>
-class MemoryPool
+static constexpr ushort ANIMRUN_TO_END = 0x0001;
+static constexpr ushort ANIMRUN_FROM_END = 0x0002;
+static constexpr ushort ANIMRUN_CYCLE = 0x0004;
+static constexpr ushort ANIMRUN_STOP = 0x0008;
+static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
 {
-private:
-    vector<char*> allocatedData;
-
-    void Grow()
-    {
-        allocatedData.reserve(allocatedData.size() + PoolSize);
-        for (int i = 0; i < PoolSize; i++)
-            allocatedData.push_back(new char[StructSize]);
-    }
-
-public:
-    MemoryPool() { Grow(); }
-
-    ~MemoryPool()
-    {
-        for (auto it = allocatedData.begin(); it != allocatedData.end(); ++it)
-            delete[] * it;
-        allocatedData.clear();
-    }
-
-    void* Get()
-    {
-        if (allocatedData.empty())
-            Grow();
-        void* result = allocatedData.back();
-        allocatedData.pop_back();
-        return result;
-    }
-
-    void Put(void* t) { allocatedData.push_back((char*)t); }
-};
-
-// Data serialization helpers
-class DataReader
-{
-public:
-    DataReader(const uchar* buf) : dataBuf {buf}, readPos {} {}
-    DataReader(const UCharVec& buf) : dataBuf {!buf.empty() ? &buf[0] : nullptr}, readPos {} {}
-
-    template<class T>
-    inline T Read()
-    {
-        T data;
-        memcpy(&data, &dataBuf[readPos], sizeof(T));
-        readPos += sizeof(T);
-        return data;
-    }
-
-    template<class T>
-    inline const T* ReadPtr(size_t size)
-    {
-        readPos += size;
-        return size ? &dataBuf[readPos - size] : nullptr;
-    }
-
-    template<class T>
-    inline void ReadPtr(T* ptr, size_t size)
-    {
-        readPos += size;
-        if (size)
-            memcpy(ptr, &dataBuf[readPos - size], size);
-    }
-
-private:
-    const uchar* dataBuf;
-    size_t readPos;
-};
-
-class DataWriter
-{
-public:
-    DataWriter(UCharVec& buf) : dataBuf {buf} {}
-
-    template<class T>
-    inline void Write(T data)
-    {
-        size_t cur = dataBuf.size();
-        dataBuf.resize(cur + sizeof(data));
-        memcpy(&dataBuf[cur], &data, sizeof(data));
-    }
-
-    template<class T>
-    inline void WritePtr(T* data, size_t size)
-    {
-        if (!size)
-            return;
-
-        size_t cur = dataBuf.size();
-        dataBuf.resize(cur + size);
-        memcpy(&dataBuf[cur], data, size);
-    }
-
-private:
-    UCharVec& dataBuf;
-};
-
-// Todo: move WriteData/ReadData to DataWriter/DataReader
-template<class T>
-inline void WriteData(UCharVec& vec, T data)
-{
-    size_t cur = vec.size();
-    vec.resize(cur + sizeof(data));
-    memcpy(&vec[cur], &data, sizeof(data));
+    return static_cast<uint>(frm + 1) << 16;
 }
 
-template<class T>
-inline void WriteDataArr(UCharVec& vec, T* data, uint size)
+template<typename T>
+class has_size
 {
-    if (size)
+    using one = char;
+    struct two
     {
-        uint cur = (uint)vec.size();
-        vec.resize(cur + size);
-        memcpy(&vec[cur], data, size);
-    }
-}
+        char x[2];
+    };
 
-template<class T>
-inline T ReadData(UCharVec& vec, uint& pos)
-{
-    T data;
-    memcpy(&data, &vec[pos], sizeof(T));
-    pos += sizeof(T);
-    return data;
-}
+    template<typename C>
+    static auto test(decltype(&C::size)) -> one;
+    template<typename C>
+    static auto test(...) -> two;
 
-template<class T>
-inline T* ReadDataArr(UCharVec& vec, uint size, uint& pos)
-{
-    pos += size;
-    return size ? &vec[pos - size] : nullptr;
-}
-
-// Two bit mask
-// Todo: find something from STL instead TwoBitMask
-class TwoBitMask
-{
 public:
-    TwoBitMask() = default;
-
-    TwoBitMask(uint width_2bit, uint height_2bit, uchar* ptr)
+    enum
     {
-        if (!width_2bit)
-            width_2bit = 1;
-        if (!height_2bit)
-            height_2bit = 1;
-
-        width = width_2bit;
-        height = height_2bit;
-        widthBytes = width / 4;
-
-        if (width % 4)
-            widthBytes++;
-
-        if (ptr)
-        {
-            isAlloc = false;
-            data = ptr;
-        }
-        else
-        {
-            isAlloc = true;
-            data = new uchar[widthBytes * height];
-            Fill(0);
-        }
-    }
-
-    ~TwoBitMask()
-    {
-        if (isAlloc)
-            delete[] data;
-        data = nullptr;
-    }
-
-    void Set2Bit(uint x, uint y, int val)
-    {
-        if (x >= width || y >= height)
-            return;
-
-        uchar& b = data[y * widthBytes + x / 4];
-        int bit = (x % 4 * 2);
-
-        UNSETFLAG(b, 3 << bit);
-        SETFLAG(b, (val & 3) << bit);
-    }
-
-    int Get2Bit(uint x, uint y)
-    {
-        if (x >= width || y >= height)
-            return 0;
-
-        return (data[y * widthBytes + x / 4] >> (x % 4 * 2)) & 3;
-    }
-
-    void Fill(int fill) { memset(data, fill, widthBytes * height); }
-    uchar* GetData() { return data; }
-
-private:
-    bool isAlloc {};
-    uchar* data {};
-    uint width {};
-    uint height {};
-    uint widthBytes {};
-};
-
-// Flex rect
-template<typename Ty>
-struct FlexRect
-{
-    FlexRect() : L(0), T(0), R(0), B(0) {}
-    template<typename Ty2>
-    FlexRect(const FlexRect<Ty2>& fr) : L((Ty)fr.L), T((Ty)fr.T), R((Ty)fr.R), B((Ty)fr.B)
-    {
-    }
-    FlexRect(Ty l, Ty t, Ty r, Ty b) : L(l), T(t), R(r), B(b) {}
-    FlexRect(Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy) : L(l + ox), T(t + oy), R(r + ox), B(b + oy) {}
-    FlexRect(const FlexRect& fr, Ty ox, Ty oy) : L(fr.L + ox), T(fr.T + oy), R(fr.R + ox), B(fr.B + oy) {}
-
-    template<typename Ty2>
-    FlexRect& operator=(const FlexRect<Ty2>& fr)
-    {
-        L = (Ty)fr.L;
-        T = (Ty)fr.T;
-        R = (Ty)fr.R;
-        B = (Ty)fr.B;
-        return *this;
-    }
-
-    void Clear()
-    {
-        L = 0;
-        T = 0;
-        R = 0;
-        B = 0;
-    }
-
-    bool IsZero() const { return !L && !T && !R && !B; }
-    Ty W() const { return R - L + 1; }
-    Ty H() const { return B - T + 1; }
-    Ty CX() const { return L + W() / 2; }
-    Ty CY() const { return T + H() / 2; }
-
-    Ty& operator[](int index)
-    {
-        switch (index)
-        {
-        case 0:
-            return L;
-        case 1:
-            return T;
-        case 2:
-            return R;
-        case 3:
-            return B;
-        default:
-            break;
-        }
-        return L;
-    }
-
-    FlexRect& operator()(Ty l, Ty t, Ty r, Ty b)
-    {
-        L = l;
-        T = t;
-        R = r;
-        B = b;
-        return *this;
-    }
-
-    FlexRect& operator()(Ty ox, Ty oy)
-    {
-        L += ox;
-        T += oy;
-        R += ox;
-        B += oy;
-        return *this;
-    }
-
-    FlexRect<Ty> Interpolate(const FlexRect<Ty>& to, int procent)
-    {
-        FlexRect<Ty> result(L, T, R, B);
-        result.L += (Ty)((int)(to.L - L) * procent / 100);
-        result.T += (Ty)((int)(to.T - T) * procent / 100);
-        result.R += (Ty)((int)(to.R - R) * procent / 100);
-        result.B += (Ty)((int)(to.B - B) * procent / 100);
-        return result;
-    }
-
-    Ty L {};
-    Ty T {};
-    Ty R {};
-    Ty B {};
-};
-using Rect = FlexRect<int>;
-using RectF = FlexRect<float>;
-using IntRectVec = std::vector<Rect>;
-using FltRectVec = std::vector<RectF>;
-
-template<typename Ty>
-struct FlexPoint
-{
-    FlexPoint() : X(0), Y(0) {}
-    template<typename Ty2>
-    FlexPoint(const FlexPoint<Ty2>& r) : X((Ty)r.X), Y((Ty)r.Y)
-    {
-    }
-    FlexPoint(Ty x, Ty y) : X(x), Y(y) {}
-    FlexPoint(const FlexPoint& fp, Ty ox, Ty oy) : X(fp.X + ox), Y(fp.Y + oy) {}
-
-    template<typename Ty2>
-    FlexPoint& operator=(const FlexPoint<Ty2>& fp)
-    {
-        X = (Ty)fp.X;
-        Y = (Ty)fp.Y;
-        return *this;
-    }
-
-    void Clear()
-    {
-        X = 0;
-        Y = 0;
-    }
-
-    bool IsZero() { return !X && !Y; }
-
-    Ty& operator[](int index)
-    {
-        switch (index)
-        {
-        case 0:
-            return X;
-        case 1:
-            return Y;
-        default:
-            break;
-        }
-        return X;
-    }
-
-    FlexPoint& operator()(Ty x, Ty y)
-    {
-        X = x;
-        Y = y;
-        return *this;
-    }
-
-    Ty X {};
-    Ty Y {};
-};
-using Point = FlexPoint<int>;
-using PointF = FlexPoint<float>;
-
-// Todo: move NetProperty to more proper place
-class NetProperty
-{
-public:
-    enum Type
-    {
-        None = 0,
-        Global, // 0
-        Critter, // 1 cr_id
-        Chosen, // 0
-        MapItem, // 1 item_id
-        CritterItem, // 2 cr_id item_id
-        ChosenItem, // 1 item_id
-        Map, // 0
-        Location, // 0
+        value = sizeof(test<T>(0)) == sizeof(char)
     };
 };
 
-extern bool Is3dExtensionSupported(const string& ext);
+template<typename Test, template<typename...> class Ref>
+struct is_specialization : std::false_type
+{
+};
 
-#endif // PRECOMPILED_HEADER_GUARD
+template<template<typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+
+template<typename T>
+class irange_iterator final
+{
+public:
+    constexpr explicit irange_iterator(T v) : _value {v} { }
+    constexpr auto operator!=(const irange_iterator& other) const -> bool { return _value != other._value; }
+    constexpr auto operator*() const -> const T& { return _value; }
+    constexpr auto operator++() -> irange_iterator&
+    {
+        ++_value;
+        return *this;
+    }
+
+private:
+    T _value;
+};
+
+template<typename T>
+class irange_loop final
+{
+public:
+    constexpr explicit irange_loop(T to) : _fromValue {0}, _toValue {to} { }
+    constexpr explicit irange_loop(T from, T to) : _fromValue {from}, _toValue {to} { }
+    [[nodiscard]] constexpr auto begin() const -> irange_iterator<T> { return irange_iterator<T>(_fromValue); }
+    [[nodiscard]] constexpr auto end() const -> irange_iterator<T> { return irange_iterator<T>(_toValue); }
+
+private:
+    T _fromValue;
+    T _toValue;
+};
+
+template<typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+constexpr auto xrange(T value)
+{
+    return irange_loop<T> {0, value};
+}
+
+template<typename T, std::enable_if_t<has_size<T>::value, int> = 0>
+constexpr auto xrange(T value)
+{
+    return irange_loop<decltype(value.size())> {0, value.size()};
+}
+
+// ReSharper restore CppInconsistentNaming
+
+#define GLOBAL_DATA(class_name, instance_name) \
+    static class_name* instance_name; \
+    void Create_##class_name() \
+    { \
+        assert(!(instance_name)); \
+        (instance_name) = new class_name(); \
+    } \
+    void Delete_##class_name() \
+    { \
+        delete (instance_name); \
+        (instance_name) = nullptr; \
+    } \
+    struct Register_##class_name \
+    { \
+        Register_##class_name() \
+        { \
+            assert(GlobalDataCallbacksCount < MAX_GLOBAL_DATA_CALLBACKS); \
+            CreateGlobalDataCallbacks[GlobalDataCallbacksCount] = Create_##class_name; \
+            DeleteGlobalDataCallbacks[GlobalDataCallbacksCount] = Delete_##class_name; \
+            GlobalDataCallbacksCount++; \
+        } \
+    } Register_##class_name##_Instance
+
+constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 20;
+using GlobalDataCallback = void (*)();
+extern GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
+extern GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
+extern int GlobalDataCallbacksCount;
+
+extern void CreateGlobalData();
+extern void DeleteGlobalData();
+
+#endif // FO_PRECOMPILED_HEADER_GUARD

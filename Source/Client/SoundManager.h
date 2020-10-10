@@ -38,13 +38,19 @@
 #include "FileSystem.h"
 #include "Settings.h"
 
-class SoundManager : public NonMovable
+class SoundManager final
 {
 public:
-    SoundManager(AudioSettings& sett, FileManager& file_mngr);
+    SoundManager() = delete;
+    SoundManager(AudioSettings& settings, FileManager& file_mngr);
+    SoundManager(const SoundManager&) = delete;
+    SoundManager(SoundManager&&) noexcept = delete;
+    auto operator=(const SoundManager&) = delete;
+    auto operator=(SoundManager&&) noexcept = delete;
     ~SoundManager();
-    bool PlaySound(const StrMap& sound_names, const string& name);
-    bool PlayMusic(const string& fname, uint repeat_time);
+
+    auto PlaySound(const StrMap& sound_names, const string& name) -> bool;
+    auto PlayMusic(const string& fname, uint repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
@@ -54,19 +60,19 @@ private:
     using SoundVec = vector<Sound*>;
 
     void ProcessSounds(uchar* output);
-    bool ProcessSound(Sound* sound, uchar* output);
-    Sound* Load(const string& fname, bool is_music);
-    bool LoadWAV(Sound* sound, const string& fname);
-    bool LoadACM(Sound* sound, const string& fname, bool is_music);
-    bool LoadOGG(Sound* sound, const string& fname);
-    bool StreamOGG(Sound* sound);
-    bool ConvertData(Sound* sound);
+    auto ProcessSound(Sound* sound, uchar* output) -> bool;
+    auto Load(const string& fname, bool is_music) -> Sound*;
+    auto LoadWAV(Sound* sound, const string& fname) -> bool;
+    auto LoadACM(Sound* sound, const string& fname, bool is_music) -> bool;
+    auto LoadOGG(Sound* sound, const string& fname) -> bool;
+    auto StreamOGG(Sound* sound) -> bool;
+    static auto ConvertData(Sound* sound) -> bool;
 
-    AudioSettings& settings;
-    FileManager& fileMngr;
-    bool isActive {};
-    uint streamingPortion {};
-    SoundVec soundsActive {};
-    UCharVec outputBuf {};
-    SoundsFunc soundsFunc {};
+    AudioSettings& _settings;
+    FileManager& _fileMngr;
+    bool _isActive {};
+    uint _streamingPortion {};
+    SoundVec _soundsActive {};
+    UCharVec _outputBuf {};
+    SoundsFunc _soundsFunc {};
 };

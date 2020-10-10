@@ -70,7 +70,9 @@
 
 #ifdef FO_NATIVE_SCRIPTING
 #include "Log.h"
-#include "Testing.h"
+
+#define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
+#include "ScriptApi.h"
 
 class ScriptEntity
 {
@@ -236,10 +238,8 @@ inline T MarshalBack(T value)
 #define FO_API_ARG_REF_MARSHAL(type, name)
 #define FO_API_ARG_ARR_REF_MARSHAL(type, name)
 #define FO_API_ARG_ENUM_MARSHAL(type, name)
-#define FO_API_ARG_CALLBACK_MARSHAL(type, name) \
-    std::function<void(type*)> name = MarshalCallback<type, EntityType_##type>(_##name);
-#define FO_API_ARG_PREDICATE_MARSHAL(type, name) \
-    std::function<bool(type*)> name = MarshalPredicate<type, EntityType_##type>(_##name);
+#define FO_API_ARG_CALLBACK_MARSHAL(type, name) std::function<void(type*)> name = MarshalCallback<type, EntityType_##type>(_##name);
+#define FO_API_ARG_PREDICATE_MARSHAL(type, name) std::function<bool(type*)> name = MarshalPredicate<type, EntityType_##type>(_##name);
 #define FO_API_ARG_DICT_MARSHAL(key, val, name)
 #define FO_API_RET(type) type
 #define FO_API_RET_ARR(type) vector<type>
@@ -279,12 +279,12 @@ class ScriptItem : public ScriptEntity
 {
 public:
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Item* _this = (Item*)_thisPtr
+#define THIS_ARG Item* _item = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
 #define ITEM_CLASS Item
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG ItemView* _this = (ItemView*)_thisPtr
+#define THIS_ARG ItemView* _itemView = (ItemView*)_thisPtr
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_VIEW_METHOD_IMPL
 #define ITEM_CLASS ItemView
@@ -305,12 +305,12 @@ class ScriptCritter : public ScriptEntity
 {
 public:
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Critter* _this = (Critter*)_thisPtr
+#define THIS_ARG Critter* _critter = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
 #define CRITTER_CLASS Critter
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG CritterView* _this = (CritterView*)_thisPtr
+#define THIS_ARG CritterView* _critterView = (CritterView*)_thisPtr
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_VIEW_METHOD_IMPL
 #define CRITTER_CLASS CritterView
@@ -331,12 +331,12 @@ class ScriptMap : public ScriptEntity
 {
 public:
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Map* _this = (Map*)_thisPtr
+#define THIS_ARG Map* _map = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
 #define MAP_CLASS Map
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG MapView* _this = (MapView*)_thisPtr
+#define THIS_ARG MapView* _mapView = (MapView*)_thisPtr
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_VIEW_METHOD_IMPL
 #define MAP_CLASS MapView
@@ -357,12 +357,12 @@ class ScriptLocation : public ScriptEntity
 {
 public:
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Location* _this = (Location*)_thisPtr
+#define THIS_ARG Location* _location = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
 #define LOCATION_CLASS Location
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG LocationView* _this = (LocationView*)_thisPtr
+#define THIS_ARG LocationView* _locationView = (LocationView*)_thisPtr
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_VIEW_METHOD_IMPL
 #define LOCATION_CLASS LocationView

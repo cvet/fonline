@@ -37,7 +37,7 @@
 
 #include "Settings.h"
 
-#define SPRITES_POOL_GROW_SIZE (10000)
+constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
 class MapSprite;
@@ -49,45 +49,15 @@ using SpriteVec = vector<Sprite*>;
 class Sprite
 {
 public:
-    Sprites* Root;
-    int DrawOrderType;
-    uint DrawOrderPos;
-    uint TreeIndex;
-    uint SprId;
-    uint* PSprId;
-    int HexX, HexY;
-    int ScrX, ScrY;
-    int *PScrX, *PScrY;
-    short *OffsX, *OffsY;
-    int CutType;
-    Sprite *Parent, *Child;
-    float CutX, CutW, CutTexL, CutTexR;
-    uchar* Alpha;
-    uchar* Light;
-    uchar* LightRight;
-    uchar* LightLeft;
-    int EggType;
-    int ContourType;
-    uint ContourColor;
-    uint Color;
-    uint FlashMask;
-    RenderEffect** DrawEffect;
-    bool* ValidCallback;
-    bool Valid;
-    MapSprite* MapSpr;
-    Sprite** ExtraChainRoot;
-    Sprite* ExtraChainParent;
-    Sprite* ExtraChainChild;
-    Sprite** ChainRoot;
-    Sprite** ChainLast;
-    Sprite* ChainParent;
-    Sprite* ChainChild;
-    int CutOyL, CutOyR;
+    Sprite() = default;
+    Sprite(const Sprite&) = delete;
+    Sprite(Sprite&&) noexcept = delete;
+    auto operator=(const Sprite&) = delete;
+    auto operator=(Sprite&&) noexcept = delete;
+    ~Sprite() = default;
 
-    Sprite();
     void Unvalidate();
-    Sprite* GetIntersected(int ox, int oy);
-
+    auto GetIntersected(int ox, int oy) -> Sprite*;
     void SetEgg(int egg);
     void SetContour(int contour);
     void SetContour(int contour, uint color);
@@ -96,35 +66,83 @@ public:
     void SetFlash(uint mask);
     void SetLight(int corner, uchar* light, int maxhx, int maxhy);
     void SetFixedAlpha(uchar alpha);
+
+    // Todo:: incapsulate all sprite data
+    Sprites* Root {};
+    int DrawOrderType {};
+    uint DrawOrderPos {};
+    uint TreeIndex {};
+    uint SprId {};
+    uint* PSprId {};
+    int HexX {};
+    int HexY {};
+    int ScrX {};
+    int ScrY {};
+    int* PScrX {};
+    int* PScrY {};
+    short* OffsX {};
+    short* OffsY {};
+    int CutType {};
+    Sprite* Parent {};
+    Sprite* Child {};
+    float CutX {};
+    float CutW {};
+    float CutTexL {};
+    float CutTexR {};
+    uchar* Alpha {};
+    uchar* Light {};
+    uchar* LightRight {};
+    uchar* LightLeft {};
+    int EggType {};
+    int ContourType {};
+    uint ContourColor {};
+    uint Color {};
+    uint FlashMask {};
+    RenderEffect** DrawEffect {};
+    bool* ValidCallback {};
+    bool Valid {};
+    MapSprite* MapSpr {};
+    Sprite** ExtraChainRoot {};
+    Sprite* ExtraChainParent {};
+    Sprite* ExtraChainChild {};
+    Sprite** ChainRoot {};
+    Sprite** ChainLast {};
+    Sprite* ChainParent {};
+    Sprite* ChainChild {};
+    int CutOyL {};
+    int CutOyR {};
 };
 
-class Sprites
+class Sprites final
 {
     friend class Sprite;
 
 public:
+    Sprites() = delete;
+    Sprites(HexSettings& settings, SpriteManager& spr_mngr) : _settings {settings}, _sprMngr(spr_mngr) { }
+    Sprites(const Sprites&) = delete;
+    Sprites(Sprites&&) noexcept = delete;
+    auto operator=(const Sprites&) = delete;
+    auto operator=(Sprites&&) noexcept = delete;
+    ~Sprites() = default;
+
     static void GrowPool();
-    Sprites(HexSettings& sett, SpriteManager& spr_mngr);
-    ~Sprites();
-    Sprite* RootSprite();
-    Sprite& AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr,
-        short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback);
-    Sprite& InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr,
-        short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback);
+    [[nodiscard]] auto RootSprite() -> Sprite*;
+    [[nodiscard]] auto AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
     void Unvalidate();
     void SortByMapPos();
-    uint Size();
+    [[nodiscard]] auto Size() const -> uint;
     void Clear();
 
 private:
-    static SpriteVec spritesPool;
-    HexSettings& settings;
-    SpriteManager& sprMngr;
-    Sprite* rootSprite;
-    Sprite* lastSprite;
-    uint spriteCount;
-    SpriteVec unvalidatedSprites;
+    static SpriteVec _spritesPool;
+    HexSettings& _settings;
+    SpriteManager& _sprMngr;
+    Sprite* _rootSprite {};
+    Sprite* _lastSprite {};
+    uint _spriteCount {};
+    SpriteVec _unvalidatedSprites {};
 
-    Sprite& PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
-        uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback);
+    [[nodiscard]] auto PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 };

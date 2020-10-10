@@ -31,6 +31,9 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+// ReSharper disable CppMissingIncludeGuard
+
 #define FO_API_ARG(type, name) type name
 #define FO_API_ARG_ARR(type, name) type.arr name
 #define FO_API_ARG_OBJ(type, name) type name

@@ -32,150 +32,143 @@
 //
 
 #include "FileSystem.h"
+
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
-FileHeader::FileHeader(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds) :
-    isLoaded {true}, fileName {name}, filePath {path}, fileSize {size}, writeTime {write_time}, dataSource {ds}
+FileHeader::FileHeader(string name, string path, uint size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {std::move(name)}, _filePath {std::move(path)}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
 {
 }
 
 FileHeader::operator bool() const
 {
-    return isLoaded;
+    return _isLoaded;
 }
 
-const string& FileHeader::GetName()
+auto FileHeader::GetName() const -> const string&
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(!fileName.empty());
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(!_fileName.empty());
 
-    return fileName;
+    return _fileName;
 }
 
-const string& FileHeader::GetPath()
+auto FileHeader::GetPath() const -> const string&
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(!filePath.empty());
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(!_filePath.empty());
 
-    return filePath;
+    return _filePath;
 }
 
-uint FileHeader::GetFsize()
+auto FileHeader::GetFsize() const -> uint
 {
-    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(_isLoaded);
 
-    return fileSize;
+    return _fileSize;
 }
 
-uint64 FileHeader::GetWriteTime()
+auto FileHeader::GetWriteTime() const -> uint64
 {
-    RUNTIME_ASSERT(isLoaded);
+    RUNTIME_ASSERT(_isLoaded);
 
-    return writeTime;
+    return _writeTime;
 }
 
-File::File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf) :
-    FileHeader(name, path, size, write_time, ds), fileBuf {buf}
+File::File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {buf}
 {
-    RUNTIME_ASSERT(fileBuf[fileSize] == 0);
+    RUNTIME_ASSERT(_fileBuf[_fileSize] == 0);
 }
 
-File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), fileBuf {buf}
+File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), _fileBuf {buf}
 {
 }
 
-const char* File::GetCStr()
+auto File::GetCStr() const -> const char*
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    return (const char*)fileBuf.get();
+    return reinterpret_cast<const char*>(_fileBuf.get());
 }
 
-uchar* File::GetBuf()
+auto File::GetBuf() const -> const uchar*
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    return fileBuf.get();
+    return _fileBuf.get();
 }
 
-uchar* File::GetCurBuf()
+auto File::GetCurBuf() const -> const uchar*
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    return fileBuf.get() + curPos;
+    return _fileBuf.get() + _curPos;
 }
 
-uint File::GetCurPos()
+auto File::GetCurPos() const -> uint
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    return curPos;
+    return _curPos;
 }
 
-uchar* File::ReleaseBuffer()
+auto File::ReleaseBuffer() -> uchar*
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    return fileBuf.release();
+    return _fileBuf.release();
 }
 
 void File::SetCurPos(uint pos)
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
-    RUNTIME_ASSERT(pos <= fileSize);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
+    RUNTIME_ASSERT(pos <= _fileSize);
 
-    curPos = pos;
+    _curPos = pos;
 }
 
 void File::GoForward(uint offs)
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
-    RUNTIME_ASSERT(curPos + offs <= fileSize);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
+    RUNTIME_ASSERT(_curPos + offs <= _fileSize);
 
-    curPos += offs;
+    _curPos += offs;
 }
 
 void File::GoBack(uint offs)
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
-    RUNTIME_ASSERT(offs <= curPos);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
+    RUNTIME_ASSERT(offs <= _curPos);
 
-    curPos -= offs;
+    _curPos -= offs;
 }
 
-bool File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs)
+auto File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    for (uint i = begin_offs; i < fileSize - fragment_len; i++)
-    {
-        if (fileBuf[i] == fragment[0])
-        {
-            bool not_match = false;
-            for (uint j = 1; j < fragment_len; j++)
-            {
-                if (fileBuf[i + j] != fragment[j])
-                {
+    for (auto i = begin_offs; i < _fileSize - fragment_len; i++) {
+        if (_fileBuf[i] == fragment[0]) {
+            auto not_match = false;
+            for (uint j = 1; j < fragment_len; j++) {
+                if (_fileBuf[static_cast<size_t>(i) + j] != fragment[j]) {
                     not_match = true;
                     break;
                 }
             }
 
-            if (!not_match)
-            {
-                curPos = i;
+            if (!not_match) {
+                _curPos = i;
                 return true;
             }
         }
@@ -183,35 +176,34 @@ bool File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_off
     return false;
 }
 
-string File::GetNonEmptyLine()
+auto File::GetNonEmptyLine() -> string
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    while (curPos < fileSize)
-    {
-        uint start = curPos;
+    while (_curPos < _fileSize) {
+        const auto start = _curPos;
         uint len = 0;
-        while (curPos < fileSize)
-        {
-            if (fileBuf[curPos] == '\r' || fileBuf[curPos] == '\n' || fileBuf[curPos] == '#' || fileBuf[curPos] == ';')
-            {
-                for (; curPos < fileSize; curPos++)
-                    if (fileBuf[curPos] == '\n')
+        while (_curPos < _fileSize) {
+            if (_fileBuf[_curPos] == '\r' || _fileBuf[_curPos] == '\n' || _fileBuf[_curPos] == '#' || _fileBuf[_curPos] == ';') {
+                for (; _curPos < _fileSize; _curPos++) {
+                    if (_fileBuf[_curPos] == '\n') {
                         break;
-                curPos++;
+                    }
+                }
+                _curPos++;
                 break;
             }
 
-            curPos++;
+            _curPos++;
             len++;
         }
 
-        if (len)
-        {
-            string line = _str(string((const char*)&fileBuf[start], len)).trim();
-            if (!line.empty())
+        if (len != 0u) {
+            string line = _str(string(reinterpret_cast<const char*>(&_fileBuf[start]), len)).trim();
+            if (!line.empty()) {
                 return line;
+            }
         }
     }
 
@@ -220,401 +212,446 @@ string File::GetNonEmptyLine()
 
 void File::CopyMem(void* ptr, uint size)
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
     RUNTIME_ASSERT(size);
 
-    if (curPos + size > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + size > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
-    memcpy(ptr, fileBuf.get() + curPos, size);
-    curPos += size;
+    std::memcpy(ptr, _fileBuf.get() + _curPos, size);
+    _curPos += size;
 }
 
-string File::GetStrNT()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetStrNT() -> string
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + 1 > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + 1 > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     uint len = 0;
-    while (*(fileBuf.get() + curPos + len))
+    while (*(_fileBuf.get() + _curPos + len) != 0u) {
         len++;
+    }
 
-    string str((const char*)&fileBuf[curPos], len);
-    curPos += len + 1;
+    string str(reinterpret_cast<const char*>(&_fileBuf[_curPos]), len);
+    _curPos += len + 1;
     return str;
 }
 
-uchar File::GetUChar()
+auto File::GetUChar() -> uchar
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(uchar) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(uchar) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
-    uchar res = 0;
-    res = fileBuf[curPos++];
-    return res;
+    return _fileBuf[_curPos++];
 }
 
-ushort File::GetBEUShort()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetBEUShort() -> ushort
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(ushort) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(ushort) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     ushort res = 0;
-    uchar* cres = (uchar*)&res;
-    cres[1] = fileBuf[curPos++];
-    cres[0] = fileBuf[curPos++];
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    cres[1] = _fileBuf[_curPos++];
+    cres[0] = _fileBuf[_curPos++];
     return res;
 }
 
-ushort File::GetLEUShort()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetLEUShort() -> ushort
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(ushort) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(ushort) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     ushort res = 0;
-    uchar* cres = (uchar*)&res;
-    cres[0] = fileBuf[curPos++];
-    cres[1] = fileBuf[curPos++];
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    cres[0] = _fileBuf[_curPos++];
+    cres[1] = _fileBuf[_curPos++];
     return res;
 }
 
-uint File::GetBEUInt()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetBEUInt() -> uint
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(uint) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(uint) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     uint res = 0;
-    uchar* cres = (uchar*)&res;
-    for (int i = 3; i >= 0; i--)
-        cres[i] = fileBuf[curPos++];
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    for (auto i = 3; i >= 0; i--) {
+        cres[i] = _fileBuf[_curPos++];
+    }
     return res;
 }
 
-uint File::GetLEUInt()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetLEUInt() -> uint
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(uint) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(uint) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     uint res = 0;
-    uchar* cres = (uchar*)&res;
-    for (int i = 0; i <= 3; i++)
-        cres[i] = fileBuf[curPos++];
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    for (auto i = 0; i <= 3; i++) {
+        cres[i] = _fileBuf[_curPos++];
+    }
     return res;
 }
 
-uint File::GetLE3UChar()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetLE3UChar() -> uint
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(uchar) * 3 > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(uchar) * 3 > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
     uint res = 0;
-    uchar* cres = (uchar*)&res;
-    for (int i = 0; i <= 2; i++)
-        cres[i] = fileBuf[curPos++];
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    for (auto i = 0; i <= 2; i++) {
+        cres[i] = _fileBuf[_curPos++];
+    }
     return res;
 }
 
-float File::GetBEFloat()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetBEFloat() -> float
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(float) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(float) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
-    float res;
-    uchar* cres = (uchar*)&res;
-    for (int i = 3; i >= 0; i--)
-        cres[i] = fileBuf[curPos++];
+    auto res = NAN;
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    for (auto i = 3; i >= 0; i--) {
+        cres[i] = _fileBuf[_curPos++];
+    }
     return res;
 }
 
-float File::GetLEFloat()
+// ReSharper disable once CppInconsistentNaming
+auto File::GetLEFloat() -> float
 {
-    RUNTIME_ASSERT(isLoaded);
-    RUNTIME_ASSERT(fileBuf);
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
 
-    if (curPos + sizeof(float) > fileSize)
-        throw FileSystemExeption("Read file error", fileName);
+    if (_curPos + sizeof(float) > _fileSize) {
+        throw FileSystemExeption("Read file error", _fileName);
+    }
 
-    float res;
-    uchar* cres = (uchar*)&res;
-    for (int i = 0; i <= 3; i++)
-        cres[i] = fileBuf[curPos++];
+    auto res = NAN;
+    auto* cres = reinterpret_cast<uchar*>(&res);
+    for (auto i = 0; i <= 3; i++) {
+        cres[i] = _fileBuf[_curPos++];
+    }
     return res;
 }
 
-OutputFile::OutputFile(DiskFile file) : diskFile {std::move(file)}
+OutputFile::OutputFile(DiskFile file) : _diskFile {std::move(file)}
 {
-    RUNTIME_ASSERT(diskFile);
+    RUNTIME_ASSERT(_diskFile);
 }
 
 void OutputFile::Save()
 {
-    if (!dataBuf.empty())
-    {
-        bool save_ok = diskFile.Write(&dataBuf[0], (uint)dataBuf.size());
+    if (!_dataBuf.empty()) {
+        const auto save_ok = _diskFile.Write(&_dataBuf[0], static_cast<uint>(_dataBuf.size()));
         RUNTIME_ASSERT(save_ok);
-        dataBuf.clear();
+        _dataBuf.clear();
     }
 }
 
-uchar* OutputFile::GetOutBuf()
+auto OutputFile::GetOutBuf() const -> const uchar*
 {
-    RUNTIME_ASSERT(!dataBuf.empty());
+    RUNTIME_ASSERT(!_dataBuf.empty());
 
-    return &dataBuf[0];
+    return &_dataBuf[0];
 }
 
-uint OutputFile::GetOutBufLen()
+auto OutputFile::GetOutBufLen() const -> uint
 {
-    RUNTIME_ASSERT(!dataBuf.empty());
+    RUNTIME_ASSERT(!_dataBuf.empty());
 
-    return (uint)dataBuf.size();
+    return static_cast<uint>(_dataBuf.size());
 }
 
 void OutputFile::SetData(const void* data, uint len)
 {
-    if (!len)
+    if (len == 0u) {
         return;
+    }
 
-    dataWriter.WritePtr(data, len);
+    _dataWriter.WritePtr(data, len);
 }
 
 void OutputFile::SetStr(const string& str)
 {
-    SetData(str.c_str(), (uint)str.length());
+    SetData(str.c_str(), static_cast<uint>(str.length()));
 }
 
+// ReSharper disable once CppInconsistentNaming
 void OutputFile::SetStrNT(const string& str)
 {
-    SetData(str.c_str(), (uint)str.length() + 1);
+    SetData(str.c_str(), static_cast<uint>(str.length()) + 1);
 }
 
 void OutputFile::SetUChar(uchar data)
 {
-    dataWriter.Write(data);
+    _dataWriter.Write(data);
 }
 
+// ReSharper disable once CppInconsistentNaming
 void OutputFile::SetBEUShort(ushort data)
 {
-    uchar* pdata = (uchar*)&data;
-    dataWriter.Write(pdata[1]);
-    dataWriter.Write(pdata[0]);
+    auto* pdata = reinterpret_cast<uchar*>(&data);
+    _dataWriter.Write(pdata[1]);
+    _dataWriter.Write(pdata[0]);
 }
 
+// ReSharper disable once CppInconsistentNaming
 void OutputFile::SetLEUShort(ushort data)
 {
-    uchar* pdata = (uchar*)&data;
-    dataWriter.Write(pdata[0]);
-    dataWriter.Write(pdata[1]);
+    auto* pdata = reinterpret_cast<uchar*>(&data);
+    _dataWriter.Write(pdata[0]);
+    _dataWriter.Write(pdata[1]);
 }
 
+// ReSharper disable once CppInconsistentNaming
 void OutputFile::SetBEUInt(uint data)
 {
-    uchar* pdata = (uchar*)&data;
-    dataWriter.Write(pdata[3]);
-    dataWriter.Write(pdata[2]);
-    dataWriter.Write(pdata[1]);
-    dataWriter.Write(pdata[0]);
+    auto* pdata = reinterpret_cast<uchar*>(&data);
+    _dataWriter.Write(pdata[3]);
+    _dataWriter.Write(pdata[2]);
+    _dataWriter.Write(pdata[1]);
+    _dataWriter.Write(pdata[0]);
 }
 
+// ReSharper disable once CppInconsistentNaming
 void OutputFile::SetLEUInt(uint data)
 {
-    uchar* pdata = (uchar*)&data;
-    dataWriter.Write(pdata[0]);
-    dataWriter.Write(pdata[1]);
-    dataWriter.Write(pdata[2]);
-    dataWriter.Write(pdata[3]);
+    auto* pdata = reinterpret_cast<uchar*>(&data);
+    _dataWriter.Write(pdata[0]);
+    _dataWriter.Write(pdata[1]);
+    _dataWriter.Write(pdata[2]);
+    _dataWriter.Write(pdata[3]);
 }
 
-FileCollection::FileCollection(const string& path, vector<FileHeader> files) :
-    filterPath {path}, allFiles {std::move(files)}
+FileCollection::FileCollection(string path, vector<FileHeader> files) : _filterPath {std::move(path)}, _allFiles {std::move(files)}
 {
 }
 
-const string& FileCollection::GetPath()
+auto FileCollection::MoveNext() -> bool
 {
-    return filterPath;
-}
+    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
-bool FileCollection::MoveNext()
-{
-    RUNTIME_ASSERT(curFileIndex < (int)allFiles.size());
-
-    return ++curFileIndex < (int)allFiles.size();
-}
-
-File FileCollection::GetCurFile()
-{
-    RUNTIME_ASSERT(curFileIndex >= 0);
-    RUNTIME_ASSERT(curFileIndex < allFiles.size());
-
-    FileHeader& fh = allFiles[curFileIndex];
-    uchar* buf = fh.dataSource->OpenFile(fh.filePath, _str(fh.filePath).lower(), fh.fileSize, fh.writeTime);
-    RUNTIME_ASSERT(buf);
-    return File(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource, buf);
-}
-
-FileHeader FileCollection::GetCurFileHeader()
-{
-    RUNTIME_ASSERT(curFileIndex >= 0);
-    RUNTIME_ASSERT(curFileIndex < allFiles.size());
-
-    FileHeader& fh = allFiles[curFileIndex];
-    return FileHeader(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource);
-}
-
-File FileCollection::FindFile(const string& name)
-{
-    for (FileHeader& fh : allFiles)
-    {
-        if (fh.fileName == name)
-        {
-            uchar* buf = fh.dataSource->OpenFile(fh.filePath, _str(fh.filePath).lower(), fh.fileSize, fh.writeTime);
-            RUNTIME_ASSERT(buf);
-            return File(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource, buf);
-        }
-    }
-    return File {};
-}
-
-FileHeader FileCollection::FindFileHeader(const string& name)
-{
-    for (FileHeader& fh : allFiles)
-        if (fh.fileName == name)
-            return FileHeader(fh.fileName, fh.filePath, fh.fileSize, fh.writeTime, fh.dataSource);
-    return FileHeader {};
-}
-
-uint FileCollection::GetFilesCount()
-{
-    return (uint)allFiles.size();
+    return ++_curFileIndex < static_cast<int>(_allFiles.size());
 }
 
 void FileCollection::ResetCounter()
 {
-    curFileIndex = -1;
+    _curFileIndex = -1;
+}
+
+auto FileCollection::GetPath() const -> const string&
+{
+    return _filterPath;
+}
+
+auto FileCollection::GetCurFile() const -> File
+{
+    RUNTIME_ASSERT(_curFileIndex >= 0);
+    RUNTIME_ASSERT(_curFileIndex < _allFiles.size());
+
+    const auto& fh = _allFiles[_curFileIndex];
+    auto fs = fh._fileSize;
+    auto wt = fh._writeTime;
+    auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+    RUNTIME_ASSERT(buf);
+    return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+}
+
+auto FileCollection::GetCurFileHeader() const -> FileHeader
+{
+    RUNTIME_ASSERT(_curFileIndex >= 0);
+    RUNTIME_ASSERT(_curFileIndex < _allFiles.size());
+
+    const auto& fh = _allFiles[_curFileIndex];
+    return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
+}
+
+auto FileCollection::FindFile(const string& name) const -> File
+{
+    for (const auto& fh : _allFiles) {
+        if (fh._fileName == name) {
+            auto fs = fh._fileSize;
+            auto wt = fh._writeTime;
+            auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+            RUNTIME_ASSERT(buf);
+            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+        }
+    }
+    return File();
+}
+
+auto FileCollection::FindFileHeader(const string& name) const -> FileHeader
+{
+    for (const auto& fh : _allFiles) {
+        if (fh._fileName == name) {
+            return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
+        }
+    }
+    return FileHeader();
+}
+
+auto FileCollection::GetFilesCount() const -> uint
+{
+    return static_cast<uint>(_allFiles.size());
 }
 
 void FileManager::AddDataSource(const string& path, bool cache_dirs)
 {
-    dataSources.push_back(DataSource(path, cache_dirs));
+    _dataSources.emplace_back(path, cache_dirs);
+    _dataSourceAddedDispatcher(&_dataSources.back());
 }
 
-FileCollection FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs)
+auto FileManager::FilterFiles(const string& ext) -> FileCollection
+{
+    return FilterFiles(ext, "", true);
+}
+
+auto FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs) -> FileCollection
 {
     vector<FileHeader> files;
-    for (DataSource& ds : dataSources)
-    {
+
+    for (auto& ds : _dataSources) {
         StrVec file_names;
         ds.GetFileNames(dir, include_subdirs, ext, file_names);
 
-        for (string& fname : file_names)
-        {
-            uint size;
-            uint64 write_time;
-            bool ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
+        for (auto& fname : file_names) {
+            uint size = 0;
+            uint64 write_time = 0;
+            const auto ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
             RUNTIME_ASSERT(ok);
-            string name = _str(fname).extractFileName().eraseFileExtension();
-            files.push_back(FileHeader(name, fname, size, write_time, &ds));
+            const string name = _str(fname).extractFileName().eraseFileExtension();
+            auto file_header = FileHeader(name, fname, size, write_time, &ds);
+            files.push_back(std::move(file_header));
         }
     }
 
     return FileCollection(dir, std::move(files));
 }
 
-File FileManager::ReadFile(const string& path)
+auto FileManager::ReadFile(const string& path) -> File
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
 
-    string path_lower = _str(path).lower();
-    string name = _str(path).extractFileName().eraseFileExtension();
+    const string path_lower = _str(path).lower();
+    const string name = _str(path).extractFileName().eraseFileExtension();
 
-    for (auto& ds : dataSources)
-    {
-        uint file_size;
-        uint64 write_time;
-        uchar* buf = ds.OpenFile(path, path_lower, file_size, write_time);
-        if (buf)
+    for (auto& ds : _dataSources) {
+        uint file_size = 0;
+        uint64 write_time = 0;
+        auto* buf = ds.OpenFile(path, path_lower, file_size, write_time);
+        if (buf != nullptr) {
             return File(name, path, file_size, write_time, &ds, buf);
+        }
     }
     return File(name, path, 0, 0, nullptr, nullptr);
 }
 
-FileHeader FileManager::ReadFileHeader(const string& path)
+auto FileManager::ReadFileHeader(const string& path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
 
-    string path_lower = _str(path).lower();
-    string name = _str(path).extractFileName().eraseFileExtension();
+    const string path_lower = _str(path).lower();
+    const string name = _str(path).extractFileName().eraseFileExtension();
 
-    for (auto& ds : dataSources)
-    {
-        uint file_size;
-        uint64 write_time;
-        if (ds.IsFilePresent(path, path_lower, file_size, write_time))
+    for (auto& ds : _dataSources) {
+        uint file_size = 0;
+        uint64 write_time = 0;
+        if (ds.IsFilePresent(path, path_lower, file_size, write_time)) {
             return FileHeader(name, path, file_size, write_time, &ds);
+        }
     }
     return FileHeader(name, path, 0, 0, nullptr);
 }
 
-ConfigFile FileManager::ReadConfigFile(const string& path)
+auto FileManager::ReadConfigFile(const string& path) -> ConfigFile
 {
-    File file = ReadFile(path);
-    if (file)
+    const auto file = ReadFile(path);
+    if (file) {
         return ConfigFile(file.GetCStr());
+    }
     return ConfigFile("");
 }
 
-OutputFile FileManager::WriteFile(const string& path, bool apply)
+auto FileManager::WriteFile(const string& path, bool apply) -> OutputFile
 {
-    DiskFileSystem::SetCurrentDir(rootPath);
-    // Todo: handle apply file writing
-    DiskFile file = DiskFileSystem::OpenFile(path, true);
-    if (!file)
+    NON_CONST_METHOD_HINT(_rootPath);
+
+    DiskFileSystem::SetCurrentDir(_rootPath);
+    auto file = DiskFileSystem::OpenFile(path, true); // Todo: handle apply file writing
+    if (!file) {
         throw FileSystemExeption("Can't open file for writing", path, apply);
+    }
     return OutputFile(std::move(file));
 }
 
 void FileManager::DeleteFile(const string& path)
 {
-    DiskFileSystem::SetCurrentDir(rootPath);
+    NON_CONST_METHOD_HINT(_rootPath);
+
+    DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::DeleteFile(path);
 }
 
 void FileManager::DeleteDir(const string& path)
 {
-    DiskFileSystem::SetCurrentDir(rootPath);
+    NON_CONST_METHOD_HINT(_rootPath);
+
+    DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::DeleteDir(path);
 }
 
 void FileManager::RenameFile(const string& from_path, const string& to_path)
 {
-    DiskFileSystem::SetCurrentDir(rootPath);
+    NON_CONST_METHOD_HINT(_rootPath);
+
+    DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::RenameFile(from_path, to_path);
 }

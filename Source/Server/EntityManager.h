@@ -47,42 +47,48 @@ class MapManager;
 class CritterManager;
 class ItemManager;
 
-class EntityManager : public NonMovable
+class EntityManager final
 {
 public:
-    EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys,
-        DataBase* db_storage, GlobalVars* globs);
+    EntityManager() = delete;
+    EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, DataBase* db_storage, GlobalVars* globs);
+    EntityManager(const EntityManager&) = delete;
+    EntityManager(EntityManager&&) noexcept = delete;
+    auto operator=(const EntityManager&) = delete;
+    auto operator=(EntityManager&&) noexcept = delete;
+    ~EntityManager() = default;
 
     void RegisterEntity(Entity* entity);
     void UnregisterEntity(Entity* entity);
-    Entity* GetEntity(uint id, EntityType type);
+    auto GetEntity(uint id, EntityType type) -> Entity*;
     void GetEntities(EntityType type, EntityVec& entities);
-    uint GetEntitiesCount(EntityType type);
+    [[nodiscard]] auto GetEntitiesCount(EntityType type) const -> uint;
 
     void GetItems(ItemVec& items);
     void GetCritterItems(uint crid, ItemVec& items);
-    Critter* GetCritter(uint crid);
+    auto GetCritter(uint crid) -> Critter*;
     void GetCritters(CritterVec& critters);
-    Map* GetMapByPid(hash pid, uint skip_count);
+    auto GetMapByPid(hash pid, uint skip_count) -> Map*;
     void GetMaps(MapVec& maps);
-    Location* GetLocationByPid(hash pid, uint skip_count);
-    void GetLocations(LocationVec& locations);
+    auto GetLocationByPid(hash pid, uint skip_count) -> Location*;
+    void GetLocations(LocationVec& locs);
 
-    bool LoadEntities();
+    auto LoadEntities() -> bool;
     void ClearEntities();
 
 private:
-    bool LinkMaps();
-    bool LinkNpc();
-    bool LinkItems();
+    auto LinkMaps() -> bool;
+    auto LinkNpc() -> bool;
+    auto LinkItems() -> bool;
     void InitAfterLoad();
 
-    MapManager& mapMngr;
-    CritterManager& crMngr;
-    ItemManager& itemMngr;
-    ServerScriptSystem& scriptSys;
-    DataBase* dbStorage {};
-    GlobalVars* globals {};
-    EntityMap allEntities {};
-    uint entitiesCount[(int)EntityType::Max] {};
+    MapManager& _mapMngr;
+    CritterManager& _crMngr;
+    ItemManager& _itemMngr;
+    ServerScriptSystem& _scriptSys;
+    DataBase* _dbStorage {};
+    GlobalVars* _globals {};
+    EntityMap _allEntities {};
+    uint _entitiesCount[static_cast<int>(EntityType::Max)] {};
+    int _dummy {};
 };

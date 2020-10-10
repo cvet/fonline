@@ -32,12 +32,11 @@
 //
 
 // Todo: exclude server specific settings from client
+// Todo: remove VAR_SETTING; must stay only constant values
 
 #pragma once
 
 #include "Common.h"
-
-// Todo: remove VAR_SETTING must stay only constant values
 
 struct DummySettings
 {
@@ -49,13 +48,19 @@ struct DummySettings
 #define SETTING_GROUP_END() }
 #define SETTING(type, name, ...) const type name = {__VA_ARGS__}
 #define VAR_SETTING(type, name, ...) type name = {__VA_ARGS__}
-#include "Settings_Include.h"
+#include "Settings-Include.h"
 
 struct GlobalSettings : ClientSettings, MapperSettings, ServerSettings, BakerSettings
 {
 public:
     GlobalSettings() = default;
-    void ParseArgs(int argc, char** argv);
+    GlobalSettings(int argc, char** argv);
+    GlobalSettings(const GlobalSettings&) = default;
+    GlobalSettings(GlobalSettings&&) noexcept = default;
+    auto operator=(const GlobalSettings&) = delete;
+    auto operator=(GlobalSettings&&) noexcept = delete;
+    ~GlobalSettings() = default;
+
     void Draw(bool editable);
 
 private:

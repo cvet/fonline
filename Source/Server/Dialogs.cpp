@@ -41,37 +41,51 @@
 #include "Map.h"
 #include "StringUtils.h"
 
-static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash)
+static auto GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash) -> int
 {
-    Property* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
-    Property* prop_critter = Critter::PropertiesRegistrator->Find(str);
-    Property* prop_item = Item::PropertiesRegistrator->Find(str);
-    Property* prop_location = Location::PropertiesRegistrator->Find(str);
-    Property* prop_map = Map::PropertiesRegistrator->Find(str);
-    int count = (prop_global ? 1 : 0) + (prop_critter ? 1 : 0) + (prop_item ? 1 : 0) + (prop_location ? 1 : 0) +
-        (prop_map ? 1 : 0);
-    if (count == 0)
-    {
+    auto* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
+    auto* prop_critter = Critter::PropertiesRegistrator->Find(str);
+    auto* prop_item = Item::PropertiesRegistrator->Find(str);
+    auto* prop_location = Location::PropertiesRegistrator->Find(str);
+    auto* prop_map = Map::PropertiesRegistrator->Find(str);
+
+    auto count = 0;
+    count += prop_global != nullptr ? 1 : 0;
+    count += prop_critter != nullptr ? 1 : 0;
+    count += prop_item != nullptr ? 1 : 0;
+    count += prop_location != nullptr ? 1 : 0;
+    count += prop_map != nullptr ? 1 : 0;
+
+    if (count == 0) {
         WriteLog("DR property '{}' not found in GlobalVars/Critter/Item/Location/Map.\n", str);
         return -1;
     }
-    else if (count > 1)
-    {
+    if (count > 1) {
         WriteLog("DR property '{}' found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str);
         return -1;
     }
 
     Property* prop = nullptr;
-    if (prop_global)
-        prop = prop_global, type = DR_PROP_GLOBAL;
-    else if (prop_critter)
-        prop = prop_critter, type = DR_PROP_CRITTER;
-    else if (prop_item)
-        prop = prop_item, type = DR_PROP_ITEM;
-    else if (prop_location)
-        prop = prop_location, type = DR_PROP_LOCATION;
-    else if (prop_map)
-        prop = prop_map, type = DR_PROP_MAP;
+    if (prop_global != nullptr) {
+        prop = prop_global;
+        type = DR_PROP_GLOBAL;
+    }
+    else if (prop_critter != nullptr) {
+        prop = prop_critter;
+        type = DR_PROP_CRITTER;
+    }
+    else if (prop_item != nullptr) {
+        prop = prop_item;
+        type = DR_PROP_ITEM;
+    }
+    else if (prop_location != nullptr) {
+        prop = prop_location;
+        type = DR_PROP_LOCATION;
+    }
+    else if (prop_map != nullptr) {
+        prop = prop_map;
+        type = DR_PROP_MAP;
+    }
 
     /*if (type == DR_PROP_CRITTER && prop->IsDict())
     {
@@ -91,13 +105,11 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
         }
     }*/
 
-    if (is_demand && !prop->IsReadable())
-    {
+    if (is_demand && !prop->IsReadable()) {
         WriteLog("DR property '{}' is not readable.\n", str);
         return -1;
     }
-    else if (!is_demand && !prop->IsWritable())
-    {
+    if (!is_demand && !prop->IsWritable()) {
         WriteLog("DR property '{}' is not writable.\n", str);
         return -1;
     }
@@ -106,37 +118,33 @@ static int GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& 
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys) :
-    fileMngr {file_mngr}, scriptSys {script_sys}
+DialogManager::DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys) : _fileMngr {file_mngr}, _scriptSys {script_sys}
 {
 }
 
-bool DialogManager::LoadDialogs()
+auto DialogManager::LoadDialogs() -> bool
 {
     WriteLog("Load dialogs...\n");
 
-    dialogPacks.clear();
+    _dialogPacks.clear();
 
-    FileCollection files = fileMngr.FilterFiles("fodlg");
+    auto files = _fileMngr.FilterFiles("fodlg");
     uint files_loaded = 0;
-    while (files.MoveNext())
-    {
-        File file = files.GetCurFile();
-        if (!file)
-        {
+    while (files.MoveNext()) {
+        auto file = files.GetCurFile();
+        if (!file) {
             WriteLog("Unable to open file '{}'.\n", file.GetName());
             continue;
         }
 
-        DialogPack* pack = ParseDialog(file.GetName(), (char*)file.GetBuf());
-        if (!pack)
-        {
+        string pack_data = reinterpret_cast<const char*>(file.GetBuf());
+        auto* pack = ParseDialog(file.GetName(), pack_data);
+        if (pack == nullptr) {
             WriteLog("Unable to parse dialog '{}'.\n", file.GetName());
             continue;
         }
 
-        if (!AddDialog(pack))
-        {
+        if (!AddDialog(pack)) {
             WriteLog("Unable to add dialog '{}'.\n", file.GetName());
             continue;
         }
@@ -148,51 +156,50 @@ bool DialogManager::LoadDialogs()
     return files_loaded == files.GetFilesCount();
 }
 
-bool DialogManager::AddDialog(DialogPack* pack)
+auto DialogManager::AddDialog(DialogPack* pack) -> bool
 {
-    if (dialogPacks.count(pack->PackId))
-    {
+    if (_dialogPacks.count(pack->PackId) != 0u) {
         WriteLog("Dialog '{}' already added.\n", pack->PackName);
         return false;
     }
 
-    uint pack_id = pack->PackId & DLGID_MASK;
-    for (auto it = dialogPacks.begin(), end = dialogPacks.end(); it != end; ++it)
-    {
-        uint check_pack_id = it->first & DLGID_MASK;
-        if (pack_id == check_pack_id)
-        {
-            WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName, it->second->PackName);
+    const auto pack_id = static_cast<hash>(pack->PackId & DLGID_MASK);
+    for (auto& [fst, snd] : _dialogPacks) {
+        const auto check_pack_id = static_cast<hash>(fst & DLGID_MASK);
+        if (pack_id == check_pack_id) {
+            WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName, snd->PackName);
             return false;
         }
     }
 
-    dialogPacks.insert(std::make_pair(pack->PackId, pack));
+    _dialogPacks.insert(std::make_pair(pack->PackId, pack));
     return true;
 }
 
-DialogPack* DialogManager::GetDialog(hash pack_id)
+auto DialogManager::GetDialog(hash pack_id) -> DialogPack*
 {
-    auto it = dialogPacks.find(pack_id);
-    return it != dialogPacks.end() ? it->second.get() : nullptr;
+    const auto it = _dialogPacks.find(pack_id);
+    return it != _dialogPacks.end() ? it->second.get() : nullptr;
 }
 
-DialogPack* DialogManager::GetDialogByIndex(uint index)
+auto DialogManager::GetDialogByIndex(uint index) -> DialogPack*
 {
-    auto it = dialogPacks.begin();
-    while (index-- && it != dialogPacks.end())
+    auto it = _dialogPacks.begin();
+    while (index-- != 0u && it != _dialogPacks.end()) {
         ++it;
-    return it != dialogPacks.end() ? it->second.get() : nullptr;
+    }
+    return it != _dialogPacks.end() ? it->second.get() : nullptr;
 }
 
 void DialogManager::EraseDialog(hash pack_id)
 {
-    auto it = dialogPacks.find(pack_id);
-    if (it != dialogPacks.end())
-        dialogPacks.erase(it);
+    const auto it = _dialogPacks.find(pack_id);
+    if (it != _dialogPacks.end()) {
+        _dialogPacks.erase(it);
+    }
 }
 
-DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& data)
+auto DialogManager::ParseDialog(const string& pack_name, const string& data) -> DialogPack*
 {
     ConfigFile fodlg {""};
     fodlg.CollectContent();
@@ -206,8 +213,8 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
     }
 #define VERIFY_STR_ID(str_id) (uint(str_id) <= ~DLGID_MASK)
 
-    DialogPack* pack = new DialogPack();
-    string dlg_buf = fodlg.GetAppContent("dialog");
+    auto* pack = new DialogPack();
+    auto dlg_buf = fodlg.GetAppContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
     pack->PackId = _str(pack_name).toHash();
@@ -218,101 +225,99 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
     pack->Comment = fodlg.GetAppContent("comment");
 
     // Texts
-    string lang_key = fodlg.GetStr("data", "lang");
+    auto lang_key = fodlg.GetStr("data", "lang", "");
     if (lang_key.empty())
-        LOAD_FAIL("Lang app not found.");
+        LOAD_FAIL("Lang app not found.")
 
     // Check dialog pack
     if (pack->PackId <= 0xFFFF)
-        LOAD_FAIL("Invalid hash for dialog name.");
+        LOAD_FAIL("Invalid hash for dialog name.")
 
     lang_apps = _str(lang_key).split(' ');
     if (lang_apps.empty())
-        LOAD_FAIL("Lang app is empty.");
+        LOAD_FAIL("Lang app is empty.")
 
-    for (uint i = 0, j = (uint)lang_apps.size(); i < j; i++)
-    {
-        string& lang_app = lang_apps[i];
+    for (size_t i = 0; i < lang_apps.size(); i++) {
+        auto& lang_app = lang_apps[i];
         if (lang_app.size() != 4)
-            LOAD_FAIL("Language length not equal 4.");
+            LOAD_FAIL("Language length not equal 4.")
 
         lang_buf = fodlg.GetAppContent(lang_app);
         if (lang_buf.empty())
-            LOAD_FAIL("One of the lang section not found.");
+            LOAD_FAIL("One of the lang section not found.")
 
         FOMsg temp_msg;
         if (!temp_msg.LoadFromString(lang_buf))
-            LOAD_FAIL("Load MSG fail.");
+            LOAD_FAIL("Load MSG fail.")
 
-        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK))
-            LOAD_FAIL("Text have any text with index greather than 4000.");
+        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0u)
+            LOAD_FAIL("Text have any text with index greather than 4000.")
 
-        pack->TextsLang.push_back(*(uint*)lang_app.c_str());
+        pack->TextsLang.push_back(*reinterpret_cast<const uint*>(lang_app.c_str()));
         pack->Texts.push_back(new FOMsg());
 
         uint str_num = 0;
-        while ((str_num = temp_msg.GetStrNumUpper(str_num)))
-        {
-            uint count = temp_msg.Count(str_num);
-            uint new_str_num =
-                DLG_STR_ID(pack->PackId, (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
-            for (uint n = 0; n < count; n++)
+        while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
+            const auto count = temp_msg.Count(str_num);
+            const auto new_str_num = DLG_STR_ID(pack->PackId, (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
+            for (uint n = 0; n < count; n++) {
                 pack->Texts[i]->AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
+            }
         }
     }
 
     // Dialog
     if (dlg_buf.empty())
-        LOAD_FAIL("Dialog section not found.");
+        LOAD_FAIL("Dialog section not found.")
 
-    char ch;
+    char ch = 0;
     input >> ch;
-    if (ch != '&')
+    if (ch != '&') {
         return nullptr;
+    }
 
-    uint dlg_id;
-    uint text_id;
-    uint link;
+    uint dlg_id = 0;
+    uint text_id = 0;
+    uint link = 0;
     string read_str;
 
     ScriptFunc<string, Critter*, Critter*> script;
-    uint flags;
+    uint flags = 0;
 
-    while (true)
-    {
+    while (true) {
         input >> dlg_id;
-        if (input.eof())
+        if (input.eof()) {
             break;
+        }
         if (input.fail())
-            LOAD_FAIL("Bad dialog id number.");
+            LOAD_FAIL("Bad dialog id number.")
         input >> text_id;
         if (input.fail())
-            LOAD_FAIL("Bad text link.");
+            LOAD_FAIL("Bad text link.")
         if (!VERIFY_STR_ID(text_id / 10))
-            LOAD_FAIL("Invalid text link value.");
+            LOAD_FAIL("Invalid text link value.")
         input >> read_str;
         if (input.fail())
-            LOAD_FAIL("Bad not answer action.");
+            LOAD_FAIL("Bad not answer action.")
         script = GetNotAnswerAction(read_str);
-        if (!script)
-        {
+        if (!script) {
             WriteLog("Unable to parse '{}'.\n", read_str);
-            LOAD_FAIL("Invalid not answer action.");
+            LOAD_FAIL("Invalid not answer action.")
         }
         input >> flags;
         if (input.fail())
-            LOAD_FAIL("Bad flags.");
+            LOAD_FAIL("Bad flags.")
 
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
         current_dialog.TextId = DLG_STR_ID(pack->PackId, text_id / 10);
         current_dialog.DlgScriptFunc = script;
-        current_dialog.Flags = flags;
+        current_dialog.NoShuffle = ((flags & 1) == 1);
 
         // Read answers
         input >> ch;
         if (input.fail())
-            LOAD_FAIL("Dialog corrupted.");
+            LOAD_FAIL("Dialog corrupted.")
         if (ch == '@') // End of current dialog node
         {
             pack->Dialogs.push_back(current_dialog);
@@ -324,59 +329,57 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
             break;
         }
         if (ch != '#')
-            LOAD_FAIL("Parse error 0.");
+            LOAD_FAIL("Parse error 0.")
 
-        while (!input.eof())
-        {
+        while (!input.eof()) {
             input >> link;
             if (input.fail())
-                LOAD_FAIL("Bad link in answer.");
+                LOAD_FAIL("Bad link in answer.")
             input >> text_id;
             if (input.fail())
-                LOAD_FAIL("Bad text link in answer.");
+                LOAD_FAIL("Bad text link in answer.")
             if (!VERIFY_STR_ID(text_id / 10))
-                LOAD_FAIL("Invalid text link value in answer.");
+                LOAD_FAIL("Invalid text link value in answer.")
             DialogAnswer current_answer;
             current_answer.Link = link;
             current_answer.TextId = DLG_STR_ID(pack->PackId, text_id / 10);
 
-            while (true)
-            {
+            while (true) {
                 input >> ch;
                 if (input.fail())
-                    LOAD_FAIL("Parse answer character fail.");
+                    LOAD_FAIL("Parse answer character fail.")
 
                 // Demands
-                if (ch == 'D')
-                {
-                    DemandResult* d = LoadDemandResult(input, true);
-                    if (!d)
-                        LOAD_FAIL("Demand not loaded.");
+                if (ch == 'D') {
+                    auto* d = LoadDemandResult(input, true);
+                    if (d == nullptr)
+                        LOAD_FAIL("Demand not loaded.")
+
                     current_answer.Demands.push_back(*d);
                 }
                 // Results
-                else if (ch == 'R')
-                {
-                    DemandResult* r = LoadDemandResult(input, false);
-                    if (!r)
-                        LOAD_FAIL("Result not loaded.");
+                else if (ch == 'R') {
+                    auto* r = LoadDemandResult(input, false);
+                    if (r == nullptr)
+                        LOAD_FAIL("Result not loaded.")
+
                     current_answer.Results.push_back(*r);
                 }
-                else if (ch == '*' || ch == 'd' || ch == 'r')
-                {
-                    LOAD_FAIL("Found old token, update dialog file to actual format (resave in version 2.22).");
+                else if (ch == '*' || ch == 'd' || ch == 'r') {
+                    LOAD_FAIL("Found old token, update dialog file to actual format (resave in version 2.22).")
                 }
-                else
-                {
+                else {
                     break;
                 }
             }
             current_dialog.Answers.push_back(current_answer);
 
-            if (ch == '#')
+            if (ch == '#') {
                 continue; // Next
-            if (ch == '@')
+            }
+            if (ch == '@') {
                 break; // End of current dialog node
+            }
             if (ch == '&') // End of all
             {
                 pack->Dialogs.push_back(current_dialog);
@@ -389,83 +392,80 @@ DialogPack* DialogManager::ParseDialog(const string& pack_name, const string& da
     return pack;
 }
 
-DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_demand)
+auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
 {
-    bool fail = false;
+    NON_CONST_METHOD_HINT(_dummy);
+
+    auto fail = false;
     char who = DR_WHO_PLAYER;
-    char oper = '=';
-    int values_count = 0;
+    auto oper = '=';
+    auto values_count = 0;
     string svalue;
-    int ivalue = 0;
+    auto ivalue = 0;
     max_t id = 0;
     string type_str;
     string name;
-    bool no_recheck = false;
-    bool ret_value = false;
+    auto no_recheck = false;
+    const auto ret_value = false;
 
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
-    if (input.fail())
-    {
+    if (input.fail()) {
         WriteLog("Parse DR type fail.\n");
         return nullptr;
     }
 
-    int type = GetDRType(type_str);
-    if (type == DR_NO_RECHECK)
-    {
+    int type = GetDrType(type_str);
+    if (type == DR_NO_RECHECK) {
         no_recheck = true;
         input >> type_str;
-        if (input.fail())
-        {
+        if (input.fail()) {
             WriteLog("Parse DR type fail2.\n");
             return nullptr;
         }
-        type = GetDRType(type_str);
+        type = GetDrType(type_str);
     }
 
-    switch (type)
-    {
+    switch (type) {
     case DR_PROP_CRITTER: {
         // Who
         input >> who;
         who = GetWho(who);
-        if (who == DR_WHO_NONE)
-        {
+        if (who == DR_WHO_NONE) {
             WriteLog("Invalid DR property who '{}'.\n", who);
             fail = true;
         }
 
         // Name
         input >> name;
-        bool is_hash = false;
-        id = (max_t)GetPropEnumIndex(name, is_demand, type, is_hash);
-        if (id == (max_t)-1)
+        auto is_hash = false;
+        id = static_cast<max_t>(GetPropEnumIndex(name, is_demand, type, is_hash));
+        if (id == static_cast<max_t>(-1)) {
             fail = true;
+        }
 
         // Operator
         input >> oper;
-        if (!CheckOper(oper))
-        {
+        if (!CheckOper(oper)) {
             WriteLog("Invalid DR property oper '{}'.\n", oper);
             fail = true;
         }
 
         // Value
         input >> svalue;
-        if (is_hash)
-            ivalue = (int)_str(svalue).toHash();
-        else
+        if (is_hash) {
+            ivalue = static_cast<int>(_str(svalue).toHash());
+        }
+        else {
             ivalue = GenericUtils::ConvertParamValue(svalue, fail);
-    }
-    break;
+        }
+    } break;
     case DR_ITEM: {
         // Who
         input >> who;
         who = GetWho(who);
-        if (who == DR_WHO_NONE)
-        {
+        if (who == DR_WHO_NONE) {
             WriteLog("Invalid DR item who '{}'.\n", who);
             fail = true;
         }
@@ -477,8 +477,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
 
         // Operator
         input >> oper;
-        if (!CheckOper(oper))
-        {
+        if (!CheckOper(oper)) {
             WriteLog("Invalid DR item oper '{}'.\n", oper);
             fail = true;
         }
@@ -486,8 +485,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
         // Value
         input >> svalue;
         ivalue = GenericUtils::ConvertParamValue(svalue, fail);
-    }
-    break;
+    } break;
     case DR_SCRIPT: {
         // Script name
         input >> name;
@@ -499,21 +497,20 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
 #define READ_SCRIPT_VALUE_(val) \
     { \
         input >> value_str; \
-        val = GenericUtils::ConvertParamValue(value_str, fail); \
+        (val) = GenericUtils::ConvertParamValue(value_str, fail); \
     }
         char value_str[MAX_FOTEXT];
         if (values_count > 0)
-            READ_SCRIPT_VALUE_(script_val[0]);
+            READ_SCRIPT_VALUE_(script_val[0])
         if (values_count > 1)
-            READ_SCRIPT_VALUE_(script_val[1]);
+            READ_SCRIPT_VALUE_(script_val[1])
         if (values_count > 2)
-            READ_SCRIPT_VALUE_(script_val[2]);
+            READ_SCRIPT_VALUE_(script_val[2])
         if (values_count > 3)
-            READ_SCRIPT_VALUE_(script_val[3]);
+            READ_SCRIPT_VALUE_(script_val[3])
         if (values_count > 4)
-            READ_SCRIPT_VALUE_(script_val[4]);
-        if (values_count > 5)
-        {
+            READ_SCRIPT_VALUE_(script_val[4])
+        if (values_count > 5) {
             WriteLog("Invalid DR script values count {}.\n", values_count);
             values_count = 0;
             fail = true;
@@ -577,8 +574,7 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
             WriteLog("Script '{}' bind error.\n", name);
             return nullptr;
         }*/
-    }
-    break;
+    } break;
     case DR_OR:
         break;
     default:
@@ -586,66 +582,76 @@ DemandResult* DialogManager::LoadDemandResult(istringstream& input, bool is_dema
     }
 
     // Validate parsing
-    if (input.fail())
-    {
+    if (input.fail()) {
         WriteLog("DR parse fail.\n");
         fail = true;
     }
 
     // Fill
-    static DemandResult result;
-    result.Type = type;
-    result.Who = who;
-    result.ParamId = id;
-    result.Op = oper;
-    result.ValuesCount = values_count;
-    result.NoRecheck = no_recheck;
-    result.RetValue = ret_value;
-    result.Value = ivalue;
-    result.ValueExt[0] = script_val[0];
-    result.ValueExt[1] = script_val[1];
-    result.ValueExt[2] = script_val[2];
-    result.ValueExt[3] = script_val[3];
-    result.ValueExt[4] = script_val[4];
-    if (fail)
+    auto* result = new DemandResult();
+    result->Type = type;
+    result->Who = who;
+    result->ParamId = id;
+    result->Op = oper;
+    result->ValuesCount = values_count;
+    result->NoRecheck = no_recheck;
+    result->RetValue = ret_value;
+    result->Value = ivalue;
+    result->ValueExt[0] = script_val[0];
+    result->ValueExt[1] = script_val[1];
+    result->ValueExt[2] = script_val[2];
+    result->ValueExt[3] = script_val[3];
+    result->ValueExt[4] = script_val[4];
+
+    if (fail) {
         return nullptr;
-    return &result;
+    }
+    return result;
 }
 
-ScriptFunc<string, Critter*, Critter*> DialogManager::GetNotAnswerAction(const string& str)
+auto DialogManager::GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>
 {
-    if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None")
+    NON_CONST_METHOD_HINT(_dummy);
+
+    if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None") {
         return {};
+    }
 
-    return scriptSys.FindFunc<string, Critter*, Critter*>(str);
+    return _scriptSys.FindFunc<string, Critter*, Critter*>(str);
 }
 
-char DialogManager::GetDRType(const string& str)
+auto DialogManager::GetDrType(const string& str) -> char
 {
-    if (str == "Property" || str == "_param")
+    if (str == "Property" || str == "_param") {
         return DR_PROP_CRITTER;
-    else if (str == "Item" || str == "_item")
+    }
+    if (str == "Item" || str == "_item") {
         return DR_ITEM;
-    else if (str == "Script" || str == "_script")
+    }
+    if (str == "Script" || str == "_script") {
         return DR_SCRIPT;
-    else if (str == "NoRecheck" || str == "no_recheck")
+    }
+    if (str == "NoRecheck" || str == "no_recheck") {
         return DR_NO_RECHECK;
-    else if (str == "Or" || str == "or")
+    }
+    if (str == "Or" || str == "or") {
         return DR_OR;
+    }
     return DR_NONE;
 }
 
-char DialogManager::GetWho(char who)
+auto DialogManager::GetWho(char who) -> char
 {
-    if (who == 'P' || who == 'p')
+    if (who == 'P' || who == 'p') {
         return DR_WHO_PLAYER;
-    else if (who == 'N' || who == 'n')
+    }
+    if (who == 'N' || who == 'n') {
         return DR_WHO_PLAYER;
+    }
     return DR_WHO_NONE;
 }
 
-bool DialogManager::CheckOper(char oper)
+auto DialogManager::CheckOper(char oper) -> bool
 {
-    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' ||
-        oper == '=' || oper == '!' || oper == '}' || oper == '{';
+    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '=' || oper == '!' || oper == '}' || oper == '{';
 }

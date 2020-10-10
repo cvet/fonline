@@ -40,23 +40,28 @@
 
 DECLARE_EXCEPTION(CacheStorageException);
 
-class CacheStorage : public NonMovable
+class CacheStorage final
 {
 public:
-    CacheStorage(const string& real_path);
+    explicit CacheStorage(const string& real_path);
+    CacheStorage(const CacheStorage&) = delete;
+    CacheStorage(CacheStorage&&) noexcept;
+    auto operator=(const CacheStorage&) = delete;
+    auto operator=(CacheStorage&&) noexcept = delete;
     ~CacheStorage();
-    CacheStorage(CacheStorage&&);
-    bool IsCache(const string& data_name);
-    void EraseCache(const string& data_name);
-    void SetCache(const string& data_name, const uchar* data, uint data_len);
-    void SetCache(const string& data_name, const string& str);
-    void SetCache(const string& data_name, UCharVec& data);
-    uchar* GetCache(const string& data_name, uint& data_len);
-    string GetCache(const string& data_name);
-    bool GetCache(const string& data_name, UCharVec& data);
+
+    [[nodiscard]] auto HasEntry(const string& entry_name) const -> bool;
+    [[nodiscard]] auto GetRawData(const string& entry_name, uint& data_len) const -> uchar*;
+    [[nodiscard]] auto GetString(const string& entry_name) const -> string;
+    [[nodiscard]] auto GetData(const string& entry_name) const -> UCharVec;
+
+    void SetRawData(const string& entry_name, const uchar* data, uint data_len);
+    void SetString(const string& entry_name, const string& str);
+    void SetData(const string& entry_name, const UCharVec& data);
+    void EraseEntry(const string& entry_name);
 
 private:
     struct Impl;
-    unique_ptr<Impl> pImpl {};
-    string workPath {};
+    unique_ptr<Impl> _pImpl {};
+    string _workPath {};
 };

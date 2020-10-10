@@ -36,71 +36,72 @@
 #include "Sprites.h"
 #include "Settings.h"
 #include "SpriteManager.h"
-#include "Testing.h"
 
-SpriteVec Sprites::spritesPool;
-
-Sprite::Sprite()
-{
-    memzero(this, sizeof(Sprite));
-}
+SpriteVec Sprites::_spritesPool;
 
 void Sprite::Unvalidate()
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
     Valid = false;
 
-    if (ValidCallback)
-    {
+    if (ValidCallback != nullptr) {
         *ValidCallback = false;
         ValidCallback = nullptr;
     }
 
-    if (Parent)
-    {
+    if (Parent != nullptr) {
         Parent->Child = nullptr;
         Parent->Unvalidate();
     }
-    if (Child)
-    {
+    if (Child != nullptr) {
         Child->Parent = nullptr;
         Child->Unvalidate();
     }
 
-    if (ExtraChainRoot)
+    if (ExtraChainRoot != nullptr) {
         *ExtraChainRoot = ExtraChainChild;
-    if (ExtraChainParent)
+    }
+    if (ExtraChainParent != nullptr) {
         ExtraChainParent->ExtraChainChild = ExtraChainChild;
-    if (ExtraChainChild)
+    }
+    if (ExtraChainChild != nullptr) {
         ExtraChainChild->ExtraChainParent = ExtraChainParent;
-    if (ExtraChainRoot && ExtraChainChild)
+    }
+    if (ExtraChainRoot != nullptr && ExtraChainChild != nullptr) {
         ExtraChainChild->ExtraChainRoot = ExtraChainRoot;
+    }
     ExtraChainRoot = nullptr;
     ExtraChainParent = nullptr;
     ExtraChainChild = nullptr;
 
-    if (MapSpr)
-    {
+    if (MapSpr != nullptr) {
         // Todo: MapSprite releasing
         // MapSpr->Release();
         MapSpr = nullptr;
     }
 
-    Root->unvalidatedSprites.push_back(this);
+    Root->_unvalidatedSprites.push_back(this);
 
-    if (ChainRoot)
+    if (ChainRoot != nullptr) {
         *ChainRoot = ChainChild;
-    if (ChainLast)
+    }
+    if (ChainLast != nullptr) {
         *ChainLast = ChainParent;
-    if (ChainParent)
+    }
+    if (ChainParent != nullptr) {
         ChainParent->ChainChild = ChainChild;
-    if (ChainChild)
+    }
+    if (ChainChild != nullptr) {
         ChainChild->ChainParent = ChainParent;
-    if (ChainRoot && ChainChild)
+    }
+    if (ChainRoot != nullptr && ChainChild != nullptr) {
         ChainChild->ChainRoot = ChainRoot;
-    if (ChainLast && ChainParent)
+    }
+    if (ChainLast != nullptr && ChainParent != nullptr) {
         ChainParent->ChainLast = ChainLast;
+    }
     ChainRoot = nullptr;
     ChainLast = nullptr;
     ChainParent = nullptr;
@@ -109,25 +110,28 @@ void Sprite::Unvalidate()
     Root = nullptr;
 }
 
-Sprite* Sprite::GetIntersected(int ox, int oy)
+auto Sprite::GetIntersected(int ox, int oy) -> Sprite*
 {
     // Check for cutting
-    if (ox < 0 || oy < 0)
+    if (ox < 0 || oy < 0) {
         return nullptr;
-    if (!CutType)
-        return Root->sprMngr.IsPixNoTransp(PSprId ? *PSprId : SprId, ox, oy) ? this : nullptr;
+    }
+    if (CutType == 0) {
+        return Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
+    }
 
     // Find root sprite
-    Sprite* spr = this;
-    while (spr->Parent)
+    auto* spr = this;
+    while (spr->Parent != nullptr) {
         spr = spr->Parent;
+    }
 
     // Check sprites
-    float oxf = (float)ox * Root->settings.SpritesZoom;
-    while (spr)
-    {
-        if (oxf >= spr->CutX && oxf < spr->CutX + spr->CutW)
-            return Root->sprMngr.IsPixNoTransp(spr->PSprId ? *spr->PSprId : spr->SprId, ox, oy) ? spr : nullptr;
+    const auto oxf = static_cast<float>(ox) * Root->_settings.SpritesZoom;
+    while (spr != nullptr) {
+        if (oxf >= spr->CutX && oxf < spr->CutX + spr->CutW) {
+            return Root->_sprMngr.IsPixNoTransp(spr->PSprId != nullptr ? *spr->PSprId : spr->SprId, ox, oy, true) ? spr : nullptr;
+        }
         spr = spr->Child;
     }
     return nullptr;
@@ -135,102 +139,119 @@ Sprite* Sprite::GetIntersected(int ox, int oy)
 
 void Sprite::SetEgg(int egg)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     EggType = egg;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetEgg(egg);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetEgg(egg);
+    }
     Valid = true;
 }
 
 void Sprite::SetContour(int contour)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     ContourType = contour;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetContour(contour);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetContour(contour);
+    }
     Valid = true;
 }
 
 void Sprite::SetContour(int contour, uint color)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     ContourType = contour;
     ContourColor = color;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetContour(contour, color);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetContour(contour, color);
+    }
     Valid = true;
 }
 
 void Sprite::SetColor(uint color)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     Color = color;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetColor(color);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetColor(color);
+    }
     Valid = true;
 }
 
 void Sprite::SetAlpha(uchar* alpha)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     Alpha = alpha;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetAlpha(alpha);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetAlpha(alpha);
+    }
     Valid = true;
 }
 
 void Sprite::SetFlash(uint mask)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
     FlashMask = mask;
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetFlash(mask);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetFlash(mask);
+    }
     Valid = true;
 }
 
 void Sprite::SetLight(int corner, uchar* light, int maxhx, int maxhy)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
 
-    if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1)
-    {
+    if (HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1) {
         Light = &light[HexY * maxhx * 3 + HexX * 3];
 
-        switch (corner)
-        {
+        switch (corner) {
         default:
         case CORNER_EAST_WEST:
         case CORNER_EAST:
@@ -239,142 +260,132 @@ void Sprite::SetLight(int corner, uchar* light, int maxhx, int maxhy)
             break;
         case CORNER_NORTH_SOUTH:
         case CORNER_WEST:
-            LightRight = Light + (maxhx * 3);
-            LightLeft = Light - (maxhx * 3);
+            LightRight = Light + maxhx * 3;
+            LightLeft = Light - maxhx * 3;
             break;
         case CORNER_SOUTH:
             LightRight = Light - 3;
-            LightLeft = Light - (maxhx * 3);
+            LightLeft = Light - maxhx * 3;
             break;
         case CORNER_NORTH:
-            LightRight = Light + (maxhx * 3);
+            LightRight = Light + maxhx * 3;
             LightLeft = Light + 3;
             break;
         }
     }
-    else
-    {
+    else {
         Light = nullptr;
         LightRight = nullptr;
         LightLeft = nullptr;
     }
 
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetLight(corner, light, maxhx, maxhy);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetLight(corner, light, maxhx, maxhy);
+    }
 
     Valid = true;
 }
 
 void Sprite::SetFixedAlpha(uchar alpha)
 {
-    if (!Valid)
+    if (!Valid) {
         return;
+    }
 
     Valid = false;
 
-    Alpha = ((uchar*)&Color) + 3;
+    Alpha = reinterpret_cast<uchar*>(&Color) + 3;
     *Alpha = alpha;
 
-    if (Parent)
+    if (Parent != nullptr) {
         Parent->SetFixedAlpha(alpha);
-    if (Child)
+    }
+    if (Child != nullptr) {
         Child->SetFixedAlpha(alpha);
+    }
 
     Valid = true;
 }
 
 void Sprites::GrowPool()
 {
-    spritesPool.reserve(spritesPool.size() + SPRITES_POOL_GROW_SIZE);
-    for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++)
-        spritesPool.push_back(new Sprite());
-}
-
-Sprites::Sprites(HexSettings& sett, SpriteManager& spr_mngr) :
-    settings {sett}, sprMngr(spr_mngr), rootSprite {}, lastSprite {}, spriteCount {}, unvalidatedSprites {}
-{
-}
-
-Sprites::~Sprites()
-{
-    Clear();
-}
-
-Sprite* Sprites::RootSprite()
-{
-    return rootSprite;
-}
-
-Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy,
-    uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
-{
-    spriteCount++;
-
-    Sprite* spr;
-    if (!unvalidatedSprites.empty())
-    {
-        spr = unvalidatedSprites.back();
-        unvalidatedSprites.pop_back();
+    _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
+    for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
+        _spritesPool.push_back(new Sprite());
     }
-    else
-    {
-        if (spritesPool.empty())
-            GrowPool();
+}
 
-        spr = spritesPool.back();
-        spritesPool.pop_back();
+auto Sprites::RootSprite() -> Sprite*
+{
+    NON_CONST_METHOD_HINT(_spriteCount);
+
+    return _rootSprite;
+}
+
+auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+{
+    _spriteCount++;
+
+    Sprite* spr = nullptr;
+    if (!_unvalidatedSprites.empty()) {
+        spr = _unvalidatedSprites.back();
+        _unvalidatedSprites.pop_back();
+    }
+    else {
+        if (_spritesPool.empty()) {
+            GrowPool();
+        }
+
+        spr = _spritesPool.back();
+        _spritesPool.pop_back();
     }
 
     spr->Root = this;
 
-    if (!child)
-    {
-        if (!lastSprite)
-        {
-            rootSprite = spr;
-            lastSprite = spr;
-            spr->ChainRoot = &rootSprite;
-            spr->ChainLast = &lastSprite;
+    if (child == nullptr) {
+        if (_lastSprite == nullptr) {
+            _rootSprite = spr;
+            _lastSprite = spr;
+            spr->ChainRoot = &_rootSprite;
+            spr->ChainLast = &_lastSprite;
             spr->ChainParent = nullptr;
             spr->ChainChild = nullptr;
             spr->TreeIndex = 0;
         }
-        else
-        {
-            spr->ChainParent = lastSprite;
+        else {
+            spr->ChainParent = _lastSprite;
             spr->ChainChild = nullptr;
-            lastSprite->ChainChild = spr;
-            lastSprite->ChainLast = nullptr;
-            spr->ChainLast = &lastSprite;
-            spr->TreeIndex = lastSprite->TreeIndex + 1;
-            lastSprite = spr;
+            _lastSprite->ChainChild = spr;
+            _lastSprite->ChainLast = nullptr;
+            spr->ChainLast = &_lastSprite;
+            spr->TreeIndex = _lastSprite->TreeIndex + 1;
+            _lastSprite = spr;
         }
     }
-    else
-    {
+    else {
         spr->ChainChild = child;
         spr->ChainParent = child->ChainParent;
         child->ChainParent = spr;
-        if (spr->ChainParent)
+        if (spr->ChainParent != nullptr) {
             spr->ChainParent->ChainChild = spr;
+        }
 
         // Recalculate indices
-        uint index = (spr->ChainParent ? spr->ChainParent->TreeIndex + 1 : 0);
-        Sprite* spr_ = spr;
-        while (spr_)
-        {
+        auto index = spr->ChainParent != nullptr ? spr->ChainParent->TreeIndex + 1 : 0;
+        auto* spr_ = spr;
+        while (spr_ != nullptr) {
             spr_->TreeIndex = index;
             spr_ = spr_->ChainChild;
             index++;
         }
 
-        if (!spr->ChainParent)
-        {
+        if (spr->ChainParent == nullptr) {
             RUNTIME_ASSERT(child->ChainRoot);
-            rootSprite = spr;
-            spr->ChainRoot = &rootSprite;
+            _rootSprite = spr;
+            spr->ChainRoot = &_rootSprite;
             child->ChainRoot = nullptr;
         }
     }
@@ -396,8 +407,9 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
     spr->LightLeft = nullptr;
     spr->Valid = true;
     spr->ValidCallback = callback;
-    if (callback)
+    if (callback != nullptr) {
         *callback = true;
+    }
     spr->EggType = 0;
     spr->ContourType = 0;
     spr->ContourColor = 0;
@@ -408,49 +420,48 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
     spr->Child = nullptr;
 
     // Cutting
-    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL)
-    {
-        bool hor = (cut == SPRITE_CUT_HORIZONTAL);
+    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL) {
+        const auto hor = cut == SPRITE_CUT_HORIZONTAL;
 
-        int stepi = settings.MapHexWidth / 2;
-        if (settings.MapHexagonal && hor)
-            stepi = (settings.MapHexWidth + settings.MapHexWidth / 2) / 2;
-        float stepf = (float)stepi;
+        auto stepi = _settings.MapHexWidth / 2;
+        if (_settings.MapHexagonal && hor) {
+            stepi = (_settings.MapHexWidth + _settings.MapHexWidth / 2) / 2;
+        }
+        const auto stepf = static_cast<float>(stepi);
 
-        SpriteInfo* si = sprMngr.GetSpriteInfo(id_ptr ? *id_ptr : id);
-        if (!si || si->Width < stepi * 2)
+        const auto* si = _sprMngr.GetSpriteInfo(id_ptr != nullptr ? *id_ptr : id);
+        if (si == nullptr || si->Width < stepi * 2) {
             return *spr;
+        }
 
         spr->CutType = cut;
 
-        int h1, h2;
-        if (hor)
-        {
+        int h1 = 0;
+        int h2 = 0;
+        if (hor) {
             h1 = spr->HexX + si->Width / 2 / stepi;
-            h2 = spr->HexX - si->Width / 2 / stepi - (si->Width / 2 % stepi ? 1 : 0);
+            h2 = spr->HexX - si->Width / 2 / stepi - (si->Width / 2 % stepi != 0 ? 1 : 0);
             spr->HexX = h1;
         }
-        else
-        {
+        else {
             h1 = spr->HexY - si->Width / 2 / stepi;
-            h2 = spr->HexY + si->Width / 2 / stepi + (si->Width / 2 % stepi ? 1 : 0);
+            h2 = spr->HexY + si->Width / 2 / stepi + (si->Width / 2 % stepi != 0 ? 1 : 0);
             spr->HexY = h1;
         }
 
-        float widthf = (float)si->Width;
-        float xx = 0.0f;
-        Sprite* parent = spr;
-        for (int i = h1;;)
-        {
-            float ww = stepf;
-            if (xx + ww > widthf)
+        const auto widthf = static_cast<float>(si->Width);
+        auto xx = 0.0f;
+        auto* parent = spr;
+        for (auto i = h1;;) {
+            auto ww = stepf;
+            if (xx + ww > widthf) {
                 ww = widthf - xx;
+            }
 
-            Sprite& spr_ = (i != h1 ? PutSprite(nullptr, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, sx, sy, id,
-                                          id_ptr, ox, oy, alpha, effect, nullptr) :
-                                      *spr);
-            if (i != h1)
+            auto& spr_ = i != h1 ? PutSprite(nullptr, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, nullptr) : *spr;
+            if (i != h1) {
                 spr_.Parent = parent;
+            }
             parent->Child = &spr_;
             parent = &spr_;
 
@@ -460,65 +471,58 @@ Sprite& Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cu
             spr_.CutTexR = si->SprRect.L + (si->SprRect.R - si->SprRect.L) * ((xx + ww) / widthf);
             spr_.CutType = cut;
 
-            if (settings.ShowSpriteCuts)
-            {
+            if (_settings.ShowSpriteCuts) {
                 spr_.CutOyL = (hor ? -6 : -12) * ((hor ? hx : hy) - i);
                 spr_.CutOyR = spr_.CutOyL;
-                if (ww < stepf)
-                    spr_.CutOyR += (int)((hor ? 3.6f : -8.0f) * (1.0f - (ww / stepf)));
+                if (ww < stepf) {
+                    spr_.CutOyR += static_cast<int>((hor ? 3.6f : -8.0f) * (1.0f - ww / stepf));
+                }
             }
 
             xx += stepf;
-            if (xx > widthf)
+            if (xx > widthf) {
                 break;
+            }
 
-            if ((hor && --i < h2) || (!hor && ++i > h2))
+            if (hor && --i < h2 || !hor && ++i > h2) {
                 break;
+            }
         }
     }
 
     // Draw order
     spr->DrawOrderType = draw_order;
-    spr->DrawOrderPos = (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ?
-            spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) :
-            MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + spr->HexY * DRAW_ORDER * MAXHEX_MAX + spr->HexX * DRAW_ORDER +
-                (draw_order - DRAW_ORDER));
+    spr->DrawOrderPos = draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ? spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) : MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + spr->HexY * DRAW_ORDER * MAXHEX_MAX + spr->HexX * DRAW_ORDER + (draw_order - DRAW_ORDER);
 
     return *spr;
 }
 
-Sprite& Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
-    uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
+auto Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     return PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id,
-    uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback)
+auto Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     // For cutted sprites need resort all tree
-    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL)
-    {
-        Sprite& spr =
-            PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
+    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL) {
+        auto& spr = PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
         SortByMapPos();
         return spr;
     }
 
     // Find place
     uint index = 0;
-    uint pos = (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ?
-            hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) :
-            MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER +
-                (draw_order - DRAW_ORDER));
+    const uint pos = draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ? hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) : MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + (draw_order - DRAW_ORDER);
 
-    Sprite* parent = rootSprite;
-    while (parent)
-    {
-        if (!parent->Valid)
+    auto* parent = _rootSprite;
+    while (parent != nullptr) {
+        if (!parent->Valid) {
             continue;
-        if (pos < parent->DrawOrderPos)
+        }
+        if (pos < parent->DrawOrderPos) {
             break;
+        }
         parent = parent->ChainChild;
     }
 
@@ -527,68 +531,69 @@ Sprite& Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, in
 
 void Sprites::Unvalidate()
 {
-    while (rootSprite)
-        rootSprite->Unvalidate();
-    spriteCount = 0;
+    while (_rootSprite != nullptr) {
+        _rootSprite->Unvalidate();
+    }
+    _spriteCount = 0;
 }
 
 void Sprites::SortByMapPos()
 {
-    if (!rootSprite)
+    if (_rootSprite == nullptr) {
         return;
+    }
 
     SpriteVec sprites;
-    sprites.reserve(spriteCount);
-    Sprite* spr = rootSprite;
-    while (spr)
-    {
+    sprites.reserve(_spriteCount);
+    auto* spr = _rootSprite;
+    while (spr != nullptr) {
         sprites.push_back(spr);
         spr = spr->ChainChild;
     }
 
-    auto& spr_infos = sprMngr.GetSpritesInfo();
+    auto& spr_infos = _sprMngr.GetSpritesInfo();
     std::sort(sprites.begin(), sprites.end(), [&spr_infos](Sprite* spr1, Sprite* spr2) {
-        SpriteInfo* si1 = spr_infos[spr1->PSprId ? *spr1->PSprId : spr1->SprId];
-        SpriteInfo* si2 = spr_infos[spr2->PSprId ? *spr2->PSprId : spr2->SprId];
-        return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->MainTex < si2->Atlas->MainTex;
+        const auto* si1 = spr_infos[spr1->PSprId != nullptr ? *spr1->PSprId : spr1->SprId];
+        const auto* si2 = spr_infos[spr2->PSprId != nullptr ? *spr2->PSprId : spr2->SprId];
+        return si1 != nullptr && si2 != nullptr && si1->Atlas != nullptr && si2->Atlas != nullptr && si1->Atlas->MainTex < si2->Atlas->MainTex;
     });
 
     std::sort(sprites.begin(), sprites.end(), [](Sprite* spr1, Sprite* spr2) {
-        if (spr1->DrawOrderPos == spr2->DrawOrderPos)
+        if (spr1->DrawOrderPos == spr2->DrawOrderPos) {
             return spr1->TreeIndex < spr2->TreeIndex;
+        }
         return spr1->DrawOrderPos < spr2->DrawOrderPos;
     });
 
-    for (size_t i = 0; i < sprites.size(); i++)
-    {
-        sprites[i]->ChainParent = nullptr;
-        sprites[i]->ChainChild = nullptr;
-        sprites[i]->ChainRoot = nullptr;
-        sprites[i]->ChainLast = nullptr;
+    for (auto& sprite : sprites) {
+        sprite->ChainParent = nullptr;
+        sprite->ChainChild = nullptr;
+        sprite->ChainRoot = nullptr;
+        sprite->ChainLast = nullptr;
     }
 
-    for (size_t i = 1; i < sprites.size(); i++)
-    {
+    for (size_t i = 1; i < sprites.size(); i++) {
         sprites[i - 1]->ChainChild = sprites[i];
         sprites[i]->ChainParent = sprites[i - 1];
     }
 
-    rootSprite = sprites.front();
-    lastSprite = sprites.back();
-    rootSprite->ChainRoot = &rootSprite;
-    lastSprite->ChainLast = &lastSprite;
+    _rootSprite = sprites.front();
+    _lastSprite = sprites.back();
+    _rootSprite->ChainRoot = &_rootSprite;
+    _lastSprite->ChainLast = &_lastSprite;
 }
 
-uint Sprites::Size()
+auto Sprites::Size() const -> uint
 {
-    return spriteCount;
+    return _spriteCount;
 }
 
 void Sprites::Clear()
 {
     Unvalidate();
 
-    for (Sprite* spr : unvalidatedSprites)
-        spritesPool.push_back(spr);
-    unvalidatedSprites.clear();
+    for (auto* spr : _unvalidatedSprites) {
+        _spritesPool.push_back(spr);
+    }
+    _unvalidatedSprites.clear();
 }

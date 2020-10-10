@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
+
 #pragma once
 
 #include "Common.h"
@@ -41,8 +43,7 @@
 class MapperScriptSystem : public ClientScriptSystem
 {
 public:
-    MapperScriptSystem(void* obj, GlobalSettings& sett, FileManager& file_mngr) :
-        ClientScriptSystem(obj, sett, file_mngr)
+    MapperScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : ClientScriptSystem(obj, settings, file_mngr)
     {
         InitNativeScripting();
         InitAngelScriptScripting();

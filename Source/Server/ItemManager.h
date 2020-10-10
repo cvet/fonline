@@ -48,60 +48,63 @@ class EntityManager;
 class MapManager;
 class CritterManager;
 
-class ItemManager : public NonMovable
+class ItemManager final
 {
 public:
-    ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr,
-        ServerScriptSystem& script_sys);
+    ItemManager() = delete;
+    ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr, ServerScriptSystem& script_sys);
+    ItemManager(const ItemManager&) = delete;
+    ItemManager(ItemManager&&) noexcept = delete;
+    auto operator=(const ItemManager&) = delete;
+    auto operator=(ItemManager&&) noexcept = delete;
+    ~ItemManager() = default;
 
-    void GetGameItems(ItemVec& items);
-    uint GetItemsCount();
+    void GetGameItems(ItemVec& items) const;
+    [[nodiscard]] auto GetItemsCount() const -> uint;
     void SetCritterItems(Critter* cr);
 
-    Item* CreateItem(hash pid, uint count = 0, Properties* props = nullptr);
-    bool RestoreItem(uint id, hash proto_id, const DataBase::Document& doc);
+    auto CreateItem(hash pid, uint count, const Properties* props) -> Item*;
+    [[nodiscard]] auto RestoreItem(uint id, hash proto_id, const DataBase::Document& doc) const -> bool;
     void DeleteItem(Item* item);
 
-    Item* SplitItem(Item* item, uint count);
-    Item* GetItem(uint item_id);
+    auto SplitItem(Item* item, uint count) -> Item*;
+    [[nodiscard]] auto GetItem(uint item_id) const -> Item*;
 
     void MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks);
     void MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks);
     void MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks);
 
-    Item* AddItemContainer(Item* cont, hash pid, uint count, uint stack_id);
-    Item* AddItemCritter(Critter* cr, hash pid, uint count);
-    bool SubItemCritter(Critter* cr, hash pid, uint count, ItemVec* erased_items = nullptr);
-    bool SetItemCritter(Critter* cr, hash pid, uint count);
+    auto AddItemContainer(Item* cont, hash pid, uint count, uint stack_id) -> Item*;
+    auto AddItemCritter(Critter* cr, hash pid, uint count) -> Item*;
+    auto SubItemCritter(Critter* cr, hash pid, uint count, ItemVec* erased_items) -> bool;
+    auto SetItemCritter(Critter* cr, hash pid, uint count) -> bool;
 
     void AddItemToContainer(Item* cont, Item*& item, uint stack_id);
     void EraseItemFromContainer(Item* cont, Item* item);
     void SetItemToContainer(Item* cont, Item* item);
 
-    bool ItemCheckMove(Item* item, uint count, Entity* from, Entity* to);
-    bool MoveItemCritters(Critter* from_cr, Critter* to_cr, Item* item, uint count);
-    bool MoveItemCritterToCont(Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id);
-    bool MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, Item* item, uint count);
+    auto ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool;
+    auto MoveItemCritters(Critter* from_cr, Critter* to_cr, Item* item, uint count) -> bool;
+    auto MoveItemCritterToCont(Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id) -> bool;
+    auto MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, Item* item, uint count) -> bool;
 
     void RadioClear();
     void RadioRegister(Item* radio, bool add);
-    void RadioSendText(
-        Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels);
-    void RadioSendTextEx(ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
-        const string& text, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems);
+    void RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels);
+    void RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems);
 
-    void ChangeItemStatistics(hash pid, int val);
-    int64 GetItemStatistics(hash pid);
-    string GetItemsStatistics();
+    void ChangeItemStatistics(hash pid, int val) const;
+    [[nodiscard]] auto GetItemStatistics(hash pid) const -> int64;
+    [[nodiscard]] auto GetItemsStatistics() const -> string;
 
 private:
-    Entity* GetItemHolder(Item* item);
+    auto GetItemHolder(Item* item) const -> Entity*;
     void EraseItemHolder(Item* item, Entity* parent);
 
-    ProtoManager& protoMngr;
-    EntityManager& entityMngr;
-    MapManager& mapMngr;
-    CritterManager& crMngr;
-    ServerScriptSystem& scriptSys;
-    ItemVec radioItems;
+    ProtoManager& _protoMngr;
+    EntityManager& _entityMngr;
+    MapManager& _mapMngr;
+    CritterManager& _crMngr;
+    ServerScriptSystem& _scriptSys;
+    ItemVec _radioItems {};
 };

@@ -51,14 +51,19 @@ class EntityManager;
 class MapManager;
 class ItemManager;
 
-class CritterManager : public NonMovable
+class CritterManager final
 {
 public:
-    CritterManager(ServerSettings& sett, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr,
-        ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    CritterManager() = delete;
+    CritterManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    CritterManager(const CritterManager&) = delete;
+    CritterManager(CritterManager&&) noexcept = delete;
+    auto operator=(const CritterManager&) = delete;
+    auto operator=(CritterManager&&) noexcept = delete;
+    ~CritterManager() = default;
 
-    Npc* CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy);
-    bool RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc);
+    auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*;
+    auto RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc) -> bool;
     void DeleteNpc(Critter* cr);
     void DeleteInventory(Critter* cr);
 
@@ -67,29 +72,30 @@ public:
 
     void GetCritters(CritterVec& critters);
     void GetNpcs(NpcVec& npcs);
-    void GetClients(ClientVec& players, bool on_global_map = false);
+    void GetClients(ClientVec& players, bool on_global_map);
     void GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters);
-    Critter* GetCritter(uint crid);
-    Client* GetPlayer(uint crid);
-    Client* GetPlayer(const char* name);
-    Npc* GetNpc(uint crid);
+    auto GetCritter(uint crid) -> Critter*;
+    auto GetPlayer(uint crid) -> Client*;
+    auto GetPlayer(const char* name) -> Client*;
+    auto GetNpc(uint crid) -> Npc*;
 
-    Item* GetItemByPidInvPriority(Critter* cr, hash item_pid);
+    auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
 
     void ProcessTalk(Client* cl, bool force);
     void CloseTalk(Client* cl);
 
-    uint PlayersInGame();
-    uint NpcInGame();
-    uint CrittersInGame();
+    auto PlayersInGame() const -> uint;
+    auto NpcInGame() const -> uint;
+    auto CrittersInGame() const -> uint;
 
 private:
-    ServerSettings& settings;
-    GeometryHelper geomHelper;
-    ProtoManager& protoMngr;
-    EntityManager& entityMngr;
-    MapManager& mapMngr;
-    ItemManager& itemMngr;
-    ServerScriptSystem& scriptSys;
-    GameTimer& gameTime;
+    ServerSettings& _settings;
+    GeometryHelper _geomHelper;
+    ProtoManager& _protoMngr;
+    EntityManager& _entityMngr;
+    MapManager& _mapMngr;
+    ItemManager& _itemMngr;
+    ServerScriptSystem& _scriptSys;
+    GameTimer& _gameTime;
+    int _dummy {};
 };

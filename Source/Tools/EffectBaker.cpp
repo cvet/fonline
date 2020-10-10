@@ -32,10 +32,8 @@
 //
 
 #include "EffectBaker.h"
-#include "FileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
@@ -43,7 +41,7 @@
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 
-EffectBaker::EffectBaker(FileCollection& all_files) : allFiles {all_files}
+EffectBaker::EffectBaker(FileCollection& all_files) : _allFiles {all_files}
 {
     glslang::InitializeProcess();
 }
@@ -57,32 +55,34 @@ void EffectBaker::AutoBakeEffects()
 {
     vector<future<void>> futs;
 
-    allFiles.ResetCounter();
-    while (allFiles.MoveNext())
-    {
-        FileHeader file_header = allFiles.GetCurFileHeader();
-        string relative_path = file_header.GetPath().substr(allFiles.GetPath().length());
+    _allFiles.ResetCounter();
+    while (_allFiles.MoveNext()) {
+        auto file_header = _allFiles.GetCurFileHeader();
+        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
 
         {
-            SCOPE_LOCK(bakedFilesLocker);
-            if (bakedFiles.count(relative_path))
+            SCOPE_LOCK(_bakedFilesLocker);
+            if (_bakedFiles.count(relative_path) != 0u) {
                 continue;
+            }
         }
 
         string ext = _str(relative_path).getFileExtension();
-        if (ext != "glsl")
+        if (ext != "glsl") {
             continue;
+        }
 
-        File file = allFiles.GetCurFile();
+        auto file = _allFiles.GetCurFile();
         string content(file.GetCStr(), file.GetFsize());
         futs.emplace_back(std::async(&EffectBaker::BakeShaderProgram, this, relative_path, content));
     }
 
-    for (auto& fut : futs)
+    for (auto& fut : futs) {
         fut.wait();
+    }
 }
 
-void EffectBaker::BakeShaderProgram(const string& fname, const string& content)
+void EffectBaker::BakeShaderProgram(const string& fname, const string& /*content*/)
 {
     string fname_wo_ext = _str(fname).eraseFileExtension();
 
@@ -103,16 +103,17 @@ void EffectBaker::BakeShaderProgram(const string& fname, const string& content)
     glslang::TProgram program;
     program.addShader(&vert);
     program.addShader(&frag);
-    if (!program.link(EShMsgDefault))
+    if (!program.link(EShMsgDefault)) {
         throw GenericException("Can't link shader program", fname, program.getInfoLog());
+    }
 
     BakeShaderStage(fname_wo_ext + ".vert", program.getIntermediate(EShLangVertex));
     BakeShaderStage(fname_wo_ext + ".frag", program.getIntermediate(EShLangFragment));
 
     {
-        SCOPE_LOCK(bakedFilesLocker);
+        SCOPE_LOCK(_bakedFilesLocker);
         string dummy_content = "BAKED";
-        bakedFiles.emplace(fname, UCharVec(dummy_content.begin(), dummy_content.end()));
+        _bakedFiles.emplace(fname, UCharVec(dummy_content.begin(), dummy_content.end()));
     }
 }
 
@@ -121,32 +122,32 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
 
-    glslang::SpvOptions options;
+    glslang::SpvOptions spv_options;
     // options.generateDebugInfo = true;
-    options.disableOptimizer = false;
-    options.optimizeSize = true;
-    options.disassemble = false;
-    options.validate = true;
+    spv_options.disableOptimizer = false;
+    spv_options.optimizeSize = true;
+    spv_options.disassemble = false;
+    spv_options.validate = true;
 
     spv::SpvBuildLogger logger;
-    glslang::GlslangToSpv(*intermediate, spirv, &logger, &options);
+    GlslangToSpv(*intermediate, spirv, &logger, &spv_options);
 
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         UCharVec data(spirv.size() * sizeof(uint32_t));
-        memcpy(&data[0], &spirv[0], data.size());
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".spv", std::move(data));
+        std::memcpy(&data[0], &spirv[0], data.size());
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".spv", std::move(data));
     };
 
     // SPIR-V to GLSL
     auto make_glsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerGLSL compiler {spirv};
-        auto options = compiler.get_common_options();
+        const auto& options = compiler.get_common_options();
         compiler.set_common_options(options);
-        std::string source = compiler.compile();
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".glsl", UCharVec(source.begin(), source.end()));
+        auto source = compiler.compile();
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".glsl", UCharVec(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -155,19 +156,19 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         auto options = compiler.get_common_options();
         options.es = true;
         compiler.set_common_options(options);
-        std::string source = compiler.compile();
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".glsl-es", UCharVec(source.begin(), source.end()));
+        auto source = compiler.compile();
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".glsl-es", UCharVec(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
     auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerHLSL compiler {spirv};
-        auto options = compiler.get_hlsl_options();
+        const auto& options = compiler.get_hlsl_options();
         compiler.set_hlsl_options(options);
-        std::string source = compiler.compile();
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".hlsl", UCharVec(source.begin(), source.end()));
+        auto source = compiler.compile();
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".hlsl", UCharVec(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -176,9 +177,9 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         auto options = compiler.get_msl_options();
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
-        std::string source = compiler.compile();
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".msl-mac", UCharVec(source.begin(), source.end()));
+        auto source = compiler.compile();
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".msl-mac", UCharVec(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -187,9 +188,9 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         spirv_cross::CompilerMSL::Options options;
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
-        std::string source = compiler.compile();
-        SCOPE_LOCK(bakedFilesLocker);
-        bakedFiles.emplace(fname_wo_ext + ".msl-ios", UCharVec(source.begin(), source.end()));
+        auto source = compiler.compile();
+        SCOPE_LOCK(_bakedFilesLocker);
+        _bakedFiles.emplace(fname_wo_ext + ".msl-ios", UCharVec(source.begin(), source.end()));
     };
 
     // Make all asynchronously
@@ -201,14 +202,16 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         std::async(make_msl_mac),
         std::async(make_msl_ios),
     };
-    for (auto& fut : futs)
+    for (const auto& fut : futs) {
         fut.wait();
+    }
 }
 
 void EffectBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
 {
-    SCOPE_LOCK(bakedFilesLocker);
+    SCOPE_LOCK(_bakedFilesLocker);
 
-    for (const auto& kv : bakedFiles)
-        baked_files.emplace(kv.first, kv.second);
+    for (const auto& [name, data] : _bakedFiles) {
+        baked_files.emplace(name, data);
+    }
 }

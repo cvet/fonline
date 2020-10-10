@@ -138,7 +138,6 @@ struct Property
 #include "AngelScriptReflection.h"
 #include "AngelScriptScriptDict.h"
 #include "Log.h"
-#include "Testing.h"
 
 #include "../autowrapper/aswrappedcall.h"
 #include "angelscript.h"
@@ -155,6 +154,9 @@ struct Property
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
+#define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
+#include "ScriptApi.h"
+
 #ifdef FO_ANGELSCRIPT_COMPILER
 #define INIT_ARGS const string& script_path
 struct SCRIPTING_CLASS
@@ -168,8 +170,8 @@ struct SCRIPTING_CLASS
 #ifdef FO_ANGELSCRIPT_COMPILER
 struct Entity
 {
-    void AddRef() {}
-    void Release() {}
+    void AddRef() { }
+    void Release() { }
     uint Id {};
     EntityType Type {};
     bool IsDestroyed {};
@@ -301,8 +303,7 @@ struct ASEntity
     Entity* GameEntity {};
 };
 
-template<typename T,
-    std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
+template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
 inline T Marshal(T value)
 {
     return value;
@@ -500,12 +501,12 @@ struct ASItem : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Item* _this = (Item*)GameEntity
+#define THIS_ARG Item* _item = (Item*)GameEntity
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL
 #define ITEM_CLASS Item
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG ItemView* _this = (ItemView*)GameEntity
+#define THIS_ARG ItemView* _itemView = (ItemView*)GameEntity
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_ITEM_VIEW_METHOD_IMPL
 #define ITEM_CLASS ItemView
@@ -516,10 +517,7 @@ struct ASItem : ASEntity
     type Get_##name() { return MarshalBack(((ITEM_CLASS*)GameEntity)->Get##name()); }
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
     type Get_##name() { return MarshalBack(((ITEM_CLASS*)GameEntity)->Get##name()); } \
-    void Set_##name(type value) \
-    { \
-        ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); \
-    }
+    void Set_##name(type value) { ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_ITEM_METHOD(name, ret, ...) \
@@ -543,12 +541,12 @@ struct ASCritter : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Critter* _this = (Critter*)GameEntity
+#define THIS_ARG Critter* _critter = (Critter*)GameEntity
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_METHOD_IMPL
 #define CRITTER_CLASS Critter
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG CritterView* _this = (CritterView*)GameEntity
+#define THIS_ARG CritterView* _critterView = (CritterView*)GameEntity
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_CRITTER_VIEW_METHOD_IMPL
 #define CRITTER_CLASS CritterView
@@ -559,10 +557,7 @@ struct ASCritter : ASEntity
     type Get_##name() { return MarshalBack(((CRITTER_CLASS*)GameEntity)->Get##name()); }
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
     type Get_##name() { return MarshalBack(((CRITTER_CLASS*)GameEntity)->Get##name()); } \
-    void Set_##name(type value) \
-    { \
-        ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); \
-    }
+    void Set_##name(type value) { ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
@@ -586,12 +581,12 @@ struct ASMap : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Map* _this = (Map*)GameEntity
+#define THIS_ARG Map* _map = (Map*)GameEntity
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_METHOD_IMPL
 #define MAP_CLASS Map
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG MapView* _this = (MapView*)GameEntity
+#define THIS_ARG MapView* _mapView = (MapView*)GameEntity
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_MAP_VIEW_METHOD_IMPL
 #define MAP_CLASS MapView
@@ -602,10 +597,7 @@ struct ASMap : ASEntity
     type Get_##name() { return MarshalBack(((MAP_CLASS*)GameEntity)->Get##name()); }
 #define FO_API_MAP_PROPERTY(access, type, name, ...) \
     type Get_##name() { return MarshalBack(((MAP_CLASS*)GameEntity)->Get##name()); } \
-    void Set_##name(type value) \
-    { \
-        ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); \
-    }
+    void Set_##name(type value) { ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_MAP_METHOD(name, ret, ...) \
@@ -629,12 +621,12 @@ struct ASLocation : ASEntity
 {
 #ifndef FO_ANGELSCRIPT_COMPILER
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define THIS_ARG Location* _this = (Location*)GameEntity
+#define THIS_ARG Location* _location = (Location*)GameEntity
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_METHOD_IMPL
 #define LOCATION_CLASS Location
 #elif defined(FO_CLIENT_SCRIPTING)
-#define THIS_ARG LocationView* _this = (LocationView*)GameEntity
+#define THIS_ARG LocationView* _locationView = (LocationView*)GameEntity
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
 #define FO_API_LOCATION_VIEW_METHOD_IMPL
 #define LOCATION_CLASS LocationView
@@ -645,11 +637,7 @@ struct ASLocation : ASEntity
     type Get_##name() { return MarshalBack(((LOCATION_CLASS*)GameEntity)->Get##name()); }
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
     type Get_##name() { return MarshalBack(((LOCATION_CLASS*)GameEntity)->Get##name()); } \
-    void Set_##name(type value) \
-    { \
-        ((LOCATION_CLASS*)GameEntity) \
-            ->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); \
-    }
+    void Set_##name(type value) { ((LOCATION_CLASS*)GameEntity)->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
@@ -721,8 +709,7 @@ static T* EntityUpCast(ASEntity* a)
         return nullptr;
 
 #define CHECK_CAST(cast_class, entity_type) \
-    if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) \
-    { \
+    if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) { \
         T* b = (T*)a; \
         b->AddRef(); \
         return b; \
@@ -761,8 +748,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     else if (msg->type == asMSGTYPE_INFORMATION)
         type = "Info";
 
-    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message,
-        Preprocessor::ResolveOriginalLine(msg->row));
+    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
 }
 
 #ifdef FO_ANGELSCRIPT_COMPILER
@@ -777,8 +763,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RUNTIME_ASSERT(engine);
 
 #ifndef FO_ANGELSCRIPT_COMPILER
-    pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
-    pAngelScriptImpl->Engine = engine;
+    _pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
+    _pAngelScriptImpl->Engine = engine;
 // asEngine->ShutDownAndRelease();
 #endif
 
@@ -811,7 +797,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptReflection(engine);
 
 #ifndef FO_ANGELSCRIPT_COMPILER
-    engine->SetUserData(mainObj);
+    engine->SetUserData(_mainObj);
 #endif
 
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
@@ -819,34 +805,30 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if defined(FO_CLIENT_SCRIPTING) || defined(FO_MAPPER_SCRIPTING)
     AS_VERIFY(engine->RegisterObjectType("MapSprite", sizeof(MapSprite), asOBJ_REF));
-    AS_VERIFY(engine->RegisterObjectBehaviour(
-        "MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(MapSprite, AddRef), SCRIPT_METHOD_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour(
-        "MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(MapSprite, Release), SCRIPT_METHOD_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour(
-        "MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", SCRIPT_FUNC(MapSprite::Factory), SCRIPT_FUNC_CONV));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool Valid", OFFSETOF(MapSprite, Valid)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint SprId", OFFSETOF(MapSprite, SprId)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexX", OFFSETOF(MapSprite, HexX)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexY", OFFSETOF(MapSprite, HexY)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "hash ProtoId", OFFSETOF(MapSprite, ProtoId)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int FrameIndex", OFFSETOF(MapSprite, FrameIndex)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsX", OFFSETOF(MapSprite, OffsX)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsY", OFFSETOF(MapSprite, OffsY)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsFlat", OFFSETOF(MapSprite, IsFlat)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool NoLight", OFFSETOF(MapSprite, NoLight)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrder", OFFSETOF(MapSprite, DrawOrder)));
-    AS_VERIFY(
-        engine->RegisterObjectProperty("MapSprite", "int DrawOrderHyOffset", OFFSETOF(MapSprite, DrawOrderHyOffset)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int Corner", OFFSETOF(MapSprite, Corner)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool DisableEgg", OFFSETOF(MapSprite, DisableEgg)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint Color", OFFSETOF(MapSprite, Color)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint ContourColor", OFFSETOF(MapSprite, ContourColor)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakOffs", OFFSETOF(MapSprite, IsTweakOffs)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsX", OFFSETOF(MapSprite, TweakOffsX)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsY", OFFSETOF(MapSprite, TweakOffsY)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakAlpha", OFFSETOF(MapSprite, IsTweakAlpha)));
-    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint8 TweakAlpha", OFFSETOF(MapSprite, TweakAlpha)));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(MapSprite, AddRef), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(MapSprite, Release), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", SCRIPT_FUNC(MapSprite::Factory), SCRIPT_FUNC_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool Valid", offsetof(MapSprite, Valid)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint SprId", offsetof(MapSprite, SprId)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexX", offsetof(MapSprite, HexX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexY", offsetof(MapSprite, HexY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "hash ProtoId", offsetof(MapSprite, ProtoId)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int FrameIndex", offsetof(MapSprite, FrameIndex)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsX", offsetof(MapSprite, OffsX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsY", offsetof(MapSprite, OffsY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsFlat", offsetof(MapSprite, IsFlat)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool NoLight", offsetof(MapSprite, NoLight)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrder", offsetof(MapSprite, DrawOrder)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrderHyOffset", offsetof(MapSprite, DrawOrderHyOffset)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int Corner", offsetof(MapSprite, Corner)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool DisableEgg", offsetof(MapSprite, DisableEgg)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint Color", offsetof(MapSprite, Color)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint ContourColor", offsetof(MapSprite, ContourColor)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakOffs", offsetof(MapSprite, IsTweakOffs)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsX", offsetof(MapSprite, TweakOffsX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsY", offsetof(MapSprite, TweakOffsY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakAlpha", offsetof(MapSprite, IsTweakAlpha)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint8 TweakAlpha", offsetof(MapSprite, TweakAlpha)));
 #endif
 
 #define FO_API_ENUM_GROUP(name) AS_VERIFY(engine->RegisterEnum(#name));
@@ -855,27 +837,18 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #define REGISTER_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour( \
-        class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(real_class, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour( \
-        class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(real_class, Release), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const uint Id", OFFSETOF(real_class, Id))); \
-    AS_VERIFY(engine->RegisterObjectMethod( \
-        class_name, "hash get_ProtoId() const", SCRIPT_METHOD(real_class, GetProtoId), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY( \
-        engine->RegisterObjectProperty(class_name, "const bool IsDestroyed", OFFSETOF(real_class, IsDestroyed))); \
-    AS_VERIFY( \
-        engine->RegisterObjectProperty(class_name, "const bool IsDestroying", OFFSETOF(real_class, IsDestroying))); \
-    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const int RefCounter", OFFSETOF(real_class, RefCounter)));
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(real_class, AddRef), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(real_class, Release), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const uint Id", offsetof(real_class, Id))); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_METHOD(real_class, GetProtoId), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const bool IsDestroyed", offsetof(real_class, IsDestroyed))); \
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const bool IsDestroying", offsetof(real_class, IsDestroying))); \
+    AS_VERIFY(engine->RegisterObjectProperty(class_name, "const int RefCounter", offsetof(real_class, RefCounter)))
 #define REGISTER_ENTITY_CAST(class_name, real_class) \
-    AS_VERIFY(engine->RegisterObjectMethod( \
-        "Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", \
-        SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod( \
-        class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", \
-        SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
     REGISTER_ENTITY("Entity", ASEntity);
     REGISTER_ENTITY("Item", ASItem);
@@ -910,60 +883,32 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define FO_API_ARG_REF(type, name) GetASType<type&>(#name)
 #define FO_API_ARG_ARR_REF(type, name) GetASType<vector<type>&>(#name)
 #define FO_API_ARG_ENUM(type, name) fmt::format("{} {}", #type, #name)
-#define FO_API_ARG_CALLBACK(type, name) \
-    fmt::format("{}Callback {}", _str(GetASType<type>("")).substringUntil('@'), #name)
-#define FO_API_ARG_PREDICATE(type, name) \
-    fmt::format("{}Predicate@+ {}", _str(GetASType<type>("")).substringUntil('@'), #name)
+#define FO_API_ARG_CALLBACK(type, name) fmt::format("{}Callback {}", _str(GetASType<type>("")).substringUntil('@'), #name)
+#define FO_API_ARG_PREDICATE(type, name) fmt::format("{}Predicate@+ {}", _str(GetASType<type>("")).substringUntil('@'), #name)
 #define FO_API_ARG_DICT(key, val, name) GetASType<map<key, val>>(#name)
 #define FO_API_RET(type) GetASType<type>("")
 #define FO_API_RET_ARR(type) GetASType<vector<type>>("")
 #define FO_API_RET_OBJ(type) GetASType<type>("")
 #define FO_API_RET_OBJ_ARR(type) GetASType<vector<type>>("")
 
-#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
-    AS_VERIFY(engine->RegisterGlobalFunction( \
-        MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
+#define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
-    AS_VERIFY(engine->RegisterGlobalFunction( \
-        MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
+#define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #elif defined(FO_CLIENT_SCRIPTING)
-#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
-    AS_VERIFY(engine->RegisterGlobalFunction( \
-        MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
+#define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #elif defined(FO_MAPPER_SCRIPTING)
-#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
-    AS_VERIFY(engine->RegisterGlobalFunction( \
-        MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
+#define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #endif
 #if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
-#define FO_API_ITEM_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
-#define FO_API_CRITTER_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
-#define FO_API_MAP_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
-#define FO_API_LOCATION_METHOD(name, ret, ...) \
-    AS_VERIFY( \
-        engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-            SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
+#define FO_API_ITEM_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
 #elif defined(FO_CLIENT_SCRIPTING)
-#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
-#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
-#define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
-    AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-        SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
-#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
-    AS_VERIFY( \
-        engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), \
-            SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
+#define FO_API_ITEM_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
+#define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
+#define FO_API_MAP_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
+#define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
 #endif
 #include "ScriptApi.h"
 
@@ -973,60 +918,44 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define FO_API_PROPERTY_TYPE_OBJ_ARR(type) GetASType<vector<type*>>("")
 #define FO_API_PROPERTY_TYPE_ENUM(type) string(#type)
 
-#define CHECK_GETTER(access) \
-    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
-        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || \
-        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
-#define CHECK_SETTER(access) \
-    (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || \
-        (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && \
-            ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || \
-                (Property::AccessType::access & Property::AccessType::ModifiableMask))) || \
-        (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_GETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
+#define CHECK_SETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || (Property::AccessType::access & Property::AccessType::ModifiableMask))) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), \
-            SCRIPT_METHOD(ASItem, Get_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASItem, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
     FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
     if (CHECK_SETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-            SCRIPT_METHOD(ASItem, Set_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASItem, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), \
-            SCRIPT_METHOD(ASCritter, Get_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASCritter, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
     FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
     if (CHECK_SETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-            SCRIPT_METHOD(ASCritter, Set_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASCritter, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), \
-            SCRIPT_METHOD(ASMap, Get_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASMap, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_PROPERTY(access, type, name, ...) \
     FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
     if (CHECK_SETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-            SCRIPT_METHOD(ASMap, Set_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASMap, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), \
-            SCRIPT_METHOD(ASLocation, Get_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASLocation, Get_##name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
     FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
     if (CHECK_SETTER(access)) \
-        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), \
-            SCRIPT_METHOD(ASLocation, Set_##name), SCRIPT_METHOD_CONV));
+        AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASLocation, Set_##name), SCRIPT_METHOD_CONV));
 #include "ScriptApi.h"
 
 #ifdef FO_ANGELSCRIPT_COMPILER
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = fileMngr.ReadFile("...");
+    File script_file = _fileMngr.ReadFile("...");
     RestoreRootModule(engine, script_file);
 #endif
 }
@@ -1034,14 +963,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 class BinaryStream : public asIBinaryStream
 {
 public:
-    BinaryStream(std::vector<asBYTE>& buf) : binBuf {buf} {}
+    BinaryStream(std::vector<asBYTE>& buf) : binBuf {buf} { }
 
     virtual void Write(const void* ptr, asUINT size) override
     {
         if (!ptr || !size)
             return;
         binBuf.resize(binBuf.size() + size);
-        memcpy(&binBuf[writePos], ptr, size);
+        std::memcpy(&binBuf[writePos], ptr, size);
         writePos += size;
     }
 
@@ -1049,7 +978,7 @@ public:
     {
         if (!ptr || !size)
             return;
-        memcpy(ptr, &binBuf[readPos], size);
+        std::memcpy(ptr, &binBuf[readPos], size);
         readPos += size;
     }
 
@@ -1070,15 +999,13 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        ScriptLoader(UCharVec& root) : rootScript {&root} {}
+        ScriptLoader(UCharVec& root) : rootScript {&root} { }
 
-        virtual bool LoadFile(
-            const string& dir, const string& file_name, vector<char>& data, string& file_path) override
+        virtual bool LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) override
         {
-            if (rootScript)
-            {
+            if (rootScript) {
                 data.resize(rootScript->size());
-                memcpy(data.data(), rootScript->data(), rootScript->size());
+                std::memcpy(data.data(), rootScript->data(), rootScript->size());
                 rootScript = nullptr;
                 file_path = "(Root)";
                 return true;
@@ -1089,8 +1016,7 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
             file_path = _str(file_name).extractFileName().eraseFileExtension();
             data.resize(0);
 
-            if (includeDeep == 1)
-            {
+            if (includeDeep == 1) {
                 DiskFile script_file = DiskFileSystem::OpenFile(file_name, false);
                 if (!script_file)
                     return false;
@@ -1189,9 +1115,9 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
 
     DataReader reader {script_file.GetBuf()};
     vector<asBYTE> buf(reader.Read<uint>());
-    memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
+    std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
     UCharVec lnt_data(reader.Read<uint>());
-    memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
+    std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 

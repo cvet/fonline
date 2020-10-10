@@ -37,9 +37,11 @@
 
 class asIScriptEngine;
 
-class ScriptExtensions : public StaticClass
+class ScriptExtensions final
 {
 public:
+    ScriptExtensions() = delete;
+
     static void RegisterScriptArrayExtensions(asIScriptEngine* engine);
     static void RegisterScriptDictExtensions(asIScriptEngine* engine);
     static void RegisterScriptStdStringExtensions(asIScriptEngine* engine);

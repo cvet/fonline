@@ -37,7 +37,7 @@
 
 #include "CacheStorage.h"
 #include "FileSystem.h"
-#include "MsgStr_Include.h"
+#include "MsgStr-Include.h"
 
 #define TEXTMSG_TEXT (0)
 #define TEXTMSG_DLG (1)
@@ -57,48 +57,59 @@ public:
     using MsgMap = multimap<uint, string>;
 
     FOMsg() = default;
-    FOMsg(const FOMsg& other);
-    FOMsg& operator=(const FOMsg& other);
-    FOMsg& operator+=(const FOMsg& other);
+    FOMsg(const FOMsg&) = default;
+    FOMsg(FOMsg&&) noexcept = default;
+    auto operator=(const FOMsg&) -> FOMsg& = default;
+    auto operator=(FOMsg&&) noexcept -> FOMsg& = default;
+    auto operator+=(const FOMsg& other) -> FOMsg&;
+    ~FOMsg() = default;
 
     void AddStr(uint num, const string& str);
     void AddBinary(uint num, const uchar* binary, uint len);
 
-    string GetStr(uint num);
-    string GetStr(uint num, uint skip);
-    uint GetStrNumUpper(uint num);
-    uint GetStrNumLower(uint num);
-    int GetInt(uint num);
-    uint GetBinary(uint num, UCharVec& data);
-    uint Count(uint num);
+    [[nodiscard]] auto GetStr(uint num) -> string;
+    [[nodiscard]] auto GetStr(uint num, uint skip) -> string;
+    [[nodiscard]] auto GetStrNumUpper(uint num) -> uint;
+    [[nodiscard]] auto GetStrNumLower(uint num) -> uint;
+    [[nodiscard]] auto GetInt(uint num) -> int;
+    [[nodiscard]] auto GetBinary(uint num, UCharVec& data) -> uint;
+    [[nodiscard]] auto Count(uint num) const -> uint;
     void EraseStr(uint num);
-    uint GetSize();
-    bool IsIntersects(const FOMsg& other);
+    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto IsIntersects(const FOMsg& other) -> bool;
 
     // Serialization
     void GetBinaryData(UCharVec& data);
-    bool LoadFromBinaryData(const UCharVec& data);
-    bool LoadFromString(const string& str);
+    auto LoadFromBinaryData(const UCharVec& data) -> bool;
+    auto LoadFromString(const string& str) -> bool;
     void LoadFromMap(const StrMap& kv);
     void Clear();
 
-    static int GetMsgType(const string& type_name);
+    static auto GetMsgType(const string& type_name) -> int;
 
 private:
-    MsgMap strData {};
+    MsgMap _strData {};
 };
 
-class LanguagePack
+class LanguagePack final
 {
 public:
+    // Todo: move loading to constructors
     LanguagePack() = default;
-    bool operator==(const uint name_code) { return NameCode == name_code; }
+    LanguagePack(const LanguagePack&) = default;
+    LanguagePack(LanguagePack&&) noexcept = default;
+    auto operator=(const LanguagePack&) -> LanguagePack& = default;
+    auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
+    ~LanguagePack() = default;
+
+    auto operator==(const uint name_code) const -> bool { return NameCode == name_code; }
     void LoadFromFiles(FileManager& file_mngr, const string& lang_name);
     void LoadFromCache(CacheStorage& cache, const string& lang_name);
-    string GetMsgCacheName(int msg_num);
+    [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
 
     string Name {};
     uint NameCode {};
     bool IsAllMsgLoaded {};
+
     FOMsg Msg[TEXTMSG_COUNT] {};
 };

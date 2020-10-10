@@ -32,7 +32,6 @@
 //
 
 #include "ItemView.h"
-#include "Testing.h"
 #include "Timer.h"
 
 #define FO_API_ITEM_VIEW_IMPL
@@ -42,60 +41,60 @@ PROPERTIES_IMPL(ItemView, "Item", false);
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ItemView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-ItemView::ItemView(uint id, ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
+ItemView::ItemView(uint id, const ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-ItemView* ItemView::Clone()
+auto ItemView::Clone() const -> ItemView*
 {
-    ItemView* clone = new ItemView(Id, (ProtoItem*)Proto);
+    auto* clone = new ItemView(Id, dynamic_cast<const ProtoItem*>(Proto));
     clone->Props = Props;
     return clone;
 }
 
-bool ItemView::IsStatic()
+auto ItemView::IsStatic() const -> bool
 {
     return GetIsStatic();
 }
 
-bool ItemView::IsAnyScenery()
+auto ItemView::IsAnyScenery() const -> bool
 {
     return IsScenery() || IsWall();
 }
 
-bool ItemView::IsScenery()
+auto ItemView::IsScenery() const -> bool
 {
     return GetIsScenery();
 }
 
-bool ItemView::IsWall()
+auto ItemView::IsWall() const -> bool
 {
     return GetIsWall();
 }
 
-bool ItemView::IsColorize()
+auto ItemView::IsColorize() const -> bool
 {
     return GetIsColorize();
 }
 
-uint ItemView::GetColor()
+auto ItemView::GetColor() const -> uint
 {
     return GetLightColor() & 0xFFFFFF;
 }
 
-uchar ItemView::GetAlpha()
+auto ItemView::GetAlpha() const -> uchar
 {
     return GetLightColor() >> 24;
 }
 
-uint ItemView::GetInvColor()
+auto ItemView::GetInvColor() const -> uint
 {
     return GetIsColorizeInv() ? GetLightColor() : 0;
 }
 
-uint ItemView::LightGetHash()
+auto ItemView::LightGetHash() const -> uint
 {
     return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
 }

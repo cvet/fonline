@@ -42,7 +42,7 @@
 
 DECLARE_EXCEPTION(EffectManagerException);
 
-struct EffectCollection : public NonCopyable
+struct EffectCollection
 {
     RenderEffect* Contour {};
     RenderEffect* ContourDefault {};
@@ -82,11 +82,17 @@ struct EffectCollection : public NonCopyable
     RenderEffect* Skinned3dDefault {};
 };
 
-class EffectManager : public NonMovable
+class EffectManager final
 {
 public:
-    EffectManager(EffectSettings& sett, FileManager& file_mngr, GameTimer& game_time);
-    RenderEffect* LoadEffect(const string& name, const string& defines, const string& base_path = "");
+    EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time);
+    EffectManager(const EffectManager&) = delete;
+    EffectManager(EffectManager&&) = delete;
+    auto operator=(const EffectManager&) -> EffectManager& = delete;
+    auto operator=(EffectManager &&) -> EffectManager& = delete;
+    ~EffectManager() = default;
+
+    auto LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*;
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void Load3dEffects();
@@ -94,11 +100,11 @@ public:
     EffectCollection Effects {};
 
 private:
-    void PerFrameEffectUpdate(RenderEffect* effect);
+    void PerFrameEffectUpdate(RenderEffect* effect) const;
 
-    EffectSettings& settings;
-    FileManager& fileMngr;
-    GameTimer& gameTime;
-    vector<unique_ptr<RenderEffect>> loadedEffects {};
-    EventUnsubscriber eventUnsubscriber {};
+    EffectSettings& _settings;
+    FileManager& _fileMngr;
+    GameTimer& _gameTime;
+    vector<unique_ptr<RenderEffect>> _loadedEffects {};
+    EventUnsubscriber _eventUnsubscriber {};
 };

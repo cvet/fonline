@@ -35,41 +35,51 @@
 
 #include "Common.h"
 
-class ConfigFile : public NonCopyable
+class ConfigFile final
 {
 public:
-    ConfigFile(const string& str);
-    operator bool() { return !appKeyValues.empty(); }
-    void CollectContent() { collectContent = true; }
-    void AppendData(const string& str);
-    string SerializeData();
+    ConfigFile() = delete;
+    explicit ConfigFile(const string& str);
+    ConfigFile(const ConfigFile&) = delete;
+    ConfigFile(ConfigFile&&) noexcept = default;
+    auto operator=(const ConfigFile&) = delete;
+    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    ~ConfigFile() = default;
 
-    string GetStr(const string& app_name, const string& key_name, const string& def_val = "");
-    int GetInt(const string& app_name, const string& key_name, int def_val = 0);
+    explicit operator bool() const { return !_appKeyValues.empty(); }
+
+    void CollectContent();
+    void AppendData(const string& str);
+    auto SerializeData() -> string;
+
+    [[nodiscard]] auto GetStr(const string& app_name, const string& key_name) const -> string;
+    [[nodiscard]] auto GetStr(const string& app_name, const string& key_name, const string& def_val) const -> string;
+    [[nodiscard]] auto GetInt(const string& app_name, const string& key_name) const -> int;
+    [[nodiscard]] auto GetInt(const string& app_name, const string& key_name, int def_val) const -> int;
 
     void SetStr(const string& app_name, const string& key_name, const string& val);
     void SetInt(const string& app_name, const string& key_name, int val);
 
-    StrMap& GetApp(const string& app_name);
+    [[nodiscard]] auto GetApp(const string& app_name) const -> const StrMap&;
     void GetApps(const string& app_name, PStrMapVec& key_values);
-    StrMap& SetApp(const string& app_name);
+    auto SetApp(const string& app_name) -> StrMap&;
 
-    bool IsApp(const string& app_name);
-    bool IsKey(const string& app_name, const string& key_name);
+    [[nodiscard]] auto IsApp(const string& app_name) const -> bool;
+    [[nodiscard]] auto IsKey(const string& app_name, const string& key_name) const -> bool;
 
-    void GetAppNames(StrSet& apps);
+    void GetAppNames(StrSet& apps) const;
     void GotoNextApp(const string& app_name);
-    const StrMap* GetAppKeyValues(const string& app_name);
-    string GetAppContent(const string& app_name);
+    auto GetAppKeyValues(const string& app_name) -> const StrMap*;
+    auto GetAppContent(const string& app_name) -> string;
 
 private:
     using ValuesMap = multimap<string, StrMap>;
     using ValuesMapItVec = vector<ValuesMap::const_iterator>;
 
     void ParseStr(const string& str);
-    string* GetRawValue(const string& app_name, const string& key_name);
+    [[nodiscard]] auto GetRawValue(const string& app_name, const string& key_name) const -> const string*;
 
-    bool collectContent {};
-    ValuesMap appKeyValues {};
-    ValuesMapItVec appKeyValuesOrder {};
+    bool _collectContent {};
+    ValuesMap _appKeyValues {};
+    ValuesMapItVec _appKeyValuesOrder {};
 };

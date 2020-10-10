@@ -65,17 +65,36 @@ DECLARE_EXCEPTION(ServerInitException);
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR(client) CHECK_IN_BUFF_ERROR_EXT(client, (void)0, return )
 #define CHECK_IN_BUFF_ERROR_EXT(client, before_disconnect, after_disconnect) \
-    if (client->Connection->Bin.IsError()) \
-    { \
-        WriteLog("Wrong network data from client '{}', line {}.\n", client->GetName(), __LINE__); \
+    if ((client)->Connection->Bin.IsError()) { \
+        WriteLog("Wrong network data from client '{}', line {}.\n", (client)->GetName(), __LINE__); \
         before_disconnect; \
-        client->Disconnect(); \
+        (client)->Disconnect(); \
         after_disconnect; \
     }
 
-class FOServer : public NonCopyable // Todo: rename FOServer to just Server
+class FOServer final // Todo: rename FOServer to just Server
 {
 public:
+    FOServer() = delete;
+    explicit FOServer(GlobalSettings& settings);
+    FOServer(const FOServer&) = delete;
+    FOServer(FOServer&&) noexcept = delete;
+    auto operator=(const FOServer&) = delete;
+    auto operator=(FOServer&&) noexcept = delete;
+    ~FOServer();
+
+    void Shutdown();
+    void MainLoop();
+    void DrawGui();
+    auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
+
+#ifdef FO_SINGLEPLAYER
+    void ConnectClient(FOClient* client) { }
+#endif
+
     struct
     {
         ImVec2 DefaultSize = ImVec2(200, 200);
@@ -94,23 +113,10 @@ public:
         string Stats;
     } Gui;
 
-    FOServer(GlobalSettings& sett);
-    ~FOServer();
-    void MainLoop();
-    void DrawGui();
-    bool InitLangPacks(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksDialogs(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksLocations(vector<LanguagePack>& lang_packs);
-    bool InitLangPacksItems(vector<LanguagePack>& lang_packs);
-
-#ifdef FO_SINGLEPLAYER
-    void ConnectClient(FOClient* client) {}
-#endif
-
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
-    EventDispatcher<> willFinishDispatcher {OnWillFinish};
-    EventDispatcher<> didFinishDispatcher {OnDidFinish};
+    EventDispatcher<> WillFinishDispatcher {OnWillFinish};
+    EventDispatcher<> DidFinishDispatcher {OnDidFinish};
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
@@ -130,8 +136,8 @@ public:
     UIntMap RegIp {};
     std::mutex RegIpLocker {};
     vector<LanguagePack> LangPacks {};
-    uint fpsTick {};
-    uint fpsCounter {};
+    uint FpsTick {};
+    uint FpsCounter {};
 
     void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
@@ -145,14 +151,14 @@ public:
     void Process_LogIn(Client*& cl);
     void Process_Dir(Client* cl);
     void Process_Text(Client* cl);
-    void Process_Command(NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel);
-    void Process_CommandReal(NetBuffer& buf, LogFunc logcb, Client* cl, const string& admin_panel);
+    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
+    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
     void Process_Dialog(Client* cl);
     void Process_GiveMap(Client* cl);
-    void Process_Ping(Client* cl);
+    static void Process_Ping(Client* cl);
     void Process_Property(Client* cl, uint data_size);
 
-    void Send_MapData(Client* cl, ProtoMap* pmap, StaticMap* static_map, bool send_tiles, bool send_scenery);
+    static void Send_MapData(Client* cl, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
 
     // Update files
     struct UpdateFile
@@ -164,16 +170,16 @@ public:
     UpdateFileVec UpdateFiles;
     UCharVec UpdateFilesList;
 
-    void GenerateUpdateFiles(bool first_generation = false, StrVec* resource_names = nullptr);
+    void GenerateUpdateFiles(bool first_generation, StrVec* resource_names);
 
     // Actions
-    bool Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params);
+    auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
 
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
 
     // Dialogs demand and result
-    bool DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave);
-    uint DialogScriptResult(DemandResult& result, Critter* master, Critter* slave);
+    static auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
+    static auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
 
     // Text listen
 #define TEXT_LISTEN_FIRST_STR_MAX_LEN (63)
@@ -189,12 +195,12 @@ public:
     std::mutex TextListenersLocker;
 
     void OnSendGlobalValue(Entity* entity, Property* prop);
-    void OnSendCritterValue(Entity* entity, Property* prop);
-    void OnSendMapValue(Entity* entity, Property* prop);
-    void OnSendLocationValue(Entity* entity, Property* prop);
+    static void OnSendCritterValue(Entity* entity, Property* prop);
+    static void OnSendMapValue(Entity* entity, Property* prop);
+    static void OnSendLocationValue(Entity* entity, Property* prop);
 
     // Items
-    Item* CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks);
+    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
     void OnSendItemValue(Entity* entity, Property* prop);
     void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
@@ -206,9 +212,9 @@ public:
 
     // Npc
     void ProcessCritter(Critter* cr);
-    bool Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg);
-    bool Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck);
-    uint Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer);
+    auto Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
+    auto Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck) -> bool;
+    auto Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer) -> uint;
     void Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
 
     void DisconnectClient(Client* cl);
@@ -243,28 +249,24 @@ public:
 #define BANS_FNAME_EXPIRED "Save/Bans/Expired.txt"
     struct ClientBanned
     {
-        DateTimeStamp BeginTime;
-        DateTimeStamp EndTime;
-        uint ClientIp;
-        char ClientName[UTF8_BUF_SIZE(MAX_NAME)];
-        char BannedBy[UTF8_BUF_SIZE(MAX_NAME)];
-        char BanInfo[UTF8_BUF_SIZE(128)];
-        bool operator==(const string& name) { return _str(name).compareIgnoreCaseUtf8(ClientName); }
-        bool operator==(const uint ip) { return ClientIp == ip; }
+        auto operator==(const string& name) const -> bool { return _str(name).compareIgnoreCaseUtf8(ClientName); }
+        auto operator==(const uint ip) const -> bool { return ClientIp == ip; }
+        auto GetBanLexems() -> string { return _str("$banby{}$time{}$reason{}", BannedBy[0] != 0 ? BannedBy : "?", Timer::GetTimeDifference(EndTime, BeginTime) / 60 / 60, BanInfo[0] != 0 ? BanInfo : "just for fun"); }
 
-        string GetBanLexems()
-        {
-            return _str("$banby{}$time{}$reason{}", BannedBy[0] ? BannedBy : "?",
-                Timer::GetTimeDifference(EndTime, BeginTime) / 60 / 60, BanInfo[0] ? BanInfo : "just for fun");
-        }
+        DateTimeStamp BeginTime {};
+        DateTimeStamp EndTime {};
+        uint ClientIp {};
+        char ClientName[UTF8_BUF_SIZE(MAX_NAME)] {};
+        char BannedBy[UTF8_BUF_SIZE(MAX_NAME)] {};
+        char BanInfo[UTF8_BUF_SIZE(128)] {};
     };
     using ClientBannedVec = vector<ClientBanned>;
     ClientBannedVec Banned;
     std::mutex BannedLocker;
 
-    ClientBanned* GetBanByName(const char* name);
-    ClientBanned* GetBanByIp(uint ip);
-    uint GetBanTime(ClientBanned& ban);
+    auto GetBanByName(const char* name) -> ClientBanned*;
+    auto GetBanByIp(uint ip) -> ClientBanned*;
+    static auto GetBanTime(ClientBanned& ban) -> uint;
     void ProcessBans();
     void SaveBan(ClientBanned& ban, bool expired);
     void SaveBans();
@@ -283,7 +285,7 @@ public:
         uint MaxOnline {};
         uint CurOnline {};
         uint CycleTime {};
-        uint FPS {};
+        uint Fps {};
         uint LoopTime {};
         uint LoopCycles {};
         uint LoopMin {};
@@ -291,5 +293,5 @@ public:
         uint LagsCount {};
     } Statistics {};
 
-    string GetIngamePlayersStatistics();
+    auto GetIngamePlayersStatistics() -> string;
 };

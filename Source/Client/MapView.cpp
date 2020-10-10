@@ -32,7 +32,6 @@
 //
 
 #include "MapView.h"
-#include "Testing.h"
 
 #define FO_API_MAP_VIEW_IMPL
 #include "ScriptApi.h"
@@ -41,7 +40,7 @@ PROPERTIES_IMPL(MapView, "Map", false);
 #define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(MapView, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"
 
-MapView::MapView(uint id, ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
+MapView::MapView(uint id, const ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
 }

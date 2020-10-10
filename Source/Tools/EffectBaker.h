@@ -35,18 +35,24 @@
 
 #include "Common.h"
 
-class File;
-class FileCollection;
+#include "FileSystem.h"
+
 namespace glslang
 {
     class TIntermediate;
-}
+} // namespace glslang
 
-class EffectBaker : public NonCopyable
+class EffectBaker final
 {
 public:
-    EffectBaker(FileCollection& all_files);
+    EffectBaker() = delete;
+    explicit EffectBaker(FileCollection& all_files);
+    EffectBaker(const EffectBaker&) = delete;
+    EffectBaker(EffectBaker&&) noexcept = delete;
+    auto operator=(const EffectBaker&) = delete;
+    auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker();
+
     void AutoBakeEffects();
     void FillBakedFiles(map<string, UCharVec>& baked_files);
 
@@ -54,7 +60,7 @@ private:
     void BakeShaderProgram(const string& fname, const string& content);
     void BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate);
 
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles;
-    std::mutex bakedFilesLocker;
+    FileCollection& _allFiles;
+    map<string, UCharVec> _bakedFiles;
+    std::mutex _bakedFilesLocker;
 };

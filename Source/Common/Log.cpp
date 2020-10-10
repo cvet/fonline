@@ -38,105 +38,112 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "Testing.h"
-#include "WinApi_Include.h"
+#include "WinApi-Include.h"
 
 #ifdef FO_ANDROID
 #include <android/log.h>
 #endif
 
-static std::mutex LogLocker;
-static bool LogDisableTimestamp;
-static unique_ptr<DiskFile> LogFileHandle;
-static map<string, LogFunc> LogFunctions;
-static bool LogFunctionsInProcess;
-static string* LogBufferStr;
+struct LogData
+{
+    std::mutex LogLocker {};
+    bool LogDisableTimestamp {};
+    unique_ptr<DiskFile> LogFileHandle {};
+    map<string, LogFunc> LogFunctions {};
+    bool LogFunctionsInProcess {};
+    string* LogBufferStr {};
+};
+GLOBAL_DATA(LogData, Data);
 
 void LogWithoutTimestamp()
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
-    LogDisableTimestamp = true;
+    Data->LogDisableTimestamp = true;
 }
 
 void LogToFile(const string& fname)
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
-    LogFileHandle = nullptr;
+    Data->LogFileHandle = nullptr;
 
-    if (!fname.empty())
-        LogFileHandle = unique_ptr<DiskFile>(new DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
+    if (!fname.empty()) {
+        Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
+    }
 }
 
-void LogToFunc(const string& key, LogFunc func, bool enable)
+void LogToFunc(const string& key, const LogFunc& func, bool enable)
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
-    if (func)
-    {
-        LogFunctions.erase(key);
+    if (func) {
+        Data->LogFunctions.erase(key);
 
-        if (enable)
-            LogFunctions.insert(std::make_pair(key, func));
+        if (enable) {
+            Data->LogFunctions.insert(std::make_pair(key, func));
+        }
     }
-    else if (!enable)
-    {
-        LogFunctions.clear();
+    else if (!enable) {
+        Data->LogFunctions.clear();
     }
 }
 
 void LogToBuffer(bool enable)
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
-    SAFEDEL(LogBufferStr);
-    if (enable)
-        LogBufferStr = new string();
+    delete Data->LogBufferStr;
+    Data->LogBufferStr = nullptr;
+
+    if (enable) {
+        Data->LogBufferStr = new string();
+    }
 }
 
 void LogGetBuffer(std::string& buf)
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
-    if (LogBufferStr && !LogBufferStr->empty())
-    {
-        buf = *LogBufferStr;
-        LogBufferStr->clear();
+    if (Data->LogBufferStr != nullptr && !Data->LogBufferStr->empty()) {
+        buf = *Data->LogBufferStr;
+        Data->LogBufferStr->clear();
     }
 }
 
 void WriteLogMessage(const string& message)
 {
-    SCOPE_LOCK(LogLocker);
+    SCOPE_LOCK(Data->LogLocker);
 
     // Avoid recursive calls
-    if (LogFunctionsInProcess)
+    if (Data->LogFunctionsInProcess) {
         return;
+    }
 
     // Make message
     string result;
-    if (!LogDisableTimestamp)
-    {
-        time_t now = time(nullptr);
-        struct tm* t = localtime(&now);
+    if (!Data->LogDisableTimestamp) {
+        auto now = time(nullptr);
+        const auto* t = localtime(&now);
         result += _str("[{:0=2}:{:0=2}:{:0=2}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
     result += message;
 
     // Write logs
-    if (LogFileHandle)
-        LogFileHandle->Write(result.c_str(), (uint)result.length());
+    if (Data->LogFileHandle) {
+        Data->LogFileHandle->Write(result.c_str(), static_cast<uint>(result.length()));
+    }
 
-    if (LogBufferStr)
-        *LogBufferStr += result;
+    if (Data->LogBufferStr != nullptr) {
+        *Data->LogBufferStr += result;
+    }
 
-    if (!LogFunctions.empty())
-    {
-        LogFunctionsInProcess = true;
-        for (auto& kv : LogFunctions)
-            kv.second(result);
-        LogFunctionsInProcess = false;
+    if (!Data->LogFunctions.empty()) {
+        Data->LogFunctionsInProcess = true;
+        for (auto& [func_name, func] : Data->LogFunctions) {
+            func(result);
+        }
+        Data->LogFunctionsInProcess = false;
     }
 
 #ifdef FO_WINDOWS

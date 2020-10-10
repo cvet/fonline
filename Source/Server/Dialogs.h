@@ -39,12 +39,12 @@
 #include "MsgFiles.h"
 #include "ServerScripting.h"
 
-#define TALK_NONE (0)
-#define TALK_WITH_NPC (1)
-#define TALK_WITH_HEX (2)
-
-// Dialog flags
-#define DIALOG_FLAG_NO_SHUFFLE (1)
+enum class TalkType
+{
+    None,
+    Npc,
+    Hex,
+};
 
 // Answers
 #define DIALOG_END (0)
@@ -71,7 +71,7 @@
 
 struct DemandResult
 {
-    char Type {DR_NONE};
+    int Type {DR_NONE};
     char Who {DR_WHO_NONE};
     max_t ParamId {};
     bool NoRecheck {};
@@ -92,21 +92,17 @@ struct DialogAnswer
 };
 using AnswersVec = vector<DialogAnswer>;
 
-class Dialog
+struct Dialog
 {
-public:
-    bool operator==(uint id) { return id == Id; }
-    bool IsNoShuffle() { return Flags & DIALOG_FLAG_NO_SHUFFLE; }
-
     uint Id {};
     uint TextId {};
     AnswersVec Answers {};
-    uint Flags {};
+    bool NoShuffle {};
     ScriptFunc<string, Critter*, Critter*> DlgScriptFunc {};
 };
 using DialogsVec = vector<Dialog>;
 
-struct DialogPack : public NonCopyable
+struct DialogPack
 {
     hash PackId {};
     string PackName {};
@@ -116,9 +112,9 @@ struct DialogPack : public NonCopyable
     string Comment {};
 };
 
-struct Talking : public NonCopyable
+struct TalkData
 {
-    int TalkType {TALK_NONE};
+    TalkType Type {};
     uint TalkNpc {};
     uint TalkHexMap {};
     ushort TalkHexX {};
@@ -134,25 +130,33 @@ struct Talking : public NonCopyable
     bool Locked {};
 };
 
-class DialogManager : public NonCopyable
+class DialogManager final
 {
 public:
+    DialogManager() = delete;
     DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys);
-    bool LoadDialogs();
-    DialogPack* ParseDialog(const string& pack_name, const string& data);
-    bool AddDialog(DialogPack* pack);
-    DialogPack* GetDialog(hash pack_id);
-    DialogPack* GetDialogByIndex(uint index);
+    DialogManager(const DialogManager&) = delete;
+    DialogManager(DialogManager&&) noexcept = default;
+    auto operator=(const DialogManager&) = delete;
+    auto operator=(DialogManager&&) noexcept = delete;
+    ~DialogManager() = default;
+
+    [[nodiscard]] auto LoadDialogs() -> bool;
+    [[nodiscard]] auto ParseDialog(const string& pack_name, const string& data) -> DialogPack*;
+    [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
+    [[nodiscard]] auto GetDialog(hash pack_id) -> DialogPack*;
+    [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
     void EraseDialog(hash pack_id);
 
 private:
-    DemandResult* LoadDemandResult(istringstream& input, bool is_demand);
-    ScriptFunc<string, Critter*, Critter*> GetNotAnswerAction(const string& str);
-    char GetDRType(const string& str);
-    char GetWho(char who);
-    bool CheckOper(char oper);
+    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
+    [[nodiscard]] auto GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>;
+    [[nodiscard]] static auto GetDrType(const string& str) -> char;
+    [[nodiscard]] static auto GetWho(char who) -> char;
+    [[nodiscard]] static auto CheckOper(char oper) -> bool;
 
-    FileManager& fileMngr;
-    ServerScriptSystem& scriptSys;
-    map<hash, unique_ptr<DialogPack>> dialogPacks {};
+    FileManager& _fileMngr;
+    ServerScriptSystem& _scriptSys;
+    map<hash, unique_ptr<DialogPack>> _dialogPacks {};
+    int _dummy {};
 };

@@ -74,14 +74,12 @@ FO_API_GLOBAL_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE(uint), LastE
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_GLOBAL_READONLY_PROPERTY(
-    PrivateCommon, FO_API_PROPERTY_TYPE(uint), LastDeferredCallId, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_GLOBAL_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), LastDeferredCallId, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_GLOBAL_READONLY_PROPERTY(
-    PrivateCommon, FO_API_PROPERTY_TYPE(uint), HistoryRecordsId, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_GLOBAL_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), HistoryRecordsId, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
@@ -191,14 +189,12 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE(uint), RefG
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE(ushort), LastMapHexX, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE(ushort), LastMapHexX, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE(ushort), LastMapHexY, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE(ushort), LastMapHexY, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
@@ -208,8 +204,7 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim1Knockout, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim1Knockout, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
@@ -224,8 +219,7 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim2Knockout, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim2Knockout, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
@@ -235,14 +229,12 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Anim
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE_ARR(uchar), GlobalMapFog, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uchar), GlobalMapFog, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE_ARR(hash), TE_FuncNum, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(hash), TE_FuncNum, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
@@ -252,14 +244,12 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), 
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), TE_NextTime, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), TE_NextTime, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_READONLY_PROPERTY(
-    PrivateServer, FO_API_PROPERTY_TYPE_ARR(int), TE_Identifier, FO_API_PROPERTY_MOD(NoHistory))
+FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(int), TE_Identifier, FO_API_PROPERTY_MOD(NoHistory))
 
 /*******************************************************************************
  * ...

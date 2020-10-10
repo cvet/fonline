@@ -43,6 +43,8 @@ constexpr int EFFECT_MAX_PASSES = 4;
 constexpr int MODEL_MAX_BONES = 54;
 constexpr int BONES_PER_VERTEX = 4;
 
+DECLARE_EXCEPTION(AppInitException);
+
 enum class RenderPrimitiveType
 {
     PointList,
@@ -105,14 +107,18 @@ static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 96);
 using Vertex3DVec = vector<Vertex3D>;
 
-class RenderTexture : public Pointable
+class RenderTexture final : public RefCounter
 {
-    friend class App;
+    friend class Application;
 
 public:
     struct Impl;
 
-    ~RenderTexture();
+    RenderTexture(const RenderTexture&) = delete;
+    RenderTexture(RenderTexture&&) noexcept = delete;
+    auto operator=(const RenderTexture&) = delete;
+    auto operator=(RenderTexture&&) noexcept = delete;
+    ~RenderTexture() override;
 
     const uint Width {};
     const uint Height {};
@@ -125,12 +131,12 @@ public:
 private:
     RenderTexture() = default;
 
-    unique_ptr<Impl> pImpl {};
+    unique_ptr<Impl> _pImpl {};
 };
 
-class RenderEffect : public Pointable
+class RenderEffect final : public RefCounter
 {
-    friend class App;
+    friend class Application;
 
 public:
     struct Impl;
@@ -211,9 +217,14 @@ public:
     // Total size: 4000
     // We must fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
 
-    ~RenderEffect();
-    bool IsSame(const string& name, const string& defines);
-    bool CanBatch(RenderEffect* other);
+    RenderEffect(const RenderEffect&) = delete;
+    RenderEffect(RenderEffect&&) noexcept = delete;
+    auto operator=(const RenderEffect&) = delete;
+    auto operator=(RenderEffect&&) noexcept = delete;
+    ~RenderEffect() override;
+
+    [[nodiscard]] auto IsSame(const string& name, const string& defines) const -> bool;
+    [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
     ProjBuffer ProjBuf {};
     optional<MainTexBuffer> MainTexBuf {};
@@ -234,26 +245,30 @@ public:
 private:
     RenderEffect() = default;
 
-    unique_ptr<Impl> pImpl {};
-    string effectName {};
-    string effectDefines {};
-    hash nameHash {};
-    uint passCount {};
-    bool isMultisampled {};
-    bool isShadow[EFFECT_MAX_PASSES] {};
-    BlendFuncType blendFuncParam1[EFFECT_MAX_PASSES] {};
-    BlendFuncType blendFuncParam2[EFFECT_MAX_PASSES] {};
-    BlendEquationType blendEquation[EFFECT_MAX_PASSES] {};
+    unique_ptr<Impl> _pImpl {};
+    string _effectName {};
+    string _effectDefines {};
+    hash _nameHash {};
+    uint _passCount {};
+    bool _isMultisampled {};
+    bool _isShadow[EFFECT_MAX_PASSES] {};
+    BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
+    BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
+    BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
 };
 
-class RenderMesh : public Pointable
+class RenderMesh final : public RefCounter
 {
-    friend class App;
+    friend class Application;
 
 public:
     struct Impl;
 
-    ~RenderMesh();
+    RenderMesh(const RenderMesh&) = delete;
+    RenderMesh(RenderMesh&&) noexcept = delete;
+    auto operator=(const RenderMesh&) = delete;
+    auto operator=(RenderMesh&&) noexcept = delete;
+    ~RenderMesh() override;
 
     bool DataChanged {};
     Vertex3DVec Vertices {};
@@ -263,13 +278,13 @@ public:
 private:
     RenderMesh() = default;
 
-    unique_ptr<Impl> pImpl {};
+    unique_ptr<Impl> _pImpl {};
 };
 
 enum class KeyCode
 {
-#define KEY_CODE(name, index, code) name = index,
-#include "KeyCodes_Include.h"
+#define KEY_CODE(name, index, code) name = (index),
+#include "KeyCodes-Include.h"
 };
 
 enum class MouseButton
@@ -297,135 +312,149 @@ struct InputEvent
         KeyUpEvent,
     } Type {};
 
-    struct MouseMove
+    struct MouseMoveEvent
     {
         int MouseX {};
         int MouseY {};
         int DeltaX {};
         int DeltaY {};
-    } MM {};
+    } MouseMove {};
 
-    struct MouseDown
+    struct MouseDownEvent
     {
         MouseButton Button {};
-    } MD {};
+    } MouseDown {};
 
-    struct MouseUp
+    struct MouseUpEvent
     {
         MouseButton Button {};
-    } MU {};
+    } MouseUp {};
 
-    struct MouseWheel
+    struct MouseWheelEvent
     {
         int Delta {};
-    } MW {};
+    } MouseWheel {};
 
-    struct KeyDown
+    struct KeyDownEvent
     {
         KeyCode Code {};
         string Text {};
-    } KD {};
+    } KeyDown {};
 
-    struct KeyUp
+    struct KeyUpEvent
     {
         KeyCode Code {};
-    } KU {};
+    } KeyUp {};
 
     InputEvent() = default;
-    InputEvent(MouseMove ev) : Type {EventType::MouseMoveEvent}, MM {ev} {}
-    InputEvent(MouseDown ev) : Type {EventType::MouseDownEvent}, MD {ev} {}
-    InputEvent(MouseUp ev) : Type {EventType::MouseUpEvent}, MU {ev} {}
-    InputEvent(MouseWheel ev) : Type {EventType::MouseWheelEvent}, MW {ev} {}
-    InputEvent(KeyDown ev) : Type {EventType::KeyDownEvent}, KD {ev} {}
-    InputEvent(KeyUp ev) : Type {EventType::KeyUpEvent}, KU {ev} {}
+    explicit InputEvent(MouseMoveEvent ev) : Type {EventType::MouseMoveEvent}, MouseMove {ev} { }
+    explicit InputEvent(MouseDownEvent ev) : Type {EventType::MouseDownEvent}, MouseDown {ev} { }
+    explicit InputEvent(MouseUpEvent ev) : Type {EventType::MouseUpEvent}, MouseUp {ev} { }
+    explicit InputEvent(MouseWheelEvent ev) : Type {EventType::MouseWheelEvent}, MouseWheel {ev} { }
+    explicit InputEvent(KeyDownEvent ev) : Type {EventType::KeyDownEvent}, KeyDown {std::move(ev)} { }
+    explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
 };
 
-class App : public StaticClass
+class Application final
 {
+    friend void InitApplication(GlobalSettings& settings);
+
+    Application(GlobalSettings& settings);
+
 public:
-    static void Init(GlobalSettings& settings);
-    static void BeginFrame();
-    static void EndFrame();
+    Application(const Application&) = delete;
+    Application(Application&&) noexcept = delete;
+    auto operator=(const Application&) = delete;
+    auto operator=(Application&&) noexcept = delete;
+    ~Application() = default;
 
-    static EventObserver<> OnFrameBegin;
-    static EventObserver<> OnFrameEnd;
-    static EventObserver<> OnPause;
-    static EventObserver<> OnResume;
-    static EventObserver<> OnLowMemory;
-    static EventObserver<> OnQuit;
+    void BeginFrame();
+    void EndFrame();
 
-    class Window
+    struct AppWindow
     {
-    public:
-        static void GetSize(int& w, int& h);
-        static void SetSize(int w, int h);
-        static void GetPosition(int& x, int& y);
-        static void SetPosition(int x, int y);
-        static void GetMousePosition(int& x, int& y);
-        static void SetMousePosition(int x, int y);
-        static bool IsFocused();
-        static void Minimize();
-        static bool IsFullscreen();
-        static bool ToggleFullscreen(bool enable);
-        static void Blink();
-        static void AlwaysOnTop(bool enable);
-    };
+        void GetSize(int& w, int& h);
+        void SetSize(int w, int h);
+        void GetPosition(int& x, int& y);
+        void SetPosition(int x, int y);
+        void GetMousePosition(int& x, int& y);
+        void SetMousePosition(int x, int y);
+        auto IsFocused() -> bool;
+        void Minimize();
+        auto IsFullscreen() -> bool;
+        auto ToggleFullscreen(bool enable) -> bool;
+        void Blink();
+        void AlwaysOnTop(bool enable);
+    } Window;
 
-    class Render
+    struct AppRender
     {
-    public:
-        using RenderEffectLoader = std::function<vector<uchar>(const string&)>;
-
-        static RenderTexture* CreateTexture(
-            uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth);
-        static uint GetTexturePixel(RenderTexture* tex, int x, int y);
-        static vector<uint> GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h);
-        static void UpdateTextureRegion(RenderTexture* tex, const Rect& r, const uint* data);
-        static void SetRenderTarget(RenderTexture* tex);
-        static RenderTexture* GetRenderTarget();
-        static void ClearRenderTarget(uint color);
-        static void ClearRenderTargetDepth();
-        static void EnableScissor(int x, int y, uint w, uint h);
-        static void DisableScissor();
-        static RenderEffect* CreateEffect(const string& name, const string& defines, RenderEffectLoader file_loader);
-        static void DrawQuads(const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderTexture* tex);
-        static void DrawPrimitive(
-            const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderPrimitiveType prim);
-        static void DrawMesh(RenderMesh* mesh, RenderEffect* effect);
-
         static constexpr uint MAX_ATLAS_SIZE = 4096;
         static constexpr uint MIN_ATLAS_SIZE = 2048;
-        static const uint MaxAtlasWidth;
-        static const uint MaxAtlasHeight;
-        static const uint MaxBones;
-    };
+        static const uint MAX_ATLAS_WIDTH;
+        static const uint MAX_ATLAS_HEIGHT;
+        static const uint MAX_BONES;
 
-    class Input
+        using RenderEffectLoader = std::function<vector<uchar>(const string&)>;
+
+        auto CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*;
+        auto GetTexturePixel(RenderTexture* tex, int x, int y) -> uint;
+        auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>;
+        void UpdateTextureRegion(RenderTexture* tex, const Rect& r, const uint* data);
+        void SetRenderTarget(RenderTexture* tex);
+        auto GetRenderTarget() -> RenderTexture*;
+        void ClearRenderTarget(uint color);
+        void ClearRenderTargetDepth();
+        void EnableScissor(int x, int y, uint w, uint h);
+        void DisableScissor();
+        auto CreateEffect(const string& name, const string& defines, const RenderEffectLoader& loader) -> RenderEffect*;
+        void DrawQuads(const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderTexture* tex);
+        void DrawPrimitive(const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderPrimitiveType prim);
+        void DrawMesh(RenderMesh* mesh, RenderEffect* effect);
+    } Render;
+
+    struct AppInput
     {
-    public:
-        static bool PollEvent(InputEvent& event);
-        static void PushEvent(InputEvent event);
-        static void SetClipboardText(const string& text);
-        static string GetClipboardText();
-
         static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
-    };
 
-    class Audio
+        auto PollEvent(InputEvent& event) -> bool;
+        void PushEvent(const InputEvent& event);
+        void SetClipboardText(const string& text);
+        auto GetClipboardText() -> string;
+    } Input;
+
+    struct AppAudio
     {
-    public:
-        using AudioStreamCallback = std::function<void(uchar*)>;
-
-        static bool IsEnabled();
-        static uint GetStreamSize();
-        static uchar GetSilence();
-        static void SetSource(AudioStreamCallback stream_callback);
-        static bool ConvertAudio(int format, int channels, int rate, vector<uchar>& buf);
-        static void MixAudio(uchar* output, uchar* buf, int volume);
-        static void LockDevice();
-        static void UnlockDevice();
-
         static const int AUDIO_FORMAT_U8;
         static const int AUDIO_FORMAT_S16;
-    };
+
+        using AudioStreamCallback = std::function<void(uchar*)>;
+
+        auto IsEnabled() -> bool;
+        auto GetStreamSize() -> uint;
+        auto GetSilence() -> uchar;
+        void SetSource(AudioStreamCallback stream_callback);
+        auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
+        void MixAudio(uchar* output, uchar* buf, int volume);
+        void LockDevice();
+        void UnlockDevice();
+    } Audio;
+
+    EventObserver<> OnFrameBegin {};
+    EventObserver<> OnFrameEnd {};
+    EventObserver<> OnPause {};
+    EventObserver<> OnResume {};
+    EventObserver<> OnLowMemory {};
+    EventObserver<> OnQuit {};
+
+private:
+    EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};
+    EventDispatcher<> _onFrameEndDispatcher {OnFrameEnd};
+    EventDispatcher<> _onPauseDispatcher {OnPause};
+    EventDispatcher<> _onResumeDispatcher {OnResume};
+    EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
+    EventDispatcher<> _onQuitDispatcher {OnQuit};
 };
+
+extern void InitApplication(GlobalSettings& settings);
+extern Application* App;

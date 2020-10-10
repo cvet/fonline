@@ -57,42 +57,46 @@ class CritterView;
 using CritterViewMap = map<uint, CritterView*>;
 using CritterViewVec = vector<CritterView*>;
 
-class CritterView : public Entity
+class CritterView final : public Entity
 {
 public:
-    CritterView(uint id, ProtoCritter* proto, CritterViewSettings& sett, SpriteManager& spr_mngr,
-        ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_timer,
-        bool mapper_mode);
-    ~CritterView();
+    CritterView() = delete;
+    CritterView(uint id, const ProtoCritter* proto, CritterViewSettings& settings, SpriteManager& spr_mngr, ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_timer, bool mapper_mode);
+    CritterView(const CritterView&) = delete;
+    CritterView(CritterView&&) noexcept = delete;
+    auto operator=(const CritterView&) = delete;
+    auto operator=(CritterView&&) noexcept = delete;
+    ~CritterView() override;
+
     void Init();
     void Finish();
 
-    bool IsLastHexes();
+    [[nodiscard]] auto IsLastHexes() const -> bool;
     void FixLastHexes();
-    ushort PopLastHexX();
-    ushort PopLastHexY();
+    [[nodiscard]] auto PopLastHexX() -> ushort;
+    [[nodiscard]] auto PopLastHexY() -> ushort;
     void RefreshAnim();
-    void ChangeDir(uchar dir, bool animate = true);
+    void ChangeDir(uchar dir, bool animate);
 
     void Animate(uint anim1, uint anim2, ItemView* item);
     void AnimateStay();
-    void Action(int action, int action_ext, ItemView* item, bool local_call = true);
+    void Action(int action, int action_ext, ItemView* item, bool local_call);
     void Process();
     void DrawStay(Rect r);
 
-    string GetName() { return Name; }
-    bool IsNpc() { return FLAG(Flags, FCRIT_NPC); }
-    bool IsPlayer() { return FLAG(Flags, FCRIT_PLAYER); }
-    bool IsChosen() { return FLAG(Flags, FCRIT_CHOSEN); }
-    bool IsOnline() { return !FLAG(Flags, FCRIT_DISCONNECT); }
-    bool IsOffline() { return FLAG(Flags, FCRIT_DISCONNECT); }
-    bool IsLife() { return GetCond() == COND_LIFE; }
-    bool IsKnockout() { return GetCond() == COND_KNOCKOUT; }
-    bool IsDead() { return GetCond() == COND_DEAD; }
-    bool IsCombatMode();
-    bool CheckFind(int find_type);
+    [[nodiscard]] auto GetName() const -> string { return Name; }
+    [[nodiscard]] auto IsNpc() const -> bool { return IsBitSet(Flags, FCRIT_NPC); }
+    [[nodiscard]] auto IsPlayer() const -> bool { return IsBitSet(Flags, FCRIT_PLAYER); }
+    [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
+    [[nodiscard]] auto IsOnline() const -> bool { return !IsBitSet(Flags, FCRIT_DISCONNECT); }
+    [[nodiscard]] auto IsOffline() const -> bool { return IsBitSet(Flags, FCRIT_DISCONNECT); }
+    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == COND_ALIVE; }
+    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == COND_KNOCKOUT; }
+    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == COND_DEAD; }
+    [[nodiscard]] auto IsCombatMode() const -> bool;
+    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
 
-    uint GetAttackDist();
+    auto GetAttackDist() -> uint;
 
     uint NameColor {};
     uint ContourColor {};
@@ -106,67 +110,65 @@ public:
     ItemViewVec InvItems {};
 
 private:
-    CritterViewSettings& settings;
-    GeometryHelper geomHelper;
-    SpriteManager& sprMngr;
-    ResourceManager& resMngr;
-    EffectManager& effectMngr;
-    ClientScriptSystem& scriptSys;
-    GameTimer& gameTime;
-    bool mapperMode {};
+    CritterViewSettings& _settings;
+    GeometryHelper _geomHelper;
+    SpriteManager& _sprMngr;
+    ResourceManager& _resMngr;
+    EffectManager& _effectMngr;
+    ClientScriptSystem& _scriptSys;
+    GameTimer& _gameTime;
+    bool _mapperMode {};
 
     // Items
 public:
     void AddItem(ItemView* item);
     void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
-    ItemView* GetItem(uint item_id);
-    ItemView* GetItemByPid(hash item_pid);
-    ItemView* GetItemSlot(int slot);
+    [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
+    [[nodiscard]] auto GetItemByPid(hash item_pid) -> ItemView*;
+    [[nodiscard]] auto GetItemSlot(int slot) -> ItemView*;
     void GetItemsSlot(int slot, ItemViewVec& items);
-    uint CountItemPid(hash item_pid);
-    bool IsHaveLightSources();
+    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
+    [[nodiscard]] auto IsHaveLightSources() -> bool;
 
     // Moving
-public:
+
     bool IsRunning {};
     UShortPairVec MoveSteps {};
     int CurMoveStep {};
 
-    bool IsNeedMove() { return MoveSteps.size() && !IsWalkAnim(); }
-    void Move(int dir);
+    [[nodiscard]] auto IsNeedMove() -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
+    void Move(uchar dir);
 
-    // ReSet
+    // Reset
 private:
-    bool needReSet {};
-    uint reSetTick {};
+    bool _needReset {};
+    uint _resetTick {};
 
 public:
-    bool IsNeedReSet();
-    void ReSetOk();
+    [[nodiscard]] auto IsNeedReset() const -> bool;
+    void ResetOk();
 
     // Time
-public:
     uint TickCount {};
     uint StartTick {};
 
     void TickStart(uint ms);
     void TickNull();
-    bool IsFree();
+    [[nodiscard]] auto IsFree() const -> bool;
 
     // Animation
-public:
-    uint GetAnim1();
-    uint GetAnim2();
+    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetAnim2() const -> uint;
     void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item);
-    int* GetLayers3dData();
-    bool IsAnimAviable(uint anim1, uint anim2);
+    [[nodiscard]] auto GetLayers3dData() -> int*;
+    [[nodiscard]] auto IsAnimAviable(uint anim1, uint anim2) -> bool;
 
 private:
-    uint curSpr {};
-    uint lastEndSpr {};
-    uint animStartTick {};
-    int anim3dLayers[LAYERS3D_COUNT] {};
+    uint _curSpr {};
+    uint _lastEndSpr {};
+    uint _animStartTick {};
+    int _anim3dLayers[LAYERS3D_COUNT] {};
 
     struct CritterAnim
     {
@@ -181,10 +183,10 @@ private:
         ItemView* ActiveItem {};
     };
 
-    CritterAnim stayAnim {};
-    vector<CritterAnim> animSequence {};
+    CritterAnim _stayAnim {};
+    vector<CritterAnim> _animSequence {};
 
-    CritterAnim* GetCurAnim() { return IsAnim() ? &animSequence[0] : nullptr; }
+    [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? &_animSequence[0] : nullptr; }
     void NextAnim(bool erase_front);
 
 public:
@@ -207,55 +209,53 @@ public:
     uint OffsExtNextTick {};
 
     void SetSprRect();
-    bool Is3dAnim() { return Anim3d != nullptr; }
-    Animation3d* GetAnim3d() { return Anim3d; }
-    bool IsAnim() { return animSequence.size() > 0; }
-    bool IsWalkAnim();
+    [[nodiscard]] auto Is3dAnim() const -> bool { return Anim3d != nullptr; }
+    [[nodiscard]] auto GetAnim3d() const -> Animation3d* { return Anim3d; }
+    [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsWalkAnim() -> bool;
     void ClearAnim();
 
     void SetOffs(short set_ox, short set_oy, bool move_text);
     void ChangeOffs(short change_ox, short change_oy, bool move_text);
     void AddOffsExt(short ox, short oy);
-    void GetWalkHexOffsets(int dir, int& ox, int& oy);
+    void GetWalkHexOffsets(int dir, int& ox, int& oy) const;
 
     // Stay sprite
 private:
-    int staySprDir {};
-    uint staySprTick {};
+    uchar _staySprDir {};
+    uint _staySprTick {};
 
     // Finish
-private:
-    uint finishingTime {};
+    uint _finishingTime {};
 
 public:
-    bool IsFinishing();
-    bool IsFinish();
+    [[nodiscard]] auto IsFinishing() const -> bool;
+    [[nodiscard]] auto IsFinish() const -> bool;
 
     // Fade
 private:
-    bool fadingEnable {};
-    bool fadeUp {};
+    bool _fadingEnable {};
+    bool _fadeUp {};
 
     void SetFade(bool fade_up);
-    uchar GetFadeAlpha();
+    [[nodiscard]] auto GetFadeAlpha() -> uchar;
 
 public:
     uint FadingTick {};
 
     // Text
-public:
-    Rect GetTextRect();
+    [[nodiscard]] auto GetTextRect() const -> Rect;
     void SetText(const char* str, uint color, uint text_delay);
     void DrawTextOnHead();
-    void GetNameTextInfo(bool& nameVisible, int& x, int& y, int& w, int& h, int& lines);
+    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
 
 private:
-    Rect textRect {};
-    uint tickFidget {};
-    string strTextOnHead {};
-    uint tickStartText {};
-    uint tickTextDelay {};
-    uint textOnHeadColor {COLOR_CRITTER_NAME};
+    Rect _textRect {};
+    uint _tickFidget {};
+    string _strTextOnHead {};
+    uint _tickStartText {};
+    uint _tickTextDelay {};
+    uint _textOnHeadColor {COLOR_CRITTER_NAME};
 
 public:
 #define FO_API_CRITTER_VIEW_CLASS

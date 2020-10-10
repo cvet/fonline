@@ -33,11 +33,11 @@
 
 #include "AppGui.h"
 
-#ifdef FO_HAVE_D3D
+#ifdef FO_HAVE_DIRECT_3D
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "WinApi_Include.h"
+#include "WinApi-Include.h"
 
 #include <XInput.h>
 #include <d3d9.h>
@@ -130,24 +130,19 @@ bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
     // Create application window
     WndClassName = _str(app_name).toWideChar();
     WndSubClassName = WndClassName + L" Sub";
-    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr,
-        nullptr, nullptr, _str(app_name).toWideChar().c_str(), nullptr};
+    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _str(app_name).toWideChar().c_str(), nullptr};
     RegisterClassEx(&wc);
-    HWND hwnd = CreateWindow(wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-        rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = CreateWindow(wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
-    if (!CreateDevice(hwnd))
-    {
+    if (!CreateDevice(hwnd)) {
         WriteLog("Failed to create D3D device.\n");
         UnregisterClass(wc.lpszClassName, wc.hInstance);
         return false;
     }
 
     // Performance counters
-    if (!QueryPerformanceFrequency((LARGE_INTEGER*)&TicksPerSecond) ||
-        !QueryPerformanceCounter((LARGE_INTEGER*)&CurTime))
-    {
+    if (!QueryPerformanceFrequency((LARGE_INTEGER*)&TicksPerSecond) || !QueryPerformanceCounter((LARGE_INTEGER*)&CurTime)) {
         WriteLog("Failed to call QueryPerformanceFrequency.\n");
         return false;
     }
@@ -165,8 +160,7 @@ bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
     io.IniFilename = nullptr;
 
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    if (docking)
-    {
+    if (docking) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
@@ -213,8 +207,7 @@ bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
     ImGuiViewport* main_viewport = ImGui::GetMainViewport();
     main_viewport->PlatformHandle = main_viewport->PlatformHandleRaw = (void*)WndHandle;
 
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         ImGuiStyle& style = ImGui::GetStyle();
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
@@ -278,8 +271,7 @@ bool AppGui::BeginFrameDX()
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     bool quit = false;
-    while (true)
-    {
+    while (true) {
         if (!PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
             break;
 
@@ -313,8 +305,7 @@ bool AppGui::BeginFrameDX()
     io.KeySuper = false;
 
     // Update mouse position
-    if (io.WantSetMousePos)
-    {
+    if (io.WantSetMousePos) {
         POINT pos = {(int)io.MousePos.x, (int)io.MousePos.y};
         if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
             ClientToScreen(WndHandle, &pos);
@@ -327,22 +318,17 @@ bool AppGui::BeginFrameDX()
 
     // Set imgui mouse position
     POINT mouse_screen_pos;
-    if (GetCursorPos(&mouse_screen_pos))
-    {
-        if (HWND focused_hwnd = GetForegroundWindow())
-        {
+    if (GetCursorPos(&mouse_screen_pos)) {
+        if (HWND focused_hwnd = GetForegroundWindow()) {
             if (IsChild(focused_hwnd, WndHandle))
                 focused_hwnd = WndHandle;
 
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
                 if (ImGui::FindViewportByPlatformHandle((void*)focused_hwnd) != nullptr)
                     io.MousePos = ImVec2((float)mouse_screen_pos.x, (float)mouse_screen_pos.y);
             }
-            else
-            {
-                if (focused_hwnd == WndHandle)
-                {
+            else {
+                if (focused_hwnd == WndHandle) {
                     POINT mouse_client_pos = mouse_screen_pos;
                     ScreenToClient(focused_hwnd, &mouse_client_pos);
                     io.MousePos = ImVec2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
@@ -357,8 +343,7 @@ bool AppGui::BeginFrameDX()
 
         // Update OS mouse cursor with the cursor requested by imgui
         ImGuiMouseCursor mouse_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
-        if (LastMouseCursor != mouse_cursor)
-        {
+        if (LastMouseCursor != mouse_cursor) {
             LastMouseCursor = mouse_cursor;
             UpdateMouseCursor();
         }
@@ -377,11 +362,9 @@ void AppGui::EndFrameDX()
     D3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
     D3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
     static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f),
-        (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
+    D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
     D3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
-    if (D3dDevice->BeginScene() >= 0)
-    {
+    if (D3dDevice->BeginScene() >= 0) {
         ImGui::Render();
         RenderDrawData(ImGui::GetDrawData());
         D3dDevice->EndScene();
@@ -390,8 +373,7 @@ void AppGui::EndFrameDX()
     // Update and Render additional Platform Windows
     ImGuiIO& io = ImGui::GetIO();
 
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
     }
@@ -413,11 +395,9 @@ static LRESULT WINAPI WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
 #define DBT_DEVNODES_CHANGED 0x0007
 #endif
 
-    switch (msg)
-    {
+    switch (msg) {
     case WM_SIZE:
-        if (D3dDevice != nullptr && wparam != SIZE_MINIMIZED)
-        {
+        if (D3dDevice != nullptr && wparam != SIZE_MINIMIZED) {
             D3dPP.BackBufferWidth = LOWORD(lparam);
             D3dPP.BackBufferHeight = HIWORD(lparam);
             ResetDevice();
@@ -434,22 +414,17 @@ static LRESULT WINAPI WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
         PostQuitMessage(0);
         return 0;
     case WM_DPICHANGED:
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
-        {
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports) {
             const RECT* suggested_rect = (RECT*)lparam;
-            SetWindowPos(hwnd, nullptr, suggested_rect->left, suggested_rect->top,
-                suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top,
-                SWP_NOZORDER | SWP_NOACTIVATE);
+            SetWindowPos(hwnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
         break;
     }
 
-    if (ImGui::GetCurrentContext() != nullptr)
-    {
+    if (ImGui::GetCurrentContext() != nullptr) {
         ImGuiIO& io = ImGui::GetIO();
 
-        switch (msg)
-        {
+        switch (msg) {
         case WM_LBUTTONDOWN:
         case WM_LBUTTONDBLCLK:
         case WM_RBUTTONDOWN:
@@ -518,10 +493,8 @@ static LRESULT WINAPI WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
             return 0;
         }
 
-        if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)hwnd))
-        {
-            switch (msg)
-            {
+        if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)hwnd)) {
+            switch (msg) {
             case WM_CLOSE:
                 viewport->PlatformRequestClose = true;
                 return 0;
@@ -552,15 +525,14 @@ static bool CreateDevice(HWND hwnd)
         return false;
 
     // Create the D3DDevice
-    memset(&D3dPP, 0, sizeof(D3dPP));
+    std::memset(&D3dPP, 0, sizeof(D3dPP));
     D3dPP.Windowed = TRUE;
     D3dPP.SwapEffect = D3DSWAPEFFECT_DISCARD;
     D3dPP.BackBufferFormat = D3DFMT_UNKNOWN;
     D3dPP.EnableAutoDepthStencil = TRUE;
     D3dPP.AutoDepthStencilFormat = D3DFMT_D16;
     D3dPP.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-    if (D3D->CreateDevice(
-            D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &D3dPP, &D3dDevice) < 0)
+    if (D3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &D3dPP, &D3dDevice) < 0)
         return false;
 
     return true;
@@ -585,16 +557,14 @@ static bool CreateDeviceObjects()
 
     // Upload texture to graphics system
     FontTexture = nullptr;
-    if (D3dDevice->CreateTexture(
-            width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &FontTexture, nullptr) < 0)
+    if (D3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &FontTexture, nullptr) < 0)
         return false;
 
     D3DLOCKED_RECT tex_locked_rect;
     if (FontTexture->LockRect(0, &tex_locked_rect, nullptr, 0) != D3D_OK)
         return false;
     for (int y = 0; y < height; y++)
-        memcpy((unsigned char*)tex_locked_rect.pBits + tex_locked_rect.Pitch * y,
-            pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
+        std::memcpy((unsigned char*)tex_locked_rect.pBits + tex_locked_rect.Pitch * y, pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
     FontTexture->UnlockRect(0);
 
     // Store our identifier
@@ -615,29 +585,22 @@ static void RenderDrawData(ImDrawData* draw_data)
         return;
 
     // Create and grow buffers if needed
-    if (!VertexBuffer || VertexBufferSize < draw_data->TotalVtxCount)
-    {
-        if (VertexBuffer)
-        {
+    if (!VertexBuffer || VertexBufferSize < draw_data->TotalVtxCount) {
+        if (VertexBuffer) {
             VertexBuffer->Release();
             VertexBuffer = nullptr;
         }
         VertexBufferSize = draw_data->TotalVtxCount + 5000;
-        if (D3dDevice->CreateVertexBuffer(VertexBufferSize * sizeof(CustomVertex),
-                D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, D3DFVF_CUSTOMVERTEX, D3DPOOL_DEFAULT, &VertexBuffer,
-                nullptr) < 0)
+        if (D3dDevice->CreateVertexBuffer(VertexBufferSize * sizeof(CustomVertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, D3DFVF_CUSTOMVERTEX, D3DPOOL_DEFAULT, &VertexBuffer, nullptr) < 0)
             return;
     }
-    if (!IndexBuffer || IndexBufferSize < draw_data->TotalIdxCount)
-    {
-        if (IndexBuffer)
-        {
+    if (!IndexBuffer || IndexBufferSize < draw_data->TotalIdxCount) {
+        if (IndexBuffer) {
             IndexBuffer->Release();
             IndexBuffer = nullptr;
         }
         IndexBufferSize = draw_data->TotalIdxCount + 10000;
-        if (D3dDevice->CreateIndexBuffer(IndexBufferSize * sizeof(CustomVertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-                sizeof(ImDrawIdx) == 2 ? D3DFMT_INDEX16 : D3DFMT_INDEX32, D3DPOOL_DEFAULT, &IndexBuffer, nullptr) < 0)
+        if (D3dDevice->CreateIndexBuffer(IndexBufferSize * sizeof(CustomVertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, sizeof(ImDrawIdx) == 2 ? D3DFMT_INDEX16 : D3DFMT_INDEX32, D3DPOOL_DEFAULT, &IndexBuffer, nullptr) < 0)
             return;
     }
 
@@ -655,30 +618,25 @@ static void RenderDrawData(ImDrawData* draw_data)
     // Copy and convert all vertices into a single contiguous buffer, convert colors to DX9 default format
     CustomVertex* vtx_dst;
     ImDrawIdx* idx_dst;
-    if (VertexBuffer->Lock(
-            0, (UINT)(draw_data->TotalVtxCount * sizeof(CustomVertex)), (void**)&vtx_dst, D3DLOCK_DISCARD) < 0)
+    if (VertexBuffer->Lock(0, (UINT)(draw_data->TotalVtxCount * sizeof(CustomVertex)), (void**)&vtx_dst, D3DLOCK_DISCARD) < 0)
         return;
-    if (IndexBuffer->Lock(0, (UINT)(draw_data->TotalIdxCount * sizeof(ImDrawIdx)), (void**)&idx_dst, D3DLOCK_DISCARD) <
-        0)
+    if (IndexBuffer->Lock(0, (UINT)(draw_data->TotalIdxCount * sizeof(ImDrawIdx)), (void**)&idx_dst, D3DLOCK_DISCARD) < 0)
         return;
 
-    for (int n = 0; n < draw_data->CmdListsCount; n++)
-    {
+    for (int n = 0; n < draw_data->CmdListsCount; n++) {
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
         const ImDrawVert* vtx_src = cmd_list->VtxBuffer.Data;
-        for (int i = 0; i < cmd_list->VtxBuffer.Size; i++)
-        {
+        for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
             vtx_dst->Position[0] = vtx_src->pos.x;
             vtx_dst->Position[1] = vtx_src->pos.y;
             vtx_dst->Position[2] = 0.0f;
-            vtx_dst->Color =
-                (vtx_src->col & 0xFF00FF00) | ((vtx_src->col & 0xFF0000) >> 16) | ((vtx_src->col & 0xFF) << 16);
+            vtx_dst->Color = (vtx_src->col & 0xFF00FF00) | ((vtx_src->col & 0xFF0000) >> 16) | ((vtx_src->col & 0xFF) << 16);
             vtx_dst->UV[0] = vtx_src->uv.x;
             vtx_dst->UV[1] = vtx_src->uv.y;
             vtx_dst++;
             vtx_src++;
         }
-        memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+        std::memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
         idx_dst += cmd_list->IdxBuffer.Size;
     }
 
@@ -696,28 +654,22 @@ static void RenderDrawData(ImDrawData* draw_data)
     int global_vtx_offset = 0;
     int global_idx_offset = 0;
     ImVec2 clip_off = draw_data->DisplayPos;
-    for (int n = 0; n < draw_data->CmdListsCount; n++)
-    {
+    for (int n = 0; n < draw_data->CmdListsCount; n++) {
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
-        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
-        {
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-            if (pcmd->UserCallback != nullptr)
-            {
+            if (pcmd->UserCallback != nullptr) {
                 if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
                     SetupRenderState(draw_data);
                 else
                     pcmd->UserCallback(cmd_list, pcmd);
             }
-            else
-            {
-                const RECT r = {(LONG)(pcmd->ClipRect.x - clip_off.x), (LONG)(pcmd->ClipRect.y - clip_off.y),
-                    (LONG)(pcmd->ClipRect.z - clip_off.x), (LONG)(pcmd->ClipRect.w - clip_off.y)};
+            else {
+                const RECT r = {(LONG)(pcmd->ClipRect.x - clip_off.x), (LONG)(pcmd->ClipRect.y - clip_off.y), (LONG)(pcmd->ClipRect.z - clip_off.x), (LONG)(pcmd->ClipRect.w - clip_off.y)};
                 const LPDIRECT3DTEXTURE9 texture = (LPDIRECT3DTEXTURE9)pcmd->TextureId;
                 D3dDevice->SetTexture(0, texture);
                 D3dDevice->SetScissorRect(&r);
-                D3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, pcmd->VtxOffset + global_vtx_offset, 0,
-                    (UINT)cmd_list->VtxBuffer.Size, pcmd->IdxOffset + global_idx_offset, pcmd->ElemCount / 3);
+                D3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, pcmd->VtxOffset + global_vtx_offset, 0, (UINT)cmd_list->VtxBuffer.Size, pcmd->IdxOffset + global_idx_offset, pcmd->ElemCount / 3);
             }
         }
         global_idx_offset += cmd_list->IdxBuffer.Size;
@@ -773,10 +725,8 @@ static void SetupRenderState(ImDrawData* draw_data)
     float r = draw_data->DisplayPos.x + draw_data->DisplaySize.x + 0.5f;
     float t = draw_data->DisplayPos.y + 0.5f;
     float b = draw_data->DisplayPos.y + draw_data->DisplaySize.y + 0.5f;
-    D3DMATRIX mat_identity = {
-        {{1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}}};
-    D3DMATRIX mat_projection = {{{2.0f / (r - l), 0.0f, 0.0f, 0.0f, 0.0f, 2.0f / (t - b), 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,
-        0.0f, (l + r) / (l - r), (t + b) / (b - t), 0.5f, 1.0f}}};
+    D3DMATRIX mat_identity = {{{1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}}};
+    D3DMATRIX mat_projection = {{{2.0f / (r - l), 0.0f, 0.0f, 0.0f, 0.0f, 2.0f / (t - b), 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, (l + r) / (l - r), (t + b) / (b - t), 0.5f, 1.0f}}};
     D3dDevice->SetTransform(D3DTS_WORLD, &mat_identity);
     D3dDevice->SetTransform(D3DTS_VIEW, &mat_identity);
     D3dDevice->SetTransform(D3DTS_PROJECTION, &mat_projection);
@@ -789,15 +739,12 @@ static bool UpdateMouseCursor()
         return false;
 
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
-    {
+    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor) {
         SetCursor(nullptr);
     }
-    else
-    {
+    else {
         LPTSTR win32_cursor = IDC_ARROW;
-        switch (imgui_cursor)
-        {
+        switch (imgui_cursor) {
         case ImGuiMouseCursor_Arrow:
             win32_cursor = IDC_ARROW;
             break;
@@ -865,30 +812,24 @@ DECLARE_HANDLE(DPI_AWARENESS_CONTEXT);
 #endif
 typedef HRESULT(WINAPI* PFN_SetProcessDpiAwareness)(PROCESS_DPI_AWARENESS); // Shcore.lib+dll, Windows 8.1
 typedef HRESULT(WINAPI* PFN_GetDpiForMonitor)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*); // Shcore.lib+dll, Windows 8.1
-typedef DPI_AWARENESS_CONTEXT(WINAPI* PFN_SetThreadDpiAwarenessContext)(
-    DPI_AWARENESS_CONTEXT); // User32.lib+dll, Windows 10 v1607 (Creators Update)
+typedef DPI_AWARENESS_CONTEXT(WINAPI* PFN_SetThreadDpiAwarenessContext)(DPI_AWARENESS_CONTEXT); // User32.lib+dll, Windows 10 v1607 (Creators Update)
 
 static void EnableDpiAwareness()
 {
     // if (IsWindows10OrGreater())
     {
         static HINSTANCE user32_dll = LoadLibraryA("user32.dll");
-        if (PFN_SetThreadDpiAwarenessContext SetThreadDpiAwarenessContextFn =
-                (PFN_SetThreadDpiAwarenessContext)GetProcAddress(user32_dll, "SetThreadDpiAwarenessContext"))
-        {
+        if (PFN_SetThreadDpiAwarenessContext SetThreadDpiAwarenessContextFn = (PFN_SetThreadDpiAwarenessContext)GetProcAddress(user32_dll, "SetThreadDpiAwarenessContext")) {
             SetThreadDpiAwarenessContextFn(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
             return;
         }
     }
-    if (IsWindows8Point1OrGreater())
-    {
+    if (IsWindows8Point1OrGreater()) {
         static HINSTANCE shcore_dll = LoadLibraryA("shcore.dll");
-        if (PFN_SetProcessDpiAwareness SetProcessDpiAwarenessFn =
-                (PFN_SetProcessDpiAwareness)GetProcAddress(shcore_dll, "SetProcessDpiAwareness"))
+        if (PFN_SetProcessDpiAwareness SetProcessDpiAwarenessFn = (PFN_SetProcessDpiAwareness)GetProcAddress(shcore_dll, "SetProcessDpiAwareness"))
             SetProcessDpiAwarenessFn(PROCESS_PER_MONITOR_DPI_AWARE);
     }
-    else
-    {
+    else {
         SetProcessDPIAware();
     }
 }
@@ -896,15 +837,12 @@ static void EnableDpiAwareness()
 static float GetDpiScaleForMonitor(void* monitor)
 {
     UINT xdpi = 96, ydpi = 96;
-    if (IsWindows8Point1OrGreater())
-    {
+    if (IsWindows8Point1OrGreater()) {
         static HINSTANCE shcore_dll = LoadLibraryA("shcore.dll");
-        if (PFN_GetDpiForMonitor GetDpiForMonitorFn =
-                (PFN_GetDpiForMonitor)GetProcAddress(shcore_dll, "GetDpiForMonitor"))
+        if (PFN_GetDpiForMonitor GetDpiForMonitorFn = (PFN_GetDpiForMonitor)GetProcAddress(shcore_dll, "GetDpiForMonitor"))
             GetDpiForMonitorFn((HMONITOR)monitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
     }
-    else
-    {
+    else {
         const HDC dc = GetDC(nullptr);
         xdpi = GetDeviceCaps(dc, LOGPIXELSX);
         ydpi = GetDeviceCaps(dc, LOGPIXELSY);
@@ -949,8 +887,7 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
             parent_window = (HWND)parent_viewport->PlatformHandle;
 
     // Create window
-    RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x),
-        (LONG)(viewport->Pos.y + viewport->Size.y)};
+    RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x), (LONG)(viewport->Pos.y + viewport->Size.y)};
     AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle);
     data->Hwnd = CreateWindowEx(data->DwExStyle, WndSubClassName.c_str(), L"Child",
         data->DwStyle, // Style, class name, window name
@@ -963,10 +900,8 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
 
 static void Platform_DestroyWindow(ImGuiViewport* viewport)
 {
-    if (ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData)
-    {
-        if (GetCapture() == data->Hwnd)
-        {
+    if (ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData) {
+        if (GetCapture() == data->Hwnd) {
             ReleaseCapture();
             SetCapture(WndHandle);
         }
@@ -996,17 +931,14 @@ static void Platform_UpdateWindow(ImGuiViewport* viewport)
     DWORD new_ex_style;
     GetWin32StyleFromViewportFlags(viewport->Flags, &new_style, &new_ex_style);
 
-    if (data->DwStyle != new_style || data->DwExStyle != new_ex_style)
-    {
+    if (data->DwStyle != new_style || data->DwExStyle != new_ex_style) {
         data->DwStyle = new_style;
         data->DwExStyle = new_ex_style;
         SetWindowLong(data->Hwnd, GWL_STYLE, data->DwStyle);
         SetWindowLong(data->Hwnd, GWL_EXSTYLE, data->DwExStyle);
-        RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x),
-            (LONG)(viewport->Pos.y + viewport->Size.y)};
+        RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x), (LONG)(viewport->Pos.y + viewport->Size.y)};
         AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle); // Client to Screen
-        SetWindowPos(data->Hwnd, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        SetWindowPos(data->Hwnd, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
         ShowWindow(data->Hwnd, SW_SHOWNA); // This is necessary when we alter the style
         viewport->PlatformRequestMove = viewport->PlatformRequestResize = true;
     }
@@ -1045,8 +977,7 @@ static void Platform_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
     RUNTIME_ASSERT(data->Hwnd != 0);
     RECT rect = {0, 0, (LONG)size.x, (LONG)size.y};
     AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle); // Client to Screen
-    SetWindowPos(data->Hwnd, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top,
-        SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+    SetWindowPos(data->Hwnd, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
 }
 
 static void Platform_SetWindowFocus(ImGuiViewport* viewport)
@@ -1088,14 +1019,12 @@ static void Platform_SetWindowAlpha(ImGuiViewport* viewport, float alpha)
     ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData;
     RUNTIME_ASSERT(data->Hwnd != 0);
     RUNTIME_ASSERT((alpha >= 0.0f && alpha <= 1.0f));
-    if (alpha < 1.0f)
-    {
+    if (alpha < 1.0f) {
         DWORD style = GetWindowLongW(data->Hwnd, GWL_EXSTYLE) | WS_EX_LAYERED;
         SetWindowLongW(data->Hwnd, GWL_EXSTYLE, style);
         SetLayeredWindowAttributes(data->Hwnd, 0, (BYTE)(255 * alpha), LWA_ALPHA);
     }
-    else
-    {
+    else {
         DWORD style = GetWindowLongW(data->Hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED;
         SetWindowLongW(data->Hwnd, GWL_EXSTYLE, style);
     }
@@ -1115,12 +1044,9 @@ static void Platform_OnChangedViewport(ImGuiViewport* viewport)
 
 static void Platform_SetImeInputPos(ImGuiViewport* viewport, ImVec2 pos)
 {
-    COMPOSITIONFORM cf = {
-        CFS_FORCE_POSITION, {(LONG)(pos.x - viewport->Pos.x), (LONG)(pos.y - viewport->Pos.y)}, {0, 0, 0, 0}};
-    if (HWND hwnd = (HWND)viewport->PlatformHandle)
-    {
-        if (HIMC himc = ImmGetContext(hwnd))
-        {
+    COMPOSITIONFORM cf = {CFS_FORCE_POSITION, {(LONG)(pos.x - viewport->Pos.x), (LONG)(pos.y - viewport->Pos.y)}, {0, 0, 0, 0}};
+    if (HWND hwnd = (HWND)viewport->PlatformHandle) {
+        if (HIMC himc = ImmGetContext(hwnd)) {
             ImmSetCompositionWindow(himc, &cf);
             ImmReleaseContext(hwnd, himc);
         }
@@ -1143,11 +1069,9 @@ static BOOL CALLBACK UpdateMonitorsEnumFunc(HMONITOR monitor, HDC, LPRECT, LPARA
 
     ImGuiPlatformMonitor imgui_monitor;
     imgui_monitor.MainPos = ImVec2((float)info.rcMonitor.left, (float)info.rcMonitor.top);
-    imgui_monitor.MainSize = ImVec2(
-        (float)(info.rcMonitor.right - info.rcMonitor.left), (float)(info.rcMonitor.bottom - info.rcMonitor.top));
+    imgui_monitor.MainSize = ImVec2((float)(info.rcMonitor.right - info.rcMonitor.left), (float)(info.rcMonitor.bottom - info.rcMonitor.top));
     imgui_monitor.WorkPos = ImVec2((float)info.rcWork.left, (float)info.rcWork.top);
-    imgui_monitor.WorkSize =
-        ImVec2((float)(info.rcWork.right - info.rcWork.left), (float)(info.rcWork.bottom - info.rcWork.top));
+    imgui_monitor.WorkSize = ImVec2((float)(info.rcWork.right - info.rcWork.left), (float)(info.rcWork.bottom - info.rcWork.top));
     imgui_monitor.DpiScale = GetDpiScaleForMonitor(monitor);
     ImGuiPlatformIO& io = ImGui::GetPlatformIO();
     if (info.dwFlags & MONITORINFOF_PRIMARY)
@@ -1183,8 +1107,7 @@ static void Renderer_CreateWindow(ImGuiViewport* viewport)
 
 static void Renderer_DestroyWindow(ImGuiViewport* viewport)
 {
-    if (ImGuiViewportDataDx9* data = (ImGuiViewportDataDx9*)viewport->RendererUserData)
-    {
+    if (ImGuiViewportDataDx9* data = (ImGuiViewportDataDx9*)viewport->RendererUserData) {
         if (data->SwapChain)
             data->SwapChain->Release();
         data->SwapChain = nullptr;
@@ -1197,8 +1120,7 @@ static void Renderer_DestroyWindow(ImGuiViewport* viewport)
 static void Renderer_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
 {
     ImGuiViewportDataDx9* data = (ImGuiViewportDataDx9*)viewport->RendererUserData;
-    if (data->SwapChain)
-    {
+    if (data->SwapChain) {
         data->SwapChain->Release();
         data->SwapChain = nullptr;
         data->D3dPP.BackBufferWidth = (UINT)size.x;
@@ -1222,10 +1144,8 @@ static void Renderer_RenderWindow(ImGuiViewport* viewport, void*)
     D3dDevice->SetRenderTarget(0, render_target);
     D3dDevice->SetDepthStencilSurface(nullptr);
 
-    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-    {
-        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f),
-            (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear)) {
+        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
         D3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, clear_col_dx, 1.0f, 0);
     }
 

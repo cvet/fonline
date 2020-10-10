@@ -48,32 +48,38 @@ class Critter;
 using CritterMap = map<uint, Critter*>;
 using CritterVec = vector<Critter*>;
 
-class Item : public Entity
+class Item final : public Entity
 {
     friend class Entity;
     friend class ItemManager;
 
 public:
-    Item(uint id, ProtoItem* proto, ServerScriptSystem& script_sys);
+    Item() = delete;
+    Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys);
+    Item(const Item&) = delete;
+    Item(Item&&) noexcept = delete;
+    auto operator=(const Item&) = delete;
+    auto operator=(Item&&) noexcept = delete;
+    ~Item() override = default;
 
-    ProtoItem* GetProtoItem() { return (ProtoItem*)Proto; }
-    void SetProto(ProtoItem* proto);
-    bool SetScript(string func, bool first_time);
+    auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
+    void SetProto(const ProtoItem* proto);
+    auto SetScript(const string& func, bool first_time) -> bool;
     void SetSortValue(ItemVec& items);
     void ChangeCount(int val);
 
-    Item* ContGetItem(uint item_id, bool skip_hide);
+    auto ContGetItem(uint item_id, bool skip_hide) -> Item*;
     void ContGetAllItems(ItemVec& items, bool skip_hide);
-    Item* ContGetItemByPid(hash pid, uint stack_id);
+    auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
     void ContGetItems(ItemVec& items, uint stack_id);
-    bool ContIsItems();
+    auto ContIsItems() const -> bool;
 
-    bool IsStatic() { return GetIsStatic(); }
-    bool IsAnyScenery() { return IsScenery() || IsWall(); }
-    bool IsScenery() { return GetIsScenery(); }
-    bool IsWall() { return GetIsWall(); }
-    bool RadioIsSendActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_SEND); }
-    bool RadioIsRecvActive() { return !FLAG(GetRadioFlags(), RADIO_DISABLE_RECV); }
+    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
+    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
+    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
+    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
+    [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
+    [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
 
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
@@ -88,6 +94,6 @@ public:
 #include "ScriptApi.h"
 
 private:
-    ServerScriptSystem& scriptSys;
-    ItemVec* childItems {};
+    ServerScriptSystem& _scriptSys;
+    ItemVec* _childItems {};
 };

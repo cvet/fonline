@@ -37,110 +37,122 @@
 
 #define MAX_FOTEXT UTF8_BUF_SIZE(2048)
 
-class Str : public StaticClass
+class Str final
 {
 public:
+    Str() = delete;
+
     static void Copy(char* to, size_t size, const char* from);
     template<int Size>
-    static inline void Copy(char (&to)[Size], const char* from)
+    static void Copy(char (&to)[Size], const char* from)
     {
         return Copy(to, Size, from);
     }
-    static bool Compare(const char* str1, const char* str2);
+    static auto Compare(const char* str1, const char* str2) -> bool;
 };
 
+// ReSharper disable once CppInconsistentNaming
 class _str
 {
+    // ReSharper disable CppInconsistentNaming
+
 public:
-    _str() {}
-    _str(const _str& r) : s(r.s) {}
-    _str(const string& s) : s(s) {}
-    _str(const char* s) : s(s) {}
+    _str() = default;
+    _str(const _str& r) : _s(r._s) { }
+    explicit _str(string s) : _s(std::move(s)) { }
+    explicit _str(const char* s) : _s(s) { }
     template<typename... Args>
-    _str(const string& format, Args... args) : s(fmt::format(format, args...))
+    explicit _str(const string& format, Args... args) : _s(fmt::format(format, args...))
     {
     }
-    operator string&() { return s; }
-    _str operator+(const char* r) const { return _str(s + string(r)); }
-    friend _str operator+(const _str& l, const string& r) { return _str(l.s + r); }
-    friend bool operator==(const _str& l, const string& r) { return l.s == r; }
-    bool operator!=(const _str& r) const { return s != r.s; }
-    friend bool operator!=(const _str& l, const string& r) { return l.s != r; }
-    const char* c_str() const { return s.c_str(); }
-    const string& str() const { return s; }
 
-    uint length();
-    bool empty();
-    bool compareIgnoreCase(const string& r);
-    bool compareIgnoreCaseUtf8(const string& r);
-    bool startsWith(char r);
-    bool startsWith(const string& r);
-    bool endsWith(char r);
-    bool endsWith(const string& r);
-    bool isValidUtf8();
-    uint lengthUtf8();
+    // ReSharper disable once CppNonExplicitConversionOperator
+    operator string&() { return _s; }
+    auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
+    friend auto operator+(const _str& l, const string& r) -> _str { return _str(l._s + r); }
+    friend auto operator==(const _str& l, const string& r) -> bool { return l._s == r; }
+    auto operator==(const _str& r) const -> bool { return _s == r._s; }
+    auto operator!=(const _str& r) const -> bool { return _s != r._s; }
+    friend auto operator!=(const _str& l, const string& r) -> bool { return l._s != r; }
+    [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
+    [[nodiscard]] auto str() const -> const string& { return _s; }
 
-    _str& substringUntil(char separator);
-    _str& substringUntil(string separator);
-    _str& substringAfter(char separator);
-    _str& substringAfter(string separator);
-    _str& trim();
-    _str& erase(char what);
-    _str& erase(char begin, char end);
-    _str& replace(char from, char to);
-    _str& replace(char from1, char from2, char to);
-    _str& replace(const string& from, const string& to);
-    _str& lower();
-    _str& lowerUtf8();
-    _str& upper();
-    _str& upperUtf8();
+    [[nodiscard]] auto length() const -> uint;
+    [[nodiscard]] auto empty() const -> bool;
+    [[nodiscard]] auto compareIgnoreCase(const string& r) const -> bool;
+    [[nodiscard]] auto compareIgnoreCaseUtf8(const string& r) const -> bool;
+    [[nodiscard]] auto startsWith(char r) const -> bool;
+    [[nodiscard]] auto startsWith(const string& r) const -> bool;
+    [[nodiscard]] auto endsWith(char r) const -> bool;
+    [[nodiscard]] auto endsWith(const string& r) const -> bool;
+    [[nodiscard]] auto isValidUtf8() const -> bool;
+    [[nodiscard]] auto lengthUtf8() const -> uint;
 
-    StrVec split(char divider);
-    IntVec splitToInt(char divider);
+    auto substringUntil(char separator) -> _str&;
+    auto substringUntil(const string& separator) -> _str&;
+    auto substringAfter(char separator) -> _str&;
+    auto substringAfter(const string& separator) -> _str&;
+    auto trim() -> _str&;
+    auto erase(char what) -> _str&;
+    auto erase(char begin, char end) -> _str&;
+    auto replace(char from, char to) -> _str&;
+    auto replace(char from1, char from2, char to) -> _str&;
+    auto replace(const string& from, const string& to) -> _str&;
+    auto lower() -> _str&;
+    auto lowerUtf8() -> _str&;
+    auto upper() -> _str&;
+    auto upperUtf8() -> _str&;
 
-    bool isNumber();
-    int toInt();
-    uint toUInt();
-    int64 toInt64();
-    uint64 toUInt64();
-    float toFloat();
-    double toDouble();
-    bool toBool();
+    [[nodiscard]] auto split(char divider) const -> StrVec;
+    [[nodiscard]] auto splitToInt(char divider) const -> IntVec;
 
-    _str& formatPath();
-    _str& extractDir();
-    _str& extractLastDir();
-    _str& extractFileName();
-    _str& getFileExtension(); // Extension without dot
-    _str& eraseFileExtension(); // Erase extension with dot
-    _str& combinePath(const string& path);
-    _str& forwardPath(const string& relative_dir);
-    _str& normalizePathSlashes();
-    _str& normalizeLineEndings();
+    [[nodiscard]] auto isNumber() -> bool; // Todo: make isNumber const
+    [[nodiscard]] auto toInt() -> int;
+    [[nodiscard]] auto toUInt() -> uint;
+    [[nodiscard]] auto toInt64() -> int64;
+    [[nodiscard]] auto toUInt64() -> uint64;
+    [[nodiscard]] auto toFloat() const -> float;
+    [[nodiscard]] auto toDouble() const -> double;
+    [[nodiscard]] auto toBool() -> bool;
+
+    auto formatPath() -> _str&;
+    auto extractDir() -> _str&;
+    auto extractLastDir() -> _str&;
+    auto extractFileName() -> _str&;
+    auto getFileExtension() -> _str&; // Extension without dot
+    auto eraseFileExtension() -> _str&; // Erase extension with dot
+    auto combinePath(const string& path) -> _str&;
+    auto forwardPath(const string& relative_dir) -> _str&;
+    auto normalizePathSlashes() -> _str&;
+    auto normalizeLineEndings() -> _str&;
 
 #ifdef FO_WINDOWS
-    _str& parseWideChar(const wchar_t* str);
-    std::wstring toWideChar();
+    auto parseWideChar(const wchar_t* str) -> _str&;
+    [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
 
-    hash toHash();
-    _str& parseHash(hash h);
+    auto parseHash(hash h) -> _str&;
+    [[nodiscard]] auto toHash() -> hash;
 
 private:
-    string s {};
+    string _s {};
+
+    // ReSharper restore CppInconsistentNaming
 };
 
 namespace utf8
 {
-    bool IsValid(uint ucs);
-    uint Decode(const char* str, uint* length);
-    uint Encode(uint ucs, char (&buf)[4]);
-    uint Lower(uint ucs);
-    uint Upper(uint ucs);
-}
+    auto IsValid(uint ucs) -> bool;
+    auto Decode(const char* str, uint* length) -> uint;
+    auto Encode(uint ucs, char (&buf)[4]) -> uint;
+    auto Lower(uint ucs) -> uint;
+    auto Upper(uint ucs) -> uint;
+} // namespace utf8
 
 namespace fmt
 {
+    // ReSharper disable CppInconsistentNaming
+
     template<>
     struct formatter<_str>
     {
@@ -156,4 +168,6 @@ namespace fmt
             return format_to(ctx.out(), "{}", s.str());
         }
     };
-}
+
+    // ReSharper restore CppInconsistentNaming
+} // namespace fmt

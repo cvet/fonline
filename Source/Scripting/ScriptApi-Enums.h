@@ -54,7 +54,7 @@ FO_API_ENUM_ENTRY(MouseButton, Ext4, 9)
  ******************************************************************************/
 FO_API_ENUM_GROUP(KeyCode)
 #define KEY_CODE(name, index, code) FO_API_ENUM_ENTRY(KeyCode, name, index)
-#include "KeyCodes_Include.h"
+#include "KeyCodes-Include.h"
 
 /*******************************************************************************
  * ...
@@ -113,3 +113,27 @@ FO_API_ENUM_ENTRY(Anim1, None, 0)
  ******************************************************************************/
 FO_API_ENUM_GROUP(CursorType)
 FO_API_ENUM_ENTRY(CursorType, Default, 0)
+
+/*******************************************************************************
+ * ...
+ ******************************************************************************/
+FO_API_ENUM_GROUP(EffectType)
+FO_API_ENUM_ENTRY(EffectType, GenericSprite, 0x00000001) // Subtype can be item id, zero for all items
+FO_API_ENUM_ENTRY(EffectType, CritterSprite, 0x00000002) // Subtype can be critter id, zero for all critters
+FO_API_ENUM_ENTRY(EffectType, TileSprite, 0x00000004)
+FO_API_ENUM_ENTRY(EffectType, RoofSprite, 0x00000008)
+FO_API_ENUM_ENTRY(EffectType, RainSprite, 0x00000010)
+FO_API_ENUM_ENTRY(EffectType, SkinnedMesh, 0x00000400)
+FO_API_ENUM_ENTRY(EffectType, Interface, 0x00001000)
+FO_API_ENUM_ENTRY(EffectType, Contour, 0x00002000)
+FO_API_ENUM_ENTRY(EffectType, Font, 0x00010000) // Subtype is FONT_*, -1 default for all fonts
+FO_API_ENUM_ENTRY(EffectType, Primitive, 0x00100000)
+FO_API_ENUM_ENTRY(EffectType, Light, 0x00200000)
+FO_API_ENUM_ENTRY(EffectType, Fog, 0x00400000)
+FO_API_ENUM_ENTRY(EffectType, FlushRenderTarget, 0x01000000)
+FO_API_ENUM_ENTRY(EffectType, FlushRenderTargetMultisampled, 0x02000000) // Multisample
+FO_API_ENUM_ENTRY(EffectType, FlushPrimitive, 0x04000000)
+FO_API_ENUM_ENTRY(EffectType, FlushMap, 0x08000000)
+FO_API_ENUM_ENTRY(EffectType, FlushLight, 0x10000000)
+FO_API_ENUM_ENTRY(EffectType, FlushFog, 0x20000000)
+FO_API_ENUM_ENTRY(EffectType, Offscreen, 0x40000000)

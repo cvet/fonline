@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// ReSharper disable CppMissingIncludeGuard
+
 #ifndef KEY_CODE
 #error KEY_CODE must be defined
 #endif

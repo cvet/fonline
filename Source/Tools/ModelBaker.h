@@ -40,20 +40,26 @@
 namespace fbxsdk
 {
     class FbxManager;
-}
+} // namespace fbxsdk
 
-class ModelBaker : public NonCopyable
+class ModelBaker final
 {
 public:
-    ModelBaker(FileCollection& all_files);
+    ModelBaker() = delete;
+    explicit ModelBaker(FileCollection& all_files);
+    ModelBaker(const ModelBaker&) = delete;
+    ModelBaker(ModelBaker&&) noexcept = delete;
+    auto operator=(const ModelBaker&) = delete;
+    auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker();
+
     void AutoBakeModels();
     void FillBakedFiles(map<string, UCharVec>& baked_files);
 
 private:
-    UCharVec BakeFile(const string& fname, File& file);
+    auto BakeFile(const string& fname, File& file) -> UCharVec;
 
-    FileCollection& allFiles;
-    map<string, UCharVec> bakedFiles {};
-    fbxsdk::FbxManager* fbxManager {};
+    FileCollection& _allFiles;
+    map<string, UCharVec> _bakedFiles {};
+    fbxsdk::FbxManager* _fbxManager {};
 };

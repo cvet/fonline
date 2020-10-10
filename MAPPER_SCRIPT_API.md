@@ -50,7 +50,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint8 GetHexDirWithOffset(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float offset)
 * uint GetTick()
 * hash GetStrHash(string text)
-* string GetHashStr(hash h)
+* string GetHashStr(hash value)
 * uint DecodeUTF8(string text, ref uint length)
 * string EncodeUTF8(uint ucs)
 * void Yield(uint time)
@@ -64,7 +64,7 @@ You can easily contribute to this API using provided by engine functionality.
 * Item AddItem(hash pid, uint16 hx, uint16 hy)
 * Critter AddCritter(hash pid, uint16 hx, uint16 hy)
 * Item GetItemByHex(uint16 hx, uint16 hy)
-* Item[] GetItemsByHex(uint16 hx, uint16 hy)
+* ItemHexView[] GetItemsByHex(uint16 hx, uint16 hy)
 * Critter GetCritterByHex(uint16 hx, uint16 hy, int findType)
 * Critter[] GetCrittersByHex(uint16 hx, uint16 hy, int findType)
 * void MoveEntity(Entity entity, uint16 hx, uint16 hy)
@@ -117,7 +117,7 @@ You can easily contribute to this API using provided by engine functionality.
 * bool GetMonitorHex(int x, int y, ref uint16 hx, ref uint16 hy, bool ignoreInterface)
 * Entity GetMonitorObject(int x, int y, bool ignoreInterface)
 * void AddDataSource(string datName)
-* bool LoadFont(int fontIndex, string fontFname)
+* void LoadFont(int fontIndex, string fontFname)
 * void SetDefaultFont(int font, uint color)
 * void MouseClick(int x, int y, int button)
 * void KeyboardPress(uint8 key1, uint8 key2, string key1Text, string key2Text)
@@ -367,7 +367,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint GlobalMapWidth
 * uint GlobalMapHeight
 * uint GlobalMapZoneLength
-* int LookChecks
+* uint LookChecks
 * vector<uint> LookDir
 * vector<uint> LookSneakDir
 * uint MinimumOfflineTime
@@ -399,8 +399,8 @@ You can easily contribute to this API using provided by engine functionality.
 * uint Ping
 * bool DebugNet
 * bool DisableAudio
-* int SoundVolume
-* int MusicVolume
+* uint SoundVolume
+* uint MusicVolume
 * int ScreenWidth
 * int ScreenHeight
 * float SpritesZoom
@@ -412,16 +412,16 @@ You can easily contribute to this API using provided by engine functionality.
 * bool ShowSpriteBorders
 * vector<float> EffectValues
 * bool MapHexagonal
-* int MapDirCount
+* uint MapDirCount
 * int MapHexWidth
 * int MapHexHeight
 * int MapHexLineHeight
 * int MapTileOffsX
 * int MapTileOffsY
-* int MapTileStep
+* uint MapTileStep
 * int MapRoofOffsX
 * int MapRoofOffsY
-* int MapRoofSkipSize
+* uint MapRoofSkipSize
 * float MapCameraAngle
 * bool MapSmoothPath
 * string MapDataPrefix
@@ -693,17 +693,44 @@ You can easily contribute to this API using provided by engine functionality.
 
 * Default = 0
 
+### EffectType
+
+* GenericSprite = 0x00000001
+* CritterSprite = 0x00000002
+* TileSprite = 0x00000004
+* RoofSprite = 0x00000008
+* RainSprite = 0x00000010
+* SkinnedMesh = 0x00000400
+* Interface = 0x00001000
+* Contour = 0x00002000
+* Font = 0x00010000
+* Primitive = 0x00100000
+* Light = 0x00200000
+* Fog = 0x00400000
+* FlushRenderTarget = 0x01000000
+* FlushRenderTargetMultisampled = 0x02000000
+* FlushPrimitive = 0x04000000
+* FlushMap = 0x08000000
+* FlushLight = 0x10000000
+* FlushFog = 0x20000000
+* Offscreen = 0x40000000
+
 ## Content
 
 ### Item pids
 
+* BaseItem
 
 ### Critter pids
 
+* BaseCritter
+* Player
 
 ### Map pids
 
+* BaseMap
 
 ### Location pids
 
+* BaseLocation
 

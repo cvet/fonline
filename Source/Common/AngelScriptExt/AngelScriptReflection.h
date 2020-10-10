@@ -71,8 +71,7 @@ public:
     void Instantiate(void* out, int out_type_id) const;
     void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
     asUINT GetMethodsCount() const;
-    std::string GetMethodDeclaration(
-        asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const;
+    std::string GetMethodDeclaration(asUINT index, bool include_object_name, bool include_namespace, bool include_param_names) const;
     asUINT GetPropertiesCount() const;
     std::string GetPropertyDeclaration(asUINT index, bool include_namespace) const;
     asUINT GetEnumLength() const;

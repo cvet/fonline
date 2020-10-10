@@ -42,14 +42,16 @@ void MessageBox::ShowErrorMessage(const string& message, const string& traceback
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr);
 
 #else
-    string verb_message = message;
+    auto verb_message = message;
 #ifdef FO_WINDOWS
-    string most_recent = "most recent call first";
+    const string most_recent = "most recent call first";
 #else
-    string most_recent = "most recent call last";
+    const string most_recent = "most recent call last";
 #endif
-    if (!traceback.empty())
+
+    if (!traceback.empty()) {
         verb_message += _str("\n\nTraceback ({}):\n{}", most_recent, traceback);
+    }
 
     SDL_MessageBoxButtonData copy_button;
     SDL_zero(copy_button);
@@ -61,7 +63,7 @@ void MessageBox::ShowErrorMessage(const string& message, const string& traceback
     close_button.buttonid = 1;
     close_button.text = "Close";
 
-    // Workaround for strange behaviour of button focus
+    // Todo: fix workaround for strange behaviour of button focus
 #ifdef FO_WINDOWS
     copy_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
     copy_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
@@ -79,8 +81,9 @@ void MessageBox::ShowErrorMessage(const string& message, const string& traceback
     data.numbuttons = 2;
     data.buttons = buttons;
 
-    int buttonid;
-    while (!SDL_ShowMessageBox(&data, &buttonid) && buttonid == 0)
+    auto buttonid = 0;
+    while (SDL_ShowMessageBox(&data, &buttonid) == 0 && buttonid == 0) {
         SDL_SetClipboardText(verb_message.c_str());
+    }
 #endif
 }

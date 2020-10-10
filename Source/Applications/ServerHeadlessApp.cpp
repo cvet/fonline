@@ -36,22 +36,38 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
-#include "Version_Include.h"
-
-static GlobalSettings Settings;
+#include "Version-Include.h"
 
 #ifndef FO_TESTING
 extern "C" int main(int argc, char** argv)
 #else
-static int main_disabled(int argc, char** argv)
+[[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int
 #endif
 {
-    CatchExceptions("FOnlineServerHeadless", FO_VERSION);
-    LogToFile("FOnlineServerHeadless.log");
-    Settings.ParseArgs(argc, argv);
+    try {
+        CreateGlobalData();
+        CatchExceptions("FOnlineServerHeadless", FO_VERSION);
+        LogToFile("FOnlineServerHeadless.log");
 
-    FOServer* server = new FOServer(Settings);
-    while (Settings.Quit)
-        server->MainLoop();
-    return 0;
+        auto settings = GlobalSettings(argc, argv);
+        auto* server = new FOServer(settings);
+
+        while (settings.Quit) {
+            try {
+                server->MainLoop();
+            }
+            catch (const GenericException& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+
+        delete server;
+        return 0;
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
 }

@@ -35,38 +35,38 @@
 
 NetBuffer::NetBuffer()
 {
-    bufLen = DefaultBufSize;
-    bufData = std::make_unique<uchar[]>(bufLen);
+    _bufLen = DEFAULT_BUF_SIZE;
+    _bufData = std::make_unique<uchar[]>(_bufLen);
 }
 
 void NetBuffer::SetEncryptKey(uint seed)
 {
-    if (!seed)
-    {
-        encryptActive = false;
+    if (seed == 0u) {
+        _encryptActive = false;
         return;
     }
 
     std::mt19937 rnd_generator {seed};
-    std::uniform_int_distribution rnd_distr {1, 255};
-    for (int i = 0; i < CryptKeysCount; i++)
-        encryptKeys[i] = static_cast<uchar>(rnd_distr(rnd_generator));
-    encryptKeyPos = 0;
-    encryptActive = true;
+    const std::uniform_int_distribution<> rnd_distr {1, 255};
+    for (auto& key : _encryptKeys) {
+        key = static_cast<uchar>(rnd_distr(rnd_generator));
+    }
+
+    _encryptKeyPos = 0;
+    _encryptActive = true;
 }
 
-uchar NetBuffer::EncryptKey(int move)
+auto NetBuffer::EncryptKey(int move) -> uchar
 {
     uchar key = 0;
-    if (encryptActive)
-    {
-        key = encryptKeys[encryptKeyPos];
-        encryptKeyPos += move;
-        if (encryptKeyPos < 0 || encryptKeyPos >= CryptKeysCount)
-        {
-            encryptKeyPos %= CryptKeysCount;
-            if (encryptKeyPos < 0)
-                encryptKeyPos += CryptKeysCount;
+    if (_encryptActive) {
+        key = _encryptKeys[_encryptKeyPos];
+        _encryptKeyPos += move;
+        if (_encryptKeyPos < 0 || _encryptKeyPos >= CRYPT_KEYS_COUNT) {
+            _encryptKeyPos %= CRYPT_KEYS_COUNT;
+            if (_encryptKeyPos < 0) {
+                _encryptKeyPos += CRYPT_KEYS_COUNT;
+            }
         }
     }
     return key;
@@ -74,253 +74,292 @@ uchar NetBuffer::EncryptKey(int move)
 
 void NetBuffer::Refresh()
 {
-    if (isError)
-        return;
-    if (bufReadPos > bufEndPos)
-    {
-        isError = true;
+    if (_isError) {
         return;
     }
-    if (bufReadPos)
-    {
-        for (uint i = bufReadPos; i < bufEndPos; i++)
-            bufData[i - bufReadPos] = bufData[i];
-        bufEndPos -= bufReadPos;
-        bufReadPos = 0;
+
+    if (_bufReadPos > _bufEndPos) {
+        _isError = true;
+        return;
+    }
+
+    if (_bufReadPos != 0u) {
+        for (auto i = _bufReadPos; i < _bufEndPos; i++) {
+            _bufData[i - _bufReadPos] = _bufData[i];
+        }
+
+        _bufEndPos -= _bufReadPos;
+        _bufReadPos = 0;
     }
 }
 
 void NetBuffer::Reset()
 {
-    bufEndPos = 0;
-    bufReadPos = 0;
-    if (bufLen > DefaultBufSize)
-    {
-        bufLen = DefaultBufSize;
-        bufData = std::make_unique<uchar[]>(bufLen);
+    _bufEndPos = 0;
+    _bufReadPos = 0;
+
+    if (_bufLen > DEFAULT_BUF_SIZE) {
+        _bufLen = DEFAULT_BUF_SIZE;
+        _bufData = std::make_unique<uchar[]>(_bufLen);
     }
 }
 
 void NetBuffer::GrowBuf(uint len)
 {
-    if (bufEndPos + len < bufLen)
+    if (_bufEndPos + len < _bufLen) {
         return;
+    }
 
-    while (bufEndPos + len >= bufLen)
-        bufLen <<= 1;
+    while (_bufEndPos + len >= _bufLen) {
+        _bufLen <<= 1;
+    }
 
-    uchar* new_buf = new uchar[bufLen];
-    memcpy(new_buf, bufData.get(), bufEndPos);
-    bufData.reset(new_buf);
+    auto* new_buf = new uchar[_bufLen];
+    std::memcpy(new_buf, _bufData.get(), _bufEndPos);
+    _bufData.reset(new_buf);
+}
+
+auto NetBuffer::GetData() -> uchar*
+{
+    NON_CONST_METHOD_HINT(_isError);
+
+    return _bufData.get();
+}
+
+auto NetBuffer::GetCurData() -> uchar*
+{
+    NON_CONST_METHOD_HINT(_isError);
+
+    return _bufData.get() + _bufReadPos;
 }
 
 void NetBuffer::MoveReadPos(int val)
 {
-    bufReadPos += val;
+    _bufReadPos += val;
     EncryptKey(val);
 }
 
-void NetBuffer::Push(const void* buf, uint len, bool no_crypt /* = false */)
+void NetBuffer::Push(const void* buf, uint len)
 {
-    if (isError || !len)
+    if (_isError || len == 0u) {
         return;
+    }
 
-    if (bufEndPos + len >= bufLen)
+    if (_bufEndPos + len >= _bufLen) {
         GrowBuf(len);
+    }
 
-    CopyBuf(buf, bufData.get() + bufEndPos, no_crypt ? 0 : EncryptKey(len), len);
-    bufEndPos += len;
+    CopyBuf(buf, _bufData.get() + _bufEndPos, EncryptKey(len), len);
+    _bufEndPos += len;
+}
+
+void NetBuffer::Push(const void* buf, uint len, bool no_crypt)
+{
+    if (_isError || len == 0u) {
+        return;
+    }
+
+    if (_bufEndPos + len >= _bufLen) {
+        GrowBuf(len);
+    }
+
+    CopyBuf(buf, _bufData.get() + _bufEndPos, no_crypt ? 0 : EncryptKey(len), len);
+    _bufEndPos += len;
 }
 
 void NetBuffer::Pop(void* buf, uint len)
 {
-    if (isError || !len)
-        return;
-
-    if (bufReadPos + len > bufEndPos)
-    {
-        isError = true;
+    if (_isError || len == 0u) {
         return;
     }
 
-    CopyBuf(bufData.get() + bufReadPos, buf, EncryptKey(len), len);
-    bufReadPos += len;
+    if (_bufReadPos + len > _bufEndPos) {
+        _isError = true;
+        return;
+    }
+
+    CopyBuf(_bufData.get() + _bufReadPos, buf, EncryptKey(len), len);
+    _bufReadPos += len;
 }
 
 void NetBuffer::Cut(uint len)
 {
-    if (isError || !len)
-        return;
-
-    if (bufReadPos + len > bufEndPos)
-    {
-        isError = true;
+    if (_isError || len == 0u) {
         return;
     }
 
-    uchar* buf = bufData.get() + bufReadPos;
-    for (uint i = 0; i + bufReadPos + len < bufEndPos; i++)
+    if (_bufReadPos + len > _bufEndPos) {
+        _isError = true;
+        return;
+    }
+
+    auto* buf = _bufData.get() + _bufReadPos;
+    for (uint i = 0; i + _bufReadPos + len < _bufEndPos; i++) {
         buf[i] = buf[i + len];
-    bufEndPos -= len;
+    }
+
+    _bufEndPos -= len;
 }
 
 void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
 {
-    const uchar* from_ = (const uchar*)from;
-    uchar* to_ = (uchar*)to;
-    for (uint i = 0; i < len; i++, to_++, from_++)
+    const auto* from_ = static_cast<const uchar*>(from);
+    auto* to_ = static_cast<uchar*>(to);
+
+    for (uint i = 0; i < len; i++, to_++, from_++) {
         *to_ = *from_ ^ crypt_key;
+    }
 }
 
-bool NetBuffer::NeedProcess()
+auto NetBuffer::NeedProcess() -> bool
 {
     uint msg = 0;
-    if (bufReadPos + sizeof(msg) > bufEndPos)
+    if (_bufReadPos + sizeof(msg) > _bufEndPos) {
         return false;
+    }
 
-    CopyBuf(bufData.get() + bufReadPos, &msg, EncryptKey(0), sizeof(msg));
+    CopyBuf(_bufData.get() + _bufReadPos, &msg, EncryptKey(0), sizeof(msg));
 
     // Known size
-    switch (msg)
-    {
+    switch (msg) {
     case 0xFFFFFFFF:
         return true; // Ping
     case NETMSG_DISCONNECT:
-        return (NETMSG_DISCONNECT_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_DISCONNECT_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_LOGIN:
-        return (NETMSG_LOGIN_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_LOGIN_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_WRONG_NET_PROTO:
-        return (NETMSG_WRONG_NET_PROTO_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_WRONG_NET_PROTO_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REGISTER_SUCCESS:
-        return (NETMSG_REGISTER_SUCCESS_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_REGISTER_SUCCESS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_PING:
-        return (NETMSG_PING_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_PING_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_END_PARSE_TO_GAME:
-        return (NETMSG_END_PARSE_TO_GAME_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_END_PARSE_TO_GAME_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_UPDATE:
-        return (NETMSG_UPDATE_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_UPDATE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE:
-        return (NETMSG_GET_UPDATE_FILE_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_GET_UPDATE_FILE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE_DATA:
-        return (NETMSG_GET_UPDATE_FILE_DATA_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_GET_UPDATE_FILE_DATA_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_UPDATE_FILE_DATA:
-        return (NETMSG_UPDATE_FILE_DATA_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_UPDATE_FILE_DATA_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REMOVE_CRITTER:
-        return (NETMSG_REMOVE_CRITTER_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_REMOVE_CRITTER_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_MSG:
-        return (NETMSG_MSG_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_MSG_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_MAP_TEXT_MSG:
-        return (NETMSG_MAP_TEXT_MSG_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_MAP_TEXT_MSG_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_DIR:
-        return (NETMSG_DIR_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_DIR_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_DIR:
-        return (NETMSG_CRITTER_DIR_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_DIR_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_MOVE_WALK:
-        return (NETMSG_SEND_MOVE_WALK_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_MOVE_WALK_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_MOVE_RUN:
-        return (NETMSG_SEND_MOVE_RUN_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_MOVE_RUN_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_MOVE:
-        return (NETMSG_CRITTER_MOVE_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_MOVE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_XY:
-        return (NETMSG_CRITTER_XY_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_XY_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CUSTOM_COMMAND:
-        return (NETMSG_CUSTOM_COMMAND_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CUSTOM_COMMAND_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CLEAR_ITEMS:
-        return (NETMSG_CLEAR_ITEMS_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CLEAR_ITEMS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REMOVE_ITEM:
-        return (NETMSG_REMOVE_ITEM_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_REMOVE_ITEM_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_ALL_ITEMS_SEND:
-        return (NETMSG_ALL_ITEMS_SEND_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_ALL_ITEMS_SEND_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_ERASE_ITEM_FROM_MAP:
-        return (NETMSG_ERASE_ITEM_FROM_MAP_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_ERASE_ITEM_FROM_MAP_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_ANIMATE_ITEM:
-        return (NETMSG_ANIMATE_ITEM_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_ANIMATE_ITEM_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_ACTION:
-        return (NETMSG_CRITTER_ACTION_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_ACTION_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_ANIMATE:
-        return (NETMSG_CRITTER_ANIMATE_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_ANIMATE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_SET_ANIMS:
-        return (NETMSG_CRITTER_SET_ANIMS_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_CRITTER_SET_ANIMS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_EFFECT:
-        return (NETMSG_EFFECT_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_EFFECT_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_FLY_EFFECT:
-        return (NETMSG_FLY_EFFECT_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_FLY_EFFECT_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_TALK_NPC:
-        return (NETMSG_SEND_TALK_NPC_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_TALK_NPC_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_GET_INFO:
-        return (NETMSG_SEND_GET_TIME_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_GET_TIME_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GAME_INFO:
-        return (NETMSG_GAME_INFO_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_GAME_INFO_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_GIVE_MAP:
-        return (NETMSG_SEND_GIVE_MAP_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_GIVE_MAP_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_LOAD_MAP_OK:
-        return (NETMSG_SEND_LOAD_MAP_OK_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_LOAD_MAP_OK_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_REFRESH_ME:
-        return (NETMSG_SEND_REFRESH_ME_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_REFRESH_ME_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_VIEW_MAP:
-        return (NETMSG_VIEW_MAP_SIZE + bufReadPos <= bufEndPos);
+        return NETMSG_VIEW_MAP_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(1, 0):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(1, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(2, 0):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(2, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(4, 0):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(4, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(8, 0):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(8, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(1, 1):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(1, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(2, 1):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(2, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(4, 1):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(4, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(8, 1):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(8, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(1, 2):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(1, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(1, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(2, 2):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(2, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(2, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(4, 2):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(4, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(4, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(8, 2):
-        return (NETMSG_SEND_POD_PROPERTY_SIZE(8, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_SEND_POD_PROPERTY_SIZE(8, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(1, 0):
-        return (NETMSG_POD_PROPERTY_SIZE(1, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(1, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(2, 0):
-        return (NETMSG_POD_PROPERTY_SIZE(2, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(2, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(4, 0):
-        return (NETMSG_POD_PROPERTY_SIZE(4, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(4, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(8, 0):
-        return (NETMSG_POD_PROPERTY_SIZE(8, 0) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(8, 0) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(1, 1):
-        return (NETMSG_POD_PROPERTY_SIZE(1, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(1, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(2, 1):
-        return (NETMSG_POD_PROPERTY_SIZE(2, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(2, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(4, 1):
-        return (NETMSG_POD_PROPERTY_SIZE(4, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(4, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(8, 1):
-        return (NETMSG_POD_PROPERTY_SIZE(8, 1) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(8, 1) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(1, 2):
-        return (NETMSG_POD_PROPERTY_SIZE(1, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(1, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(2, 2):
-        return (NETMSG_POD_PROPERTY_SIZE(2, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(2, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(4, 2):
-        return (NETMSG_POD_PROPERTY_SIZE(4, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(4, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(8, 2):
-        return (NETMSG_POD_PROPERTY_SIZE(8, 2) + bufReadPos <= bufEndPos);
+        return NETMSG_POD_PROPERTY_SIZE(8, 2) + _bufReadPos <= _bufEndPos;
     default:
         break;
     }
 
     // Changeable size
     uint msg_len = 0;
-    if (bufReadPos + sizeof(msg) + sizeof(msg_len) > bufEndPos)
+    if (_bufReadPos + sizeof(msg) + sizeof(msg_len) > _bufEndPos) {
         return false;
+    }
 
     EncryptKey(sizeof(msg));
-    CopyBuf(bufData.get() + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
+    CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
 
-    switch (msg)
-    {
+    switch (msg) {
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
@@ -348,26 +387,23 @@ bool NetBuffer::NeedProcess()
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:
-        return bufReadPos + msg_len <= bufEndPos;
+        return _bufReadPos + msg_len <= _bufEndPos;
     default:
         // Unknown message
         Reset();
-        isError = true;
+        _isError = true;
         return false;
     }
-
-    return false;
 }
 
 void NetBuffer::SkipMsg(uint msg)
 {
-    bufReadPos -= sizeof(msg);
-    EncryptKey(-(int)sizeof(msg));
+    _bufReadPos -= sizeof(msg);
+    EncryptKey(-static_cast<int>(sizeof(msg)));
 
     // Known size
-    uint size = 0;
-    switch (msg)
-    {
+    uint size;
+    switch (msg) {
     case 0xFFFFFFFF:
         size = 16;
         break;
@@ -585,15 +621,14 @@ void NetBuffer::SkipMsg(uint msg)
         // Changeable size
         uint msg_len = 0;
         EncryptKey(sizeof(msg));
-        CopyBuf(bufData.get() + bufReadPos + sizeof(msg), &msg_len, EncryptKey(-(int)sizeof(msg)), sizeof(msg_len));
+        CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
         size = msg_len;
-    }
-    break;
+    } break;
     default:
         Reset();
         return;
     }
 
-    bufReadPos += size;
+    _bufReadPos += size;
     EncryptKey(size);
 }
