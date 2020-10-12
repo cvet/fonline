@@ -71,7 +71,7 @@
         {
             "label": "Format Engine code",
             "group": "Service",
-            "command": "cd Source && clang-format-9 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.*"
+            "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.*"
         },
         {
             "label": "Run unit tests",

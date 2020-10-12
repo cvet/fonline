@@ -18,8 +18,10 @@ function install_common_packages()
 
     echo "Install clang"
     sudo apt-get -qq -y install clang
-    echo "Install clang-format"
-    sudo apt-get -qq -y install clang-format
+    echo "Install clang-10"
+    sudo apt-get -qq -y install clang-10
+    echo "Install clang-format-10"
+    sudo apt-get -qq -y install clang-format-10
     echo "Install build-essential"
     sudo apt-get -qq -y install build-essential
     echo "Install git"
@@ -39,10 +41,6 @@ function install_linux_packages()
     echo "Install Linux packages"
     sudo apt-get -qq -y update
 
-    echo "Install clang-10"
-    sudo apt-get -qq -y install clang-10
-    echo "Install clang-format-9"
-    sudo apt-get -qq -y install clang-format-9
     echo "Install libc++-dev"
     sudo apt-get -qq -y install libc++-dev
     echo "Install libc++abi-dev"
@@ -192,10 +190,10 @@ function verify_workspace_part()
     fi
 }
 
-verify_workspace_part common-packages 4 install_common_packages
+verify_workspace_part common-packages 6 install_common_packages
 wait_jobs
 if [ ! -z `check_arg linux all` ]; then
-    verify_workspace_part linux-packages 4 install_linux_packages
+    verify_workspace_part linux-packages 5 install_linux_packages
     wait_jobs
 fi
 if [ ! -z `check_arg web all` ]; then
