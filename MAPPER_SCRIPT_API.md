@@ -98,7 +98,7 @@ You can easily contribute to this API using provided by engine functionality.
 * void TabSetName(int tab, string tabName)
 * void MoveScreenToHex(uint16 hx, uint16 hy, uint speed, bool canStop)
 * void MoveScreenOffset(int ox, int oy, uint speed, bool canStop)
-* void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
+* bool MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * string GetIfaceIniStr(string key)
 * void Message(string msg)
 * void MessageMsg(int textMsg, uint strNum)
@@ -292,7 +292,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint ShowCritterDist3
 * hash ScriptId
 * hash[] KnownLocProtoId
-* int[] Anim3dLayer
+* int[] ModelLayers
 * bool IsHide
 * bool IsNoHome
 * bool IsGeck

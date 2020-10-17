@@ -54,12 +54,12 @@ public:
     [[nodiscard]] virtual auto GetPackName() const -> const string& = 0;
     [[nodiscard]] virtual auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* = 0;
-    [[nodiscard]] virtual void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const = 0;
+    [[nodiscard]] virtual auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> = 0;
 };
 
 using FileNameVec = vector<pair<string, string>>;
 
-static void GetFileNamesGeneric(const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result)
+static auto GetFileNamesGeneric(const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext) -> vector<string>
 {
     string path_fixed = _str(path).lower().normalizePathSlashes();
     if (!path_fixed.empty() && path_fixed.back() != '/') {
@@ -67,6 +67,7 @@ static void GetFileNamesGeneric(const FileNameVec& fnames, const string& path, b
     }
 
     const auto len = path_fixed.length();
+    vector<string> result;
 
     for (const auto& [fst, snd] : fnames) {
         auto add = false;
@@ -79,6 +80,7 @@ static void GetFileNamesGeneric(const FileNameVec& fnames, const string& path, b
             result.push_back(snd);
         }
     }
+    return result;
 }
 
 class NonCachedDir final : public DataSource::Impl
@@ -95,7 +97,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
-    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> override;
 
 private:
     string _basePath {};
@@ -115,7 +117,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
-    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> override;
 
 private:
     struct FileEntry
@@ -145,8 +147,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
-
-    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override { GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result); }
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
     using IndexMap = unordered_map<string, uchar*>;
@@ -159,7 +160,7 @@ private:
     string _fileName {};
     uchar* _memTree {};
     uint64 _writeTime {};
-    mutable UCharVec _readBuf {};
+    mutable vector<uchar> _readBuf {};
 };
 
 class ZipFile final : public DataSource::Impl
@@ -176,8 +177,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
-
-    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override { GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result); }
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
     struct ZipFileInfo
@@ -210,7 +210,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string& override { return _packName; }
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar* override;
-    [[nodiscard]] void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const override;
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string> override;
 
 private:
     struct FileEntry
@@ -269,9 +269,9 @@ auto DataSource::OpenFile(const string& path, const string& path_lower, uint& si
     return _pImpl->OpenFile(path, path_lower, size, write_time);
 }
 
-void DataSource::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
+auto DataSource::GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>
 {
-    return _pImpl->GetFileNames(path, include_subdirs, ext, result);
+    return _pImpl->GetFileNames(path, include_subdirs, ext);
 }
 
 NonCachedDir::NonCachedDir(const string& fname)
@@ -312,7 +312,7 @@ auto NonCachedDir::OpenFile(const string& path, const string& /*path_lower*/, ui
     return buf;
 }
 
-void NonCachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
+auto NonCachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>
 {
     FileNameVec fnames;
     DiskFileSystem::IterateDir(_basePath + path, "", include_subdirs, [&fnames](const string& fname, uint fsize, uint64 write_time) {
@@ -320,11 +320,7 @@ void NonCachedDir::GetFileNames(const string& path, bool include_subdirs, const 
         fnames.push_back(std::make_pair(name_lower, fname));
     });
 
-    StrVec filtered;
-    GetFileNamesGeneric(fnames, path, include_subdirs, ext, filtered);
-    if (!filtered.empty()) {
-        result.insert(result.begin(), filtered.begin(), filtered.end());
-    }
+    return GetFileNamesGeneric(fnames, path, include_subdirs, ext);
 }
 
 CachedDir::CachedDir(const string& fname)
@@ -383,13 +379,9 @@ auto CachedDir::OpenFile(const string& path, const string& path_lower, uint& siz
     return buf;
 }
 
-void CachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
+auto CachedDir::GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>
 {
-    StrVec result_;
-    GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result_);
-    if (!result_.empty()) {
-        result.insert(result.begin(), result_.begin(), result_.end());
-    }
+    return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext);
 }
 
 FalloutDat::FalloutDat(const string& fname) : _datFile {DiskFileSystem::OpenFile(fname, false)}
@@ -943,11 +935,7 @@ auto AndroidAssets::OpenFile(const string& path, const string& path_lower, uint&
     return buf;
 }
 
-void AndroidAssets::GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const
+auto AndroidAssets::GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>
 {
-    StrVec result_;
-    GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext, result_);
-    if (!result_.empty()) {
-        result.insert(result.begin(), result_.begin(), result_.end());
-    }
+    return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext);
 }

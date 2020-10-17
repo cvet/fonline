@@ -51,6 +51,16 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     ~NetBuffer() = default;
 
+    [[nodiscard]] auto GetData() -> uchar*;
+    [[nodiscard]] auto GetCurData() -> uchar*;
+    [[nodiscard]] auto GetLen() const -> uint { return _bufLen; }
+    [[nodiscard]] auto GetCurPos() const -> uint { return _bufReadPos; }
+    [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
+    [[nodiscard]] auto IsError() const -> bool { return _isError; }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _bufReadPos >= _bufEndPos; }
+    [[nodiscard]] auto IsHaveSize(uint size) const -> bool { return _bufReadPos + size <= _bufEndPos; }
+    [[nodiscard]] auto NeedProcess() -> bool;
+
     void SetEncryptKey(uint seed);
     void Refresh();
     void Reset();
@@ -59,18 +69,9 @@ public:
     void Pop(void* buf, uint len);
     void Cut(uint len);
     void GrowBuf(uint len);
-    [[nodiscard]] auto GetData() -> uchar*;
-    [[nodiscard]] auto GetCurData() -> uchar*;
-    [[nodiscard]] auto GetLen() const -> uint { return _bufLen; }
-    [[nodiscard]] auto GetCurPos() const -> uint { return _bufReadPos; }
     void SetEndPos(uint pos) { _bufEndPos = pos; }
-    [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
     void MoveReadPos(int val);
-    [[nodiscard]] auto IsError() const -> bool { return _isError; }
     void SetError(bool value) { _isError = value; }
-    [[nodiscard]] auto IsEmpty() const -> bool { return _bufReadPos >= _bufEndPos; }
-    [[nodiscard]] auto IsHaveSize(uint size) const -> bool { return _bufReadPos + size <= _bufEndPos; }
-    auto NeedProcess() -> bool; // Todo: make NeedProcess const
     void SkipMsg(uint msg);
 
     // Generic specification
@@ -107,18 +108,9 @@ public:
         return *this;
     }
 
-    // Disable transferring of some types
-    // Todo: allow transferring of any type and add safe transferring of floats
-    auto operator<<(const uint64& i) -> NetBuffer& = delete;
-    auto operator>>(uint64& i) -> NetBuffer& = delete;
-    auto operator<<(const float& i) -> NetBuffer& = delete;
-    auto operator>>(float& i) -> NetBuffer& = delete;
-    auto operator<<(const double& i) -> NetBuffer& = delete;
-    auto operator>>(double& i) -> NetBuffer& = delete;
-
 private:
     auto EncryptKey(int move) -> uchar;
-    static void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
+    void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
 
     bool _isError {};
     unique_ptr<uchar[]> _bufData {};

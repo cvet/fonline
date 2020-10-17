@@ -40,10 +40,6 @@
 #define FO_API_MAP_VIEW_HEADER
 #include "ScriptApi.h"
 
-class MapView;
-using MapViewVec = vector<MapView*>;
-using MapViewMap = map<uint, MapView*>;
-
 class MapView final : public Entity
 {
 public:

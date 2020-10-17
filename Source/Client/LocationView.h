@@ -40,10 +40,6 @@
 #define FO_API_LOCATION_VIEW_HEADER
 #include "ScriptApi.h"
 
-class LocationView;
-using LocationViewVec = vector<LocationView*>;
-using LocationViewMap = map<uint, LocationView*>;
-
 class LocationView final : public Entity
 {
 public:

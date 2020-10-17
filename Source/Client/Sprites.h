@@ -56,8 +56,9 @@ public:
     auto operator=(Sprite&&) noexcept = delete;
     ~Sprite() = default;
 
+    [[nodiscard]] auto GetIntersected(int ox, int oy) -> Sprite*;
+
     void Unvalidate();
-    auto GetIntersected(int ox, int oy) -> Sprite*;
     void SetEgg(int egg);
     void SetContour(int contour);
     void SetContour(int contour, uint color);
@@ -127,15 +128,20 @@ public:
     ~Sprites() = default;
 
     static void GrowPool();
+
     [[nodiscard]] auto RootSprite() -> Sprite*;
+    [[nodiscard]] auto Size() const -> uint;
+
     [[nodiscard]] auto AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
     [[nodiscard]] auto InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+
     void Unvalidate();
     void SortByMapPos();
-    [[nodiscard]] auto Size() const -> uint;
     void Clear();
 
 private:
+    [[nodiscard]] auto PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+
     static SpriteVec _spritesPool;
     HexSettings& _settings;
     SpriteManager& _sprMngr;
@@ -143,6 +149,4 @@ private:
     Sprite* _lastSprite {};
     uint _spriteCount {};
     SpriteVec _unvalidatedSprites {};
-
-    [[nodiscard]] auto PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 };

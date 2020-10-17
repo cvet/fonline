@@ -491,7 +491,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
     return true;
 }
 
-auto SoundManager::PlaySound(const StrMap& sound_names, const string& name) -> bool
+auto SoundManager::PlaySound(const map<string, string>& sound_names, const string& name) -> bool
 {
     if (!_isActive || _settings.SoundVolume == 0) {
         return true;

@@ -35,37 +35,38 @@
 
 #include "Common.h"
 
-class AnimSet final
+class ModelAnimation final
 {
-    friend class AnimController;
+    friend class ModelAnimationController;
 
 public:
-    AnimSet() = default;
-    AnimSet(const AnimSet&) = delete;
-    AnimSet(AnimSet&&) noexcept = default;
-    auto operator=(const AnimSet&) = delete;
-    auto operator=(AnimSet&&) noexcept = delete;
-    ~AnimSet() = default;
+    ModelAnimation() = default;
+    ModelAnimation(const ModelAnimation&) = delete;
+    ModelAnimation(ModelAnimation&&) noexcept = default;
+    auto operator=(const ModelAnimation&) = delete;
+    auto operator=(ModelAnimation&&) noexcept = delete;
+    ~ModelAnimation() = default;
 
-    void Load(DataReader& reader);
-    void SetData(const string& fname, const string& name, float ticks, float tps);
-    void AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv);
     [[nodiscard]] auto GetFileName() const -> const string&;
     [[nodiscard]] auto GetName() const -> const string&;
     [[nodiscard]] auto GetBoneOutputCount() const -> uint;
     [[nodiscard]] auto GetDuration() const -> float;
-    [[nodiscard]] auto GetBonesHierarchy() const -> const HashVecVec&;
+    [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hash>>&;
+
+    void Load(DataReader& reader);
+    void SetData(const string& fname, const string& name, float ticks, float tps);
+    void AddBoneOutput(vector<hash> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
 
 private:
     struct BoneOutput
     {
         hash NameHash {};
-        FloatVec ScaleTime {};
-        VectorVec ScaleValue {};
-        FloatVec RotationTime {};
-        QuaternionVec RotationValue {};
-        FloatVec TranslationTime {};
-        VectorVec TranslationValue {};
+        vector<float> ScaleTime {};
+        vector<vec3> ScaleValue {};
+        vector<float> RotationTime {};
+        vector<quaternion> RotationValue {};
+        vector<float> TranslationTime {};
+        vector<vec3> TranslationValue {};
     };
 
     string _animFileName {};
@@ -73,30 +74,31 @@ private:
     float _durationTicks {};
     float _ticksPerSecond {};
     vector<BoneOutput> _boneOutputs {};
-    HashVecVec _bonesHierarchy {};
+    vector<vector<hash>> _bonesHierarchy {};
 };
 
-class AnimController final
+class ModelAnimationController final
 {
 public:
-    explicit AnimController(uint track_count);
-    AnimController(const AnimController&) = delete;
-    AnimController(AnimController&&) noexcept = default;
-    auto operator=(const AnimController&) = delete;
-    auto operator=(AnimController&&) noexcept = delete;
-    ~AnimController();
+    explicit ModelAnimationController(uint track_count);
+    ModelAnimationController(const ModelAnimationController&) = delete;
+    ModelAnimationController(ModelAnimationController&&) noexcept = default;
+    auto operator=(const ModelAnimationController&) = delete;
+    auto operator=(ModelAnimationController&&) noexcept = delete;
+    ~ModelAnimationController();
 
-    [[nodiscard]] auto Clone() const -> AnimController*;
-    void RegisterAnimationOutput(hash bone_name_hash, Matrix& output_matrix) const;
-    void RegisterAnimationSet(AnimSet* animation) const;
-    [[nodiscard]] auto GetAnimationSet(uint index) const -> AnimSet*;
-    [[nodiscard]] auto GetAnimationSetByName(const string& name) const -> AnimSet*;
+    [[nodiscard]] auto Clone() const -> ModelAnimationController*;
+    [[nodiscard]] auto GetAnimationSet(uint index) const -> ModelAnimation*;
+    [[nodiscard]] auto GetAnimationSetByName(const string& name) const -> ModelAnimation*;
     [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
     [[nodiscard]] auto GetNumAnimationSets() const -> uint;
-    void SetTrackAnimationSet(uint track, AnimSet* anim);
-    void ResetBonesTransition(uint skip_track, const HashVec& bone_name_hashes);
-    void Reset();
     [[nodiscard]] auto GetTime() const -> float;
+
+    void Reset();
+    void RegisterAnimationOutput(hash bone_name_hash, mat44& output_matrix);
+    void RegisterAnimationSet(ModelAnimation* animation);
+    void SetTrackAnimationSet(uint track, ModelAnimation* anim);
+    void ResetBonesTransition(uint skip_track, const vector<hash>& bone_name_hashes);
     void AddEventEnable(uint track, bool enable, float start_time);
     void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);
     void AddEventWeight(uint track, float weight, float start_time, float smooth_time);
@@ -109,12 +111,12 @@ private:
     struct Output
     {
         hash NameHash {};
-        Matrix* Matrix {};
-        BoolVec Valid {};
-        FloatVec Factor {};
-        VectorVec Scale {};
-        QuaternionVec Rotation {};
-        VectorVec Translation {};
+        mat44* Matrix {};
+        vector<bool> Valid {};
+        vector<float> Factor {};
+        vector<vec3> Scale {};
+        vector<quaternion> Rotation {};
+        vector<vec3> Translation {};
     };
 
     struct Track
@@ -139,16 +141,16 @@ private:
         float Speed {};
         float Weight {};
         float Position {};
-        AnimSet* Anim {};
+        ModelAnimation* Anim {};
         vector<Output*> AnimOutput {};
         vector<Event> Events {};
     };
 
-    void Interpolate(Quaternion& q1, const Quaternion& q2, float factor) const;
-    void Interpolate(Vector& v1, const Vector& v2, float factor) const;
+    void Interpolate(quaternion& q1, const quaternion& q2, float factor) const;
+    void Interpolate(vec3& v1, const vec3& v2, float factor) const;
 
     template<class T>
-    void FindSrtValue(float time, FloatVec& times, vector<T>& values, T& result)
+    void FindSrtValue(float time, vector<float>& times, vector<T>& values, T& result)
     {
         for (size_t n = 0; n < times.size(); n++) {
             if (n + 1 < times.size()) {
@@ -167,7 +169,7 @@ private:
     }
 
     bool _cloned {};
-    vector<AnimSet*>* _sets {};
+    vector<ModelAnimation*>* _sets {};
     vector<Output>* _outputs {};
     vector<Track> _tracks {};
     float _curTime {};

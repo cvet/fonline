@@ -52,10 +52,6 @@
 #include "ScriptApi.h"
 
 class ItemView;
-using ItemViewVec = vector<ItemView*>;
-class CritterView;
-using CritterViewMap = map<uint, CritterView*>;
-using CritterViewVec = vector<CritterView*>;
 
 class CritterView final : public Entity
 {
@@ -68,23 +64,6 @@ public:
     auto operator=(CritterView&&) noexcept = delete;
     ~CritterView() override;
 
-    void Init();
-    void Finish();
-
-    [[nodiscard]] auto IsLastHexes() const -> bool;
-    void FixLastHexes();
-    [[nodiscard]] auto PopLastHexX() -> ushort;
-    [[nodiscard]] auto PopLastHexY() -> ushort;
-    void RefreshAnim();
-    void ChangeDir(uchar dir, bool animate);
-
-    void Animate(uint anim1, uint anim2, ItemView* item);
-    void AnimateStay();
-    void Action(int action, int action_ext, ItemView* item, bool local_call);
-    void Process();
-    void DrawStay(Rect r);
-
-    [[nodiscard]] auto GetName() const -> string { return Name; }
     [[nodiscard]] auto IsNpc() const -> bool { return IsBitSet(Flags, FCRIT_NPC); }
     [[nodiscard]] auto IsPlayer() const -> bool { return IsBitSet(Flags, FCRIT_PLAYER); }
     [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
@@ -95,81 +74,87 @@ public:
     [[nodiscard]] auto IsDead() const -> bool { return GetCond() == COND_DEAD; }
     [[nodiscard]] auto IsCombatMode() const -> bool;
     [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
-
-    auto GetAttackDist() -> uint;
-
-    uint NameColor {};
-    uint ContourColor {};
-    UShortVec LastHexX {};
-    UShortVec LastHexY {};
-    uint Flags {};
-    RenderEffect* DrawEffect {};
-    string Name {};
-    string NameOnHead {};
-    string Avatar {};
-    ItemViewVec InvItems {};
-
-private:
-    CritterViewSettings& _settings;
-    GeometryHelper _geomHelper;
-    SpriteManager& _sprMngr;
-    ResourceManager& _resMngr;
-    EffectManager& _effectMngr;
-    ClientScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
-    bool _mapperMode {};
-
-    // Items
-public:
-    void AddItem(ItemView* item);
-    void DeleteItem(ItemView* item, bool animate);
-    void DeleteAllItems();
+    [[nodiscard]] auto IsLastHexes() const -> bool;
+    [[nodiscard]] auto CountItemPid(hash item_pid) const -> uint;
+    [[nodiscard]] auto IsHaveLightSources() const -> bool;
+    [[nodiscard]] auto IsNeedMove() const -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
+    [[nodiscard]] auto IsNeedReset() const -> bool;
+    [[nodiscard]] auto IsFree() const -> bool;
+    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetAnim2() const -> uint;
+    [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
+    [[nodiscard]] auto Is3dAnim() const -> bool { return Model != nullptr; }
+    [[nodiscard]] auto GetModel() const -> ModelInstance* { return Model; }
+    [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsWalkAnim() const -> bool;
+    [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
+    [[nodiscard]] auto IsFinishing() const -> bool;
+    [[nodiscard]] auto IsFinish() const -> bool;
+    [[nodiscard]] auto GetTextRect() const -> IRect;
+    [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hash item_pid) -> ItemView*;
     [[nodiscard]] auto GetItemSlot(int slot) -> ItemView*;
-    void GetItemsSlot(int slot, ItemViewVec& items);
-    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
-    [[nodiscard]] auto IsHaveLightSources() -> bool;
+    [[nodiscard]] auto GetItemsSlot(int slot) -> vector<ItemView*>;
 
-    // Moving
+    [[nodiscard]] auto PopLastHex() -> tuple<ushort, ushort>;
 
-    bool IsRunning {};
-    UShortPairVec MoveSteps {};
-    int CurMoveStep {};
-
-    [[nodiscard]] auto IsNeedMove() -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
+    void Init();
+    void Finish();
+    void FixLastHexes();
+    void RefreshModel();
+    void ChangeDir(uchar dir, bool animate);
+    void Animate(uint anim1, uint anim2, ItemView* item);
+    void AnimateStay();
+    void Action(int action, int action_ext, ItemView* item, bool local_call);
+    void Process();
+    void DrawStay(IRect r);
+    void AddItem(ItemView* item);
+    void DeleteItem(ItemView* item, bool animate);
+    void DeleteAllItems();
     void Move(uchar dir);
-
-    // Reset
-private:
-    bool _needReset {};
-    uint _resetTick {};
-
-public:
-    [[nodiscard]] auto IsNeedReset() const -> bool;
-    void ResetOk();
-
-    // Time
-    uint TickCount {};
-    uint StartTick {};
-
     void TickStart(uint ms);
     void TickNull();
-    [[nodiscard]] auto IsFree() const -> bool;
-
-    // Animation
-    [[nodiscard]] auto GetAnim1() const -> uint;
-    [[nodiscard]] auto GetAnim2() const -> uint;
     void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item);
-    [[nodiscard]] auto GetLayers3dData() -> int*;
-    [[nodiscard]] auto IsAnimAviable(uint anim1, uint anim2) -> bool;
+    void ResetOk();
+    void SetSprRect();
+    void ClearAnim();
+    void SetOffs(short set_ox, short set_oy, bool move_text);
+    void ChangeOffs(short change_ox, short change_oy, bool move_text);
+    void AddOffsExt(short ox, short oy);
+    void SetText(const char* str, uint color, uint text_delay);
+    void DrawTextOnHead();
+    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
+    void NextAnim(bool erase_front);
+
+    uint ContourColor {};
+    uint Flags {};
+    RenderEffect* DrawEffect {};
+    string AlternateName {};
+    string Avatar {};
+    vector<ItemView*> InvItems {};
+    bool IsRunning {};
+    vector<pair<ushort, ushort>> MoveSteps {};
+    int CurMoveStep {};
+    ModelInstance* Model {};
+    bool Visible {true};
+    uchar Alpha {};
+    IRect DRect {};
+    bool SprDrawValid {};
+    Sprite* SprDraw {};
+    uint SprId {};
+    short SprOx {};
+    short SprOy {};
+    uint FadingTick {};
+
+#define FO_API_CRITTER_VIEW_CLASS
+#include "ScriptApi.h"
+
+    PROPERTIES_HEADER();
+#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 
 private:
-    uint _curSpr {};
-    uint _lastEndSpr {};
-    uint _animStartTick {};
-    int _anim3dLayers[LAYERS3D_COUNT] {};
-
     struct CritterAnim
     {
         AnyFrames* Anim {};
@@ -183,85 +168,50 @@ private:
         ItemView* ActiveItem {};
     };
 
-    CritterAnim _stayAnim {};
-    vector<CritterAnim> _animSequence {};
-
+    [[nodiscard]] auto GetLayers3dData() -> int*;
+    [[nodiscard]] auto GetFadeAlpha() -> uchar;
     [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? &_animSequence[0] : nullptr; }
-    void NextAnim(bool erase_front);
-
-public:
-    Animation3d* Anim3d {};
-    Animation3d* Anim3dStay {};
-    bool Visible {true};
-    uchar Alpha {};
-    Rect DRect {};
-    bool SprDrawValid {};
-    Sprite* SprDraw {};
-    uint SprId {};
-    short SprOx {};
-    short SprOy {};
-    short OxExtI {};
-    short OyExtI {};
-    float OxExtF {};
-    float OyExtF {};
-    float OxExtSpeed {};
-    float OyExtSpeed {};
-    uint OffsExtNextTick {};
-
-    void SetSprRect();
-    [[nodiscard]] auto Is3dAnim() const -> bool { return Anim3d != nullptr; }
-    [[nodiscard]] auto GetAnim3d() const -> Animation3d* { return Anim3d; }
-    [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsWalkAnim() -> bool;
-    void ClearAnim();
-
-    void SetOffs(short set_ox, short set_oy, bool move_text);
-    void ChangeOffs(short change_ox, short change_oy, bool move_text);
-    void AddOffsExt(short ox, short oy);
-    void GetWalkHexOffsets(int dir, int& ox, int& oy) const;
-
-    // Stay sprite
-private:
-    uchar _staySprDir {};
-    uint _staySprTick {};
-
-    // Finish
-    uint _finishingTime {};
-
-public:
-    [[nodiscard]] auto IsFinishing() const -> bool;
-    [[nodiscard]] auto IsFinish() const -> bool;
-
-    // Fade
-private:
-    bool _fadingEnable {};
-    bool _fadeUp {};
 
     void SetFade(bool fade_up);
-    [[nodiscard]] auto GetFadeAlpha() -> uchar;
 
-public:
-    uint FadingTick {};
-
-    // Text
-    [[nodiscard]] auto GetTextRect() const -> Rect;
-    void SetText(const char* str, uint color, uint text_delay);
-    void DrawTextOnHead();
-    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
-
-private:
-    Rect _textRect {};
+    CritterViewSettings& _settings;
+    GeometryHelper _geomHelper;
+    SpriteManager& _sprMngr;
+    ResourceManager& _resMngr;
+    EffectManager& _effectMngr;
+    ClientScriptSystem& _scriptSys;
+    GameTimer& _gameTime;
+    bool _mapperMode {};
+    bool _needReset {};
+    uint _resetTick {};
+    uint _curSpr {};
+    uint _lastEndSpr {};
+    uint _animStartTick {};
+    int _modelLayers[LAYERS3D_COUNT] {};
+    CritterAnim _stayAnim {};
+    vector<CritterAnim> _animSequence {};
+    uchar _staySprDir {};
+    uint _staySprTick {};
+    uint _finishingTime {};
+    bool _fadingEnable {};
+    bool _fadeUp {};
+    IRect _textRect {};
     uint _tickFidget {};
     string _strTextOnHead {};
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_CRITTER_NAME};
-
-public:
-#define FO_API_CRITTER_VIEW_CLASS
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+    ModelInstance* _modelStay {};
+    short _oxExtI {};
+    short _oyExtI {};
+    float _oxExtF {};
+    float _oyExtF {};
+    float _oxExtSpeed {};
+    float _oyExtSpeed {};
+    uint _offsExtNextTick {};
+    uint _tickCount {};
+    uint _startTick {};
+    string _nameOnHead {};
+    vector<tuple<ushort, ushort>> _lastHexes {};
+    uint _nameColor {};
 };

@@ -40,10 +40,6 @@
 #define FO_API_ITEM_VIEW_HEADER
 #include "ScriptApi.h"
 
-class ItemView;
-using ItemViewVec = vector<ItemView*>;
-using ItemViewMap = map<uint, ItemView*>;
-
 class ItemView : public Entity
 {
 public:

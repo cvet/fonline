@@ -101,7 +101,7 @@ You can easily contribute to this API using provided by engine functionality.
 * void DeleteLocationById(uint locId)
 * Critter GetCritter(uint crId)
 * Critter GetPlayer(string name)
-* Critter[] GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, int findType)
+* Critter[] GetGlobalMapCritters(uint16 wx, uint16 wy, uint radius, uint8 findType)
 * Map GetMap(uint mapId)
 * Map GetMapByPid(hash mapPid, uint skipCount)
 * Location GetLocation(uint locId)
@@ -173,7 +173,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint GetFullSecond()
 * uint EvaluateFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)
 * void GetGameTime(uint fullSecond, ref uint16 year, ref uint16 month, ref uint16 day, ref uint16 dayOfWeek, ref uint16 hour, ref uint16 minute, ref uint16 second)
-* void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
+* bool MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * hash GetTileName(uint16 hx, uint16 hy, bool roof, int layer)
 * void Preload3dFiles(string[] fnames)
 * void WaitPing()
@@ -330,7 +330,6 @@ You can easily contribute to this API using provided by engine functionality.
 * Item[] GetItems(uint stackId)
 * void SetScript(callback-Item func)
 * Map GetMapPos(ref uint16 hx, ref uint16 hy)
-* void ChangeProto(hash pid)
 * void Animate(uint8 fromFrm, uint8 toFrm)
 * bool CallStaticItemFunction(Critter cr, Item staticItem, int param)
 
@@ -399,7 +398,7 @@ You can easily contribute to this API using provided by engine functionality.
 * PrivateServer uint ShowCritterDist3
 * PrivateServer hash ScriptId
 * Protected hash[] KnownLocProtoId
-* PrivateClient int[] Anim3dLayer
+* PrivateClient int[] ModelLayers
 * Protected bool IsHide
 * Protected bool IsNoHome
 * Protected bool IsGeck
@@ -493,7 +492,7 @@ You can easily contribute to this API using provided by engine functionality.
 * bool IsDead()
 * bool IsFree()
 * bool IsBusy()
-* bool IsAnim3d()
+* bool IsModel()
 * bool IsAnimAvailable(uint anim1, uint anim2)
 * bool IsAnimPlaying()
 * uint GetAnim1()
@@ -560,7 +559,7 @@ You can easily contribute to this API using provided by engine functionality.
 * Item[] GetStaticItemsByPredicate(predicate-Item predicate)
 * Item[] GetStaticItems()
 * Critter GetCritter(uint crid)
-* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, int findType)
+* Critter[] GetCrittersAroundHex(uint16 hx, uint16 hy, uint radius, uint8 findType)
 * Critter[] GetCrittersByPids(hash pid, uint8 findType)
 * Critter[] GetCrittersInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)
 * Critter[] GetCrittersWithBlockInPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, ref uint16 preBlockHx, ref uint16 preBlockHy, ref uint16 blockHx, ref uint16 blockHy)
@@ -571,8 +570,8 @@ You can easily contribute to this API using provided by engine functionality.
 * uint GetPathLengthToHex(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)
 * uint GetPathLengthToCritter(Critter cr, uint16 toHx, uint16 toHy, uint cut)
 * Critter AddNpc(hash protoId, uint16 hx, uint16 hy, uint8 dir, int->int props)
-* uint GetNpcCount(int npcRole, int findType)
-* Critter GetNpc(int npcRole, int findType, uint skipCount)
+* uint GetNpcCount(int npcRole, uint8 findType)
+* Critter GetNpc(int npcRole, uint8 findType, uint skipCount)
 * bool IsHexPassed(uint16 hexX, uint16 hexY)
 * bool IsHexesPassed(uint16 hexX, uint16 hexY, uint radius)
 * bool IsHexRaked(uint16 hexX, uint16 hexY)
@@ -587,7 +586,7 @@ You can easily contribute to this API using provided by engine functionality.
 * void PlaySound(string soundName)
 * void PlaySoundInRadius(string soundName, uint16 hx, uint16 hy, uint radius)
 * void Regenerate()
-* void MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
+* bool MoveHexByDir(ref uint16 hx, ref uint16 hy, uint8 dir, uint steps)
 * void VerifyTrigger(Critter cr, uint16 hx, uint16 hy, uint8 dir)
 
 ### Map client methods

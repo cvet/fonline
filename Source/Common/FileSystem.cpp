@@ -557,10 +557,7 @@ auto FileManager::FilterFiles(const string& ext, const string& dir, bool include
     vector<FileHeader> files;
 
     for (auto& ds : _dataSources) {
-        StrVec file_names;
-        ds.GetFileNames(dir, include_subdirs, ext, file_names);
-
-        for (auto& fname : file_names) {
+        for (auto& fname : ds.GetFileNames(dir, include_subdirs, ext)) {
             uint size = 0;
             uint64 write_time = 0;
             const auto ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
@@ -577,7 +574,7 @@ auto FileManager::FilterFiles(const string& ext, const string& dir, bool include
 auto FileManager::ReadFile(const string& path) -> File
 {
     RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
+    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
     const string path_lower = _str(path).lower();
     const string name = _str(path).extractFileName().eraseFileExtension();
@@ -596,7 +593,7 @@ auto FileManager::ReadFile(const string& path) -> File
 auto FileManager::ReadFileHeader(const string& path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());
-    RUNTIME_ASSERT((path[0] != '.' && path[0] != '/'));
+    RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
     const string path_lower = _str(path).lower();
     const string name = _str(path).extractFileName().eraseFileExtension();

@@ -54,7 +54,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> const string&;
     [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool;
     [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*;
-    void GetFileNames(const string& path, bool include_subdirs, const string& ext, StrVec& result) const;
+    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>;
 
 private:
     unique_ptr<Impl> _pImpl {};

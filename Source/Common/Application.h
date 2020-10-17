@@ -94,12 +94,12 @@ using Vertex2DVec = vector<Vertex2D>;
 
 struct Vertex3D
 {
-    Vector Position;
-    Vector Normal;
+    vec3 Position;
+    vec3 Normal;
     float TexCoord[2];
     float TexCoordBase[2];
-    Vector Tangent;
-    Vector Bitangent;
+    vec3 Tangent;
+    vec3 Bitangent;
     float BlendWeights[BONES_PER_VERTEX];
     float BlendIndices[BONES_PER_VERTEX];
 };
@@ -143,7 +143,7 @@ public:
 
     struct ProjBuffer
     {
-        float ProjMatrix[16] {}; // mat4x4
+        float ProjMatrix[16] {}; // mat44
     };
 
     struct MainTexBuffer
@@ -178,7 +178,7 @@ public:
     {
         float LightColor[4] {}; // vec4
         float GroundPosition[4] {}; // vec4
-        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat4x4
+        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
     };
 
     struct CustomTexBuffer
@@ -272,7 +272,7 @@ public:
 
     bool DataChanged {};
     Vertex3DVec Vertices {};
-    UShortVec Indices {};
+    vector<ushort> Indices {};
     bool DisableCulling {};
 
 private:
@@ -359,33 +359,25 @@ class Application final
 {
     friend void InitApplication(GlobalSettings& settings);
 
-    Application(GlobalSettings& settings);
+    explicit Application(GlobalSettings& settings);
 
 public:
-    Application(const Application&) = delete;
-    Application(Application&&) noexcept = delete;
-    auto operator=(const Application&) = delete;
-    auto operator=(Application&&) noexcept = delete;
-    ~Application() = default;
-
-    void BeginFrame();
-    void EndFrame();
-
     struct AppWindow
     {
-        void GetSize(int& w, int& h);
+        [[nodiscard]] auto GetSize() -> tuple<int, int>;
+        [[nodiscard]] auto GetPosition() -> tuple<int, int>;
+        [[nodiscard]] auto GetMousePosition() -> tuple<int, int>;
+        [[nodiscard]] auto IsFocused() -> bool;
+        [[nodiscard]] auto IsFullscreen() -> bool;
+
         void SetSize(int w, int h);
-        void GetPosition(int& x, int& y);
         void SetPosition(int x, int y);
-        void GetMousePosition(int& x, int& y);
         void SetMousePosition(int x, int y);
-        auto IsFocused() -> bool;
         void Minimize();
-        auto IsFullscreen() -> bool;
         auto ToggleFullscreen(bool enable) -> bool;
         void Blink();
         void AlwaysOnTop(bool enable);
-    } Window;
+    };
 
     struct AppRender
     {
@@ -397,31 +389,35 @@ public:
 
         using RenderEffectLoader = std::function<vector<uchar>(const string&)>;
 
-        auto CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*;
-        auto GetTexturePixel(RenderTexture* tex, int x, int y) -> uint;
-        auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>;
-        void UpdateTextureRegion(RenderTexture* tex, const Rect& r, const uint* data);
+        [[nodiscard]] auto GetTexturePixel(RenderTexture* tex, int x, int y) -> uint;
+        [[nodiscard]] auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>;
+        [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
+
+        [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*;
+        [[nodiscard]] auto CreateEffect(const string& name, const string& defines, const RenderEffectLoader& loader) -> RenderEffect*;
+
+        void UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data);
         void SetRenderTarget(RenderTexture* tex);
-        auto GetRenderTarget() -> RenderTexture*;
         void ClearRenderTarget(uint color);
         void ClearRenderTargetDepth();
         void EnableScissor(int x, int y, uint w, uint h);
         void DisableScissor();
-        auto CreateEffect(const string& name, const string& defines, const RenderEffectLoader& loader) -> RenderEffect*;
-        void DrawQuads(const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderTexture* tex);
-        void DrawPrimitive(const Vertex2DVec& vbuf, const UShortVec& ibuf, RenderEffect* effect, RenderPrimitiveType prim);
+        void DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderTexture* tex);
+        void DrawPrimitive(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderPrimitiveType prim);
         void DrawMesh(RenderMesh* mesh, RenderEffect* effect);
-    } Render;
+    };
 
     struct AppInput
     {
         static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
 
-        auto PollEvent(InputEvent& event) -> bool;
+        [[nodiscard]] auto GetClipboardText() -> string;
+
+        [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
+
         void PushEvent(const InputEvent& event);
         void SetClipboardText(const string& text);
-        auto GetClipboardText() -> string;
-    } Input;
+    };
 
     struct AppAudio
     {
@@ -430,15 +426,26 @@ public:
 
         using AudioStreamCallback = std::function<void(uchar*)>;
 
-        auto IsEnabled() -> bool;
-        auto GetStreamSize() -> uint;
-        auto GetSilence() -> uchar;
+        [[nodiscard]] auto IsEnabled() -> bool;
+        [[nodiscard]] auto GetStreamSize() -> uint;
+        [[nodiscard]] auto GetSilence() -> uchar;
+
+        [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
+
         void SetSource(AudioStreamCallback stream_callback);
-        auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
         void MixAudio(uchar* output, uchar* buf, int volume);
         void LockDevice();
         void UnlockDevice();
-    } Audio;
+    };
+
+    Application(const Application&) = delete;
+    Application(Application&&) noexcept = delete;
+    auto operator=(const Application&) = delete;
+    auto operator=(Application&&) noexcept = delete;
+    ~Application() = default;
+
+    void BeginFrame();
+    void EndFrame();
 
     EventObserver<> OnFrameBegin {};
     EventObserver<> OnFrameEnd {};
@@ -446,6 +453,11 @@ public:
     EventObserver<> OnResume {};
     EventObserver<> OnLowMemory {};
     EventObserver<> OnQuit {};
+
+    AppWindow Window;
+    AppRender Render;
+    AppInput Input;
+    AppAudio Audio;
 
 private:
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};

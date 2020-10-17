@@ -37,4 +37,6 @@
 
 #include "NetBuffer.h"
 
-extern auto PackNetCommand(const string& str, NetBuffer* pbuf, const std::function<void(const string&)>& logcb, const string& name) -> bool;
+using LogCallback = std::function<void(const string&)>;
+
+extern auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb, const string& name) -> bool;

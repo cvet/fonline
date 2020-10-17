@@ -53,11 +53,11 @@ public:
     [[nodiscard]] auto HasEntry(const string& entry_name) const -> bool;
     [[nodiscard]] auto GetRawData(const string& entry_name, uint& data_len) const -> uchar*;
     [[nodiscard]] auto GetString(const string& entry_name) const -> string;
-    [[nodiscard]] auto GetData(const string& entry_name) const -> UCharVec;
+    [[nodiscard]] auto GetData(const string& entry_name) const -> vector<uchar>;
 
     void SetRawData(const string& entry_name, const uchar* data, uint data_len);
     void SetString(const string& entry_name, const string& str);
-    void SetData(const string& entry_name, const UCharVec& data);
+    void SetData(const string& entry_name, const vector<uchar>& data);
     void EraseEntry(const string& entry_name);
 
 private:

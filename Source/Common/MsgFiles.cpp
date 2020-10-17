@@ -98,7 +98,7 @@ void FOMsg::AddStr(uint num, const string& str)
 
 void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
 {
-    CharVec str;
+    vector<char> str;
     str.resize(len * 2 + 1);
 
     size_t str_cur = 0;
@@ -183,7 +183,7 @@ auto FOMsg::GetInt(uint num) -> int
     return _str(it->second).toInt();
 }
 
-auto FOMsg::GetBinary(uint num, UCharVec& data) -> uint
+auto FOMsg::GetBinary(uint num, vector<uchar>& data) -> uint
 {
     data.clear();
 
@@ -233,10 +233,11 @@ auto FOMsg::IsIntersects(const FOMsg& other) -> bool
     return false;
 }
 
-void FOMsg::GetBinaryData(UCharVec& data)
+auto FOMsg::GetBinaryData() -> vector<uchar>
 {
     // Fill raw data
     auto count = static_cast<uint>(_strData.size());
+    vector<uchar> data;
     data.resize(sizeof(count));
     std::memcpy(&data[0], &count, sizeof(count));
     for (auto& [num, str] : _strData) {
@@ -251,21 +252,21 @@ void FOMsg::GetBinaryData(UCharVec& data)
     }
 
     // Compress
-    Compressor::Compress(data);
+    return Compressor::Compress(data);
 }
 
-auto FOMsg::LoadFromBinaryData(const UCharVec& data) -> bool
+auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
 {
     Clear();
 
     // Uncompress
-    auto data_copy = data;
-    if (!Compressor::Uncompress(data_copy, 10)) {
+    auto uncompressed_data = Compressor::Uncompress(data, 10);
+    if (uncompressed_data.empty()) {
         return false;
     }
 
     // Read count of strings
-    const uchar* buf = &data_copy[0];
+    const uchar* buf = &uncompressed_data[0];
     uint count = 0;
     std::memcpy(&count, buf, sizeof(count));
     buf += sizeof(count);
@@ -342,7 +343,7 @@ auto FOMsg::LoadFromString(const string& str) -> bool
     return !fail;
 }
 
-void FOMsg::LoadFromMap(const StrMap& kv)
+void FOMsg::LoadFromMap(const map<string, string>& kv)
 {
     for (const auto& [key, value] : kv) {
         const auto num = _str(key).toUInt();
@@ -437,7 +438,7 @@ void LanguagePack::LoadFromCache(CacheStorage& cache, const string& lang_name)
         uint buf_len = 0;
         auto* buf = cache.GetRawData(GetMsgCacheName(i), buf_len);
         if (buf != nullptr) {
-            UCharVec data;
+            vector<uchar> data;
             data.resize(buf_len);
             std::memcpy(&data[0], buf, buf_len);
             delete[] buf;

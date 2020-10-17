@@ -37,8 +37,12 @@
 
 DECLARE_EXCEPTION(DataBaseException);
 
+class DataBaseImpl;
+
 class DataBase
 {
+    friend auto ConnectToDataBase(const string& connection_info) -> DataBase;
+
 public:
     static constexpr auto INT_VALUE = 0;
     static constexpr auto INT64_VALUE = 1;
@@ -56,14 +60,15 @@ public:
     using Collections = map<string, Collection>;
     using RecordsState = map<string, set<uint>>;
 
-    DataBase() = default;
+    DataBase();
     DataBase(const DataBase&) = delete;
-    DataBase(DataBase&&) noexcept = default;
+    DataBase(DataBase&&) noexcept;
     auto operator=(const DataBase&) = delete;
-    auto operator=(DataBase&&) noexcept = delete;
-    virtual ~DataBase() = default;
+    auto operator=(DataBase&&) noexcept -> DataBase&;
+    explicit operator bool() const;
+    ~DataBase();
 
-    [[nodiscard]] virtual auto GetAllIds(const string& collection_name) -> UIntVec = 0;
+    [[nodiscard]] auto GetAllIds(const string& collection_name) -> vector<uint>;
     [[nodiscard]] auto Get(const string& collection_name, uint id) -> Document;
 
     void StartChanges();
@@ -72,18 +77,9 @@ public:
     void Delete(const string& collection_name, uint id);
     void CommitChanges();
 
-protected:
-    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> Document = 0;
-    virtual void InsertRecord(const string& collection_name, uint id, const Document& doc) = 0;
-    virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) = 0;
-    virtual void DeleteRecord(const string& collection_name, uint id) = 0;
-    virtual void CommitRecords() = 0;
-
 private:
-    bool _changesStarted {};
-    Collections _recordChanges {};
-    RecordsState _newRecords {};
-    RecordsState _deletedRecords {};
+    explicit DataBase(DataBaseImpl* impl);
+    unique_ptr<DataBaseImpl> _impl {};
 };
 
-extern auto GetDataBase(const string& connection_info) -> DataBase*;
+extern auto ConnectToDataBase(const string& connection_info) -> DataBase;

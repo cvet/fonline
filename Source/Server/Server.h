@@ -75,205 +75,7 @@ DECLARE_EXCEPTION(ServerInitException);
 class FOServer final // Todo: rename FOServer to just Server
 {
 public:
-    FOServer() = delete;
-    explicit FOServer(GlobalSettings& settings);
-    FOServer(const FOServer&) = delete;
-    FOServer(FOServer&&) noexcept = delete;
-    auto operator=(const FOServer&) = delete;
-    auto operator=(FOServer&&) noexcept = delete;
-    ~FOServer();
-
-    void Shutdown();
-    void MainLoop();
-    void DrawGui();
-    auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
-
-#ifdef FO_SINGLEPLAYER
-    void ConnectClient(FOClient* client) { }
-#endif
-
-    struct
-    {
-        ImVec2 DefaultSize = ImVec2(200, 200);
-        ImVec2 MemoryPos = ImVec2(0, 0);
-        ImVec2 PlayersPos = ImVec2(20, 20);
-        ImVec2 LocMapsPos = ImVec2(40, 40);
-        ImVec2 ItemsPos = ImVec2(60, 60);
-        ImVec2 ProfilerPos = ImVec2(80, 80);
-        ImVec2 InfoPos = ImVec2(100, 100);
-        ImVec2 ControlPanelPos = ImVec2(120, 120);
-        ImVec2 ButtonSize = ImVec2(200, 30);
-        ImVec2 LogPos = ImVec2(140, 140);
-        ImVec2 LogSize = ImVec2(800, 600);
-        string CurLog;
-        string WholeLog;
-        string Stats;
-    } Gui;
-
-    EventObserver<> OnWillFinish {};
-    EventObserver<> OnDidFinish {};
-    EventDispatcher<> WillFinishDispatcher {OnWillFinish};
-    EventDispatcher<> DidFinishDispatcher {OnDidFinish};
-
-    ServerSettings& Settings;
-    GeometryHelper GeomHelper;
-    FileManager FileMngr;
-    ServerScriptSystem ScriptSys;
-    ProtoManager ProtoMngr;
-    EntityManager EntityMngr;
-    MapManager MapMngr;
-    CritterManager CrMngr;
-    ItemManager ItemMngr;
-    DialogManager DlgMngr;
-    GameTimer GameTime;
-    GlobalVars* Globals {};
-    DataBase* DbStorage {};
-    DataBase* DbHistory {};
-    std::atomic_bool Started {};
-    UIntMap RegIp {};
-    std::mutex RegIpLocker {};
-    vector<LanguagePack> LangPacks {};
-    uint FpsTick {};
-    uint FpsCounter {};
-
-    void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
-
-    // Net process
-    void Process_ParseToGame(Client* cl);
-    void Process_Move(Client* cl);
-    void Process_Update(Client* cl);
-    void Process_UpdateFile(Client* cl);
-    void Process_UpdateFileData(Client* cl);
-    void Process_CreateClient(Client* cl);
-    void Process_LogIn(Client*& cl);
-    void Process_Dir(Client* cl);
-    void Process_Text(Client* cl);
-    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
-    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
-    void Process_Dialog(Client* cl);
-    void Process_GiveMap(Client* cl);
-    static void Process_Ping(Client* cl);
-    void Process_Property(Client* cl, uint data_size);
-
-    static void Send_MapData(Client* cl, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
-
-    // Update files
-    struct UpdateFile
-    {
-        uint Size;
-        uchar* Data;
-    };
-    using UpdateFileVec = vector<UpdateFile>;
-    UpdateFileVec UpdateFiles;
-    UCharVec UpdateFilesList;
-
-    void GenerateUpdateFiles(bool first_generation, StrVec* resource_names);
-
-    // Actions
-    auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
-
-    void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
-
-    // Dialogs demand and result
-    static auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
-    static auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
-
-    // Text listen
-#define TEXT_LISTEN_FIRST_STR_MAX_LEN (63)
-    struct TextListen
-    {
-        ScriptFunc<void, Critter*, string> Func {};
-        int SayType {};
-        string FirstStr {};
-        uint64 Parameter {};
-    };
-    using TextListenVec = vector<TextListen>;
-    TextListenVec TextListeners;
-    std::mutex TextListenersLocker;
-
-    void OnSendGlobalValue(Entity* entity, Property* prop);
-    static void OnSendCritterValue(Entity* entity, Property* prop);
-    static void OnSendMapValue(Entity* entity, Property* prop);
-    static void OnSendLocationValue(Entity* entity, Property* prop);
-
-    // Items
-    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
-    void OnSendItemValue(Entity* entity, Property* prop);
-    void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemRecacheHex(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsGeck(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsRadio(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
-
-    // Npc
-    void ProcessCritter(Critter* cr);
-    auto Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck) -> bool;
-    auto Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer) -> uint;
-    void Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
-
-    void DisconnectClient(Client* cl);
-    void RemoveClient(Client* cl);
-    void Process(Client* cl);
-    void ProcessMove(Critter* cr);
-
-    // Log to client
-    ClientVec LogClients {};
-    StrVec LogLines {};
-    void LogToClients(const string& str);
-    void DispatchLogToClients();
-
-    // Game time
-    void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-
-    // Lang packs
-
-    // Todo: run network listeners dynamically, without restriction, based on server settings
-    NetServerBase* TcpServer {};
-    NetServerBase* WebSocketsServer {};
-    ClientVec ConnectedClients {};
-    std::mutex ConnectedClientsLocker {};
-
-    void OnNewConnection(NetConnection* connection);
-
-    // Access
-    void GetAccesses(StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names);
-
-// Banned
-#define BANS_FNAME_ACTIVE "Save/Bans/Active.txt"
-#define BANS_FNAME_EXPIRED "Save/Bans/Expired.txt"
-    struct ClientBanned
-    {
-        auto operator==(const string& name) const -> bool { return _str(name).compareIgnoreCaseUtf8(ClientName); }
-        auto operator==(const uint ip) const -> bool { return ClientIp == ip; }
-        auto GetBanLexems() -> string { return _str("$banby{}$time{}$reason{}", BannedBy[0] != 0 ? BannedBy : "?", Timer::GetTimeDifference(EndTime, BeginTime) / 60 / 60, BanInfo[0] != 0 ? BanInfo : "just for fun"); }
-
-        DateTimeStamp BeginTime {};
-        DateTimeStamp EndTime {};
-        uint ClientIp {};
-        char ClientName[UTF8_BUF_SIZE(MAX_NAME)] {};
-        char BannedBy[UTF8_BUF_SIZE(MAX_NAME)] {};
-        char BanInfo[UTF8_BUF_SIZE(128)] {};
-    };
-    using ClientBannedVec = vector<ClientBanned>;
-    ClientBannedVec Banned;
-    std::mutex BannedLocker;
-
-    auto GetBanByName(const char* name) -> ClientBanned*;
-    auto GetBanByIp(uint ip) -> ClientBanned*;
-    static auto GetBanTime(ClientBanned& ban) -> uint;
-    void ProcessBans();
-    void SaveBan(ClientBanned& ban, bool expired);
-    void SaveBans();
-    void LoadBans();
-
-    // Statistics
-    struct
+    struct ServerStats
     {
         uint ServerStartTick {};
         uint Uptime {};
@@ -291,7 +93,179 @@ public:
         uint LoopMin {};
         uint LoopMax {};
         uint LagsCount {};
-    } Statistics {};
+    };
 
+    struct ServerGui
+    {
+        ImVec2 DefaultSize {ImVec2(200, 200)};
+        ImVec2 MemoryPos {ImVec2(0, 0)};
+        ImVec2 PlayersPos {ImVec2(20, 20)};
+        ImVec2 LocMapsPos {ImVec2(40, 40)};
+        ImVec2 ItemsPos {ImVec2(60, 60)};
+        ImVec2 ProfilerPos {ImVec2(80, 80)};
+        ImVec2 InfoPos {ImVec2(100, 100)};
+        ImVec2 ControlPanelPos {ImVec2(120, 120)};
+        ImVec2 ButtonSize {ImVec2(200, 30)};
+        ImVec2 LogPos {ImVec2(140, 140)};
+        ImVec2 LogSize {ImVec2(800, 600)};
+        string CurLog {};
+        string WholeLog {};
+        string Stats {};
+    };
+
+    struct UpdateFile
+    {
+        uint Size {};
+        uchar* Data {};
+    };
+
+    struct TextListener
+    {
+        ScriptFunc<void, Critter*, string> Func {};
+        int SayType {};
+        string FirstStr {};
+        uint64 Parameter {};
+    };
+
+    struct ClientBanned
+    {
+        DateTimeStamp BeginTime {};
+        DateTimeStamp EndTime {};
+        uint ClientIp {};
+        char ClientName[UTF8_BUF_SIZE(MAX_NAME)] {};
+        char BannedBy[UTF8_BUF_SIZE(MAX_NAME)] {};
+        char BanInfo[UTF8_BUF_SIZE(128)] {};
+    };
+
+    static constexpr auto TEXT_LISTEN_FIRST_STR_MAX_LEN = 63;
+    static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
+    static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
+
+    FOServer() = delete;
+    explicit FOServer(GlobalSettings& settings);
+    FOServer(const FOServer&) = delete;
+    FOServer(FOServer&&) noexcept = delete;
+    auto operator=(const FOServer&) = delete;
+    auto operator=(FOServer&&) noexcept = delete;
+    ~FOServer();
+
+#ifdef FO_SINGLEPLAYER
+    void ConnectClient(FOClient* client) { }
+#endif
+
+    void Shutdown();
+    void MainLoop();
+    void DrawGui();
     auto GetIngamePlayersStatistics() -> string;
+
+    auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
+    auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
+    void GenerateUpdateFiles(bool first_generation, vector<string>* resource_names);
+
+    void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSendGlobalValue(Entity* entity, Property* prop);
+    void OnSendCritterValue(Entity* entity, Property* prop);
+    void OnSendMapValue(Entity* entity, Property* prop);
+    void OnSendLocationValue(Entity* entity, Property* prop);
+
+    void Send_MapData(Client* cl, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
+    auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
+    void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
+    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
+    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+
+    void Process_ParseToGame(Client* cl);
+    void Process_Move(Client* cl);
+    void Process_Update(Client* cl);
+    void Process_UpdateFile(Client* cl);
+    void Process_UpdateFileData(Client* cl);
+    void Process_CreateClient(Client* cl);
+    void Process_LogIn(Client*& cl);
+    void Process_Dir(Client* cl);
+    void Process_Text(Client* cl);
+    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
+    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
+    void Process_Dialog(Client* cl);
+    void Process_GiveMap(Client* cl);
+    void Process_Ping(Client* cl);
+    void Process_Property(Client* cl, uint data_size);
+
+    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    void OnSendItemValue(Entity* entity, Property* prop);
+    void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemRecacheHex(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsGeck(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsRadio(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+
+    void ProcessCritter(Critter* cr);
+    auto Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
+    auto Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck) -> bool;
+    auto Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer) -> uint;
+    void Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
+
+    void OnNewConnection(NetConnection* connection);
+    void DisconnectClient(Client* cl);
+    void RemoveClient(Client* cl);
+    void Process(Client* cl);
+    void ProcessMove(Critter* cr);
+
+    void LogToClients(const string& str);
+    void DispatchLogToClients();
+    void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
+    void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
+
+    auto GetBanByName(const char* name) -> ClientBanned*;
+    auto GetBanByIp(uint ip) -> ClientBanned*;
+    auto GetBanTime(ClientBanned& ban) -> uint;
+    auto GetBanLexems(ClientBanned& ban) -> string;
+    void ProcessBans();
+    void SaveBan(ClientBanned& ban, bool expired);
+    void SaveBans();
+    void LoadBans();
+
+    EventObserver<> OnWillFinish {};
+    EventObserver<> OnDidFinish {};
+    EventDispatcher<> WillFinishDispatcher {OnWillFinish};
+    EventDispatcher<> DidFinishDispatcher {OnDidFinish};
+
+    ServerSettings& Settings;
+    GeometryHelper GeomHelper;
+    FileManager FileMngr;
+    ServerScriptSystem ScriptSys;
+    ProtoManager ProtoMngr;
+    EntityManager EntityMngr;
+    MapManager MapMngr;
+    CritterManager CrMngr;
+    ItemManager ItemMngr;
+    DialogManager DlgMngr;
+    GameTimer GameTime;
+    ServerStats Stats {};
+    ServerGui Gui {};
+    GlobalVars* Globals {};
+    DataBase DbStorage {};
+    DataBase DbHistory {};
+    std::atomic_bool Started {};
+    map<uint, uint> RegIp {};
+    std::mutex RegIpLocker {};
+    vector<LanguagePack> LangPacks {};
+    uint FpsTick {};
+    uint FpsCounter {};
+    vector<UpdateFile> UpdateFiles {};
+    vector<uchar> UpdateFilesList {};
+    vector<TextListener> TextListeners {};
+    std::mutex TextListenersLocker {};
+    vector<Client*> LogClients {};
+    vector<string> LogLines {};
+    // Todo: run network listeners dynamically, without restriction, based on server settings
+    NetServerBase* TcpServer {};
+    NetServerBase* WebSocketsServer {};
+    vector<Client*> ConnectedClients {};
+    std::mutex ConnectedClientsLocker {};
+    vector<ClientBanned> Banned {};
+    std::mutex BannedLocker {};
 };

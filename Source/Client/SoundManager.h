@@ -49,7 +49,7 @@ public:
     auto operator=(SoundManager&&) noexcept = delete;
     ~SoundManager();
 
-    auto PlaySound(const StrMap& sound_names, const string& name) -> bool;
+    auto PlaySound(const map<string, string>& sound_names, const string& name) -> bool;
     auto PlayMusic(const string& fname, uint repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
@@ -59,20 +59,21 @@ private:
     using SoundsFunc = std::function<void(uchar*)>;
     using SoundVec = vector<Sound*>;
 
+    [[nodiscard]] auto ProcessSound(Sound* sound, uchar* output) -> bool;
+    [[nodiscard]] auto Load(const string& fname, bool is_music) -> Sound*;
+    [[nodiscard]] auto LoadWAV(Sound* sound, const string& fname) -> bool;
+    [[nodiscard]] auto LoadACM(Sound* sound, const string& fname, bool is_music) -> bool;
+    [[nodiscard]] auto LoadOGG(Sound* sound, const string& fname) -> bool;
+    [[nodiscard]] auto ConvertData(Sound* sound) -> bool;
+
     void ProcessSounds(uchar* output);
-    auto ProcessSound(Sound* sound, uchar* output) -> bool;
-    auto Load(const string& fname, bool is_music) -> Sound*;
-    auto LoadWAV(Sound* sound, const string& fname) -> bool;
-    auto LoadACM(Sound* sound, const string& fname, bool is_music) -> bool;
-    auto LoadOGG(Sound* sound, const string& fname) -> bool;
     auto StreamOGG(Sound* sound) -> bool;
-    static auto ConvertData(Sound* sound) -> bool;
 
     AudioSettings& _settings;
     FileManager& _fileMngr;
     bool _isActive {};
     uint _streamingPortion {};
     SoundVec _soundsActive {};
-    UCharVec _outputBuf {};
+    vector<uchar> _outputBuf {};
     SoundsFunc _soundsFunc {};
 };

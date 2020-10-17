@@ -973,7 +973,7 @@ void ScriptSystem::SetArgObject(void* value)
 
 void ScriptSystem::SetArgEntity(Entity* value)
 {
-    RUNTIME_ASSERT((!value || !value->IsDestroyed));
+    RUNTIME_ASSERT(!value || !value->IsDestroyed);
 
     if (value)
     {

@@ -46,7 +46,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const
+void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const
 {
     if (AltDwn) {
         return;

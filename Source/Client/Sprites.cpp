@@ -329,7 +329,7 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
 {
     _spriteCount++;
 
-    Sprite* spr = nullptr;
+    Sprite* spr;
     if (!_unvalidatedSprites.empty()) {
         spr = _unvalidatedSprites.back();
         _unvalidatedSprites.pop_back();
@@ -436,8 +436,8 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
 
         spr->CutType = cut;
 
-        int h1 = 0;
-        int h2 = 0;
+        int h1;
+        int h2;
         if (hor) {
             h1 = spr->HexX + si->Width / 2 / stepi;
             h2 = spr->HexX - si->Width / 2 / stepi - (si->Width / 2 % stepi != 0 ? 1 : 0);
@@ -467,8 +467,8 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
 
             spr_.CutX = xx;
             spr_.CutW = ww;
-            spr_.CutTexL = si->SprRect.L + (si->SprRect.R - si->SprRect.L) * (xx / widthf);
-            spr_.CutTexR = si->SprRect.L + (si->SprRect.R - si->SprRect.L) * ((xx + ww) / widthf);
+            spr_.CutTexL = si->SprRect.Left + (si->SprRect.Right - si->SprRect.Left) * (xx / widthf);
+            spr_.CutTexR = si->SprRect.Left + (si->SprRect.Right - si->SprRect.Left) * ((xx + ww) / widthf);
             spr_.CutType = cut;
 
             if (_settings.ShowSpriteCuts) {
@@ -512,7 +512,6 @@ auto Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y
     }
 
     // Find place
-    uint index = 0;
     const uint pos = draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ? hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) : MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + (draw_order - DRAW_ORDER);
 
     auto* parent = _rootSprite;

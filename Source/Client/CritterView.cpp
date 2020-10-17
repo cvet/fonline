@@ -47,24 +47,24 @@ CritterView::CritterView(uint id, const ProtoCritter* proto, CritterViewSettings
 {
     _tickFidget = _gameTime.GameTick() + GenericUtils::Random(_settings.CritterFidgetTime, _settings.CritterFidgetTime * 2u);
     DrawEffect = _effectMngr.Effects.Critter;
-    auto layers = GetAnim3dLayer();
+    auto layers = GetModelLayers();
     layers.resize(LAYERS3D_COUNT);
-    SetAnim3dLayer(layers);
+    SetModelLayers(layers);
 }
 
 CritterView::~CritterView()
 {
-    if (Anim3d != nullptr) {
-        _sprMngr.FreePure3dAnimation(Anim3d);
+    if (Model != nullptr) {
+        _sprMngr.FreeModel(Model);
     }
-    if (Anim3dStay != nullptr) {
-        _sprMngr.FreePure3dAnimation(Anim3dStay);
+    if (_modelStay != nullptr) {
+        _sprMngr.FreeModel(_modelStay);
     }
 }
 
 void CritterView::Init()
 {
-    RefreshAnim();
+    RefreshModel();
     AnimateStay();
 
     auto* si = _sprMngr.GetSpriteInfo(SprId);
@@ -181,16 +181,21 @@ auto CritterView::GetItemSlot(int slot) -> ItemView*
     return nullptr;
 }
 
-void CritterView::GetItemsSlot(int slot, ItemViewVec& items)
+auto CritterView::GetItemsSlot(int slot) -> vector<ItemView*>
 {
+    vector<ItemView*> items;
+    items.reserve(InvItems.size());
+
     for (auto* item : InvItems) {
         if (slot == -1 || item->GetCritSlot() == slot) {
             items.push_back(item);
         }
     }
+
+    return items;
 }
 
-auto CritterView::CountItemPid(hash item_pid) -> uint
+auto CritterView::CountItemPid(hash item_pid) const -> uint
 {
     uint result = 0;
     for (auto* item : InvItems) {
@@ -228,7 +233,7 @@ auto CritterView::GetAttackDist() -> uint
     return dist;
 }
 
-void CritterView::DrawStay(Rect r)
+void CritterView::DrawStay(IRect r)
 {
     if (_gameTime.FrameTick() - _staySprTick > 500) {
         _staySprDir++;
@@ -242,46 +247,39 @@ void CritterView::DrawStay(Rect r)
     const auto anim1 = GetAnim1();
     const auto anim2 = GetAnim2();
 
-    if (Anim3d == nullptr) {
-        auto* anim = _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, dir);
+    if (Model == nullptr) {
+        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
         if (anim != nullptr) {
             const auto spr_id = (IsAlive() ? anim->Ind[0] : anim->Ind[anim->CntFrm - 1]);
-            _sprMngr.DrawSpriteSize(spr_id, r.L, r.T, r.Width(), r.Height(), false, true, 0);
+            _sprMngr.DrawSpriteSize(spr_id, r.Left, r.Top, r.Width(), r.Height(), false, true, 0);
         }
     }
-    else if (Anim3dStay != nullptr) {
-        Anim3dStay->SetDir(dir);
-        Anim3dStay->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100) | ANIMATION_NO_SMOOTH);
-        _sprMngr.Draw3d(r.CenterX(), r.B, Anim3dStay, COLOR_IFACE);
+    else if (_modelStay != nullptr) {
+        _modelStay->SetDir(dir);
+        _modelStay->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100) | ANIMATION_NO_SMOOTH);
+        _sprMngr.Draw3d(r.CenterX(), r.Bottom, _modelStay, COLOR_IFACE);
     }
 }
 
 auto CritterView::IsLastHexes() const -> bool
 {
-    return !LastHexX.empty() && !LastHexY.empty();
+    return !_lastHexes.empty();
 }
 
 void CritterView::FixLastHexes()
 {
-    if (IsLastHexes() && LastHexX[LastHexX.size() - 1] == GetHexX() && LastHexY[LastHexY.size() - 1] == GetHexY()) {
+    if (IsLastHexes() && std::get<0>(_lastHexes.back()) == GetHexX() && std::get<1>(_lastHexes.back()) == GetHexY()) {
         return;
     }
-    LastHexX.push_back(GetHexX());
-    LastHexY.push_back(GetHexY());
+
+    _lastHexes.emplace_back(GetHexX(), GetHexY());
 }
 
-auto CritterView::PopLastHexX() -> ushort
+auto CritterView::PopLastHex() -> tuple<ushort, ushort>
 {
-    const auto hx = LastHexX[LastHexX.size() - 1];
-    LastHexX.pop_back();
-    return hx;
-}
-
-auto CritterView::PopLastHexY() -> ushort
-{
-    const auto hy = LastHexY[LastHexY.size() - 1];
-    LastHexY.pop_back();
-    return hy;
+    const auto [hx, hy] = _lastHexes.back();
+    _lastHexes.pop_back();
+    return {hx, hy};
 }
 
 void CritterView::Move(uchar dir)
@@ -297,18 +295,19 @@ void CritterView::Move(uchar dir)
     TickStart(time_move);
     _animStartTick = _gameTime.GameTick();
 
-    if (Anim3d == nullptr) {
+    if (Model == nullptr) {
         if (_str().parseHash(GetModelName()).startsWith("art/critters/")) {
             const auto anim1 = IsRunning ? ANIM1_UNARMED : GetAnim1();
             const uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
-            auto* anim = _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, dir);
+            auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
             if (anim == nullptr) {
                 anim = _resMngr.CritterDefaultAnim;
             }
 
-            uint step = 0;
-            uint beg_spr = 0;
-            uint end_spr = 0;
+            uint step;
+            uint beg_spr;
+            uint end_spr;
+
             _curSpr = _lastEndSpr;
 
             if (!IsRunning) {
@@ -369,9 +368,7 @@ void CritterView::Move(uchar dir)
             NextAnim(false);
 
             for (uint i = 0; i < step; i++) {
-                auto ox = 0;
-                auto oy = 0;
-                GetWalkHexOffsets(dir, ox, oy);
+                auto [ox, oy] = GetWalkHexOffsets(dir);
                 ChangeOffs(ox, oy, true);
             }
         }
@@ -382,7 +379,7 @@ void CritterView::Move(uchar dir)
                 anim2 = IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
             }
 
-            auto* anim = _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, dir);
+            auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
             if (anim == nullptr) {
                 anim = _resMngr.CritterDefaultAnim;
             }
@@ -403,9 +400,7 @@ void CritterView::Move(uchar dir)
             _animSequence.push_back({anim, time_move, beg_spr, end_spr, true, dir + 1, anim1, anim2, nullptr});
             NextAnim(false);
 
-            int ox = 0;
-            int oy = 0;
-            GetWalkHexOffsets(dir, ox, oy);
+            const auto [ox, oy] = GetWalkHexOffsets(dir);
             ChangeOffs(ox, oy, true);
         }
     }
@@ -416,16 +411,18 @@ void CritterView::Move(uchar dir)
             anim2 = IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
         }
 
-        Anim3d->EvaluateAnimation(anim1, anim2);
-        Anim3d->SetDir(dir);
+        if (auto model_anim = Model->EvaluateAnimation()) {
+            anim1 = std::get<0>(*model_anim);
+            anim2 = std::get<1>(*model_anim);
+        }
+
+        Model->SetDir(dir);
 
         ClearAnim();
         _animSequence.push_back({nullptr, time_move, 0, 0, true, dir + 1, anim1, anim2, nullptr});
         NextAnim(false);
 
-        int ox = 0;
-        int oy = 0;
-        GetWalkHexOffsets(dir, ox, oy);
+        const auto [ox, oy] = GetWalkHexOffsets(dir);
         ChangeOffs(ox, oy, true);
     }
 }
@@ -464,8 +461,8 @@ void CritterView::Action(int action, int action_ext, ItemView* item, bool local_
         _resetTick = _gameTime.GameTick(); // Fast
         break;
     case ACTION_REFRESH:
-        if (Anim3d != nullptr) {
-            Anim3d->StartMeshGeneration();
+        if (Model != nullptr) {
+            Model->StartMeshGeneration();
         }
         break;
     default:
@@ -493,9 +490,9 @@ void CritterView::NextAnim(bool erase_front)
     auto& cr_anim = _animSequence[0];
     _animStartTick = _gameTime.GameTick();
 
-    ProcessAnim(false, Anim3d == nullptr, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
+    ProcessAnim(false, Model == nullptr, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
 
-    if (Anim3d == nullptr) {
+    if (Model == nullptr) {
         _lastEndSpr = cr_anim.EndFrm;
         _curSpr = cr_anim.BeginFrm;
         SprId = cr_anim.Anim->GetSprId(_curSpr);
@@ -510,7 +507,7 @@ void CritterView::NextAnim(bool erase_front)
     }
     else {
         SetOffs(0, 0, cr_anim.MoveText);
-        Anim3d->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), (cr_anim.DirOffs != 0 ? 0 : ANIMATION_ONE_TIME) | (IsCombatMode() ? ANIMATION_COMBAT : 0));
+        Model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), (cr_anim.DirOffs != 0 ? 0 : ANIMATION_ONE_TIME) | (IsCombatMode() ? ANIMATION_COMBAT : 0));
     }
 }
 
@@ -524,8 +521,8 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
         item = item->Clone();
     }
 
-    if (Anim3d == nullptr) {
-        auto* anim = _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, dir);
+    if (Model == nullptr) {
+        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
         if (anim == nullptr) {
             if (!IsAnim()) {
                 AnimateStay();
@@ -546,7 +543,11 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
         _animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, move_text, 0, anim->Anim1, anim->Anim2, item});
     }
     else {
-        if (!Anim3d->EvaluateAnimation(anim1, anim2)) {
+        if (auto model_anim = Model->EvaluateAnimation()) {
+            anim1 = std::get<0>(*model_anim);
+            anim2 = std::get<1>(*model_anim);
+        }
+        else {
             if (!IsAnim()) {
                 AnimateStay();
             }
@@ -566,8 +567,8 @@ void CritterView::AnimateStay()
     auto anim1 = GetAnim1();
     auto anim2 = GetAnim2();
 
-    if (Anim3d == nullptr) {
-        auto* anim = _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, GetDir());
+    if (Model == nullptr) {
+        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir());
         if (anim == nullptr) {
             anim = _resMngr.CritterDefaultAnim;
         }
@@ -597,29 +598,36 @@ void CritterView::AnimateStay()
         ChangeOffs(ox, oy, false);
     }
     else {
-        Anim3d->SetDir(GetDir());
+        Model->SetDir(GetDir());
 
         const auto scale_factor = GetScaleFactor();
         if (scale_factor != 0) {
             const auto scale = static_cast<float>(scale_factor) / 1000.0f;
-            Anim3d->SetScale(scale, scale, scale);
+            Model->SetScale(scale, scale, scale);
         }
 
-        Anim3d->EvaluateAnimation(anim1, anim2);
+        if (auto model_anim = Model->EvaluateAnimation()) {
+            anim1 = std::get<0>(*model_anim);
+            anim2 = std::get<1>(*model_anim);
+        }
+        else {
+            anim1 = ANIM1_UNARMED;
+            anim2 = ANIM2_IDLE;
+        }
 
         ProcessAnim(true, false, anim1, anim2, nullptr);
         SetOffs(0, 0, true);
 
         if (GetCond() == COND_ALIVE || GetCond() == COND_KNOCKOUT) {
-            Anim3d->SetAnimation(anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0);
+            Model->SetAnimation(anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0);
         }
         else {
-            Anim3d->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100) | (IsCombatMode() ? ANIMATION_COMBAT : 0));
+            Model->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100) | (IsCombatMode() ? ANIMATION_COMBAT : 0));
         }
     }
 }
 
-auto CritterView::IsWalkAnim() -> bool
+auto CritterView::IsWalkAnim() const -> bool
 {
     if (!_animSequence.empty()) {
         const int anim2 = _animSequence[0].IndAnim2;
@@ -636,9 +644,9 @@ void CritterView::ClearAnim()
     _animSequence.clear();
 }
 
-auto CritterView::IsHaveLightSources() -> bool
+auto CritterView::IsHaveLightSources() const -> bool
 {
-    for (auto* item : InvItems) {
+    for (const auto* item : InvItems) {
         if (item->GetIsLight()) {
             return true;
         }
@@ -658,18 +666,18 @@ void CritterView::ResetOk()
 
 void CritterView::TickStart(uint ms)
 {
-    TickCount = ms;
-    StartTick = _gameTime.GameTick();
+    _tickCount = ms;
+    _startTick = _gameTime.GameTick();
 }
 
 void CritterView::TickNull()
 {
-    TickCount = 0;
+    _tickCount = 0;
 }
 
 auto CritterView::IsFree() const -> bool
 {
-    return _gameTime.GameTick() - StartTick >= TickCount;
+    return _gameTime.GameTick() - _startTick >= _tickCount;
 }
 
 auto CritterView::GetAnim1() const -> uint
@@ -714,60 +722,58 @@ void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint ani
 
 auto CritterView::GetLayers3dData() -> int*
 {
-    auto layers = GetAnim3dLayer();
+    auto layers = GetModelLayers();
     RUNTIME_ASSERT(layers.size() == LAYERS3D_COUNT);
-    std::memcpy(_anim3dLayers, &layers[0], sizeof(_anim3dLayers));
-    return _anim3dLayers;
+    std::memcpy(_modelLayers, &layers[0], sizeof(_modelLayers));
+    return _modelLayers;
 }
 
-auto CritterView::IsAnimAviable(uint anim1, uint anim2) -> bool
+auto CritterView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 {
     if (anim1 == 0u) {
         anim1 = GetAnim1();
     }
-    // 3d
-    if (Anim3d != nullptr) {
-        return Anim3d->IsAnimation(anim1, anim2);
+    if (Model != nullptr) {
+        return Model->HasAnimation(anim1, anim2);
     }
-    // 2d
-    return _resMngr.GetCrit2dAnim(GetModelName(), anim1, anim2, GetDir()) != nullptr;
+    return _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir()) != nullptr;
 }
 
-void CritterView::RefreshAnim()
+void CritterView::RefreshModel()
 {
     // Release previous
-    if (Anim3d != nullptr) {
-        _sprMngr.FreePure3dAnimation(Anim3d);
+    if (Model != nullptr) {
+        _sprMngr.FreeModel(Model);
     }
-    Anim3d = nullptr;
-    if (Anim3dStay != nullptr) {
-        _sprMngr.FreePure3dAnimation(Anim3dStay);
+    Model = nullptr;
+    if (_modelStay != nullptr) {
+        _sprMngr.FreeModel(_modelStay);
     }
-    Anim3dStay = nullptr;
+    _modelStay = nullptr;
 
     // Check 3d availability
     const string model_name = _str().parseHash(GetModelName());
     const string ext = _str(model_name).getFileExtension();
-    if (!Is3dExtensionSupported(ext)) {
+    if (ext != "fo3d") {
         return;
     }
 
     // Try load
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto* anim3d = _sprMngr.LoadPure3dAnimation(model_name, true);
-    if (anim3d != nullptr) {
-        Anim3d = anim3d;
-        Anim3dStay = _sprMngr.LoadPure3dAnimation(model_name, false);
+    auto* model = _sprMngr.LoadModel(model_name, true);
+    if (model != nullptr) {
+        Model = model;
+        _modelStay = _sprMngr.LoadModel(model_name, false);
 
-        Anim3d->SetDir(GetDir());
-        SprId = Anim3d->SprId;
+        Model->SetDir(GetDir());
+        SprId = Model->SprId;
 
-        Anim3d->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
+        Model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
 
         // Start mesh generation for Mapper
         if (_mapperMode) {
-            Anim3d->StartMeshGeneration();
-            Anim3dStay->StartMeshGeneration();
+            Model->StartMeshGeneration();
+            _modelStay->StartMeshGeneration();
         }
     }
     _sprMngr.PopAtlasType();
@@ -782,8 +788,8 @@ void CritterView::ChangeDir(uchar dir, bool animate /* = true */)
         return;
     }
     SetDir(dir);
-    if (Anim3d != nullptr) {
-        Anim3d->SetDir(dir);
+    if (Model != nullptr) {
+        Model->SetDir(dir);
     }
     if (animate && !IsAnim()) {
         AnimateStay();
@@ -798,24 +804,24 @@ void CritterView::Process()
     }
 
     // Extra offsets
-    if (OffsExtNextTick != 0u && _gameTime.GameTick() >= OffsExtNextTick) {
-        OffsExtNextTick = _gameTime.GameTick() + 30;
-        const auto dist = GenericUtils::DistSqrt(0, 0, OxExtI, OyExtI);
-        SprOx -= OxExtI;
-        SprOy -= OyExtI;
+    if (_offsExtNextTick != 0u && _gameTime.GameTick() >= _offsExtNextTick) {
+        _offsExtNextTick = _gameTime.GameTick() + 30;
+        const auto dist = GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI);
+        SprOx -= _oxExtI;
+        SprOy -= _oyExtI;
         auto mul = static_cast<float>(dist / 10);
         if (mul < 1.0f) {
             mul = 1.0f;
         }
-        OxExtF += OxExtSpeed * mul;
-        OyExtF += OyExtSpeed * mul;
-        OxExtI = static_cast<int>(OxExtF);
-        OyExtI = static_cast<int>(OyExtF);
-        if (GenericUtils::DistSqrt(0, 0, OxExtI, OyExtI) > dist) // End of work
+        _oxExtF += _oxExtSpeed * mul;
+        _oyExtF += _oyExtSpeed * mul;
+        _oxExtI = static_cast<int>(_oxExtF);
+        _oyExtI = static_cast<int>(_oyExtF);
+        if (GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI) > dist) // End of work
         {
-            OffsExtNextTick = 0;
-            OxExtI = 0;
-            OyExtI = 0;
+            _offsExtNextTick = 0;
+            _oxExtI = 0;
+            _oyExtI = 0;
         }
         SetOffs(SprOx, SprOy, true);
     }
@@ -833,7 +839,7 @@ void CritterView::Process()
     }
 
     // Change frames
-    if (Anim3d == nullptr && anim_proc < 100) {
+    if (Model == nullptr && anim_proc < 100) {
         const auto cur_spr = cr_anim.BeginFrm + (cr_anim.EndFrm - cr_anim.BeginFrm + 1) * anim_proc / 100;
         if (cur_spr != _curSpr) {
             // Change frame
@@ -861,9 +867,7 @@ void CritterView::Process()
     if (!_animSequence.empty()) {
         // Move offsets
         if (cr_anim.DirOffs != 0) {
-            int ox = 0;
-            int oy = 0;
-            GetWalkHexOffsets(cr_anim.DirOffs - 1, ox, oy);
+            const auto [ox, oy] = GetWalkHexOffsets(cr_anim.DirOffs - 1);
 
             SetOffs(ox - ox * anim_proc / 100, oy - oy * anim_proc / 100, true);
 
@@ -875,13 +879,13 @@ void CritterView::Process()
             }
         }
         else {
-            if (Anim3d == nullptr) {
+            if (Model == nullptr) {
                 if (anim_proc >= 100) {
                     NextAnim(true);
                 }
             }
             else {
-                if (!Anim3d->IsAnimationPlaying()) {
+                if (!Model->IsAnimationPlaying()) {
                     NextAnim(true);
                 }
             }
@@ -898,11 +902,11 @@ void CritterView::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if (Anim3d != nullptr && _settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == COND_ALIVE && GetAnim2Life() == 0u) {
-        if (_settings.Anim2CombatBegin != 0u && IsCombatMode() && Anim3d->GetAnim2() != static_cast<int>(_settings.Anim2CombatIdle)) {
+    if (Model != nullptr && _settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == COND_ALIVE && GetAnim2Life() == 0u) {
+        if (_settings.Anim2CombatBegin != 0u && IsCombatMode() && Model->GetAnim2() != static_cast<int>(_settings.Anim2CombatIdle)) {
             Animate(0, _settings.Anim2CombatBegin, nullptr);
         }
-        else if (_settings.Anim2CombatEnd != 0u && !IsCombatMode() && Anim3d->GetAnim2() == static_cast<int>(_settings.Anim2CombatIdle)) {
+        else if (_settings.Anim2CombatEnd != 0u && !IsCombatMode() && Model->GetAnim2() == static_cast<int>(_settings.Anim2CombatIdle)) {
             Animate(0, _settings.Anim2CombatEnd, nullptr);
         }
     }
@@ -919,21 +923,21 @@ void CritterView::Process()
 
 void CritterView::ChangeOffs(short change_ox, short change_oy, bool move_text)
 {
-    SetOffs(SprOx - OxExtI + change_ox, SprOy - OyExtI + change_oy, move_text);
+    SetOffs(SprOx - _oxExtI + change_ox, SprOy - _oyExtI + change_oy, move_text);
 }
 
 void CritterView::SetOffs(short set_ox, short set_oy, bool move_text)
 {
-    SprOx = set_ox + OxExtI;
-    SprOy = set_oy + OyExtI;
+    SprOx = set_ox + _oxExtI;
+    SprOy = set_oy + _oyExtI;
 
     if (SprDrawValid) {
         DRect = _sprMngr.GetDrawRect(SprDraw);
 
         if (move_text) {
             _textRect = DRect;
-            if (Anim3d != nullptr) {
-                _textRect.T += _sprMngr.GetSpriteInfo(SprId)->Height / 6;
+            if (Model != nullptr) {
+                _textRect.Top += _sprMngr.GetSpriteInfo(SprId)->Height / 6;
             }
         }
 
@@ -950,10 +954,10 @@ void CritterView::SetSprRect()
 
         DRect = _sprMngr.GetDrawRect(SprDraw);
 
-        _textRect.L += DRect.L - old.L;
-        _textRect.R += DRect.L - old.L;
-        _textRect.T += DRect.T - old.T;
-        _textRect.B += DRect.T - old.T;
+        _textRect.Left += DRect.Left - old.Left;
+        _textRect.Right += DRect.Left - old.Left;
+        _textRect.Top += DRect.Top - old.Top;
+        _textRect.Bottom += DRect.Top - old.Top;
 
         if (IsChosen()) {
             _sprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
@@ -961,37 +965,37 @@ void CritterView::SetSprRect()
     }
 }
 
-auto CritterView::GetTextRect() const -> Rect
+auto CritterView::GetTextRect() const -> IRect
 {
     if (SprDrawValid) {
         return _textRect;
     }
-    return Rect();
+    return IRect();
 }
 
 void CritterView::AddOffsExt(short ox, short oy)
 {
-    SprOx -= OxExtI;
-    SprOy -= OyExtI;
-    ox += OxExtI;
-    oy += OyExtI;
-    OxExtI = ox;
-    OyExtI = oy;
-    OxExtF = static_cast<float>(ox);
-    OyExtF = static_cast<float>(oy);
-    GenericUtils::GetStepsXY(OxExtSpeed, OyExtSpeed, 0, 0, ox, oy);
-    OxExtSpeed = -OxExtSpeed;
-    OyExtSpeed = -OyExtSpeed;
-    OffsExtNextTick = _gameTime.GameTick() + 30;
+    SprOx -= _oxExtI;
+    SprOy -= _oyExtI;
+    ox += _oxExtI;
+    oy += _oyExtI;
+    _oxExtI = ox;
+    _oyExtI = oy;
+    _oxExtF = static_cast<float>(ox);
+    _oyExtF = static_cast<float>(oy);
+    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsXY(0, 0, ox, oy);
+    _oxExtSpeed = -_oxExtSpeed;
+    _oyExtSpeed = -_oyExtSpeed;
+    _offsExtNextTick = _gameTime.GameTick() + 30;
     SetOffs(SprOx, SprOy, true);
 }
 
-void CritterView::GetWalkHexOffsets(int dir, int& ox, int& oy) const
+auto CritterView::GetWalkHexOffsets(uchar dir) const -> tuple<short, short>
 {
     auto hx = 1;
     auto hy = 1;
     _geomHelper.MoveHexByDirUnsafe(hx, hy, dir);
-    _geomHelper.GetHexInterval(hx, hy, 1, 1, ox, oy);
+    return _geomHelper.GetHexInterval(hx, hy, 1, 1);
 }
 
 void CritterView::SetText(const char* str, uint color, uint text_delay)
@@ -1017,7 +1021,7 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
 
         name_visible = true;
 
-        str = NameOnHead.empty() ? Name : NameOnHead;
+        str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
         if (_settings.ShowCritId) {
             str += _str("  {}", GetId());
         }
@@ -1030,12 +1034,13 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
     }
 
     const auto tr = GetTextRect();
-    x = static_cast<int>(static_cast<float>(tr.L + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
-    y = static_cast<int>(static_cast<float>(tr.T + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
+    x = static_cast<int>(static_cast<float>(tr.Left + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
+    y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
 
-    _sprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines);
-    x += 100 - w / 2;
-    y += 70 - h;
+    if (_sprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
+        x += 100 - w / 2;
+        y += 70 - h;
+    }
 }
 
 void CritterView::DrawTextOnHead()
@@ -1051,14 +1056,14 @@ void CritterView::DrawTextOnHead()
 
     if (SprDrawValid) {
         const auto tr = GetTextRect();
-        const auto x = static_cast<int>(static_cast<float>(tr.L + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
-        const auto y = static_cast<int>(static_cast<float>(tr.T + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
-        const Rect r(x, y, x + 200, y + 70);
+        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
+        const auto y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
+        const IRect r(x, y, x + 200, y + 70);
 
         string str;
-        uint color = 0;
+        uint color;
         if (_strTextOnHead.empty()) {
-            str = NameOnHead.empty() ? Name : NameOnHead;
+            str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
 
             if (_settings.ShowCritId) {
                 str += _str(" ({})", GetId());
@@ -1067,7 +1072,7 @@ void CritterView::DrawTextOnHead()
                 str += _settings.PlayerOffAppendix;
             }
 
-            color = NameColor != 0u ? NameColor : COLOR_CRITTER_NAME;
+            color = _nameColor != 0u ? _nameColor : COLOR_CRITTER_NAME;
         }
         else {
             str = _strTextOnHead;

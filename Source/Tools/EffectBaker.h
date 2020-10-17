@@ -54,13 +54,13 @@ public:
     ~EffectBaker();
 
     void AutoBakeEffects();
-    void FillBakedFiles(map<string, UCharVec>& baked_files);
+    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
     void BakeShaderProgram(const string& fname, const string& content);
     void BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate);
 
     FileCollection& _allFiles;
-    map<string, UCharVec> _bakedFiles;
+    map<string, vector<uchar>> _bakedFiles;
     std::mutex _bakedFilesLocker;
 };

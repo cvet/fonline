@@ -74,8 +74,7 @@ int main(int argc, char** argv)
             }
 
             // Protos
-            ProtoManager proto_mngr;
-            proto_mngr.LoadProtosFromFiles(content_files);
+            ProtoManager proto_mngr(content_files);
             auto data = proto_mngr.GetProtosBinaryData();
             RUNTIME_ASSERT(!data.empty());
             auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
@@ -127,7 +126,7 @@ int main(int argc, char** argv)
                     WriteLog("Create resources '{}' from files {}...\n", pack_name, resources.GetFilesCount());
 
                     // Bake files
-                    map<string, UCharVec> baked_files;
+                    map<string, vector<uchar>> baked_files;
                     {
                         ImageBaker image_baker(settings, resources);
                         ModelBaker model_baker(resources);

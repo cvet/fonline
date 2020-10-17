@@ -41,7 +41,7 @@ struct CmdDef
     uchar Id;
 };
 
-static const CmdDef CmdList[] = {
+static const CmdDef CMD_LIST[] = {
     {"exit", CMD_EXIT},
     {"myinfo", CMD_MYINFO},
     {"gameinfo", CMD_GAMEINFO},
@@ -67,7 +67,7 @@ static const CmdDef CmdList[] = {
     {"log", CMD_LOG},
 };
 
-auto PackNetCommand(const string& str, NetBuffer* pbuf, const std::function<void(const string&)>& logcb, const string& name) -> bool
+auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb, const string& name) -> bool
 {
     string args = _str(str).trim();
     auto cmd_str = args;
@@ -79,7 +79,7 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const std::function<void
     istringstream args_str(args);
 
     uchar cmd = 0;
-    for (const auto& cur_cmd : CmdList) {
+    for (const auto& cur_cmd : CMD_LIST) {
         if (_str(cmd_str).compareIgnoreCase(cur_cmd.Name)) {
             cmd = cur_cmd.Id;
         }

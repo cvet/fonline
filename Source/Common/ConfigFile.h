@@ -44,40 +44,36 @@ public:
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
     auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    explicit operator bool() const { return !_appKeyValues.empty(); }
     ~ConfigFile() = default;
 
-    explicit operator bool() const { return !_appKeyValues.empty(); }
-
-    void CollectContent();
-    void AppendData(const string& str);
-    auto SerializeData() -> string;
-
+    [[nodiscard]] auto IsApp(const string& app_name) const -> bool;
+    [[nodiscard]] auto IsKey(const string& app_name, const string& key_name) const -> bool;
     [[nodiscard]] auto GetStr(const string& app_name, const string& key_name) const -> string;
     [[nodiscard]] auto GetStr(const string& app_name, const string& key_name, const string& def_val) const -> string;
     [[nodiscard]] auto GetInt(const string& app_name, const string& key_name) const -> int;
     [[nodiscard]] auto GetInt(const string& app_name, const string& key_name, int def_val) const -> int;
+    [[nodiscard]] auto GetApp(const string& app_name) const -> const map<string, string>&;
+    [[nodiscard]] auto GetApps(const string& app_name) -> vector<map<string, string>*>;
+    [[nodiscard]] auto GetAppNames() const -> set<string>;
+    [[nodiscard]] auto GetAppKeyValues(const string& app_name) -> const map<string, string>*;
+    [[nodiscard]] auto GetAppContent(const string& app_name) -> string;
+    [[nodiscard]] auto SerializeData() -> string;
 
+    void CollectContent();
+    void AppendData(const string& str);
     void SetStr(const string& app_name, const string& key_name, const string& val);
     void SetInt(const string& app_name, const string& key_name, int val);
-
-    [[nodiscard]] auto GetApp(const string& app_name) const -> const StrMap&;
-    void GetApps(const string& app_name, PStrMapVec& key_values);
-    auto SetApp(const string& app_name) -> StrMap&;
-
-    [[nodiscard]] auto IsApp(const string& app_name) const -> bool;
-    [[nodiscard]] auto IsKey(const string& app_name, const string& key_name) const -> bool;
-
-    void GetAppNames(StrSet& apps) const;
+    auto SetApp(const string& app_name) -> map<string, string>&;
     void GotoNextApp(const string& app_name);
-    auto GetAppKeyValues(const string& app_name) -> const StrMap*;
-    auto GetAppContent(const string& app_name) -> string;
 
 private:
-    using ValuesMap = multimap<string, StrMap>;
+    using ValuesMap = multimap<string, map<string, string>>;
     using ValuesMapItVec = vector<ValuesMap::const_iterator>;
 
-    void ParseStr(const string& str);
     [[nodiscard]] auto GetRawValue(const string& app_name, const string& key_name) const -> const string*;
+
+    void ParseStr(const string& str);
 
     bool _collectContent {};
     ValuesMap _appKeyValues {};

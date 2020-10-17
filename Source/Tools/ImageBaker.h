@@ -53,7 +53,7 @@ public:
 
     void AutoBakeImages();
     void BakeImage(const string& fname_with_opt);
-    void FillBakedFiles(map<string, UCharVec>& baked_files);
+    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
     static const int MAX_FRAME_SEQUENCE = 50;
@@ -65,7 +65,7 @@ private:
         ushort Height {};
         short NextX {};
         short NextY {};
-        UCharVec Data {};
+        vector<uchar> Data {};
         bool Shared {};
         ushort SharedIndex {};
     };
@@ -93,22 +93,22 @@ private:
     void ProcessImages(const string& target_ext, const LoadFunc& loader);
     void BakeCollection(const string& fname, const FrameCollection& collection);
 
-    auto LoadAny(const string& fname_with_opt) -> FrameCollection;
-    auto LoadFofrm(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadFrm(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadFrX(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadRix(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadArt(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadSpr(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadZar(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadTil(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadMos(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadBam(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadPng(const string& fname, const string& opt, File& file) -> FrameCollection;
-    auto LoadTga(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadAny(const string& fname_with_opt) -> FrameCollection;
+    [[nodiscard]] auto LoadFofrm(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadFrm(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadFrX(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadRix(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadArt(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadSpr(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadZar(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadTil(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadMos(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadBam(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadPng(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadTga(const string& fname, const string& opt, File& file) -> FrameCollection;
 
     GeometrySettings& _settings;
     FileCollection& _allFiles;
-    map<string, UCharVec> _bakedFiles {};
+    map<string, vector<uchar>> _bakedFiles {};
     unordered_map<string, File> _cachedFiles {};
 };

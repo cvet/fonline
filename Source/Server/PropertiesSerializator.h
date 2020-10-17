@@ -44,7 +44,7 @@ class PropertiesSerializator final
 public:
     PropertiesSerializator() = delete;
 
-    static auto SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document;
-    static auto LoadFromDbDocument(Properties* props, const DataBase::Document& doc, const NameResolver& name_resolver) -> bool;
-    static auto SavePropertyToDbValue(const Properties* props, const Property* prop, const NameResolver& name_resolver) -> DataBase::Value;
+    [[nodiscard]] static auto SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document;
+    [[nodiscard]] static auto LoadFromDbDocument(Properties* props, const DataBase::Document& doc, const NameResolver& name_resolver) -> bool;
+    [[nodiscard]] static auto SavePropertyToDbValue(const Properties* props, const Property* prop, const NameResolver& name_resolver) -> DataBase::Value;
 };

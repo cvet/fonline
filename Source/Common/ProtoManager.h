@@ -43,32 +43,28 @@ DECLARE_EXCEPTION(ProtoManagerException);
 class ProtoManager final
 {
 public:
-    ProtoManager() = default;
+    ProtoManager(FileManager& file_mngr);
+    ProtoManager(const vector<uchar>& data);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
     auto operator=(ProtoManager&&) noexcept = delete;
     ~ProtoManager() = default;
 
-    void LoadProtosFromFiles(FileManager& file_mngr);
-    [[nodiscard]] auto GetProtosBinaryData() const -> UCharVec;
-    void LoadProtosFromBinaryData(const UCharVec& data);
-    [[nodiscard]] auto ValidateProtoResources(const StrVec& resource_names) const -> bool;
-
+    [[nodiscard]] auto GetProtosBinaryData() const -> vector<uchar>;
+    [[nodiscard]] auto ValidateProtoResources(const vector<string>& resource_names) const -> bool;
     [[nodiscard]] auto GetProtoItem(hash pid) -> const ProtoItem*;
     [[nodiscard]] auto GetProtoCritter(hash pid) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hash pid) -> const ProtoMap*;
     [[nodiscard]] auto GetProtoLocation(hash pid) -> const ProtoLocation*;
-
-    [[nodiscard]] auto GetProtoItems() -> const ProtoItemMap&;
-    [[nodiscard]] auto GetProtoCritters() -> const ProtoCritterMap&;
-    [[nodiscard]] auto GetProtoMaps() -> const ProtoMapMap&;
-    [[nodiscard]] auto GetProtoLocations() -> const ProtoLocationMap&;
+    [[nodiscard]] auto GetProtoItems() const -> const map<hash, const ProtoItem*>&;
+    [[nodiscard]] auto GetProtoCritters() const -> const map<hash, const ProtoCritter*>&;
+    [[nodiscard]] auto GetProtoMaps() const -> const map<hash, const ProtoMap*>&;
+    [[nodiscard]] auto GetProtoLocations() const -> const map<hash, const ProtoLocation*>&;
 
 private:
-    ProtoItemMap _itemProtos {};
-    ProtoCritterMap _crProtos {};
-    ProtoMapMap _mapProtos {};
-    ProtoLocationMap _locProtos {};
-    int _dummy {};
+    map<hash, const ProtoItem*> _itemProtos {};
+    map<hash, const ProtoCritter*> _crProtos {};
+    map<hash, const ProtoMap*> _mapProtos {};
+    map<hash, const ProtoLocation*> _locProtos {};
 };

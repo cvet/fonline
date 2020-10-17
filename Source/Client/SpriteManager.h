@@ -48,9 +48,9 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-#define ANY_FRAMES_POOL_SIZE (2000)
-#define MAX_STORED_PIXEL_PICKS (100)
-#define MAX_FRAMES (50)
+static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
+static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
+static constexpr auto MAX_FRAMES = 50;
 
 // Font flags
 static constexpr uint FT_NOBREAK = 0x0001;
@@ -75,61 +75,63 @@ static constexpr auto FT_SKIPLINES_END(uint l) -> uint
 
 // Colors
 // Todo: improve client rendering brightness
-#define COLOR_LIGHT(c) SpriteManager::PackColor(((c) >> 16) & 0xFF, ((c) >> 8) & 0xFF, (c)&0xFF, ((c) >> 24) & 0xFF)
-#define COLOR_SCRIPT_SPRITE(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_IFACE_FIX))
-#define COLOR_SCRIPT_TEXT(c) ((c) ? COLOR_LIGHT(c) : COLOR_LIGHT(COLOR_TEXT))
+static constexpr auto PACK_COLOR(int r, int g, int b, int a) -> uint
+{
+    r = std::clamp(r, 0, 255);
+    g = std::clamp(g, 0, 255);
+    b = std::clamp(b, 0, 255);
+    a = std::clamp(a, 0, 255);
+    return COLOR_RGBA(a, r, g, b);
+}
+static constexpr auto COLOR_GAME_RGB(int r, int g, int b) -> uint
+{
+    return PACK_COLOR(r, g, b, 255);
+}
+#define COLOR_WITH_LIGHTING(c) PACK_COLOR(((c) >> 16) & 0xFF, ((c) >> 8) & 0xFF, (c)&0xFF, ((c) >> 24) & 0xFF)
+#define COLOR_SCRIPT_SPRITE(c) ((c) ? COLOR_WITH_LIGHTING(c) : COLOR_WITH_LIGHTING(COLOR_IFACE_FIXED))
+#define COLOR_SCRIPT_TEXT(c) ((c) ? COLOR_WITH_LIGHTING(c) : COLOR_WITH_LIGHTING(COLOR_TEXT))
 #define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
-#define COLOR_IFACE_FIX COLOR_GAME_RGB(103, 95, 86)
-#define COLOR_IFACE COLOR_LIGHT(COLOR_IFACE_FIX)
-#define COLOR_GAME_RGB(r, g, b) SpriteManager::PackColor((r), (g), (b), 255)
-#define COLOR_IFACE_RED (COLOR_IFACE | (0xFF << 16))
-#define COLOR_CRITTER_NAME COLOR_GAME_RGB(0xAD, 0xAD, 0xB9)
-#define COLOR_TEXT COLOR_GAME_RGB(60, 248, 0)
-#define COLOR_TEXT_WHITE COLOR_GAME_RGB(0xFF, 0xFF, 0xFF)
-#define COLOR_TEXT_DWHITE COLOR_GAME_RGB(0xBF, 0xBF, 0xBF)
-#define COLOR_TEXT_RED COLOR_GAME_RGB(0xC8, 0, 0)
+static constexpr auto COLOR_IFACE_FIXED = COLOR_GAME_RGB(103, 95, 86);
+static constexpr auto COLOR_IFACE = COLOR_WITH_LIGHTING(COLOR_IFACE_FIXED);
+static constexpr auto COLOR_IFACE_RED = (COLOR_IFACE | (0xFF << 16));
+static constexpr auto COLOR_CRITTER_NAME = COLOR_GAME_RGB(0xAD, 0xAD, 0xB9);
+static constexpr auto COLOR_TEXT = COLOR_GAME_RGB(60, 248, 0);
+static constexpr auto COLOR_TEXT_WHITE = COLOR_GAME_RGB(0xFF, 0xFF, 0xFF);
+static constexpr auto COLOR_TEXT_DWHITE = COLOR_GAME_RGB(0xBF, 0xBF, 0xBF);
+static constexpr auto COLOR_TEXT_RED = COLOR_GAME_RGB(0xC8, 0, 0);
 
 // Sprite layers
-#define DRAW_ORDER_FLAT (0)
-#define DRAW_ORDER (20)
-#define DRAW_ORDER_TILE (DRAW_ORDER_FLAT + 0)
-#define DRAW_ORDER_TILE_END (DRAW_ORDER_FLAT + 4)
-#define DRAW_ORDER_HEX_GRID (DRAW_ORDER_FLAT + 5)
-#define DRAW_ORDER_FLAT_SCENERY (DRAW_ORDER_FLAT + 8)
-#define DRAW_ORDER_LIGHT (DRAW_ORDER_FLAT + 9)
-#define DRAW_ORDER_DEAD_CRITTER (DRAW_ORDER_FLAT + 10)
-#define DRAW_ORDER_FLAT_ITEM (DRAW_ORDER_FLAT + 13)
-#define DRAW_ORDER_TRACK (DRAW_ORDER_FLAT + 16)
-#define DRAW_ORDER_SCENERY (DRAW_ORDER + 3)
-#define DRAW_ORDER_ITEM (DRAW_ORDER + 6)
-#define DRAW_ORDER_CRITTER (DRAW_ORDER + 9)
-#define DRAW_ORDER_RAIN (DRAW_ORDER + 12)
-#define DRAW_ORDER_LAST (39)
-#define DRAW_ORDER_ITEM_AUTO(i) ((i)->GetIsFlat() ? (!(i)->IsAnyScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) : (!(i)->IsAnyScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY))
-#define DRAW_ORDER_CRIT_AUTO(c) ((c)->IsDead() && !(c)->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER)
+static constexpr auto DRAW_ORDER_FLAT = 0;
+static constexpr auto DRAW_ORDER = 20;
+static constexpr auto DRAW_ORDER_TILE = DRAW_ORDER_FLAT + 0;
+static constexpr auto DRAW_ORDER_TILE_END = DRAW_ORDER_FLAT + 4;
+static constexpr auto DRAW_ORDER_HEX_GRID = DRAW_ORDER_FLAT + 5;
+static constexpr auto DRAW_ORDER_FLAT_SCENERY = DRAW_ORDER_FLAT + 8;
+static constexpr auto DRAW_ORDER_LIGHT = DRAW_ORDER_FLAT + 9;
+static constexpr auto DRAW_ORDER_DEAD_CRITTER = DRAW_ORDER_FLAT + 10;
+static constexpr auto DRAW_ORDER_FLAT_ITEM = DRAW_ORDER_FLAT + 13;
+static constexpr auto DRAW_ORDER_TRACK = DRAW_ORDER_FLAT + 16;
+static constexpr auto DRAW_ORDER_SCENERY = DRAW_ORDER + 3;
+static constexpr auto DRAW_ORDER_ITEM = DRAW_ORDER + 6;
+static constexpr auto DRAW_ORDER_CRITTER = DRAW_ORDER + 9;
+static constexpr auto DRAW_ORDER_RAIN = DRAW_ORDER + 12;
+static constexpr auto DRAW_ORDER_LAST = 39;
 
 // Sprites cutting
-#define SPRITE_CUT_HORIZONTAL (1)
-#define SPRITE_CUT_VERTICAL (2)
-#define SPRITE_CUT_CUSTOM (3) // Todo
+static constexpr auto SPRITE_CUT_HORIZONTAL = 1;
+static constexpr auto SPRITE_CUT_VERTICAL = 2;
 
 // Egg types
-#define EGG_ALWAYS (1)
-#define EGG_X (2)
-#define EGG_Y (3)
-#define EGG_X_AND_Y (4)
-#define EGG_X_OR_Y (5)
+static constexpr auto EGG_ALWAYS = 1;
+static constexpr auto EGG_X = 2;
+static constexpr auto EGG_Y = 3;
+static constexpr auto EGG_X_AND_Y = 4;
+static constexpr auto EGG_X_OR_Y = 5;
 
 // Contour types
-#define CONTOUR_RED (1)
-#define CONTOUR_YELLOW (2)
-#define CONTOUR_CUSTOM (3)
-
-class Animation3dManager;
-class Animation3d;
-using Animation3dVec = vector<Animation3d*>;
-class Sprites;
-class Sprite;
+static constexpr auto CONTOUR_RED = 1;
+static constexpr auto CONTOUR_YELLOW = 2;
+static constexpr auto CONTOUR_CUSTOM = 3;
 
 enum class AtlasType
 {
@@ -179,28 +181,27 @@ struct TextureAtlas
 struct SpriteInfo
 {
     TextureAtlas* Atlas {};
-    RectF SprRect {};
+    FRect SprRect {};
     short Width {};
     short Height {};
     short OffsX {};
     short OffsY {};
     RenderEffect* DrawEffect {};
-    bool UsedForAnim3d {};
-    Animation3d* Anim3d {};
+    bool UsedForModel {};
+    ModelInstance* Model {};
     uchar* Data {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
 };
-using SprInfoVec = vector<SpriteInfo*>;
 
 struct AnyFrames
 {
-    auto GetSprId(uint num_frm) -> uint;
-    auto GetNextX(uint num_frm) -> short;
-    auto GetNextY(uint num_frm) -> short;
-    auto GetCurSprId(uint tick) -> uint;
+    [[nodiscard]] auto GetSprId(uint num_frm) const -> uint;
+    [[nodiscard]] auto GetNextX(uint num_frm) const -> short;
+    [[nodiscard]] auto GetNextY(uint num_frm) const -> short;
+    [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
     [[nodiscard]] auto GetCurSprIndex(uint tick) const -> uint;
-    auto GetDir(int dir) -> AnyFrames*;
+    [[nodiscard]] auto GetDir(int dir) -> AnyFrames*;
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
     short NextX[MAX_FRAMES] {};
@@ -214,10 +215,8 @@ struct AnyFrames
     AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };
 static_assert(std::is_standard_layout_v<AnyFrames>);
-using AnimMap = map<uint, AnyFrames*>;
-using AnimVec = vector<AnyFrames*>;
 
-struct PrepPoint
+struct PrimitivePoint
 {
     int PointX {};
     int PointY {};
@@ -225,16 +224,15 @@ struct PrepPoint
     short* PointOffsX {};
     short* PointOffsY {};
 };
-using PointVec = vector<PrepPoint>;
+using PrimitivePoints = vector<PrimitivePoint>;
 
 struct DipData
 {
     RenderTexture* MainTex {};
     RenderEffect* SourceEffect {};
     uint SpritesCount {};
-    RectF SpriteBorder {};
+    FRect SpriteBorder {};
 };
-using DipDataVec = vector<DipData>;
 
 class SpriteManager final
 {
@@ -247,108 +245,61 @@ public:
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager();
 
-    void GetWindowSize(int& w, int& h) const;
-    void SetWindowSize(int w, int h);
-    void GetWindowPosition(int& x, int& y) const;
-    void SetWindowPosition(int x, int y);
-    void GetMousePosition(int& x, int& y) const;
-    void SetMousePosition(int x, int y);
+    [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool multisampled, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
+    [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
+    [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
+    [[nodiscard]] auto GetSpriteInfo(uint id) -> SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
+    [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
+    [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
+    [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
+    [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
+    [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
+
+    [[nodiscard]] auto LoadAnimation(const string& fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
+    [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, const string& fname) -> AnyFrames*;
+    [[nodiscard]] auto LoadModel(const string& fname, bool auto_redraw) -> ModelInstance*;
+    [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
+
+    void SetWindowSize(int w, int h);
+    void SetWindowPosition(int x, int y);
+    void SetMousePosition(int x, int y);
     void MinimizeWindow();
     auto EnableFullscreen() -> bool;
     auto DisableFullscreen() -> bool;
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
-
     void Preload3dModel(const string& model_name) const;
     void BeginScene(uint clear_color);
     void EndScene();
     void OnResolutionChanged();
-
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool multisampled, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
-    void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const Rect* region_from, const Rect* region_to);
-    [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
+    void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to);
     void ClearCurrentRenderTarget(uint color);
     void ClearCurrentRenderTargetDepth();
-
-private:
-    RenderSettings& _settings;
-    FileManager& _fileMngr;
-    EffectManager& _effectMngr;
-    GameTimer& _gameTime;
-    unique_ptr<Animation3dManager> _anim3dMngr {};
-    Matrix _projectionMatrixCm {};
-    RenderTarget* _rtMain {};
-    RenderTarget* _rtContours {};
-    RenderTarget* _rtContoursMid {};
-    vector<RenderTarget*> _rt3D {};
-    vector<RenderTarget*> _rtStack {};
-    vector<unique_ptr<RenderTarget>> _rtAll {};
-
-    // Texture atlases
-public:
     void PushAtlasType(AtlasType atlas_type);
     void PushAtlasType(AtlasType atlas_type, bool one_image);
     void PopAtlasType();
     void AccumulateAtlasData();
     void FlushAccumulatedAtlasData();
-    [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
     void DestroyAtlases(AtlasType atlas_type);
     void DumpAtlases();
-
-private:
-    [[nodiscard]] auto CreateAtlas(int w, int h) -> TextureAtlas*;
-    [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
-    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
-    void FillAtlas(SpriteInfo* si);
-
-    vector<tuple<AtlasType, bool>> _atlasStack {};
-    vector<unique_ptr<TextureAtlas>> _allAtlases {};
-    bool _accumulatorActive {};
-    SprInfoVec _accumulatorSprInfo {};
-
-    // Load sprites
-public:
-    [[nodiscard]] auto LoadAnimation(const string& fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
-    [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, const string& fname) -> AnyFrames*;
-    [[nodiscard]] auto LoadPure3dAnimation(const string& fname, bool auto_redraw) -> Animation3d*;
-    void RefreshPure3dAnimationSprite(Animation3d* anim3d);
-    void FreePure3dAnimation(Animation3d* anim3d);
-    [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
+    void RefreshModelSprite(ModelInstance* model);
+    void FreeModel(ModelInstance* model);
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
-
-    AnyFrames* DummyAnimation {};
-
-private:
-    [[nodiscard]] auto LoadAnimation2d(const string& fname) -> AnyFrames*;
-    [[nodiscard]] auto LoadAnimation3d(const string& fname) -> AnyFrames*;
-    void Render3d(Animation3d* anim3d);
-
-    SprInfoVec _sprData {};
-    Animation3dVec _autoRedrawAnim3d {};
-    MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
-
-    // Draw
-public:
-    static auto PackColor(int r, int g, int b, int a) -> uint;
     void SetSpritesColor(uint c) { _baseColor = c; }
-    [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
-    [[nodiscard]] auto GetSpritesInfo() -> SprInfoVec& { return _sprData; }
-    [[nodiscard]] auto GetSpriteInfo(uint id) -> SpriteInfo* { return _sprData[id]; }
-    [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> Rect;
-    [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
-    [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
-    [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
-
-    void PrepareSquare(PointVec& points, const Rect& r, uint color);
-    void PrepareSquare(PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color);
+    void PrepareSquare(PrimitivePoints& points, const IRect& r, uint color);
+    void PrepareSquare(PrimitivePoints& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
     void Flush();
-
     void DrawSprite(uint id, int x, int y, uint color);
     void DrawSprite(AnyFrames* frames, int x, int y, uint color);
     void DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
@@ -356,41 +307,58 @@ public:
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
     void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy);
-    void DrawPoints(PointVec& points, RenderPrimitiveType prim, const float* zoom, PointF* offset, RenderEffect* custom_effect);
-    void Draw3d(int x, int y, Animation3d* anim3d, uint color);
-
-private:
-    void RefreshScissor();
-    void EnableScissor();
-    void DisableScissor();
-
-    UShortVec _quadsIndices {};
-    UShortVec _pointsIndices {};
-    Vertex2DVec _vBuffer {};
-    DipDataVec _dipQueue {};
-    uint _baseColor {};
-    int _drawQuadCount {};
-    int _curDrawQuad {};
-    IntVec _scissorStack {};
-    Rect _scissorRect {};
-
-    // Contours
-public:
+    void DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect);
+    void Draw3d(int x, int y, ModelInstance* model, uint color);
     void DrawContours();
-
-private:
-    auto CollectContour(int x, int y, SpriteInfo* si, Sprite* spr) -> bool;
-
-    bool _contoursAdded {};
-
-    // Transparent egg
-public:
     void InitializeEgg(const string& egg_name);
-    [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
     void SetEgg(ushort hx, ushort hy, Sprite* spr);
     void EggNotValid() { _eggValid = false; }
 
+    AnyFrames* DummyAnimation {};
+
 private:
+    [[nodiscard]] auto CreateAtlas(int w, int h) -> TextureAtlas*;
+    [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
+    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
+    [[nodiscard]] auto Load2dAnimation(const string& fname) -> AnyFrames*;
+    [[nodiscard]] auto Load3dAnimation(const string& fname) -> AnyFrames*;
+
+    void FillAtlas(SpriteInfo* si);
+    void RenderModel(ModelInstance* model);
+    void RefreshScissor();
+    void EnableScissor();
+    void DisableScissor();
+    void CollectContour(int x, int y, SpriteInfo* si, Sprite* spr);
+
+    RenderSettings& _settings;
+    FileManager& _fileMngr;
+    EffectManager& _effectMngr;
+    GameTimer& _gameTime;
+    unique_ptr<ModelManager> _modelMngr {};
+    mat44 _projectionMatrixCm {};
+    RenderTarget* _rtMain {};
+    RenderTarget* _rtContours {};
+    RenderTarget* _rtContoursMid {};
+    vector<RenderTarget*> _rt3D {};
+    vector<RenderTarget*> _rtStack {};
+    vector<unique_ptr<RenderTarget>> _rtAll {};
+    vector<tuple<AtlasType, bool>> _atlasStack {};
+    vector<unique_ptr<TextureAtlas>> _allAtlases {};
+    bool _accumulatorActive {};
+    vector<SpriteInfo*> _accumulatorSprInfo {};
+    vector<SpriteInfo*> _sprData {};
+    vector<ModelInstance*> _autoRedrawModel {};
+    MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
+    vector<ushort> _quadsIndices {};
+    vector<ushort> _pointsIndices {};
+    Vertex2DVec _vBuffer {};
+    vector<DipData> _dipQueue {};
+    uint _baseColor {};
+    int _drawQuadCount {};
+    int _curDrawQuad {};
+    vector<int> _scissorStack {};
+    IRect _scissorRect {};
+    bool _contoursAdded {};
     bool _eggValid {};
     ushort _eggHx {};
     ushort _eggHy {};
@@ -405,19 +373,21 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    void ClearFonts();
-    void SetDefaultFont(int index, uint color);
-    void SetFontEffect(int index, RenderEffect* effect);
+    [[nodiscard]] auto GetLinesCount(int width, int height, const string& str, int num_font) -> int;
+    [[nodiscard]] auto GetLinesHeight(int width, int height, const string& str, int num_font) -> int;
+    [[nodiscard]] auto GetLineHeight(int num_font) -> int;
+    [[nodiscard]] auto GetTextInfo(int width, int height, const string& str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool;
+    [[nodiscard]] auto HaveLetter(int num_font, uint letter) -> bool;
+
+    [[nodiscard]] auto SplitLines(const IRect& r, const string& cstr, int num_font) -> vector<string>;
+
     auto LoadFontFO(int index, const string& font_name, bool not_bordered, bool skip_if_loaded) -> bool;
     auto LoadFontBmf(int index, const string& font_name) -> bool;
+    void SetDefaultFont(int index, uint color);
+    void SetFontEffect(int index, RenderEffect* effect);
     void BuildFonts();
-    void DrawStr(const Rect& r, const string& str, uint flags, uint color, int num_font);
-    auto GetLinesCount(int width, int height, const string& str, int num_font) -> int;
-    auto GetLinesHeight(int width, int height, const string& str, int num_font) -> int;
-    auto GetLineHeight(int num_font) -> int;
-    void GetTextInfo(int width, int height, const string& str, int num_font, uint flags, int& tw, int& th, int& lines);
-    auto SplitLines(const Rect& r, const string& cstr, int num_font, StrVec& str_vec) -> int;
-    auto HaveLetter(int num_font, uint letter) -> bool;
+    void DrawStr(const IRect& r, const string& str, uint flags, uint color, int num_font);
+    void ClearFonts();
 
 private:
     static constexpr int FONT_BUF_LEN = 0x5000;
@@ -437,8 +407,8 @@ private:
             short OffsX {};
             short OffsY {};
             short XAdvance {};
-            RectF TexUV {};
-            RectF TexBorderedUV {};
+            FRect TexUV {};
+            FRect TexBorderedUV {};
         };
 
         RenderEffect* DrawEffect {};
@@ -458,7 +428,7 @@ private:
     {
         FontData* CurFont {};
         uint Flags {};
-        Rect Region {};
+        IRect Region {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
         uint LinesAll {};
@@ -471,13 +441,14 @@ private:
         ushort LineSpaceWidth[FONT_MAX_LINES] {};
         uint OffsColDots {};
         uint DefColor {};
-        StrVec* StrLines {};
+        vector<string>* StrLines {};
         bool IsError {};
     };
 
     [[nodiscard]] auto GetFont(int num) -> FontData*;
+
     void BuildFont(int index);
-    static void FormatText(FontFormatInfo& fi, int fmt_type);
+    void FormatText(FontFormatInfo& fi, int fmt_type);
 
     vector<unique_ptr<FontData>> _allFonts {};
     int _defFontIndex {-1};

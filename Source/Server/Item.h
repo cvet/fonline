@@ -42,11 +42,7 @@
 #include "ScriptApi.h"
 
 class Item;
-using ItemVec = vector<Item*>;
-using ItemMap = map<uint, Item*>;
 class Critter;
-using CritterMap = map<uint, Critter*>;
-using CritterVec = vector<Critter*>;
 
 class Item final : public Entity
 {
@@ -62,24 +58,22 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override = default;
 
-    auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
-    void SetProto(const ProtoItem* proto);
-    auto SetScript(const string& func, bool first_time) -> bool;
-    void SetSortValue(ItemVec& items);
-    void ChangeCount(int val);
-
-    auto ContGetItem(uint item_id, bool skip_hide) -> Item*;
-    void ContGetAllItems(ItemVec& items, bool skip_hide);
-    auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
-    void ContGetItems(ItemVec& items, uint stack_id);
-    auto ContIsItems() const -> bool;
-
     [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
     [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
     [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
     [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
+    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
+    [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
+    [[nodiscard]] auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
+    [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
+    [[nodiscard]] auto ContIsItems() const -> bool;
+
+    auto SetScript(const string& func, bool first_time) -> bool;
+    void EvaluateSortValue(const vector<Item*>& items);
+    void ChangeCount(int val);
 
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
@@ -95,5 +89,5 @@ public:
 
 private:
     ServerScriptSystem& _scriptSys;
-    ItemVec* _childItems {};
+    vector<Item*>* _childItems {};
 };

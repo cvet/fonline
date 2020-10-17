@@ -463,7 +463,7 @@ static auto SystemCall(string command, const std::function<void(const string&)>&
 
     auto* cmd_line = _wcsdup(_str(std::move(command)).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
-    delete[] cmd_line;
+    ::free(cmd_line);
 
     if (result == 0) {
         ::CloseHandle(out_read);

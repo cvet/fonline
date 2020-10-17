@@ -450,7 +450,7 @@ bool AppGui::BeginFrame()
         case SDL_KEYDOWN:
         case SDL_KEYUP: {
             int key = event.key.keysym.scancode;
-            RUNTIME_ASSERT((key >= 0 && key < IM_ARRAYSIZE(io.KeysDown)));
+            RUNTIME_ASSERT(key >= 0 && key < IM_ARRAYSIZE(io.KeysDown));
 
             io.KeysDown[key] = (event.type == SDL_KEYDOWN);
             io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);

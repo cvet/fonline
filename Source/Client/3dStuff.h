@@ -40,7 +40,6 @@
 #include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
-#include "GeometryHelper.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -54,10 +53,10 @@ constexpr uint ANIMATION_NO_SMOOTH = 0x08;
 constexpr uint ANIMATION_INIT = 0x10;
 constexpr uint ANIMATION_COMBAT = 0x20;
 
-struct Bone;
-class Animation3d;
-class Animation3dEntity;
-class Animation3dXFile;
+struct ModelBone;
+class ModelInstance;
+class ModelInformation;
+class ModelHierarchy;
 
 struct MeshTexture
 {
@@ -71,13 +70,13 @@ struct MeshData
 {
     void Load(DataReader& reader);
 
-    Bone* Owner {};
+    ModelBone* Owner {};
     Vertex3DVec Vertices {};
-    UShortVec Indices {};
+    vector<ushort> Indices {};
     string DiffuseTexture {};
-    HashVec SkinBoneNameHashes {};
-    MatrixVec SkinBoneOffsets {};
-    vector<Bone*> SkinBones {};
+    vector<hash> SkinBoneNameHashes {};
+    vector<mat44> SkinBoneOffsets {};
+    vector<ModelBone*> SkinBones {};
     string EffectName {};
 };
 
@@ -94,37 +93,37 @@ struct MeshInstance
 };
 static_assert(std::is_standard_layout_v<MeshInstance>);
 
-struct Bone
+struct ModelBone
 {
     void Load(DataReader& reader);
-    void FixAfterLoad(Bone* root_bone);
-    auto Find(hash name_hash) -> Bone*;
+    void FixAfterLoad(ModelBone* root_bone);
+    auto Find(hash name_hash) -> ModelBone*;
     static auto GetHash(const string& name) -> hash;
 
     hash NameHash {};
-    Matrix TransformationMatrix {};
-    Matrix GlobalTransformationMatrix {};
+    mat44 TransformationMatrix {};
+    mat44 GlobalTransformationMatrix {};
     unique_ptr<MeshData> AttachedMesh {};
-    vector<unique_ptr<Bone>> Children {};
-    Matrix CombinedTransformationMatrix {};
+    vector<unique_ptr<ModelBone>> Children {};
+    mat44 CombinedTransformationMatrix {};
 };
 
-struct CutData
+struct ModelCutData
 {
     struct Shape
     {
-        Matrix GlobalTransformationMatrix {};
+        mat44 GlobalTransformationMatrix {};
         float SphereRadius {};
     };
 
     vector<Shape> Shapes {};
-    IntVec Layers {};
+    vector<int> Layers {};
     uint UnskinBone {};
     Shape UnskinShape {};
     bool RevertUnskinShape {};
 };
 
-struct AnimParams
+struct ModelAnimationData
 {
     uint Id {};
     int Layer {};
@@ -145,10 +144,10 @@ struct AnimParams
     vector<uint> DisabledMesh {};
     vector<tuple<string, uint, int>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, uint>> EffectInfo {}; // Name, mesh
-    vector<CutData*> CutInfo {};
+    vector<ModelCutData*> CutInfo {};
 };
 
-struct AnimationCallback
+struct ModelAnimationCallback
 {
     uint Anim1 {};
     uint Anim2 {};
@@ -156,39 +155,41 @@ struct AnimationCallback
     std::function<void()> Callback {};
 };
 
-class Animation3dManager final
+class ModelManager final
 {
-    friend class Animation3d;
-    friend class Animation3dEntity;
-    friend class Animation3dXFile;
+    friend class ModelInstance;
+    friend class ModelInformation;
+    friend class ModelHierarchy;
 
 public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
-    Animation3dManager() = delete;
-    Animation3dManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator);
-    Animation3dManager(const Animation3dManager&) = delete;
-    Animation3dManager(Animation3dManager&&) noexcept = delete;
-    auto operator=(const Animation3dManager&) = delete;
-    auto operator=(Animation3dManager&&) noexcept = delete;
-    ~Animation3dManager() = default;
+    ModelManager() = delete;
+    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator);
+    ModelManager(const ModelManager&) = delete;
+    ModelManager(ModelManager&&) noexcept = delete;
+    auto operator=(const ModelManager&) = delete;
+    auto operator=(ModelManager&&) noexcept = delete;
+    ~ModelManager() = default;
 
-    auto LoadAnimation(const string& anim_fname, const string& anim_name) -> AnimSet*;
-    auto LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*;
+    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
+
+    [[nodiscard]] auto GetModel(const string& name, bool is_child) -> ModelInstance*;
+    [[nodiscard]] auto LoadAnimation(const string& anim_fname, const string& anim_name) -> ModelAnimation*;
+    [[nodiscard]] auto LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*;
+
     void DestroyTextures();
     void SetScreenSize(int width, int height);
-    auto GetAnimation(const string& name, bool is_child) -> Animation3d*;
-    void PreloadEntity(const string& name);
-    auto Convert2dTo3d(int x, int y) -> Vector;
-    auto Convert3dTo2d(Vector pos) -> Point;
+    void PreloadModel(const string& name);
 
 private:
-    auto LoadModel(const string& fname) -> Bone*;
-    auto GetEntity(const string& name) -> Animation3dEntity*;
-    auto GetXFile(const string& xname) -> Animation3dXFile*;
-    void VecProject(const Vector& v, Vector& out);
-    void VecUnproject(const Vector& v, Vector& out);
-    void ProjectPosition(Vector& v);
+    [[nodiscard]] auto VecProject(const vec3& v) const -> vec3;
+    [[nodiscard]] auto VecUnproject(const vec3& v) const -> vec3;
+
+    [[nodiscard]] auto LoadModel(const string& fname) -> ModelBone*;
+    [[nodiscard]] auto GetInformation(const string& name) -> ModelInformation*;
+    [[nodiscard]] auto GetHierarchy(const string& xname) -> ModelHierarchy*;
 
     RenderSettings& _settings;
     FileManager& _fileMngr;
@@ -197,47 +198,52 @@ private:
     GameTimer& _gameTime;
     MeshTextureCreator _meshTexCreator {};
     set<hash> _processedFiles {};
-    vector<unique_ptr<Bone, std::function<void(Bone*)>>> _loadedModels {};
-    vector<unique_ptr<AnimSet>> _loadedAnimSets {};
+    vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
+    vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
-    vector<unique_ptr<Animation3dEntity>> _allEntities {};
-    vector<unique_ptr<Animation3dXFile>> _xFiles {};
+    vector<unique_ptr<ModelInformation>> _allModelInfos {};
+    vector<unique_ptr<ModelHierarchy>> _xFiles {};
     int _modeWidth {};
     int _modeHeight {};
     float _modeWidthF {};
     float _modeHeightF {};
-    Matrix _matrixProjRMaj {}; // Row or column major order
-    Matrix _matrixEmptyRMaj {};
-    Matrix _matrixProjCMaj {};
-    Matrix _matrixEmptyCMaj {};
+    mat44 _matrixProjRMaj {}; // Row or column major order
+    mat44 _matrixEmptyRMaj {};
+    mat44 _matrixProjCMaj {};
+    mat44 _matrixEmptyCMaj {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
     uint _animDelay {};
-    Color _lightColor {};
+    color4 _lightColor {};
 };
 
-class Animation3d final
+class ModelInstance final
 {
-    friend class Animation3dManager;
-    friend class Animation3dEntity;
-    friend class Animation3dXFile;
+    friend class ModelManager;
+    friend class ModelInformation;
+    friend class ModelHierarchy;
 
 public:
-    Animation3d() = delete;
-    explicit Animation3d(Animation3dManager& anim3d_mngr);
-    Animation3d(const Animation3d&) = default;
-    Animation3d(Animation3d&&) noexcept = delete;
-    auto operator=(const Animation3d&) = delete;
-    auto operator=(Animation3d&&) noexcept = delete;
-    ~Animation3d();
+    ModelInstance() = delete;
+    explicit ModelInstance(ModelManager& model_mngr);
+    ModelInstance(const ModelInstance&) = default;
+    ModelInstance(ModelInstance&&) noexcept = delete;
+    auto operator=(const ModelInstance&) = delete;
+    auto operator=(ModelInstance&&) noexcept = delete;
+    ~ModelInstance();
+
+    [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
+    [[nodiscard]] auto GetAnim1() const -> int; // Todo: GetAnim1/GetAnim2 int to uint return type
+    [[nodiscard]] auto GetAnim2() const -> int;
+    [[nodiscard]] auto EvaluateAnimation() const -> optional<tuple<uint, uint>>;
+    [[nodiscard]] auto NeedDraw() const -> bool;
+    [[nodiscard]] auto IsAnimationPlaying() const -> bool;
+    [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
+    [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
+    [[nodiscard]] auto GetBonePos(hash name_hash) const -> optional<tuple<int, int>>;
 
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
-    [[nodiscard]] auto IsAnimation(uint anim1, uint anim2) const -> bool;
-    auto EvaluateAnimation(uint& anim1, uint& anim2) const -> bool;
-    // Todo: GetAnim1/GetAnim2 int to uint return type
-    [[nodiscard]] auto GetAnim1() const -> int;
-    [[nodiscard]] auto GetAnim2() const -> int;
     void SetDir(uchar dir);
     void SetDirAngle(int dir_angle);
     void SetRotation(float rx, float ry, float rz);
@@ -245,16 +251,11 @@ public:
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
-    [[nodiscard]] auto NeedDraw() const -> bool;
     void Draw(int x, int y);
-    [[nodiscard]] auto IsAnimationPlaying() const -> bool;
-    void GetRenderFramesData(float& period, int& proc_from, int& proc_to, int& dir) const;
-    void GetDrawSize(uint& draw_width, uint& draw_height) const;
-    auto GetBonePos(hash name_hash, int& x, int& y) const -> bool;
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
-    vector<AnimationCallback> AnimationCallbacks {};
+    vector<ModelAnimationCallback> AnimationCallbacks {};
 
 private:
     struct CombinedMesh
@@ -263,111 +264,112 @@ private:
         RenderMesh* DrawMesh {};
         int EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
-        UIntVec MeshVertices {};
-        UIntVec MeshIndices {};
-        IntVec MeshAnimLayers {};
+        vector<uint> MeshVertices {};
+        vector<uint> MeshIndices {};
+        vector<int> MeshAnimLayers {};
         size_t CurBoneMatrix {};
-        vector<Bone*> SkinBones {};
-        MatrixVec SkinBoneOffsets {};
+        vector<ModelBone*> SkinBones {};
+        vector<mat44> SkinBoneOffsets {};
         MeshTexture* Textures[EFFECT_TEXTURES] {};
     };
-    using CombinedMeshVec = vector<CombinedMesh*>;
 
-    void GenerateCombinedMeshes();
-    void FillCombinedMeshes(Animation3d* base, Animation3d* cur);
-    void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
-    void ClearCombinedMesh(CombinedMesh* combined_mesh);
     [[nodiscard]] auto CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool;
-    void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
-    void CutCombinedMeshes(Animation3d* base, Animation3d* cur);
-    void CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut);
-    void ProcessAnimation(float elapsed, int x, int y, float scale);
-    void UpdateBoneMatrices(Bone* bone, const Matrix* parent_matrix);
-    void DrawCombinedMeshes();
-    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     [[nodiscard]] auto GetSpeed() const -> float;
     [[nodiscard]] auto GetTick() const -> uint;
-    void SetAnimData(AnimParams& data, bool clear);
 
-    Animation3dManager& _anim3dMngr;
+    void GenerateCombinedMeshes();
+    void FillCombinedMeshes(ModelInstance* base, ModelInstance* cur);
+    void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
+    void ClearCombinedMesh(CombinedMesh* combined_mesh);
+    void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
+    void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
+    void CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut);
+    void ProcessAnimation(float elapsed, int x, int y, float scale);
+    void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
+    void DrawCombinedMeshes();
+    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
+    void SetAnimData(ModelAnimationData& data, bool clear);
+
+    ModelManager& _modelMngr;
     uint _curAnim1 {};
     uint _curAnim2 {};
-    CombinedMeshVec _combinedMeshes {};
+    vector<CombinedMesh*> _combinedMeshes {};
     size_t _combinedMeshesSize {};
     bool _disableCulling {};
     vector<MeshInstance*> _allMeshes {};
-    BoolVec _allMeshesDisabled {};
-    Animation3dEntity* _animEntity {};
-    AnimController* _animController {};
+    vector<bool> _allMeshesDisabled {};
+    ModelInformation* _modelInfo {};
+    ModelAnimationController* _animController {};
     int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     uint _lastDrawTick {};
     uint _endTick {};
-    Matrix _matRot {};
-    Matrix _matScale {};
-    Matrix _matScaleBase {};
-    Matrix _matRotBase {};
-    Matrix _matTransBase {};
+    mat44 _matRot {};
+    mat44 _matScale {};
+    mat44 _matScaleBase {};
+    mat44 _matRotBase {};
+    mat44 _matTransBase {};
     float _speedAdjustBase {};
     float _speedAdjustCur {};
     float _speedAdjustLink {};
     bool _shadowDisabled {};
     float _dirAngle {};
-    Vector _groundPos {};
+    vec3 _groundPos {};
     bool _useGameTimer {};
     float _animPosProc {};
     float _animPosTime {};
     float _animPosPeriod {};
     bool _allowMeshGeneration {};
-    vector<CutData*> _allCuts {};
+    vector<ModelCutData*> _allCuts {};
 
     // Derived animations
-    vector<Animation3d*> _childAnimations {};
-    Animation3d* _parentAnimation {};
-    Bone* _parentBone {};
-    Matrix _parentMatrix {};
-    vector<Bone*> _linkBones {};
-    MatrixVec _linkMatricles {};
-    AnimParams _animLink {};
+    vector<ModelInstance*> _children {};
+    ModelInstance* _parent {};
+    ModelBone* _parentBone {};
+    mat44 _parentMatrix {};
+    vector<ModelBone*> _linkBones {};
+    vector<mat44> _linkMatricles {};
+    ModelAnimationData _animLink {};
     bool _childChecker {};
 };
 
-class Animation3dEntity final
+class ModelInformation final
 {
-    friend class Animation3dManager;
-    friend class Animation3d;
-    friend class Animation3dXFile;
+    friend class ModelManager;
+    friend class ModelInstance;
+    friend class ModelHierarchy;
 
 public:
-    Animation3dEntity() = delete;
-    explicit Animation3dEntity(Animation3dManager& anim3d_mngr);
-    Animation3dEntity(const Animation3dEntity&) = delete;
-    Animation3dEntity(Animation3dEntity&&) noexcept = default;
-    auto operator=(const Animation3dEntity&) = delete;
-    auto operator=(Animation3dEntity&&) noexcept = delete;
-    ~Animation3dEntity() = default;
+    ModelInformation() = delete;
+    explicit ModelInformation(ModelManager& model_mngr);
+    ModelInformation(const ModelInformation&) = delete;
+    ModelInformation(ModelInformation&&) noexcept = default;
+    auto operator=(const ModelInformation&) = delete;
+    auto operator=(ModelInformation&&) noexcept = delete;
+    ~ModelInformation() = default;
 
 private:
     [[nodiscard]] auto GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int;
     [[nodiscard]] auto GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int;
-    auto Load(const string& name) -> bool;
-    auto CloneAnimation() -> Animation3d*;
-    auto CreateCutShape(MeshData* mesh) -> CutData::Shape;
+    [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
-    Animation3dManager& _anim3dMngr;
+    [[nodiscard]] auto Load(const string& name) -> bool;
+    [[nodiscard]] auto CreateInstance() -> ModelInstance*;
+
+    ModelManager& _modelMngr;
     string _fileName {};
     string _pathName {};
-    Animation3dXFile* _xFile {};
-    unique_ptr<AnimController> _animController {};
+    ModelHierarchy* _hierarchy {};
+    unique_ptr<ModelAnimationController> _animController {};
     uint _numAnimationSets {};
-    IntMap _anim1Equals {};
-    IntMap _anim2Equals {};
-    IntMap _animIndexes {};
-    IntFloatMap _animSpeed {};
-    UIntIntPairVecMap _animLayerValues {};
-    HashSet _fastTransitionBones {};
-    AnimParams _animDataDefault {};
-    vector<AnimParams> _animData {};
+    map<int, int> _anim1Equals {};
+    map<int, int> _anim2Equals {};
+    map<int, int> _animIndexes {};
+    map<int, float> _animSpeed {};
+    map<uint, vector<pair<int, int>>> _animLayerValues {};
+    set<hash> _fastTransitionBones {};
+    ModelAnimationData _animDataDefault {};
+    vector<ModelAnimationData> _animData {};
     int _renderAnim {};
     int _renderAnimProcFrom {};
     int _renderAnimProcTo {100};
@@ -377,31 +379,31 @@ private:
     uint _drawHeight {};
 };
 
-class Animation3dXFile final
+class ModelHierarchy final
 {
-    friend class Animation3dManager;
-    friend class Animation3d;
-    friend class Animation3dEntity;
+    friend class ModelManager;
+    friend class ModelInstance;
+    friend class ModelInformation;
 
 public:
-    Animation3dXFile() = delete;
-    explicit Animation3dXFile(Animation3dManager& anim3d_mngr);
-    Animation3dXFile(const Animation3dXFile&) = delete;
-    Animation3dXFile(Animation3dXFile&&) noexcept = default;
-    auto operator=(const Animation3dXFile&) = delete;
-    auto operator=(Animation3dXFile&&) noexcept = delete;
-    ~Animation3dXFile() = default;
+    ModelHierarchy() = delete;
+    explicit ModelHierarchy(ModelManager& model_mngr);
+    ModelHierarchy(const ModelHierarchy&) = delete;
+    ModelHierarchy(ModelHierarchy&&) noexcept = default;
+    auto operator=(const ModelHierarchy&) = delete;
+    auto operator=(ModelHierarchy&&) noexcept = delete;
+    ~ModelHierarchy() = default;
 
 private:
     void SetupBones();
-    void SetupAnimationOutput(AnimController* anim_controller);
+    void SetupAnimationOutput(ModelAnimationController* anim_controller);
     auto GetTexture(const string& tex_name) -> MeshTexture*;
     auto GetEffect(const string& name) -> RenderEffect*;
 
-    Animation3dManager& _anim3dMngr;
+    ModelManager& _modelMngr;
     string _fileName {};
-    unique_ptr<Bone> _rootBone {};
-    vector<Bone*> _allBones {};
-    vector<Bone*> _allDrawBones {};
+    unique_ptr<ModelBone> _rootBone {};
+    vector<ModelBone*> _allBones {};
+    vector<ModelBone*> _allDrawBones {};
     int _dummy {};
 };

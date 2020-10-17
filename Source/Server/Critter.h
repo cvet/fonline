@@ -61,31 +61,40 @@ enum class ClientState
     Transferring,
 };
 
+struct PathStep
+{
+    ushort HexX {};
+    ushort HexY {};
+    uint MoveParams {};
+    uchar Dir {};
+};
+
 class MapManager;
 class Item;
-using ItemVec = vector<Item*>;
-using ItemMap = map<uint, Item*>;
-class Critter;
-using CritterMap = map<uint, Critter*>;
-using CritterVec = vector<Critter*>;
 class Npc;
-using NpcMap = map<uint, Npc*>;
-using NpcVec = vector<Npc*>;
 class Client;
-using ClientMap = map<uint, Client*>;
-using ClientVec = vector<Client*>;
 class Map;
-using MapVec = vector<Map*>;
-using MapMap = map<uint, Map*>;
 class Location;
-using LocationVec = vector<Location*>;
-using LocationMap = map<uint, Location*>;
 
 class Critter : public Entity
 {
     friend class CritterManager;
 
 public:
+    struct MovingData
+    {
+        int State {1};
+        uint TargId {};
+        ushort HexX {};
+        ushort HexY {};
+        uint Cut {};
+        bool IsRun {};
+        vector<PathStep> Steps {};
+        uint Iter {};
+        uint Trace {};
+        uint GagEntityId {};
+    };
+
     Critter() = delete;
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
@@ -93,49 +102,56 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override = default;
 
-    void ClearVisible();
-
-    [[nodiscard]] auto GetCritSelf(uint crid) -> Critter*;
-    void GetCrFromVisCr(CritterVec& critters, uchar find_type, bool vis_cr_self);
+    [[nodiscard]] auto IsPlayer() const -> bool { return !CritterIsNpc; }
+    [[nodiscard]] auto IsNpc() const -> bool { return CritterIsNpc; }
+    [[nodiscard]] auto GetAttackDist(Item* weap, uchar use) -> uint;
+    [[nodiscard]] auto IsAlive() const -> bool;
+    [[nodiscard]] auto IsDead() const -> bool;
+    [[nodiscard]] auto IsKnockout() const -> bool;
+    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
+    [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetItemsNoLock() -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
+    [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
+    [[nodiscard]] auto GetItemsSlot(int slot) -> vector<Item*>;
+    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
+    [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
+    [[nodiscard]] auto CountItems() -> uint;
+    [[nodiscard]] auto GetInventory() -> vector<Item*>&;
+    [[nodiscard]] auto IsHaveGeckItem() -> bool;
+    [[nodiscard]] auto IsFree() const -> bool;
+    [[nodiscard]] auto IsBusy() const -> bool;
+    [[nodiscard]] auto IsWait() const -> bool;
+    [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
+    [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
+    [[nodiscard]] auto GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
+    [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
     auto DelCrFromVisVec(Critter* del_cr) -> bool;
-
     auto AddCrIntoVisSet1(uint crid) -> bool;
     auto AddCrIntoVisSet2(uint crid) -> bool;
     auto AddCrIntoVisSet3(uint crid) -> bool;
     auto DelCrFromVisSet1(uint crid) -> bool;
     auto DelCrFromVisSet2(uint crid) -> bool;
     auto DelCrFromVisSet3(uint crid) -> bool;
-
     auto AddIdVisItem(uint item_id) -> bool;
     auto DelIdVisItem(uint item_id) -> bool;
     auto CountIdVisItem(uint item_id) const -> bool;
 
+    void ClearVisible();
     void SetItem(Item* item);
-    [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
-    [[nodiscard]] auto GetItemsNoLock() -> ItemVec& { return _invItems; }
-    [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
-    [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
-    [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
-    void GetItemsSlot(int slot, ItemVec& items);
-    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
-    [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountItems() -> uint;
-    [[nodiscard]] auto GetInventory() -> ItemVec&;
-    [[nodiscard]] auto IsHaveGeckItem() -> bool;
-
     auto SetScript(const string& func, bool first_time) -> bool;
-
-    [[nodiscard]] auto IsFree() const -> bool;
-    [[nodiscard]] auto IsBusy() const -> bool;
     void SetBreakTime(uint ms);
     void SetBreakTimeDelta(uint ms);
     void SetWait(uint ms);
-    [[nodiscard]] auto IsWait() const -> bool;
+    void SendMessage(int num, int val, int to, MapManager& map_mngr);
+    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier) const;
+    void EraseCrTimeEvent(int index);
+    void ContinueTimeEvents(int offs_time);
 
-    auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
@@ -170,8 +186,6 @@ public:
     void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
     void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, const string& sound_name);
-
-    // Send all
     void SendA_Property(NetProperty::Type type, Property* prop, Entity* entity);
     void SendA_Move(uint move_params);
     void SendA_XY();
@@ -180,32 +194,13 @@ public:
     void SendAA_MoveItem(Item* item, uchar action, uchar prev_slot);
     void SendAA_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void SendAA_SetAnims(int cond, uint anim1, uint anim2);
-    void SendAA_Text(const CritterVec& to_cr, const string& text, uchar how_say, bool unsafe_text);
-    void SendAA_Msg(const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg);
-    void SendAA_MsgLex(const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
+    void SendAA_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text);
+    void SendAA_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
+    void SendAA_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
     void SendA_Dir();
     void SendA_CustomCommand(ushort num_param, int val);
-
-    // Chosen data
     void Send_AddAllItems();
     void Send_AllAutomapsInfo(MapManager& map_mngr);
-
-    [[nodiscard]] auto IsPlayer() const -> bool { return !CritterIsNpc; }
-    [[nodiscard]] auto IsNpc() const -> bool { return CritterIsNpc; }
-    void SendMessage(int num, int val, int to, MapManager& map_mngr);
-    [[nodiscard]] auto GetAttackDist(Item* weap, uchar use) -> uint;
-    [[nodiscard]] auto IsAlive() const -> bool;
-    [[nodiscard]] auto IsDead() const -> bool;
-    [[nodiscard]] auto IsKnockout() const -> bool;
-    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
-
-    // Timeouts
-    [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
-
-    // Time events
-    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier) const;
-    void EraseCrTimeEvent(int index);
-    void ContinueTimeEvents(int offs_time);
 
     bool CritterIsNpc {};
     uint Flags {};
@@ -213,15 +208,14 @@ public:
     bool IsRunning {};
     int LockMapTransfers {};
     uint AllowedToDownloadMap {};
-
-    CritterVec VisCr {};
-    CritterVec VisCrSelf {};
-    CritterMap VisCrMap {};
-    CritterMap VisCrSelfMap {};
-    UIntSet VisCr1 {};
-    UIntSet VisCr2 {};
-    UIntSet VisCr3 {};
-    UIntSet VisItem {};
+    vector<Critter*> VisCr {};
+    vector<Critter*> VisCrSelf {};
+    map<uint, Critter*> VisCrMap {};
+    map<uint, Critter*> VisCrSelfMap {};
+    set<uint> VisCr1 {};
+    set<uint> VisCr2 {};
+    set<uint> VisCr3 {};
+    set<uint> VisItem {};
     uint ViewMapId {};
     hash ViewMapPid {};
     ushort ViewMapLook {};
@@ -230,26 +224,11 @@ public:
     uchar ViewMapDir {};
     uint ViewMapLocId {};
     uint ViewMapLocEnt {};
-
-    struct
-    {
-        int State {1};
-        uint TargId {};
-        ushort HexX {};
-        ushort HexY {};
-        uint Cut {};
-        bool IsRun {};
-        uint PathNum {};
-        uint Iter {};
-        uint Trace {};
-        uint GagEntityId {};
-    } Moving {};
-
+    MovingData Moving {};
     uint CacheValuesNextTick {};
     uint LookCacheValue {};
-
     int DisableSend {};
-    CritterVec* GlobalMapGroup {};
+    vector<Critter*>* GlobalMapGroup {};
     bool CanBeRemoved {};
 
 #define FO_API_CRITTER_CLASS
@@ -266,7 +245,7 @@ protected:
     GeometryHelper _geomHelper;
     ServerScriptSystem& _scriptSys;
     GameTimer& _gameTime;
-    ItemVec _invItems {};
+    vector<Item*> _invItems {};
 
 private:
     uint _startBreakTime {};
@@ -313,7 +292,7 @@ public:
     void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) const;
     void Send_AddItem(Item* item) const;
     void Send_EraseItem(Item* item) const;
-    void Send_SomeItems(const ItemVec* items, int param) const;
+    void Send_SomeItems(const vector<Item*>* items, int param) const;
     void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
     void Send_GlobalLocation(Location* loc, bool add) const;
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) const;

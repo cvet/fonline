@@ -36,11 +36,9 @@
 #include "Common.h"
 
 #include "Critter.h"
-#include "DataBase.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
 #include "Item.h"
-#include "Location.h"
 #include "Map.h"
 #include "ServerScripting.h"
 #include "Settings.h"
@@ -62,31 +60,30 @@ public:
     auto operator=(CritterManager&&) noexcept = delete;
     ~CritterManager() = default;
 
-    auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*;
-    auto RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc) -> bool;
+    [[nodiscard]] auto GetCritters() -> vector<Critter*>;
+    [[nodiscard]] auto GetNpcs() -> vector<Npc*>;
+    [[nodiscard]] auto GetClients(bool on_global_map_only) -> vector<Client*>;
+    [[nodiscard]] auto GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
+    [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
+    [[nodiscard]] auto GetPlayer(uint cr_id) -> Client*;
+    [[nodiscard]] auto GetPlayer(const char* name) -> Client*;
+    [[nodiscard]] auto GetNpc(uint cr_id) -> Npc*;
+    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
+    [[nodiscard]] auto PlayersInGame() const -> uint;
+    [[nodiscard]] auto NpcInGame() const -> uint;
+    [[nodiscard]] auto CrittersInGame() const -> uint;
+
+    [[nodiscard]] auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*;
+
+    void LinkCritters();
+    void InitAfterLoad();
     void DeleteNpc(Critter* cr);
     void DeleteInventory(Critter* cr);
-
     void AddItemToCritter(Critter* cr, Item*& item, bool send);
     void EraseItemFromCritter(Critter* cr, Item* item, bool send);
-
-    void GetCritters(CritterVec& critters);
-    void GetNpcs(NpcVec& npcs);
-    void GetClients(ClientVec& players, bool on_global_map);
-    void GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters);
-    auto GetCritter(uint crid) -> Critter*;
-    auto GetPlayer(uint crid) -> Client*;
-    auto GetPlayer(const char* name) -> Client*;
-    auto GetNpc(uint crid) -> Npc*;
-
-    auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
-
     void ProcessTalk(Client* cl, bool force);
     void CloseTalk(Client* cl);
-
-    auto PlayersInGame() const -> uint;
-    auto NpcInGame() const -> uint;
-    auto CrittersInGame() const -> uint;
 
 private:
     ServerSettings& _settings;

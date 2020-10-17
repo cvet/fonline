@@ -170,28 +170,27 @@ public:
     auto operator=(Properties&&) noexcept = delete;
     ~Properties();
 
-    [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
-    [[nodiscard]] auto FindData(const string& property_name) -> void*;
-    auto StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes) const -> uint;
-    void RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes);
-    void RestoreData(UCharVecVec& all_data);
-    [[nodiscard]] auto LoadFromText(const StrMap& key_values) -> bool;
-    void SaveToText(StrMap& key_values, Properties* base) const;
-    [[nodiscard]] auto LoadPropertyFromText(Property* prop, const string& text) -> bool;
-    [[nodiscard]] auto SavePropertyToText(Property* prop) const -> string;
-
-    void SetSendIgnore(Property* prop, Entity* entity);
     [[nodiscard]] auto GetRegistrator() const -> PropertyRegistrator* { return _registrator; }
-
     [[nodiscard]] auto GetRawDataSize(Property* prop) const -> uint;
     [[nodiscard]] auto GetRawData(Property* prop, uint& data_size) const -> const uchar*;
     [[nodiscard]] auto GetRawData(Property* prop, uint& data_size) -> uchar*;
+    [[nodiscard]] auto GetPODValueAsInt(Property* prop) const -> int;
+    [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
+    [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
+    [[nodiscard]] auto FindData(const string& property_name) -> void*;
+
+    [[nodiscard]] auto SavePropertyToText(Property* prop) const -> string;
+    [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
+
+    auto LoadFromText(const map<string, string>& key_values) -> bool;
+    auto LoadPropertyFromText(Property* prop, const string& text) -> bool;
+    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
+    void RestoreData(vector<vector<uchar>>& all_data);
+    void SetSendIgnore(Property* prop, Entity* entity);
     void SetRawData(Property* prop, uchar* data, uint data_size);
     void SetValueFromData(Property* prop, uchar* data, uint data_size);
-    [[nodiscard]] auto GetPODValueAsInt(Property* prop) const -> int;
     void SetPODValueAsInt(Property* prop, int value);
-
-    [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
     void SetValueAsInt(int enum_value, int value);
     void SetValueAsIntByName(const string& enum_name, int value);
     void SetValueAsIntProps(int enum_value, int value);
@@ -222,7 +221,7 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
         RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
         const auto data_size = _complexDataSizes[prop->_complexDataIndex];
-        return data_size ? string(reinterpret_cast<char*>(_podData[prop->_complexDataIndex]), data_size) : string();
+        return data_size ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
@@ -265,11 +264,11 @@ public:
 private:
     PropertyRegistrator* _registrator {};
     uchar* _podData {};
-    PUCharVec _complexData {};
-    UIntVec _complexDataSizes {};
-    mutable PUCharVec _storeData {};
-    mutable UIntVec _storeDataSizes {};
-    mutable UShortVec _storeDataComplexIndicies {};
+    vector<uchar*> _complexData {};
+    vector<uint> _complexDataSizes {};
+    mutable vector<uchar*> _storeData {};
+    mutable vector<uint> _storeDataSizes {};
+    mutable vector<ushort> _storeDataComplexIndicies {};
     Entity* _sendIgnoreEntity {};
     Property* _sendIgnoreProperty {};
 };
@@ -289,35 +288,36 @@ public:
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    auto Register(Property::AccessType access, const type_info& type, const string& name) -> Property*;
-    void RegisterComponent(const string& name);
     [[nodiscard]] auto GetClassName() const -> string;
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(const string& property_name) -> Property*;
     [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
     [[nodiscard]] auto Get(uint property_index) -> Property*;
     [[nodiscard]] auto IsComponentRegistered(hash component_name) const -> bool;
-    void SetNativeSetCallback(const string& property_name, const NativeCallback& callback);
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
+
+    auto Register(Property::AccessType access, const type_info& type, const string& name) -> Property*;
+    void RegisterComponent(const string& name);
+    void SetNativeSetCallback(const string& property_name, const NativeCallback& callback);
 
 private:
     bool _isServer {};
     string _className {};
     vector<Property*> _registeredProperties {};
-    HashSet _registeredComponents {};
+    set<hash> _registeredComponents {};
     uint _getPropertiesCount {};
 
     // POD info
     uint _wholePodDataSize {};
-    BoolVec _publicPodDataSpace {};
-    BoolVec _protectedPodDataSpace {};
-    BoolVec _privatePodDataSpace {};
-    PUCharVec _podDataPool {};
+    vector<bool> _publicPodDataSpace {};
+    vector<bool> _protectedPodDataSpace {};
+    vector<bool> _privatePodDataSpace {};
+    vector<uchar*> _podDataPool {};
 
     // Complex types info
     uint _complexPropertiesCount {};
-    UShortVec _publicComplexDataProps {};
-    UShortVec _protectedComplexDataProps {};
-    UShortVec _publicProtectedComplexDataProps {};
-    UShortVec _privateComplexDataProps {};
+    vector<ushort> _publicComplexDataProps {};
+    vector<ushort> _protectedComplexDataProps {};
+    vector<ushort> _publicProtectedComplexDataProps {};
+    vector<ushort> _privateComplexDataProps {};
 };

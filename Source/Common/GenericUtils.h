@@ -50,8 +50,7 @@ public:
 
     [[nodiscard]] static auto MurmurHash2(const uchar* data, uint len) -> hash;
     [[nodiscard]] static auto MurmurHash2_64(const uchar* data, uint len) -> uint64;
-    static void XOR(uchar* data, uint len, const uchar* xor_key, uint xor_len);
-    static auto ClientPassHash(const string& name, const string& pass) -> string;
+    [[nodiscard]] static auto ClientPassHash(const string& name, const string& pass) -> string;
 };
 
 class Compressor final
@@ -59,10 +58,10 @@ class Compressor final
 public:
     Compressor() = delete;
 
-    static auto Compress(const uchar* data, uint& data_len) -> uchar*;
-    static auto Compress(UCharVec& data) -> bool;
-    static auto Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*;
-    static auto Uncompress(UCharVec& data, uint mul_approx) -> bool;
+    [[nodiscard]] static auto Compress(const uchar* data, uint& data_len) -> uchar*;
+    [[nodiscard]] static auto Compress(const vector<uchar>& data) -> vector<uchar>;
+    [[nodiscard]] static auto Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*;
+    [[nodiscard]] static auto Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>;
 };
 
 class GenericUtils final
@@ -78,8 +77,8 @@ public:
     [[nodiscard]] static auto ConvertParamValue(const string& str, bool& fail) -> int;
     [[nodiscard]] static auto GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint;
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
-    static void GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2);
-    static void ChangeStepsXY(float& sx, float& sy, float deq);
+    [[nodiscard]] static auto GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, float>;
+    [[nodiscard]] static auto ChangeStepsXY(float sx, float sy, float deq) -> tuple<float, float>;
 };
 
 class MatrixHelper final

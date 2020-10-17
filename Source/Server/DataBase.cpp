@@ -59,6 +59,104 @@
 #endif
 #include "bson.h"
 
+class DataBaseImpl
+{
+public:
+    static constexpr auto INT_VALUE = 0;
+    static constexpr auto INT64_VALUE = 1;
+    static constexpr auto DOUBLE_VALUE = 2;
+    static constexpr auto BOOL_VALUE = 3;
+    static constexpr auto STRING_VALUE = 4;
+    static constexpr auto ARRAY_VALUE = 5;
+    static constexpr auto DICT_VALUE = 6;
+
+    using Array = vector<std::variant<int, int64, double, bool, string>>;
+    using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
+    using Value = std::variant<int, int64, double, bool, string, Array, Dict>;
+    using Document = map<string, Value>;
+    using Collection = map<uint, Document>;
+    using Collections = map<string, Collection>;
+    using RecordsState = map<string, set<uint>>;
+
+    DataBaseImpl() = default;
+    DataBaseImpl(const DataBaseImpl&) = delete;
+    DataBaseImpl(DataBaseImpl&&) noexcept = default;
+    auto operator=(const DataBaseImpl&) = delete;
+    auto operator=(DataBaseImpl&&) noexcept = delete;
+    virtual ~DataBaseImpl() = default;
+
+    [[nodiscard]] virtual auto GetAllIds(const string& collection_name) -> vector<uint> = 0;
+    [[nodiscard]] auto Get(const string& collection_name, uint id) -> Document;
+
+    void StartChanges();
+    void Insert(const string& collection_name, uint id, const Document& doc);
+    void Update(const string& collection_name, uint id, const string& key, const Value& value);
+    void Delete(const string& collection_name, uint id);
+    void CommitChanges();
+
+protected:
+    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> Document = 0;
+    virtual void InsertRecord(const string& collection_name, uint id, const Document& doc) = 0;
+    virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) = 0;
+    virtual void DeleteRecord(const string& collection_name, uint id) = 0;
+    virtual void CommitRecords() = 0;
+
+private:
+    bool _changesStarted {};
+    Collections _recordChanges {};
+    RecordsState _newRecords {};
+    RecordsState _deletedRecords {};
+};
+
+DataBase::DataBase() = default;
+DataBase::DataBase(DataBase&&) noexcept = default;
+auto DataBase::operator=(DataBase&&) noexcept -> DataBase& = default;
+DataBase::~DataBase() = default;
+
+DataBase::DataBase(DataBaseImpl* impl) : _impl {impl}
+{
+}
+
+DataBase::operator bool() const
+{
+    return _impl != nullptr;
+}
+
+auto DataBase::GetAllIds(const string& collection_name) -> vector<uint>
+{
+    return _impl->GetAllIds(collection_name);
+}
+
+auto DataBase::Get(const string& collection_name, uint id) -> Document
+{
+    return _impl->Get(collection_name, id);
+}
+
+void DataBase::StartChanges()
+{
+    _impl->StartChanges();
+}
+
+void DataBase::Insert(const string& collection_name, uint id, const Document& doc)
+{
+    _impl->Insert(collection_name, id, doc);
+}
+
+void DataBase::Update(const string& collection_name, uint id, const string& key, const Value& value)
+{
+    _impl->Update(collection_name, id, key, value);
+}
+
+void DataBase::Delete(const string& collection_name, uint id)
+{
+    _impl->Delete(collection_name, id);
+}
+
+void DataBase::CommitChanges()
+{
+    _impl->CommitChanges();
+}
+
 static void ValueToBson(const string& key, const DataBase::Value& value, bson_t* bson)
 {
     const auto value_index = value.index();
@@ -373,7 +471,7 @@ static void BsonToDocument(const bson_t* bson, DataBase::Document& doc)
     }
 }
 
-auto DataBase::Get(const string& collection_name, uint id) -> Document
+auto DataBaseImpl::Get(const string& collection_name, uint id) -> Document
 {
     if (_deletedRecords[collection_name].count(id) != 0u) {
         return Document();
@@ -394,7 +492,7 @@ auto DataBase::Get(const string& collection_name, uint id) -> Document
     return doc;
 }
 
-void DataBase::StartChanges()
+void DataBaseImpl::StartChanges()
 {
     RUNTIME_ASSERT(!_changesStarted);
     RUNTIME_ASSERT(_recordChanges.empty());
@@ -404,7 +502,7 @@ void DataBase::StartChanges()
     _changesStarted = true;
 }
 
-void DataBase::Insert(const string& collection_name, uint id, const Document& doc)
+void DataBaseImpl::Insert(const string& collection_name, uint id, const Document& doc)
 {
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_newRecords[collection_name].count(id));
@@ -416,7 +514,7 @@ void DataBase::Insert(const string& collection_name, uint id, const Document& do
     }
 }
 
-void DataBase::Update(const string& collection_name, uint id, const string& key, const Value& value)
+void DataBaseImpl::Update(const string& collection_name, uint id, const string& key, const Value& value)
 {
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
@@ -424,7 +522,7 @@ void DataBase::Update(const string& collection_name, uint id, const string& key,
     _recordChanges[collection_name][id][key] = value;
 }
 
-void DataBase::Delete(const string& collection_name, uint id)
+void DataBaseImpl::Delete(const string& collection_name, uint id)
 {
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
@@ -434,7 +532,7 @@ void DataBase::Delete(const string& collection_name, uint id)
     _recordChanges[collection_name].erase(id);
 }
 
-void DataBase::CommitChanges()
+void DataBaseImpl::CommitChanges()
 {
     RUNTIME_ASSERT(_changesStarted);
 
@@ -466,7 +564,7 @@ void DataBase::CommitChanges()
 }
 
 #ifdef FO_HAVE_JSON
-class DbJson final : public DataBase
+class DbJson final : public DataBaseImpl
 {
 public:
     DbJson() = delete;
@@ -483,9 +581,9 @@ public:
         _storageDir = storage_dir;
     }
 
-    auto GetAllIds(const string& collection_name) -> UIntVec override
+    auto GetAllIds(const string& collection_name) -> vector<uint> override
     {
-        UIntVec ids;
+        vector<uint> ids;
         DiskFileSystem::IterateDir(_storageDir + "/" + collection_name + "/", "json", false, [&ids](const string& path, uint /*size*/, uint64 /*write_time*/) {
             const string id_str = _str(path).extractFileName().eraseFileExtension();
             const auto id = _str(id_str).toUInt();
@@ -637,7 +735,7 @@ private:
 #endif
 
 #ifdef FO_HAVE_UNQLITE
-class DbUnQLite final : public DataBase
+class DbUnQLite final : public DataBaseImpl
 {
 public:
     DbUnQLite() = delete;
@@ -675,7 +773,7 @@ public:
         }
     }
 
-    auto GetAllIds(const string& collection_name) -> UIntVec override
+    auto GetAllIds(const string& collection_name) -> vector<uint> override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -693,7 +791,7 @@ public:
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_first_entry", kv_cursor_first_entry);
         }
 
-        UIntVec ids;
+        vector<uint> ids;
         while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
             uint id = 0u;
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
@@ -872,7 +970,7 @@ private:
 #endif
 
 #ifdef FO_HAVE_MONGO
-class DbMongo final : public DataBase
+class DbMongo final : public DataBaseImpl
 {
 public:
     DbMongo() = delete;
@@ -927,7 +1025,7 @@ public:
         mongoc_cleanup();
     }
 
-    auto GetAllIds(const string& collection_name) -> UIntVec override
+    auto GetAllIds(const string& collection_name) -> vector<uint> override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -949,7 +1047,7 @@ public:
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
 
-        UIntVec ids;
+        vector<uint> ids;
         const bson_t* document = nullptr;
         while (mongoc_cursor_next(cursor, &document)) {
             bson_iter_t iter;
@@ -1131,7 +1229,7 @@ private:
 };
 #endif
 
-class DbMemory final : public DataBase
+class DbMemory final : public DataBaseImpl
 {
 public:
     DbMemory() = default;
@@ -1141,11 +1239,11 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    auto GetAllIds(const string& collection_name) -> UIntVec override
+    auto GetAllIds(const string& collection_name) -> vector<uint> override
     {
         auto& collection = _collections[collection_name];
 
-        UIntVec ids;
+        vector<uint> ids;
         ids.reserve(collection.size());
         for (auto& [fst, snd] : collection) {
             ids.push_back(fst);
@@ -1206,27 +1304,27 @@ private:
     Collections _collections {};
 };
 
-auto GetDataBase(const string& connection_info) -> DataBase*
+auto ConnectToDataBase(const string& connection_info) -> DataBase
 {
     auto options = _str(connection_info).split(' ');
     if (!options.empty()) {
 #ifdef FO_HAVE_JSON
         if (options[0] == "JSON" && options.size() == 2) {
-            return new DbJson(options[1]);
+            return DataBase(new DbJson(options[1]));
         }
 #endif
 #ifdef FO_HAVE_UNQLITE
         if (options[0] == "DbUnQLite" && options.size() == 2) {
-            return new DbUnQLite(options[1]);
+            return DataBase(new DbUnQLite(options[1]));
         }
 #endif
 #ifdef FO_HAVE_MONGO
         if (options[0] == "Mongo" && options.size() == 3) {
-            return new DbMongo(options[1], options[2]);
+            return DataBase(new DbMongo(options[1], options[2]));
         }
 #endif
         if (options[0] == "Memory" && options.size() == 1) {
-            return new DbMemory();
+            return DataBase(new DbMemory());
         }
     }
 

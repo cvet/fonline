@@ -51,13 +51,12 @@ struct MapTile
     bool IsRoof {};
     bool IsSelected {}; // Todo: remove mapper specific IsSelected from MapTile
 };
-using MapTileVec = vector<MapTile>;
 
 class MapLoader final
 {
 public:
-    using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const StrMap& kv)>;
-    using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const StrMap& kv)>;
+    using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const map<string, string>& kv)>;
+    using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const map<string, string>& kv)>;
     using TileLoadFunc = std::function<void(MapTile&& tile)>;
 
     MapLoader() = delete;

@@ -37,7 +37,7 @@
 
 auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document
 {
-    RUNTIME_ASSERT((!base || props->_registrator == base->_registrator));
+    RUNTIME_ASSERT(!base || props->_registrator == base->_registrator);
 
     DataBase::Document doc;
     for (auto& prop : props->_registrator->_registeredProperties) {
@@ -234,7 +234,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 uchar* data = new uchar[data_size];
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
+                    RUNTIME_ASSERT(arr[i].index() == DataBase::StringValue);
 
                     hash h = _str(std::get<string>(arr[i])).toHash();
                     *(hash*)(data + i * sizeof(hash)) = h;
@@ -258,7 +258,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 uchar* data = new uchar[data_size];
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
+                    RUNTIME_ASSERT(arr[i].index() == DataBase::StringValue);
 
                     int e = name_resolver.GetEnumValue(enum_name, std::get<string>(arr[i]), is_error);
                     *(int*)(data + i * sizeof(int)) = e;
@@ -346,7 +346,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 uint data_size = sizeof(uint);
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    RUNTIME_ASSERT((arr[i].index() == DataBase::StringValue));
+                    RUNTIME_ASSERT(arr[i].index() == DataBase::StringValue);
 
                     const string& str = std::get<string>(arr[i]);
                     data_size += sizeof(uint) + (uint)str.length();
@@ -749,7 +749,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
 
 auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const NameResolver & /*name_resolver*/) -> DataBase::Value
 {
-    /*RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
+    /*RUNTIME_ASSERT(prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1));
     RUNTIME_ASSERT(!prop->isTemporary);
 
     uint data_size;

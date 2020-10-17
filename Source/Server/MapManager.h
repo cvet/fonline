@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "Critter.h"
-#include "DataBase.h"
 #include "Entity.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
@@ -47,7 +46,6 @@
 #include "Settings.h"
 #include "Timer.h"
 
-static constexpr auto FPATH_DATA_SIZE = 10000;
 static constexpr auto FPATH_MAX_PATH = 400;
 
 DECLARE_EXCEPTION(MapManagerException);
@@ -57,8 +55,56 @@ class EntityManager;
 class ItemManager;
 class CritterManager;
 
+struct TraceData
+{
+    using HexCallbackFunc = std::function<void(Map*, Critter*, ushort, ushort, ushort, ushort, uchar)>;
+
+    // Input
+    Map* TraceMap {};
+    ushort BeginHx {};
+    ushort BeginHy {};
+    ushort EndHx {};
+    ushort EndHy {};
+    uint Dist {};
+    float Angle {};
+    Critter* FindCr {};
+    uchar FindType {};
+    bool LastPassedSkipCritters {};
+    HexCallbackFunc HexCallback {};
+
+    // Output
+    vector<Critter*>* Critters {};
+    pair<ushort, ushort>* PreBlock {};
+    pair<ushort, ushort>* Block {};
+    pair<ushort, ushort>* LastPassed {};
+    bool IsFullTrace {};
+    bool IsCritterFounded {};
+    bool IsHaveLastPassed {};
+};
+
+struct FindPathInput
+{
+    uint MapId {};
+    ushort MoveParams {};
+    Critter* FromCritter {};
+    ushort FromX {};
+    ushort FromY {};
+    ushort ToX {};
+    ushort ToY {};
+    ushort NewToX {};
+    ushort NewToY {};
+    uint Multihex {};
+    uint Cut {};
+    uint Trace {};
+    bool IsRun {};
+    bool CheckCrit {};
+    bool CheckGagItems {};
+    Critter* TraceCr {};
+};
+
 enum class FindPathResult
 {
+    Unknown = -1,
     Ok = 0,
     AlreadyHere = 2,
     MapNotFound = 5,
@@ -72,60 +118,14 @@ enum class FindPathResult
     TraceTargetNullptr = 13,
 };
 
-struct TraceData
+struct FindPathOutput
 {
-    // Input
-    Map* TraceMap {};
-    ushort BeginHx {};
-    ushort BeginHy {};
-    ushort EndHx {};
-    ushort EndHy {};
-    uint Dist {};
-    float Angle {};
-    Critter* FindCr {};
-    int FindType {};
-    bool LastPassedSkipCritters {};
-    void (*HexCallback)(Map*, Critter*, ushort, ushort, ushort, ushort, uchar) {};
-
-    // Output
-    CritterVec* Critters {};
-    UShortPair* PreBlock {};
-    UShortPair* Block {};
-    UShortPair* LastPassed {};
-    bool IsFullTrace {};
-    bool IsCritterFounded {};
-    bool IsHaveLastPassed {};
-};
-
-struct PathFindData
-{
-    uint MapId {};
-    ushort MoveParams {};
-    Critter* FromCritter {};
-    ushort FromX {};
-    ushort FromY {};
-    ushort ToX {};
-    ushort ToY {};
+    FindPathResult Result {FindPathResult::Unknown};
+    vector<PathStep> Steps {};
     ushort NewToX {};
     ushort NewToY {};
-    uint Multihex {};
-    uint Cut {};
-    uint PathNum {};
-    uint Trace {};
-    bool IsRun {};
-    bool CheckCrit {};
-    bool CheckGagItems {};
-    Critter* TraceCr {};
     Critter* GagCritter {};
     Item* GagItem {};
-};
-
-struct PathStep
-{
-    ushort HexX {};
-    ushort HexY {};
-    uint MoveParams {};
-    uchar Dir {};
 };
 
 class MapManager final
@@ -139,57 +139,51 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    void LoadStaticMaps(FileManager& file_mngr);
-    [[nodiscard]] auto FindStaticMap(const ProtoMap* proto_map) -> const StaticMap*;
+    [[nodiscard]] auto FindStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
+    [[nodiscard]] auto GetLocation(uint loc_id) -> Location*;
+    [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
+    [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hash loc_pid, uint skip_count) -> Location*;
+    [[nodiscard]] auto GetLocations() -> vector<Location*>;
+    [[nodiscard]] auto GetLocationsCount() const -> uint;
+    [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
+    [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
+    [[nodiscard]] auto GetMap(uint map_id) -> Map*;
+    [[nodiscard]] auto GetMap(uint map_id) const -> const Map*;
+    [[nodiscard]] auto GetMapByPid(hash map_pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetMapsCount() const -> uint;
+    [[nodiscard]] auto CheckKnownLocById(Critter* cr, uint loc_id) const -> bool;
+    [[nodiscard]] auto CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool;
+    [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
+    [[nodiscard]] auto FindPath(const FindPathInput& pfd) -> FindPathOutput;
+    [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
-    // Maps
-    auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
+    [[nodiscard]] auto CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location*;
+    [[nodiscard]] auto CreateMap(hash proto_id, Location* loc) -> Map*;
+
+    void LinkMaps();
+    void LoadStaticMaps(FileManager& file_mngr);
+    void DeleteLocation(Location* loc, vector<Client*>* gmap_players);
+    void LocationGarbager();
+    void RegenerateMap(Map* map);
+    void TraceBullet(TraceData& trace);
     void AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id);
     void EraseCrFromMap(Critter* cr, Map* map);
     auto TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool;
     auto Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool;
-    auto IsIntersectZone(int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones) const -> bool;
-    void GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_ids);
     void KickPlayersToGlobalMap(Map* map);
-
-    // Locations
-    auto CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location*;
-    auto RestoreLocation(uint id, hash proto_id, const DataBase::Document& doc) -> bool;
-    auto GetLocationByMap(uint map_id) -> Location*;
-    auto GetLocation(uint loc_id) -> Location*;
-    auto GetLocationByPid(hash loc_pid, uint skip_count) -> Location*;
-    void GetLocations(LocationVec& locs);
-    auto GetLocationsCount() const -> uint;
-    void LocationGarbager();
-    void DeleteLocation(Location* loc, ClientVec* gmap_players);
-
-    // Maps
-    auto CreateMap(hash proto_id, Location* loc) -> Map*;
-    auto RestoreMap(uint id, hash proto_id, const DataBase::Document& doc) -> bool;
-    void RegenerateMap(Map* map);
-    auto GetMap(uint map_id) -> Map*;
-    auto GetMapByPid(hash map_pid, uint skip_count) -> Map*;
-    void GetMaps(MapVec& maps);
-    auto GetMapsCount() const -> uint;
-    void TraceBullet(TraceData& trace) const;
-    auto FindPath(PathFindData& pfd) -> FindPathResult;
-    auto FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) -> int;
-    auto GetPath(uint num) -> vector<PathStep>& { return _pathesPool[num]; }
-    static void PathSetMoveParams(vector<PathStep>& path, bool is_run);
-
+    void PathSetMoveParams(vector<PathStep>& path, bool is_run);
     void ProcessVisibleCritters(Critter* view_cr);
     void ProcessVisibleItems(Critter* view_cr);
     void ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir);
-
-    auto CheckKnownLocById(Critter* cr, uint loc_id) const -> bool;
-    auto CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool;
     void AddKnownLoc(Critter* cr, uint loc_id);
     void EraseKnownLoc(Critter* cr, uint loc_id);
 
-    auto GetLocationsMapsStatistics() const -> string;
-
 private:
-    void LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap);
+    [[nodiscard]] auto FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) const -> uchar;
+
+    void LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
@@ -202,8 +196,6 @@ private:
     ServerScriptSystem& _scriptSys;
     GameTimer& _gameTime;
     bool _runGarbager {true};
-    vector<PathStep> _pathesPool[FPATH_DATA_SIZE] {};
-    uint _pathNumCur {};
     bool _smoothSwitcher {};
     map<const ProtoMap*, StaticMap> _staticMaps {};
 };

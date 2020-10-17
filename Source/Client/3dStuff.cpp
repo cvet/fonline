@@ -59,7 +59,7 @@ void MeshData::Load(DataReader& reader)
     SkinBones.resize(SkinBoneOffsets.size());
 }
 
-void Bone::Load(DataReader& reader)
+void ModelBone::Load(DataReader& reader)
 {
     reader.ReadPtr(&NameHash, sizeof(NameHash));
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
@@ -75,14 +75,14 @@ void Bone::Load(DataReader& reader)
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     for (uint i = 0; i < len; i++) {
-        auto child = std::make_unique<Bone>();
+        auto child = std::make_unique<ModelBone>();
         child->Load(reader);
         Children.push_back(std::move(child));
     }
-    CombinedTransformationMatrix = Matrix();
+    CombinedTransformationMatrix = mat44();
 }
 
-void Bone::FixAfterLoad(Bone* root_bone)
+void ModelBone::FixAfterLoad(ModelBone* root_bone)
 {
     if (AttachedMesh) {
         auto* mesh = AttachedMesh.get();
@@ -101,7 +101,7 @@ void Bone::FixAfterLoad(Bone* root_bone)
     }
 }
 
-auto Bone::Find(hash name_hash) -> Bone*
+auto ModelBone::Find(hash name_hash) -> ModelBone*
 {
     if (NameHash == name_hash) {
         return this;
@@ -116,12 +116,12 @@ auto Bone::Find(hash name_hash) -> Bone*
     return nullptr;
 }
 
-auto Bone::GetHash(const string& name) -> hash
+auto ModelBone::GetHash(const string& name) -> hash
 {
     return _str(name).toHash();
 }
 
-Animation3dManager::Animation3dManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
     RUNTIME_ASSERT(_settings.Enable3dRendering);
 
@@ -140,7 +140,7 @@ Animation3dManager::Animation3dManager(RenderSettings& settings, FileManager& fi
     }
 }
 
-auto Animation3dManager::LoadModel(const string& fname) -> Bone*
+auto ModelManager::LoadModel(const string& fname) -> ModelBone*
 {
     // Find already loaded
     auto name_hash = _str(fname).toHash();
@@ -164,7 +164,7 @@ auto Animation3dManager::LoadModel(const string& fname) -> Bone*
     }
 
     // Load bones
-    auto root_bone = std::make_unique<Bone>();
+    auto root_bone = std::make_unique<ModelBone>();
     DataReader reader {file.GetBuf()};
     root_bone->Load(reader);
     root_bone->FixAfterLoad(root_bone.get());
@@ -172,21 +172,21 @@ auto Animation3dManager::LoadModel(const string& fname) -> Bone*
     // Load animations
     const auto anim_sets_count = file.GetBEUInt();
     for (uint i = 0; i < anim_sets_count; i++) {
-        auto anim_set = std::make_unique<AnimSet>();
+        auto anim_set = std::make_unique<ModelAnimation>();
         anim_set->Load(reader);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
 
     // Add to collection
     root_bone->NameHash = name_hash;
-    _loadedModels.emplace_back(root_bone.release(), [this, &root_bone](Bone*) {
+    _loadedModels.emplace_back(root_bone.release(), [this, &root_bone](ModelBone*) {
         _processedFiles.erase(root_bone->NameHash);
         // loadedModels.erase(root_bone);
     });
     return _loadedModels.back().get();
 }
 
-auto Animation3dManager::LoadAnimation(const string& anim_fname, const string& anim_name) -> AnimSet*
+auto ModelManager::LoadAnimation(const string& anim_fname, const string& anim_name) -> ModelAnimation*
 {
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
@@ -211,7 +211,7 @@ auto Animation3dManager::LoadAnimation(const string& anim_fname, const string& a
     return nullptr;
 }
 
-auto Animation3dManager::LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*
+auto ModelManager::LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*
 {
     // Skip empty
     if (texture_name.empty()) {
@@ -234,12 +234,12 @@ auto Animation3dManager::LoadTexture(const string& texture_name, const string& m
     return mesh_tex->MainTex != nullptr ? mesh_tex : nullptr;
 }
 
-void Animation3dManager::DestroyTextures()
+void ModelManager::DestroyTextures()
 {
     _loadedMeshTextures.clear();
 }
 
-void Animation3dManager::SetScreenSize(int width, int height)
+void ModelManager::SetScreenSize(int width, int height)
 {
     if (width == _modeWidth && height == _modeHeight) {
         return;
@@ -256,7 +256,7 @@ void Animation3dManager::SetScreenSize(int width, int height)
     MatrixHelper::MatrixOrtho(_matrixProjRMaj[0], 0.0f, 18.65f * k * _modeWidthF / _modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
     _matrixProjCMaj = _matrixProjRMaj;
     _matrixProjCMaj.Transpose();
-    _matrixEmptyRMaj = Matrix();
+    _matrixEmptyRMaj = mat44();
     _matrixEmptyCMaj = _matrixEmptyRMaj;
     _matrixEmptyCMaj.Transpose();
 
@@ -264,60 +264,62 @@ void Animation3dManager::SetScreenSize(int width, int height)
     // GL(glViewport(0, 0, modeWidth, modeHeight));
 }
 
-auto Animation3dManager::GetAnimation(const string& name, bool /*is_child*/) -> Animation3d*
+auto ModelManager::GetModel(const string& name, bool /*is_child*/) -> ModelInstance*
 {
-    auto* entity = GetEntity(name);
-    if (entity == nullptr) {
+    auto* model_info = GetInformation(name);
+    if (model_info == nullptr) {
         return nullptr;
     }
-    auto* anim3d = entity->CloneAnimation();
-    if (anim3d == nullptr) {
+
+    auto* model = model_info->CreateInstance();
+    if (model == nullptr) {
         return nullptr;
     }
 
     // Create mesh instances
-    anim3d->_allMeshes.resize(entity->_xFile->_allDrawBones.size());
-    anim3d->_allMeshesDisabled.resize(anim3d->_allMeshes.size());
-    for (size_t i = 0, j = entity->_xFile->_allDrawBones.size(); i < j; i++) {
-        auto* mesh_instance = anim3d->_allMeshes[i];
-        auto* mesh = entity->_xFile->_allDrawBones[i]->AttachedMesh.get();
+    model->_allMeshes.resize(model_info->_hierarchy->_allDrawBones.size());
+    model->_allMeshesDisabled.resize(model->_allMeshes.size());
+    for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
+        auto* mesh_instance = model->_allMeshes[i];
+        auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         std::memset(mesh_instance, 0, sizeof(MeshInstance));
         mesh_instance->Mesh = mesh;
         const auto* tex_name = (mesh->DiffuseTexture.length() != 0u ? mesh->DiffuseTexture.c_str() : nullptr);
-        mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? entity->_xFile->GetTexture(tex_name) : nullptr);
-        mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? entity->_xFile->GetEffect(mesh->EffectName) : nullptr);
+        mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
+        mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
     }
 
     // Set default data
-    anim3d->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
-    return anim3d;
+    model->SetAnimation(0, 0, nullptr, ANIMATION_INIT);
+    return model;
 }
 
-void Animation3dManager::PreloadEntity(const string& name)
+void ModelManager::PreloadModel(const string& name)
 {
-    GetEntity(name);
+    const auto* model_info = GetInformation(name);
+    UNUSED_VARIABLE(model_info);
 }
 
-auto Animation3dManager::GetEntity(const string& name) -> Animation3dEntity*
+auto ModelManager::GetInformation(const string& name) -> ModelInformation*
 {
     // Try find instance
-    for (auto& entity : _allEntities) {
-        if (entity->_fileName == name) {
-            return entity.get();
+    for (auto& model_info : _allModelInfos) {
+        if (model_info->_fileName == name) {
+            return model_info.get();
         }
     }
 
     // Create new instance
-    auto entity = std::make_unique<Animation3dEntity>(*this);
-    if (!entity->Load(name)) {
+    auto model_info = std::make_unique<ModelInformation>(*this);
+    if (!model_info->Load(name)) {
         return nullptr;
     }
 
-    _allEntities.push_back(std::move(entity));
-    return _allEntities.back().get();
+    _allModelInfos.push_back(std::move(model_info));
+    return _allModelInfos.back().get();
 }
 
-auto Animation3dManager::GetXFile(const string& xname) -> Animation3dXFile*
+auto ModelManager::GetHierarchy(const string& xname) -> ModelHierarchy*
 {
     for (auto& x : _xFiles) {
         if (x->_fileName == xname) {
@@ -332,79 +334,63 @@ auto Animation3dManager::GetXFile(const string& xname) -> Animation3dXFile*
         return nullptr;
     }
 
-    auto* xfile = new Animation3dXFile(*this);
+    auto* xfile = new ModelHierarchy(*this);
     xfile->_fileName = xname;
-    xfile->_rootBone = unique_ptr<Bone>(root_bone);
+    xfile->_rootBone = unique_ptr<ModelBone>(root_bone);
     xfile->SetupBones();
 
     _xFiles.emplace_back(xfile);
     return xfile;
 }
 
-auto Animation3dManager::Convert2dTo3d(int x, int y) -> Vector
+auto ModelManager::Convert2dTo3d(int x, int y) const -> vec3
 {
-    Vector pos;
-    VecUnproject(Vector(static_cast<float>(x), static_cast<float>(y), 0.0f), pos);
-    pos.z = 0.0f;
-    return pos;
+    const auto pos = VecUnproject(vec3(static_cast<float>(x), static_cast<float>(y), 0.0f));
+    return {pos.x, pos.y, 0.0f};
 }
 
-auto Animation3dManager::Convert3dTo2d(Vector pos) -> Point
+auto ModelManager::Convert3dTo2d(vec3 pos) const -> IPoint
 {
-    Vector coords;
-    VecProject(pos, coords);
-    return Point(static_cast<int>(coords.x), static_cast<int>(coords.y));
+    const auto coords = VecProject(pos);
+    return IPoint(static_cast<int>(coords.x), static_cast<int>(coords.y));
 }
 
-void Animation3dManager::VecProject(const Vector& v, Vector& out)
+auto ModelManager::VecProject(const vec3& v) const -> vec3
 {
     int viewport[4] = {0, 0, _modeWidth, _modeHeight};
     auto x = 0.0f;
     auto y = 0.0f;
     auto z = 0.0f;
     MatrixHelper::MatrixProject(v.x, v.y, v.z, _matrixEmptyCMaj[0], _matrixProjCMaj[0], viewport, &x, &y, &z);
-    out.x = x;
-    out.y = y;
-    out.z = z;
+    return {x, y, z};
 }
 
-void Animation3dManager::VecUnproject(const Vector& v, Vector& out)
+auto ModelManager::VecUnproject(const vec3& v) const -> vec3
 {
     int viewport[4] = {0, 0, _modeWidth, _modeHeight};
     auto x = 0.0f;
     auto y = 0.0f;
     auto z = 0.0f;
     MatrixHelper::MatrixUnproject(v.x, _modeHeightF - v.y, v.z, _matrixEmptyCMaj[0], _matrixProjCMaj[0], viewport, &x, &y, &z);
-    out.x = x;
-    out.y = y;
-    out.z = z;
+    return {x, y, z};
 }
 
-void Animation3dManager::ProjectPosition(Vector& v)
-{
-    NON_CONST_METHOD_HINT(_modeWidth);
-
-    v *= _matrixProjRMaj;
-    v.x = ((v.x - 1.0f) * 0.5f + 1.0f) * _modeWidthF;
-    v.y = ((1.0f - v.y) * 0.5f) * _modeHeightF;
-}
-
-Animation3d::Animation3d(Animation3dManager& anim3d_mngr) : _anim3dMngr(anim3d_mngr)
+ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
 {
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
-    _dirAngle = (_anim3dMngr._settings.MapHexagonal ? 150.0f : 135.0f);
+    _dirAngle = (_modelMngr._settings.MapHexagonal ? 150.0f : 135.0f);
     _childChecker = true;
     _useGameTimer = true;
-    Matrix::RotationX(_anim3dMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
+    mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
 }
 
-Animation3d::~Animation3d()
+ModelInstance::~ModelInstance()
 {
     delete _animController;
 
-    for (auto* anim : _childAnimations) {
+    for (auto* anim : _children) {
         delete anim;
     }
     for (auto* mesh : _allMeshes) {
@@ -415,7 +401,7 @@ Animation3d::~Animation3d()
     }
 }
 
-void Animation3d::StartMeshGeneration()
+void ModelInstance::StartMeshGeneration()
 {
     if (!_allowMeshGeneration) {
         _allowMeshGeneration = true;
@@ -423,7 +409,7 @@ void Animation3d::StartMeshGeneration()
     }
 }
 
-auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool
+auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool
 {
     _curAnim1 = anim1;
     _curAnim2 = anim2;
@@ -435,11 +421,11 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
     auto period_proc = 0.0f;
     if (!IsBitSet(flags, ANIMATION_INIT)) {
         if (anim1 == 0u) {
-            index = _animEntity->_renderAnim;
+            index = _modelInfo->_renderAnim;
             period_proc = static_cast<float>(anim2) / 10.0f;
         }
         else {
-            index = _animEntity->GetAnimationIndex(anim1, anim2, &speed, IsBitSet(flags, ANIMATION_COMBAT));
+            index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, IsBitSet(flags, ANIMATION_COMBAT));
         }
     }
 
@@ -458,7 +444,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
     }
 
     // Animation layers
-    if (auto it = _animEntity->_animLayerValues.find(anim_pair); it != _animEntity->_animLayerValues.end()) {
+    if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
         for (auto& [index, value] : it->second) {
             new_layers[index] = value;
         }
@@ -484,7 +470,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
     _currentLayers[LAYERS3D_COUNT] = anim_pair;
 
     auto mesh_changed = false;
-    HashVec fast_transition_bones;
+    vector<hash> fast_transition_bones;
 
     if (layer_changed) {
         // Store previous cuts
@@ -496,7 +482,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
         }
 
         // Set base data
-        SetAnimData(_animEntity->_animDataDefault, true);
+        SetAnimData(_modelInfo->_animDataDefault, true);
 
         // Append linked data
         if (_parentBone != nullptr) {
@@ -504,7 +490,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
         }
 
         // Mark animations as unused
-        for (auto* child_anim : _childAnimations) {
+        for (auto* child_anim : _children) {
             child_anim->_childChecker = false;
         }
 
@@ -516,7 +502,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
                 continue;
             }
 
-            for (auto& link : _animEntity->_animData) {
+            for (auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty()) {
                     for (auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
@@ -551,7 +537,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
                 continue;
             }
 
-            for (auto& link : _animEntity->_animData) {
+            for (auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i]) {
                     if (link.ChildName.empty()) {
                         SetAnimData(link, false);
@@ -559,54 +545,54 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
                     }
 
                     auto available = false;
-                    for (auto* anim3d : _childAnimations) {
-                        if (anim3d->_animLink.Id == link.Id) {
-                            anim3d->_childChecker = true;
+                    for (auto* model : _children) {
+                        if (model->_animLink.Id == link.Id) {
+                            model->_childChecker = true;
                             available = true;
                             break;
                         }
                     }
 
                     if (!available) {
-                        Animation3d* anim3d = nullptr;
+                        ModelInstance* model = nullptr;
 
                         // Link to main bone
                         if (link.LinkBoneHash != 0u) {
-                            auto* to_bone = _animEntity->_xFile->_rootBone->Find(link.LinkBoneHash);
+                            auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBoneHash);
                             if (to_bone != nullptr) {
-                                anim3d = _anim3dMngr.GetAnimation(link.ChildName, true);
-                                if (anim3d != nullptr) {
+                                model = _modelMngr.GetModel(link.ChildName, true);
+                                if (model != nullptr) {
                                     mesh_changed = true;
-                                    anim3d->_parentAnimation = this;
-                                    anim3d->_parentBone = to_bone;
-                                    anim3d->_animLink = link;
-                                    anim3d->SetAnimData(link, false);
-                                    _childAnimations.push_back(anim3d);
+                                    model->_parent = this;
+                                    model->_parentBone = to_bone;
+                                    model->_animLink = link;
+                                    model->SetAnimData(link, false);
+                                    _children.push_back(model);
                                 }
 
-                                if (_animEntity->_fastTransitionBones.count(link.LinkBoneHash) != 0u) {
+                                if (_modelInfo->_fastTransitionBones.count(link.LinkBoneHash) != 0u) {
                                     fast_transition_bones.push_back(link.LinkBoneHash);
                                 }
                             }
                         }
                         // Link all bones
                         else {
-                            anim3d = _anim3dMngr.GetAnimation(link.ChildName, true);
-                            if (anim3d != nullptr) {
-                                for (auto* child_bone : anim3d->_animEntity->_xFile->_allBones) {
-                                    auto* root_bone = _animEntity->_xFile->_rootBone->Find(child_bone->NameHash);
+                            model = _modelMngr.GetModel(link.ChildName, true);
+                            if (model != nullptr) {
+                                for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
+                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->NameHash);
                                     if (root_bone != nullptr) {
-                                        anim3d->_linkBones.push_back(root_bone);
-                                        anim3d->_linkBones.push_back(child_bone);
+                                        model->_linkBones.push_back(root_bone);
+                                        model->_linkBones.push_back(child_bone);
                                     }
                                 }
 
                                 mesh_changed = true;
-                                anim3d->_parentAnimation = this;
-                                anim3d->_parentBone = _animEntity->_xFile->_rootBone.get();
-                                anim3d->_animLink = link;
-                                anim3d->SetAnimData(link, false);
-                                _childAnimations.push_back(anim3d);
+                                model->_parent = this;
+                                model->_parentBone = _modelInfo->_hierarchy->_rootBone.get();
+                                model->_animLink = link;
+                                model->SetAnimData(link, false);
+                                _children.push_back(model);
                             }
                         }
                     }
@@ -615,12 +601,12 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
         }
 
         // Erase unused animations
-        for (auto it = _childAnimations.begin(); it != _childAnimations.end();) {
-            auto* anim3d = *it;
-            if (!anim3d->_childChecker) {
+        for (auto it = _children.begin(); it != _children.end();) {
+            auto* model = *it;
+            if (!model->_childChecker) {
                 mesh_changed = true;
-                delete anim3d;
-                it = _childAnimations.erase(it);
+                delete model;
+                it = _children.erase(it);
             }
             else {
                 ++it;
@@ -680,7 +666,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
         _animController->Reset();
 
         // Smooth time
-        auto smooth_time = (IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _anim3dMngr._moveTransitionTime);
+        auto smooth_time = (IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime);
         auto start_time = period * period_proc / 100.0f;
         if (IsBitSet(flags, ANIMATION_STAY)) {
             period = start_time + 0.0002f;
@@ -733,7 +719,7 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
     }
 
     // Set animation for children
-    for (auto* child : _childAnimations) {
+    for (auto* child : _children) {
         if (child->SetAnimation(anim1, anim2, layers, flags)) {
             mesh_changed = true;
         }
@@ -747,113 +733,112 @@ auto Animation3d::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) 
     return mesh_changed;
 }
 
-auto Animation3d::IsAnimation(uint anim1, uint anim2) const -> bool
+auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
 {
     const auto index = static_cast<int>((anim1 << 16) | anim2);
-    const auto it = _animEntity->_animIndexes.find(index);
-    return it != _animEntity->_animIndexes.end();
+    const auto it = _modelInfo->_animIndexes.find(index);
+    return it != _modelInfo->_animIndexes.end();
 }
 
-auto Animation3d::EvaluateAnimation(uint& anim1, uint& anim2) const -> bool
+auto ModelInstance::EvaluateAnimation() const -> optional<tuple<uint, uint>>
 {
-    if (_animEntity->GetAnimationIndex(anim1, anim2, nullptr, false) == -1) {
-        anim1 = ANIM1_UNARMED;
-        anim2 = ANIM2_IDLE;
-        return false;
+    auto anim1 = 0u;
+    auto anim2 = 0u;
+    if (_modelInfo->GetAnimationIndex(anim1, anim2, nullptr, false) == -1) {
+        return std::nullopt;
     }
-    return true;
+    return tuple {ANIM1_UNARMED, ANIM2_IDLE};
 }
 
-auto Animation3d::GetAnim1() const -> int
+auto ModelInstance::GetAnim1() const -> int
 {
     return _currentLayers[LAYERS3D_COUNT] >> 16;
 }
 
-auto Animation3d::GetAnim2() const -> int
+auto ModelInstance::GetAnim2() const -> int
 {
     return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
 }
 
-auto Animation3d::IsAnimationPlaying() const -> bool
+auto ModelInstance::IsAnimationPlaying() const -> bool
 {
     return GetTick() < _endTick;
 }
 
-void Animation3d::GetRenderFramesData(float& period, int& proc_from, int& proc_to, int& dir) const
+auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 {
-    period = 0.0f;
-    proc_from = _animEntity->_renderAnimProcFrom;
-    proc_to = _animEntity->_renderAnimProcTo;
-    dir = _animEntity->_renderAnimDir;
-
+    auto period = 0.0f;
     if (_animController != nullptr) {
-        auto* set = _animController->GetAnimationSet(_animEntity->_renderAnim);
+        auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
         if (set != nullptr) {
             period = set->GetDuration();
         }
     }
+
+    const auto proc_from = _modelInfo->_renderAnimProcFrom;
+    const auto proc_to = _modelInfo->_renderAnimProcTo;
+    const auto dir = _modelInfo->_renderAnimDir;
+
+    return tuple {period, proc_from, proc_to, dir};
 }
 
-void Animation3d::GetDrawSize(uint& draw_width, uint& draw_height) const
+auto ModelInstance::GetDrawSize() const -> tuple<uint, uint>
 {
-    draw_width = _animEntity->_drawWidth;
-    draw_height = _animEntity->_drawHeight;
-
-    // Todo: check scale precision
-    const auto scale = static_cast<int>(std::ceilf(std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3)));
-    draw_width *= scale;
-    draw_height *= scale;
+    const auto scale = std::ceilf(std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3));
+    const auto w = static_cast<float>(_modelInfo->_drawWidth) * scale;
+    const auto h = static_cast<float>(_modelInfo->_drawHeight) * scale;
+    return tuple {static_cast<uint>(w), static_cast<uint>(h)};
 }
 
-auto Animation3d::GetSpeed() const -> float
+auto ModelInstance::GetSpeed() const -> float
 {
-    return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _anim3dMngr._globalSpeedAdjust;
+    return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr._globalSpeedAdjust;
 }
 
-auto Animation3d::GetTick() const -> uint
+auto ModelInstance::GetTick() const -> uint
 {
     if (_useGameTimer) {
-        return _anim3dMngr._gameTime.GameTick();
+        return _modelMngr._gameTime.GameTick();
     }
-    return _anim3dMngr._gameTime.FrameTick();
+    return _modelMngr._gameTime.FrameTick();
 }
 
-void Animation3d::SetAnimData(AnimParams& data, bool clear)
+void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 {
     // Transformations
     if (clear) {
-        _matScaleBase = Matrix();
-        _matRotBase = Matrix();
-        _matTransBase = Matrix();
+        _matScaleBase = mat44();
+        _matRotBase = mat44();
+        _matTransBase = mat44();
     }
 
-    Matrix mat_tmp;
+    mat44 mat_tmp;
     if (data.ScaleX != 0.0f) {
-        _matScaleBase = _matScaleBase * Matrix::Scaling(Vector(data.ScaleX, 1.0f, 1.0f), mat_tmp);
+        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(data.ScaleX, 1.0f, 1.0f), mat_tmp);
     }
     if (data.ScaleY != 0.0f) {
-        _matScaleBase = _matScaleBase * Matrix::Scaling(Vector(1.0f, data.ScaleY, 1.0f), mat_tmp);
+        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, data.ScaleY, 1.0f), mat_tmp);
     }
     if (data.ScaleZ != 0.0f) {
-        _matScaleBase = _matScaleBase * Matrix::Scaling(Vector(1.0f, 1.0f, data.ScaleZ), mat_tmp);
+        _matScaleBase = _matScaleBase * mat44::Scaling(vec3(1.0f, 1.0f, data.ScaleZ), mat_tmp);
     }
     if (data.RotX != 0.0f) {
-        _matRotBase = _matRotBase * Matrix::RotationX(-data.RotX * PI_FLOAT / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationX(-data.RotX * PI_FLOAT / 180.0f, mat_tmp);
     }
     if (data.RotY != 0.0f) {
-        _matRotBase = _matRotBase * Matrix::RotationY(data.RotY * PI_FLOAT / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationY(data.RotY * PI_FLOAT / 180.0f, mat_tmp);
     }
     if (data.RotZ != 0.0f) {
-        _matRotBase = _matRotBase * Matrix::RotationZ(data.RotZ * PI_FLOAT / 180.0f, mat_tmp);
+        _matRotBase = _matRotBase * mat44::RotationZ(data.RotZ * PI_FLOAT / 180.0f, mat_tmp);
     }
     if (data.MoveX != 0.0f) {
-        _matTransBase = _matTransBase * Matrix::Translation(Vector(data.MoveX, 0.0f, 0.0f), mat_tmp);
+        _matTransBase = _matTransBase * mat44::Translation(vec3(data.MoveX, 0.0f, 0.0f), mat_tmp);
     }
     if (data.MoveY != 0.0f) {
-        _matTransBase = _matTransBase * Matrix::Translation(Vector(0.0f, data.MoveY, 0.0f), mat_tmp);
+        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, data.MoveY, 0.0f), mat_tmp);
     }
     if (data.MoveZ != 0.0f) {
-        _matTransBase = _matTransBase * Matrix::Translation(Vector(0.0f, 0.0f, -data.MoveZ), mat_tmp);
+        _matTransBase = _matTransBase * mat44::Translation(vec3(0.0f, 0.0f, -data.MoveZ), mat_tmp);
     }
 
     // Speed
@@ -881,13 +866,13 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
             // Get texture
             if (_str(std::get<0>(tex_info)).startsWith("Parent")) // Parent_MeshName
             {
-                if (_parentAnimation != nullptr) {
+                if (_parent != nullptr) {
                     const auto* mesh_name = std::get<0>(tex_info).c_str() + 6;
                     if (mesh_name[0] == '_') {
                         mesh_name++;
                     }
-                    const auto mesh_name_hash = (*mesh_name != 0 ? Bone::GetHash(mesh_name) : 0);
-                    for (auto* mesh : _parentAnimation->_allMeshes) {
+                    const auto mesh_name_hash = (*mesh_name != 0 ? ModelBone::GetHash(mesh_name) : 0);
+                    for (auto* mesh : _parent->_allMeshes) {
                         if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
                             texture = mesh->CurTexures[std::get<2>(tex_info)];
                             break;
@@ -896,13 +881,13 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
                 }
             }
             else {
-                texture = _animEntity->_xFile->GetTexture(std::get<0>(tex_info));
+                texture = _modelInfo->_hierarchy->GetTexture(std::get<0>(tex_info));
             }
 
             // Assign it
             const auto texture_num = std::get<2>(tex_info);
             const auto mesh_name_hash = std::get<1>(tex_info);
-            for (auto* mesh : _parentAnimation->_allMeshes) {
+            for (auto* mesh : _parent->_allMeshes) {
                 if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
                     mesh->CurTexures[texture_num] = texture;
                 }
@@ -925,13 +910,13 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
             // Get effect
             if (_str(std::get<0>(eff_info)).startsWith("Parent")) // Parent_MeshName
             {
-                if (_parentAnimation != nullptr) {
+                if (_parent != nullptr) {
                     const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
                     if (mesh_name[0] == '_') {
                         mesh_name++;
                     }
-                    const auto mesh_name_hash = (*mesh_name != 0 ? Bone::GetHash(mesh_name) : 0);
-                    for (auto* mesh : _parentAnimation->_allMeshes) {
+                    const auto mesh_name_hash = (*mesh_name != 0 ? ModelBone::GetHash(mesh_name) : 0);
+                    for (auto* mesh : _parent->_allMeshes) {
                         if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
                             effect = mesh->CurEffect;
                             break;
@@ -940,7 +925,7 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
                 }
             }
             else {
-                effect = _animEntity->_xFile->GetEffect(std::get<0>(eff_info));
+                effect = _modelInfo->_hierarchy->GetEffect(std::get<0>(eff_info));
             }
 
             // Assign it
@@ -962,45 +947,45 @@ void Animation3d::SetAnimData(AnimParams& data, bool clear)
     }
 }
 
-void Animation3d::SetDir(uchar dir)
+void ModelInstance::SetDir(uchar dir)
 {
-    const auto dir_angle = (_anim3dMngr._settings.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45);
+    const auto dir_angle = (_modelMngr._settings.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45);
     SetDirAngle(dir_angle);
 }
 
-void Animation3d::SetDirAngle(int dir_angle)
+void ModelInstance::SetDirAngle(int dir_angle)
 {
     _dirAngle = static_cast<float>(dir_angle);
 }
 
-void Animation3d::SetRotation(float rx, float ry, float rz)
+void ModelInstance::SetRotation(float rx, float ry, float rz)
 {
-    Matrix my;
-    Matrix mx;
-    Matrix mz;
-    Matrix::RotationX(rx, mx);
-    Matrix::RotationY(ry, my);
-    Matrix::RotationZ(rz, mz);
+    mat44 my;
+    mat44 mx;
+    mat44 mz;
+    mat44::RotationX(rx, mx);
+    mat44::RotationY(ry, my);
+    mat44::RotationZ(rz, mz);
 
     _matRot = mx * my * mz;
 }
 
-void Animation3d::SetScale(float sx, float sy, float sz)
+void ModelInstance::SetScale(float sx, float sy, float sz)
 {
-    Matrix::Scaling(Vector(sx, sy, sz), _matScale);
+    mat44::Scaling(vec3(sx, sy, sz), _matScale);
 }
 
-void Animation3d::SetSpeed(float speed)
+void ModelInstance::SetSpeed(float speed)
 {
     _speedAdjustBase = speed;
 }
 
-void Animation3d::SetTimer(bool use_game_timer)
+void ModelInstance::SetTimer(bool use_game_timer)
 {
     _useGameTimer = use_game_timer;
 }
 
-void Animation3d::GenerateCombinedMeshes()
+void ModelInstance::GenerateCombinedMeshes()
 {
     // Generation disabled
     if (!_allowMeshGeneration) {
@@ -1026,7 +1011,7 @@ void Animation3d::GenerateCombinedMeshes()
     }
 }
 
-void Animation3d::FillCombinedMeshes(Animation3d* base, Animation3d* cur)
+void ModelInstance::FillCombinedMeshes(ModelInstance* base, ModelInstance* cur)
 {
     // Combine meshes
     for (size_t i = 0, j = cur->_allMeshes.size(); i < j; i++) {
@@ -1034,12 +1019,12 @@ void Animation3d::FillCombinedMeshes(Animation3d* base, Animation3d* cur)
     }
 
     // Fill child
-    for (auto& child_anim : cur->_childAnimations) {
+    for (auto& child_anim : cur->_children) {
         FillCombinedMeshes(base, child_anim);
     }
 }
 
-void Animation3d::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
+void ModelInstance::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
 {
     // Skip disabled meshes
     if (mesh_instance->Disabled) {
@@ -1064,7 +1049,7 @@ void Animation3d::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
     _combinedMeshesSize++;
 }
 
-void Animation3d::ClearCombinedMesh(CombinedMesh* combined_mesh)
+void ModelInstance::ClearCombinedMesh(CombinedMesh* combined_mesh)
 {
     combined_mesh->EncapsulatedMeshCount = 0;
     combined_mesh->CurBoneMatrix = 0;
@@ -1076,7 +1061,7 @@ void Animation3d::ClearCombinedMesh(CombinedMesh* combined_mesh)
     combined_mesh->DrawMesh->Indices.clear();
 }
 
-auto Animation3d::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool
+auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool
 {
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         return true;
@@ -1092,7 +1077,7 @@ auto Animation3d::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance
     return combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() <= combined_mesh->SkinBones.size();
 }
 
-void Animation3d::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
+void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
 {
     auto* mesh = mesh_instance->Mesh;
     auto& vertices = combined_mesh->DrawMesh->Vertices;
@@ -1163,7 +1148,7 @@ void Animation3d::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* m
     combined_mesh->EncapsulatedMeshCount++;
 }
 
-void Animation3d::CutCombinedMeshes(Animation3d* base, Animation3d* cur)
+void ModelInstance::CutCombinedMeshes(ModelInstance* base, ModelInstance* cur)
 {
     // Cut meshes
     if (!cur->_allCuts.empty()) {
@@ -1176,7 +1161,7 @@ void Animation3d::CutCombinedMeshes(Animation3d* base, Animation3d* cur)
     }
 
     // Fill child
-    for (auto& child_anim : cur->_childAnimations) {
+    for (auto& child_anim : cur->_children) {
         CutCombinedMeshes(base, child_anim);
     }
 }
@@ -1185,7 +1170,7 @@ void Animation3d::CutCombinedMeshes(Animation3d* base, Animation3d* cur)
 // -1 - inside
 // 0 - outside
 // 1 - one point
-static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const Vector& sp, float r, Vertex3D& in) -> int
+static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float r, Vertex3D& in) -> int
 {
     auto sq = [](float f) -> float { return f * f; };
     const auto a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
@@ -1237,7 +1222,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
     return 0;
 }
 
-void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
+void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut)
 {
     NON_CONST_METHOD_HINT(_curAnim1);
 
@@ -1246,9 +1231,9 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
     auto& cut_layers = cut->Layers;
     for (auto& shape : cut->Shapes) {
         Vertex3DVec result_vertices;
-        UShortVec result_indices;
-        UIntVec result_mesh_vertices;
-        UIntVec result_mesh_indices;
+        vector<ushort> result_indices;
+        vector<uint> result_mesh_vertices;
+        vector<uint> result_mesh_indices;
         result_vertices.reserve(vertices.size());
         result_indices.reserve(indices.size());
         result_mesh_vertices.reserve(combined_mesh->MeshVertices.size());
@@ -1259,9 +1244,9 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
             // Move shape to face space
             auto mesh_transform = combined_mesh->Meshes[k]->Owner->GlobalTransformationMatrix;
             auto sm = mesh_transform.Inverse() * shape.GlobalTransformationMatrix;
-            Vector ss;
-            Vector sp;
-            Quaternion sr;
+            vec3 ss;
+            vec3 sp;
+            quaternion sr;
             sm.Decompose(ss, sr, sp);
 
             // Check anim layer
@@ -1365,7 +1350,7 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
     // Unskin
     if (cut->UnskinBone != 0u) {
         // Find unskin bone
-        Bone* unskin_bone = nullptr;
+        ModelBone* unskin_bone = nullptr;
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
             if (combined_mesh->SkinBones[i]->NameHash == cut->UnskinBone) {
                 unskin_bone = combined_mesh->SkinBones[i];
@@ -1389,9 +1374,9 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
                 // Move shape to face space
                 auto mesh_transform = combined_mesh->Meshes[i]->Owner->GlobalTransformationMatrix;
                 auto sm = mesh_transform.Inverse() * cut->UnskinShape.GlobalTransformationMatrix;
-                Vector ss;
-                Vector sp;
-                Quaternion sr;
+                vec3 ss;
+                vec3 sp;
+                quaternion sr;
                 sm.Decompose(ss, sr, sp);
                 auto sphere_square_radius = powf(cut->UnskinShape.SphereRadius * ss.x, 2.0f);
                 auto revert_shape = cut->RevertUnskinShape;
@@ -1438,12 +1423,12 @@ void Animation3d::CutCombinedMesh(CombinedMesh* combined_mesh, CutData* cut)
     }
 }
 
-auto Animation3d::NeedDraw() const -> bool
+auto ModelInstance::NeedDraw() const -> bool
 {
-    return (_combinedMeshesSize != 0u) && ((_lastDrawTick == 0u) || GetTick() - _lastDrawTick >= _anim3dMngr._animDelay);
+    return (_combinedMeshesSize != 0u) && ((_lastDrawTick == 0u) || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
 }
 
-void Animation3d::Draw(int x, int y)
+void ModelInstance::Draw(int x, int y)
 {
     // Skip drawing if no meshes generated
     if (_combinedMeshesSize == 0u) {
@@ -1456,23 +1441,23 @@ void Animation3d::Draw(int x, int y)
     _lastDrawTick = tick;
 
     // Move animation
-    ProcessAnimation(elapsed, x != 0 ? x : _anim3dMngr._modeWidth / 2, y != 0 ? y : _anim3dMngr._modeHeight - _anim3dMngr._modeHeight / 4, 1.0f);
+    ProcessAnimation(elapsed, x != 0 ? x : _modelMngr._modeWidth / 2, y != 0 ? y : _modelMngr._modeHeight - _modelMngr._modeHeight / 4, 1.0f);
 
     // Draw mesh
     DrawCombinedMeshes();
 }
 
-void Animation3d::ProcessAnimation(float elapsed, int x, int y, float scale)
+void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 {
     // Update world matrix, only for root
     if (_parentBone == nullptr) {
-        const auto pos = _anim3dMngr.Convert2dTo3d(x, y);
-        Matrix mat_rot_y;
-        Matrix mat_scale;
-        Matrix mat_trans;
-        Matrix::Scaling(Vector(scale, scale, scale), mat_scale);
-        Matrix::RotationY(_dirAngle * PI_FLOAT / 180.0f, mat_rot_y);
-        Matrix::Translation(pos, mat_trans);
+        const auto pos = _modelMngr.Convert2dTo3d(x, y);
+        mat44 mat_rot_y;
+        mat44 mat_scale;
+        mat44 mat_trans;
+        mat44::Scaling(vec3(scale, scale, scale), mat_scale);
+        mat44::RotationY(_dirAngle * PI_FLOAT / 180.0f, mat_rot_y);
+        mat44::Translation(pos, mat_trans);
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos.x = _parentMatrix.a4;
         _groundPos.y = _parentMatrix.b4;
@@ -1503,7 +1488,7 @@ void Animation3d::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Update matrices
-    UpdateBoneMatrices(_animEntity->_xFile->_rootBone.get(), &_parentMatrix);
+    UpdateBoneMatrices(_modelInfo->_hierarchy->_rootBone.get(), &_parentMatrix);
 
     // Update linked matrices
     if ((_parentBone != nullptr) && !_linkBones.empty()) {
@@ -1513,13 +1498,13 @@ void Animation3d::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Update world matrices for children
-    for (auto* child : _childAnimations) {
+    for (auto* child : _children) {
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
     // Move child animations
-    for (auto& child_anim : _childAnimations) {
+    for (auto& child_anim : _children) {
         child_anim->ProcessAnimation(elapsed, x, y, 1.0f);
     }
 
@@ -1537,7 +1522,7 @@ void Animation3d::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 }
 
-void Animation3d::UpdateBoneMatrices(Bone* bone, const Matrix* parent_matrix)
+void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix)
 {
     // If parent matrix exists multiply our bone matrix by it
     bone->CombinedTransformationMatrix = (*parent_matrix) * bone->TransformationMatrix;
@@ -1548,18 +1533,18 @@ void Animation3d::UpdateBoneMatrices(Bone* bone, const Matrix* parent_matrix)
     }
 }
 
-void Animation3d::DrawCombinedMeshes()
+void ModelInstance::DrawCombinedMeshes()
 {
     for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _animEntity->_shadowDisabled);
+        DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
     }
 }
 
-void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_disabled*/)
+void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_disabled*/)
 {
     auto* effect = combined_mesh->DrawEffect;
 
-    std::memcpy(effect->ProjBuf.ProjMatrix, _anim3dMngr._matrixProjCMaj[0], 16 * sizeof(float));
+    std::memcpy(effect->ProjBuf.ProjMatrix, _modelMngr._matrixProjCMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0]->MainTex;
     std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
@@ -1593,12 +1578,12 @@ void Animation3d::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_di
     App->Render.DrawMesh(combined_mesh->DrawMesh, effect);
 }
 
-auto Animation3d::GetBonePos(hash name_hash, int& x, int& y) const -> bool
+auto ModelInstance::GetBonePos(hash name_hash) const -> optional<tuple<int, int>>
 {
-    auto* bone = _animEntity->_xFile->_rootBone->Find(name_hash);
+    auto* bone = _modelInfo->_hierarchy->_rootBone->Find(name_hash);
     if (bone == nullptr) {
-        for (auto* child : _childAnimations) {
-            bone = child->_animEntity->_xFile->_rootBone->Find(name_hash);
+        for (auto* child : _children) {
+            bone = child->_modelInfo->_hierarchy->_rootBone->Find(name_hash);
             if (bone != nullptr) {
                 break;
             }
@@ -1606,26 +1591,26 @@ auto Animation3d::GetBonePos(hash name_hash, int& x, int& y) const -> bool
     }
 
     if (bone == nullptr) {
-        return false;
+        return std::nullopt;
     }
 
-    Vector pos;
-    Quaternion rot;
+    vec3 pos;
+    quaternion rot;
     bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
 
-    const auto p = _anim3dMngr.Convert3dTo2d(pos);
-    x = p.X - _anim3dMngr._modeWidth / 2;
-    y = -(p.Y - _anim3dMngr._modeHeight / 4);
-    return true;
+    const auto p = _modelMngr.Convert3dTo2d(pos);
+    auto x = p.X - _modelMngr._modeWidth / 2;
+    auto y = -(p.Y - _modelMngr._modeHeight / 4);
+    return tuple {x, y};
 }
 
-Animation3dEntity::Animation3dEntity(Animation3dManager& anim3d_mngr) : _anim3dMngr {anim3d_mngr}
+ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
     _drawWidth = DEFAULT_DRAW_SIZE;
     _drawHeight = DEFAULT_DRAW_SIZE;
 }
 
-auto Animation3dEntity::Load(const string& name) -> bool
+auto ModelInformation::Load(const string& name) -> bool
 {
     string ext = _str(name).getFileExtension();
     if (ext.empty()) {
@@ -1635,7 +1620,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        auto fo3d = _anim3dMngr._fileMngr.ReadFile(name);
+        auto fo3d = _modelMngr._fileMngr.ReadFile(name);
         if (!fo3d) {
             return false;
         }
@@ -1652,7 +1637,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
         auto layer = -1;
         auto layer_val = 0;
 
-        AnimParams dummy_link {};
+        ModelAnimationData dummy_link {};
         auto* link = &_animDataDefault;
         static uint link_id = 0;
 
@@ -1701,13 +1686,13 @@ auto Animation3dEntity::Load(const string& name) -> bool
             if (token == "StopParsing") {
                 closed = true;
             }
-            else if (token == "Model") {
+            else if (token == "ModelInstance") {
                 (*istr) >> buf;
                 model = _str(name).combinePath(buf);
             }
             else if (token == "Include") {
                 // Get swapped words
-                StrVec templates;
+                vector<string> templates;
                 string line;
                 std::getline(*istr, line, '\n');
                 templates = _str(line).trim().split(' ');
@@ -1721,7 +1706,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
                 // Include file path
                 string fname = _str(name).combinePath(templates[0]);
-                auto fo3d_ex = _anim3dMngr._fileMngr.ReadFile(fname);
+                auto fo3d_ex = _modelMngr._fileMngr.ReadFile(fname);
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found.\n", fname);
                     continue;
@@ -1745,7 +1730,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
             else if (token == "Mesh") {
                 (*istr) >> buf;
                 if (buf != "All") {
-                    mesh = Bone::GetHash(buf);
+                    mesh = ModelBone::GetHash(buf);
                 }
                 else {
                     mesh = 0;
@@ -1803,16 +1788,16 @@ auto Animation3dEntity::Load(const string& name) -> bool
             else if (token == "Link") {
                 (*istr) >> buf;
                 if (link->Id != 0u) {
-                    link->LinkBoneHash = Bone::GetHash(buf);
+                    link->LinkBoneHash = ModelBone::GetHash(buf);
                 }
             }
             else if (token == "Cut") {
                 (*istr) >> buf;
                 string fname = _str(name).combinePath(buf);
-                auto* area = _anim3dMngr.GetXFile(fname);
+                auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
                     // Add cut
-                    auto* cut = new CutData();
+                    auto* cut = new ModelCutData();
                     link->CutInfo.push_back(cut);
 
                     // Layers
@@ -1839,7 +1824,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
                     // Unskin bone
                     (*istr) >> buf;
-                    cut->UnskinBone = Bone::GetHash(buf);
+                    cut->UnskinBone = ModelBone::GetHash(buf);
                     if (buf == "-") {
                         cut->UnskinBone = 0;
                     }
@@ -1850,7 +1835,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
                     cut->RevertUnskinShape = false;
                     if (cut->UnskinBone != 0u) {
                         cut->RevertUnskinShape = (!buf.empty() && buf[0] == '~');
-                        unskin_shape_name = Bone::GetHash(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
+                        unskin_shape_name = ModelBone::GetHash(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
                         for (auto* bone : area->_allDrawBones) {
                             if (unskin_shape_name == bone->NameHash) {
                                 cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
@@ -1860,7 +1845,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
                     // Parse shapes
                     for (auto& shape : shapes) {
-                        auto shape_name = Bone::GetHash(shape);
+                        auto shape_name = ModelBone::GetHash(shape);
                         if (shape == "All") {
                             shape_name = 0;
                         }
@@ -2027,7 +2012,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
                 for (const auto& disabled_mesh_name : disabled_mesh_names) {
                     uint disabled_mesh = 0;
                     if (disabled_mesh_name != "All") {
-                        disabled_mesh = Bone::GetHash(disabled_mesh_name);
+                        disabled_mesh = ModelBone::GetHash(disabled_mesh_name);
                     }
 
                     link->DisabledMesh.push_back(disabled_mesh);
@@ -2090,13 +2075,13 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
                 uint index = (ind1 << 16) | ind2;
                 if (_animLayerValues.count(index) == 0u) {
-                    _animLayerValues.insert(std::make_pair(index, IntPairVec()));
+                    _animLayerValues.insert(std::make_pair(index, vector<pair<int, int>>()));
                 }
-                _animLayerValues[index].push_back(IntPair(anim_layer, anim_layer_value));
+                _animLayerValues[index].push_back(pair<int, int>(anim_layer, anim_layer_value));
             }
             else if (token == "FastTransitionBone") {
                 (*istr) >> buf;
-                _fastTransitionBones.insert(Bone::GetHash(buf));
+                _fastTransitionBones.insert(ModelBone::GetHash(buf));
             }
             else if (token == "AnimEqual") {
                 (*istr) >> valuei;
@@ -2161,7 +2146,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
         // Process pathes
         if (model.empty()) {
-            WriteLog("'Model' section not found in file '{}'.\n", name);
+            WriteLog("'ModelInstance' section not found in file '{}'.\n", name);
             return false;
         }
 
@@ -2172,14 +2157,14 @@ auto Animation3dEntity::Load(const string& name) -> bool
         }
 
         // Load x file
-        auto* xfile = _anim3dMngr.GetXFile(model);
+        auto* xfile = _modelMngr.GetHierarchy(model);
         if (xfile == nullptr) {
             return false;
         }
 
         // Create animation
         _fileName = name;
-        _xFile = xfile;
+        _hierarchy = xfile;
 
         // Single frame render
         if ((render_fname[0] != 0) && (render_anim[0] != 0)) {
@@ -2188,7 +2173,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
 
         // Create animation controller
         if (!anims.empty()) {
-            _animController = std::make_unique<AnimController>(2);
+            _animController = std::make_unique<ModelAnimationController>(2);
         }
 
         // Parse animations
@@ -2202,7 +2187,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
                     anim_path = _str(name).combinePath(anim.FileName);
                 }
 
-                auto* set = _anim3dMngr.LoadAnimation(anim_path, anim.Name);
+                auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);
                 if (set != nullptr) {
                     _animController->RegisterAnimationSet(set);
                     auto set_index = _animController->GetNumAnimationSets() - 1;
@@ -2224,13 +2209,13 @@ auto Animation3dEntity::Load(const string& name) -> bool
                     auto* set = _animController->GetAnimationSet(i);
                     const auto& bones_hierarchy = set->GetBonesHierarchy();
                     for (const auto& bone_hierarchy : bones_hierarchy) {
-                        auto* bone = _xFile->_rootBone.get();
+                        auto* bone = _hierarchy->_rootBone.get();
                         for (size_t b = 1; b < bone_hierarchy.size(); b++) {
                             auto* child = bone->Find(bone_hierarchy[b]);
                             if (child == nullptr) {
-                                child = new Bone();
+                                child = new ModelBone();
                                 child->NameHash = bone_hierarchy[b];
-                                bone->Children.push_back(unique_ptr<Bone>(child));
+                                bone->Children.push_back(unique_ptr<ModelBone>(child));
                             }
                             bone = child;
                         }
@@ -2238,7 +2223,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
                 }
 
                 _animController->SetInterpolation(!disable_animation_interpolation);
-                _xFile->SetupAnimationOutput(_animController.get());
+                _hierarchy->SetupAnimationOutput(_animController.get());
             }
             else {
                 _animController = nullptr;
@@ -2247,14 +2232,14 @@ auto Animation3dEntity::Load(const string& name) -> bool
     }
     // Load just x file
     else {
-        auto* xfile = _anim3dMngr.GetXFile(name);
+        auto* xfile = _modelMngr.GetHierarchy(name);
         if (xfile == nullptr) {
             return false;
         }
 
         // Create animation
         _fileName = name;
-        _xFile = xfile;
+        _hierarchy = xfile;
 
         // Todo: process default animations
     }
@@ -2262,7 +2247,7 @@ auto Animation3dEntity::Load(const string& name) -> bool
     return true;
 }
 
-auto Animation3dEntity::GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int
+auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed, bool combat_first) const -> int
 {
     // Find index
     auto index = -1;
@@ -2287,7 +2272,7 @@ auto Animation3dEntity::GetAnimationIndex(uint& anim1, uint& anim2, float* speed
         auto model_name = base_model_name;
         const auto anim1_ = anim1;
         const auto anim2_ = anim2;
-        if (_anim3dMngr._scriptSys.CritterAnimationSubstituteEvent(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
+        if (_modelMngr._scriptSys.CritterAnimationSubstituteEvent(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
             index = GetAnimationIndexEx(anim1, anim2, speed);
         }
         else {
@@ -2298,7 +2283,7 @@ auto Animation3dEntity::GetAnimationIndex(uint& anim1, uint& anim2, float* speed
     return index;
 }
 
-auto Animation3dEntity::GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int
+auto ModelInformation::GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int
 {
     // Check equals
     const auto it1 = _anim1Equals.find(anim1);
@@ -2333,21 +2318,19 @@ auto Animation3dEntity::GetAnimationIndexEx(uint anim1, uint anim2, float* speed
     return -1;
 }
 
-auto Animation3dEntity::CloneAnimation() -> Animation3d*
+auto ModelInformation::CreateInstance() -> ModelInstance*
 {
-    auto* a3d = new Animation3d(_anim3dMngr);
-    a3d->_animEntity = this;
+    auto* model = new ModelInstance(_modelMngr);
+    model->_modelInfo = this;
     if (_animController) {
-        a3d->_animController = _animController->Clone();
+        model->_animController = _animController->Clone();
     }
-    return a3d;
+    return model;
 }
 
-auto Animation3dEntity::CreateCutShape(MeshData* mesh) -> CutData::Shape
+auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape
 {
-    NON_CONST_METHOD_HINT(_renderAnim);
-
-    CutData::Shape shape;
+    ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
 
     // Evaluate sphere radius
@@ -2371,11 +2354,11 @@ auto Animation3dEntity::CreateCutShape(MeshData* mesh) -> CutData::Shape
     return shape;
 }
 
-Animation3dXFile::Animation3dXFile(Animation3dManager& anim3d_mngr) : _anim3dMngr {anim3d_mngr}
+ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
 }
 
-void SetupBonesExt(multimap<uint, Bone*>& bones, Bone* bone, uint depth)
+void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)
 {
     bones.insert(std::make_pair(depth, bone));
     for (auto& i : bone->Children) {
@@ -2383,9 +2366,9 @@ void SetupBonesExt(multimap<uint, Bone*>& bones, Bone* bone, uint depth)
     }
 }
 
-void Animation3dXFile::SetupBones()
+void ModelHierarchy::SetupBones()
 {
-    multimap<uint, Bone*> bones;
+    multimap<uint, ModelBone*> bones;
     SetupBonesExt(bones, _rootBone.get(), 0);
 
     for (auto& [id, bone] : bones) {
@@ -2396,7 +2379,7 @@ void Animation3dXFile::SetupBones()
     }
 }
 
-static void SetupAnimationOutputExt(AnimController* anim_controller, Bone* bone)
+static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, ModelBone* bone)
 {
     anim_controller->RegisterAnimationOutput(bone->NameHash, bone->TransformationMatrix);
 
@@ -2405,29 +2388,29 @@ static void SetupAnimationOutputExt(AnimController* anim_controller, Bone* bone)
     }
 }
 
-void Animation3dXFile::SetupAnimationOutput(AnimController* anim_controller)
+void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_controller)
 {
     NON_CONST_METHOD_HINT(_dummy);
 
     SetupAnimationOutputExt(anim_controller, _rootBone.get());
 }
 
-auto Animation3dXFile::GetTexture(const string& tex_name) -> MeshTexture*
+auto ModelHierarchy::GetTexture(const string& tex_name) -> MeshTexture*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    auto* texture = _anim3dMngr.LoadTexture(tex_name, _fileName);
+    auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
     if (texture == nullptr) {
         WriteLog("Can't load texture '{}'.\n", tex_name);
     }
     return texture;
 }
 
-auto Animation3dXFile::GetEffect(const string& name) -> RenderEffect*
+auto ModelHierarchy::GetEffect(const string& name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    auto* effect = _anim3dMngr._effectMngr.LoadEffect(name, "", _fileName);
+    auto* effect = _modelMngr._effectMngr.LoadEffect(name, "", _fileName);
     if (effect == nullptr) {
         WriteLog("Can't load effect '{}'.\n", name);
     }

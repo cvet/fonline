@@ -1116,7 +1116,7 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
     DataReader reader {script_file.GetBuf()};
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
-    UCharVec lnt_data(reader.Read<uint>());
+    vector<uchar> lnt_data(reader.Read<uint>());
     std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());

@@ -92,7 +92,8 @@ public:
     auto operator=(EffectManager &&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    auto LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*;
+    [[nodiscard]] auto LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*;
+
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void Load3dEffects();

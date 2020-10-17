@@ -168,7 +168,6 @@
 // Todo: rename char to int8 and use int8_t as alias
 // Todo: rename short to int16 and use int16_t as alias
 // Todo: rename int to int32 and use int32_t as alias
-
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
@@ -214,90 +213,16 @@ using std::variant;
 using std::vector;
 
 // Math types
-// Todo: replace depedency from assimp types (matrix/vector/quaternion/color)
+// Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
 #include "assimp/types.h"
-
-using Vector = aiVector3D;
-using VectorVec = vector<Vector>;
-using Matrix = aiMatrix4x4;
-using MatrixVec = vector<Matrix>;
-using Quaternion = aiQuaternion;
-using QuaternionVec = vector<Quaternion>;
-using Color = aiColor4D;
-
-// Todo: remove map/vector/set/pair bindings
-using StrUCharMap = map<string, uchar>;
-using UCharStrMap = map<uchar, string>;
-using StrMap = map<string, string>;
-using UIntStrMap = map<uint, string>;
-using StrUShortMap = map<string, ushort>;
-using StrUIntMap = map<string, uint>;
-using StrInt64Map = map<string, int64>;
-using StrPtrMap = map<string, void*>;
-using UShortStrMap = map<ushort, string>;
-using StrUIntMap = map<string, uint>;
-using UIntMap = map<uint, uint>;
-using IntMap = map<int, int>;
-using IntFloatMap = map<int, float>;
-using IntPtrMap = map<int, void*>;
-using UIntFloatMap = map<uint, float>;
-using UShortUIntMap = map<ushort, uint>;
-using SizeTStrMap = map<size_t, string>;
-using UIntIntMap = map<uint, int>;
-using HashIntMap = map<hash, int>;
-using HashUIntMap = map<hash, uint>;
-using IntStrMap = map<int, string>;
-using StrIntMap = map<string, int>;
-
-using PtrVec = vector<void*>;
-using IntVec = vector<int>;
-using UCharVec = vector<uchar>;
-using UCharVecVec = vector<UCharVec>;
-using ShortVec = vector<short>;
-using UShortVec = vector<ushort>;
-using UIntVec = vector<uint>;
-using UIntVecVec = vector<UIntVec>;
-using CharVec = vector<char>;
-using StrVec = vector<string>;
-using PCharVec = vector<char*>;
-using PUCharVec = vector<uchar*>;
-using FloatVec = vector<float>;
-using UInt64Vec = vector<uint64>;
-using BoolVec = vector<bool>;
-using SizeVec = vector<size_t>;
-using HashVec = vector<hash>;
-using HashVecVec = vector<HashVec>;
-using MaxTVec = vector<max_t>;
-using PStrMapVec = vector<StrMap*>;
-
-using StrSet = set<string>;
-using UCharSet = set<uchar>;
-using UShortSet = set<ushort>;
-using UIntSet = set<uint>;
-using IntSet = set<int>;
-using HashSet = set<hash>;
-
-using IntPair = pair<int, int>;
-using UShortPair = pair<ushort, ushort>;
-using UIntPair = pair<uint, uint>;
-using CharPair = pair<char, char>;
-using PCharPair = pair<char*, char*>;
-using UCharPair = pair<uchar, uchar>;
-
-using UShortPairVec = vector<UShortPair>;
-using IntPairVec = vector<IntPair>;
-using UIntPairVec = vector<UIntPair>;
-using PCharPairVec = vector<PCharPair>;
-using UCharPairVec = vector<UCharPair>;
-
-using UIntUIntPairMap = map<uint, UIntPair>;
-using UIntIntPairVecMap = map<uint, IntPairVec>;
-using UIntHashVecMap = map<uint, HashVec>;
-
-extern auto GetStackTrace() -> string;
-extern auto Is3dExtensionSupported(const string& ext) -> bool;
+using vec3 = aiVector3D;
+using mat44 = aiMatrix4x4;
+using quaternion = aiQuaternion;
+using color4 = aiColor4D;
 
 // Engine exception handling
+extern auto GetStackTrace() -> string;
+
 class GenericException : public std::exception
 {
 public:
@@ -695,7 +620,7 @@ class DataReader
 {
 public:
     explicit DataReader(const uchar* buf) : _dataBuf {buf} { }
-    explicit DataReader(const UCharVec& buf) : _dataBuf {!buf.empty() ? &buf[0] : nullptr} { }
+    explicit DataReader(const vector<uchar>& buf) : _dataBuf {!buf.empty() ? &buf[0] : nullptr} { }
 
     template<class T>
     auto Read() -> T
@@ -729,7 +654,7 @@ private:
 class DataWriter
 {
 public:
-    explicit DataWriter(UCharVec& buf) : _dataBuf {buf} { }
+    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf} { }
 
     template<class T>
     void Write(T data)
@@ -751,12 +676,12 @@ public:
     }
 
 private:
-    UCharVec& _dataBuf;
+    vector<uchar>& _dataBuf;
 };
 
 // Todo: move WriteData/ReadData to DataWriter/DataReader
 template<class T>
-void WriteData(UCharVec& vec, T data)
+void WriteData(vector<uchar>& vec, T data)
 {
     const auto cur = vec.size();
     vec.resize(cur + sizeof(data));
@@ -764,7 +689,7 @@ void WriteData(UCharVec& vec, T data)
 }
 
 template<class T>
-void WriteDataArr(UCharVec& vec, T* data, uint size)
+void WriteDataArr(vector<uchar>& vec, T* data, uint size)
 {
     if (size) {
         const auto cur = static_cast<uint>(vec.size());
@@ -774,7 +699,7 @@ void WriteDataArr(UCharVec& vec, T* data, uint size)
 }
 
 template<class T>
-auto ReadData(UCharVec& vec, uint& pos) -> T
+auto ReadData(const vector<uchar>& vec, uint& pos) -> T
 {
     T data;
     std::memcpy(&data, &vec[pos], sizeof(T));
@@ -783,120 +708,120 @@ auto ReadData(UCharVec& vec, uint& pos) -> T
 }
 
 template<class T>
-auto ReadDataArr(UCharVec& vec, uint size, uint& pos) -> T*
+auto ReadDataArr(const vector<uchar>& vec, uint size, uint& pos) -> const T*
 {
     pos += size;
     return size ? &vec[pos - size] : nullptr;
 }
 
 // Flex rect
-template<typename Ty>
-struct FlexRect
+template<typename T>
+struct TRect
 {
-    FlexRect() : L(0), T(0), R(0), B(0) { }
-    template<typename Ty2>
-    FlexRect(const FlexRect<Ty2>& fr) : L(static_cast<Ty>(fr.L)), T(static_cast<Ty>(fr.T)), R(static_cast<Ty>(fr.R)), B(static_cast<Ty>(fr.B))
+    TRect() : Left(0), Top(0), Right(0), Bottom(0) { }
+    template<typename T2>
+    TRect(const TRect<T2>& fr) : Left(static_cast<T>(fr.Left)), Top(static_cast<T>(fr.Top)), Right(static_cast<T>(fr.Right)), Bottom(static_cast<T>(fr.Bottom))
     {
     }
-    FlexRect(Ty l, Ty t, Ty r, Ty b) : L(l), T(t), R(r), B(b) { }
-    FlexRect(Ty l, Ty t, Ty r, Ty b, Ty ox, Ty oy) : L(l + ox), T(t + oy), R(r + ox), B(b + oy) { }
-    FlexRect(const FlexRect& fr, Ty ox, Ty oy) : L(fr.L + ox), T(fr.T + oy), R(fr.R + ox), B(fr.B + oy) { }
+    TRect(T l, T t, T r, T b) : Left(l), Top(t), Right(r), Bottom(b) { }
+    TRect(T l, T t, T r, T b, T ox, T oy) : Left(l + ox), Top(t + oy), Right(r + ox), Bottom(b + oy) { }
+    TRect(const TRect& fr, T ox, T oy) : Left(fr.Left + ox), Top(fr.Top + oy), Right(fr.Right + ox), Bottom(fr.Bottom + oy) { }
 
-    template<typename Ty2>
-    auto operator=(const FlexRect<Ty2>& fr) -> FlexRect&
+    template<typename T2>
+    auto operator=(const TRect<T2>& fr) -> TRect&
     {
-        L = static_cast<Ty>(fr.L);
-        T = static_cast<Ty>(fr.T);
-        R = static_cast<Ty>(fr.R);
-        B = static_cast<Ty>(fr.B);
+        Left = static_cast<T>(fr.Left);
+        Top = static_cast<T>(fr.Top);
+        Right = static_cast<T>(fr.Right);
+        Bottom = static_cast<T>(fr.Bottom);
         return *this;
     }
 
     void Clear()
     {
-        L = 0;
-        T = 0;
-        R = 0;
-        B = 0;
+        Left = 0;
+        Top = 0;
+        Right = 0;
+        Bottom = 0;
     }
 
-    [[nodiscard]] auto IsZero() const -> bool { return !L && !T && !R && !B; }
-    [[nodiscard]] auto Width() const -> Ty { return R - L + 1; }
-    [[nodiscard]] auto Height() const -> Ty { return B - T + 1; }
-    [[nodiscard]] auto CenterX() const -> Ty { return L + Width() / 2; }
-    [[nodiscard]] auto CenterY() const -> Ty { return T + Height() / 2; }
+    [[nodiscard]] auto IsZero() const -> bool { return !Left && !Top && !Right && !Bottom; }
+    [[nodiscard]] auto Width() const -> T { return Right - Left + 1; } // Todo: fix TRect Width/Height
+    [[nodiscard]] auto Height() const -> T { return Bottom - Top + 1; }
+    [[nodiscard]] auto CenterX() const -> T { return Left + Width() / 2; }
+    [[nodiscard]] auto CenterY() const -> T { return Top + Height() / 2; }
 
-    [[nodiscard]] auto operator[](int index) -> Ty&
+    [[nodiscard]] auto operator[](int index) -> T&
     {
         switch (index) {
         case 0:
-            return L;
+            return Left;
         case 1:
-            return T;
+            return Top;
         case 2:
-            return R;
+            return Right;
         case 3:
-            return B;
+            return Bottom;
         default:
             break;
         }
         throw UnreachablePlaceException(LINE_STR);
     }
 
-    auto operator()(Ty l, Ty t, Ty r, Ty b) -> FlexRect&
+    [[nodiscard]] auto operator[](int index) const -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
+
+    auto operator()(T l, T t, T r, T b) -> TRect&
     {
-        L = l;
-        T = t;
-        R = r;
-        B = b;
+        Left = l;
+        Top = t;
+        Right = r;
+        Bottom = b;
         return *this;
     }
 
-    auto operator()(Ty ox, Ty oy) -> FlexRect&
+    auto operator()(T ox, T oy) -> TRect&
     {
-        L += ox;
-        T += oy;
-        R += ox;
-        B += oy;
+        Left += ox;
+        Top += oy;
+        Right += ox;
+        Bottom += oy;
         return *this;
     }
 
-    auto Interpolate(const FlexRect<Ty>& to, int procent) -> FlexRect<Ty>
+    auto Interpolate(const TRect<T>& to, int procent) -> TRect<T>
     {
-        FlexRect<Ty> result(L, T, R, B);
-        result.L += static_cast<Ty>(static_cast<int>(to.L - L) * procent / 100);
-        result.T += static_cast<Ty>(static_cast<int>(to.T - T) * procent / 100);
-        result.R += static_cast<Ty>(static_cast<int>(to.R - R) * procent / 100);
-        result.B += static_cast<Ty>(static_cast<int>(to.B - B) * procent / 100);
+        TRect<T> result(Left, Top, Right, Bottom);
+        result.Left += static_cast<T>(static_cast<int>(to.Left - Left) * procent / 100);
+        result.Top += static_cast<T>(static_cast<int>(to.Top - Top) * procent / 100);
+        result.Right += static_cast<T>(static_cast<int>(to.Right - Right) * procent / 100);
+        result.Bottom += static_cast<T>(static_cast<int>(to.Bottom - Bottom) * procent / 100);
         return result;
     }
 
-    Ty L {};
-    Ty T {};
-    Ty R {};
-    Ty B {};
+    T Left {};
+    T Top {};
+    T Right {};
+    T Bottom {};
 };
-using Rect = FlexRect<int>;
-using RectF = FlexRect<float>;
-using IntRectVec = std::vector<Rect>;
-using FltRectVec = std::vector<RectF>;
+using IRect = TRect<int>;
+using FRect = TRect<float>;
 
-template<typename Ty>
-struct FlexPoint
+template<typename T>
+struct TPoint
 {
-    FlexPoint() : X(0), Y(0) { }
-    template<typename Ty2>
-    FlexPoint(const FlexPoint<Ty2>& r) : X(static_cast<Ty>(r.X)), Y(static_cast<Ty>(r.Y))
+    TPoint() : X(0), Y(0) { }
+    template<typename T2>
+    TPoint(const TPoint<T2>& r) : X(static_cast<T>(r.X)), Y(static_cast<T>(r.Y))
     {
     }
-    FlexPoint(Ty x, Ty y) : X(x), Y(y) { }
-    FlexPoint(const FlexPoint& fp, Ty ox, Ty oy) : X(fp.X + ox), Y(fp.Y + oy) { }
+    TPoint(T x, T y) : X(x), Y(y) { }
+    TPoint(const TPoint& fp, T ox, T oy) : X(fp.X + ox), Y(fp.Y + oy) { }
 
-    template<typename Ty2>
-    auto operator=(const FlexPoint<Ty2>& fp) -> FlexPoint&
+    template<typename T2>
+    auto operator=(const TPoint<T2>& fp) -> TPoint&
     {
-        X = static_cast<Ty>(fp.X);
-        Y = static_cast<Ty>(fp.Y);
+        X = static_cast<T>(fp.X);
+        Y = static_cast<T>(fp.Y);
         return *this;
     }
 
@@ -908,7 +833,7 @@ struct FlexPoint
 
     auto IsZero() -> bool { return !X && !Y; }
 
-    auto operator[](int index) -> Ty&
+    auto operator[](int index) -> T&
     {
         switch (index) {
         case 0:
@@ -921,18 +846,18 @@ struct FlexPoint
         return X;
     }
 
-    auto operator()(Ty x, Ty y) -> FlexPoint&
+    auto operator()(T x, T y) -> TPoint&
     {
         X = x;
         Y = y;
         return *this;
     }
 
-    Ty X {};
-    Ty Y {};
+    T X {};
+    T Y {};
 };
-using Point = FlexPoint<int>;
-using PointF = FlexPoint<float>;
+using IPoint = TPoint<int>;
+using FPoint = TPoint<float>;
 
 // Todo: move NetProperty to more proper place
 class NetProperty
@@ -956,12 +881,14 @@ public:
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
 // ReSharper disable CppInconsistentNaming
-#define CONFIG_NAME "FOnline.cfg"
+static constexpr auto CONFIG_NAME = "FOnline.cfg";
 static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
 static constexpr auto TEMP_BUF_SIZE = 8192;
-#define UTF8_BUF_SIZE(count) ((count)*4)
+static constexpr auto UTF8_BUF_SIZE(int count)
+{
+    return count * 4;
+}
 static constexpr auto MAX_HOLO_INFO = 250;
-#define IS_DIR_CORNER(dir) (((dir)&1) != 0) // 1, 3, 5, 7
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr auto FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
@@ -1011,12 +938,6 @@ static constexpr uchar FIND_ALL = 0x0F;
 #define SAY_DIALOG (12)
 #define SAY_APPEND (13)
 #define SAY_FLASH_WINDOW (41)
-
-// Target types
-#define TARGET_SELF (0)
-#define TARGET_SELF_ITEM (1)
-#define TARGET_CRITTER (2)
-#define TARGET_ITEM (3)
 
 // Global map
 static constexpr auto GM_MAXZONEX = 100;
@@ -1131,9 +1052,9 @@ static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 
 // SendMessage types
-#define MESSAGE_TO_VISIBLE_ME (0)
-#define MESSAGE_TO_IAM_VISIBLE (1)
-#define MESSAGE_TO_ALL_ON_MAP (2)
+static constexpr auto MESSAGE_TO_VISIBLE_ME = 0;
+static constexpr auto MESSAGE_TO_IAM_VISIBLE = 1;
+static constexpr auto MESSAGE_TO_ALL_ON_MAP = 2;
 
 // Anims
 #define ANIM1_UNARMED (1)
@@ -1145,9 +1066,7 @@ static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 #define ANIM2_SNEAK_WALK (7)
 #define ANIM2_SNEAK_RUN (8)
 #define ANIM2_IDLE_PRONE_FRONT (86)
-#define ANIM2_IDLE_PRONE_BACK (87)
 #define ANIM2_DEAD_FRONT (102)
-#define ANIM2_DEAD_BACK (103)
 
 // Move params
 // 6 next steps (each 5 bit) + stop bit + run bit

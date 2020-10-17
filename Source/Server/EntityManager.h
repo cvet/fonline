@@ -43,52 +43,55 @@
 #include "Map.h"
 #include "ServerScripting.h"
 
-class MapManager;
-class CritterManager;
-class ItemManager;
+DECLARE_EXCEPTION(EntitiesLoadException);
+
+class ProtoManager;
 
 class EntityManager final
 {
 public:
+    using LocationFabric = std::function<Location*(uint, const ProtoLocation*)>;
+    using MapFabric = std::function<Map*(uint, const ProtoMap*)>;
+    using NpcFabric = std::function<Npc*(uint, const ProtoCritter*)>;
+    using ItemFabric = std::function<Item*(uint, const ProtoItem*)>;
+
+    static constexpr auto ENTITIES_FINALIZATION_FUSE_VALUE = 10000;
+
     EntityManager() = delete;
-    EntityManager(MapManager& map_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, DataBase* db_storage, GlobalVars* globs);
+    EntityManager(ProtoManager& proto_mngr, ServerScriptSystem& script_sys, DataBase& db_storage, GlobalVars* globs);
     EntityManager(const EntityManager&) = delete;
     EntityManager(EntityManager&&) noexcept = delete;
     auto operator=(const EntityManager&) = delete;
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
+    [[nodiscard]] auto FindCritterItems(uint crid) -> vector<Item*>;
+    [[nodiscard]] auto GetEntity(uint id, EntityType type) -> Entity*;
+    [[nodiscard]] auto GetEntities(EntityType type) -> vector<Entity*>;
+    [[nodiscard]] auto GetEntitiesCount(EntityType type) const -> uint;
+    [[nodiscard]] auto GetItem(uint id) -> Item*;
+    [[nodiscard]] auto GetItems() -> vector<Item*>;
+    [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
+    [[nodiscard]] auto GetCritters() -> vector<Critter*>;
+    [[nodiscard]] auto GetMap(uint id) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hash pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetLocation(uint id) -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hash pid, uint skip_count) -> Location*;
+    [[nodiscard]] auto GetLocations() -> vector<Location*>;
+
+    void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);
+    void InitAfterLoad();
     void RegisterEntity(Entity* entity);
     void UnregisterEntity(Entity* entity);
-    auto GetEntity(uint id, EntityType type) -> Entity*;
-    void GetEntities(EntityType type, EntityVec& entities);
-    [[nodiscard]] auto GetEntitiesCount(EntityType type) const -> uint;
-
-    void GetItems(ItemVec& items);
-    void GetCritterItems(uint crid, ItemVec& items);
-    auto GetCritter(uint crid) -> Critter*;
-    void GetCritters(CritterVec& critters);
-    auto GetMapByPid(hash pid, uint skip_count) -> Map*;
-    void GetMaps(MapVec& maps);
-    auto GetLocationByPid(hash pid, uint skip_count) -> Location*;
-    void GetLocations(LocationVec& locs);
-
-    auto LoadEntities() -> bool;
-    void ClearEntities();
+    void FinalizeEntities();
 
 private:
-    auto LinkMaps() -> bool;
-    auto LinkNpc() -> bool;
-    auto LinkItems() -> bool;
-    void InitAfterLoad();
-
-    MapManager& _mapMngr;
-    CritterManager& _crMngr;
-    ItemManager& _itemMngr;
+    ProtoManager& _protoMngr;
     ServerScriptSystem& _scriptSys;
-    DataBase* _dbStorage {};
+    DataBase& _dbStorage;
     GlobalVars* _globals {};
-    EntityMap _allEntities {};
+    map<uint, Entity*> _allEntities {};
     uint _entitiesCount[static_cast<int>(EntityType::Max)] {};
     int _dummy {};
 };

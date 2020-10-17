@@ -51,11 +51,11 @@ void ConfigFile::AppendData(const string& str)
 
 void ConfigFile::ParseStr(const string& str)
 {
-    StrMap* cur_app = nullptr;
+    map<string, string>* cur_app = nullptr;
 
     auto it_app = _appKeyValues.find("");
     if (it_app == _appKeyValues.end()) {
-        auto it = _appKeyValues.insert(std::make_pair("", StrMap()));
+        auto it = _appKeyValues.insert(std::make_pair("", map<string, string>()));
         _appKeyValuesOrder.push_back(it);
         cur_app = &it->second;
     }
@@ -113,7 +113,7 @@ void ConfigFile::ParseStr(const string& str)
             }
 
             // Add new section
-            auto it = _appKeyValues.insert(std::make_pair(buf, StrMap()));
+            auto it = _appKeyValues.insert(std::make_pair(buf, map<string, string>()));
             _appKeyValuesOrder.push_back(it);
             cur_app = &it->second;
         }
@@ -184,18 +184,35 @@ void ConfigFile::ParseStr(const string& str)
 
 auto ConfigFile::SerializeData() -> string
 {
-    string str;
-    str.reserve(100000);
+    size_t str_size = 32;
 
     for (auto& app_it : _appKeyValuesOrder) {
-        const auto& [fst, snd] = *app_it;
-        if (!fst.empty()) {
-            str += _str("[{}]\n", fst);
+        const auto& [app_name, app_kv] = *app_it;
+        if (!app_name.empty()) {
+            str_size += app_name.size() + 3;
         }
 
-        for (const auto& [fst2, snd2] : snd) {
-            if (!fst2.empty()) {
-                str += _str("{} = {}\n", fst2, snd2);
+        for (const auto& [key, value] : app_kv) {
+            if (!key.empty()) {
+                str_size += key.size() + value.size() + 4;
+            }
+        }
+
+        str_size++;
+    }
+
+    string str;
+    str.reserve(str_size);
+
+    for (auto& app_it : _appKeyValuesOrder) {
+        const auto& [app_name, app_kv] = *app_it;
+        if (!app_name.empty()) {
+            str += _str("[{}]\n", app_name);
+        }
+
+        for (const auto& [key, value] : app_kv) {
+            if (!key.empty()) {
+                str += _str("{} = {}\n", key, value);
             }
         }
 
@@ -260,7 +277,7 @@ void ConfigFile::SetStr(const string& app_name, const string& key_name, const st
 {
     auto it_app = _appKeyValues.find(app_name);
     if (it_app == _appKeyValues.end()) {
-        StrMap key_values;
+        map<string, string> key_values;
         key_values[key_name] = val;
         const auto it = _appKeyValues.insert(std::make_pair(app_name, key_values));
         _appKeyValuesOrder.push_back(it);
@@ -275,26 +292,30 @@ void ConfigFile::SetInt(const string& app_name, const string& key_name, int val)
     SetStr(app_name, key_name, _str("{}", val));
 }
 
-auto ConfigFile::GetApp(const string& app_name) const -> const StrMap&
+auto ConfigFile::GetApp(const string& app_name) const -> const map<string, string>&
 {
     const auto it = _appKeyValues.find(app_name);
     RUNTIME_ASSERT(it != _appKeyValues.end());
     return it->second;
 }
 
-void ConfigFile::GetApps(const string& app_name, PStrMapVec& key_values)
+auto ConfigFile::GetApps(const string& app_name) -> vector<map<string, string>*>
 {
     const auto count = _appKeyValues.count(app_name);
     auto it = _appKeyValues.find(app_name);
+
+    vector<map<string, string>*> key_values;
     key_values.reserve(key_values.size() + count);
+
     for (size_t i = 0; i < count; i++, ++it) {
         key_values.push_back(&it->second);
     }
+    return key_values;
 }
 
-auto ConfigFile::SetApp(const string& app_name) -> StrMap&
+auto ConfigFile::SetApp(const string& app_name) -> map<string, string>&
 {
-    auto it = _appKeyValues.insert(std::make_pair(app_name, StrMap()));
+    auto it = _appKeyValues.insert(std::make_pair(app_name, map<string, string>()));
     _appKeyValuesOrder.push_back(it);
     return it->second;
 }
@@ -314,11 +335,13 @@ auto ConfigFile::IsKey(const string& app_name, const string& key_name) const -> 
     return it_app->second.find(key_name) != it_app->second.end();
 }
 
-void ConfigFile::GetAppNames(StrSet& apps) const
+auto ConfigFile::GetAppNames() const -> set<string>
 {
+    set<string> apps;
     for (const auto& [key, value] : _appKeyValues) {
         apps.insert(key);
     }
+    return apps;
 }
 
 void ConfigFile::GotoNextApp(const string& app_name)
@@ -334,7 +357,7 @@ void ConfigFile::GotoNextApp(const string& app_name)
     _appKeyValues.erase(it_app);
 }
 
-auto ConfigFile::GetAppKeyValues(const string& app_name) -> const StrMap*
+auto ConfigFile::GetAppKeyValues(const string& app_name) -> const map<string, string>*
 {
     auto it_app = _appKeyValues.find(app_name);
     return it_app != _appKeyValues.end() ? &it_app->second : nullptr;

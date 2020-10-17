@@ -162,27 +162,23 @@ void Critter::ClearVisible()
     VisItem.clear();
 }
 
-auto Critter::GetCritSelf(uint crid) -> Critter*
+auto Critter::GetCrSelf(uint crid) -> Critter*
 {
     const auto it = VisCrSelfMap.find(crid);
     return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
-void Critter::GetCrFromVisCr(CritterVec& critters, uchar find_type, bool vis_cr_self)
+auto Critter::GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>
 {
     auto& vis_cr = vis_cr_self ? VisCrSelf : VisCr;
 
-    CritterVec find_critters;
+    vector<Critter*> critters;
     for (auto* cr : vis_cr) {
-        if (cr->CheckFind(find_type) && std::find(critters.begin(), critters.end(), cr) == critters.end()) {
-            find_critters.push_back(cr);
+        if (cr->CheckFind(find_type)) {
+            critters.push_back(cr);
         }
     }
-
-    critters.reserve(critters.size() + find_critters.size());
-    for (auto* find_critter : find_critters) {
-        critters.push_back(find_critter);
-    }
+    return critters;
 }
 
 auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
@@ -329,13 +325,17 @@ auto Critter::GetItemSlot(int slot) -> Item*
     return nullptr;
 }
 
-void Critter::GetItemsSlot(int slot, ItemVec& items)
+auto Critter::GetItemsSlot(int slot) -> vector<Item*>
 {
+    vector<Item*> items;
+    items.reserve(_invItems.size());
+
     for (auto* item : _invItems) {
         if (slot < 0 || item->GetCritSlot() == slot) {
             items.push_back(item);
         }
     }
+    return items;
 }
 
 auto Critter::CountItemPid(hash pid) -> uint
@@ -358,7 +358,7 @@ auto Critter::CountItems() -> uint
     return count;
 }
 
-auto Critter::GetInventory() -> ItemVec&
+auto Critter::GetInventory() -> vector<Item*>&
 {
     return _invItems;
 }
@@ -726,7 +726,7 @@ void Critter::SendAA_SetAnims(int cond, uint anim1, uint anim2)
     }
 }
 
-void Critter::SendAA_Text(const CritterVec& to_cr, const string& text, uchar how_say, bool unsafe_text)
+void Critter::SendAA_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text)
 {
     if (text.empty()) {
         return;
@@ -764,7 +764,7 @@ void Critter::SendAA_Text(const CritterVec& to_cr, const string& text, uchar how
     }
 }
 
-void Critter::SendAA_Msg(const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg)
+void Critter::SendAA_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
 {
     if (IsPlayer()) {
         Send_TextMsg(this, num_str, how_say, num_msg);
@@ -801,7 +801,7 @@ void Critter::SendAA_Msg(const CritterVec& to_cr, uint num_str, uchar how_say, u
     }
 }
 
-void Critter::SendAA_MsgLex(const CritterVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::SendAA_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
 {
     if (IsPlayer()) {
         Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
@@ -890,7 +890,7 @@ void Critter::Send_AllAutomapsInfo(MapManager& map_mngr)
         return;
     }
 
-    LocationVec locs;
+    vector<Location*> locs;
     for (auto loc_id : GetKnownLocations()) {
         auto* loc = map_mngr.GetLocation(loc_id);
         if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
@@ -1120,8 +1120,8 @@ void Client::Send_AddCritter(Critter* cr)
     auto msg = is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER;
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uint) * 6 + sizeof(uint) + (is_npc ? sizeof(hash) : UTF8_BUF_SIZE(MAX_NAME));
 
-    PUCharVec* data = nullptr;
-    UIntVec* data_sizes = nullptr;
+    vector<uchar*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = cr->Props.StoreData(IsBitSet(cr->Flags, FCRIT_CHOSEN), &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
@@ -1203,10 +1203,10 @@ void Client::Send_LoadMap(Map* map, MapManager& map_mngr)
     }
 
     uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(hash) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uchar) + sizeof(hash) * 2;
-    PUCharVec* map_data = nullptr;
-    UIntVec* map_data_sizes = nullptr;
-    PUCharVec* loc_data = nullptr;
-    UIntVec* loc_data_sizes = nullptr;
+    vector<uchar*>* map_data = nullptr;
+    vector<uint>* map_data_sizes = nullptr;
+    vector<uchar*>* loc_data = nullptr;
+    vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
         const auto map_whole_data_size = map->Props.StoreData(false, &map_data, &map_data_sizes);
         const auto loc_whole_data_size = loc->Props.StoreData(false, &loc_data, &loc_data_sizes);
@@ -1372,7 +1372,7 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(action) + sizeof(prev_slot) + sizeof(bool);
 
     auto& inv = from_cr->GetInventory();
-    ItemVec items;
+    vector<Item*> items;
     items.reserve(inv.size());
     for (auto* item_ : inv) {
         const auto slot = item_->GetCritSlot();
@@ -1382,8 +1382,8 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     }
 
     msg_len += sizeof(ushort);
-    vector<PUCharVec*> items_data(items.size());
-    vector<UIntVec*> items_data_sizes(items.size());
+    vector<vector<uchar*>*> items_data(items.size());
+    vector<vector<uint>*> items_data_sizes(items.size());
     for (const auto i : xrange(items)) {
         const auto whole_data_size = items[i]->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
         msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
@@ -1454,8 +1454,8 @@ void Client::Send_AddItemOnMap(Item* item) const
     const auto is_added = item->ViewPlaceOnMap;
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(ushort) * 2 + sizeof(bool);
 
-    PUCharVec* data = nullptr;
-    UIntVec* data_sizes = nullptr;
+    vector<uchar*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
@@ -1508,8 +1508,8 @@ void Client::Send_AddItem(Item* item) const
     }
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
-    PUCharVec* data = nullptr;
-    UIntVec* data_sizes = nullptr;
+    vector<uchar*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->Props.StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
@@ -1535,7 +1535,7 @@ void Client::Send_EraseItem(Item* item) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_SomeItems(const ItemVec* items, int param) const
+void Client::Send_SomeItems(const vector<Item*>* items, int param) const
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1543,8 +1543,8 @@ void Client::Send_SomeItems(const ItemVec* items, int param) const
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);
 
-    vector<PUCharVec*> items_data(items != nullptr ? items->size() : 0);
-    vector<UIntVec*> items_data_sizes(items != nullptr ? items->size() : 0);
+    vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
+    vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0, j = items_data.size(); i < j; i++) {
         const auto whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
         msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
@@ -1710,8 +1710,8 @@ void Client::Send_AllProperties()
 
     uint msg_len = sizeof(uint) + sizeof(uint);
 
-    PUCharVec* data = nullptr;
-    UIntVec* data_sizes = nullptr;
+    vector<uchar*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = Props.StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
@@ -1798,8 +1798,8 @@ void Client::Send_GameInfo(Map* /*map*/) const
     uchar day_color[12];
     CScriptArray* day_time_arr = (map ? map->GetDayTime() : nullptr);
     CScriptArray* day_color_arr = (map ? map->GetDayColor() : nullptr);
-    RUNTIME_ASSERT((!day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4));
-    RUNTIME_ASSERT((!day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12));
+    RUNTIME_ASSERT(!day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4);
+    RUNTIME_ASSERT(!day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12);
     if (day_time_arr && day_time_arr->GetSize() > 0)
         std::memcpy(day_time, day_time_arr->At(0), sizeof(day_time));
     else
@@ -2191,8 +2191,8 @@ void Client::Send_SomeItem(Item* item) const
     }
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
-    PUCharVec* data = nullptr;
-    UIntVec* data_sizes = nullptr;
+    vector<uchar*>* data = nullptr;
+    vector<uint>* data_sizes = nullptr;
     const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 

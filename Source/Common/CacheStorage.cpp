@@ -263,9 +263,9 @@ auto CacheStorage::GetString(const string& entry_name) const -> string
     return str;
 }
 
-auto CacheStorage::GetData(const string& entry_name) const -> UCharVec
+auto CacheStorage::GetData(const string& entry_name) const -> vector<uchar>
 {
-    UCharVec data;
+    vector<uchar> data;
 
     auto result_len = 0u;
     auto* result = GetRawData(entry_name, result_len);
@@ -303,7 +303,7 @@ void CacheStorage::SetString(const string& entry_name, const string& str)
     SetRawData(entry_name, !str.empty() ? reinterpret_cast<const uchar*>(str.c_str()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
 }
 
-void CacheStorage::SetData(const string& entry_name, const UCharVec& data)
+void CacheStorage::SetData(const string& entry_name, const vector<uchar>& data)
 {
     SetRawData(entry_name, !data.empty() ? &data[0] : reinterpret_cast<const uchar*>(""), static_cast<uint>(data.size()));
 }

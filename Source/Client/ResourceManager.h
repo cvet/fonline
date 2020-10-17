@@ -50,18 +50,19 @@ public:
     auto operator=(ResourceManager&&) noexcept = delete;
     ~ResourceManager() = default;
 
-    void FreeResources(AtlasType atlas_type);
-    void ReinitializeDynamicAtlas();
     [[nodiscard]] auto GetAnim(hash name_hash, AtlasType atlas_type) -> AnyFrames*;
     [[nodiscard]] auto GetIfaceAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
     [[nodiscard]] auto GetInvAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
     [[nodiscard]] auto GetSkDxAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
     [[nodiscard]] auto GetItemAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Dynamic); }
-    [[nodiscard]] auto GetCrit2dAnim(hash model_name, uint anim1, uint anim2, int dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCrit3dAnim(hash model_name, uint anim1, uint anim2, int dir, int* layers3d) -> Animation3d*;
-    [[nodiscard]] auto GetCritSprId(hash model_name, uint anim1, uint anim2, int dir, int* layers3d) -> uint;
+    [[nodiscard]] auto GetCritterAnim(hash model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*;
+    [[nodiscard]] auto GetCritterModel(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
+    [[nodiscard]] auto GetCritterSprId(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint;
     [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
-    [[nodiscard]] auto GetSoundNames() -> StrMap& { return _soundNames; }
+    [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
+
+    void FreeResources(AtlasType atlas_type);
+    void ReinitializeDynamicAtlas();
 
     AnyFrames* ItemHexDefaultAnim {};
     AnyFrames* CritterDefaultAnim {};
@@ -75,6 +76,7 @@ private:
 
     [[nodiscard]] auto LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -> AnyFrames*;
     [[nodiscard]] auto LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2) -> AnyFrames*;
+
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
@@ -82,12 +84,12 @@ private:
     SpriteManager& _sprMngr;
     ClientScriptSystem& _scriptSys;
     EventUnsubscriber _eventUnsubscriber {};
-    UIntStrMap _namesHash {};
+    map<uint, string> _namesHash {};
     map<hash, LoadedAnim> _loadedAnims {};
-    AnimMap _critterFrames {};
-    map<hash, Animation3d*> _critter3d {};
-    StrVec _splashNames {};
-    StrMap _soundNames {};
+    map<uint, AnyFrames*> _critterFrames {};
+    map<hash, ModelInstance*> _critterModels {};
+    vector<string> _splashNames {};
+    map<string, string> _soundNames {};
     AnyFrames* _splash {};
     int _dummy {};
 };

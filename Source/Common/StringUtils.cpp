@@ -282,9 +282,9 @@ auto _str::upperUtf8() -> _str&
     return *this;
 }
 
-auto _str::split(char divider) const -> StrVec
+auto _str::split(char divider) const -> vector<string>
 {
-    StrVec result;
+    vector<string> result;
     std::stringstream ss(_s);
     string entry;
 
@@ -298,9 +298,9 @@ auto _str::split(char divider) const -> StrVec
     return result;
 }
 
-auto _str::splitToInt(char divider) const -> IntVec
+auto _str::splitToInt(char divider) const -> vector<int>
 {
-    IntVec result;
+    vector<int> result;
     std::stringstream ss(_s);
     string entry;
 

@@ -66,10 +66,7 @@ FO_API_ITEM_METHOD(GetItems, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(uint, stackId)
 #ifdef FO_API_ITEM_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
 {
-    ItemVec items;
-    _item->ContGetItems(items, stackId);
-
-    FO_API_RETURN(items);
+    FO_API_RETURN(_item->ContGetItems(stackId));
 }
 FO_API_EPILOG(0)
 #endif
@@ -157,49 +154,6 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
     FO_API_RETURN(map);
 }
 FO_API_EPILOG(0)
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @param pid ...
- * @return ...
- ******************************************************************************/
-FO_API_ITEM_METHOD(ChangeProto, FO_API_RET(void), FO_API_ARG(hash, pid))
-#ifdef FO_API_ITEM_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
-{
-    const auto* proto_item = _server->ProtoMngr.GetProtoItem(pid);
-    if (!proto_item) {
-        throw ScriptException("Proto not found");
-    }
-
-    const auto* old_proto_item = _item->GetProtoItem();
-    _item->SetProto(proto_item);
-
-    if (_item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
-        auto* cr = _server->CrMngr.GetCritter(_item->GetCritId());
-        if (cr) {
-            _item->SetProto(old_proto_item);
-            cr->Send_EraseItem(_item);
-            _item->SetProto(proto_item);
-            cr->Send_AddItem(_item);
-            cr->SendAA_MoveItem(_item, ACTION_REFRESH, 0);
-        }
-    }
-    else if (_item->GetAccessory() == ITEM_ACCESSORY_HEX) {
-        auto* map = _server->MapMngr.GetMap(_item->GetMapId());
-        if (map) {
-            const auto hx = _item->GetHexX();
-            const auto hy = _item->GetHexY();
-            _item->SetProto(old_proto_item);
-            map->EraseItem(_item->GetId());
-            _item->SetProto(proto_item);
-            map->AddItem(_item, hx, hy);
-        }
-    }
-}
-FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_MULTIPLAYER_ONLY
@@ -369,15 +323,16 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, direction))
 
     auto hx = _critter->GetHexX();
     auto hy = _critter->GetHexY();
-    _server->GeomHelper.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight());
+    if (_server->GeomHelper.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight())) {
+        const auto move_flags = static_cast<ushort>(direction | BIN16(00000000, 00111000));
+        const auto move = _server->Act_Move(_critter, hx, hy, move_flags);
+        if (move) {
+            _critter->Send_Move(_critter, move_flags);
+        }
 
-    const auto move_flags = static_cast<ushort>(direction | BIN16(00000000, 00111000));
-    const auto move = _server->Act_Move(_critter, hx, hy, move_flags);
-    if (move) {
-        _critter->Send_Move(_critter, move_flags);
+        FO_API_RETURN(move);
     }
-
-    FO_API_RETURN(move);
+    FO_API_RETURN(false);
 }
 FO_API_EPILOG(0)
 #endif
@@ -805,7 +760,7 @@ FO_API_CRITTER_METHOD(GetCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(bool,
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, lookOnMe) FO_API_ARG_MARSHAL(uchar, findType))
 {
-    CritterVec critters;
+    vector<Critter*> critters;
 
     for (auto* cr : lookOnMe ? _critter->VisCr : _critter->VisCrSelf) {
         if (cr->CheckFind(findType)) {
@@ -839,7 +794,7 @@ FO_API_PROLOG()
         throw ScriptException("Critter is not npc");
     }
 
-    CritterVec players;
+    vector<Critter*> players;
 
     for (auto* cr_ : _critter->VisCr) {
         if (cr_->IsPlayer()) {
@@ -1088,9 +1043,7 @@ FO_API_CRITTER_METHOD(GetItemsBySlot, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(int, 
 #ifdef FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 {
-    ItemVec items;
-    _critter->GetItemsSlot(slot, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_critter->GetItemsSlot(slot));
 }
 FO_API_EPILOG(0)
 #endif
@@ -1106,7 +1059,7 @@ FO_API_CRITTER_METHOD(GetItemsByPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG_
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(Item, predicate))
 {
     auto inv_items = _critter->GetInventory();
-    ItemVec items;
+    vector<Item*> items;
     items.reserve(inv_items.size());
     for (auto* item : inv_items) {
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
@@ -2075,9 +2028,7 @@ FO_API_MAP_METHOD(GetItems, FO_API_RET_OBJ_ARR(Item))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG()
 {
-    ItemVec items;
-    _map->GetItemsPid(0, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_map->GetItemsPid(0));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2097,9 +2048,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec items;
-    _map->GetItemsHex(hx, hy, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_map->GetItemsHex(hx, hy));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2121,9 +2070,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec items;
-    _map->GetItemsHexEx(hx, hy, radius, pid, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_map->GetItemsHexEx(hx, hy, radius, pid));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2138,9 +2085,7 @@ FO_API_MAP_METHOD(GetItemsByPid, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(hash, pid)
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    ItemVec items;
-    _map->GetItemsPid(pid, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_map->GetItemsPid(pid));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2156,7 +2101,7 @@ FO_API_MAP_METHOD(GetItemsByPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_ARG_PRED
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(Item, predicate))
 {
     auto map_items = _map->GetItems();
-    ItemVec items;
+    vector<Item*> items;
     items.reserve(map_items.size());
     for (auto* item : map_items) {
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
@@ -2184,10 +2129,10 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec map_items;
-    _map->GetItemsHex(hx, hy, map_items);
-    ItemVec items;
+    const auto map_items = _map->GetItemsHex(hx, hy);
+    vector<Item*> items;
     items.reserve(map_items.size());
+
     for (auto* item : map_items) {
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
             items.push_back(item);
@@ -2215,10 +2160,10 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec map_items;
-    _map->GetItemsHexEx(hx, hy, radius, 0, map_items);
-    ItemVec items;
+    const auto map_items = _map->GetItemsHexEx(hx, hy, radius, 0);
+    vector<Item*> items;
     items.reserve(map_items.size());
+
     for (auto* item : map_items) {
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
             items.push_back(item);
@@ -2329,10 +2274,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec static_items;
-    _map->GetStaticItemsHex(hx, hy, static_items);
-
-    FO_API_RETURN(static_items);
+    FO_API_RETURN(_map->GetStaticItemsHex(hx, hy));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2354,9 +2296,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
         throw ScriptException("Invalid hexes args");
     }
 
-    ItemVec static_items;
-    _map->GetStaticItemsHexEx(hx, hy, radius, pid, static_items);
-    FO_API_RETURN(static_items);
+    FO_API_RETURN(_map->GetStaticItemsHexEx(hx, hy, radius, pid));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2371,9 +2311,7 @@ FO_API_MAP_METHOD(GetStaticItemsByPid, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(hash
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    ItemVec static_items;
-    _map->GetStaticItemsByPid(pid, static_items);
-    FO_API_RETURN(static_items);
+    FO_API_RETURN(_map->GetStaticItemsByPid(pid));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2389,7 +2327,7 @@ FO_API_MAP_METHOD(GetStaticItemsByPredicate, FO_API_RET_OBJ_ARR(Item), FO_API_AR
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(Item, predicate))
 {
     const auto& map_static_items = _map->GetStaticMap()->StaticItemsVec;
-    ItemVec items;
+    vector<Item*> items;
     items.reserve(map_static_items.size());
     for (auto* item : map_static_items) {
         if (predicate(item)) {
@@ -2439,17 +2377,16 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-FO_API_MAP_METHOD(GetCrittersAroundHex, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetCrittersAroundHex, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(uchar, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_MARSHAL(uchar, findType))
 {
     if (hx >= _map->GetWidth() || hy >= _map->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    CritterVec critters;
-    _map->GetCrittersHex(hx, hy, radius, findType, critters);
-    std::sort(critters.begin(), critters.end(), [_server, hx, hy](Critter* cr1, Critter* cr2) { return _server->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < _server->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    auto critters = _map->GetCrittersHex(hx, hy, radius, findType);
+    std::sort(critters.begin(), critters.end(), [_server, hx, hy](const Critter* cr1, const Critter* cr2) { return _server->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < _server->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     FO_API_RETURN(critters);
 }
 FO_API_EPILOG(0)
@@ -2466,7 +2403,7 @@ FO_API_MAP_METHOD(GetCrittersByPids, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(has
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(uchar, findType))
 {
-    CritterVec critters;
+    vector<Critter*> critters;
     if (pid == 0u) {
         auto map_critters = _map->GetCritters();
         critters.reserve(map_critters.size());
@@ -2507,7 +2444,7 @@ FO_API_MAP_METHOD(GetCrittersInPath, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ush
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType))
 {
-    CritterVec critters;
+    vector<Critter*> critters;
     TraceData trace;
     trace.TraceMap = _map;
     trace.BeginHx = fromHx;
@@ -2545,9 +2482,9 @@ FO_API_MAP_METHOD(GetCrittersWithBlockInPath, FO_API_RET_OBJ_ARR(Critter), FO_AP
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType) FO_API_ARG_REF_MARSHAL(ushort, preBlockHx) FO_API_ARG_REF_MARSHAL(ushort, preBlockHy) FO_API_ARG_REF_MARSHAL(ushort, blockHx) FO_API_ARG_REF_MARSHAL(ushort, blockHy))
 {
-    CritterVec critters;
-    UShortPair block;
-    UShortPair pre_block;
+    vector<Critter*> critters;
+    pair<ushort, ushort> block;
+    pair<ushort, ushort> pre_block;
     TraceData trace;
     trace.TraceMap = _map;
     trace.BeginHx = fromHx;
@@ -2586,7 +2523,7 @@ FO_API_MAP_METHOD(GetCrittersWhoViewPath, FO_API_RET_OBJ_ARR(Critter), FO_API_AR
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uchar, findType))
 {
-    CritterVec critters;
+    vector<Critter*> critters;
     for (auto* cr : _map->GetCritters()) {
         if (cr->CheckFind(findType) && std::find(critters.begin(), critters.end(), cr) == critters.end() && GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->GetLookDistance(), fromHx, fromHy, toHx, toHy)) {
             critters.push_back(cr);
@@ -2610,9 +2547,13 @@ FO_API_MAP_METHOD(GetCrittersSeeing, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG_OBJ
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Critter, critters) FO_API_ARG_MARSHAL(bool, lookOnThem) FO_API_ARG_MARSHAL(uchar, findType))
 {
-    CritterVec result_critters;
+    vector<Critter*> result_critters;
     for (auto* cr : critters) {
-        cr->GetCrFromVisCr(result_critters, findType, !lookOnThem);
+        for (auto* cr_ : cr->GetCrFromVisCr(findType, !lookOnThem)) {
+            if (std::find(result_critters.begin(), result_critters.end(), cr_) == result_critters.end()) {
+                result_critters.push_back(cr_);
+            }
+        }
     }
     FO_API_RETURN(result_critters);
 }
@@ -2633,8 +2574,8 @@ FO_API_MAP_METHOD(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx) FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
 {
-    UShortPair pre_block;
-    UShortPair block;
+    pair<ushort, ushort> pre_block;
+    pair<ushort, ushort> block;
     TraceData trace;
     trace.TraceMap = _map;
     trace.BeginHx = fromHx;
@@ -2668,7 +2609,7 @@ FO_API_MAP_METHOD(GetWallHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx)
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx) FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
 {
-    UShortPair last_passed;
+    pair<ushort, ushort> last_passed;
     TraceData trace;
     trace.TraceMap = _map;
     trace.BeginHx = fromHx;
@@ -2714,22 +2655,21 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
         throw ScriptException("Invalid to hexes args");
     }
 
-    PathFindData pfd;
-    pfd.MapId = _map->GetId();
-    pfd.FromX = fromHx;
-    pfd.FromY = fromHy;
-    pfd.ToX = toHx;
-    pfd.ToY = toHy;
-    pfd.Cut = cut;
+    FindPathInput input;
+    input.MapId = _map->GetId();
+    input.FromX = fromHx;
+    input.FromY = fromHy;
+    input.ToX = toHx;
+    input.ToY = toHy;
+    input.Cut = cut;
 
-    const auto result = _server->MapMngr.FindPath(pfd);
+    const auto output = _server->MapMngr.FindPath(input);
 
-    if (result != FindPathResult::Ok) {
+    if (output.Result != FindPathResult::Ok) {
         FO_API_RETURN(0);
     }
 
-    auto& path = _server->MapMngr.GetPath(pfd.PathNum);
-    FO_API_RETURN(static_cast<uint>(path.size()));
+    FO_API_RETURN(static_cast<uint>(output.Steps.size()));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2755,24 +2695,23 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr) FO_API_ARG_MARSHAL(ushort, toH
         throw ScriptException("Invalid to hexes args");
     }
 
-    PathFindData pfd;
-    pfd.MapId = _map->GetId();
-    pfd.FromCritter = cr;
-    pfd.FromX = cr->GetHexX();
-    pfd.FromY = cr->GetHexY();
-    pfd.ToX = toHx;
-    pfd.ToY = toHy;
-    pfd.Multihex = cr->GetMultihex();
-    pfd.Cut = cut;
+    FindPathInput input;
+    input.MapId = _map->GetId();
+    input.FromCritter = cr;
+    input.FromX = cr->GetHexX();
+    input.FromY = cr->GetHexY();
+    input.ToX = toHx;
+    input.ToY = toHy;
+    input.Multihex = cr->GetMultihex();
+    input.Cut = cut;
 
-    const auto result = _server->MapMngr.FindPath(pfd);
+    const auto output = _server->MapMngr.FindPath(input);
 
-    if (result != FindPathResult::Ok) {
+    if (output.Result != FindPathResult::Ok) {
         FO_API_RETURN(0);
     }
 
-    auto& path = _server->MapMngr.GetPath(pfd.PathNum);
-    FO_API_RETURN(static_cast<uint>(path.size()));
+    FO_API_RETURN(static_cast<uint>(output.Steps.size()));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2830,9 +2769,9 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-FO_API_MAP_METHOD(GetNpcCount, FO_API_RET(uint), FO_API_ARG(int, npcRole), FO_API_ARG(int, findType))
+FO_API_MAP_METHOD(GetNpcCount, FO_API_RET(uint), FO_API_ARG(int, npcRole), FO_API_ARG(uchar, findType))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, npcRole) FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, npcRole) FO_API_ARG_MARSHAL(uchar, findType))
 {
     FO_API_RETURN(_map->GetNpcCount(npcRole, findType));
 }
@@ -2847,9 +2786,9 @@ FO_API_EPILOG(0)
  * @param skipCount ...
  * @return ...
  ******************************************************************************/
-FO_API_MAP_METHOD(GetNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(int, npcRole), FO_API_ARG(int, findType), FO_API_ARG(uint, skipCount))
+FO_API_MAP_METHOD(GetNpc, FO_API_RET_OBJ(Critter), FO_API_ARG(int, npcRole), FO_API_ARG(uchar, findType), FO_API_ARG(uint, skipCount))
 #ifdef FO_API_MAP_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, npcRole) FO_API_ARG_MARSHAL(int, findType) FO_API_ARG_MARSHAL(uint, skipCount))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, npcRole) FO_API_ARG_MARSHAL(uchar, findType) FO_API_ARG_MARSHAL(uint, skipCount))
 {
     FO_API_RETURN(_map->GetNpc(npcRole, findType, skipCount));
 }
@@ -3165,8 +3104,9 @@ FO_API_EPILOG()
  * @param hy ...
  * @param dir ...
  * @param steps ...
+ * @return ...
  ******************************************************************************/
-FO_API_MAP_METHOD(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
+FO_API_MAP_METHOD(MoveHexByDir, FO_API_RET(bool), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_MAP_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(uint, steps))
 {
@@ -3177,19 +3117,26 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
         throw ScriptException("Steps arg is zero");
     }
 
+    auto result = false;
+    auto hx_ = hx;
+    auto hy_ = hy;
     const auto maxhx = _map->GetWidth();
     const auto maxhy = _map->GetHeight();
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            _server->GeomHelper.MoveHexByDir(hx, hy, dir, maxhx, maxhy);
+            result |= _server->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        _server->GeomHelper.MoveHexByDir(hx, hy, dir, maxhx, maxhy);
+        result = _server->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
+
+    hx = hx_;
+    hy = hy_;
+    FO_API_RETURN(result);
 }
-FO_API_EPILOG()
+FO_API_EPILOG(0)
 #endif
 
 /*******************************************************************************
@@ -3213,9 +3160,9 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr) FO_API_ARG_MARSHAL(ushort, hx)
 
     auto from_hx = hx;
     auto from_hy = hy;
-    _server->GeomHelper.MoveHexByDir(from_hx, from_hy, _server->GeomHelper.ReverseDir(dir), _map->GetWidth(), _map->GetHeight());
-
-    _server->VerifyTrigger(_map, cr, from_hx, from_hy, hx, hy, dir);
+    if (_server->GeomHelper.MoveHexByDir(from_hx, from_hy, _server->GeomHelper.ReverseDir(dir), _map->GetWidth(), _map->GetHeight())) {
+        _server->VerifyTrigger(_map, cr, from_hx, from_hy, hx, hy, dir);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -3651,7 +3598,7 @@ FO_API_GLOBAL_SERVER_FUNC(DeleteItemsById, FO_API_RET(void), FO_API_ARG_ARR(uint
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(uint, itemIds))
 {
-    ItemVec items_to_delete;
+    vector<Item*> items_to_delete;
     for (auto item_id : itemIds) {
         if (item_id != 0u) {
             auto* item = _server->ItemMngr.GetItem(item_id);
@@ -3972,7 +3919,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     // Check existence
     const auto id = MAKE_CLIENT_ID(name);
-    const auto doc = _server->DbStorage->Get("Players", id);
+    const auto doc = _server->DbStorage.Get("Players", id);
     if (doc.empty()) {
         FO_API_RETURN(static_cast<Critter*>(nullptr));
     }
@@ -4011,13 +3958,11 @@ FO_API_EPILOG(0)
  * @param findType ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(GetGlobalMapCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG(int, findType))
+FO_API_GLOBAL_SERVER_FUNC(GetGlobalMapCritters, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(ushort, wx), FO_API_ARG(ushort, wy), FO_API_ARG(uint, radius), FO_API_ARG(uchar, findType))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx) FO_API_ARG_MARSHAL(ushort, wy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_MARSHAL(int, findType))
+FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx) FO_API_ARG_MARSHAL(ushort, wy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_MARSHAL(uchar, findType))
 {
-    CritterVec critters;
-    _server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType, critters);
-    FO_API_RETURN(critters);
+    FO_API_RETURN(_server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType));
 }
 FO_API_EPILOG(0)
 #endif
@@ -4112,10 +4057,9 @@ FO_API_GLOBAL_SERVER_FUNC(GetLocationsAroundPos, FO_API_RET_OBJ_ARR(Location), F
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx) FO_API_ARG_MARSHAL(ushort, wy) FO_API_ARG_MARSHAL(uint, radius))
 {
-    LocationVec locations;
-    LocationVec all_locations;
-    _server->MapMngr.GetLocations(all_locations);
-    for (auto* loc : all_locations) {
+    vector<Location*> locations;
+
+    for (auto* loc : _server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius()) {
             locations.push_back(loc);
         }
@@ -4139,10 +4083,9 @@ FO_API_GLOBAL_SERVER_FUNC(GetVisibleLocationsAroundPos, FO_API_RET_OBJ_ARR(Locat
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, wx) FO_API_ARG_MARSHAL(ushort, wy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_OBJ_MARSHAL(Critter, cr))
 {
-    LocationVec locations;
-    LocationVec all_locations;
-    _server->MapMngr.GetLocations(all_locations);
-    for (auto* loc : all_locations) {
+    vector<Location*> locations;
+
+    for (auto* loc : _server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsPlayer() && _server->MapMngr.CheckKnownLocById(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
@@ -4165,8 +4108,12 @@ FO_API_GLOBAL_SERVER_FUNC(GetZoneLocationIds, FO_API_RET_ARR(uint), FO_API_ARG(u
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zx) FO_API_ARG_MARSHAL(ushort, zy) FO_API_ARG_MARSHAL(uint, zoneRadius))
 {
-    UIntVec loc_ids;
-    _server->MapMngr.GetZoneLocations(zx, zy, zoneRadius, loc_ids);
+    vector<uint> loc_ids;
+
+    for (auto* loc : _server->MapMngr.GetZoneLocations(zx, zy, zoneRadius)) {
+        loc_ids.push_back(loc->GetId());
+    }
+
     FO_API_RETURN(loc_ids);
 }
 FO_API_EPILOG(0)
@@ -4322,7 +4269,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
     if (!func_id)
         throw ScriptException("Unable to bind script function");
 
-    TextListen tl;
+    TextListener tl;
     tl.FuncId = func_id;
     tl.SayType = sayType;
     tl.FirstStr = firstStr;
@@ -4350,7 +4297,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
 
     for (auto it = _server->TextListeners.begin(), end = _server->TextListeners.end(); it != end; ++it)
     {
-        TextListen& tl = *it;
+        TextListener& tl = *it;
         if (sayType == tl.SayType && _str(firstStr).compareIgnoreCaseUtf8(tl.FirstStr) && tl.Parameter == parameter)
         {
             _server->TextListeners.erase(it);
@@ -4543,10 +4490,8 @@ FO_API_GLOBAL_SERVER_FUNC(GetAllItems, FO_API_RET_OBJ_ARR(Item), FO_API_ARG(hash
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    ItemVec items;
-    ItemVec all_items;
-    _server->ItemMngr.GetGameItems(all_items);
-    for (auto* item : all_items) {
+    vector<Item*> items;
+    for (auto* item : _server->ItemMngr.GetItems()) {
         if (!item->IsDestroyed && (pid == 0u || pid == item->GetProtoId())) {
             items.push_back(item);
         }
@@ -4567,17 +4512,15 @@ FO_API_GLOBAL_SERVER_FUNC(GetOnlinePlayers, FO_API_RET_OBJ_ARR(Critter))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG()
 {
-    ClientVec all_players;
-    _server->CrMngr.GetClients(all_players, false);
+    vector<Critter*> clients;
 
-    CritterVec players;
-    for (auto* player_ : all_players) {
-        if (!player_->IsDestroyed && player_->IsPlayer()) {
-            players.push_back(player_);
+    for (auto* cl : _server->CrMngr.GetClients(false)) {
+        if (!cl->IsDestroyed) {
+            clients.push_back(cl);
         }
     }
 
-    FO_API_RETURN(players);
+    FO_API_RETURN(clients);
 }
 FO_API_EPILOG(0)
 #endif
@@ -4593,7 +4536,7 @@ FO_API_GLOBAL_SERVER_FUNC(GetRegisteredPlayerIds, FO_API_RET_ARR(uint))
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(_server->DbStorage->GetAllIds("Players"));
+    FO_API_RETURN(_server->DbStorage.GetAllIds("Players"));
 }
 FO_API_EPILOG(0)
 #endif
@@ -4609,10 +4552,9 @@ FO_API_GLOBAL_SERVER_FUNC(GetAllNpc, FO_API_RET_OBJ_ARR(Critter), FO_API_ARG(has
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    CritterVec npcs;
-    NpcVec all_npcs;
-    _server->CrMngr.GetNpcs(all_npcs);
-    for (auto* npc_ : all_npcs) {
+    vector<Critter*> npcs;
+
+    for (auto* npc_ : _server->CrMngr.GetNpcs()) {
         if (!npc_->IsDestroyed && (pid == 0u || pid == npc_->GetProtoId())) {
             npcs.push_back(npc_);
         }
@@ -4633,10 +4575,9 @@ FO_API_GLOBAL_SERVER_FUNC(GetAllMaps, FO_API_RET_OBJ_ARR(Map), FO_API_ARG(hash, 
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    MapVec maps;
-    MapVec all_maps;
-    _server->MapMngr.GetMaps(all_maps);
-    for (auto* map : all_maps) {
+    vector<Map*> maps;
+
+    for (auto* map : _server->MapMngr.GetMaps()) {
         if (pid == 0u || pid == map->GetProtoId()) {
             maps.push_back(map);
         }
@@ -4657,10 +4598,9 @@ FO_API_GLOBAL_SERVER_FUNC(GetAllLocations, FO_API_RET_OBJ_ARR(Location), FO_API_
 #ifdef FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
-    LocationVec locations;
-    LocationVec all_locations;
-    _server->MapMngr.GetLocations(all_locations);
-    for (auto* loc : all_locations) {
+    vector<Location*> locations;
+
+    for (auto* loc : _server->MapMngr.GetLocations()) {
         if (pid == 0u || pid == loc->GetProtoId()) {
             locations.push_back(loc);
         }

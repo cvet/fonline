@@ -58,7 +58,7 @@ public:
     ~Keyboard() = default;
 
     void Lost();
-    void GetChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const;
+    void FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const;
     void EraseInvalidChars(string& str, int flags) const;
 
     bool ShiftDwn {};
@@ -67,7 +67,7 @@ public:
     bool KeyPressed[0x100] {};
 
 private:
-    auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
+    [[nodiscard]] auto IsInvalidChar(const char* str, uint flags, uint& length) const -> bool;
 
     InputSettings& _settings;
     SpriteManager& _sprMngr;

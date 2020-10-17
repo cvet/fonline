@@ -369,7 +369,7 @@ FO_API_CRITTER_PROPERTY(Protected, FO_API_PROPERTY_TYPE_ARR(hash), KnownLocProto
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_PROPERTY(PrivateClient, FO_API_PROPERTY_TYPE_ARR(int), Anim3dLayer)
+FO_API_CRITTER_PROPERTY(PrivateClient, FO_API_PROPERTY_TYPE_ARR(int), ModelLayers)
 
 /*******************************************************************************
  * ...

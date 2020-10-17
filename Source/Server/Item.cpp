@@ -52,15 +52,6 @@ Item::Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys) : En
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-void Item::SetProto(const ProtoItem* proto)
-{
-    RUNTIME_ASSERT(proto);
-    proto->AddRef();
-    Proto->Release();
-    Proto = proto;
-    Props = proto->Props;
-}
-
 auto Item::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
@@ -84,10 +75,10 @@ auto Item::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
     return true;
 }
 
-void Item::SetSortValue(ItemVec& items)
+void Item::EvaluateSortValue(const vector<Item*>& items)
 {
     short sort_value = 0;
-    for (auto* item : items) {
+    for (const auto* item : items) {
         if (item == this) {
             continue;
         }
@@ -105,7 +96,7 @@ void Item::ChangeCount(int val)
     SetCount(GetCount() + val);
 }
 
-auto Item::ContGetItem(uint item_id, bool skip_hide) -> Item*
+auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 {
     NON_CONST_METHOD_HINT(_childItems);
 
@@ -117,7 +108,7 @@ auto Item::ContGetItem(uint item_id, bool skip_hide) -> Item*
 
     for (auto* item : *_childItems) {
         if (item->GetId() == item_id) {
-            if (skip_hide && item->GetIsHidden()) {
+            if (skip_hidden && item->GetIsHidden()) {
                 return nullptr;
             }
             return item;
@@ -126,19 +117,23 @@ auto Item::ContGetItem(uint item_id, bool skip_hide) -> Item*
     return nullptr;
 }
 
-void Item::ContGetAllItems(ItemVec& items, bool skip_hide)
+auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT(_childItems);
 
     if (_childItems == nullptr) {
-        return;
+        return {};
     }
+
+    vector<Item*> items;
+    items.reserve(_childItems->size());
 
     for (auto* item : *_childItems) {
         if (!skip_hide || !item->GetIsHidden()) {
             items.push_back(item);
         }
     }
+    return items;
 }
 
 auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
@@ -157,19 +152,21 @@ auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
     return nullptr;
 }
 
-void Item::ContGetItems(ItemVec& items, uint stack_id)
+auto Item::ContGetItems(uint stack_id) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT(_childItems);
 
     if (_childItems == nullptr) {
-        return;
+        return {};
     }
 
+    vector<Item*> items;
     for (auto* item : *_childItems) {
         if (stack_id == static_cast<uint>(-1) || item->GetContainerStack() == stack_id) {
             items.push_back(item);
         }
     }
+    return items;
 }
 
 auto Item::ContIsItems() const -> bool

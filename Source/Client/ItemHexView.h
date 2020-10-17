@@ -41,40 +41,37 @@
 #include "ResourceManager.h"
 #include "Timer.h"
 
-class ItemHexView;
-using ItemHexViewVec = vector<ItemHexView*>;
-using ItemHexViewMap = map<uint, ItemHexView*>;
-
 class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
     ItemHexView(uint id, const ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
-    ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
-    ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
-    auto IsAnimated() const -> bool { return _isAnimated; }
-    auto IsDrawContour() -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
-    auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
+    [[nodiscard]] auto IsAnimated() const -> bool { return _isAnimated; }
+    [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
+    [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
+    [[nodiscard]] auto GetEggType() const -> int;
+    [[nodiscard]] auto IsFinishing() const -> bool;
+    [[nodiscard]] auto IsFinish() const -> bool;
+    [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
+    [[nodiscard]] auto GetEffectStep() const -> pair<ushort, ushort>;
+
     void RefreshAnim();
     void RestoreAlpha() { Alpha = _maxAlpha; }
     void RefreshAlpha() { _maxAlpha = IsColorize() ? GetAlpha() : 0xFF; }
     void SetSprite(Sprite* spr);
-    auto GetEggType() -> int;
     void Finish();
-    auto IsFinishing() const -> bool;
-    auto IsFinish() const -> bool;
     void StopFinishing();
     void Process();
-    auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
     void SetEffect(float sx, float sy, uint dist, int dir);
-    auto GetEffectStep() -> UShortPair;
     void SkipFade();
     void StartAnimate();
     void StopAnimate();
@@ -102,7 +99,7 @@ public:
     RenderEffect* DrawEffect {};
     float EffOffsX {};
     float EffOffsY {};
-    UShortPairVec EffSteps {};
+    vector<pair<ushort, ushort>> EffSteps {};
 
 private:
     ItemHexView(uint id, const ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);

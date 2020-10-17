@@ -68,10 +68,8 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     auto height = props.GetValue<ushort>(ProtoMap::PropertyHeight);
 
     // Critters
-    PStrMapVec npc_data;
-    map_data.GetApps("Critter", npc_data);
-    StrVec errors {};
-    for (auto& pkv : npc_data) {
+    vector<string> errors;
+    for (auto& pkv : map_data.GetApps("Critter")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto critter invalid data");
@@ -90,9 +88,7 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     }
 
     // Items
-    PStrMapVec items_data;
-    map_data.GetApps("Item", items_data);
-    for (auto& pkv : items_data) {
+    for (auto& pkv : map_data.GetApps("Item")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto item invalid data");
@@ -111,9 +107,7 @@ void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& p
     }
 
     // Tiles
-    PStrMapVec tiles_data;
-    map_data.GetApps("Tile", tiles_data);
-    for (auto& pkv : tiles_data) {
+    for (auto& pkv : map_data.GetApps("Tile")) {
         auto& kv = *pkv;
         if (kv.count("PicMap") == 0u || kv.count("HexX") == 0u || kv.count("HexY") == 0u) {
             errors.emplace_back("Tile invalid data");

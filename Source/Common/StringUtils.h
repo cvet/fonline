@@ -103,8 +103,8 @@ public:
     auto upper() -> _str&;
     auto upperUtf8() -> _str&;
 
-    [[nodiscard]] auto split(char divider) const -> StrVec;
-    [[nodiscard]] auto splitToInt(char divider) const -> IntVec;
+    [[nodiscard]] auto split(char divider) const -> vector<string>;
+    [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
     [[nodiscard]] auto isNumber() -> bool; // Todo: make isNumber const
     [[nodiscard]] auto toInt() -> int;

@@ -74,8 +74,9 @@ public:
     auto operator=(const NetServerBase&) = delete;
     auto operator=(NetServerBase&&) noexcept = delete;
     virtual ~NetServerBase() = default;
+
     virtual void Shutdown() = 0;
 
-    static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
-    static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
 };

@@ -87,7 +87,7 @@ void ImageBaker::BakeImage(const string& fname_with_opt)
     BakeCollection(fname_with_opt, collection);
 }
 
-void ImageBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
+void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
     for (const auto& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
@@ -119,7 +119,7 @@ void ImageBaker::BakeCollection(const string& fname, const FrameCollection& coll
 {
     RUNTIME_ASSERT(!_bakedFiles.count(fname));
 
-    UCharVec data;
+    vector<uchar> data;
     DataWriter writer {data};
     const auto check_number = static_cast<ushort>(42);
     const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
@@ -821,7 +821,7 @@ auto ImageBaker::LoadRix(const string& /*fname*/, const string& /*opt*/, File& f
     file.SetCurPos(0xA);
     const auto* palette = file.GetCurBuf();
 
-    UCharVec data(w * h * 4);
+    vector<uchar> data(w * h * 4);
     auto* ptr = reinterpret_cast<uint*>(&data[0]);
     file.SetCurPos(0xA + 256 * 3);
 
@@ -1010,7 +1010,7 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
 
             auto w = frame_info.FrameWidth;
             auto h = frame_info.FrameHeight;
-            UCharVec data(w * h * 4);
+            vector<uchar> data(w * h * 4);
             auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
             auto& shot = sequence.Frames[frm_write];
@@ -1200,7 +1200,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
         auto center_y_ex = static_cast<int>((dimension_left * cosf(ta) + dimension_right * cosf(ta)) / 2.0f);
 
         uint anim_index = 0;
-        UIntVec anim_frames;
+        vector<uint> anim_frames;
         anim_frames.reserve(1000);
 
         // Find sequence
@@ -1256,7 +1256,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
         file.GoForward(file.GetLEUInt()); // Collection name
         auto frame_cnt = file.GetLEUInt();
         auto dir_cnt = file.GetLEUInt();
-        UIntVec bboxes;
+        vector<uint> bboxes;
         bboxes.resize(frame_cnt * dir_cnt * 4);
         file.CopyMem(&bboxes[0], sizeof(uint) * frame_cnt * dir_cnt * 4);
 
@@ -1322,7 +1322,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
         }
 
         // Index data offsets
-        UIntVec image_indices;
+        vector<uint> image_indices;
         image_indices.resize(frame_cnt * dir_cnt * 4);
         for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetFsize();) {
             auto tag = fm_images.GetUChar();
@@ -1379,7 +1379,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
             uint whole_w = 0;
             uint whole_h = 0;
             for (uint part = 0; part < 4; part++) {
-                auto frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + dir_spr << 2) + part;
+                auto frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
                 if (image_indices[frm_index] == 0u) {
                     continue;
                 }
@@ -1405,10 +1405,10 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
             }
 
             // Allocate data
-            UCharVec data(whole_w * whole_h * 4);
+            vector<uchar> data(whole_w * whole_h * 4);
 
             for (uint part = 0; part < 4; part++) {
-                auto frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + dir_spr << 2) + part;
+                auto frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
                 if (image_indices[frm_index] == 0u) {
                     continue;
                 }
@@ -1550,7 +1550,7 @@ auto ImageBaker::LoadZar(const string& fname, const string& /*opt*/, File& file)
     file.GoForward(rle_size);
 
     // Allocate data
-    UCharVec data(w * h * 4);
+    vector<uchar> data(w * h * 4);
     auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
     // Decode
@@ -1668,7 +1668,7 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
         file.GoForward(rle_size);
 
         // Allocate data
-        UCharVec data(w * h * 4);
+        vector<uchar> data(w * h * 4);
         auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
         // Decode
@@ -1764,7 +1764,7 @@ auto ImageBaker::LoadMos(const string& fname, const string& /*opt*/, File& file)
     const auto data_offset = tiles_offset + col * row * 4;
 
     // Allocate data
-    UCharVec data(w * h * 4);
+    vector<uchar> data(w * h * 4);
     auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
     // Read image data
@@ -1919,7 +1919,7 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
         data_offset &= 0x7FFFFFFF;
 
         // Allocate data
-        UCharVec data(w * h * 4);
+        vector<uchar> data(w * h * 4);
         auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
         // Fill it
@@ -1973,7 +1973,7 @@ auto ImageBaker::LoadPng(const string& fname, const string& /*opt*/, File& file)
         throw ImageBakerException("Can't read PNG", fname);
     }
 
-    UCharVec data(w * h * 4);
+    vector<uchar> data(w * h * 4);
     std::memcpy(&data[0], png_data, w * h * 4);
 
     FrameCollection collection;
@@ -1994,7 +1994,7 @@ auto ImageBaker::LoadTga(const string& fname, const string& /*opt*/, File& file)
         throw ImageBakerException("Can't read TGA", fname);
     }
 
-    UCharVec data(w * h * 4);
+    vector<uchar> data(w * h * 4);
     std::memcpy(&data[0], tga_data, w * h * 4);
 
     FrameCollection collection;

@@ -45,9 +45,7 @@ ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr
 {
     _eventUnsubscriber += _fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
         // Hash all files
-        StrVec file_names;
-        ds->GetFileNames("", true, "", file_names);
-        for (auto& name : file_names) {
+        for (const auto& name : ds->GetFileNames("", true, "")) {
             const auto h1 = _str(name).toHash();
             UNUSED_VARIABLE(h1);
             const auto h2 = _str(name).lower().toHash();
@@ -59,22 +57,30 @@ ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr
         }
 
         // Splashes
-        StrVec splashes;
-        ds->GetFileNames("Splash/", true, "rix", splashes);
-        ds->GetFileNames("Splash/", true, "png", splashes);
-        ds->GetFileNames("Splash/", true, "jpg", splashes);
-        for (auto& splash : splashes) {
+        for (const auto& splash : ds->GetFileNames("Splash/", true, "rix")) {
+            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
+                _splashNames.push_back(splash);
+            }
+        }
+        for (const auto& splash : ds->GetFileNames("Splash/", true, "png")) {
+            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
+                _splashNames.push_back(splash);
+            }
+        }
+        for (const auto& splash : ds->GetFileNames("Splash/", true, "jpg")) {
             if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
                 _splashNames.push_back(splash);
             }
         }
 
         // Sound names
-        StrVec sounds;
-        ds->GetFileNames("", true, "wav", sounds);
-        ds->GetFileNames("", true, "acm", sounds);
-        ds->GetFileNames("", true, "ogg", sounds);
-        for (auto& sound : sounds) {
+        for (const auto& sound : ds->GetFileNames("", true, "wav")) {
+            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
+        }
+        for (const auto& sound : ds->GetFileNames("", true, "acm")) {
+            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
+        }
+        for (const auto& sound : ds->GetFileNames("", true, "ogg")) {
             _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
         }
     };
@@ -150,7 +156,7 @@ static auto AnimMapId(hash model_name, uint anim1, uint anim2, bool is_fallout) 
     return Hashing::MurmurHash2(reinterpret_cast<uchar*>(&dw[0]), sizeof(dw));
 }
 
-auto ResourceManager::GetCrit2dAnim(hash model_name, uint anim1, uint anim2, int dir) -> AnyFrames*
+auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*
 {
     // Make animation id
     auto id = AnimMapId(model_name, anim1, anim2, false);
@@ -555,40 +561,40 @@ auto ResourceManager::LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCrit3dAnim(hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = nullptr */) -> Animation3d*
+auto ResourceManager::GetCritterModel(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = nullptr */) -> ModelInstance*
 {
-    if (_critter3d.count(model_name) != 0u) {
-        _critter3d[model_name]->SetDir(dir);
-        _critter3d[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-        return _critter3d[model_name];
+    if (_critterModels.count(model_name) != 0u) {
+        _critterModels[model_name]->SetDir(dir);
+        _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+        return _critterModels[model_name];
     }
 
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto* anim3d = _sprMngr.LoadPure3dAnimation(_str().parseHash(model_name), true);
+    auto* model = _sprMngr.LoadModel(_str().parseHash(model_name), true);
     _sprMngr.PopAtlasType();
 
-    if (anim3d == nullptr) {
+    if (model == nullptr) {
         return nullptr;
     }
 
-    _critter3d[model_name] = anim3d;
+    _critterModels[model_name] = model;
 
-    anim3d->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-    anim3d->SetDir(dir);
-    anim3d->StartMeshGeneration();
-    return anim3d;
+    model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
+    model->SetDir(dir);
+    model->StartMeshGeneration();
+    return model;
 }
 
-auto ResourceManager::GetCritSprId(hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */) -> uint
+auto ResourceManager::GetCritterSprId(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = NULL */) -> uint
 {
     const string ext = _str(_str().parseHash(model_name)).getFileExtension();
     if (ext != "fo3d") {
-        auto* anim = GetCrit2dAnim(model_name, anim1, anim2, dir);
+        auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
         return anim != nullptr ? anim->GetSprId(0) : 0;
     }
     else {
-        const auto* anim3d = GetCrit3dAnim(model_name, anim1, anim2, dir, layers3d);
-        return anim3d != nullptr ? anim3d->SprId : 0u;
+        const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
+        return model != nullptr ? model->SprId : 0u;
     }
 }
 

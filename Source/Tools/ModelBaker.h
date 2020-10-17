@@ -54,12 +54,12 @@ public:
     ~ModelBaker();
 
     void AutoBakeModels();
-    void FillBakedFiles(map<string, UCharVec>& baked_files);
+    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
-    auto BakeFile(const string& fname, File& file) -> UCharVec;
+    [[nodiscard]] auto BakeFile(const string& fname, File& file) -> vector<uchar>;
 
     FileCollection& _allFiles;
-    map<string, UCharVec> _bakedFiles {};
+    map<string, vector<uchar>> _bakedFiles {};
     fbxsdk::FbxManager* _fbxManager {};
 };

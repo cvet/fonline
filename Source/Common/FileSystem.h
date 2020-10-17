@@ -90,26 +90,28 @@ public:
     [[nodiscard]] auto GetBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurPos() const -> uint;
-    auto ReleaseBuffer() -> uchar*;
+
+    [[nodiscard]] auto FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool;
+    [[nodiscard]] auto GetNonEmptyLine() -> string;
+    // ReSharper disable CppInconsistentNaming
+    [[nodiscard]] auto GetStrNT() -> string; // Null terminated
+    [[nodiscard]] auto GetUChar() -> uchar;
+    [[nodiscard]] auto GetBEUShort() -> ushort;
+    [[nodiscard]] auto GetBEShort() -> short { return static_cast<short>(GetBEUShort()); }
+    [[nodiscard]] auto GetLEUShort() -> ushort;
+    [[nodiscard]] auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
+    [[nodiscard]] auto GetBEUInt() -> uint;
+    [[nodiscard]] auto GetLEUInt() -> uint;
+    [[nodiscard]] auto GetLE3UChar() -> uint;
+    [[nodiscard]] auto GetBEFloat() -> float;
+    [[nodiscard]] auto GetLEFloat() -> float;
+    // ReSharper restore CppInconsistentNaming
+    [[nodiscard]] auto ReleaseBuffer() -> uchar*;
+
+    void CopyMem(void* ptr, uint size);
     void SetCurPos(uint pos);
     void GoForward(uint offs);
     void GoBack(uint offs);
-    auto FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool;
-    auto GetNonEmptyLine() -> string;
-    void CopyMem(void* ptr, uint size);
-    // ReSharper disable CppInconsistentNaming
-    auto GetStrNT() -> string; // Null terminated
-    auto GetUChar() -> uchar;
-    auto GetBEUShort() -> ushort;
-    auto GetBEShort() -> short { return static_cast<short>(GetBEUShort()); }
-    auto GetLEUShort() -> ushort;
-    auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
-    auto GetBEUInt() -> uint;
-    auto GetLEUInt() -> uint;
-    auto GetLE3UChar() -> uint;
-    auto GetBEFloat() -> float;
-    auto GetLEFloat() -> float;
-    // ReSharper restore CppInconsistentNaming
 
 private:
     File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
@@ -129,9 +131,9 @@ public:
     auto operator=(OutputFile&&) noexcept = delete;
     ~OutputFile() = default;
 
-    void Save();
     [[nodiscard]] auto GetOutBuf() const -> const uchar*;
     [[nodiscard]] auto GetOutBufLen() const -> uint;
+
     void SetData(const void* data, uint len);
     void SetStr(const string& str);
     // ReSharper disable CppInconsistentNaming
@@ -143,6 +145,7 @@ public:
     void SetBEUInt(uint data);
     void SetLEUInt(uint data);
     // ReSharper restore CppInconsistentNaming
+    void Save();
 
 private:
     explicit OutputFile(DiskFile file);
@@ -163,14 +166,16 @@ public:
     auto operator=(FileCollection&&) noexcept = delete;
     ~FileCollection() = default;
 
-    auto MoveNext() -> bool;
-    void ResetCounter();
     [[nodiscard]] auto GetPath() const -> const string&;
     [[nodiscard]] auto GetCurFile() const -> File;
     [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
     [[nodiscard]] auto FindFile(const string& name) const -> File;
     [[nodiscard]] auto FindFileHeader(const string& name) const -> FileHeader;
     [[nodiscard]] auto GetFilesCount() const -> uint;
+
+    [[nodiscard]] auto MoveNext() -> bool;
+
+    void ResetCounter();
 
 private:
     FileCollection(string path, vector<FileHeader> files);
@@ -190,13 +195,14 @@ public:
     auto operator=(FileManager&&) noexcept = delete;
     ~FileManager() = default;
 
-    void AddDataSource(const string& path, bool cache_dirs);
     [[nodiscard]] auto FilterFiles(const string& ext) -> FileCollection;
     [[nodiscard]] auto FilterFiles(const string& ext, const string& dir, bool include_subdirs) -> FileCollection;
     [[nodiscard]] auto ReadFile(const string& path) -> File;
     [[nodiscard]] auto ReadFileHeader(const string& path) -> FileHeader;
     [[nodiscard]] auto ReadConfigFile(const string& path) -> ConfigFile;
     [[nodiscard]] auto WriteFile(const string& path, bool apply) -> OutputFile;
+
+    void AddDataSource(const string& path, bool cache_dirs);
     void DeleteFile(const string& path);
     void DeleteDir(const string& path);
     void RenameFile(const string& from_path, const string& to_path);

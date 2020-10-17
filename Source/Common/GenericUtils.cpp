@@ -147,13 +147,6 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
     return h;
 }
 
-void Hashing::XOR(uchar* data, uint len, const uchar* xor_key, uint xor_len)
-{
-    for (uint i = 0; i < len; i++) {
-        data[i] ^= xor_key[i % xor_len];
-    }
-}
-
 auto Hashing::ClientPassHash(const string& name, const string& pass) -> string
 {
     auto* bld = new char[MAX_NAME + 1];
@@ -200,19 +193,20 @@ auto Compressor::Compress(const uchar* data, uint& data_len) -> uchar*
     return buf;
 }
 
-auto Compressor::Compress(UCharVec& data) -> bool
+auto Compressor::Compress(const vector<uchar>& data) -> vector<uchar>
 {
     auto result_len = static_cast<uint>(data.size());
     auto* result = Compress(&data[0], result_len);
     if (result == nullptr) {
-        return false;
+        return {};
     }
 
-    data.resize(result_len);
-    data.shrink_to_fit();
-    std::memcpy(&data[0], result, result_len);
+    vector<uchar> compressed_data;
+    compressed_data.resize(result_len);
+    compressed_data.shrink_to_fit();
+    std::memcpy(&compressed_data[0], result, result_len);
     delete[] result;
-    return true;
+    return compressed_data;
 }
 
 auto Compressor::Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*
@@ -246,18 +240,19 @@ auto Compressor::Uncompress(const uchar* data, uint& data_len, uint mul_approx) 
     return buf;
 }
 
-auto Compressor::Uncompress(UCharVec& data, uint mul_approx) -> bool
+auto Compressor::Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>
 {
     auto result_len = static_cast<uint>(data.size());
     auto* result = Uncompress(&data[0], result_len, mul_approx);
     if (result == nullptr) {
-        return false;
+        return {};
     }
 
-    data.resize(result_len);
-    std::memcpy(&data[0], result, result_len);
+    vector<uchar> uncompressed_data;
+    uncompressed_data.resize(result_len);
+    std::memcpy(&uncompressed_data[0], result, result_len);
     delete[] result;
-    return true;
+    return uncompressed_data;
 }
 
 // Default randomizer
@@ -408,13 +403,13 @@ auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint
     return static_cast<uint>(sqrt(static_cast<double>(dx * dx + dy * dy)));
 }
 
-void GenericUtils::GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int y2)
+auto GenericUtils::GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, float>
 {
     const auto dx = static_cast<float>(abs(x2 - x1));
     const auto dy = static_cast<float>(abs(y2 - y1));
 
-    sx = 1.0f;
-    sy = 1.0f;
+    auto sx = 1.0f;
+    auto sy = 1.0f;
 
     dx < dy ? sx = dx / dy : sy = dy / dx;
 
@@ -424,13 +419,16 @@ void GenericUtils::GetStepsXY(float& sx, float& sy, int x1, int y1, int x2, int 
     if (y2 < y1) {
         sy = -sy;
     }
+
+    return {sx, sy};
 }
 
-void GenericUtils::ChangeStepsXY(float& sx, float& sy, float deq)
+auto GenericUtils::ChangeStepsXY(float sx, float sy, float deq) -> tuple<float, float>
 {
     const auto rad = deq * PI_FLOAT / 180.0f;
     sx = sx * cos(rad) - sy * sin(rad);
     sy = sx * sin(rad) + sy * cos(rad);
+    return {sx, sy};
 }
 
 static void MultMatricesf(const float a[16], const float b[16], float r[16]);

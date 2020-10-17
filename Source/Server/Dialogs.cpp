@@ -41,7 +41,7 @@
 #include "Map.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(const string& str, bool is_demand, int& type, bool& is_hash) -> int
+static auto GetPropEnumIndex(const string& str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
     auto* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
     auto* prop_critter = Critter::PropertiesRegistrator->Find(str);
@@ -219,7 +219,7 @@ auto DialogManager::ParseDialog(const string& pack_name, const string& data) -> 
     string lang_buf;
     pack->PackId = _str(pack_name).toHash();
     pack->PackName = pack_name;
-    StrVec lang_apps;
+    vector<string> lang_apps;
 
     // Comment
     pack->Comment = fodlg.GetAppContent("comment");
@@ -399,7 +399,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     auto fail = false;
     char who = DR_WHO_PLAYER;
     auto oper = '=';
-    auto values_count = 0;
+    uchar values_count = 0u;
     string svalue;
     auto ivalue = 0;
     max_t id = 0;
@@ -416,7 +416,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         return nullptr;
     }
 
-    int type = GetDrType(type_str);
+    auto type = GetDrType(type_str);
     if (type == DR_NO_RECHECK) {
         no_recheck = true;
         input >> type_str;
@@ -620,7 +620,7 @@ auto DialogManager::GetNotAnswerAction(const string& str) -> ScriptFunc<string, 
     return _scriptSys.FindFunc<string, Critter*, Critter*>(str);
 }
 
-auto DialogManager::GetDrType(const string& str) -> char
+auto DialogManager::GetDrType(const string& str) -> uchar
 {
     if (str == "Property" || str == "_param") {
         return DR_PROP_CRITTER;
@@ -640,7 +640,7 @@ auto DialogManager::GetDrType(const string& str) -> char
     return DR_NONE;
 }
 
-auto DialogManager::GetWho(char who) -> char
+auto DialogManager::GetWho(char who) -> uchar
 {
     if (who == 'P' || who == 'p') {
         return DR_WHO_PLAYER;

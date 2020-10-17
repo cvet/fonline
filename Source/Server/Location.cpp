@@ -69,12 +69,12 @@ auto Location::IsLocVisible() const -> bool
     return !GetHidden() || GetGeckVisible() && GeckCount > 0;
 }
 
-auto Location::GetMapsRaw() -> MapVec&
+auto Location::GetMapsRaw() -> vector<Map*>&
 {
     return _locMaps;
 };
 
-auto Location::GetMaps() const -> MapVec
+auto Location::GetMaps() const -> vector<Map*>
 {
     return _locMaps;
 }

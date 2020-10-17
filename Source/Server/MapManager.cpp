@@ -39,32 +39,64 @@
 #include "LineTracer.h"
 #include "Log.h"
 #include "MapLoader.h"
-#include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
 
 MapManager::MapManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) : _settings {settings}, _geomHelper(_settings), _protoMngr {proto_mngr}, _entityMngr {entity_mngr}, _crMngr {cr_mngr}, _itemMngr {item_mngr}, _scriptSys {script_sys}, _gameTime {game_time}
 {
-    for (auto i = 1; i < FPATH_DATA_SIZE; i++) {
-        _pathesPool[i].reserve(100);
+}
+
+void MapManager::LinkMaps()
+{
+    WriteLog("Link maps...\n");
+
+    // Link maps to locations
+    for (auto* map : GetMaps()) {
+        const auto loc_id = map->GetLocId();
+        const auto loc_map_index = map->GetLocMapIndex();
+
+        auto* loc = GetLocation(loc_id);
+        if (loc == nullptr) {
+            throw EntitiesLoadException("Location for map not found", loc_id, map->GetName(), map->Id);
+        }
+
+        auto& loc_maps = loc->GetMapsRaw();
+        if (loc_map_index >= static_cast<uint>(loc_maps.size())) {
+            loc_maps.resize(loc_map_index + 1);
+        }
+
+        loc_maps[loc_map_index] = map;
+        map->SetLocation(loc);
     }
+
+    // Verify linkage result
+    for (auto* loc : GetLocations()) {
+        auto& loc_maps = loc->GetMapsRaw();
+        for (size_t i = 0; i < loc_maps.size(); i++) {
+            if (loc_maps[i] == nullptr) {
+                throw EntitiesLoadException("Location map is empty", loc->GetName(), loc->Id, i);
+            }
+        }
+    }
+
+    WriteLog("Link maps complete.\n");
 }
 
 void MapManager::LoadStaticMaps(FileManager& file_mngr)
 {
-    for (const auto& [fst, snd] : _protoMngr.GetProtoMaps()) {
-        LoadStaticMap(file_mngr, snd);
+    for (const auto& [pid, proto] : _protoMngr.GetProtoMaps()) {
+        LoadStaticMap(file_mngr, proto);
     }
 }
 
-void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
+void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 {
     StaticMap static_map {};
 
     MapLoader::Load(
         pmap->GetName(), file_mngr, _protoMngr,
-        [&static_map, this](uint id, const ProtoCritter* proto, const StrMap& kv) -> bool {
+        [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* npc = new Npc(id, proto, _settings, _scriptSys, _gameTime);
             if (!npc->Props.LoadFromText(kv)) {
                 delete npc;
@@ -74,7 +106,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             static_map.CrittersVec.push_back(npc);
             return true;
         },
-        [&static_map, this](uint id, const ProtoItem* proto, const StrMap& kv) -> bool {
+        [&static_map, this](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
             auto* item = new Item(id, proto, _scriptSys);
             if (!item->Props.LoadFromText(kv)) {
                 delete item;
@@ -154,7 +186,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     std::memset(static_map.HexFlags, 0, maxhx * maxhy);
 
     uint scenery_count = 0;
-    UCharVec scenery_data;
+    vector<uchar> scenery_data;
     for (auto& item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
@@ -190,13 +222,14 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             SetBit(static_map.HexFlags[hy * maxhx + hx], FH_NOTRAKE);
         }
 
+        // Block around scroll blocks
         if (item->GetIsScrollBlock()) {
-            // Block around
             for (uchar k = 0; k < 6; k++) {
                 auto hx_ = hx;
                 auto hy_ = hy;
-                _geomHelper.MoveHexByDir(hx_, hy_, k, maxhx, maxhy);
-                SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+                if (_geomHelper.MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
+                    SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+                }
             }
         }
 
@@ -222,8 +255,8 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
             scenery_count++;
             WriteData(scenery_data, item->Id);
             WriteData(scenery_data, item->GetProtoId());
-            PUCharVec* all_data = nullptr;
-            UIntVec* all_data_sizes = nullptr;
+            vector<uchar*>* all_data = nullptr;
+            vector<uint>* all_data_sizes = nullptr;
             item->Props.StoreData(false, &all_data, &all_data_sizes);
             WriteData(scenery_data, static_cast<uint>(all_data->size()));
             for (size_t i = 0; i < all_data->size(); i++) {
@@ -262,9 +295,9 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, ProtoMap* pmap)
     _staticMaps.emplace(pmap, std::move(static_map));
 }
 
-auto MapManager::FindStaticMap(const ProtoMap* proto_map) -> const StaticMap*
+auto MapManager::FindStaticMap(const ProtoMap* proto_map) const -> const StaticMap*
 {
-    auto it = _staticMaps.find(proto_map);
+    const auto it = _staticMaps.find(proto_map);
     return it != _staticMaps.end() ? &it->second : nullptr;
 }
 
@@ -272,7 +305,7 @@ void MapManager::GenerateMapContent(Map* map)
 {
     NON_CONST_METHOD_HINT(_smoothSwitcher);
 
-    UIntMap id_map;
+    std::map<uint, uint> id_map;
 
     // Generate npc
     for (auto* base_cr : map->GetStaticMap()->CrittersVec) {
@@ -393,32 +426,10 @@ void MapManager::DeleteMapContent(Map* map)
     RUNTIME_ASSERT(map->_mapBlockLinesByHex.empty());
 }
 
-auto MapManager::RestoreLocation(uint id, hash proto_id, const DataBase::Document& doc) -> bool
+auto MapManager::GetLocationAndMapsStatistics() const -> string
 {
-    const auto* proto = _protoMngr.GetProtoLocation(proto_id);
-    if (proto == nullptr) {
-        WriteLog("Location proto '{}' is not loaded.\n", _str().parseHash(proto_id));
-        return false;
-    }
-
-    auto* loc = new Location(id, proto, _scriptSys);
-    if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, _scriptSys)) {
-        WriteLog("Fail to restore properties for location '{}' ({}).\n", _str().parseHash(proto_id), id);
-        loc->Release();
-        return false;
-    }
-
-    loc->BindScript();
-    _entityMngr.RegisterEntity(loc);
-    return true;
-}
-
-auto MapManager::GetLocationsMapsStatistics() const -> string
-{
-    EntityVec locations;
-    _entityMngr.GetEntities(EntityType::Location, locations);
-    EntityVec maps;
-    _entityMngr.GetEntities(EntityType::Map, maps);
+    const auto locations = _entityMngr.GetEntities(EntityType::Location);
+    const auto maps = _entityMngr.GetEntities(EntityType::Map);
 
     string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
     result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
@@ -516,30 +527,6 @@ auto MapManager::CreateMap(hash proto_id, Location* loc) -> Map*
     return map;
 }
 
-auto MapManager::RestoreMap(uint id, hash proto_id, const DataBase::Document& doc) -> bool
-{
-    const auto* proto_map = _protoMngr.GetProtoMap(proto_id);
-    if (proto_map == nullptr) {
-        WriteLog("Map proto '{}' is not loaded.\n", _str().parseHash(proto_id));
-        return false;
-    }
-
-    auto it = _staticMaps.find(proto_map);
-    if (it == _staticMaps.end()) {
-        throw MapManagerException("Static map not found", proto_id);
-    }
-
-    auto* map = new Map(id, proto_map, nullptr, &it->second, _settings, _scriptSys, _gameTime);
-    if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, _scriptSys)) {
-        WriteLog("Fail to restore properties for map '{}' ({}).\n", _str().parseHash(proto_id), id);
-        map->Release();
-        return false;
-    }
-
-    _entityMngr.RegisterEntity(map);
-    return true;
-}
-
 void MapManager::RegenerateMap(Map* map)
 {
     _scriptSys.MapFinishEvent(map);
@@ -555,23 +542,34 @@ void MapManager::RegenerateMap(Map* map)
 
 auto MapManager::GetMap(uint map_id) -> Map*
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     if (map_id == 0u) {
         return nullptr;
     }
     return dynamic_cast<Map*>(_entityMngr.GetEntity(map_id, EntityType::Map));
 }
 
+auto MapManager::GetMap(uint map_id) const -> const Map*
+{
+    return const_cast<MapManager*>(this)->GetMap(map_id);
+}
+
 auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     if (map_pid == 0u) {
         return nullptr;
     }
     return _entityMngr.GetMapByPid(map_pid, skip_count);
 }
 
-void MapManager::GetMaps(MapVec& maps)
+auto MapManager::GetMaps() -> vector<Map*>
 {
-    _entityMngr.GetMaps(maps);
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
+    return _entityMngr.GetMaps();
 }
 
 auto MapManager::GetMapsCount() const -> uint
@@ -590,14 +588,23 @@ auto MapManager::GetLocationByMap(uint map_id) -> Location*
 
 auto MapManager::GetLocation(uint loc_id) -> Location*
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     if (loc_id == 0u) {
         return nullptr;
     }
     return dynamic_cast<Location*>(_entityMngr.GetEntity(loc_id, EntityType::Location));
 }
 
+auto MapManager::GetLocation(uint loc_id) const -> const Location*
+{
+    return const_cast<MapManager*>(this)->GetLocation(loc_id);
+}
+
 auto MapManager::GetLocationByPid(hash loc_pid, uint skip_count) -> Location*
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     if (loc_pid == 0u) {
         return nullptr;
     }
@@ -607,24 +614,26 @@ auto MapManager::GetLocationByPid(hash loc_pid, uint skip_count) -> Location*
 auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool
 {
     const int zl = _settings.GlobalMapZoneLength;
-    const Rect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
-    const Rect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
-    return r1.L <= r2.R && r2.L <= r1.R && r1.T <= r2.B && r2.T <= r1.B;
+    const IRect r1((wx1 - w1_radius) / zl - zones, (wy1 - w1_radius) / zl - zones, (wx1 + w1_radius) / zl + zones, (wy1 + w1_radius) / zl + zones);
+    const IRect r2((wx2 - w2_radius) / zl, (wy2 - w2_radius) / zl, (wx2 + w2_radius) / zl, (wy2 + w2_radius) / zl);
+    return r1.Left <= r2.Right && r2.Left <= r1.Right && r1.Top <= r2.Bottom && r2.Top <= r1.Bottom;
 }
 
-void MapManager::GetZoneLocations(int zx, int zy, int zone_radius, UIntVec& loc_ids)
+auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>
 {
-    LocationVec locs;
-    _entityMngr.GetLocations(locs);
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
 
     const auto wx = zx * static_cast<int>(_settings.GlobalMapZoneLength);
     const auto wy = zy * static_cast<int>(_settings.GlobalMapZoneLength);
 
-    for (auto* loc : locs) {
-        if (loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
-            loc_ids.push_back(loc->GetId());
+    vector<Location*> locs;
+    for (auto* loc : _entityMngr.GetLocations()) {
+        if (!loc->IsDestroyed && loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
+            locs.push_back(loc);
         }
     }
+
+    return locs;
 }
 
 void MapManager::KickPlayersToGlobalMap(Map* map)
@@ -634,9 +643,11 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     }
 }
 
-void MapManager::GetLocations(LocationVec& locs)
+auto MapManager::GetLocations() -> vector<Location*>
 {
-    _entityMngr.GetLocations(locs);
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
+    return _entityMngr.GetLocations();
 }
 
 auto MapManager::GetLocationsCount() const -> uint
@@ -649,15 +660,12 @@ void MapManager::LocationGarbager()
     if (_runGarbager) {
         _runGarbager = false;
 
-        LocationVec locs;
-        _entityMngr.GetLocations(locs);
-
-        ClientVec* gmap_players = nullptr;
-        ClientVec players;
-        for (auto* loc : locs) {
+        vector<Client*>* gmap_players = nullptr;
+        vector<Client*> players;
+        for (auto* loc : _entityMngr.GetLocations()) {
             if (loc->GetAutoGarbage() && loc->IsCanDelete()) {
                 if (gmap_players == nullptr) {
-                    _crMngr.GetClients(players, true);
+                    players = _crMngr.GetClients(true);
                     gmap_players = &players;
                 }
                 DeleteLocation(loc, gmap_players);
@@ -666,7 +674,7 @@ void MapManager::LocationGarbager()
     }
 }
 
-void MapManager::DeleteLocation(Location* loc, ClientVec* gmap_players)
+void MapManager::DeleteLocation(Location* loc, vector<Client*>* gmap_players)
 {
     // Start deleting
     auto maps = loc->GetMaps();
@@ -688,9 +696,9 @@ void MapManager::DeleteLocation(Location* loc, ClientVec* gmap_players)
     }
 
     // Send players on global map about this
-    ClientVec players;
+    vector<Client*> players;
     if (gmap_players == nullptr) {
-        _crMngr.GetClients(players, true);
+        players = _crMngr.GetClients(true);
         gmap_players = &players;
     }
 
@@ -725,8 +733,10 @@ void MapManager::DeleteLocation(Location* loc, ClientVec* gmap_players)
     loc->Release();
 }
 
-void MapManager::TraceBullet(TraceData& trace) const
+void MapManager::TraceBullet(TraceData& trace)
 {
+    NON_CONST_METHOD_HINT(_smoothSwitcher);
+
     auto* map = trace.TraceMap;
     const auto maxhx = map->GetWidth();
     const auto maxhy = map->GetHeight();
@@ -757,7 +767,7 @@ void MapManager::TraceBullet(TraceData& trace) const
             break;
         }
 
-        uchar dir = 0;
+        uchar dir;
         if (_settings.MapHexagonal) {
             dir = line_tracer.GetNextHex(cx, cy);
         }
@@ -789,7 +799,7 @@ void MapManager::TraceBullet(TraceData& trace) const
         }
 
         if (trace.Critters != nullptr && map->IsHexCritter(cx, cy)) {
-            map->GetCrittersHex(cx, cy, 0, trace.FindType, *trace.Critters);
+            *trace.Critters = map->GetCrittersHex(cx, cy, 0, trace.FindType);
         }
 
         if (trace.FindCr != nullptr && map->IsFlagCritter(cx, cy, false)) {
@@ -819,7 +829,7 @@ static thread_local int MapGridOffsY = 0;
 static thread_local short* Grid = nullptr;
 #define GRID(x, y) Grid[((FPATH_MAX_PATH + 1) + (y)-MapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + (x)-MapGridOffsX)]
 
-auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
+auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
 {
     // Allocate temporary grid
     if (Grid == nullptr) {
@@ -840,34 +850,39 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
     auto check_gag_items = pfd.CheckGagItems;
     auto dirs_count = _settings.MapDirCount;
 
+    FindPathOutput output;
+
     // Checks
     if (trace != 0u && pfd.TraceCr == nullptr) {
-        return FindPathResult::TraceTargetNullptr;
+        output.Result = FindPathResult::TraceTargetNullptr;
+        return output;
     }
 
     auto* map = GetMap(map_id);
     if (map == nullptr) {
-        return FindPathResult::MapNotFound;
+        output.Result = FindPathResult::MapNotFound;
+        return output;
     }
 
     const auto maxhx = map->GetWidth();
     const auto maxhy = map->GetHeight();
 
     if (from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy) {
-        return FindPathResult::InvalidHexes;
+        output.Result = FindPathResult::InvalidHexes;
+        return output;
     }
     if (_geomHelper.CheckDist(from_hx, from_hy, to_hx, to_hy, cut)) {
-        return FindPathResult::AlreadyHere;
+        output.Result = FindPathResult::AlreadyHere;
+        return output;
     }
     if (cut == 0u && IsBitSet(map->GetHexFlags(to_hx, to_hy), FH_NOWAY)) {
-        return FindPathResult::HexBusy;
+        output.Result = FindPathResult::HexBusy;
+        return output;
     }
 
     // Ring check
     if (cut <= 1 && multihex == 0u) {
-        short* rsx = nullptr;
-        short* rsy = nullptr;
-        _geomHelper.GetHexOffsets((to_hx & 1) != 0, rsx, rsy);
+        auto [rsx, rsy] = _geomHelper.GetHexOffsets((to_hx % 2) != 0);
 
         auto i = 0;
         for (; i < dirs_count; i++, rsx++, rsy++) {
@@ -885,7 +900,8 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
         }
 
         if (i == dirs_count) {
-            return FindPathResult::HexBusyRing;
+            output.Result = FindPathResult::HexBusyRing;
+            return output;
         }
     }
 
@@ -915,15 +931,15 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
     std::memset(Grid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
     GRID(from_hx, from_hy) = numindex;
 
-    UShortPairVec coords;
-    UShortPairVec cr_coords;
-    UShortPairVec gag_coords;
+    vector<pair<ushort, ushort>> coords;
+    vector<pair<ushort, ushort>> cr_coords;
+    vector<pair<ushort, ushort>> gag_coords;
     coords.reserve(10000);
     cr_coords.reserve(100);
     gag_coords.reserve(100);
 
     // First point
-    coords.push_back(std::make_pair(from_hx, from_hy));
+    coords.emplace_back(from_hx, from_hy);
 
     // Begin search
     auto p = 0;
@@ -940,12 +956,11 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
                 goto label_FindOk;
             }
             if (++numindex > FPATH_MAX_PATH) {
-                return FindPathResult::TooFar;
+                output.Result = FindPathResult::TooFar;
+                return output;
             }
 
-            short* sx = nullptr;
-            short* sy = nullptr;
-            _geomHelper.GetHexOffsets((cx & 1) != 0, sx, sy);
+            const auto [sx, sy] = _geomHelper.GetHexOffsets((cx & 1) != 0);
 
             for (auto j = 0; j < dirs_count; j++) {
                 short nx = static_cast<short>(cx) + sx[j];
@@ -962,15 +977,15 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
                 if (multihex == 0u) {
                     auto flags = map->GetHexFlags(nx, ny);
                     if (!IsBitSet(flags, FH_NOWAY)) {
-                        coords.push_back(std::make_pair(nx, ny));
+                        coords.emplace_back(nx, ny);
                         g = numindex;
                     }
                     else if (check_gag_items && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
-                        gag_coords.push_back(std::make_pair(nx, ny));
+                        gag_coords.emplace_back(nx, ny);
                         g = numindex | 0x4000;
                     }
                     else if (check_cr && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
-                        cr_coords.push_back(std::make_pair(nx, ny));
+                        cr_coords.emplace_back(nx, ny);
                         g = numindex | 0x8000;
                     }
                     else {
@@ -987,7 +1002,7 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
                        //if(!IsHexPassed(hx_,hy_)) return false;
 
                        // Clock wise hexes
-                       bool is_square_corner=(!settings.MapHexagonal && IS_DIR_CORNER(j));
+                       bool is_square_corner=(!settings.MapHexagonal && (j % 2) != 0);
                        uint steps_count=(is_square_corner?multihex*2:multihex);
                        int dir_=(settings.MapHexagonal?((j+2)%6):((j+2)%8));
                        if(is_square_corner) dir_=(dir_+1)%8;
@@ -1010,7 +1025,7 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
                      */
 
                     if (map->IsMovePassed(nx, ny, j, multihex)) {
-                        coords.push_back(std::make_pair(nx, ny));
+                        coords.emplace_back(nx, ny);
                         g = numindex;
                     }
                     else {
@@ -1053,16 +1068,14 @@ auto MapManager::FindPath(PathFindData& pfd) -> FindPathResult
         }
 
         if (p_togo == 0) {
-            return FindPathResult::DeadLock;
+            output.Result = FindPathResult::DeadLock;
+            return output;
         }
     }
 
 label_FindOk:
-    if (++_pathNumCur >= FPATH_DATA_SIZE) {
-        _pathNumCur = 1;
-    }
-    auto& path = _pathesPool[_pathNumCur];
-    path.resize(numindex - 1);
+    auto& steps = output.Steps;
+    steps.resize(static_cast<size_t>(numindex - 1));
 
     // Smooth data
     if (!_settings.MapSmoothPath) {
@@ -1109,12 +1122,13 @@ label_FindOk:
         }
 
         numindex--;
-        auto& ps = path[numindex - 1];
+        auto& ps = steps[numindex - 1];
         ps.HexX = cx;
         ps.HexY = cy;
-        auto dir = FindPathGrid(cx, cy, numindex, _smoothSwitcher);
-        if (dir == -1) {
-            return FindPathResult::InternalError;
+        const auto dir = FindPathGrid(cx, cy, numindex, _smoothSwitcher);
+        if (dir == std::numeric_limits<uchar>::max()) {
+            output.Result = FindPathResult::InternalError;
+            return output;
         }
         ps.Dir = dir;
 
@@ -1123,8 +1137,8 @@ label_FindOk:
 
     // Check for closed door and critter
     if (check_cr || check_gag_items) {
-        for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
-            auto& ps = path[i];
+        for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
+            auto& ps = steps[i];
             if (map->IsHexPassed(ps.HexX, ps.HexY)) {
                 continue;
             }
@@ -1134,8 +1148,8 @@ label_FindOk:
                 if (item == nullptr) {
                     continue;
                 }
-                pfd.GagItem = item;
-                path.resize(i);
+                output.GagItem = item;
+                steps.resize(i);
                 break;
             }
 
@@ -1144,8 +1158,8 @@ label_FindOk:
                 if (cr == nullptr || cr == pfd.FromCritter) {
                     continue;
                 }
-                pfd.GagCritter = cr;
-                path.resize(i);
+                output.GagCritter = cr;
+                steps.resize(i);
                 break;
             }
         }
@@ -1153,14 +1167,14 @@ label_FindOk:
 
     // Trace
     if (trace != 0u) {
-        IntVec trace_seq;
+        vector<int> trace_seq;
         auto targ_hx = pfd.TraceCr->GetHexX();
         auto targ_hy = pfd.TraceCr->GetHexY();
         auto trace_ok = false;
 
-        trace_seq.resize(path.size() + 4);
-        for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
-            auto& ps = path[i];
+        trace_seq.resize(steps.size() + 4);
+        for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
+            auto& ps = steps[i];
             if (map->IsHexGag(ps.HexX, ps.HexY)) {
                 trace_seq[i + 2 - 2] += 1;
                 trace_seq[i + 2 - 1] += 2;
@@ -1176,7 +1190,7 @@ label_FindOk:
         trace_.EndHy = targ_hy;
         trace_.FindCr = pfd.TraceCr;
         for (auto k = 0; k < 5; k++) {
-            for (auto i = 0, j = static_cast<int>(path.size()); i < j; i++) {
+            for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
                 if (k < 4 && trace_seq[i + 2] != k) {
                     continue;
                 }
@@ -1184,7 +1198,7 @@ label_FindOk:
                     continue;
                 }
 
-                auto& ps = path[i];
+                auto& ps = steps[i];
 
                 if (!_geomHelper.CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace)) {
                     continue;
@@ -1195,39 +1209,42 @@ label_FindOk:
                 TraceBullet(trace_);
                 if (trace_.IsCritterFounded) {
                     trace_ok = true;
-                    path.resize(i + 1);
+                    steps.resize(i + 1);
                     goto label_TraceOk;
                 }
             }
         }
 
-        if (!trace_ok && pfd.GagItem == nullptr && pfd.GagCritter == nullptr) {
-            return FindPathResult::TraceFailed;
+        if (!trace_ok && output.GagItem == nullptr && output.GagCritter == nullptr) {
+            output.Result = FindPathResult::TraceFailed;
+            return output;
         }
+
     label_TraceOk:
         if (trace_ok) {
-            pfd.GagItem = nullptr;
-            pfd.GagCritter = nullptr;
+            output.GagItem = nullptr;
+            output.GagCritter = nullptr;
         }
     }
 
     // Parse move params
-    PathSetMoveParams(path, is_run);
+    PathSetMoveParams(steps, is_run);
 
     // Number of path
-    if (path.empty()) {
-        return FindPathResult::AlreadyHere;
+    if (steps.empty()) {
+        output.Result = FindPathResult::AlreadyHere;
+        return output;
     }
-    pfd.PathNum = _pathNumCur;
 
     // New X,Y
-    auto& ps = path[path.size() - 1];
-    pfd.NewToX = ps.HexX;
-    pfd.NewToY = ps.HexY;
-    return FindPathResult::Ok;
+    auto& ps = steps[steps.size() - 1];
+    output.NewToX = ps.HexX;
+    output.NewToY = ps.HexY;
+    output.Result = FindPathResult::Ok;
+    return output;
 }
 
-auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) -> int
+auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) const -> uchar
 {
     // Hexagonal
     if (_settings.MapHexagonal) {
@@ -1236,56 +1253,56 @@ auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swi
                 if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
-                    return 3;
+                    return 3u;
                 } // 0
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 2;
+                    return 2u;
                 } // 5
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 5;
+                    return 5u;
                 } // 2
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 0;
+                    return 0u;
                 } // 3
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 4;
+                    return 4u;
                 } // 1
                 if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
-                    return 1;
+                    return 1u;
                 } // 4
             }
             else {
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 3;
+                    return 3u;
                 } // 0
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 2;
+                    return 2u;
                 } // 5
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 5;
+                    return 5u;
                 } // 2
                 if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
-                    return 0;
+                    return 0u;
                 } // 3
                 if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
-                    return 4;
+                    return 4u;
                 } // 1
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 1;
+                    return 1u;
                 } // 4
             }
         }
@@ -1293,57 +1310,57 @@ auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swi
             if ((hx & 1) != 0) {
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 4;
+                    return 4u;
                 } // 1
                 if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
-                    return 1;
+                    return 1u;
                 } // 4
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 2;
+                    return 2u;
                 } // 5
                 if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
-                    return 3;
+                    return 3u;
                 } // 0
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 0;
+                    return 0u;
                 } // 3
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 5;
+                    return 5u;
                 } // 2
             }
             else {
                 if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
-                    return 4;
+                    return 4u;
                 } // 1
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 1;
+                    return 1u;
                 } // 4
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 2;
+                    return 2u;
                 } // 5
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 3;
+                    return 3u;
                 } // 0
                 if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
-                    return 0;
+                    return 0u;
                 } // 3
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 5;
+                    return 5u;
                 } // 2
             }
         }
@@ -1354,39 +1371,39 @@ auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swi
         if (!_settings.MapSmoothPath) {
             if (GRID(hx - 1, hy) == index) {
                 hx--;
-                return 0;
+                return 0u;
             } // 0
             if (GRID(hx, hy - 1) == index) {
                 hy--;
-                return 6;
+                return 6u;
             } // 6
             if (GRID(hx, hy + 1) == index) {
                 hy++;
-                return 2;
+                return 2u;
             } // 2
             if (GRID(hx + 1, hy) == index) {
                 hx++;
-                return 4;
+                return 4u;
             } // 4
             if (GRID(hx - 1, hy + 1) == index) {
                 hx--;
                 hy++;
-                return 1;
+                return 1u;
             } // 1
             if (GRID(hx + 1, hy - 1) == index) {
                 hx++;
                 hy--;
-                return 5;
+                return 5u;
             } // 5
             if (GRID(hx + 1, hy + 1) == index) {
                 hx++;
                 hy++;
-                return 3;
+                return 3u;
             } // 3
             if (GRID(hx - 1, hy - 1) == index) {
                 hx--;
                 hy--;
-                return 7;
+                return 7u;
             } // 7
         }
         // With smoothing
@@ -1394,84 +1411,86 @@ auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_swi
             if (smooth_switcher) {
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 0;
+                    return 0u;
                 } // 0
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 2;
+                    return 2u;
                 } // 2
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 4;
+                    return 4u;
                 } // 4
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 6;
+                    return 6u;
                 } // 6
                 if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
-                    return 3;
+                    return 3u;
                 } // 3
                 if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
-                    return 7;
+                    return 7u;
                 } // 7
                 if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
-                    return 1;
+                    return 1u;
                 } // 1
                 if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
-                    return 5;
+                    return 5u;
                 } // 5
             }
             else {
                 if (GRID(hx + 1, hy + 1) == index) {
                     hx++;
                     hy++;
-                    return 3;
+                    return 3u;
                 } // 3
                 if (GRID(hx - 1, hy - 1) == index) {
                     hx--;
                     hy--;
-                    return 7;
+                    return 7u;
                 } // 7
                 if (GRID(hx - 1, hy) == index) {
                     hx--;
-                    return 0;
+                    return 0u;
                 } // 0
                 if (GRID(hx, hy + 1) == index) {
                     hy++;
-                    return 2;
+                    return 2u;
                 } // 2
                 if (GRID(hx + 1, hy) == index) {
                     hx++;
-                    return 4;
+                    return 4u;
                 } // 4
                 if (GRID(hx, hy - 1) == index) {
                     hy--;
-                    return 6;
+                    return 6u;
                 } // 6
                 if (GRID(hx - 1, hy + 1) == index) {
                     hx--;
                     hy++;
-                    return 1;
+                    return 1u;
                 } // 1
                 if (GRID(hx + 1, hy - 1) == index) {
                     hx++;
                     hy--;
-                    return 5;
+                    return 5u;
                 } // 5
             }
         }
     }
 
-    return -1;
+    return std::numeric_limits<uchar>::max();
 }
+
+#undef GRID
 
 void MapManager::PathSetMoveParams(vector<PathStep>& path, bool is_run)
 {
@@ -1646,7 +1665,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
     cr->SetTimeoutTransfer(_gameTime.GetFullSecond() + _settings.TimeoutTransfer);
 
     if (map != nullptr) {
-        RUNTIME_ASSERT((hx < map->GetWidth() && hy < map->GetHeight()));
+        RUNTIME_ASSERT(hx < map->GetWidth() && hy < map->GetHeight());
 
         cr->SetMapId(map->GetId());
         cr->SetRefMapId(map->GetId());
@@ -1670,7 +1689,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() + 1);
             cr->SetRefGlobalMapTripId(cr->GetGlobalMapTripId());
 
-            cr->GlobalMapGroup = new CritterVec();
+            cr->GlobalMapGroup = new vector<Critter*>();
             cr->GlobalMapGroup->push_back(cr);
         }
         else {
@@ -2220,7 +2239,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         }
 
         // Hide modifier
-        int vis = 0;
+        int vis;
         if (cr->GetIsHide()) {
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {

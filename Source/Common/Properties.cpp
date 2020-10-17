@@ -527,7 +527,7 @@ auto Properties::FindData(const string& property_name) -> void*
     return prop != nullptr ? &_podData[prop->_podDataOffset] : nullptr;
 }
 
-auto Properties::StoreData(bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes) const -> uint
+auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
     uint whole_size = 0;
     *all_data = &_storeData;
@@ -570,12 +570,12 @@ auto Properties::StoreData(bool with_protected, PUCharVec** all_data, UIntVec** 
     return whole_size;
 }
 
-void Properties::RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes)
+void Properties::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes)
 {
     // Restore POD data
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
-    RUNTIME_ASSERT((all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size));
+    RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);
     if (all_data_sizes[0] != 0u) {
         std::memcpy(_podData, all_data[0], all_data_sizes[0]);
     }
@@ -584,7 +584,7 @@ void Properties::RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes)
     if (all_data.size() > 1) {
         const uint comlplex_data_count = all_data_sizes[1] / sizeof(ushort);
         RUNTIME_ASSERT(comlplex_data_count > 0);
-        UShortVec complex_indicies(comlplex_data_count);
+        vector<ushort> complex_indicies(comlplex_data_count);
         std::memcpy(&complex_indicies[0], all_data[1], all_data_sizes[1]);
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
@@ -598,10 +598,10 @@ void Properties::RestoreData(PUCharVec& all_data, UIntVec& all_data_sizes)
     }
 }
 
-void Properties::RestoreData(UCharVecVec& all_data)
+void Properties::RestoreData(vector<vector<uchar>>& all_data)
 {
-    PUCharVec all_data_ext(all_data.size());
-    UIntVec all_data_sizes(all_data.size());
+    vector<uchar*> all_data_ext(all_data.size());
+    vector<uint> all_data_sizes(all_data.size());
     for (size_t i = 0; i < all_data.size(); i++) {
         all_data_ext[i] = !all_data[i].empty() ? &all_data[i][0] : nullptr;
         all_data_sizes[i] = static_cast<uint>(all_data[i].size());
@@ -976,7 +976,7 @@ void* ReadValue(
     return nullptr;
 }*/
 
-auto Properties::LoadFromText(const StrMap & /*key_values*/) -> bool
+auto Properties::LoadFromText(const map<string, string> & /*key_values*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : key_values)
@@ -1009,11 +1009,12 @@ auto Properties::LoadFromText(const StrMap & /*key_values*/) -> bool
     return false;
 }
 
-void Properties::SaveToText(StrMap& key_values, Properties* base) const
+auto Properties::SaveToText(Properties* base) const -> map<string, string>
 {
-    RUNTIME_ASSERT((!base || _registrator == base->_registrator));
+    RUNTIME_ASSERT(!base || _registrator == base->_registrator);
 
-    for (auto& prop : _registrator->_registeredProperties) {
+    map<string, string> key_values;
+    for (auto* prop : _registrator->_registeredProperties) {
         // Skip pure virtual properties
         if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
             continue;
@@ -1058,13 +1059,15 @@ void Properties::SaveToText(StrMap& key_values, Properties* base) const
         // Serialize to text and store in map
         key_values.insert(std::make_pair(prop->_propName, SavePropertyToText(prop)));
     }
+
+    return key_values;
 }
 
 auto Properties::LoadPropertyFromText(Property* /*prop*/, const string & /*text*/) -> bool
 {
     /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
-    RUNTIME_ASSERT((prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1)));
+    RUNTIME_ASSERT(prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1));
     bool is_error = false;
 
     // Parse
@@ -1098,7 +1101,7 @@ auto Properties::SavePropertyToText(Property* prop) const -> string
 {
     RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(_registrator == prop->_registrator);
-    RUNTIME_ASSERT((prop->_podDataOffset != uint(-1) || prop->_complexDataIndex != uint(-1)));
+    RUNTIME_ASSERT(prop->_podDataOffset != uint(-1) || prop->_complexDataIndex != uint(-1));
 
     uint data_size = 0;
     // void* data = GetRawData(prop, data_size);

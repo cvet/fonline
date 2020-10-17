@@ -34,7 +34,7 @@
 #include "3dAnimation.h"
 #include "GenericUtils.h"
 
-void AnimSet::Load(DataReader& reader)
+void ModelAnimation::Load(DataReader& reader)
 {
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
@@ -78,7 +78,7 @@ void AnimSet::Load(DataReader& reader)
     }
 }
 
-void AnimSet::SetData(const string& fname, const string& name, float ticks, float tps)
+void ModelAnimation::SetData(const string& fname, const string& name, float ticks, float tps)
 {
     _animFileName = fname;
     _animName = name;
@@ -86,7 +86,7 @@ void AnimSet::SetData(const string& fname, const string& name, float ticks, floa
     _ticksPerSecond = tps;
 }
 
-void AnimSet::AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorVec& sv, const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv)
+void ModelAnimation::AddBoneOutput(vector<hash> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv)
 {
     auto& o = _boneOutputs.emplace_back();
     o.NameHash = hierarchy.back();
@@ -99,41 +99,41 @@ void AnimSet::AddBoneOutput(HashVec hierarchy, const FloatVec& st, const VectorV
     _bonesHierarchy.push_back(hierarchy);
 }
 
-auto AnimSet::GetFileName() const -> const string&
+auto ModelAnimation::GetFileName() const -> const string&
 {
     return _animFileName;
 }
 
-auto AnimSet::GetName() const -> const string&
+auto ModelAnimation::GetName() const -> const string&
 {
     return _animName;
 }
 
-auto AnimSet::GetBoneOutputCount() const -> uint
+auto ModelAnimation::GetBoneOutputCount() const -> uint
 {
     return static_cast<uint>(_boneOutputs.size());
 }
 
-auto AnimSet::GetDuration() const -> float
+auto ModelAnimation::GetDuration() const -> float
 {
     return _durationTicks / _ticksPerSecond;
 }
 
-auto AnimSet::GetBonesHierarchy() const -> const HashVecVec&
+auto ModelAnimation::GetBonesHierarchy() const -> const vector<vector<hash>>&
 {
     return _bonesHierarchy;
 }
 
-AnimController::AnimController(uint track_count)
+ModelAnimationController::ModelAnimationController(uint track_count)
 {
     if (track_count != 0u) {
-        _sets = new vector<AnimSet*>();
+        _sets = new vector<ModelAnimation*>();
         _outputs = new vector<Output>();
         _tracks.resize(track_count);
     }
 }
 
-AnimController::~AnimController()
+ModelAnimationController::~ModelAnimationController()
 {
     if (!_cloned) {
         delete _sets;
@@ -141,9 +141,9 @@ AnimController::~AnimController()
     }
 }
 
-auto AnimController::Clone() const -> AnimController*
+auto ModelAnimationController::Clone() const -> ModelAnimationController*
 {
-    auto* clone = new AnimController(0);
+    auto* clone = new ModelAnimationController(0);
     clone->_cloned = true;
     clone->_sets = _sets;
     clone->_outputs = _outputs;
@@ -153,10 +153,11 @@ auto AnimController::Clone() const -> AnimController*
     return clone;
 }
 
-void AnimController::RegisterAnimationOutput(hash bone_name_hash, Matrix& output_matrix) const
+void ModelAnimationController::RegisterAnimationOutput(hash bone_name_hash, mat44& output_matrix)
 {
-    _outputs->push_back(Output());
-    auto& o = _outputs->back();
+    NON_CONST_METHOD_HINT(_cloned);
+
+    auto& o = _outputs->emplace_back();
     o.NameHash = bone_name_hash;
     o.Matrix = &output_matrix;
     o.Valid.resize(_tracks.size());
@@ -166,12 +167,14 @@ void AnimController::RegisterAnimationOutput(hash bone_name_hash, Matrix& output
     o.Translation.resize(_tracks.size());
 }
 
-void AnimController::RegisterAnimationSet(AnimSet* animation) const
+void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 {
+    NON_CONST_METHOD_HINT(_cloned);
+
     _sets->push_back(animation);
 }
 
-auto AnimController::GetAnimationSet(uint index) const -> AnimSet*
+auto ModelAnimationController::GetAnimationSet(uint index) const -> ModelAnimation*
 {
     if (index >= _sets->size()) {
         return nullptr;
@@ -179,7 +182,7 @@ auto AnimController::GetAnimationSet(uint index) const -> AnimSet*
     return (*_sets)[index];
 }
 
-auto AnimController::GetAnimationSetByName(const string& name) const -> AnimSet*
+auto ModelAnimationController::GetAnimationSetByName(const string& name) const -> ModelAnimation*
 {
     for (auto& s : *_sets) {
         if (s->_animName == name) {
@@ -189,17 +192,17 @@ auto AnimController::GetAnimationSetByName(const string& name) const -> AnimSet*
     return nullptr;
 }
 
-auto AnimController::GetTrackPosition(uint track) const -> float
+auto ModelAnimationController::GetTrackPosition(uint track) const -> float
 {
     return _tracks[track].Position;
 }
 
-auto AnimController::GetNumAnimationSets() const -> uint
+auto ModelAnimationController::GetNumAnimationSets() const -> uint
 {
     return static_cast<uint>(_sets->size());
 }
 
-void AnimController::SetTrackAnimationSet(uint track, AnimSet* anim)
+void ModelAnimationController::SetTrackAnimationSet(uint track, ModelAnimation* anim)
 {
     _tracks[track].Anim = anim;
     const auto count = anim->GetBoneOutputCount();
@@ -217,7 +220,7 @@ void AnimController::SetTrackAnimationSet(uint track, AnimSet* anim)
     }
 }
 
-void AnimController::ResetBonesTransition(uint skip_track, const HashVec& bone_name_hashes)
+void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hash>& bone_name_hashes)
 {
     // Turn off fast transition bones on other tracks
     for (auto bone_name_hash : bone_name_hashes) {
@@ -236,50 +239,51 @@ void AnimController::ResetBonesTransition(uint skip_track, const HashVec& bone_n
     }
 }
 
-void AnimController::Reset()
+void ModelAnimationController::Reset()
 {
     _curTime = 0.0f;
+
     for (auto& t : _tracks) {
         t.Events.clear();
     }
 }
 
-auto AnimController::GetTime() const -> float
+auto ModelAnimationController::GetTime() const -> float
 {
     return _curTime;
 }
 
-void AnimController::AddEventEnable(uint track, bool enable, float start_time)
+void ModelAnimationController::AddEventEnable(uint track, bool enable, float start_time)
 {
     _tracks[track].Events.push_back({Track::EventType::Enable, enable ? 1.0f : -1.0f, start_time, 0.0f});
 }
 
-void AnimController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
+void ModelAnimationController::AddEventSpeed(uint track, float speed, float start_time, float smooth_time)
 {
     _tracks[track].Events.push_back({Track::EventType::Speed, speed, start_time, smooth_time});
 }
 
-void AnimController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
+void ModelAnimationController::AddEventWeight(uint track, float weight, float start_time, float smooth_time)
 {
     _tracks[track].Events.push_back({Track::EventType::Weight, weight, start_time, smooth_time});
 }
 
-void AnimController::SetTrackEnable(uint track, bool enable)
+void ModelAnimationController::SetTrackEnable(uint track, bool enable)
 {
     _tracks[track].Enabled = enable;
 }
 
-void AnimController::SetTrackPosition(uint track, float position)
+void ModelAnimationController::SetTrackPosition(uint track, float position)
 {
     _tracks[track].Position = position;
 }
 
-void AnimController::SetInterpolation(bool enabled)
+void ModelAnimationController::SetInterpolation(bool enabled)
 {
     _interpolationDisabled = !enabled;
 }
 
-void AnimController::AdvanceTime(float time)
+void ModelAnimationController::AdvanceTime(float time)
 {
     // Animation time
     _curTime += time;
@@ -359,9 +363,9 @@ void AnimController::AdvanceTime(float time)
 
             auto t = fmod(track.Position * track.Anim->_ticksPerSecond, track.Anim->_durationTicks);
 
-            FindSrtValue<Vector>(t, o.ScaleTime, o.ScaleValue, track.AnimOutput[k]->Scale[i]);
-            FindSrtValue<Quaternion>(t, o.RotationTime, o.RotationValue, track.AnimOutput[k]->Rotation[i]);
-            FindSrtValue<Vector>(t, o.TranslationTime, o.TranslationValue, track.AnimOutput[k]->Translation[i]);
+            FindSrtValue<vec3>(t, o.ScaleTime, o.ScaleValue, track.AnimOutput[k]->Scale[i]);
+            FindSrtValue<quaternion>(t, o.RotationTime, o.RotationValue, track.AnimOutput[k]->Rotation[i]);
+            FindSrtValue<vec3>(t, o.TranslationTime, o.TranslationValue, track.AnimOutput[k]->Translation[i]);
 
             track.AnimOutput[k]->Valid[i] = true;
             track.AnimOutput[k]->Factor[i] = track.Weight;
@@ -376,23 +380,23 @@ void AnimController::AdvanceTime(float time)
             Interpolate(o.Scale[0], o.Scale[1], factor);
             Interpolate(o.Rotation[0], o.Rotation[1], factor);
             Interpolate(o.Translation[0], o.Translation[1], factor);
-            Matrix ms;
-            Matrix mr;
-            Matrix mt;
-            Matrix::Scaling(o.Scale[0], ms);
-            mr = Matrix(o.Rotation[0].GetMatrix());
-            Matrix::Translation(o.Translation[0], mt);
+            mat44 ms;
+            mat44 mr;
+            mat44 mt;
+            mat44::Scaling(o.Scale[0], ms);
+            mr = mat44(o.Rotation[0].GetMatrix());
+            mat44::Translation(o.Translation[0], mt);
             *o.Matrix = mt * mr * ms;
         }
         else {
             for (uint k = 0, l = static_cast<uint>(_tracks.size()); k < l; k++) {
                 if (o.Valid[k]) {
-                    Matrix ms;
-                    Matrix mr;
-                    Matrix mt;
-                    Matrix::Scaling(o.Scale[k], ms);
-                    mr = Matrix(o.Rotation[k].GetMatrix());
-                    Matrix::Translation(o.Translation[k], mt);
+                    mat44 ms;
+                    mat44 mr;
+                    mat44 mt;
+                    mat44::Scaling(o.Scale[k], ms);
+                    mr = mat44(o.Rotation[k].GetMatrix());
+                    mat44::Translation(o.Translation[k], mt);
                     *o.Matrix = mt * mr * ms;
                     break;
                 }
@@ -401,17 +405,17 @@ void AnimController::AdvanceTime(float time)
     }
 }
 
-void AnimController::Interpolate(Quaternion& q1, const Quaternion& q2, float factor) const
+void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float factor) const
 {
     if (!_interpolationDisabled) {
-        Quaternion::Interpolate(q1, q1, q2, factor);
+        quaternion::Interpolate(q1, q1, q2, factor);
     }
     else if (factor >= 0.5f) {
         q1 = q2;
     }
 }
 
-void AnimController::Interpolate(Vector& v1, const Vector& v2, float factor) const
+void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float factor) const
 {
     if (!_interpolationDisabled) {
         v1.x = v1.x + (v2.x - v1.x) * factor;

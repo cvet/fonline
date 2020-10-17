@@ -180,11 +180,11 @@ FO_API_EPILOG(0)
  *
  * @return ...
  ******************************************************************************/
-FO_API_CRITTER_VIEW_METHOD(IsAnim3d, FO_API_RET(bool))
+FO_API_CRITTER_VIEW_METHOD(IsModel, FO_API_RET(bool))
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(_critterView->Anim3d != nullptr);
+    FO_API_RETURN(_critterView->Model != nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -200,7 +200,7 @@ FO_API_CRITTER_VIEW_METHOD(IsAnimAvailable, FO_API_RET(bool), FO_API_ARG(uint, a
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
 {
-    FO_API_RETURN(_critterView->IsAnimAviable(anim1, anim2));
+    FO_API_RETURN(_critterView->IsAnimAvailable(anim1, anim2));
 }
 FO_API_EPILOG(0)
 #endif
@@ -436,9 +436,7 @@ FO_API_CRITTER_VIEW_METHOD(GetItemsBySlot, FO_API_RET_OBJ_ARR(ItemView), FO_API_
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 {
-    ItemViewVec items;
-    _critterView->GetItemsSlot(slot, items);
-    FO_API_RETURN(items);
+    FO_API_RETURN(_critterView->GetItemsSlot(slot));
 }
 FO_API_EPILOG(0)
 #endif
@@ -456,7 +454,7 @@ FO_API_CRITTER_VIEW_METHOD(GetItemsByPredicate, FO_API_RET_OBJ_ARR(ItemView), FO
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 {
     auto inv_items = _critterView->InvItems;
-    ItemViewVec items;
+    vector<ItemView*> items;
     items.reserve(inv_items.size());
     for (auto* item : inv_items) {
         if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
@@ -561,18 +559,18 @@ FO_API_CRITTER_VIEW_METHOD(AddAnimCallback, FO_API_RET(void), FO_API_ARG(uint, a
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(float, normalizedTime) FO_API_ARG_CALLBACK_MARSHAL(CritterView, animCallback))
 {
-    if (!_critterView->Anim3d) {
-        throw ScriptException("Critter is not 3d");
+    if (_critterView->Model == nullptr) {
+        throw ScriptException("Critter is not 3D model");
     }
     if (normalizedTime < 0.0f || normalizedTime > 1.0f) {
         throw ScriptException("Normalized time is not in range 0..1", normalizedTime);
     }
 
-    _critterView->Anim3d->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_critterView, animCallback] {
-                                                            if (!_critterView->IsDestroyed) {
-                                                                animCallback(_critterView);
-                                                            }
-                                                        }});
+    _critterView->Model->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_critterView, animCallback] {
+                                                           if (!_critterView->IsDestroyed) {
+                                                               animCallback(_critterView);
+                                                           }
+                                                       }});
 }
 FO_API_EPILOG()
 #endif
@@ -589,16 +587,17 @@ FO_API_CRITTER_VIEW_METHOD(GetBonePos, FO_API_RET(bool), FO_API_ARG(hash, boneNa
 #ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName) FO_API_ARG_REF_MARSHAL(int, boneX) FO_API_ARG_REF_MARSHAL(int, boneY))
 {
-    if (!_critterView->Anim3d) {
+    if (!_critterView->Model) {
         throw ScriptException("Critter is not 3d");
     }
 
-    if (!_critterView->Anim3d->GetBonePos(boneName, boneX, boneY)) {
+    const auto bone_pos = _critterView->Model->GetBonePos(boneName);
+    if (!bone_pos) {
         FO_API_RETURN(false);
     }
 
-    boneX += _critterView->SprOx;
-    boneY += _critterView->SprOy;
+    boneX = std::get<0>(*bone_pos) + _critterView->SprOx;
+    boneY = std::get<1>(*bone_pos) + _critterView->SprOy;
     FO_API_RETURN(true);
 }
 FO_API_EPILOG(0)
@@ -684,7 +683,7 @@ FO_API_ITEM_VIEW_METHOD(GetItems, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(uint,
 #ifdef FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
 {
-    ItemViewVec items;
+    vector<ItemView*> items;
     // Todo: need attention!
     // _itemView->ContGetItems(items, stackId);
     FO_API_RETURN(items);
@@ -739,8 +738,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
     else if (cmd == "CustomConnect") {
         if (_client->InitNetReason == INIT_NET_REASON_NONE) {
             _client->InitNetReason = INIT_NET_REASON_CUSTOM;
-            if (!_client->UpdateFilesInProgress) {
-                _client->UpdateFilesStart();
+            if (!_client->Update) {
+                _client->Update = FOClient::ClientUpdate();
             }
         }
     }
@@ -764,9 +763,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
                 _client->Settings.FullScreen = false;
 
                 if (_client->WindowResolutionDiffX || _client->WindowResolutionDiffY) {
-                    int x;
-                    int y;
-                    _client->SprMngr.GetWindowPosition(x, y);
+                    const auto [x, y] = _client->SprMngr.GetWindowPosition();
                     _client->SprMngr.SetWindowPosition(x - _client->WindowResolutionDiffX, y - _client->WindowResolutionDiffY);
                     _client->WindowResolutionDiffX = _client->WindowResolutionDiffY = 0;
                 }
@@ -856,9 +853,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         _client->SprMngr.SetWindowSize(w, h);
 
         if (!_client->Settings.FullScreen) {
-            int x;
-            int y;
-            _client->SprMngr.GetWindowPosition(x, y);
+            const auto [x, y] = _client->SprMngr.GetWindowPosition();
             _client->SprMngr.SetWindowPosition(x - diff_w / 2, y - diff_h / 2);
         }
         else {
@@ -883,7 +878,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
 
         string buf;
         if (!PackNetCommand(
-                str, &_client->Bout, [&buf, &separator](auto s) { buf += s + separator; }, _client->Chosen->Name)) {
+                str, &_client->Bout, [&buf, &separator](auto s) { buf += s + separator; }, _client->Chosen->AlternateName)) {
             FO_API_RETURN("UNKNOWN");
         }
 
@@ -1022,7 +1017,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         _client->HexMngr.TransitCritter(_client->Chosen, hx, hy, animate, force);
     }
     else if (cmd == "SendMove") {
-        UCharVec dirs;
+        vector<uchar> dirs;
         for (size_t i = 1; i < args.size(); i++) {
             dirs.push_back(static_cast<uchar>(_str(args[i]).toInt()));
         }
@@ -1133,7 +1128,7 @@ FO_API_GLOBAL_CLIENT_FUNC(GetVisibleItems, FO_API_RET_OBJ_ARR(ItemView))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
-    ItemViewVec items;
+    vector<ItemView*> items;
     if (_client->HexMngr.IsMapLoaded()) {
         auto& items_ = _client->HexMngr.GetItems();
         for (auto it = items_.begin(); it != items_.end();) {
@@ -1159,7 +1154,7 @@ FO_API_GLOBAL_CLIENT_FUNC(GetVisibleItemsOnHex, FO_API_RET_OBJ_ARR(ItemHexView),
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
-    ItemHexViewVec items;
+    vector<ItemHexView*> items;
     if (_client->HexMngr.IsMapLoaded()) {
         _client->HexMngr.GetItems(hx, hy, items);
         for (auto it = items.begin(); it != items.end();) {
@@ -1242,7 +1237,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
     }
 
     auto& crits = _client->HexMngr.GetCritters();
-    CritterViewVec critters;
+    vector<CritterView*> critters;
     for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
         auto* cr = it->second;
         if (cr->CheckFind(findType) && _client->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
@@ -1271,7 +1266,7 @@ FO_API_GLOBAL_CLIENT_FUNC(GetCrittersByPids, FO_API_RET_OBJ_ARR(CritterView), FO
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(uchar, findType))
 {
     auto& crits = _client->HexMngr.GetCritters();
-    CritterViewVec critters;
+    vector<CritterView*> critters;
     if (pid == 0u) {
         for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
             auto* cr = it->second;
@@ -1311,7 +1306,7 @@ FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPath, FO_API_RET_OBJ_ARR(CritterView), FO
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType))
 {
-    CritterViewVec critters;
+    vector<CritterView*> critters;
     _client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
     FO_API_RETURN(critters);
 }
@@ -1340,9 +1335,9 @@ FO_API_GLOBAL_CLIENT_FUNC(GetCrittersWithBlockInPath, FO_API_RET_OBJ_ARR(Critter
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType) FO_API_ARG_REF_MARSHAL(ushort, preBlockHx) FO_API_ARG_REF_MARSHAL(ushort, preBlockHy) FO_API_ARG_REF_MARSHAL(ushort, blockHx) FO_API_ARG_REF_MARSHAL(ushort, blockHy))
 {
-    CritterViewVec critters;
-    UShortPair block;
-    UShortPair pre_block;
+    vector<CritterView*> critters;
+    pair<ushort, ushort> block;
+    pair<ushort, ushort> pre_block;
     _client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
@@ -1369,8 +1364,8 @@ FO_API_GLOBAL_CLIENT_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fro
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx) FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
 {
-    UShortPair pre_block;
-    UShortPair block;
+    pair<ushort, ushort> pre_block;
+    pair<ushort, ushort> block;
     _client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
@@ -1405,12 +1400,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
     auto to_hy = toHy;
 
     if (cut > 0 && !_client->HexMngr.CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
-        FO_API_RETURN(UCharVec());
+        FO_API_RETURN(vector<uchar>());
     }
 
-    UCharVec steps;
+    vector<uchar> steps;
     if (!_client->HexMngr.FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
-        FO_API_RETURN(UCharVec());
+        FO_API_RETURN(vector<uchar>());
     }
 
     FO_API_RETURN(steps);
@@ -1441,12 +1436,12 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
     auto to_hy = toHy;
 
     if (cut > 0 && !_client->HexMngr.CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
-        FO_API_RETURN(UCharVec());
+        FO_API_RETURN(vector<uchar>());
     }
 
-    UCharVec steps;
+    vector<uchar> steps;
     if (!_client->HexMngr.FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
-        FO_API_RETURN(UCharVec());
+        FO_API_RETURN(vector<uchar>());
     }
 
     FO_API_RETURN(steps);
@@ -1484,7 +1479,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, from
         FO_API_RETURN(0);
     }
 
-    UCharVec steps;
+    vector<uchar> steps;
     if (!_client->HexMngr.FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
         steps.clear();
     }
@@ -1520,7 +1515,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort,
         FO_API_RETURN(0);
     }
 
-    UCharVec steps;
+    vector<uchar> steps;
     if (!_client->HexMngr.FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
         steps.clear();
     }
@@ -1644,7 +1639,7 @@ FO_API_GLOBAL_CLIENT_FUNC(Message, FO_API_RET(void), FO_API_ARG(string, msg))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
 {
-    _client->AddMess(FOMB_GAME, msg, true);
+    _client->AddMess(FOClient::FOMB_GAME, msg, true);
 }
 FO_API_EPILOG()
 #endif
@@ -1678,7 +1673,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
         throw ScriptException("Invalid text msg arg");
     }
 
-    _client->AddMess(FOMB_GAME, _client->CurLang.Msg[textMsg].GetStr(strNum), true);
+    _client->AddMess(FOClient::FOMB_GAME, _client->CurLang.Msg[textMsg].GetStr(strNum), true);
 }
 FO_API_EPILOG()
 #endif
@@ -1719,21 +1714,23 @@ FO_API_GLOBAL_CLIENT_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text)
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, ms) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, fade) FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy))
 {
-    FOClient::MapText t;
-    t.HexX = hx;
-    t.HexY = hy;
-    t.Color = (color != 0u ? color : COLOR_TEXT);
-    t.Fade = fade;
-    t.StartTick = _client->GameTime.GameTick();
-    t.Tick = ms;
-    t.Text = text;
-    t.Pos = _client->HexMngr.GetRectForText(hx, hy);
-    t.EndPos = Rect(t.Pos, ox, oy);
-    const auto it = std::find(_client->GameMapTexts.begin(), _client->GameMapTexts.end(), t);
+    FOClient::MapText map_text;
+    map_text.HexX = hx;
+    map_text.HexY = hy;
+    map_text.Color = (color != 0u ? color : COLOR_TEXT);
+    map_text.Fade = fade;
+    map_text.StartTick = _client->GameTime.GameTick();
+    map_text.Tick = ms;
+    map_text.Text = text;
+    map_text.Pos = _client->HexMngr.GetRectForText(hx, hy);
+    map_text.EndPos = IRect(map_text.Pos, ox, oy);
+
+    const auto it = std::find_if(_client->GameMapTexts.begin(), _client->GameMapTexts.end(), [&map_text](const FOClient::MapText& t) { return t.HexX == map_text.HexX && t.HexY == map_text.HexY; });
     if (it != _client->GameMapTexts.end()) {
         _client->GameMapTexts.erase(it);
     }
-    _client->GameMapTexts.push_back(t);
+
+    _client->GameMapTexts.push_back(map_text);
 }
 FO_API_EPILOG()
 #endif
@@ -2193,8 +2190,9 @@ FO_API_EPILOG()
  * @param hy ...
  * @param dir ...
  * @param steps ...
+ * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(void), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
+FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(bool), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(uint, steps))
 {
@@ -2208,16 +2206,24 @@ FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, 
         throw ScriptException("Steps arg is zero");
     }
 
+    auto result = false;
+    auto hx_ = hx;
+    auto hy_ = hy;
+
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            _client->GeomHelper.MoveHexByDir(hx, hy, dir, _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
+            result |= _client->GeomHelper.MoveHexByDir(hx_, hy_, dir, _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
         }
     }
     else {
-        _client->GeomHelper.MoveHexByDir(hx, hy, dir, _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
+        result = _client->GeomHelper.MoveHexByDir(hx_, hy_, dir, _client->HexMngr.GetWidth(), _client->HexMngr.GetHeight());
     }
+
+    hx = hx_;
+    hy = hy_;
+    FO_API_RETURN(result);
 }
-FO_API_EPILOG()
+FO_API_EPILOG(0)
 #endif
 #endif
 
@@ -2810,7 +2816,9 @@ FO_API_GLOBAL_CLIENT_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags) FO_API_ARG_REF_MARSHAL(int, tw) FO_API_ARG_REF_MARSHAL(int, th) FO_API_ARG_REF_MARSHAL(int, lines))
 {
-    _client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines);
+    if (!_client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
+        throw ScriptException("Can't evaluate text information", font);
+    }
 }
 FO_API_EPILOG()
 #endif
@@ -2982,7 +2990,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API
         yy -= hh;
     }
 
-    const auto r = Rect(xx, yy, xx + ww, yy + hh);
+    const auto r = IRect(xx, yy, xx + ww, yy + hh);
     _client->SprMngr.DrawStr(r, text.c_str(), flags, COLOR_SCRIPT_TEXT(color), font);
 }
 FO_API_EPILOG()
@@ -3029,7 +3037,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int,
         FO_API_RETURN_VOID();
     }
 
-    PointVec points;
+    PrimitivePoints points;
     const auto size = data.size() / 3;
     points.resize(size);
 
@@ -3163,7 +3171,7 @@ FO_API_GLOBAL_CLIENT_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, mode
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(int, l) FO_API_ARG_MARSHAL(int, t) FO_API_ARG_MARSHAL(int, r) FO_API_ARG_MARSHAL(int, b) FO_API_ARG_MARSHAL(bool, scratch) FO_API_ARG_MARSHAL(bool, center) FO_API_ARG_MARSHAL(uint, color))
 {
-    auto* anim = _client->ResMngr.GetCrit2dAnim(modelName, anim1, anim2, dir);
+    auto* anim = _client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
         _client->SprMngr.DrawSpriteSize(anim->Ind[0], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE(color));
     }
@@ -3172,10 +3180,10 @@ FO_API_EPILOG()
 #endif
 
 #ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
-static Animation3dVec DrawCritter3dAnim;
-static UIntVec DrawCritter3dCrType;
-static BoolVec DrawCritter3dFailToLoad;
-static int DrawCritter3dLayers[LAYERS3D_COUNT];
+static vector<ModelInstance*> DrawCritterModel;
+static vector<uint> DrawCritterModelCrType;
+static vector<bool> DrawCritterModelFailedToLoad;
+static int DrawCritterModelLayers[LAYERS3D_COUNT];
 #endif
 /*******************************************************************************
  * ...
@@ -3197,35 +3205,35 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
     // sx sy sz
     // speed
     // scissor l t r b
-    if (instance >= DrawCritter3dAnim.size()) {
-        DrawCritter3dAnim.resize(instance + 1);
-        DrawCritter3dCrType.resize(instance + 1);
-        DrawCritter3dFailToLoad.resize(instance + 1);
+    if (instance >= DrawCritterModel.size()) {
+        DrawCritterModel.resize(instance + 1);
+        DrawCritterModelCrType.resize(instance + 1);
+        DrawCritterModelFailedToLoad.resize(instance + 1);
     }
 
-    if (DrawCritter3dFailToLoad[instance] && DrawCritter3dCrType[instance] == modelName) {
+    if (DrawCritterModelFailedToLoad[instance] && DrawCritterModelCrType[instance] == modelName) {
         FO_API_RETURN_VOID();
     }
 
-    auto& anim3d = DrawCritter3dAnim[instance];
-    if (anim3d == nullptr || DrawCritter3dCrType[instance] != modelName) {
-        if (anim3d != nullptr) {
-            _client->SprMngr.FreePure3dAnimation(anim3d);
+    auto& model = DrawCritterModel[instance];
+    if (model == nullptr || DrawCritterModelCrType[instance] != modelName) {
+        if (model != nullptr) {
+            _client->SprMngr.FreeModel(model);
         }
 
         _client->SprMngr.PushAtlasType(AtlasType::Dynamic);
-        anim3d = _client->SprMngr.LoadPure3dAnimation(_str().parseHash(modelName), false);
+        model = _client->SprMngr.LoadModel(_str().parseHash(modelName), false);
         _client->SprMngr.PopAtlasType();
-        DrawCritter3dCrType[instance] = modelName;
-        DrawCritter3dFailToLoad[instance] = false;
+        DrawCritterModelCrType[instance] = modelName;
+        DrawCritterModelFailedToLoad[instance] = false;
 
-        if (anim3d == nullptr) {
-            DrawCritter3dFailToLoad[instance] = true;
+        if (model == nullptr) {
+            DrawCritterModelFailedToLoad[instance] = true;
             FO_API_RETURN_VOID();
         }
 
-        anim3d->EnableShadow(false);
-        anim3d->SetTimer(false);
+        model->EnableShadow(false);
+        model->SetTimer(false);
     }
 
     const auto count = static_cast<uint>(position.size());
@@ -3247,18 +3255,18 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelN
         _client->SprMngr.PushScissor(static_cast<int>(stl), static_cast<int>(stt), static_cast<int>(str), static_cast<int>(stb));
     }
 
-    std::memset(DrawCritter3dLayers, 0, sizeof(DrawCritter3dLayers));
+    std::memset(DrawCritterModelLayers, 0, sizeof(DrawCritterModelLayers));
     for (uint i = 0, j = static_cast<uint>(layers.size()); i < j && i < LAYERS3D_COUNT; i++) {
-        DrawCritter3dLayers[i] = layers[i];
+        DrawCritterModelLayers[i] = layers[i];
     }
 
-    anim3d->SetDirAngle(0);
-    anim3d->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
-    anim3d->SetScale(sx, sy, sz);
-    anim3d->SetSpeed(speed);
-    anim3d->SetAnimation(anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
+    model->SetDirAngle(0);
+    model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
+    model->SetScale(sx, sy, sz);
+    model->SetSpeed(speed);
+    model->SetAnimation(anim1, anim2, DrawCritterModelLayers, ANIMATION_PERIOD(static_cast<int>(period * 100.0f)) | ANIMATION_NO_SMOOTH);
 
-    _client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), anim3d, COLOR_SCRIPT_SPRITE(color));
+    _client->SprMngr.Draw3d(static_cast<int>(x), static_cast<int>(y), model, COLOR_SCRIPT_SPRITE(color));
 
     if (count > 13) {
         _client->SprMngr.PopScissor();
@@ -3406,7 +3414,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, x) 
 
     rt->DrawEffect = _client->OffscreenEffects[effectSubtype];
 
-    Rect from(std::clamp(x, 0, _client->Settings.ScreenWidth), std::clamp(y, 0, _client->Settings.ScreenHeight), std::clamp(x + w, 0, _client->Settings.ScreenWidth), std::clamp(y + h, 0, _client->Settings.ScreenHeight));
+    IRect from(std::clamp(x, 0, _client->Settings.ScreenWidth), std::clamp(y, 0, _client->Settings.ScreenHeight), std::clamp(x + w, 0, _client->Settings.ScreenWidth), std::clamp(y + h, 0, _client->Settings.ScreenHeight));
     auto to = from;
     _client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
@@ -3449,8 +3457,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, fro
 
     rt->DrawEffect = _client->OffscreenEffects[effectSubtype];
 
-    Rect from(std::clamp(fromX, 0, _client->Settings.ScreenWidth), std::clamp(fromY, 0, _client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, _client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, _client->Settings.ScreenHeight));
-    Rect to(std::clamp(toX, 0, _client->Settings.ScreenWidth), std::clamp(toY, 0, _client->Settings.ScreenHeight), std::clamp(toX + toW, 0, _client->Settings.ScreenWidth), std::clamp(toY + toH, 0, _client->Settings.ScreenHeight));
+    IRect from(std::clamp(fromX, 0, _client->Settings.ScreenWidth), std::clamp(fromY, 0, _client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, _client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, _client->Settings.ScreenHeight));
+    IRect to(std::clamp(toX, 0, _client->Settings.ScreenWidth), std::clamp(toY, 0, _client->Settings.ScreenHeight), std::clamp(toX + toW, 0, _client->Settings.ScreenWidth), std::clamp(toY + toH, 0, _client->Settings.ScreenHeight));
     _client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 FO_API_EPILOG()

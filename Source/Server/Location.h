@@ -42,11 +42,7 @@
 #include "ScriptApi.h"
 
 class Map;
-using MapVec = vector<Map*>;
-using MapMap = map<uint, Map*>;
 class Location;
-using LocationVec = vector<Location*>;
-using LocationMap = map<uint, Location*>;
 
 class Location final : public Entity
 {
@@ -62,8 +58,8 @@ public:
     void BindScript();
     auto GetProtoLoc() const -> const ProtoLocation*;
     auto IsLocVisible() const -> bool;
-    auto GetMapsRaw() -> MapVec&;
-    auto GetMaps() const -> MapVec;
+    auto GetMapsRaw() -> vector<Map*>&;
+    auto GetMaps() const -> vector<Map*>;
     auto GetMapsCount() const -> uint;
     auto GetMapByIndex(uint index) -> Map*;
     auto GetMapByPid(hash map_pid) -> Map*;
@@ -87,5 +83,5 @@ public:
 
 private:
     ServerScriptSystem& _scriptSys;
-    MapVec _locMaps {};
+    vector<Map*> _locMaps {};
 };

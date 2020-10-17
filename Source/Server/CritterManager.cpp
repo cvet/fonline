@@ -37,12 +37,58 @@
 #include "ItemManager.h"
 #include "Log.h"
 #include "MapManager.h"
-#include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
 
 CritterManager::CritterManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time) : _settings {settings}, _geomHelper(_settings), _protoMngr {proto_mngr}, _entityMngr {entity_mngr}, _mapMngr {map_mngr}, _itemMngr {item_mngr}, _scriptSys {script_sys}, _gameTime {game_time}
+{
+}
+
+void CritterManager::LinkCritters()
+{
+    WriteLog("Link critters...\n");
+
+    auto critters = GetCritters();
+    vector<Critter*> critter_groups;
+    critter_groups.reserve(critters.size());
+
+    // Move all critters to local maps and global map leaders
+    for (auto* cr : critters) {
+        if (cr->GetMapId() == 0u && cr->GetGlobalMapLeaderId() != 0u && cr->GetGlobalMapLeaderId() != cr->Id) {
+            critter_groups.push_back(cr);
+            continue;
+        }
+
+        auto* map = _mapMngr.GetMap(cr->GetMapId());
+        if (cr->GetMapId() != 0u && map == nullptr) {
+            throw EntitiesLoadException("Map not found for critter", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY());
+        }
+
+        if (!_mapMngr.CanAddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), 0)) {
+            throw EntitiesLoadException("Error parsing npc to map", cr->GetName(), cr->Id, cr->GetMapId(), cr->GetHexX(), cr->GetHexY());
+        }
+
+        _mapMngr.AddCrToMap(cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0);
+
+        if (map == nullptr) {
+            cr->SetGlobalMapTripId(cr->GetGlobalMapTripId() - 1);
+        }
+    }
+
+    // Move critters to global groups
+    for (auto* cr : critter_groups) {
+        if (!_mapMngr.CanAddCrToMap(cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId())) {
+            throw EntitiesLoadException("Error parsing npc to global group", cr->GetName(), cr->GetGlobalMapLeaderId());
+        }
+
+        _mapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
+    }
+
+    WriteLog("Link critters complete.\n");
+}
+
+void CritterManager::InitAfterLoad()
 {
 }
 
@@ -65,7 +111,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
         }
     }
 
-    item->SetSortValue(cr->_invItems);
+    item->EvaluateSortValue(cr->_invItems);
     cr->SetItem(item);
 
     // Send
@@ -115,7 +161,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
     const auto* proto = _protoMngr.GetProtoCritter(proto_id);
     RUNTIME_ASSERT(proto);
 
-    auto multihex = 0u;
+    uint multihex;
     if (props == nullptr) {
         multihex = proto->GetMultihex();
     }
@@ -130,9 +176,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
 
         short hx_ = hx;
         short hy_ = hy;
-        short* sx = nullptr;
-        short* sy = nullptr;
-        _geomHelper.GetHexOffsets((hx & 1) != 0, sx, sy);
+        const auto [sx, sy] = _geomHelper.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
         auto pos = -1;
@@ -195,27 +239,6 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
     return npc;
 }
 
-auto CritterManager::RestoreNpc(uint id, hash proto_id, const DataBase::Document& doc) -> bool
-{
-    NON_CONST_METHOD_HINT(_dummy);
-
-    const auto* proto = _protoMngr.GetProtoCritter(proto_id);
-    if (proto == nullptr) {
-        WriteLog("Proto critter '{}' is not loaded.\n", _str().parseHash(proto_id));
-        return false;
-    }
-
-    auto* npc = new Npc(id, proto, _settings, _scriptSys, _gameTime);
-    if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, _scriptSys)) {
-        WriteLog("Fail to restore properties for critter '{}' ({}).\n", _str().parseHash(proto_id), id);
-        npc->Release();
-        return false;
-    }
-
-    _entityMngr.RegisterEntity(npc);
-    return true;
-}
-
 void CritterManager::DeleteNpc(Critter* cr)
 {
     NON_CONST_METHOD_HINT(_dummy);
@@ -268,103 +291,105 @@ void CritterManager::DeleteInventory(Critter* cr)
     }
 }
 
-void CritterManager::GetCritters(CritterVec& critters)
+auto CritterManager::GetCritters() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    CritterVec all_critters;
-    _entityMngr.GetCritters(all_critters);
+    auto all_critters = _entityMngr.GetCritters();
 
-    CritterVec find_critters;
-    find_critters.reserve(all_critters.size());
+    vector<Critter*> critters;
+    critters.reserve(all_critters.size());
+
     for (auto* cr : all_critters) {
-        find_critters.push_back(cr);
+        critters.push_back(cr);
     }
 
-    critters = find_critters;
+    return critters;
 }
 
-void CritterManager::GetNpcs(NpcVec& npcs)
+auto CritterManager::GetNpcs() -> vector<Npc*>
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    CritterVec all_critters;
-    _entityMngr.GetCritters(all_critters);
+    auto all_critters = _entityMngr.GetCritters();
 
-    NpcVec find_npcs;
-    find_npcs.reserve(all_critters.size());
+    vector<Npc*> npcs;
+    npcs.reserve(all_critters.size());
+
     for (auto* cr : all_critters) {
         if (cr->IsNpc()) {
-            find_npcs.push_back(dynamic_cast<Npc*>(cr));
+            npcs.push_back(dynamic_cast<Npc*>(cr));
         }
     }
 
-    npcs = find_npcs;
+    return npcs;
 }
 
-void CritterManager::GetClients(ClientVec& players, bool on_global_map)
+auto CritterManager::GetClients(bool on_global_map_only) -> vector<Client*>
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    CritterVec all_critters;
-    _entityMngr.GetCritters(all_critters);
+    auto all_critters = _entityMngr.GetCritters();
 
-    ClientVec find_players;
-    find_players.reserve(all_critters.size());
+    vector<Client*> clients;
+    clients.reserve(all_critters.size());
+
     for (auto* cr : all_critters) {
-        if (cr->IsPlayer() && (!on_global_map || cr->GetMapId() == 0u)) {
-            find_players.push_back(dynamic_cast<Client*>(cr));
+        if (cr->IsPlayer() && (!on_global_map_only || cr->GetMapId() == 0u)) {
+            clients.push_back(dynamic_cast<Client*>(cr));
         }
     }
 
-    players = find_players;
+    return clients;
 }
 
-void CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, int find_type, CritterVec& critters)
+auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    CritterVec all_critters;
-    _entityMngr.GetCritters(all_critters);
+    auto all_critters = _entityMngr.GetCritters();
 
-    CritterVec find_critters;
-    find_critters.reserve(all_critters.size());
+    vector<Critter*> critters;
+    critters.reserve(all_critters.size());
+
     for (auto* cr : all_critters) {
         if (cr->GetMapId() == 0u && GenericUtils::DistSqrt(static_cast<int>(cr->GetWorldX()), static_cast<int>(cr->GetWorldY()), wx, wy) <= radius && cr->CheckFind(find_type)) {
-            find_critters.push_back(cr);
+            critters.push_back(cr);
         }
     }
 
-    critters = find_critters;
+    return critters;
 }
 
-auto CritterManager::GetCritter(uint crid) -> Critter*
+auto CritterManager::GetCritter(uint cr_id) -> Critter*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    return _entityMngr.GetCritter(crid);
+    return _entityMngr.GetCritter(cr_id);
 }
 
-auto CritterManager::GetPlayer(uint crid) -> Client*
+auto CritterManager::GetCritter(uint cr_id) const -> const Critter*
+{
+    return const_cast<CritterManager*>(this)->GetCritter(cr_id);
+}
+
+auto CritterManager::GetPlayer(uint cr_id) -> Client*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    if (!IS_CLIENT_ID(crid)) {
+    if (!IS_CLIENT_ID(cr_id)) {
         return nullptr;
     }
 
-    return dynamic_cast<Client*>(_entityMngr.GetEntity(crid, EntityType::Client));
+    return dynamic_cast<Client*>(_entityMngr.GetEntity(cr_id, EntityType::Client));
 }
 
 auto CritterManager::GetPlayer(const char* name) -> Client*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    EntityVec entities;
-    _entityMngr.GetEntities(EntityType::Client, entities);
-
     Client* cl = nullptr;
-    for (auto* entity : entities) {
+    for (auto* entity : _entityMngr.GetEntities(EntityType::Client)) {
         auto* cl_ = dynamic_cast<Client*>(entity);
         if (_str(name).compareIgnoreCaseUtf8(cl_->GetName())) {
             cl = cl_;
@@ -374,15 +399,15 @@ auto CritterManager::GetPlayer(const char* name) -> Client*
     return cl;
 }
 
-auto CritterManager::GetNpc(uint crid) -> Npc*
+auto CritterManager::GetNpc(uint cr_id) -> Npc*
 {
     NON_CONST_METHOD_HINT(_dummy);
 
-    if (IS_CLIENT_ID(crid)) {
+    if (IS_CLIENT_ID(cr_id)) {
         return nullptr;
     }
 
-    return dynamic_cast<Npc*>(_entityMngr.GetEntity(crid, EntityType::Npc));
+    return dynamic_cast<Npc*>(_entityMngr.GetEntity(cr_id, EntityType::Npc));
 }
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*

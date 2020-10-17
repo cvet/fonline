@@ -71,12 +71,7 @@ enum class EntityType
     Max,
 };
 
-class Entity;
-using EntityVec = vector<Entity*>;
-using EntityMap = map<uint, Entity*>;
 class ProtoEntity;
-using ProtoEntityVec = vector<ProtoEntity*>;
-using ProtoEntityMap = map<hash, ProtoEntity*>;
 
 class Entity
 {
@@ -88,9 +83,10 @@ public:
     auto operator=(Entity&&) noexcept = delete;
 
     [[nodiscard]] auto GetId() const -> uint;
-    void SetId(uint id);
     [[nodiscard]] auto GetProtoId() const -> hash;
     [[nodiscard]] auto GetName() const -> string;
+
+    void SetId(uint id); // Todo: use passkey for SetId
     void AddRef() const;
     void Release() const;
 
@@ -116,9 +112,9 @@ public:
     [[nodiscard]] auto HaveComponent(hash name) const -> bool;
 
     const hash ProtoId;
-    UIntVec TextsLang {};
+    vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
-    HashSet Components {};
+    set<hash> Components {};
     string CollectionName {};
 
 protected:
@@ -159,8 +155,6 @@ public:
 #define FO_API_ITEM_PROPERTY CLASS_PROPERTY
 #include "ScriptApi.h"
 };
-using ProtoItemVec = vector<ProtoItem*>;
-using ProtoItemMap = map<hash, ProtoItem*>;
 
 class ProtoCritter final : public ProtoEntity
 {
@@ -171,8 +165,6 @@ public:
 #define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
 #include "ScriptApi.h"
 };
-using ProtoCritterMap = map<hash, ProtoCritter*>;
-using ProtoCritterVec = vector<ProtoCritter*>;
 
 class ProtoMap final : public ProtoEntity
 {
@@ -183,8 +175,6 @@ public:
 #define FO_API_MAP_PROPERTY CLASS_PROPERTY
 #include "ScriptApi.h"
 };
-using ProtoMapVec = vector<ProtoMap*>;
-using ProtoMapMap = map<hash, ProtoMap*>;
 
 class ProtoLocation final : public ProtoEntity
 {
@@ -195,5 +185,3 @@ public:
 #define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
 #include "ScriptApi.h"
 };
-using ProtoLocationVec = vector<ProtoLocation*>;
-using ProtoLocationMap = map<hash, ProtoLocation*>;

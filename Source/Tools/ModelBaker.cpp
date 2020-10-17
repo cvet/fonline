@@ -66,10 +66,10 @@ struct MeshData
     }
 
     Vertex3DVec Vertices {};
-    UShortVec Indices {};
+    vector<ushort> Indices {};
     string DiffuseTexture {};
-    HashVec SkinBones {};
-    MatrixVec SkinBoneOffsets {};
+    vector<hash> SkinBones {};
+    vector<mat44> SkinBoneOffsets {};
     string EffectName {};
 };
 
@@ -109,11 +109,11 @@ struct Bone
     }
 
     hash NameHash {};
-    Matrix TransformationMatrix {};
-    Matrix GlobalTransformationMatrix {};
+    mat44 TransformationMatrix {};
+    mat44 GlobalTransformationMatrix {};
     unique_ptr<MeshData> AttachedMesh {};
     vector<unique_ptr<Bone>> Children {};
-    Matrix CombinedTransformationMatrix {};
+    mat44 CombinedTransformationMatrix {};
 };
 
 struct AnimSet
@@ -121,12 +121,12 @@ struct AnimSet
     struct BoneOutput
     {
         hash NameHash {};
-        FloatVec ScaleTime {};
-        VectorVec ScaleValue {};
-        FloatVec RotationTime {};
-        QuaternionVec RotationValue {};
-        FloatVec TranslationTime {};
-        VectorVec TranslationValue {};
+        vector<float> ScaleTime {};
+        vector<vec3> ScaleValue {};
+        vector<float> RotationTime {};
+        vector<quaternion> RotationValue {};
+        vector<float> TranslationTime {};
+        vector<vec3> TranslationValue {};
     };
 
     void Save(DataWriter& writer)
@@ -170,7 +170,7 @@ struct AnimSet
     float DurationTicks {};
     float TicksPerSecond {};
     vector<BoneOutput> BoneOutputs {};
-    HashVecVec BonesHierarchy {};
+    vector<vector<hash>> BonesHierarchy {};
 };
 
 ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
@@ -204,7 +204,7 @@ void ModelBaker::AutoBakeModels()
         }
 
         string ext = _str(relative_path).getFileExtension();
-        if (!Is3dExtensionSupported(ext)) {
+        if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
 
@@ -214,7 +214,7 @@ void ModelBaker::AutoBakeModels()
     }
 }
 
-void ModelBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
+void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
     for (const auto& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
@@ -300,9 +300,9 @@ private:
 
 static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) -> Bone*;
 static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node);
-static auto ConvertFbxMatrix(const FbxAMatrix& m) -> Matrix;
+static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44;
 
-auto ModelBaker::BakeFile(const string& fname, File& file) -> UCharVec
+auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
 {
     // Result bone
     Bone* root_bone = nullptr;
@@ -362,12 +362,12 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> UCharVec
             auto frame_rate = static_cast<float>(frames_count - 1) / static_cast<float>(take_info->mLocalTimeSpan.GetDuration().GetSecondDouble());
             auto frame_offset = static_cast<int>(take_info->mLocalTimeSpan.GetStart().GetFrameCount());
 
-            FloatVec st;
-            VectorVec sv;
-            FloatVec rt;
-            QuaternionVec rv;
-            FloatVec tt;
-            VectorVec tv;
+            vector<float> st;
+            vector<vec3> sv;
+            vector<float> rt;
+            vector<quaternion> rv;
+            vector<float> tt;
+            vector<vec3> tv;
             st.reserve(frames_count);
             sv.reserve(frames_count);
             rt.reserve(frames_count);
@@ -393,9 +393,9 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> UCharVec
                     const auto& fbx_s = fbx_m.GetS();
                     const auto& fbx_q = fbx_m.GetQ();
                     const auto& fbx_t = fbx_m.GetT();
-                    const auto& s = Vector(static_cast<float>(fbx_s[0]), static_cast<float>(fbx_s[1]), static_cast<float>(fbx_s[2]));
-                    const auto& r = Quaternion(static_cast<float>(fbx_q[3]), static_cast<float>(fbx_q[0]), static_cast<float>(fbx_q[1]), static_cast<float>(fbx_q[2]));
-                    const auto& t = Vector(static_cast<float>(fbx_t[0]), static_cast<float>(fbx_t[1]), static_cast<float>(fbx_t[2]));
+                    const auto& s = vec3(static_cast<float>(fbx_s[0]), static_cast<float>(fbx_s[1]), static_cast<float>(fbx_s[2]));
+                    const auto& r = quaternion(static_cast<float>(fbx_q[3]), static_cast<float>(fbx_q[0]), static_cast<float>(fbx_q[1]), static_cast<float>(fbx_q[2]));
+                    const auto& t = vec3(static_cast<float>(fbx_t[0]), static_cast<float>(fbx_t[1]), static_cast<float>(fbx_t[2]));
 
                     // Manage duplicates
                     if (f < 2 || sv.back() != s || sv[sv.size() - 2] != s) {
@@ -418,7 +418,7 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> UCharVec
                     }
                 }
 
-                UIntVec hierarchy;
+                vector<uint> hierarchy;
                 auto* fbx_node = fbx_all_node;
                 while (fbx_node != nullptr) {
                     hierarchy.insert(hierarchy.begin(), Bone::GetHash(fbx_node->GetName()));
@@ -450,7 +450,7 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> UCharVec
     fbx_importer->Destroy(true);
     fbx_scene->Destroy(true);
 
-    UCharVec data;
+    vector<uchar> data;
     DataWriter writer {data};
     root_bone->Save(writer);
     writer.Write(static_cast<uint>(loaded_animations.size()));
@@ -490,7 +490,7 @@ static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) 
     bone->NameHash = Bone::GetHash(fbx_node->GetName());
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateLocalTransform());
     bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateGlobalTransform());
-    bone->CombinedTransformationMatrix = Matrix();
+    bone->CombinedTransformationMatrix = mat44();
     bone->Children.resize(fbx_node->GetChildCount());
 
     for (auto i = 0; i < fbx_node->GetChildCount(); i++) {
@@ -548,19 +548,19 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
             auto& fbx_v = vertices_data[vertices[i]];
 
             std::memset(&v, 0, sizeof(v));
-            v.Position = Vector(static_cast<float>(fbx_v.mData[0]), static_cast<float>(fbx_v.mData[1]), static_cast<float>(fbx_v.mData[2]));
+            v.Position = vec3(static_cast<float>(fbx_v.mData[0]), static_cast<float>(fbx_v.mData[1]), static_cast<float>(fbx_v.mData[2]));
 
             if (fbx_normals != nullptr) {
                 const auto& fbx_normal = FbxGetElement<FbxGeometryElementNormal, FbxVector4>(fbx_normals, i, vertices);
-                v.Normal = Vector(static_cast<float>(fbx_normal[0]), static_cast<float>(fbx_normal[1]), static_cast<float>(fbx_normal[2]));
+                v.Normal = vec3(static_cast<float>(fbx_normal[0]), static_cast<float>(fbx_normal[1]), static_cast<float>(fbx_normal[2]));
             }
             if (fbx_tangents != nullptr) {
                 const auto& fbx_tangent = FbxGetElement<FbxGeometryElementTangent, FbxVector4>(fbx_tangents, i, vertices);
-                v.Tangent = Vector(static_cast<float>(fbx_tangent[0]), static_cast<float>(fbx_tangent[1]), static_cast<float>(fbx_tangent[2]));
+                v.Tangent = vec3(static_cast<float>(fbx_tangent[0]), static_cast<float>(fbx_tangent[1]), static_cast<float>(fbx_tangent[2]));
             }
             if (fbx_binormals != nullptr) {
                 const auto& fbx_binormal = FbxGetElement<FbxGeometryElementBinormal, FbxVector4>(fbx_binormals, i, vertices);
-                v.Bitangent = Vector(static_cast<float>(fbx_binormal[0]), static_cast<float>(fbx_binormal[1]), static_cast<float>(fbx_binormal[2]));
+                v.Bitangent = vec3(static_cast<float>(fbx_binormal[0]), static_cast<float>(fbx_binormal[1]), static_cast<float>(fbx_binormal[2]));
             }
             if (fbx_uvs != nullptr) {
                 const auto& fbx_uv = FbxGetElement<FbxGeometryElementUV, FbxVector2>(fbx_uvs, i, vertices);
@@ -601,15 +601,15 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         auto* fbx_skin = dynamic_cast<FbxSkin*>(fbx_mesh->GetDeformer(0, FbxDeformer::eSkin));
         if (fbx_skin != nullptr) {
             // 3DS Max specific - Geometric transform
-            Matrix ms;
-            Matrix mr;
-            Matrix mt;
+            mat44 ms;
+            mat44 mr;
+            mat44 mt;
             auto gt = fbx_node->GetGeometricTranslation(FbxNode::eSourcePivot);
             auto gr = fbx_node->GetGeometricRotation(FbxNode::eSourcePivot);
             auto gs = fbx_node->GetGeometricScaling(FbxNode::eSourcePivot);
-            Matrix::Translation(Vector(static_cast<float>(gt[0]), static_cast<float>(gt[1]), static_cast<float>(gt[2])), mt);
-            mr.FromEulerAnglesXYZ(Vector(static_cast<float>(gr[0]), static_cast<float>(gr[1]), static_cast<float>(gr[2])));
-            Matrix::Scaling(Vector(static_cast<float>(gs[0]), static_cast<float>(gs[1]), static_cast<float>(gs[2])), ms);
+            mat44::Translation(vec3(static_cast<float>(gt[0]), static_cast<float>(gt[1]), static_cast<float>(gt[2])), mt);
+            mr.FromEulerAnglesXYZ(vec3(static_cast<float>(gr[0]), static_cast<float>(gr[1]), static_cast<float>(gr[2])));
+            mat44::Scaling(vec3(static_cast<float>(gs[0]), static_cast<float>(gs[1]), static_cast<float>(gs[2])), ms);
 
             // Process skin bones
             auto num_bones = fbx_skin->GetClusterCount();
@@ -667,15 +667,15 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         }
         else {
             // 3DS Max specific - Geometric transform
-            Matrix ms;
-            Matrix mr;
-            Matrix mt;
+            mat44 ms;
+            mat44 mr;
+            mat44 mt;
             auto gt = fbx_node->GetGeometricTranslation(FbxNode::eSourcePivot);
             auto gr = fbx_node->GetGeometricRotation(FbxNode::eSourcePivot);
             auto gs = fbx_node->GetGeometricScaling(FbxNode::eSourcePivot);
-            Matrix::Translation(Vector(static_cast<float>(gt[0]), static_cast<float>(gt[1]), static_cast<float>(gt[2])), mt);
-            mr.FromEulerAnglesXYZ(Vector(static_cast<float>(gr[0]), static_cast<float>(gr[1]), static_cast<float>(gr[2])));
-            Matrix::Scaling(Vector(static_cast<float>(gs[0]), static_cast<float>(gs[1]), static_cast<float>(gs[2])), ms);
+            mat44::Translation(vec3(static_cast<float>(gt[0]), static_cast<float>(gt[1]), static_cast<float>(gt[2])), mt);
+            mr.FromEulerAnglesXYZ(vec3(static_cast<float>(gr[0]), static_cast<float>(gr[1]), static_cast<float>(gr[2])));
+            mat44::Scaling(vec3(static_cast<float>(gs[0]), static_cast<float>(gs[1]), static_cast<float>(gs[2])), ms);
 
             mesh->SkinBones.resize(1);
             mesh->SkinBoneOffsets.resize(1);
@@ -709,7 +709,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
     }
 }
 
-static auto ConvertFbxMatrix(const FbxAMatrix& m) -> Matrix
+static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 {
-    return Matrix(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
+    return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
 }

@@ -47,37 +47,37 @@ enum class TalkType
 };
 
 // Answers
-#define DIALOG_END (0)
-#define DIALOG_BACK (0xFFE1)
-#define DIALOG_BARTER (0xFFE2)
+static constexpr ushort DIALOG_END = 0;
+static constexpr ushort DIALOG_BACK = 0xFFE1;
+static constexpr ushort DIALOG_BARTER = 0xFFE2;
 
 // Types
-#define DR_NONE (0)
-#define DR_PROP_GLOBAL (1)
-#define DR_PROP_CRITTER (2)
-#define DR_PROP_CRITTER_DICT (3)
-#define DR_PROP_ITEM (4)
-#define DR_PROP_LOCATION (5)
-#define DR_PROP_MAP (6)
-#define DR_ITEM (7)
-#define DR_SCRIPT (8)
-#define DR_NO_RECHECK (9)
-#define DR_OR (10)
+static constexpr uchar DR_NONE = 0;
+static constexpr uchar DR_PROP_GLOBAL = 1;
+static constexpr uchar DR_PROP_CRITTER = 2;
+static constexpr uchar DR_PROP_CRITTER_DICT = 3;
+static constexpr uchar DR_PROP_ITEM = 4;
+static constexpr uchar DR_PROP_LOCATION = 5;
+static constexpr uchar DR_PROP_MAP = 6;
+static constexpr uchar DR_ITEM = 7;
+static constexpr uchar DR_SCRIPT = 8;
+static constexpr uchar DR_NO_RECHECK = 9;
+static constexpr uchar DR_OR = 10;
 
 // Who types
-#define DR_WHO_NONE (0)
-#define DR_WHO_PLAYER (1)
-#define DR_WHO_NPC (2)
+static constexpr uchar DR_WHO_NONE = 0;
+static constexpr uchar DR_WHO_PLAYER = 1;
+static constexpr uchar DR_WHO_NPC = 2;
 
 struct DemandResult
 {
-    int Type {DR_NONE};
-    char Who {DR_WHO_NONE};
+    uchar Type {DR_NONE};
+    uchar Who {DR_WHO_NONE};
     max_t ParamId {};
     bool NoRecheck {};
     bool RetValue {};
     char Op {};
-    char ValuesCount {};
+    uchar ValuesCount {};
     int Value {};
     int ValueExt[5] {};
 };
@@ -107,7 +107,7 @@ struct DialogPack
     hash PackId {};
     string PackName {};
     DialogsVec Dialogs {};
-    UIntVec TextsLang {};
+    vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
     string Comment {};
 };
@@ -141,19 +141,22 @@ public:
     auto operator=(DialogManager&&) noexcept = delete;
     ~DialogManager() = default;
 
+    [[nodiscard]] auto GetDialog(hash pack_id) -> DialogPack*;
+    [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
+
     [[nodiscard]] auto LoadDialogs() -> bool;
     [[nodiscard]] auto ParseDialog(const string& pack_name, const string& data) -> DialogPack*;
     [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
-    [[nodiscard]] auto GetDialog(hash pack_id) -> DialogPack*;
-    [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
+
     void EraseDialog(hash pack_id);
 
 private:
-    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
     [[nodiscard]] auto GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>;
-    [[nodiscard]] static auto GetDrType(const string& str) -> char;
-    [[nodiscard]] static auto GetWho(char who) -> char;
-    [[nodiscard]] static auto CheckOper(char oper) -> bool;
+    [[nodiscard]] auto GetDrType(const string& str) -> uchar;
+    [[nodiscard]] auto GetWho(char who) -> uchar;
+    [[nodiscard]] auto CheckOper(char oper) -> bool;
+
+    [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
 
     FileManager& _fileMngr;
     ServerScriptSystem& _scriptSys;

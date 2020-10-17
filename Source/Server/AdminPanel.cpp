@@ -248,11 +248,11 @@ static void AdminWork(FOServer* server, Session* session)
 
         // Authorization
         if (!session->Authorized) {
-            StrVec client;
-            StrVec tester;
-            StrVec moder;
-            StrVec admin;
-            StrVec admin_names;
+            vector<string> client;
+            vector<string> tester;
+            vector<string> moder;
+            vector<string> admin;
+            vector<string> admin_names;
             server->GetAccesses(client, tester, moder, admin, admin_names);
 
             auto pos = -1;

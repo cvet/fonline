@@ -31,7 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: review RUNTIME_ASSERT(( <- double braces
 // Todo: send client dumps to server
 
 #pragma once

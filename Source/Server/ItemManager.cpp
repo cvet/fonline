@@ -36,7 +36,6 @@
 #include "EntityManager.h"
 #include "Log.h"
 #include "MapManager.h"
-#include "PropertiesSerializator.h"
 #include "ProtoManager.h"
 #include "StringUtils.h"
 
@@ -44,7 +43,61 @@ ItemManager::ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, M
 {
 }
 
-auto ItemManager::GetItemHolder(Item* item) const -> Entity*
+void ItemManager::LinkItems()
+{
+    WriteLog("Link items...\n");
+
+    for (auto* item : GetItems()) {
+        if (item->IsStatic()) {
+            throw EntitiesLoadException("Can't link static item", item->GetName(), item->Id);
+        }
+
+        switch (item->GetAccessory()) {
+        case ITEM_ACCESSORY_CRITTER: {
+            if (IS_CLIENT_ID(item->GetCritId())) {
+                continue; // Skip player
+            }
+
+            Critter* npc = _crMngr.GetNpc(item->GetCritId());
+            if (npc == nullptr) {
+                throw EntitiesLoadException("Item npc not found", item->GetName(), item->Id, item->GetCritId());
+            }
+
+            npc->SetItem(item);
+        } break;
+        case ITEM_ACCESSORY_HEX: {
+            auto* map = _mapMngr.GetMap(item->GetMapId());
+            if (map == nullptr) {
+                throw EntitiesLoadException("Item map not found", item->GetName(), item->Id, item->GetMapId(), item->GetHexX(), item->GetHexY());
+            }
+
+            if (item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight()) {
+                throw EntitiesLoadException("Item invalid hex position", item->GetName(), item->Id, item->GetHexX(), item->GetHexY());
+            }
+
+            map->SetItem(item, item->GetHexX(), item->GetHexY());
+        } break;
+        case ITEM_ACCESSORY_CONTAINER: {
+            auto* cont = GetItem(item->GetContainerId());
+            if (cont == nullptr) {
+                throw EntitiesLoadException("Item container not found", item->GetName(), item->Id, item->GetContainerId());
+            }
+
+            SetItemToContainer(cont, item);
+        } break;
+        default:
+            throw EntitiesLoadException("Unknown item accessory id", item->GetName(), item->Id, item->GetAccessory());
+        }
+    }
+
+    WriteLog("Link items complete.\n");
+}
+
+void ItemManager::InitAfterLoad()
+{
+}
+
+auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     switch (item->GetAccessory()) {
     case ITEM_ACCESSORY_CRITTER:
@@ -67,7 +120,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
             _crMngr.EraseItemFromCritter(dynamic_cast<Critter*>(holder), item, true);
         }
         else if (item->GetIsRadio()) {
-            RadioRegister(item, true);
+            RegisterRadio(item);
         }
         item->SetCritId(0);
         item->SetCritSlot(0);
@@ -93,11 +146,13 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 
 void ItemManager::SetItemToContainer(Item* cont, Item* item)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
 
     if (cont->_childItems == nullptr) {
-        cont->_childItems = new ItemVec();
+        cont->_childItems = new vector<Item*>();
     }
 
     RUNTIME_ASSERT(std::find(cont->_childItems->begin(), cont->_childItems->end(), item) == cont->_childItems->end());
@@ -113,7 +168,7 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     RUNTIME_ASSERT(item);
 
     if (cont->_childItems == nullptr) {
-        cont->_childItems = new ItemVec();
+        cont->_childItems = new vector<Item*>();
     }
 
     if (item->GetStackable()) {
@@ -127,12 +182,14 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     }
 
     item->SetContainerStack(stack_id);
-    item->SetSortValue(*cont->_childItems);
+    item->EvaluateSortValue(*cont->_childItems);
     SetItemToContainer(cont, item);
 }
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 {
+    NON_CONST_METHOD_HINT(_dummy);
+
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(cont->_childItems);
     RUNTIME_ASSERT(item);
@@ -151,27 +208,16 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     }
 }
 
-void ItemManager::GetGameItems(ItemVec& items) const
+auto ItemManager::GetItems() -> vector<Item*>
 {
-    _entityMngr.GetItems(items);
+    NON_CONST_METHOD_HINT(_dummy);
+
+    return _entityMngr.GetItems();
 }
 
 auto ItemManager::GetItemsCount() const -> uint
 {
     return _entityMngr.GetEntitiesCount(EntityType::Item);
-}
-
-void ItemManager::SetCritterItems(Critter* cr)
-{
-    ItemVec items;
-    _entityMngr.GetCritterItems(cr->GetId(), items);
-
-    for (auto* item : items) {
-        cr->SetItem(item);
-        if (item->GetIsRadio()) {
-            RadioRegister(item, true);
-        }
-    }
 }
 
 auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> Item*
@@ -197,7 +243,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 
     // Radio collection
     if (item->GetIsRadio()) {
-        RadioRegister(item, true);
+        RegisterRadio(item);
     }
 
     // Scripts
@@ -213,25 +259,6 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
     }
 
     return item;
-}
-
-auto ItemManager::RestoreItem(uint id, hash proto_id, const DataBase::Document& doc) const -> bool
-{
-    const auto* proto = _protoMngr.GetProtoItem(proto_id);
-    if (proto == nullptr) {
-        WriteLog("Proto item '{}' is not loaded.\n", _str().parseHash(proto_id));
-        return false;
-    }
-
-    auto* item = new Item(id, proto, _scriptSys);
-    if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc, _scriptSys)) {
-        WriteLog("Fail to restore properties for item '{}' ({}).\n", _str().parseHash(proto_id), id);
-        item->Release();
-        return false;
-    }
-
-    _entityMngr.RegisterEntity(item);
-    return true;
 }
 
 void ItemManager::DeleteItem(Item* item)
@@ -262,7 +289,7 @@ void ItemManager::DeleteItem(Item* item)
 
     // Erase from radio collection
     if (item->GetIsRadio()) {
-        RadioRegister(item, false);
+        UnregisterRadio(item);
     }
 
     // Erase from main collection
@@ -297,15 +324,20 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 
     // Radio collection
     if (new_item->GetIsRadio()) {
-        RadioRegister(new_item, true);
+        RegisterRadio(new_item);
     }
 
     return new_item;
 }
 
-auto ItemManager::GetItem(uint item_id) const -> Item*
+auto ItemManager::GetItem(uint item_id) -> Item*
 {
     return dynamic_cast<Item*>(_entityMngr.GetEntity(item_id, EntityType::Item));
+}
+
+auto ItemManager::GetItem(uint item_id) const -> const Item*
+{
+    return const_cast<ItemManager*>(this)->GetItem(item_id);
 }
 
 void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
@@ -493,7 +525,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hash pid, uint count) -> Item*
     return result;
 }
 
-auto ItemManager::SubItemCritter(Critter* cr, hash pid, uint count, ItemVec* erased_items) -> bool
+auto ItemManager::SubItemCritter(Critter* cr, hash pid, uint count, vector<Item*>* erased_items) -> bool
 {
     if (count == 0u) {
         return true;
@@ -562,136 +594,27 @@ auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to
     return _scriptSys.ItemCheckMoveEvent(item, count, from, to);
 }
 
-auto ItemManager::MoveItemCritters(Critter* from_cr, Critter* to_cr, Item* item, uint count) -> bool
-{
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(count > 0);
-    RUNTIME_ASSERT(count <= item->GetCount());
-
-    if (!ItemCheckMove(item, count, from_cr, to_cr)) {
-        return false;
-    }
-
-    if (item->GetStackable() && item->GetCount() > count) {
-        auto* item_ = to_cr->GetItemByPid(item->GetProtoId());
-        if (item_ == nullptr) {
-            item_ = CreateItem(item->GetProtoId(), count, nullptr);
-            if (item_ == nullptr) {
-                WriteLog("Create item '{}' fail.\n", item->GetName());
-                return false;
-            }
-
-            _crMngr.AddItemToCritter(to_cr, item_, true);
-        }
-        else {
-            item_->ChangeCount(count);
-        }
-
-        item->ChangeCount(-static_cast<int>(count));
-    }
-    else {
-        _crMngr.EraseItemFromCritter(from_cr, item, true);
-        _crMngr.AddItemToCritter(to_cr, item, true);
-    }
-
-    return true;
-}
-
-auto ItemManager::MoveItemCritterToCont(Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id) -> bool
-{
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(count > 0);
-    RUNTIME_ASSERT(count <= item->GetCount());
-
-    if (!ItemCheckMove(item, count, from_cr, to_cont)) {
-        return false;
-    }
-
-    if (item->GetStackable() && item->GetCount() > count) {
-        auto* item_ = to_cont->ContGetItemByPid(item->GetProtoId(), stack_id);
-        if (item_ == nullptr) {
-            item_ = CreateItem(item->GetProtoId(), count, nullptr);
-            if (item_ == nullptr) {
-                WriteLog("Create item '{}' fail.\n", item->GetName());
-                return false;
-            }
-
-            item_->SetContainerStack(stack_id);
-            SetItemToContainer(to_cont, item_);
-        }
-        else {
-            item_->ChangeCount(count);
-        }
-
-        item->ChangeCount(-static_cast<int>(count));
-    }
-    else {
-        _crMngr.EraseItemFromCritter(from_cr, item, true);
-        AddItemToContainer(to_cont, item, stack_id);
-    }
-
-    return true;
-}
-
-auto ItemManager::MoveItemCritterFromCont(Item* from_cont, Critter* to_cr, Item* item, uint count) -> bool
-{
-    RUNTIME_ASSERT(item);
-    RUNTIME_ASSERT(count > 0);
-    RUNTIME_ASSERT(count <= item->GetCount());
-
-    if (!ItemCheckMove(item, count, from_cont, to_cr)) {
-        return false;
-    }
-
-    if (item->GetStackable() && item->GetCount() > count) {
-        auto* item_ = to_cr->GetItemByPid(item->GetProtoId());
-        if (item_ == nullptr) {
-            item_ = CreateItem(item->GetProtoId(), count, nullptr);
-            if (item_ == nullptr) {
-                WriteLog("Create item '{}' fail.\n", item->GetName());
-                return false;
-            }
-
-            _crMngr.AddItemToCritter(to_cr, item_, true);
-        }
-        else {
-            item_->ChangeCount(count);
-        }
-
-        item->ChangeCount(-static_cast<int>(count));
-    }
-    else {
-        EraseItemFromContainer(from_cont, item);
-        _crMngr.AddItemToCritter(to_cr, item, true);
-    }
-
-    return true;
-}
-
-void ItemManager::RadioClear()
-{
-    _radioItems.clear();
-}
-
-void ItemManager::RadioRegister(Item* radio, bool add)
+void ItemManager::RegisterRadio(Item* radio)
 {
     const auto it = std::find(_radioItems.begin(), _radioItems.end(), radio);
-
-    if (add) {
-        if (it == _radioItems.end()) {
-            _radioItems.push_back(radio);
-        }
-    }
-    else {
-        if (it != _radioItems.end()) {
-            _radioItems.erase(it);
-        }
+    if (it == _radioItems.end()) {
+        radio->AddRef();
+        _radioItems.push_back(radio);
     }
 }
 
-void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels)
+void ItemManager::UnregisterRadio(Item* radio)
 {
-    ItemVec radios;
+    const auto it = std::find(_radioItems.begin(), _radioItems.end(), radio);
+    if (it != _radioItems.end()) {
+        radio->Release();
+        _radioItems.erase(it);
+    }
+}
+
+void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
+{
+    vector<Item*> radios;
     auto items = cr->GetItemsNoLock();
     for (auto* item : items) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
@@ -715,7 +638,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
         return;
     }
 
-    uchar broadcast = 0;
+    uchar broadcast;
     uint broadcast_map_id = 0;
     uint broadcast_loc_id = 0;
 
@@ -726,7 +649,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
 
     // Send
     for (auto* radio : _radioItems) {
-        if (radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
+        if (!radio->IsDestroyed && radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
             if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->GetRadioBroadcastRecv() != RADIO_BROADCAST_FORCE_ALL) {
                 if (broadcast_type == RADIO_BROADCAST_WORLD) {
                     broadcast = radio->GetRadioBroadcastRecv();
@@ -843,7 +766,7 @@ void ItemManager::ChangeItemStatistics(hash pid, int val) const
 {
     const auto* proto = _protoMngr.GetProtoItem(pid);
     if (proto != nullptr) {
-        proto->InstanceCount += static_cast<int64>(val);
+        proto->InstanceCount += val;
     }
 }
 
@@ -855,17 +778,17 @@ auto ItemManager::GetItemStatistics(hash pid) const -> int64
 
 auto ItemManager::GetItemsStatistics() const -> string
 {
-    vector<ProtoItem*> protos;
+    vector<const ProtoItem*> protos;
     const auto& proto_items = _protoMngr.GetProtoItems();
     protos.reserve(proto_items.size());
     for (const auto& [pid, proto] : proto_items) {
         protos.push_back(proto);
     }
 
-    std::sort(protos.begin(), protos.end(), [](ProtoItem* p1, ProtoItem* p2) { return p1->GetName().compare(p2->GetName()); });
+    std::sort(protos.begin(), protos.end(), [](const ProtoItem* p1, const ProtoItem* p2) { return p1->GetName().compare(p2->GetName()); });
 
     string result = "Name                                     Count\n";
-    for (auto* proto : protos) {
+    for (const auto* proto : protos) {
         result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount).c_str());
     }
     return result;

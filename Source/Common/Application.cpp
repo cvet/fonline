@@ -1004,14 +1004,14 @@ void Application::EndFrame()
     _onFrameEndDispatcher();
 }
 
-void Application::AppWindow::GetSize(int& w, int& h)
+auto Application::AppWindow::GetSize() -> tuple<int, int>
 {
+    auto w = 1000;
+    auto h = 1000;
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowSize(SdlWindow, &w, &h);
     }
-    else {
-        w = h = 1000;
-    }
+    return {w, h};
 }
 
 void Application::AppWindow::SetSize(int w, int h)
@@ -1021,14 +1021,14 @@ void Application::AppWindow::SetSize(int w, int h)
     }
 }
 
-void Application::AppWindow::GetPosition(int& x, int& y)
+auto Application::AppWindow::GetPosition() -> tuple<int, int>
 {
+    auto x = 0;
+    auto y = 0;
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowPosition(SdlWindow, &x, &y);
     }
-    else {
-        x = y = 0;
-    }
+    return {x, y};
 }
 
 void Application::AppWindow::SetPosition(int x, int y)
@@ -1038,14 +1038,14 @@ void Application::AppWindow::SetPosition(int x, int y)
     }
 }
 
-void Application::AppWindow::GetMousePosition(int& x, int& y)
+auto Application::AppWindow::GetMousePosition() -> tuple<int, int>
 {
+    auto x = 100;
+    auto y = 100;
     if (CurRenderType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
-    else {
-        x = y = 100;
-    }
+    return {x, y};
 }
 
 void Application::AppWindow::SetMousePosition(int x, int y)
@@ -1250,7 +1250,7 @@ auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -
 
 auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>
 {
-    RUNTIME_ASSERT((w && h));
+    RUNTIME_ASSERT(w && h);
     vector<uint> result(w * h);
 #ifdef FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
@@ -1269,13 +1269,13 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
     return std::move(result);
 }
 
-void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const Rect& r, const uint* data)
+void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
 {
 #ifdef FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
         GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
-        GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.L, r.T, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
+        GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     }
 #endif
@@ -1829,7 +1829,7 @@ i).c_str()));
     return effect.release();
 }
 
-void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const UShortVec& /*ibuf*/, RenderEffect* /*effect*/, RenderTexture* /*tex*/)
+void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderTexture* /*tex*/)
 {
 #ifdef FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
@@ -1904,7 +1904,7 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const UShort
 #endif
 }
 
-void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const UShortVec& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
+void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
 {
 #ifdef FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
@@ -1987,7 +1987,7 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
         }
 
         /*Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect :
-        anim3dMngr.effectMngr.Effects.Skinned3d); MeshTexture** textures = combined_mesh->Textures;
+        modelMngr.effectMngr.Effects.Skinned3d); MeshTexture** textures = combined_mesh->Textures;
 
         for (size_t pass = 0; pass < effect->Passes.size(); pass++)
         {
@@ -1999,9 +1999,9 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
             GL(glUseProgram(effect_pass.Program));
 
             if (IS_EFFECT_VALUE(effect_pass.ZoomFactor))
-                GL(glUniform1f(effect_pass.ZoomFactor, anim3dMngr.settings.SpritesZoom));
+                GL(glUniform1f(effect_pass.ZoomFactor, modelMngr.settings.SpritesZoom));
             if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
-                GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, anim3dMngr.matrixProjCM[0]));
+                GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, modelMngr.matrixProjCM[0]));
             if (IS_EFFECT_VALUE(effect_pass.ColorMap) && textures[0])
             {
                 GL(glBindTexture(GL_TEXTURE_2D, textures[0]->Id));
@@ -2010,22 +2010,22 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
                     GL(glUniform4fv(effect_pass.ColorMapSize, 1, textures[0]->SizeData));
             }
             if (IS_EFFECT_VALUE(effect_pass.LightColor))
-                GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&anim3dMngr.lightColor));
+                GL(glUniform4fv(effect_pass.LightColor, 1, (float*)&modelMngr.lightColor));
             if (IS_EFFECT_VALUE(effect_pass.WorldMatrices))
             {
                 GL(glUniformMatrix4fv(effect_pass.WorldMatrices, (GLsizei)combined_mesh->CurBoneMatrix, GL_FALSE,
-                    (float*)&anim3dMngr.worldMatrices[0]));
+                    (float*)&modelMngr.worldMatrices[0]));
             }
             if (IS_EFFECT_VALUE(effect_pass.GroundPosition))
                 GL(glUniform3fv(effect_pass.GroundPosition, 1, (float*)&groundPos));
 
             if (effect_pass.IsNeedProcess)
-                anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
+                modelMngr.effectMngr.EffectProcessVariables(effect_pass, true, animPosProc, animPosTime, textures);
 
             GL(glDrawElements(GL_TRIANGLES, (uint)combined_mesh->Indices.size(), GL_UNSIGNED_SHORT, (void*)0));
 
             if (effect_pass.IsNeedProcess)
-                anim3dMngr.effectMngr.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
+                modelMngr.effectMngr.EffectProcessVariables(effect_pass, false, animPosProc, animPosTime, textures);
         }
 
         GL(glUseProgram(0));

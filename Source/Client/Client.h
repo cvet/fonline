@@ -84,37 +84,116 @@
 
 DECLARE_EXCEPTION(ClientRestartException);
 
-// Fonts
-#ifndef FONT_DEFAULT
-#define FONT_DEFAULT (0)
-#endif
-
 // Screens
-#define SCREEN_NONE (0)
+constexpr auto SCREEN_NONE = 0;
 // Primary screens
-#define SCREEN_LOGIN (1)
-#define SCREEN_GAME (2)
-#define SCREEN_GLOBAL_MAP (3)
-#define SCREEN_WAIT (4)
+constexpr auto SCREEN_LOGIN = 1;
+constexpr auto SCREEN_GAME = 2;
+constexpr auto SCREEN_GLOBAL_MAP = 3;
+constexpr auto SCREEN_WAIT = 4;
 // Secondary screens
-#define SCREEN_DIALOG (6)
-#define SCREEN_TOWN_VIEW (9)
+constexpr auto SCREEN_DIALOG = 6;
+constexpr auto SCREEN_TOWN_VIEW = 9;
 
 // Proxy types
-#define PROXY_SOCKS4 (1)
-#define PROXY_SOCKS5 (2)
-#define PROXY_HTTP (3)
+constexpr auto PROXY_SOCKS4 = 1;
+constexpr auto PROXY_SOCKS5 = 2;
+constexpr auto PROXY_HTTP = 3;
 
 // InitNetReason
-#define INIT_NET_REASON_NONE (0)
-#define INIT_NET_REASON_LOGIN (1)
-#define INIT_NET_REASON_REG (2)
-#define INIT_NET_REASON_LOAD (3)
-#define INIT_NET_REASON_CUSTOM (4)
+constexpr auto INIT_NET_REASON_NONE = 0;
+constexpr auto INIT_NET_REASON_LOGIN = 1;
+constexpr auto INIT_NET_REASON_REG = 2;
+constexpr auto INIT_NET_REASON_LOAD = 3;
+constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
 class FOClient final // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
 {
 public:
+    struct ClientUpdate
+    {
+        struct UpdateFile
+        {
+            uint Index {};
+            string Name;
+            uint Size {};
+            uint RemaningSize {};
+            uint Hash {};
+        };
+
+        bool ClientOutdated {};
+        bool CacheChanged {};
+        bool FilesChanged {};
+        bool Connecting {};
+        uint ConnectionTimeout {};
+        uint Duration {};
+        bool Aborted {};
+        bool FontLoaded {};
+        string Messages;
+        string Progress;
+        bool FileListReceived {};
+        vector<UpdateFile> FileList {};
+        uint FilesWholeSize {};
+        bool FileDownloading {};
+        unique_ptr<OutputFile> TempFile {};
+    };
+
+    struct IfaceAnim
+    {
+        AnyFrames* Frames {};
+        AtlasType ResType {};
+        uint LastTick {};
+        ushort Flags {};
+        uint CurSpr {};
+    };
+
+    struct ScreenEffect
+    {
+        uint BeginTick {};
+        uint Time {};
+        uint StartColor {};
+        uint EndColor {};
+    };
+
+    struct MapText
+    {
+        ushort HexX {};
+        ushort HexY {};
+        uint StartTick {};
+        uint Tick {};
+        string Text;
+        uint Color {};
+        bool Fade {};
+        IRect Pos {};
+        IRect EndPos {};
+    };
+
+    struct GmapLocation
+    {
+        uint LocId {};
+        hash LocPid {};
+        ushort LocWx {};
+        ushort LocWy {};
+        ushort Radius {};
+        uint Color {};
+        uchar Entrances {};
+    };
+
+    struct Automap
+    {
+        uint LocId {};
+        hash LocPid {};
+        string LocName {};
+        vector<hash> MapPids {};
+        vector<string> MapNames {};
+        uint CurMap {};
+    };
+
+    static constexpr auto FONT_DEFAULT = 5;
+    static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
+    static constexpr auto FOMB_GAME = 0;
+    static constexpr auto FOMB_TALK = 1;
+
     FOClient() = delete;
     explicit FOClient(GlobalSettings& settings);
     FOClient(const FOClient&) = delete;
@@ -123,118 +202,36 @@ public:
     auto operator=(FOClient&&) noexcept = delete;
     ~FOClient();
 
+    void MainLoop();
     void ProcessAutoLogin();
+    void CrittersProcess();
+    void ProcessInputEvents();
+    void ProcessInputEvent(const InputEvent& event);
     void TryExit();
     auto IsCurInWindow() const -> bool;
     void FlashGameWindow();
-    void MainLoop();
-    void NetDisconnect();
     void DrawIface();
+    void GameDraw();
+    void WaitDraw();
 
-    int InitCalls {};
-    ClientSettings& Settings;
-    GeometryHelper GeomHelper;
-    FileManager FileMngr;
-    ClientScriptSystem ScriptSys;
-    GameTimer GameTime;
-    ProtoManager ProtoMngr;
-    EffectManager EffectMngr;
-    SpriteManager SprMngr;
-    ResourceManager ResMngr;
-    HexManager HexMngr;
-    SoundManager SndMngr;
-    Keyboard Keyb;
-    CacheStorage Cache;
-    GlobalVars* Globals {};
-    hash CurMapPid {};
-    hash CurMapLocPid {};
-    uint CurMapIndexInLoc {};
-    StrVec Preload3dFiles {};
-    int WindowResolutionDiffX {};
-    int WindowResolutionDiffY {};
-    string LoginName {};
-    string LoginPassword {};
-    bool CanDrawInScripts {};
-    bool IsAutoLogin {};
-    MapView* CurMap {};
-    LocationView* CurLocation {};
-    uint FpsTick {};
-    uint FpsCounter {};
+    void SetDayTime(bool refresh);
+    void SetGameColor(uint color);
+    void LookBordersPrepare();
+    void LmapPrepareMap();
+    void GmapNullParams();
 
-    // Offscreen drawing
-    vector<RenderEffect*> OffscreenEffects;
-    vector<RenderTarget*> OffscreenSurfaces;
-    vector<RenderTarget*> ActiveOffscreenSurfaces;
-    vector<RenderTarget*> PreDirtyOffscreenSurfaces;
-    vector<RenderTarget*> DirtyOffscreenSurfaces;
-
-    // Screen
-    int ScreenModeMain {};
-    void ShowMainScreen(int new_screen, StrIntMap params);
-    auto GetMainScreen() const -> int { return ScreenModeMain; }
-    auto IsMainScreen(int check_screen) const -> bool { return check_screen == ScreenModeMain; }
-    void ShowScreen(int screen, StrIntMap params);
-    void HideScreen(int screen);
-    auto GetActiveScreen(IntVec* screens) -> int;
-    auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, StrIntMap params);
-
-    // Input
-    void ProcessInputEvents();
-    void ProcessInputEvent(const InputEvent& event);
-
-    // Update files
-    struct UpdateFile
-    {
-        uint Index {};
-        string Name;
-        uint Size {};
-        uint RemaningSize {};
-        uint Hash {};
-    };
-    typedef vector<UpdateFile> UpdateFileVec;
-
-    bool UpdateFilesInProgress {};
-    bool UpdateFilesClientOutdated {};
-    bool UpdateFilesCacheChanged {};
-    bool UpdateFilesFilesChanged {};
-    bool UpdateFilesConnection {};
-    uint UpdateFilesConnectTimeout {};
-    uint UpdateFilesTick {};
-    bool UpdateFilesAborted {};
-    bool UpdateFilesFontLoaded {};
-    string UpdateFilesText;
-    string UpdateFilesProgress;
-    UpdateFileVec* UpdateFilesList {};
-    uint UpdateFilesWholeSize {};
-    bool UpdateFileDownloading {};
-    unique_ptr<OutputFile> UpdateFileTemp;
-
-    void UpdateFilesStart();
     void UpdateFilesLoop();
     void UpdateFilesAddText(uint num_str, const string& num_str_str);
     void UpdateFilesAbort(uint num_str, const string& num_str_str);
 
-    // Network
-    UCharVec ComBuf;
-    NetBuffer Bin;
-    NetBuffer Bout;
-    z_stream ZStream {};
-    bool ZStreamOk {};
-    uint BytesReceive {}, BytesRealReceive {}, BytesSend {};
-    sockaddr_in SockAddr {}, ProxyAddr {};
-    SOCKET Sock {};
-    fd_set SockSet {};
-    ItemView* SomeItem {};
-    bool IsConnecting {};
-    bool IsConnected {};
-    bool InitNetBegin {};
-    int InitNetReason;
-    bool InitialItemsSend {};
-    UCharVecVec GlovalVarsPropertiesData;
-    UCharVecVec TempPropertiesData;
-    UCharVecVec TempPropertiesDataExt;
-    UCharVec TempPropertyData;
+    void ShowMainScreen(int new_screen, map<string, int> params);
+    auto GetMainScreen() const -> int { return ScreenModeMain; }
+    auto IsMainScreen(int check_screen) const -> bool { return check_screen == ScreenModeMain; }
+    void ShowScreen(int screen, map<string, int> params);
+    void HideScreen(int screen);
+    auto GetActiveScreen(vector<int>* screens) -> int;
+    auto IsScreenPresent(int screen) -> bool;
+    void RunScreenScript(bool show, int screen, map<string, int> params);
 
     auto CheckSocketStatus(bool for_write) -> bool;
     auto NetConnect(const string& host, ushort port) -> bool;
@@ -243,6 +240,8 @@ public:
     auto NetInput(bool unpack) -> int;
     auto NetOutput() -> bool;
     void NetProcess();
+    void NetDisconnect();
+    void WaitPing();
 
     void Net_SendUpdate();
     void Net_SendLogIn();
@@ -254,10 +253,9 @@ public:
     void Net_SendLoadMapOk();
     void Net_SendText(const char* send_str, uchar how_say);
     void Net_SendDir();
-    void Net_SendMove(UCharVec steps);
+    void Net_SendMove(vector<uchar> steps);
     void Net_SendPing(uchar ping);
     void Net_SendRefereshMe();
-
     void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter(bool is_npc);
@@ -277,7 +275,6 @@ public:
     void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnProperty(uint data_size);
-
     void Net_OnCritterDir();
     void Net_OnCritterMove();
     void Net_OnSomeItem();
@@ -286,7 +283,6 @@ public:
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCustomCommand();
-
     void Net_OnCritterXY();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
@@ -294,57 +290,34 @@ public:
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();
-
     void Net_OnGameInfo();
     void Net_OnLoadMap();
     void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
-
     void Net_OnUpdateFilesList();
     void Net_OnUpdateFileData();
-
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
+    auto FmtGameText(uint str_num, ...) -> string;
+    void FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems);
+    void AddMess(int mess_type, const string& msg);
+    void AddMess(int mess_type, const string& msg, bool script_call);
     void OnText(const string& str, uint crid, int how_say);
     void OnMapText(const string& str, ushort hx, ushort hy, uint color);
-    void CrittersProcess();
-    void WaitPing();
 
-    uint PingTick {}, PingCallTick {};
-
-    // MSG File
-    LanguagePack CurLang;
-
-    auto FmtGameText(uint str_num, ...) -> string;
-
-    // Properties callbacks
     void OnSendGlobalValue(Entity* entity, Property* prop);
     void OnSendCritterValue(Entity* entity, Property* prop);
-    static void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSendItemValue(Entity* entity, Property* prop);
     void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    static void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSendMapValue(Entity* entity, Property* prop);
     void OnSendLocationValue(Entity* entity, Property* prop);
-
-    /************************************************************************/
-    /* Animation                                                            */
-    /************************************************************************/
-    struct IfaceAnim
-    {
-        AnyFrames* Frames {};
-        AtlasType ResType {};
-        uint LastTick {};
-        ushort Flags {};
-        uint CurSpr {};
-    };
-
-    vector<IfaceAnim*> Animations;
 
     auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
     auto AnimLoad(const char* fname, AtlasType res_type) -> uint;
@@ -355,152 +328,13 @@ public:
     void AnimRun(uint anim_id, uint flags);
     void AnimProcess();
 
-    /************************************************************************/
-    /* Screen effects                                                       */
-    /************************************************************************/
-    struct ScreenEffect
-    {
-        uint BeginTick;
-        uint Time;
-        uint StartColor;
-        uint EndColor;
-        ScreenEffect(uint begin_tick, uint time, uint col, uint end_col) : BeginTick(begin_tick), Time(time), StartColor(col), EndColor(end_col) { }
-    };
-
-    using ScreenEffectVec = vector<ScreenEffect>;
-
-    // Fading
-    ScreenEffectVec ScreenEffects;
-
-    // Quake
-    int ScreenOffsX {}, ScreenOffsY {};
-    float ScreenOffsXf {}, ScreenOffsYf {}, ScreenOffsStep {};
-    uint ScreenOffsNextTick {};
-
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
-
     void OnItemInvChanged(ItemView* old_item, ItemView* new_item);
-
-    /************************************************************************/
-    /* Game                                                                 */
-    /************************************************************************/
-    struct MapText
-    {
-        ushort HexX {}, HexY {};
-        uint StartTick {}, Tick {};
-        string Text;
-        uint Color {};
-        bool Fade {};
-        Rect Pos;
-        Rect EndPos;
-        auto operator==(const MapText& r) const -> bool { return HexX == r.HexX && HexY == r.HexY; }
-    };
-
-    using MapTextVec = vector<MapText>;
-
-    MapTextVec GameMapTexts;
-    uint GameMouseStay {};
-
-    void GameDraw();
-
-    /************************************************************************/
-    /* Dialog                                                               */
-    /************************************************************************/
-    uchar DlgIsNpc {};
-    uint DlgNpcId {};
-
-    void FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems);
-
-    /************************************************************************/
-    /* Mini-map                                                             */
-    /************************************************************************/
-#define MINIMAP_PREPARE_TICK (1000)
-
-    PointVec LmapPrepPix;
-    Rect LmapWMap;
-    int LmapZoom;
-    bool LmapSwitchHi {};
-    uint LmapPrepareNextTick {};
-
-    void LmapPrepareMap();
-
-    /************************************************************************/
-    /* Global map                                                           */
-    /************************************************************************/
-    // Mask
-    TwoBitMask GmapFog;
-    PointVec GmapFogPix;
-
-    // Locations
-    struct GmapLocation
-    {
-        uint LocId;
-        hash LocPid;
-        ushort LocWx;
-        ushort LocWy;
-        ushort Radius;
-        uint Color;
-        uchar Entrances;
-        auto operator==(const uint& other) const -> bool { return this->LocId == other; }
-    };
-
-    using GmapLocationVec = vector<GmapLocation>;
-    GmapLocationVec GmapLoc;
-    GmapLocation GmapTownLoc {};
-
-    void GmapNullParams();
-
-    /************************************************************************/
-    /* PipBoy                                                               */
-    /************************************************************************/
-    // HoloInfo
-    uint HoloInfo[MAX_HOLO_INFO] {};
-
-    // Automaps
-    struct Automap
-    {
-        uint LocId {};
-        hash LocPid {};
-        string LocName {};
-        HashVec MapPids {};
-        StrVec MapNames {};
-        uint CurMap {};
-
-        auto operator==(const uint id) const -> bool { return LocId == id; }
-    };
-
-    using AutomapVec = vector<Automap>;
-
-    AutomapVec Automaps;
-
-    /************************************************************************/
-    /* PickUp                                                               */
-    /************************************************************************/
-    uchar PupTransferType {};
-    uint PupContId {};
-    hash PupContPid {};
-
-    /************************************************************************/
-    /* Wait                                                                 */
-    /************************************************************************/
-    AnyFrames* WaitPic;
-
-    void WaitDraw();
-
-    /************************************************************************/
-    /* Generic                                                              */
-    /************************************************************************/
-    uint DaySumRGB {};
-
-    void SetDayTime(bool refresh);
-    void SetGameColor(uint color);
-
-    CritterView* Chosen {};
 
     void AddCritter(CritterView* cr);
     auto GetCritter(uint crid) -> CritterView* { return HexMngr.GetCritter(crid); }
@@ -508,18 +342,100 @@ public:
     void DeleteCritters();
     void DeleteCritter(uint remid);
 
+    ClientSettings& Settings;
+    GeometryHelper GeomHelper;
+    FileManager FileMngr;
+    ClientScriptSystem ScriptSys;
+    GameTimer GameTime;
+    ProtoManager ProtoMngr;
+    EffectManager EffectMngr;
+    SpriteManager SprMngr;
+    ResourceManager ResMngr;
+    HexManager HexMngr;
+    SoundManager SndMngr;
+    Keyboard Keyb;
+    CacheStorage Cache;
+    GlobalVars* Globals {};
+    int InitCalls {};
+    hash CurMapPid {};
+    hash CurMapLocPid {};
+    uint CurMapIndexInLoc {};
+    vector<string> Preload3dFiles {};
+    int WindowResolutionDiffX {};
+    int WindowResolutionDiffY {};
+    string LoginName {};
+    string LoginPassword {};
+    bool CanDrawInScripts {};
+    bool IsAutoLogin {};
+    MapView* CurMap {};
+    LocationView* CurLocation {};
+    uint FpsTick {};
+    uint FpsCounter {};
+    optional<ClientUpdate> Update {};
+    vector<RenderEffect*> OffscreenEffects {};
+    vector<RenderTarget*> OffscreenSurfaces {};
+    vector<RenderTarget*> ActiveOffscreenSurfaces {};
+    vector<RenderTarget*> PreDirtyOffscreenSurfaces {};
+    vector<RenderTarget*> DirtyOffscreenSurfaces {};
+    int ScreenModeMain {};
+    vector<uchar> ComBuf {};
+    NetBuffer Bin {};
+    NetBuffer Bout {};
+    z_stream ZStream {};
+    bool ZStreamOk {};
+    uint BytesReceive {};
+    uint BytesRealReceive {};
+    uint BytesSend {};
+    sockaddr_in SockAddr {};
+    sockaddr_in ProxyAddr {};
+    SOCKET Sock {};
+    fd_set SockSet {};
+    ItemView* SomeItem {};
+    bool IsConnecting {};
+    bool IsConnected {};
+    bool InitNetBegin {};
+    int InitNetReason {INIT_NET_REASON_NONE};
+    bool InitialItemsSend {};
+    vector<vector<uchar>> GlovalVarsPropertiesData {};
+    vector<vector<uchar>> TempPropertiesData {};
+    vector<vector<uchar>> TempPropertiesDataExt {};
+    vector<uchar> TempPropertyData {};
+    uint PingTick {};
+    uint PingCallTick {};
+    LanguagePack CurLang {};
+    vector<IfaceAnim*> Animations {};
+    vector<ScreenEffect> ScreenEffects {};
+    int ScreenOffsX {};
+    int ScreenOffsY {};
+    float ScreenOffsXf {};
+    float ScreenOffsYf {};
+    float ScreenOffsStep {};
+    uint ScreenOffsNextTick {};
+    vector<MapText> GameMapTexts {};
+    uint GameMouseStay {};
+    uint DaySumRGB {};
+    CritterView* Chosen {};
     bool NoLogOut {};
     bool RebuildLookBorders {};
-    bool DrawLookBorders, DrawShootBorders {};
-    PointVec LookBorders, ShootBorders;
-
-    void LookBordersPrepare();
-
-    /************************************************************************/
-    /* MessBox                                                              */
-    /************************************************************************/
-#define FOMB_GAME (0)
-#define FOMB_TALK (1)
-    void AddMess(int mess_type, const string& msg);
-    void AddMess(int mess_type, const string& msg, bool script_call);
+    bool DrawLookBorders;
+    bool DrawShootBorders {};
+    PrimitivePoints LookBorders {};
+    PrimitivePoints ShootBorders {};
+    AnyFrames* WaitPic {};
+    uchar PupTransferType {};
+    uint PupContId {};
+    hash PupContPid {};
+    uint HoloInfo[MAX_HOLO_INFO] {};
+    vector<Automap> Automaps {};
+    TwoBitMask GmapFog {};
+    PrimitivePoints GmapFogPix {};
+    vector<GmapLocation> GmapLoc {};
+    GmapLocation GmapTownLoc {};
+    PrimitivePoints LmapPrepPix {};
+    IRect LmapWMap {};
+    int LmapZoom {};
+    bool LmapSwitchHi {};
+    uint LmapPrepareNextTick {};
+    uchar DlgIsNpc {};
+    uint DlgNpcId {};
 };

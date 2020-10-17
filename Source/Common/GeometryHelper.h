@@ -50,17 +50,19 @@ public:
     auto operator=(GeometryHelper &&) -> GeometryHelper& = delete;
     ~GeometryHelper();
 
-    auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
-    auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
-    auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;
-    auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar;
-    auto CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool;
-    auto ReverseDir(uchar dir) const -> uchar;
+    [[nodiscard]] auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
+    [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
+    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;
+    [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar;
+    [[nodiscard]] auto CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool;
+    [[nodiscard]] auto ReverseDir(uchar dir) const -> uchar;
+    [[nodiscard]] auto GetHexOffsets(bool odd) const -> tuple<const short*, const short*>;
+    [[nodiscard]] auto GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>;
+
     auto MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool;
+    auto MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool;
     void MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const;
-    void GetHexOffsets(bool odd, short*& sx, short*& sy) const;
-    void GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y) const;
-    void ForEachBlockLines(const UCharVec& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const;
+    void ForEachBlockLines(const vector<uchar>& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const;
 
 private:
     void InitializeHexOffsets() const;

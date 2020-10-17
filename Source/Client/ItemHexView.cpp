@@ -49,7 +49,7 @@ ItemHexView::ItemHexView(uint id, const ProtoItem* proto, Properties& props, Res
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
 {
     RUNTIME_ASSERT(props_data);
     Props.RestoreData(*props_data);
@@ -57,7 +57,7 @@ ItemHexView::ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_dat
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, UCharVecVec* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
 {
     if (props_data != nullptr) {
         Props.RestoreData(*props_data);
@@ -209,7 +209,7 @@ void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
     RefreshAnim();
 }
 
-auto ItemHexView::GetEffectStep() -> UShortPair
+auto ItemHexView::GetEffectStep() const -> pair<ushort, ushort>
 {
     auto dist = GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY);
     if (dist > _effDist) {
@@ -286,7 +286,7 @@ void ItemHexView::SetSprite(Sprite* spr)
     }
 }
 
-auto ItemHexView::GetEggType() -> int
+auto ItemHexView::GetEggType() const -> int
 {
     if (GetDisableEgg() || GetIsFlat()) {
         return 0;
@@ -303,7 +303,6 @@ auto ItemHexView::GetEggType() -> int
     default:
         return EGG_X; // CORNER_NORTH_SOUTH, CORNER_EAST
     }
-    return 0;
 }
 
 void ItemHexView::StartAnimate()
@@ -384,8 +383,8 @@ void ItemHexView::SetAnimOffs()
     }
 
     if (IsDynamicEffect()) {
-        ScrX += static_cast<int>(EffOffsX);
-        ScrY += static_cast<int>(EffOffsY);
+        ScrX += static_cast<short>(EffOffsX);
+        ScrY += static_cast<short>(EffOffsY);
     }
 }
 

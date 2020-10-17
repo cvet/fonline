@@ -233,7 +233,7 @@ auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
     }
 
     // Other calculations
-    ft += static_cast<uint64>(dt.Day - 1 + leap_days) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
+    ft += static_cast<uint64>(dt.Day) - 1ULL + static_cast<uint64>(leap_days) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
     ft += static_cast<uint64>(dt.Hour) * 60ULL * 60ULL * 1000ULL * 1000ULL;
     ft += static_cast<uint64>(dt.Minute) * 60ULL * 1000ULL * 1000ULL;
     ft += static_cast<uint64>(dt.Second) * 1000ULL * 1000ULL;

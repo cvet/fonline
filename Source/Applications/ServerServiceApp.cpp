@@ -195,9 +195,7 @@ int main(int argc, char** argv)
             if (service != nullptr) {
                 ::CloseServiceHandle(service);
             }
-            if (manager != nullptr) {
-                ::CloseServiceHandle(manager);
-            }
+            ::CloseServiceHandle(manager);
 
             if (error) {
                 return 1;

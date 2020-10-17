@@ -52,17 +52,17 @@ public:
     DiskFile(DiskFile&&) noexcept;
     auto operator=(const DiskFile&) -> DiskFile& = delete;
     auto operator=(DiskFile &&) -> DiskFile& = delete;
+    explicit operator bool() const;
     ~DiskFile();
 
-    explicit operator bool() const;
+    [[nodiscard]] auto GetPos() const -> uint;
+    [[nodiscard]] auto GetWriteTime() const -> uint64;
+    [[nodiscard]] auto GetSize() const -> uint;
 
     auto Read(void* buf, uint len) -> bool;
     auto Write(const void* buf, uint len) -> bool;
     auto Write(const string& str) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
-    [[nodiscard]] auto GetPos() const -> uint;
-    [[nodiscard]] auto GetWriteTime() const -> uint64;
-    [[nodiscard]] auto GetSize() const -> uint;
 
 private:
     DiskFile(const string& fname, bool write, bool write_through);
@@ -82,10 +82,9 @@ public:
     DiskFind(const DiskFind&) = delete;
     auto operator=(const DiskFind&) -> DiskFind& = delete;
     auto operator=(DiskFind &&) -> DiskFind& = delete;
-    ~DiskFind();
-
     DiskFind& operator++(int);
     explicit operator bool() const;
+    ~DiskFind();
 
     [[nodiscard]] auto IsDir() const -> bool;
     [[nodiscard]] auto GetPath() const -> string;
@@ -103,24 +102,24 @@ private:
 class DiskFileSystem final
 {
 public:
+    using FileVisitor = std::function<void(const string&, uint, uint64)>;
+
     DiskFileSystem() = delete;
 
-    static auto OpenFile(const string& fname, bool write) -> DiskFile;
-    static auto OpenFile(const string& fname, bool write, bool write_through) -> DiskFile;
-    static auto FindFiles(const string& path, const string& ext) -> DiskFind;
+    [[nodiscard]] static auto IsFileExists(const string& fname) -> bool;
+    [[nodiscard]] static auto GetExePath() -> string;
+
+    [[nodiscard]] static auto OpenFile(const string& fname, bool write) -> DiskFile;
+    [[nodiscard]] static auto OpenFile(const string& fname, bool write, bool write_through) -> DiskFile;
+    [[nodiscard]] static auto FindFiles(const string& path, const string& ext) -> DiskFind;
 
     static auto DeleteFile(const string& fname) -> bool;
-    static auto IsFileExists(const string& fname) -> bool;
     static auto CopyFile(const string& fname, const string& copy_fname) -> bool;
     static auto RenameFile(const string& fname, const string& new_fname) -> bool;
-
     static void ResolvePath(string& path);
     static void MakeDirTree(const string& path);
     static auto DeleteDir(const string& dir) -> bool;
     static auto SetCurrentDir(const string& dir) -> bool;
     static void ResetCurDir();
-    static auto GetExePath() -> string;
-
-    using FileVisitor = std::function<void(const string&, uint, uint64)>;
     static void IterateDir(const string& path, const string& ext, bool include_subdirs, FileVisitor visitor);
 };

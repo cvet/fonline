@@ -53,7 +53,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(Settings), ScriptSys(this, settings, FileMngr), GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime), ResMngr(FileMngr, SprMngr, ScriptSys), HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys, GameTime), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), GmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(Settings), ScriptSys(this, settings, FileMngr), GameTime(Settings), ProtoMngr(FileMngr), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime), ResMngr(FileMngr, SprMngr, ScriptSys), HexMngr(false, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys, GameTime), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), GmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     Globals = new GlobalVars();
     ComBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
@@ -65,14 +65,10 @@ FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     DrawLookBorders = true;
     FpsTick = GameTime.FrameTick();
 
-    auto sw = 0;
-    auto sh = 0;
-    SprMngr.GetWindowSize(sw, sh);
-    auto mx = 0;
-    auto my = 0;
-    SprMngr.GetMousePosition(mx, my);
-    Settings.MouseX = std::clamp(mx, 0, sw - 1);
-    Settings.MouseY = std::clamp(my, 0, sh - 1);
+    const auto [w, h] = SprMngr.GetWindowSize();
+    const auto [x, y] = SprMngr.GetMousePosition();
+    Settings.MouseX = std::clamp(x, 0, w - 1);
+    Settings.MouseY = std::clamp(y, 0, h - 1);
 
     SetGameColor(COLOR_IFACE);
 
@@ -122,11 +118,6 @@ FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
             SprMngr.Preload3dModel(name);
         }
         WriteLog("Preload 3d files complete.\n");
-    }
-
-    // Item prototypes
-    if (const auto protos_data = Cache.GetData("$protos.cache"); !protos_data.empty()) {
-        ProtoMngr.LoadProtosFromBinaryData(protos_data);
     }
 
     // Auto login
@@ -184,49 +175,30 @@ void FOClient::ProcessAutoLogin()
 #endif
 }
 
-void FOClient::UpdateFilesStart()
-{
-    UpdateFilesInProgress = true;
-    UpdateFilesClientOutdated = false;
-    UpdateFilesCacheChanged = false;
-    UpdateFilesFilesChanged = false;
-    UpdateFilesConnection = false;
-    UpdateFilesConnectTimeout = 0;
-    UpdateFilesTick = 0;
-    UpdateFilesAborted = false;
-    UpdateFilesFontLoaded = false;
-    UpdateFilesText = "";
-    UpdateFilesProgress = "";
-    UpdateFilesList = nullptr;
-    UpdateFilesWholeSize = 0;
-    UpdateFileDownloading = false;
-    UpdateFileTemp = nullptr;
-}
-
 void FOClient::UpdateFilesLoop()
 {
     // Was aborted
-    if (UpdateFilesAborted) {
+    if (Update->Aborted) {
         return;
     }
 
     // Update indication
     if (InitCalls < 2) {
         // Load font
-        if (!UpdateFilesFontLoaded) {
+        if (!Update->FontLoaded) {
             SprMngr.PushAtlasType(AtlasType::Static);
-            UpdateFilesFontLoaded = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false, true);
-            if (!UpdateFilesFontLoaded) {
-                UpdateFilesFontLoaded = SprMngr.LoadFontBmf(FONT_DEFAULT, "Default");
+            Update->FontLoaded = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false, true);
+            if (!Update->FontLoaded) {
+                Update->FontLoaded = SprMngr.LoadFontBmf(FONT_DEFAULT, "Default");
             }
-            if (UpdateFilesFontLoaded) {
+            if (Update->FontLoaded) {
                 SprMngr.BuildFonts();
             }
             SprMngr.PopAtlasType();
         }
 
         // Running dots
-        const int dots = (GameTime.FrameTick() - UpdateFilesTick) / 100 % 50 + 1;
+        const int dots = (GameTime.FrameTick() - Update->Duration) / 100 % 50 + 1;
         string dots_str;
         for (auto i = 0; i < dots; i++) {
             dots_str += ".";
@@ -234,8 +206,8 @@ void FOClient::UpdateFilesLoop()
 
         // State
         SprMngr.BeginScene(COLOR_RGB(50, 50, 50));
-        const auto update_text = UpdateFilesText + UpdateFilesProgress + dots_str;
-        SprMngr.DrawStr(Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+        const auto update_text = Update->Messages + Update->Progress + dots_str;
+        SprMngr.DrawStr(IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
         SprMngr.EndScene();
     }
     else {
@@ -247,103 +219,98 @@ void FOClient::UpdateFilesLoop()
 
     // Logic
     if (!IsConnected) {
-        if (UpdateFilesConnection) {
-            UpdateFilesConnection = false;
+        if (Update->Connecting) {
+            Update->Connecting = false;
             UpdateFilesAddText(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
         }
 
-        if (GameTime.FrameTick() < UpdateFilesConnectTimeout) {
+        if (GameTime.FrameTick() < Update->ConnectionTimeout) {
             return;
         }
-        UpdateFilesConnectTimeout = GameTime.FrameTick() + 5000;
+        Update->ConnectionTimeout = GameTime.FrameTick() + 5000;
 
         // Connect to server
         UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
         NetConnect(Settings.Host, Settings.Port);
-        UpdateFilesConnection = true;
+        Update->Connecting = true;
     }
     else {
-        if (UpdateFilesConnection) {
-            UpdateFilesConnection = false;
+        if (Update->Connecting) {
+            Update->Connecting = false;
             UpdateFilesAddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
 
             // Update
             UpdateFilesAddText(STR_CHECK_UPDATES, "Check updates...");
-            UpdateFilesText = "";
+            Update->Messages = "";
 
             // Data synchronization
             UpdateFilesAddText(STR_DATA_SYNCHRONIZATION, "Data synchronization...");
 
             // Clean up
-            UpdateFilesClientOutdated = false;
-            UpdateFilesCacheChanged = false;
-            UpdateFilesFilesChanged = false;
-            delete UpdateFilesList;
-            UpdateFilesList = nullptr;
-            UpdateFileDownloading = false;
+            Update->ClientOutdated = false;
+            Update->CacheChanged = false;
+            Update->FilesChanged = false;
+            Update->FileListReceived = false;
+            Update->FileList.clear();
+            Update->FileDownloading = false;
             FileMngr.DeleteFile("Update.fobin");
-            UpdateFilesTick = GameTime.FrameTick();
+            Update->Duration = GameTime.FrameTick();
 
             Net_SendUpdate();
         }
 
-        UpdateFilesProgress = "";
-        if ((UpdateFilesList != nullptr) && !UpdateFilesList->empty()) {
-            UpdateFilesProgress += "\n";
-            for (auto& update_file : *UpdateFilesList) {
+        Update->Progress = "";
+        if (!Update->FileList.empty()) {
+            Update->Progress += "\n";
+            for (auto& update_file : Update->FileList) {
                 const auto cur = static_cast<float>(update_file.Size - update_file.RemaningSize) / (1024.0f * 1024.0f);
                 const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
                 const string name = _str(update_file.Name).formatPath();
-                UpdateFilesProgress += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
+                Update->Progress += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
             }
-            UpdateFilesProgress += "\n";
+            Update->Progress += "\n";
         }
 
-        if ((UpdateFilesList != nullptr) && !UpdateFileDownloading) {
-            if (!UpdateFilesList->empty()) {
-                auto& update_file = UpdateFilesList->front();
+        if (Update->FileListReceived && !Update->FileDownloading) {
+            if (!Update->FileList.empty()) {
+                auto& update_file = Update->FileList.front();
 
-                if (UpdateFileTemp) {
-                    UpdateFileTemp = nullptr;
+                if (Update->TempFile) {
+                    Update->TempFile = nullptr;
                 }
 
                 if (update_file.Name[0] == '$') {
-                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
-                    UpdateFilesCacheChanged = true;
+                    Update->TempFile.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
+                    Update->CacheChanged = true;
                 }
                 else {
                     // Web client can receive only cache updates
                     // Resources must be packed in main bundle
 #ifdef FO_WEB
                     UpdateFilesAddText(STR_CLIENT_OUTDATED, "Client outdated!");
-                    SAFEDEL(UpdateFilesList);
                     NetDisconnect();
                     return;
 #endif
 
                     FileMngr.DeleteFile(update_file.Name);
-                    UpdateFileTemp.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
-                    UpdateFilesFilesChanged = true;
+                    Update->TempFile.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
+                    Update->FilesChanged = true;
                 }
 
-                if (!UpdateFileTemp) {
+                if (!Update->TempFile) {
                     UpdateFilesAddText(STR_FILESYSTEM_ERROR, "File system error!");
-                    delete UpdateFilesList;
-                    UpdateFilesList = nullptr;
                     NetDisconnect();
                     return;
                 }
 
-                UpdateFileDownloading = true;
+                Update->FileDownloading = true;
 
                 Bout << NETMSG_GET_UPDATE_FILE;
-                Bout << UpdateFilesList->front().Index;
+                Bout << Update->FileList.front().Index;
             }
             else {
                 // Done
-                UpdateFilesInProgress = false;
-                delete UpdateFilesList;
-                UpdateFilesList = nullptr;
+                Update.reset();
 
                 // Disconnect
                 if (InitCalls < 2) {
@@ -351,17 +318,17 @@ void FOClient::UpdateFilesLoop()
                 }
 
                 // Update binaries
-                if (UpdateFilesClientOutdated) {
+                if (Update->ClientOutdated) {
                     throw GenericException("Client outdated");
                 }
 
                 // Reinitialize data
-                if (UpdateFilesCacheChanged) {
+                if (Update->CacheChanged) {
                     CurLang.LoadFromCache(Cache, CurLang.Name);
                 }
-                // if (UpdateFilesFilesChanged)
+                // if (Update->FilesChanged)
                 //    Settings.Init(0, {});
-                if (InitCalls >= 2 && (UpdateFilesCacheChanged || UpdateFilesFilesChanged)) {
+                if (InitCalls >= 2 && (Update->CacheChanged || Update->FilesChanged)) {
                     throw ClientRestartException("Restart");
                 }
 
@@ -371,7 +338,7 @@ void FOClient::UpdateFilesLoop()
 
         ParseSocket();
 
-        if (!IsConnected && !UpdateFilesAborted) {
+        if (!IsConnected && !Update->Aborted) {
             UpdateFilesAddText(STR_CONNECTION_FAILTURE, "Connection failure!");
         }
     }
@@ -379,25 +346,25 @@ void FOClient::UpdateFilesLoop()
 
 void FOClient::UpdateFilesAddText(uint num_str, const string& num_str_str)
 {
-    if (UpdateFilesFontLoaded) {
+    if (Update->FontLoaded) {
         const auto text = (CurLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? CurLang.Msg[TEXTMSG_GAME].GetStr(num_str) : num_str_str);
-        UpdateFilesText += text + "\n";
+        Update->Messages += text + "\n";
     }
 }
 
 void FOClient::UpdateFilesAbort(uint num_str, const string& num_str_str)
 {
-    UpdateFilesAborted = true;
+    Update->Aborted = true;
 
     UpdateFilesAddText(num_str, num_str_str);
     NetDisconnect();
 
-    if (UpdateFileTemp) {
-        UpdateFileTemp = nullptr;
+    if (Update->TempFile) {
+        Update->TempFile = nullptr;
     }
 
     SprMngr.BeginScene(COLOR_RGB(255, 0, 0));
-    SprMngr.DrawStr(Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), UpdateFilesText, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
+    SprMngr.DrawStr(IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), Update->Messages, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
     SprMngr.EndScene();
 }
 
@@ -441,7 +408,7 @@ void FOClient::LookBordersPrepare()
     LookBorders.clear();
     ShootBorders.clear();
 
-    if ((Chosen == nullptr) || !HexMngr.IsMapLoaded() || (!DrawLookBorders && !DrawShootBorders)) {
+    if (Chosen == nullptr || !HexMngr.IsMapLoaded() || (!DrawLookBorders && !DrawShootBorders)) {
         HexMngr.SetFog(LookBorders, ShootBorders, nullptr, nullptr);
         return;
     }
@@ -482,14 +449,14 @@ void FOClient::LookBordersPrepare()
                     ii = Settings.MapDirCount - ii;
                 }
                 const auto dist_ = dist - dist * Settings.LookDir[ii] / 100;
-                UShortPair block;
+                pair<ushort, ushort> block;
                 HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, false);
                 hx_ = block.first;
                 hy_ = block.second;
             }
 
             if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE)) {
-                UShortPair block;
+                pair<ushort, ushort> block;
                 HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true);
                 hx_ = block.first;
                 hy_ = block.second;
@@ -508,7 +475,7 @@ void FOClient::LookBordersPrepare()
             if (DrawShootBorders) {
                 auto hx__ = hx_;
                 auto hy__ = hy_;
-                UShortPair block;
+                pair<ushort, ushort> block;
                 const auto max_shoot_dist = std::max(std::min(dist_look, dist_shoot), 0u) + 1u;
                 HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true);
                 hx__ = block.first;
@@ -573,7 +540,7 @@ void FOClient::MainLoop()
         }
     }
 
-    if (UpdateFilesInProgress) {
+    if (Update) {
         UpdateFilesLoop();
         return;
     }
@@ -586,7 +553,7 @@ void FOClient::MainLoop()
         InitCalls++;
 
         if (InitCalls == 1) {
-            UpdateFilesStart();
+            Update = ClientUpdate();
         }
         else if (InitCalls == 2) {
             ScreenFadeOut();
@@ -599,18 +566,16 @@ void FOClient::MainLoop()
     InputEvent event;
     while (App->Input.PollEvent(event)) {
         if (event.Type == InputEvent::EventType::MouseMoveEvent) {
-            auto sw = 0;
-            auto sh = 0;
-            SprMngr.GetWindowSize(sw, sh);
-            auto x = static_cast<int>(event.MouseMove.MouseX / static_cast<float>(sw) * Settings.ScreenWidth);
-            auto y = static_cast<int>(event.MouseMove.MouseY / static_cast<float>(sh) * Settings.ScreenHeight);
+            const auto [w, h] = SprMngr.GetWindowSize();
+            const auto x = static_cast<int>(static_cast<float>(event.MouseMove.MouseX) / static_cast<float>(w) * static_cast<float>(Settings.ScreenWidth));
+            const auto y = static_cast<int>(static_cast<float>(event.MouseMove.MouseY) / static_cast<float>(h) * static_cast<float>(Settings.ScreenHeight));
             Settings.MouseX = std::clamp(x, 0, Settings.ScreenWidth - 1);
             Settings.MouseY = std::clamp(y, 0, Settings.ScreenHeight - 1);
         }
     }
 
     // Network
-    if (InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress) {
+    if (InitNetReason != INIT_NET_REASON_NONE && !Update) {
         // Connect to server
         if (!IsConnected) {
             if (!NetConnect(Settings.Host, Settings.Port)) {
@@ -629,8 +594,9 @@ void FOClient::MainLoop()
             }
             else if (reason == INIT_NET_REASON_REG) {
                 Net_SendCreatePlayer();
-                // else if( reason == INIT_NET_REASON_LOAD )
-                //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
+            }
+            else if (reason == INIT_NET_REASON_LOAD) {
+                // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
             }
             else if (reason != INIT_NET_REASON_CUSTOM) {
                 throw UnreachablePlaceException(LINE_STR);
@@ -720,7 +686,7 @@ void FOClient::DrawIface()
 void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
 {
     if (!push_back || ScreenEffects.empty()) {
-        ScreenEffects.push_back(ScreenEffect(GameTime.FrameTick(), time, from_color, to_color));
+        ScreenEffects.push_back({GameTime.FrameTick(), time, from_color, to_color});
     }
     else {
         uint last_tick = 0;
@@ -729,7 +695,7 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
                 last_tick = e.BeginTick + e.Time;
             }
         }
-        ScreenEffects.push_back(ScreenEffect(last_tick, time, from_color, to_color));
+        ScreenEffects.push_back({last_tick, time, from_color, to_color});
     }
 }
 
@@ -751,24 +717,24 @@ void FOClient::ProcessScreenEffectFading()
 {
     SprMngr.Flush();
 
-    PointVec full_screen_quad;
-    SprMngr.PrepareSquare(full_screen_quad, Rect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
+    PrimitivePoints full_screen_quad;
+    SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
 
     for (auto it = ScreenEffects.begin(); it != ScreenEffects.end();) {
-        auto& e = *it;
+        auto& screen_effect = *it;
 
-        if (GameTime.FrameTick() >= e.BeginTick + e.Time) {
+        if (GameTime.FrameTick() >= screen_effect.BeginTick + screen_effect.Time) {
             it = ScreenEffects.erase(it);
             continue;
         }
 
-        if (GameTime.FrameTick() >= e.BeginTick) {
-            const auto proc = GenericUtils::Percent(e.Time, GameTime.FrameTick() - e.BeginTick) + 1;
+        if (GameTime.FrameTick() >= screen_effect.BeginTick) {
+            const auto proc = GenericUtils::Percent(screen_effect.Time, GameTime.FrameTick() - screen_effect.BeginTick) + 1;
             int res[4];
 
             for (auto i = 0; i < 4; i++) {
-                const int sc = (reinterpret_cast<uchar*>(&e.StartColor))[i];
-                const int ec = (reinterpret_cast<uchar*>(&e.EndColor))[i];
+                const int sc = (reinterpret_cast<uchar*>(&screen_effect.StartColor))[i];
+                const int ec = (reinterpret_cast<uchar*>(&screen_effect.EndColor))[i];
                 const auto dc = ec - sc;
                 res[i] = sc + dc * proc / 100;
             }
@@ -1762,7 +1728,7 @@ void FOClient::Net_SendDir()
     Bout << Chosen->GetDir();
 }
 
-void FOClient::Net_SendMove(UCharVec steps)
+void FOClient::Net_SendMove(vector<uchar> steps)
 {
     if (Chosen == nullptr) {
         return;
@@ -1901,7 +1867,7 @@ void FOClient::Net_SendRefereshMe()
 
 void FOClient::Net_OnWrongNetProto()
 {
-    if (UpdateFilesInProgress) {
+    if (Update) {
         UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
     }
     else {
@@ -2007,17 +1973,17 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
         if (is_npc) {
             if ((cr->GetDialogId() != 0u) && (CurLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId())) != 0u)) {
-                cr->Name = CurLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId()));
+                cr->AlternateName = CurLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId()));
             }
             else {
-                cr->Name = CurLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid));
+                cr->AlternateName = CurLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid));
             }
             if (CurLang.Msg[TEXTMSG_DLG].Count(STR_NPC_AVATAR(cr->GetDialogId())) != 0u) {
                 cr->Avatar = CurLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_AVATAR(cr->GetDialogId()));
             }
         }
         else {
-            cr->Name = cl_name;
+            cr->AlternateName = cl_name;
         }
 
         cr->Init();
@@ -2221,9 +2187,9 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
 
 void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
 {
-    uint text_delay = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
+    auto text_delay = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
 
-    string sstr = str;
+    auto sstr = str;
     ScriptSys.MapMessageEvent(sstr, hx, hy, color, text_delay);
 
     MapText map_text;
@@ -2237,7 +2203,7 @@ void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
     map_text.Pos = HexMngr.GetRectForText(hx, hy);
     map_text.EndPos = map_text.Pos;
 
-    const auto it = std::find(GameMapTexts.begin(), GameMapTexts.end(), map_text);
+    const auto it = std::find_if(GameMapTexts.begin(), GameMapTexts.end(), [&map_text](const MapText& t) { return map_text.HexX == t.HexX && map_text.HexY == t.HexY; });
     if (it != GameMapTexts.end()) {
         GameMapTexts.erase(it);
     }
@@ -2402,6 +2368,7 @@ void FOClient::Net_OnCritterMove()
             }
 
             GeomHelper.MoveHexByDir(new_hx, new_hy, dir, HexMngr.GetWidth(), HexMngr.GetHeight());
+
             if (j < 0) {
                 continue;
             }
@@ -2475,10 +2442,10 @@ void FOClient::Net_OnCritterMoveItem()
     Bin >> is_item;
 
     // Slot items
-    UCharVec slots_data_slot;
-    UIntVec slots_data_id;
-    HashVec slots_data_pid;
-    vector<UCharVecVec> slots_data_data;
+    vector<uchar> slots_data_slot;
+    vector<uint> slots_data_id;
+    vector<hash> slots_data_pid;
+    vector<vector<vector<uchar>>> slots_data_data;
     ushort slots_data_count = 0;
     Bin >> slots_data_count;
     for (uchar i = 0; i < slots_data_count; i++) {
@@ -2634,18 +2601,16 @@ void FOClient::Net_OnCustomCommand()
             Chosen->Flags = value;
         } break;
         case OTHER_CLEAR_MAP: {
-            CritterViewMap crits = HexMngr.GetCritters();
-            for (auto& crit : crits) {
-                CritterView* cr = crit.second;
+            auto crits = HexMngr.GetCritters();
+            for (auto& [id, cr] : crits) {
                 if (cr != Chosen) {
                     DeleteCritter(cr->GetId());
                 }
             }
-            ItemHexViewVec items = HexMngr.GetItems();
-            for (auto& it : items) {
-                ItemHexView* item = it;
+            auto items = HexMngr.GetItems();
+            for (auto* item : items) {
                 if (!item->IsStatic()) {
-                    HexMngr.DeleteItem(it, true, nullptr);
+                    HexMngr.DeleteItem(item, true, nullptr);
                 }
             }
         } break;
@@ -2870,8 +2835,8 @@ void FOClient::Net_OnAllItemsSend()
         return;
     }
 
-    if (Chosen->Anim3d != nullptr) {
-        Chosen->Anim3d->StartMeshGeneration();
+    if (Chosen->Model != nullptr) {
+        Chosen->Model->StartMeshGeneration();
     }
 
     ScriptSys.ItemInvAllInEvent();
@@ -2953,7 +2918,7 @@ void FOClient::Net_OnCombatResult()
 {
     uint msg_len = 0;
     uint data_count = 0;
-    UIntVec data_vec;
+    vector<uint> data_vec;
     Bin >> msg_len;
     Bin >> data_count;
     if (data_count > Settings.FloodSize / sizeof(uint)) {
@@ -2990,10 +2955,7 @@ void FOClient::Net_OnEffect()
         radius = MAX_HEX_OFFSET;
     }
 
-    short* sx = nullptr;
-    short* sy = nullptr;
-    GeomHelper.GetHexOffsets((hx & 1) != 0, sx, sy);
-
+    const auto [sx, sy] = GeomHelper.GetHexOffsets((hx % 2) != 0);
     const auto maxhx = HexMngr.GetWidth();
     const auto maxhy = HexMngr.GetHeight();
     const auto count = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
@@ -3277,7 +3239,7 @@ void FOClient::Net_OnChosenTalk()
     Bin >> text_id;
 
     // Answers
-    UIntVec answers_texts;
+    vector<uint> answers_texts;
     uint answ_text_id = 0;
     for (int i = 0; i < count_answ; i++) {
         Bin >> answ_text_id;
@@ -3491,22 +3453,22 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    uint cache_len = 0;
-    uchar* cache = Cache.GetRawData(map_name, cache_len);
+    auto cache_len = 0u;
+    auto* cache = Cache.GetRawData(map_name, cache_len);
     if (cache != nullptr) {
-        const File compressed_file = File(cache, cache_len);
-        uint buf_len = compressed_file.GetFsize();
-        uchar* buf = Compressor::Uncompress(compressed_file.GetBuf(), buf_len, 50);
+        const auto compressed_file = File(cache, cache_len);
+        auto buf_len = compressed_file.GetFsize();
+        auto* buf = Compressor::Uncompress(compressed_file.GetBuf(), buf_len, 50);
         if (buf != nullptr) {
-            File file = File(buf, buf_len);
+            auto file = File(buf, buf_len);
             delete[] buf;
 
             if (file.GetBEUInt() == CLIENT_MAP_FORMAT_VER) {
-                file.GetBEUInt();
-                file.GetBEUShort();
-                file.GetBEUShort();
-                const uint old_tiles_len = file.GetBEUInt();
-                const uint old_scen_len = file.GetBEUInt();
+                file.GoForward(4);
+                file.GoForward(2);
+                file.GoForward(2);
+                const auto old_tiles_len = file.GetBEUInt();
+                const auto old_scen_len = file.GetBEUInt();
 
                 if (!tiles) {
                     tiles_len = old_tiles_len;
@@ -3595,7 +3557,7 @@ void FOClient::Net_OnGlobalInfo()
     }
 
     if (IsBitSet(info_flags, GM_INFO_LOCATION)) {
-        GmapLocation loc {};
+        GmapLocation loc;
         bool add = 0;
         Bin >> add;
         Bin >> loc.LocId;
@@ -3606,7 +3568,7 @@ void FOClient::Net_OnGlobalInfo()
         Bin >> loc.Color;
         Bin >> loc.Entrances;
 
-        const auto it = std::find(GmapLoc.begin(), GmapLoc.end(), loc.LocId);
+        const auto it = std::find_if(GmapLoc.begin(), GmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
         if (add) {
             if (it != GmapLoc.end()) {
                 *it = loc;
@@ -3647,7 +3609,7 @@ void FOClient::Net_OnGlobalInfo()
 void FOClient::Net_OnSomeItems()
 {
     uint msg_len = 0;
-    int param = 0;
+    auto param = 0;
     bool is_null = 0;
     uint items_count = 0;
     Bin >> msg_len;
@@ -3655,7 +3617,7 @@ void FOClient::Net_OnSomeItems()
     Bin >> is_null;
     Bin >> items_count;
 
-    ItemViewVec item_container;
+    vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
         uint item_id = 0;
         hash item_pid = 0;
@@ -3681,7 +3643,7 @@ void FOClient::Net_OnUpdateFilesList()
     uint msg_len = 0;
     bool outdated = 0;
     uint data_size = 0;
-    UCharVec data;
+    vector<uchar> data;
     Bin >> msg_len;
     Bin >> outdated;
     Bin >> data_size;
@@ -3696,10 +3658,9 @@ void FOClient::Net_OnUpdateFilesList()
 
     File file(&data[0], static_cast<uint>(data.size()));
 
-    delete UpdateFilesList;
-    UpdateFilesList = new UpdateFileVec();
-    UpdateFilesWholeSize = 0;
-    UpdateFilesClientOutdated = outdated;
+    Update->FileList.clear();
+    Update->FilesWholeSize = 0;
+    Update->ClientOutdated = outdated;
 
 #ifdef FO_WINDOWS
     /*bool have_exe = false;
@@ -3759,21 +3720,21 @@ void FOClient::Net_OnUpdateFilesList()
         }
 
         // Get this file
-        UpdateFile update_file;
+        ClientUpdate::UpdateFile update_file;
         update_file.Index = file_index;
         update_file.Name = name;
         update_file.Size = size;
         update_file.RemaningSize = size;
         update_file.Hash = hash;
-        UpdateFilesList->push_back(update_file);
-        UpdateFilesWholeSize += size;
+        Update->FileList.push_back(update_file);
+        Update->FilesWholeSize += size;
     }
 
 #ifdef FO_WINDOWS
-    // if (UpdateFilesClientOutdated && !have_exe)
+    // if (Update->ClientOutdated && !have_exe)
     //    UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #else
-    if (UpdateFilesClientOutdated)
+    if (Update->ClientOutdated)
         UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #endif
 }
@@ -3786,11 +3747,11 @@ void FOClient::Net_OnUpdateFileData()
 
     CHECK_IN_BUFF_ERROR();
 
-    UpdateFile& update_file = UpdateFilesList->front();
+    auto& update_file = Update->FileList.front();
 
     // Write data to temp file
-    UpdateFileTemp->SetData(data, std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data))));
-    UpdateFileTemp->Save();
+    Update->TempFile->SetData(data, std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data))));
+    Update->TempFile->Save();
 
     // Get next portion or finalize data
     update_file.RemaningSize -= std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data)));
@@ -3800,8 +3761,8 @@ void FOClient::Net_OnUpdateFileData()
     }
     else {
         // Finalize received data
-        UpdateFileTemp->Save();
-        UpdateFileTemp = nullptr;
+        Update->TempFile->Save();
+        Update->TempFile = nullptr;
 
         // Cache
         if (update_file.Name[0] == '$') {
@@ -3821,8 +3782,8 @@ void FOClient::Net_OnUpdateFileData()
             FileMngr.RenameFile("Update.fobin", update_file.Name);
         }
 
-        UpdateFilesList->erase(UpdateFilesList->begin());
-        UpdateFileDownloading = false;
+        Update->FileList.erase(Update->FileList.begin());
+        Update->FileDownloading = false;
     }
 }
 
@@ -3847,7 +3808,7 @@ void FOClient::Net_OnAutomapsInfo()
         Bin >> loc_pid;
         Bin >> maps_count;
 
-        auto it = std::find(Automaps.begin(), Automaps.end(), loc_id);
+        auto it = std::find_if(Automaps.begin(), Automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
 
         // Delete from collection
         if (maps_count == 0u) {
@@ -4211,7 +4172,7 @@ void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
 void FOClient::OnSetCritterModelName(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     CritterView* cr = dynamic_cast<CritterView*>(entity);
-    cr->RefreshAnim();
+    cr->RefreshModel();
     cr->Action(ACTION_REFRESH, 0, nullptr, false);
 }
 
@@ -4374,10 +4335,10 @@ void FOClient::GameDraw()
         else {
             const uint dt = tick - mt.StartTick;
             const int procent = GenericUtils::Percent(mt.Tick, dt);
-            const Rect r = mt.Pos.Interpolate(mt.EndPos, procent);
+            const IRect r = mt.Pos.Interpolate(mt.EndPos, procent);
             Field& f = HexMngr.GetField(mt.HexX, mt.HexY);
-            const int x = static_cast<int>((f.ScrX + (Settings.MapHexWidth / 2) + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(mt.Pos.L - r.L));
-            const int y = static_cast<int>((f.ScrY + (Settings.MapHexHeight / 2) - mt.Pos.Height() - (mt.Pos.T - r.T) + Settings.ScrOy) / Settings.SpritesZoom - 70.0f);
+            const int x = static_cast<int>((f.ScrX + (Settings.MapHexWidth / 2) + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(mt.Pos.Left - r.Left));
+            const int y = static_cast<int>((f.ScrY + (Settings.MapHexHeight / 2) - mt.Pos.Height() - (mt.Pos.Top - r.Top) + Settings.ScrOy) / Settings.SpritesZoom - 70.0f);
 
             uint color = mt.Color;
             if (mt.Fade) {
@@ -4391,8 +4352,8 @@ void FOClient::GameDraw()
                 }
             }
 
-            SprMngr.DrawStr(Rect(x, y, x + 200, y + 70), mt.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
-            it++;
+            SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), mt.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
+            ++it;
         }
     }
 }
@@ -4414,7 +4375,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
         return;
     }
 
-    StrVec dialogs;
+    vector<string> dialogs;
     int sex = 0;
     bool sex_tags = false;
     string tag;
@@ -4471,7 +4432,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
             else if (_str(tag).compareIgnoreCase("rnd")) {
                 size_t first = text.find_first_of('|', i);
                 size_t last = text.find_last_of('|', i);
-                StrVec rnd = _str(text.substr(first, last - first + 1)).split('|');
+                vector<string> rnd = _str(text.substr(first, last - first + 1)).split('|');
                 text.erase(first, last - first + 1);
                 if (!rnd.empty()) {
                     text.insert(first, rnd[GenericUtils::Random(0, static_cast<int>(rnd.size()) - 1)]);
@@ -4538,7 +4499,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
     text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, StrIntMap params)
+void FOClient::ShowMainScreen(int new_screen, map<string, int> params)
 {
     while (GetActiveScreen(nullptr) != SCREEN_NONE) {
         HideScreen(SCREEN_NONE);
@@ -4577,9 +4538,9 @@ void FOClient::ShowMainScreen(int new_screen, StrIntMap params)
     }
 }
 
-auto FOClient::GetActiveScreen(IntVec* screens) -> int
+auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 {
-    IntVec active_screens;
+    vector<int> active_screens;
     ScriptSys.GetActiveScreensEvent(active_screens);
 
     if (screens != nullptr) {
@@ -4595,12 +4556,12 @@ auto FOClient::GetActiveScreen(IntVec* screens) -> int
 
 auto FOClient::IsScreenPresent(int screen) -> bool
 {
-    IntVec active_screens;
+    vector<int> active_screens;
     GetActiveScreen(&active_screens);
     return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
 }
 
-void FOClient::ShowScreen(int screen, StrIntMap params)
+void FOClient::ShowScreen(int screen, map<string, int> params)
 {
     RunScreenScript(true, screen, std::move(params));
 }
@@ -4617,7 +4578,7 @@ void FOClient::HideScreen(int screen)
     RunScreenScript(false, screen, {});
 }
 
-void FOClient::RunScreenScript(bool show, int screen, StrIntMap params)
+void FOClient::RunScreenScript(bool show, int screen, map<string, int> params)
 {
     ScriptSys.ScreenChangeEvent(show, screen, std::move(params));
 }

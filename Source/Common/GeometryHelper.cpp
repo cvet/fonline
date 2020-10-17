@@ -70,11 +70,11 @@ void GeometryHelper::InitializeHexOffsets() const
         auto yo = 0;
 
         for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(xe, ye, 0);
-            MoveHexByDirUnsafe(xo, yo, 0);
+            MoveHexByDirUnsafe(xe, ye, 0u);
+            MoveHexByDirUnsafe(xo, yo, 0u);
 
             for (auto j = 0; j < 6; j++) {
-                const auto dir = (j + 2) % 6;
+                const uchar dir = (j + 2) % 6;
 
                 for (auto k = 0; k < i + 1; k++) {
                     _sxEven[pos] = static_cast<short>(xe);
@@ -84,8 +84,8 @@ void GeometryHelper::InitializeHexOffsets() const
 
                     pos++;
 
-                    MoveHexByDirUnsafe(xe, ye, static_cast<uchar>(dir));
-                    MoveHexByDirUnsafe(xo, yo, static_cast<uchar>(dir));
+                    MoveHexByDirUnsafe(xe, ye, dir);
+                    MoveHexByDirUnsafe(xo, yo, dir);
                 }
             }
         }
@@ -99,10 +99,10 @@ void GeometryHelper::InitializeHexOffsets() const
         auto hy = 0;
 
         for (auto i = 0; i < MAX_HEX_OFFSET; i++) {
-            MoveHexByDirUnsafe(hx, hy, 0);
+            MoveHexByDirUnsafe(hx, hy, 0u);
 
             for (auto j = 0; j < 5; j++) {
-                auto dir = 0;
+                uchar dir;
                 auto steps = 0;
 
                 switch (j) {
@@ -136,7 +136,7 @@ void GeometryHelper::InitializeHexOffsets() const
 
                     pos++;
 
-                    MoveHexByDirUnsafe(hx, hy, static_cast<uchar>(dir));
+                    MoveHexByDirUnsafe(hx, hy, dir);
                 }
             }
         }
@@ -384,14 +384,19 @@ auto GeometryHelper::MoveHexByDir(ushort& hx, ushort& hy, uchar dir, ushort maxh
 {
     int hx_ = hx;
     int hy_ = hy;
-    MoveHexByDirUnsafe(hx_, hy_, dir);
 
-    if (hx_ >= 0 && hx_ < maxhx && hy_ >= 0 && hy_ < maxhy) {
+    if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
         hx = static_cast<ushort>(hx_);
         hy = static_cast<ushort>(hy_);
         return true;
     }
     return false;
+}
+
+auto GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir, ushort maxhx, ushort maxhy) const -> bool
+{
+    MoveHexByDirUnsafe(hx, hy, dir);
+    return hx >= 0 && hx < maxhx && hy >= 0 && hy < maxhy;
 }
 
 void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
@@ -400,13 +405,13 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
         switch (dir) {
         case 0:
             hx--;
-            if ((hx & 1) == 0) {
+            if ((hx % 2) == 0) {
                 hy--;
             }
             break;
         case 1:
             hx--;
-            if ((hx & 1) != 0) {
+            if ((hx % 2) != 0) {
                 hy++;
             }
             break;
@@ -415,13 +420,13 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
             break;
         case 3:
             hx++;
-            if ((hx & 1) != 0) {
+            if ((hx % 2) != 0) {
                 hy++;
             }
             break;
         case 4:
             hx++;
-            if ((hx & 1) == 0) {
+            if ((hx % 2) == 0) {
                 hy--;
             }
             break;
@@ -429,7 +434,7 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
             hy--;
             break;
         default:
-            return;
+            break;
         }
     }
     else {
@@ -463,29 +468,30 @@ void GeometryHelper::MoveHexByDirUnsafe(int& hx, int& hy, uchar dir) const
             hy--;
             break;
         default:
-            return;
+            break;
         }
     }
 }
 
-void GeometryHelper::GetHexOffsets(bool odd, short*& sx, short*& sy) const
+auto GeometryHelper::GetHexOffsets(bool odd) const -> tuple<const short*, const short*>
 {
     if (_sxEven == nullptr) {
         InitializeHexOffsets();
     }
 
-    sx = odd ? _sxOdd : _sxEven;
-    sy = odd ? _syOdd : _syEven;
+    const auto* sx = (odd ? _sxOdd : _sxEven);
+    const auto* sy = (odd ? _syOdd : _syEven);
+    return {sx, sy};
 }
 
-void GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y) const
+auto GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_hy) const -> tuple<int, int>
 {
     if (_settings.MapHexagonal) {
         auto dx = to_hx - from_hx;
         const auto dy = to_hy - from_hy;
 
-        x = dy * (_settings.MapHexWidth / 2) - dx * _settings.MapHexWidth;
-        y = dy * _settings.MapHexLineHeight;
+        auto x = dy * (_settings.MapHexWidth / 2) - dx * _settings.MapHexWidth;
+        auto y = dy * _settings.MapHexLineHeight;
 
         if ((from_hx & 1) != 0) {
             if (dx > 0) {
@@ -500,17 +506,19 @@ void GeometryHelper::GetHexInterval(int from_hx, int from_hy, int to_hx, int to_
 
         x += _settings.MapHexWidth / 2 * dx;
         y += _settings.MapHexLineHeight * dx;
+        return {x, y};
     }
     else {
         const auto dx = to_hx - from_hx;
         const auto dy = to_hy - from_hy;
 
-        x = (dy - dx) * _settings.MapHexWidth / 2;
-        y = (dy + dx) * _settings.MapHexLineHeight;
+        auto x = (dy - dx) * _settings.MapHexWidth / 2;
+        auto y = (dy + dx) * _settings.MapHexLineHeight;
+        return {x, y};
     }
 }
 
-void GeometryHelper::ForEachBlockLines(const UCharVec& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const
+void GeometryHelper::ForEachBlockLines(const vector<uchar>& lines, ushort hx, ushort hy, ushort maxhx, ushort maxhy, const std::function<void(ushort, ushort)>& work) const
 {
     int hx_ = hx;
     int hy_ = hy;
@@ -524,13 +532,9 @@ void GeometryHelper::ForEachBlockLines(const UCharVec& lines, ushort hx, ushort 
         }
 
         for (uchar k = 0; k < steps; k++) {
-            MoveHexByDirUnsafe(hx_, hy_, dir);
-
-            if (hx_ < 0 || hy_ < 0 || hx_ >= maxhx || hy_ >= maxhy) {
-                continue;
+            if (MoveHexByDirUnsafe(hx_, hy_, dir, maxhx, maxhy)) {
+                work(static_cast<ushort>(hx_), static_cast<ushort>(hy_));
             }
-
-            work(static_cast<ushort>(hx_), static_cast<ushort>(hy_));
         }
     }
 }

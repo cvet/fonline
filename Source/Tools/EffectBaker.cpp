@@ -74,7 +74,7 @@ void EffectBaker::AutoBakeEffects()
 
         auto file = _allFiles.GetCurFile();
         string content(file.GetCStr(), file.GetFsize());
-        futs.emplace_back(std::async(&EffectBaker::BakeShaderProgram, this, relative_path, content));
+        futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));
     }
 
     for (auto& fut : futs) {
@@ -113,7 +113,7 @@ void EffectBaker::BakeShaderProgram(const string& fname, const string& /*content
     {
         SCOPE_LOCK(_bakedFilesLocker);
         string dummy_content = "BAKED";
-        _bakedFiles.emplace(fname, UCharVec(dummy_content.begin(), dummy_content.end()));
+        _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
     }
 }
 
@@ -134,7 +134,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
 
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
-        UCharVec data(spirv.size() * sizeof(uint32_t));
+        vector<uchar> data(spirv.size() * sizeof(uint32_t));
         std::memcpy(&data[0], &spirv[0], data.size());
         SCOPE_LOCK(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".spv", std::move(data));
@@ -147,7 +147,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         compiler.set_common_options(options);
         auto source = compiler.compile();
         SCOPE_LOCK(_bakedFilesLocker);
-        _bakedFiles.emplace(fname_wo_ext + ".glsl", UCharVec(source.begin(), source.end()));
+        _bakedFiles.emplace(fname_wo_ext + ".glsl", vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -158,7 +158,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         compiler.set_common_options(options);
         auto source = compiler.compile();
         SCOPE_LOCK(_bakedFilesLocker);
-        _bakedFiles.emplace(fname_wo_ext + ".glsl-es", UCharVec(source.begin(), source.end()));
+        _bakedFiles.emplace(fname_wo_ext + ".glsl-es", vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
@@ -168,7 +168,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
         SCOPE_LOCK(_bakedFilesLocker);
-        _bakedFiles.emplace(fname_wo_ext + ".hlsl", UCharVec(source.begin(), source.end()));
+        _bakedFiles.emplace(fname_wo_ext + ".hlsl", vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -179,7 +179,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         compiler.set_msl_options(options);
         auto source = compiler.compile();
         SCOPE_LOCK(_bakedFilesLocker);
-        _bakedFiles.emplace(fname_wo_ext + ".msl-mac", UCharVec(source.begin(), source.end()));
+        _bakedFiles.emplace(fname_wo_ext + ".msl-mac", vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -190,24 +190,24 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         compiler.set_msl_options(options);
         auto source = compiler.compile();
         SCOPE_LOCK(_bakedFilesLocker);
-        _bakedFiles.emplace(fname_wo_ext + ".msl-ios", UCharVec(source.begin(), source.end()));
+        _bakedFiles.emplace(fname_wo_ext + ".msl-ios", vector<uchar>(source.begin(), source.end()));
     };
 
     // Make all asynchronously
     auto futs = {
-        std::async(make_spirv),
-        std::async(make_glsl),
-        std::async(make_glsl_es),
-        std::async(make_hlsl),
-        std::async(make_msl_mac),
-        std::async(make_msl_ios),
+        std::async(std::launch::async | std::launch::deferred, make_spirv),
+        std::async(std::launch::async | std::launch::deferred, make_glsl),
+        std::async(std::launch::async | std::launch::deferred, make_glsl_es),
+        std::async(std::launch::async | std::launch::deferred, make_hlsl),
+        std::async(std::launch::async | std::launch::deferred, make_msl_mac),
+        std::async(std::launch::async | std::launch::deferred, make_msl_ios),
     };
     for (const auto& fut : futs) {
         fut.wait();
     }
 }
 
-void EffectBaker::FillBakedFiles(map<string, UCharVec>& baked_files)
+void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
     SCOPE_LOCK(_bakedFilesLocker);
 
