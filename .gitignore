@@ -1,3 +1,7 @@
 Workspace
 Temp
 .vs
+.idea
+.vscode
+build**
+cmake-build**
