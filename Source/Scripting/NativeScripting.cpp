@@ -217,6 +217,7 @@ inline T MarshalBack(T value)
 #define EntityType_Map ScriptMap
 #define EntityType_Location ScriptLocation
 #define EntityType_ItemView ScriptItem
+#define EntityType_ItemHexView ScriptItem
 #define EntityType_CritterView ScriptCritter
 #define EntityType_MapView ScriptMap
 #define EntityType_LocationView ScriptLocation
@@ -410,7 +411,7 @@ struct ScriptSystem::NativeImpl
 
 void SCRIPTING_CLASS::InitNativeScripting()
 {
-    pNativeImpl = std::make_unique<NativeImpl>();
+    _pNativeImpl = std::make_unique<NativeImpl>();
 }
 
 #else

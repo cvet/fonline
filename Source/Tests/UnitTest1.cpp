@@ -51,8 +51,9 @@ TEST_CASE("Dummy 2")
 
 TEST_CASE("MurmurHash2")
 {
-    REQUIRE(Hashing::MurmurHash2(reinterpret_cast<uchar*>("abcdef"), 6) == 1271458169);
-    REQUIRE(Hashing::MurmurHash2_64(reinterpret_cast<uchar*>("abcdef"), 6) == 13226566493390071673ULL);
+    const auto* data = reinterpret_cast<const uchar*>("abcdef");
+    REQUIRE(Hashing::MurmurHash2(data, 6) == 1271458169);
+    REQUIRE(Hashing::MurmurHash2_64(data, 6) == 13226566493390071673ULL);
 }
 
 TEST_CASE("StdRandom")

@@ -787,8 +787,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     traceback = ss.str();
 
     // Dump file
-    DateTimeStamp dt;
-    Timer::GetCurrentDateTime(dt);
+    const auto dt = Timer::GetCurrentDateTime();
     string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
     string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_VERSION_STR, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
@@ -801,7 +800,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
         file.Write(_str("\tName        {}\n", GetAppName()));
-        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR);
+        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
         struct utsname ver;
         uname(&ver);
         file.Write(_str("\tOS          {} / {} / {}\n", ver.sysname, ver.release, ver.version));

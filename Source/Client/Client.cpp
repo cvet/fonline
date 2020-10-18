@@ -1366,7 +1366,7 @@ auto FOClient::NetInput(bool unpack) -> int
 #ifdef FO_WINDOWS
             if (WSAGetLastError() == WSAEWOULDBLOCK) {
 #else
-            if (errno == EINPROGRESS)
+            if (errno == EINPROGRESS) {
 #endif
                 break;
             }
@@ -3985,7 +3985,7 @@ auto FOClient::FmtGameText(uint str_num, ...) -> string
 {
     const string str = _str(CurLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n');
     char res[MAX_FOTEXT];
-    va_list list = nullptr;
+    va_list list;
     va_start(list, str_num);
     vsprintf(res, str.c_str(), list);
     va_end(list);
