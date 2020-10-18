@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2019 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -58,7 +58,6 @@ Android_CreateWindow(_THIS, SDL_Window * window)
     window->w = Android_SurfaceWidth;
     window->h = Android_SurfaceHeight;
 
-    window->flags &= ~SDL_WINDOW_RESIZABLE;     /* window is NEVER resizeable */
     window->flags &= ~SDL_WINDOW_HIDDEN;
     window->flags |= SDL_WINDOW_SHOWN;          /* only one window on Android */
 
@@ -82,7 +81,7 @@ Android_CreateWindow(_THIS, SDL_Window * window)
 
     /* Do not create EGLSurface for Vulkan window since it will then make the window
        incompatible with vkCreateAndroidSurfaceKHR */
-    if ((window->flags & SDL_WINDOW_VULKAN) == 0) {
+    if ((window->flags & SDL_WINDOW_OPENGL) != 0) {
         data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) data->native_window);
 
         if (data->egl_surface == EGL_NO_SURFACE) {
@@ -112,10 +111,6 @@ Android_SetWindowTitle(_THIS, SDL_Window *window)
 void
 Android_SetWindowFullscreen(_THIS, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen)
 {
-    //! FOnline error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]
-    SDL_WindowData *data;
-    int old_w, old_h, new_w, new_h;
-
     SDL_LockMutex(Android_ActivityMutex);
 
     if (window == Android_Window) {
@@ -135,7 +130,7 @@ Android_SetWindowFullscreen(_THIS, SDL_Window *window, SDL_VideoDisplay *display
             goto endfunction;
         }
 
-        data = (SDL_WindowData *)window->driverdata;
+        SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
 
         if (!data || !data->native_window) {
             if (data && !data->native_window) {
@@ -144,11 +139,11 @@ Android_SetWindowFullscreen(_THIS, SDL_Window *window, SDL_VideoDisplay *display
             goto endfunction;
         }
 
-        old_w = window->w;
-        old_h = window->h;
+        int old_w = window->w;
+        int old_h = window->h;
 
-        new_w = ANativeWindow_getWidth(data->native_window);
-        new_h = ANativeWindow_getHeight(data->native_window);
+        int new_w = ANativeWindow_getWidth(data->native_window);
+        int new_h = ANativeWindow_getHeight(data->native_window);
 
         if (new_w < 0 || new_h < 0) {
             SDL_SetError("ANativeWindow_getWidth/Height() fails");
